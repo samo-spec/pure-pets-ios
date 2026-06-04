@@ -2889,5 +2889,18 @@
 "ImageSearchInvalidResponse" = "عاد البحث بالصورة باستجابة غير صالحة.";
 "ImageSearchNoResultsTitle" = "لم نجد نتائج مطابقة";
 "ImageSearchNoResultsSubtitle" = "جرب صورة أخرى أو استخدم البحث النصي.";
+"ImageSearchSourceTitle" = "البحث بصورة";
+"ImageSearchSourceSubtitle" = "التقط صورة أو اختر واحدة من مكتبتك.";
+"ImageSearchTakePhoto" = "التقاط صورة";
+"ImageSearchChoosePhoto" = "اختيار صورة";
+"ImageSearchCameraUnavailable" = "الكاميرا غير متاحة على هذا الجهاز.";
+"ImageSearchPhotoLibraryUnavailable" = "مكتبة الصور غير متاحة على هذا الجهاز.";
+"ImageSearchButtonAccessibilityLabel" = "البحث بالصورة";
+"ImageSearchButtonAccessibilityHint" = "التقط أو اختر صورة للعثور على حيوانات ومنتجات مطابقة.";
+"ImageSearchPreparing" = "جارٍ البحث من الصورة...";
+"ImageSearchHeroBadge" = "بحث بالصورة";
+"ImageSearchHeroResultsSubtitleFormat" = "%ld نتيجة مرئية من صورتك.";
+"ImageSearchLoadingTitle" = "جارٍ البحث في صورتك";
+"ImageSearchLoadingSubtitle" = "نطابق التفاصيل المرئية مع إعلانات ومنتجات بيور بيتس المباشرة.";
 
 "UnableToLoadDetails" = "تعذر تحميل التفاصيل.";

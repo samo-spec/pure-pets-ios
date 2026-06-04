@@ -6323,7 +6323,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6363,7 +6363,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access is needed to select images for pet profiles and listings";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to search for pets, products, and accessories by image.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -6432,7 +6432,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6475,7 +6475,7 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access is needed to select images for pet profiles and listings";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Pure Pets uses your photo library to search for pets, products, and accessories by image.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;

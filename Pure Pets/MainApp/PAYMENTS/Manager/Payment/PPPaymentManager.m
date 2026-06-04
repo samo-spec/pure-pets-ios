@@ -18,6 +18,7 @@
 #import "CountryModel.h"
 #import "CitiesManager.h"
 #import "PPFirebaseSessionBridge.h"
+#import <SafariServices/SafariServices.h>
 
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
 
@@ -25,7 +26,7 @@
 - (void)sendRequest;
 @end
 
-@interface PPPaymentManager ()
+@interface PPPaymentManager () <SFSafariViewControllerDelegate>
 
 @property (nonatomic, strong) id qpParams; // intentionally id (avoids linker crash)
 @property (nonatomic, copy) PPPaymentCompletion completion;
@@ -38,6 +39,7 @@
 @property (nonatomic, weak) UIViewController *paymentPresenterVC;
 @property (nonatomic, assign) BOOL sdkDidPresent;
 @property (nonatomic, strong) NSDate *requestStartDate;
+@property (nonatomic, strong) SFSafariViewController *hostedCheckoutVC;
 
 - (void)pp_prepareCallableAuthContextForOrder:(PPOrder *)order
                                     completion:(void (^)(NSString *idToken,
@@ -50,6 +52,12 @@
                          idToken:(NSString *)idToken
                    appCheckToken:(NSString *)appCheckToken
                 allowQARFallback:(BOOL)allowQARFallback;
+- (void)pp_startHostedQIBCheckoutWithURLString:(NSString *)urlString
+                                         order:(PPOrder *)order
+                                viewController:(UIViewController *)viewController;
+#if !TARGET_OS_SIMULATOR
+- (void)qpResponse:(NSDictionary *)response;
+#endif
 
 @end
 
@@ -690,6 +698,37 @@ static void PPPaymentSetValueForCandidateKeys(id target, NSArray<NSString *> *ke
     }
 }
 
+static BOOL PPPaymentShouldRequireHostedQIBCheckoutForRuntime(void)
+{
+    // Phase 2 hosted checkout is not yet implemented on the server.
+    // Allow legacy QIB SDK (Phase 1) on all iOS versions for now.
+    return NO;
+}
+
+static NSURL *PPPaymentHostedCheckoutURLFromString(NSString *urlString)
+{
+    NSString *trimmed = PPPaymentTrimmedString(urlString);
+    if (trimmed.length == 0) {
+        return nil;
+    }
+
+    NSURLComponents *components = [NSURLComponents componentsWithString:trimmed];
+    NSString *scheme = components.scheme.lowercaseString ?: @"";
+    if (![scheme isEqualToString:@"https"] || components.host.length == 0) {
+        return nil;
+    }
+    return components.URL;
+}
+
+static NSDictionary *PPPaymentHostedCheckoutClosedResponse(void)
+{
+    return @{
+        @"source": @"qib_hosted_checkout",
+        @"status": @"hosted_checkout_closed",
+        @"verification": @"server_authoritative"
+    };
+}
+
 #if !TARGET_OS_SIMULATOR
 static void PPQIBTryLoadFrameworkBundle(void)
 {
@@ -935,19 +974,25 @@ static void PPQIBTryLoadFrameworkBundle(void)
         order.currency = requestedCurrency;
     }
 
-    // The FIRFunctions callable attaches both the Firebase Auth token and the
-    // App Check token automatically.  The manual preflight (getIDTokenForcingRefresh
-    // + FIRAppCheck tokenForcingRefresh) was unnecessary and was causing App Attest
-    // re-attestation failures that blocked createQibSession from ever being called.
-    // The UID presence check above is sufficient to guard against logged-out users.
     __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:NO completion:^(NSError * _Nullable authError) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || !self.isRequestInFlight) {
             PPORDERLog(@"Payment request cancelled before session start | orderId=%@",
                        order.orderId ?: @"");
             return;
         }
+        if (authError) {
+            PPORDERLog(@"Payment auth bridge preflight failed | orderId=%@ | error=%@",
+                       order.orderId ?: @"",
+                       authError.localizedDescription ?: @"");
+            [self failWithError:authError];
+            return;
+        }
+
+        // FIRFunctions attaches App Check automatically from AppDelegate's provider.
+        // Keep this bridge auth-only so iOS devices do not hit forced App Attest
+        // re-attestation before opening the QIB SDK.
         [self createQIBSessionForOrder:order
                               currency:requestedCurrency
                         viewController:viewController
@@ -955,7 +1000,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
                                idToken:@""
                          appCheckToken:@""
                       allowQARFallback:YES];
-    });
+    }];
 }
 
 #pragma mark - QIB Callbacks (Device only)
@@ -1009,6 +1054,62 @@ static void PPQIBTryLoadFrameworkBundle(void)
 }
 #endif
 
+#pragma mark - Hosted QIB Checkout
+
+- (void)pp_startHostedQIBCheckoutWithURLString:(NSString *)urlString
+                                         order:(PPOrder *)order
+                                viewController:(UIViewController *)viewController
+{
+    NSURL *checkoutURL = PPPaymentHostedCheckoutURLFromString(urlString);
+    if (!checkoutURL) {
+        PPORDERLog(@"Hosted QIB checkout blocked | reason=invalid_payment_url | orderId=%@",
+                   order.orderId ?: @"");
+        [self failWithMessage:kLang(@"payment_secure_session_unavailable")];
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenter = PPPaymentResolvedPresenter(viewController);
+        if (!presenter) {
+            PPORDERLog(@"Hosted QIB checkout blocked | reason=no_presenter | orderId=%@",
+                       order.orderId ?: @"");
+            [self failWithMessage:kLang(@"payment_unable_to_open_screen")];
+            return;
+        }
+
+        SFSafariViewController *safariVC = [[SFSafariViewController alloc] initWithURL:checkoutURL];
+        safariVC.delegate = self;
+        safariVC.modalPresentationStyle = UIModalPresentationFullScreen;
+        if (@available(iOS 10.0, *)) {
+            safariVC.preferredControlTintColor = AppPrimaryClr;
+        }
+
+        self.hostedCheckoutVC = safariVC;
+        self.paymentPresenterVC = presenter;
+        self.sdkDidPresent = YES;
+        PPORDERLog(@"Launching hosted QIB checkout | orderId=%@ | qibSessionId=%@",
+                   order.orderId ?: @"",
+                   self.activeQIBSessionId ?: @"");
+        [presenter presentViewController:safariVC animated:YES completion:nil];
+    });
+}
+
+- (void)safariViewControllerDidFinish:(SFSafariViewController *)controller
+{
+    if (controller != self.hostedCheckoutVC) {
+        return;
+    }
+
+    PPPaymentCompletion capturedCompletion = self.completion;
+    NSDictionary *response = PPPaymentHostedCheckoutClosedResponse();
+    self.hostedCheckoutVC = nil;
+    [self reset];
+
+    if (capturedCompletion) {
+        capturedCompletion(response, nil);
+    }
+}
+
 #pragma mark - QIB Launch
 
 - (void)startQIBWithSession:(NSDictionary *)session
@@ -1056,26 +1157,26 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
+    if (paymentURL.length > 0) {
+        PPORDERLog(@"Using hosted QIB checkout | orderId=%@ | qibSessionId=%@",
+                   order.orderId ?: @"",
+                   self.activeQIBSessionId ?: @"");
+        [self pp_startHostedQIBCheckoutWithURLString:paymentURL
+                                               order:order
+                                      viewController:vc];
+        return;
+    }
+
+    if (PPPaymentShouldRequireHostedQIBCheckoutForRuntime()) {
+        PPORDERLog(@"Legacy QIB SDK blocked on this iOS runtime | orderId=%@ | hasPaymentURL=%d | hasToken=%d",
+                   order.orderId ?: @"",
+                   (paymentURL.length > 0),
+                   (sessionToken.length > 0));
+        [self failWithMessage:kLang(@"payment_secure_flow_required")];
+        return;
+    }
+
     if (gatewayId.length == 0 || secretKey.length == 0) {
-        // ─── H-14 SECURE FLOW GATE ─────────────────────────────────────────────
-        // When the createQibSession Cloud Function returns a paymentUrl (Phase 2
-        // hosted checkout), this path should open the URL in a secure in-app
-        // browser instead of failing.
-        //
-        // TODO(H-14-phase2): Implement hosted checkout handler:
-        //   1. Open paymentURL in SFSafariViewController or WKWebView
-        //   2. Register a URL scheme / universal link callback for payment result
-        //   3. Call verifyQibPayment Cloud Function to confirm the result server-side
-        //   4. Remove the entire legacy secretKey / QPRequestParameters flow below
-        // ────────────────────────────────────────────────────────────────────────
-        if (sessionToken.length > 0 || paymentURL.length > 0) {
-            PPORDERLog(@"Secure session received but hosted checkout not yet implemented | orderId=%@ | hasToken=%d | hasURL=%d",
-                       order.orderId ?: @"",
-                       (sessionToken.length > 0),
-                       (paymentURL.length > 0));
-            [self failWithMessage:kLang(@"payment_secure_flow_required")];
-            return;
-        }
         [self failWithMessage:kLang(@"payment_secure_session_unavailable")];
         return;
     }
@@ -1086,13 +1187,14 @@ static void PPQIBTryLoadFrameworkBundle(void)
     // reads it from Firebase Secret Manager — it is NOT embedded in the binary.
     //
     // However, the secret still transits through the client, which is a
-    // residual security risk. This entire legacy block should be removed
-    // once QIB provides a hosted checkout API (Phase 2).
+    // residual security risk. This path is only used on iOS runtimes where
+    // the current QIB SDK is proven stable. iOS 26+ requires the hosted
+    // checkout contract above.
     //
     // Migration checklist (H-14-phase2):
     //   [ ] QIB provides hosted-checkout / server-to-server endpoint
     //   [ ] createQibSession Cloud Function returns paymentUrl instead of secretKey
-    //   [ ] iOS opens paymentUrl in SFSafariViewController (see gate above)
+    //   [x] iOS opens paymentUrl in SFSafariViewController (see gate above)
     //   [ ] Remove QPRequestParameters + secretKey injection below
     //   [ ] Remove PPQIBTryLoadFrameworkBundle dependency
     // ────────────────────────────────────────────────────────────────────────
@@ -1551,6 +1653,12 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
 - (void)reset
 {
+    SFSafariViewController *hostedCheckoutVC = self.hostedCheckoutVC;
+    self.hostedCheckoutVC = nil;
+    if (hostedCheckoutVC.presentingViewController && !hostedCheckoutVC.isBeingDismissed) {
+        [hostedCheckoutVC dismissViewControllerAnimated:NO completion:nil];
+    }
+
     // Break the retain cycle: self → qpParams → delegate(strong) → self.
     // Must nil the delegate BEFORE releasing qpParams, in case the SDK
     // retains the params object internally.

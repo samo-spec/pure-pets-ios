@@ -289,6 +289,18 @@ static inline void PPDispatchMain(void (^block)(void)) {
                                                                      target:self
                                                                      action:@selector(handleClose)];
         closeItem.tintColor = UIColor.secondaryLabelColor;
+        UIFont *laterFont = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+        NSDictionary *laterAttributes = @{
+            NSFontAttributeName: laterFont,
+            NSForegroundColorAttributeName: UIColor.secondaryLabelColor
+        };
+        NSDictionary *laterHighlightedAttributes = @{
+            NSFontAttributeName: laterFont,
+            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.labelColor
+        };
+        [closeItem setTitleTextAttributes:laterAttributes forState:UIControlStateNormal];
+        [closeItem setTitleTextAttributes:laterHighlightedAttributes forState:UIControlStateHighlighted];
+        [closeItem setTitleTextAttributes:laterAttributes forState:UIControlStateDisabled];
         self.navigationItem.leftBarButtonItem = closeItem;
     }
 }

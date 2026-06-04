@@ -40,6 +40,99 @@ static PetAdStatus PPStatusFromFirestore(id rawStatus) {
     return PetAdStatusDraft;
 }
 
+static NSString *PPPetAdStringValue(id value)
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return (NSString *)value;
+    }
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value stringValue];
+    }
+    return @"";
+}
+
+static NSArray<NSDictionary *> *PPPetAdMediaItemsFromLegacyFields(id rawURLs, id rawMeta)
+{
+    NSArray *urls = [rawURLs isKindOfClass:NSArray.class] ? rawURLs : @[];
+    NSArray *metadata = [rawMeta isKindOfClass:NSArray.class] ? rawMeta : @[];
+    NSUInteger count = MAX(urls.count, metadata.count);
+    if (count == 0) {
+        return @[];
+    }
+
+    NSMutableArray<NSDictionary *> *items = [NSMutableArray arrayWithCapacity:count];
+    for (NSUInteger index = 0; index < count; index++) {
+        NSMutableDictionary *item = [NSMutableDictionary dictionary];
+
+        if (index < metadata.count && [metadata[index] isKindOfClass:NSDictionary.class]) {
+            [item addEntriesFromDictionary:metadata[index]];
+        }
+
+        NSString *url = PPPetAdStringValue(item[@"url"]);
+        if (url.length == 0 && index < urls.count) {
+            url = PPPetAdStringValue(urls[index]);
+        }
+        if (url.length == 0) {
+            url = PPPetAdStringValue(item[@"imageURL"]);
+        }
+        if (url.length == 0) {
+            url = PPPetAdStringValue(item[@"imageUrl"]);
+        }
+        if (url.length == 0) {
+            url = PPPetAdStringValue(item[@"thumbnailURL"]);
+        }
+        if (url.length == 0) {
+            url = PPPetAdStringValue(item[@"thumbnailUrl"]);
+        }
+
+        if (url.length == 0) {
+            continue;
+        }
+
+        item[@"url"] = url;
+        if (item[@"media_type"] == nil && item[@"type"] == nil) {
+            item[@"media_type"] = @"image";
+        }
+        [items addObject:item.copy];
+    }
+
+    return items.copy;
+}
+
+static NSArray<NSString *> *PPPetAdImageURLsFromMediaItems(id rawItems)
+{
+    NSArray *items = [rawItems isKindOfClass:NSArray.class] ? rawItems : @[];
+    NSMutableArray<NSString *> *urls = [NSMutableArray arrayWithCapacity:items.count];
+
+    for (id rawItem in items) {
+        NSString *url = @"";
+        if ([rawItem isKindOfClass:NSString.class]) {
+            url = (NSString *)rawItem;
+        } else if ([rawItem isKindOfClass:NSDictionary.class]) {
+            NSDictionary *item = (NSDictionary *)rawItem;
+            url = PPPetAdStringValue(item[@"url"]);
+            if (url.length == 0) {
+                url = PPPetAdStringValue(item[@"imageURL"]);
+            }
+            if (url.length == 0) {
+                url = PPPetAdStringValue(item[@"imageUrl"]);
+            }
+            if (url.length == 0) {
+                url = PPPetAdStringValue(item[@"thumbnailURL"]);
+            }
+            if (url.length == 0) {
+                url = PPPetAdStringValue(item[@"thumbnailUrl"]);
+            }
+        }
+
+        if (url.length > 0) {
+            [urls addObject:url];
+        }
+    }
+
+    return urls.copy;
+}
+
 #pragma mark - PetAd
 @implementation PetAd
 
@@ -561,7 +654,9 @@ fromViewController:(UIViewController *)vc
     [coder encodeObject:self.discountPercent forKey:@"discountPercent"];
     [coder encodeObject:self.petAgeMonths    forKey:@"petAgeMonths"];
 
-     [coder encodeObject:self.imageItems      forKey:@"imageItems"];
+    [coder encodeObject:self.imageItemsRaw forKey:@"imageItems"];
+    [coder encodeObject:self.imageURLs forKey:@"imageURLs"];
+    [coder encodeObject:self.imageMeta forKey:@"imageMeta"];
 
     [coder encodeObject:self.viewsCount     forKey:@"viewsCount"];
     [coder encodeObject:self.postedDate     forKey:@"postedDate"];
@@ -627,8 +722,12 @@ fromViewController:(UIViewController *)vc
         _petAgeMonths    = [coder decodeObjectOfClasses:allowedNumber forKey:@"petAgeMonths"];
 
 
-        // FIX 🔥🔥 Allows array of dictionaries safely
-        _imageItemsRaw     = [coder decodeObjectOfClasses:allowed forKey:@"imageItems"];
+        _imageItemsRaw = [coder decodeObjectOfClasses:allowed forKey:@"imageItems"];
+        if (![_imageItemsRaw isKindOfClass:NSArray.class] || _imageItemsRaw.count == 0) {
+            NSArray *legacyURLs = [coder decodeObjectOfClasses:allowedMetaArray forKey:@"imageURLs"];
+            NSArray *legacyMeta = [coder decodeObjectOfClasses:allowedMetaArray forKey:@"imageMeta"];
+            _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(legacyURLs, legacyMeta);
+        }
 
         _viewsCount = [coder decodeObjectOfClasses:allowedNumber forKey:@"viewsCount"];
         _postedDate = [coder decodeObjectOfClasses:allowedDate forKey:@"postedDate"];
@@ -676,10 +775,10 @@ fromViewController:(UIViewController *)vc
  
 
         id meta = dict[@"imageItems"];
-        if ([meta isKindOfClass:NSArray.class]) {
+        if ([meta isKindOfClass:NSArray.class] && [(NSArray *)meta count] > 0) {
             _imageItemsRaw = meta;
         } else {
-            _imageItemsRaw = nil;
+            _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(dict[@"imageURLs"], dict[@"imageMeta"]);
         }
 
         _isSold = [dict[@"isSold"] boolValue];
@@ -813,8 +912,35 @@ fromViewController:(UIViewController *)vc
     _imageItemsRaw = [raw copy];
 }
 
+- (NSArray<NSString *> *)imageURLs
+{
+    return PPPetAdImageURLsFromMediaItems(self.imageItemsRaw);
+}
 
+- (void)setImageURLs:(NSArray<NSString *> *)imageURLs
+{
+    _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(imageURLs, self.imageMeta);
+}
 
+- (NSArray<NSDictionary *> *)imageMeta
+{
+    if (![self.imageItemsRaw isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+
+    NSMutableArray<NSDictionary *> *metadata = [NSMutableArray arrayWithCapacity:self.imageItemsRaw.count];
+    for (id rawItem in self.imageItemsRaw) {
+        if ([rawItem isKindOfClass:NSDictionary.class]) {
+            [metadata addObject:rawItem];
+        }
+    }
+    return metadata.copy;
+}
+
+- (void)setImageMeta:(NSArray<NSDictionary *> *)imageMeta
+{
+    _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(self.imageURLs, imageMeta);
+}
 
 - (NSArray<PetImageItem *> *)imageItems
 {
@@ -825,12 +951,21 @@ fromViewController:(UIViewController *)vc
 
     NSMutableArray<PetImageItem *> *items = [NSMutableArray array];
 
-    for (NSDictionary *m in _imageItemsRaw) {
-        PetImageItem *item = [PetImageItem itemWithMediaMetadata:m] ?: [PetImageItem itemFromDictionary:m];
+    for (id rawItem in _imageItemsRaw) {
+        PetImageItem *item = nil;
+        if ([rawItem isKindOfClass:NSDictionary.class]) {
+            NSDictionary *metadata = (NSDictionary *)rawItem;
+            item = [PetImageItem itemWithMediaMetadata:metadata] ?: [PetImageItem itemFromDictionary:metadata];
+        } else {
+            NSString *url = PPPetAdStringValue(rawItem);
+            if (url.length > 0) {
+                item = [PetImageItem itemWithURL:url width:0.0 height:0.0 blurHash:nil];
+            }
+        }
         if (item) {
             [items addObject:item];
         }
-        }
+    }
 
     return items.copy;
 }

@@ -124,6 +124,12 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     self.presentationController.delegate = self;
     [self.codeField becomeFirstResponder];
     [self animateVerificationEntranceIfNeeded];
+    [self.stepIndicatorView restartCurrentStepMotionIfNeeded];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self.stepIndicatorView stopCurrentStepMotion];
 }
 
 - (void)dealloc {
@@ -294,7 +300,16 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     self.navigationController.navigationBar.compactAppearance = appearance;
     self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.labelColor;
 
-    self.navigationItem.title = kLang(@"verification_title");
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    titleLabel.text = kLang(@"verification_title");
+    titleLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.82;
+    titleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.navigationItem.titleView = titleLabel;
+
     UIImage *backImage = [UIImage systemImageNamed:[Language isRTL] ? @"arrow.right" : @"arrow.left"];
     UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithImage:backImage
                                                                  style:UIBarButtonItemStylePlain
@@ -997,8 +1012,10 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
                 UINotificationFeedbackGenerator *gen = [[UINotificationFeedbackGenerator alloc] init];
                 [gen notificationOccurred:UINotificationFeedbackTypeSuccess];
+                [self.stepIndicatorView stopCurrentStepMotion];
                 [UIView animateWithDuration:0.25 animations:^{
                     self.cardView.alpha = 0.0;
+                    self.stepIndicatorView.alpha = 0.0;
                 } completion:^(__unused BOOL finished) {
                     [self dismissViewControllerAnimated:YES completion:nil];
                 }];
@@ -1069,8 +1086,10 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
     // Fade out UI, then dismiss — fire the parent callback in the dismiss
     // completion so the presentation chain is clean before the parent acts.
+    [self.stepIndicatorView stopCurrentStepMotion];
     [UIView animateWithDuration:0.25 animations:^{
         self.cardView.alpha = 0.0;
+        self.stepIndicatorView.alpha = 0.0;
     } completion:^(BOOL finished) {
         NSLog(@"[Auth][OTP] Verification step completed. forwarding success=%@ currentUID=%@ navigationDepth=%lu",
               successCallback ? @"YES" : @"NO",

@@ -1596,9 +1596,29 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     return digits.length > 0 ? digits : @"974";
 }
 
+- (void)pp_phoneFieldEditingChanged:(UITextField *)textField {
+    NSString *converted = [self pp_arabicToEnglishDigits:textField.text ?: @""];
+    if (![converted isEqualToString:textField.text]) {
+        textField.text = converted;
+    }
+}
+
+- (NSString *)pp_arabicToEnglishDigits:(NSString *)string {
+    if (string.length == 0) return string;
+    unichar chars[string.length];
+    [string getCharacters:chars range:NSMakeRange(0, string.length)];
+    for (NSUInteger i = 0; i < string.length; i++) {
+        unichar c = chars[i];
+        if (c >= 0x0660 && c <= 0x0669) {
+            chars[i] = '0' + (c - 0x0660);
+        }
+    }
+    return [NSString stringWithCharacters:chars length:string.length];
+}
+
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone
 {
-    NSString *raw = [self pp_trimmedAddressString:rawPhone];
+    NSString *raw = [self pp_arabicToEnglishDigits:[self pp_trimmedAddressString:rawPhone]];
     if (raw.length == 0) return nil;
 
     BOOL looksInternational = [raw hasPrefix:@"+"] || [raw hasPrefix:@"00"];
@@ -1767,6 +1787,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         localDigits = [localDigits substringFromIndex:dialDigits.length];
     }
     phoneField.text = localDigits;
+
+    [phoneField addTarget:self action:@selector(pp_phoneFieldEditingChanged:) forControlEvents:UIControlEventEditingChanged];
 
     UIStackView *phoneStack = [[UIStackView alloc] initWithArrangedSubviews:@[countryButton, phoneField]];
     phoneStack.translatesAutoresizingMaskIntoConstraints = NO;

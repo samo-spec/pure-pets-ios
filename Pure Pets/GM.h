@@ -61,6 +61,7 @@ NS_ASSUME_NONNULL_BEGIN
              imageView:(UIImageView *)imageView
            placeholder:(NSString *)placeholder;
 //+ (void)clearUserDefaults;
++ (void)clearUserProfileDefaults;
 + (UIImage *)setWatermarkImage:(UIImage *)watermarkImage toImage:(UIImage *)originalImage;
 
 + (NSString *)getCurrentCountryFromCarrier;

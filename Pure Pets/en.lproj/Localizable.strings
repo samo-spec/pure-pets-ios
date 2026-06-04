@@ -1960,7 +1960,7 @@
 "payment_cancelled_title" = "Payment Cancelled";
 "payment_cancelled_message" = "Your payment was cancelled. If you still want to complete your purchase, please choose another payment method.";
 "payment_cancelled_choose_method_message" = "You cancelled your payment. Please choose another payment method or cancel your order.";
-"payment_cancelled_choose_another" = "Choose Another Method";
+"payment_cancelled_choose_another" = "Change Method";
 "payment_cancelled_cancel_order" = "Cancel Order";
 "payment_create_session_failed" = "We could not start the payment session. Please try again or choose cash on delivery.";
 "payment_load_methods_failed" = "We could not load saved payment methods. You can still choose a built-in payment option.";
@@ -2901,5 +2901,18 @@
 "ImageSearchInvalidResponse" = "Image search returned an invalid response.";
 "ImageSearchNoResultsTitle" = "No matching results";
 "ImageSearchNoResultsSubtitle" = "Try another image or use text search.";
+"ImageSearchSourceTitle" = "Search with an image";
+"ImageSearchSourceSubtitle" = "Take a photo or choose one from your library.";
+"ImageSearchTakePhoto" = "Take Photo";
+"ImageSearchChoosePhoto" = "Choose Photo";
+"ImageSearchCameraUnavailable" = "Camera is not available on this device.";
+"ImageSearchPhotoLibraryUnavailable" = "Photo Library is not available on this device.";
+"ImageSearchButtonAccessibilityLabel" = "Search by image";
+"ImageSearchButtonAccessibilityHint" = "Take or choose a photo to find matching pets and products.";
+"ImageSearchPreparing" = "Searching from photo...";
+"ImageSearchHeroBadge" = "Photo search";
+"ImageSearchHeroResultsSubtitleFormat" = "%ld visual matches from your photo.";
+"ImageSearchLoadingTitle" = "Searching your photo";
+"ImageSearchLoadingSubtitle" = "Matching visual details with live Pure Pets listings.";
 
 "UnableToLoadDetails" = "Unable to load details.";

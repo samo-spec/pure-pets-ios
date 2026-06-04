@@ -41,12 +41,23 @@
 		<string>comgooglemaps</string>
 		<string>google</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
 	<key>NSExtensionPointIdentifier</key>
 	<string>com.apple.usernotifications.service</string>
 	<key>NSExtensionPrincipalClass</key>
 	<string>$(PRODUCT_MODULE_NAME).NotificationService</string>
 	<key>NSLocalizedDescription</key>
 	<string>Request</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Pure Pets uses the camera to search with a pet or product photo. يستخدم بيور بيتس الكاميرا للبحث بصورة حيوان أو منتج.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Beiruti-Medium.ttf</string>
@@ -71,12 +82,11 @@
 			</array>
 		</dict>
 	</dict>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Pure Pets uses your photo library to search for pets, products, and accessories by image.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
 		<string>fetch</string>
+		<string>processing</string>
 	</array>
 </dict>
 </plist>

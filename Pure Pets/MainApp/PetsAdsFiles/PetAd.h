@@ -94,7 +94,8 @@ typedef NS_ENUM(NSInteger, PetCategory) {
  @property (nonatomic, strong) NSArray<NSDictionary *> *imageItemsRaw;
 
 /// Media
-/// @property (nonatomic, strong, nullable) NSArray<NSString *> *imageURLs;
+ @property (nonatomic, copy, nullable) NSArray<NSString *> *imageURLs;
+ @property (nonatomic, copy, nullable) NSArray<NSDictionary *> *imageMeta;
  @property (nonatomic, strong)  NSArray<PetImageItem *> *imageItems;    // computed items
  @property (nonatomic, strong, nullable) NSMutableArray<UIImage *> *localImages; ///< Temporary local images (not saved to Firestore)
 

@@ -264,6 +264,11 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         NSDictionary *firstMedia = PPUniversalFirstMediaMetadata(accessory.imageMeta);
         NSString *firstMediaType = PPUniversalSafeString(firstMedia[@"media_type"]).lowercaseString;
         BOOL firstIsVideo = PPReusableVideoMediaEnabled() && [firstMediaType isEqualToString:@"video"];
+        NSString *firstMediaURL = PPUniversalSafeString(firstMedia[@"url"]);
+        NSString *firstAccessoryImageURL = PPUniversalSafeString(firstImage.url);
+        if (firstAccessoryImageURL.length == 0) {
+            firstAccessoryImageURL = PPUniversalSafeString(accessory.imageURLsArray.firstObject);
+        }
 
         _title = accessory.name ?: PPUniversalLocalizedString(@"UntitledAccessory", PPUniversalLocalizedPair(@"Untitled accessory", @"منتج بدون اسم"));
         _subtitle = PPUniversalAccessorySubtitle(accessory);
@@ -274,9 +279,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _videoThumbnailURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"thumbnail_url"]) : @"";
         _imageURL = firstIsVideo && _videoThumbnailURL.length > 0
             ? _videoThumbnailURL
-            : (PPUniversalSafeString(firstMedia[@"url"]).length > 0
-               ? PPUniversalSafeString(firstMedia[@"url"])
-               : accessory.imageURLsArray.firstObject);
+            : (firstMediaURL.length > 0 ? firstMediaURL : firstAccessoryImageURL);
         _blurHash = accessory.blurHash ?: @"";
         _price = accessory.price;
         _finalPrice = accessory.finalPrice;
@@ -322,6 +325,10 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         NSDictionary *firstMedia = PPUniversalFirstMediaMetadata(ad.imageItemsRaw);
         NSString *firstMediaType = PPUniversalSafeString(firstMedia[@"media_type"]).lowercaseString;
         BOOL firstIsVideo = PPReusableVideoMediaEnabled() && [firstMediaType isEqualToString:@"video"];
+        NSString *firstAdImageURL = PPUniversalSafeString(firstImage.url);
+        if (firstAdImageURL.length == 0) {
+            firstAdImageURL = PPUniversalSafeString(ad.imageURLs.firstObject);
+        }
 
         NSString *resolvedLocation = ad.locationName ?: @"";
         if (resolvedLocation.length == 0 && ad.adLocation > 0) {
@@ -334,7 +341,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _isVideoMedia = firstIsVideo;
         _videoURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"url"]) : @"";
         _videoThumbnailURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"thumbnail_url"]) : @"";
-        _imageURL = firstIsVideo && _videoThumbnailURL.length > 0 ? _videoThumbnailURL : firstImage.url;
+        _imageURL = firstIsVideo && _videoThumbnailURL.length > 0 ? _videoThumbnailURL : firstAdImageURL;
         _blurHash = firstImage.blurHash ?: ad.blurHash ?: @"";
         if (firstIsVideo) {
             CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];

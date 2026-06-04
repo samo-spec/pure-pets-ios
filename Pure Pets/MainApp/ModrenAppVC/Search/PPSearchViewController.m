@@ -7,12 +7,15 @@
 
 #import "PPSearchViewController.h"
 
+#import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 
 #import "BBNavigationBar.h"
+#import "AdoptPetModel.h"
 #import "Language.h"
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
+#import "PPHUD.h"
 #import "PPInsetLabel.h"
 #import "PPSearchHelper.h"
 #import "PPUniversalCell.h"
@@ -21,6 +24,7 @@
 #import "PetAd.h"
 #import "SearchCacheManager.h"
 #import "ServiceModel.h"
+#import "PPPermissionHelper.h"
 #import "PPImageSearchService.h"
 
 typedef NS_ENUM(NSUInteger, PPSearchSection) {
@@ -104,12 +108,24 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) UIImageView *emptyStateIconView;
 @property (nonatomic, strong) UILabel *emptyTitleLabel;
 @property (nonatomic, strong) UILabel *emptySubtitleLabel;
+@property (nonatomic, strong) UIView *imageSearchLoadingView;
+@property (nonatomic, strong) UIView *imageSearchLoadingCardView;
+@property (nonatomic, strong) UIView *imageSearchLoadingOrbView;
+@property (nonatomic, strong) UIImageView *imageSearchLoadingIconView;
+@property (nonatomic, strong) UILabel *imageSearchLoadingTitleLabel;
+@property (nonatomic, strong) UILabel *imageSearchLoadingSubtitleLabel;
+@property (nonatomic, strong) CAGradientLayer *imageSearchLoadingOrbGradientLayer;
+@property (nonatomic, assign) BOOL imageSearchLoadingVisible;
 
 @property (nonatomic, assign) BOOL isSearching;
 @property (nonatomic, assign) BOOL didAnimateHero;
 @property (nonatomic, assign) NSInteger currentSearchRequestID;
+@property (nonatomic, assign) NSInteger imageSearchRequestGeneration;
+@property (nonatomic, strong, nullable) UIImage *lastImageSearchImage;
+@property (nonatomic, strong) UIButton *imageSearchButton;
 @property (nonatomic, copy) NSArray<NSDictionary *> *imageSearchResultRefs;
 @property (nonatomic, copy) NSArray<NSDictionary *> *imageSearchRawResults;
+@property (nonatomic, copy) NSArray<PPUniversalCellViewModel *> *imageSearchAllResults;
 @property (nonatomic, strong) dispatch_queue_t searchQueue;
 @property (nonatomic, copy, nullable) dispatch_block_t pendingDebounceBlock;
 @property (nonatomic, assign) BOOL pendingSearchFieldFocus;
@@ -120,6 +136,7 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopExpandedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopCollapsedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *searchBarBottomConstraint;
 @property (nonatomic, assign) BOOL isHeroCollapsed;
 @property (nonatomic, strong) UIButton *heroCollapseToggleButton;
 
@@ -147,6 +164,7 @@ UINavigationControllerDelegate>
     [self setupDataSource];
     [self setupSearchSegment];
     [self setupEmptyState];
+    [self setupImageSearchLoadingState];
     [self warmUpSearchCacheIfNeeded];
     [self updateHeaderStateAnimated:NO];
     [self updateEmptyState];
@@ -155,8 +173,10 @@ UINavigationControllerDelegate>
     dismissTap.cancelsTouchesInView = NO;
     [self.view addGestureRecognizer:dismissTap];
 
-    // Auto-focus the search field when the screen loads
-    self.pendingSearchFieldFocus = YES;
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+
+    self.pendingSearchFieldFocus = NO;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -176,6 +196,9 @@ UINavigationControllerDelegate>
     [self pp_setRootBottomNavigationHidden:YES animated:animated];
     [self pp_applySearchKeyboardManagerOverridesIfNeeded];
     [self pp_schedulePendingSearchFieldFocusIfNeeded];
+    if (self.imageSearchLoadingVisible) {
+        [self pp_startImageSearchLoadingAnimations];
+    }
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -183,6 +206,7 @@ UINavigationControllerDelegate>
     [super viewWillDisappear:animated];
     [[self pp_searchTextField] resignFirstResponder];
     [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
+    [self pp_stopImageSearchLoadingAnimations];
 
     BOOL isLeavingSearch =
         self.isMovingFromParentViewController ||
@@ -230,6 +254,11 @@ UINavigationControllerDelegate>
     self.searchFieldChromeView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.searchFieldChromeView.bounds
                                    cornerRadius:self.searchFieldChromeView.layer.cornerRadius].CGPath;
+    self.imageSearchLoadingCardView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.imageSearchLoadingCardView.bounds
+                                   cornerRadius:self.imageSearchLoadingCardView.layer.cornerRadius].CGPath;
+    self.imageSearchLoadingOrbGradientLayer.frame = self.imageSearchLoadingOrbView.bounds;
+    self.imageSearchLoadingOrbView.layer.cornerRadius = CGRectGetWidth(self.imageSearchLoadingOrbView.bounds) * 0.5;
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
 }
@@ -241,6 +270,24 @@ UINavigationControllerDelegate>
         self.pendingDebounceBlock = nil;
     }
     [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
+}
+
+- (void)pp_keyboardWillShow:(NSNotification *)notification
+{
+    if (@available(iOS 15.0, *)) {
+        self.searchBarBottomConstraint.active = NO;
+        self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12.0];
+        self.searchBarBottomConstraint.active = YES;
+    }
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)notification
+{
+    self.searchBarBottomConstraint.active = NO;
+    self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:16.0];
+    self.searchBarBottomConstraint.active = YES;
 }
 
 - (void)pp_setRootBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
@@ -285,11 +332,7 @@ UINavigationControllerDelegate>
 
 - (void)focusSearchField
 {
-    [self loadViewIfNeeded];
-    self.pendingSearchFieldFocus = YES;
-    if (self.view.window != nil && self.transitionCoordinator == nil) {
-        [self pp_activatePendingSearchFieldFocusIfPossible];
-    }
+    return;
 }
 
 - (void)openAccessoriesAll
@@ -495,14 +538,27 @@ UINavigationControllerDelegate>
     UIButton *cameraButton = [UIButton buttonWithType:UIButtonTypeSystem];
     cameraButton.translatesAutoresizingMaskIntoConstraints = NO;
     UIImageSymbolConfiguration *cameraCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightMedium];
+        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
     [cameraButton setImage:[UIImage systemImageNamed:@"camera.fill" withConfiguration:cameraCfg]
                   forState:UIControlStateNormal];
-    cameraButton.tintColor = [UIColor colorWithWhite:0.38 alpha:1.0];
-    cameraButton.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
-    cameraButton.layer.cornerRadius = 16.0;
-    cameraButton.layer.masksToBounds = YES;
+    cameraButton.tintColor = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
+    cameraButton.backgroundColor = [(AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0]) colorWithAlphaComponent:0.10];
+    cameraButton.layer.cornerRadius = 17.0;
+    cameraButton.layer.masksToBounds = NO;
+    cameraButton.layer.borderWidth = 1.0;
+    [cameraButton pp_setBorderColor:[cameraButton.tintColor colorWithAlphaComponent:0.18]];
+    [cameraButton pp_setShadowColor:cameraButton.tintColor];
+    cameraButton.layer.shadowOpacity = 0.10f;
+    cameraButton.layer.shadowRadius = 10.0f;
+    cameraButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    cameraButton.accessibilityLabel = kLang(@"ImageSearchButtonAccessibilityLabel");
+    cameraButton.accessibilityHint = kLang(@"ImageSearchButtonAccessibilityHint");
+    cameraButton.accessibilityTraits = UIAccessibilityTraitButton;
     [cameraButton addTarget:self action:@selector(didTapImageSearchButton) forControlEvents:UIControlEventTouchUpInside];
+    [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
+    [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchUp:) forControlEvents:UIControlEventTouchCancel];
+    [cameraButton addTarget:self action:@selector(pp_imageSearchButtonTouchUp:) forControlEvents:UIControlEventTouchDragExit];
     [chromeView addSubview:cameraButton];
 
     [container addSubview:chromeView];
@@ -535,19 +591,22 @@ UINavigationControllerDelegate>
 
         [cameraButton.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-10.0],
         [cameraButton.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [cameraButton.widthAnchor constraintEqualToConstant:32.0],
-        [cameraButton.heightAnchor constraintEqualToConstant:32.0],
+        [cameraButton.widthAnchor constraintEqualToConstant:34.0],
+        [cameraButton.heightAnchor constraintEqualToConstant:34.0],
 
         [placeholderLabel.leadingAnchor constraintEqualToAnchor:textField.leadingAnchor],
         [placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:textField.trailingAnchor],
         [placeholderLabel.centerYAnchor constraintEqualToAnchor:textField.centerYAnchor]
     ]];
 
+    NSLayoutConstraint *bottomConstraint;
     if (@available(iOS 15.0, *)) {
-        [constraints addObject:[container.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12.0]];
+        bottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
     } else {
-        [constraints addObject:[container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0]];
+        bottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
     }
+    [constraints addObject:bottomConstraint];
+    self.searchBarBottomConstraint = bottomConstraint;
 
     [NSLayoutConstraint activateConstraints:constraints];
 
@@ -556,6 +615,7 @@ UINavigationControllerDelegate>
     self.searchFieldIconView = iconView;
     self.searchTextField = textField;
     self.searchPlaceholderLabel = placeholderLabel;
+    self.imageSearchButton = cameraButton;
     [self pp_updateSearchPlaceholderVisibility];
 }
 
@@ -862,7 +922,7 @@ UINavigationControllerDelegate>
     layout.minimumLineSpacing = kPPSearchLineSpacing;
     layout.sectionInset = UIEdgeInsetsMake(0.0,
                                            kPPSearchHorizontalInset,
-                                           28.0,
+                                           64.0,
                                            kPPSearchHorizontalInset);
 
     UICollectionView *collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero
@@ -880,7 +940,7 @@ UINavigationControllerDelegate>
         [collectionView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0],
         [collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [collectionView.bottomAnchor constraintEqualToAnchor:self.searchBarContainerView.topAnchor constant:-12.0]
+        [collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-0.0]
     ]];
 
     self.collectionView = collectionView;
@@ -901,8 +961,17 @@ UINavigationControllerDelegate>
                      context:viewModel.modelContext
                   layoutMode:PPCellLayoutModePinterest
                 discountMode:PPDiscountStylePlain
-                 imageLoader:^(UIImageView *imageView, NSString *url, UIImage *placeholder, UIView *card) {
-            [[PPImageLoaderManager shared] setImageOnImageView:imageView url:url complation:nil];
+                  imageLoader:^(UIImageView *iv,
+                                NSString *url,
+                                UIImage *placeholder,
+                                UIView *card) {
+            iv.image = placeholder ?: [UIImage imageNamed:@"placeholder"];
+            [[PPImageLoaderManager shared]
+             setImageOnImageView:iv
+                             url:url
+                      placeholder:placeholder
+                 transitionStyle:PPImageTransitionStyleNone
+                        complation:nil];
         }];
         cell.delegate = weakSelf;
         return cell;
@@ -975,6 +1044,131 @@ UINavigationControllerDelegate>
     self.emptyStateIconView = iconView;
     self.emptyTitleLabel = titleLabel;
     self.emptySubtitleLabel = subtitleLabel;
+}
+
+- (void)setupImageSearchLoadingState
+{
+    UIView *hostView = [UIView new];
+    hostView.translatesAutoresizingMaskIntoConstraints = NO;
+    hostView.userInteractionEnabled = NO;
+    hostView.hidden = YES;
+    hostView.alpha = 0.0;
+
+    UIView *cardView = [UIView new];
+    cardView.translatesAutoresizingMaskIntoConstraints = NO;
+    cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.96] ?: [[UIColor whiteColor] colorWithAlphaComponent:0.96];
+    cardView.layer.cornerRadius = 24.0;
+    cardView.layer.masksToBounds = NO;
+    cardView.layer.borderWidth = 1.0;
+    [cardView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.28]];
+    [cardView pp_setShadowColor:[UIColor colorWithWhite:0.05 alpha:1.0]];
+    cardView.layer.shadowOpacity = 0.16f;
+    cardView.layer.shadowRadius = 28.0f;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    if (@available(iOS 13.0, *)) {
+        cardView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIView *orbView = [UIView new];
+    orbView.translatesAutoresizingMaskIntoConstraints = NO;
+    orbView.clipsToBounds = YES;
+
+    CAGradientLayer *orbGradient = [CAGradientLayer layer];
+    orbGradient.colors = @[
+        (id)[(AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0]) colorWithAlphaComponent:0.98].CGColor,
+        (id)[[UIColor colorWithRed:0.98 green:0.78 blue:0.46 alpha:1.0] colorWithAlphaComponent:0.92].CGColor,
+        (id)[[UIColor colorWithRed:0.31 green:0.54 blue:0.64 alpha:1.0] colorWithAlphaComponent:0.92].CGColor
+    ];
+    orbGradient.startPoint = CGPointMake(0.0, 0.0);
+    orbGradient.endPoint = CGPointMake(1.0, 1.0);
+    [orbView.layer insertSublayer:orbGradient atIndex:0];
+
+    UIView *orbInnerGlow = [UIView new];
+    orbInnerGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    orbInnerGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
+    orbInnerGlow.layer.cornerRadius = 18.0;
+    orbInnerGlow.layer.masksToBounds = YES;
+
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:28.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *iconImage = [UIImage systemImageNamed:@"camera.viewfinder" withConfiguration:iconConfig];
+    if (!iconImage) {
+        iconImage = [UIImage systemImageNamed:@"camera.fill" withConfiguration:iconConfig];
+    }
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:iconImage];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = UIColor.whiteColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBold];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.numberOfLines = 1;
+    titleLabel.text = kLang(@"ImageSearchLoadingTitle");
+
+    UILabel *subtitleLabel = [UILabel new];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78] ?: [UIColor.secondaryLabelColor colorWithAlphaComponent:0.78];
+    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.numberOfLines = 2;
+    subtitleLabel.text = kLang(@"ImageSearchLoadingSubtitle");
+
+    [orbView addSubview:orbInnerGlow];
+    [orbView addSubview:iconView];
+    [cardView addSubview:orbView];
+    [cardView addSubview:titleLabel];
+    [cardView addSubview:subtitleLabel];
+    [hostView addSubview:cardView];
+    [self.view addSubview:hostView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [hostView.topAnchor constraintEqualToAnchor:self.collectionView.topAnchor],
+        [hostView.leadingAnchor constraintEqualToAnchor:self.collectionView.leadingAnchor],
+        [hostView.trailingAnchor constraintEqualToAnchor:self.collectionView.trailingAnchor],
+        [hostView.bottomAnchor constraintEqualToAnchor:self.collectionView.bottomAnchor],
+
+        [cardView.centerXAnchor constraintEqualToAnchor:hostView.centerXAnchor],
+        [cardView.centerYAnchor constraintEqualToAnchor:hostView.centerYAnchor constant:-18.0],
+        [cardView.leadingAnchor constraintGreaterThanOrEqualToAnchor:hostView.leadingAnchor constant:34.0],
+        [cardView.trailingAnchor constraintLessThanOrEqualToAnchor:hostView.trailingAnchor constant:-34.0],
+        [cardView.widthAnchor constraintGreaterThanOrEqualToConstant:248.0],
+        [cardView.widthAnchor constraintLessThanOrEqualToConstant:314.0],
+
+        [orbView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:24.0],
+        [orbView.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [orbView.widthAnchor constraintEqualToConstant:76.0],
+        [orbView.heightAnchor constraintEqualToConstant:76.0],
+
+        [orbInnerGlow.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor constant:-10.0],
+        [orbInnerGlow.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor constant:-10.0],
+        [orbInnerGlow.widthAnchor constraintEqualToConstant:36.0],
+        [orbInnerGlow.heightAnchor constraintEqualToConstant:36.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:34.0],
+        [iconView.heightAnchor constraintEqualToConstant:34.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:orbView.bottomAnchor constant:18.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-22.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0]
+    ]];
+
+    self.imageSearchLoadingView = hostView;
+    self.imageSearchLoadingCardView = cardView;
+    self.imageSearchLoadingOrbView = orbView;
+    self.imageSearchLoadingIconView = iconView;
+    self.imageSearchLoadingTitleLabel = titleLabel;
+    self.imageSearchLoadingSubtitleLabel = subtitleLabel;
+    self.imageSearchLoadingOrbGradientLayer = orbGradient;
 }
 
 #pragma mark - UITextFieldDelegate
@@ -1066,6 +1260,12 @@ UINavigationControllerDelegate>
     if (query.length < kPPSearchMinimumQueryLength) {
         [self resetSearchState];
         return;
+    }
+
+    if ([self pp_isImageSearchMode]) {
+        self.imageSearchRequestGeneration += 1;
+        [self pp_clearImageSearchState];
+        [self pp_hideAllBadges];
     }
 
     if ([query isEqualToString:self.lastQuery]) {
@@ -1205,7 +1405,9 @@ UINavigationControllerDelegate>
     }
 
     self.currentSearchRequestID += 1;
+    self.imageSearchRequestGeneration += 1;
     self.lastQuery = nil;
+    [self pp_clearImageSearchState];
     self.allSearchResults = @[];
     self.results = @[];
     [self pp_hideSkeleton];
@@ -1294,6 +1496,11 @@ UINavigationControllerDelegate>
 
 - (void)applySegmentFilter
 {
+    if ([self pp_isImageSearchMode]) {
+        [self pp_applyImageSearchSegmentFilterAnimated:YES];
+        return;
+    }
+
     NSInteger selectedIndex = self.selectedSearchSegment;
     if (selectedIndex < PPSearchSegmentAds || selectedIndex > PPSearchSegmentAccessories) {
         selectedIndex = PPSearchSegmentAds;
@@ -1403,17 +1610,33 @@ UINavigationControllerDelegate>
 - (void)updateHeaderStateAnimated:(BOOL)animated
 {
     BOOL hasValidQuery = self.lastQuery.length >= kPPSearchMinimumQueryLength;
+    BOOL hasImageSearchMode = [self pp_isImageSearchMode];
     NSString *segmentTitle = [self selectedSegmentTitle];
     NSString *statusText = nil;
     NSString *subtitleText = nil;
     NSString *countText = nil;
-    BOOL showQueryPill = hasValidQuery;
+    BOOL showQueryPill = hasValidQuery && !hasImageSearchMode;
     BOOL showCountPill = YES;
 
     self.eyebrowLabel.text = kLang(@"SearchHeroEyebrow");
     self.heroTitleLabel.text = kLang(@"SearchHeroTitle");
 
-    if (!hasValidQuery) {
+    if (hasImageSearchMode) {
+        if (self.isSearching) {
+            statusText = kLang(@"SearchHeroSearchingBadge");
+            subtitleText = kLang(@"ImageSearchPreparing");
+            countText = kLang(@"ImageSearchHeroBadge");
+        } else if (self.results.count > 0) {
+            statusText = kLang(@"ImageSearchHeroBadge");
+            subtitleText = [NSString stringWithFormat:kLang(@"ImageSearchHeroResultsSubtitleFormat"),
+                            (long)self.results.count];
+            countText = [NSString stringWithFormat:kLang(@"SearchHeroResultsCountFormat"), (long)self.results.count];
+        } else {
+            statusText = kLang(@"SearchHeroReady");
+            subtitleText = kLang(@"ImageSearchNoResultsSubtitle");
+            countText = [NSString stringWithFormat:kLang(@"SearchHeroResultsCountFormat"), (long)0];
+        }
+    } else if (!hasValidQuery) {
         statusText = kLang(@"Hero_TrendingNow") ?: kLang(@"SearchHeroReady");
         subtitleText = kLang(@"SearchHeroIdleSubtitle");
         countText = kLang(@"SearchHeroTypingHint");
@@ -1445,7 +1668,16 @@ UINavigationControllerDelegate>
     UIColor *statusBackground = nil;
     UIColor *statusForeground = nil;
 
-    if (!hasValidQuery) {
+    if (hasImageSearchMode && self.isSearching) {
+        statusBackground = [[UIColor colorWithRed:0.98 green:0.69 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
+        statusForeground = [UIColor colorWithRed:1.0 green:0.94 blue:0.80 alpha:1.0];
+    } else if (hasImageSearchMode && self.results.count > 0) {
+        statusBackground = [scopeTint colorWithAlphaComponent:0.22];
+        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.98];
+    } else if (hasImageSearchMode) {
+        statusBackground = [UIColor colorWithWhite:1.0 alpha:0.08];
+        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.88];
+    } else if (!hasValidQuery) {
         statusBackground = [[UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:1.0] colorWithAlphaComponent:0.18];
         statusForeground = [UIColor colorWithRed:1.0 green:0.96 blue:0.88 alpha:0.98];
     } else if (self.isSearching) {
@@ -1481,12 +1713,20 @@ UINavigationControllerDelegate>
 - (void)updateEmptyState
 {
     BOOL hasValidQuery = self.lastQuery.length >= kPPSearchMinimumQueryLength;
-    BOOL noResults = hasValidQuery && !self.isSearching && self.results.count == 0;
-    BOOL idleState = !hasValidQuery && !self.isSearching;
+    BOOL hasImageSearchMode = [self pp_isImageSearchMode];
+    BOOL noImageResults = hasImageSearchMode && !self.isSearching && self.results.count == 0;
+    BOOL noResults = !hasImageSearchMode && hasValidQuery && !self.isSearching && self.results.count == 0;
+    BOOL idleState = !hasImageSearchMode && !hasValidQuery && !self.isSearching;
 
-    BOOL shouldShow = noResults || idleState;
+    BOOL shouldShow = noImageResults || noResults || idleState;
 
-    if (noResults) {
+    if (noImageResults) {
+        self.emptyStateIconView.image = [UIImage systemImageNamed:@"camera.metering.none"];
+        self.emptyStateIconView.tintColor = [[UIColor colorWithRed:0.98 green:0.80 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.92];
+        self.emptyTitleLabel.text = kLang(@"ImageSearchNoResultsTitle");
+        self.emptySubtitleLabel.text = kLang(@"ImageSearchNoResultsSubtitle");
+        [self pp_animateImageSearchEmptyStateIfNeeded];
+    } else if (noResults) {
         // No results found
         self.emptyStateIconView.image = [UIImage systemImageNamed:@"sparkle.magnifyingglass"];
         self.emptyStateIconView.tintColor = [[UIColor colorWithRed:0.98 green:0.80 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.92];
@@ -1691,6 +1931,8 @@ UINavigationControllerDelegate>
     }
 
     self.isSearching = YES;
+    [self pp_showSkeletonCells];
+    [self pp_startSearchLoadingAnimation];
     [self updateEmptyState];
     [self updateHeaderStateAnimated:YES];
 }
@@ -1698,8 +1940,97 @@ UINavigationControllerDelegate>
 - (void)pp_hideSkeleton
 {
     self.isSearching = NO;
+    [self pp_stopSearchLoadingAnimation];
     [self updateEmptyState];
     [self updateHeaderStateAnimated:YES];
+}
+
+- (void)pp_showSkeletonCells
+{
+    NSMutableArray<PPUniversalCellViewModel *> *skeletons = [NSMutableArray array];
+    NSInteger count = 6;
+    for (NSInteger i = 0; i < count; i++) {
+        [skeletons addObject:[[PPUniversalCellViewModel alloc] initSkeleton]];
+    }
+    self.results = skeletons.copy;
+    [self applyResultsAnimated:NO];
+}
+
+- (void)pp_startSearchLoadingAnimation
+{
+    [self pp_startSearchBarLoadingPulse];
+    [self pp_startHeroLoadingShimmer];
+}
+
+- (void)pp_stopSearchLoadingAnimation
+{
+    [self pp_stopSearchBarLoadingPulse];
+    [self pp_stopHeroLoadingShimmer];
+}
+
+- (void)pp_startSearchBarLoadingPulse
+{
+    if (!self.searchFieldIconView) return;
+
+    CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    pulse.fromValue = @0.6;
+    pulse.toValue = @1.0;
+    pulse.duration = 0.6;
+    pulse.autoreverses = YES;
+    pulse.repeatCount = HUGE_VALF;
+    pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.searchFieldIconView.layer addAnimation:pulse forKey:@"pp.search.loading.icon"];
+
+    CABasicAnimation *tint = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    tint.fromValue = @1.0;
+    tint.toValue = @1.12;
+    tint.duration = 0.6;
+    tint.autoreverses = YES;
+    tint.repeatCount = HUGE_VALF;
+    [self.searchFieldIconView.layer addAnimation:tint forKey:@"pp.search.loading.scale"];
+}
+
+- (void)pp_stopSearchBarLoadingPulse
+{
+    [self.searchFieldIconView.layer removeAnimationForKey:@"pp.search.loading.icon"];
+    [self.searchFieldIconView.layer removeAnimationForKey:@"pp.search.loading.scale"];
+}
+
+- (void)pp_startHeroLoadingShimmer
+{
+    if (!self.heroCardView || UIAccessibilityIsReduceMotionEnabled()) return;
+
+    CAGradientLayer *shimmer = [CAGradientLayer layer];
+    shimmer.frame = self.heroCardView.bounds;
+    shimmer.startPoint = CGPointMake(0.0, 0.5);
+    shimmer.endPoint = CGPointMake(1.0, 0.5);
+
+    UIColor *base = [AppPrimaryClr colorWithAlphaComponent:0.0];
+    UIColor *highlight = [AppPrimaryClr colorWithAlphaComponent:0.12];
+    shimmer.colors = @[(id)base.CGColor, (id)highlight.CGColor, (id)base.CGColor];
+    shimmer.locations = @[@0.0, @0.5, @1.0];
+
+    CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"locations"];
+    anim.fromValue = @[@(-1.0), @(-0.5), @0.0];
+    anim.toValue = @[@1.0, @1.5, @2.0];
+    anim.duration = 1.8;
+    anim.repeatCount = HUGE_VALF;
+    anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [shimmer addAnimation:anim forKey:@"pp.search.loading.shimmer"];
+
+    shimmer.name = @"pp.search.loading.shimmer.layer";
+    [self.heroCardView.layer addSublayer:shimmer];
+    objc_setAssociatedObject(self, @selector(pp_startHeroLoadingShimmer), shimmer, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (void)pp_stopHeroLoadingShimmer
+{
+    CAGradientLayer *shimmer = objc_getAssociatedObject(self, @selector(pp_startHeroLoadingShimmer));
+    if (shimmer) {
+        [shimmer removeAllAnimations];
+        [shimmer removeFromSuperlayer];
+        objc_setAssociatedObject(self, @selector(pp_startHeroLoadingShimmer), nil, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
 }
 
 - (NSString *)selectedSegmentTitle
@@ -2255,7 +2586,7 @@ UINavigationControllerDelegate>
     CGFloat availableWidth = collectionView.bounds.size.width - (kPPSearchHorizontalInset * 2.0);
     NSInteger itemCount = [collectionView numberOfItemsInSection:indexPath.section];
 
-    if (indexPath.item == 0) {
+    if (indexPath.item == 100) {
         CGFloat heroHeight = MIN(availableWidth * 0.78, 286.0);
         if (itemCount == 1) {
             heroHeight = MIN(availableWidth * 0.82, 310.0);
@@ -2264,7 +2595,7 @@ UINavigationControllerDelegate>
     }
 
     CGFloat gridWidth = floor((availableWidth - kPPSearchInteritemSpacing) / 2.0);
-    CGFloat itemHeight = gridWidth + 62.0;
+    CGFloat itemHeight = gridWidth + 72.0;
     return CGSizeMake(gridWidth, itemHeight);
 }
 
@@ -2294,12 +2625,14 @@ UINavigationControllerDelegate>
             return;
         }
 
-        [self showLoading:YES];
+        [PPHUD showIndeterminateIn:self.view
+                              title:kLang(@"Loading")
+                           subtitle:nil];
         __weak typeof(self) weakSelf = self;
         [self fetchFullDocumentForKind:kind documentID:docID completion:^(id fullObject) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-            [strongSelf showLoading:NO];
+            [PPHUD dismiss];
 
             if (fullObject) {
                 [PPOverlayCoordinator pp_openDetailForObject:fullObject
@@ -2321,18 +2654,116 @@ UINavigationControllerDelegate>
 
 - (void)didTapImageSearchButton
 {
+    [self.view endEditing:YES];
+    [self pp_imageSearchButtonTouchUp:self.imageSearchButton];
+    [PPFunc triggerLightHaptic];
+    [self pp_presentImageSearchSourceSheet];
+}
+
+- (void)pp_presentImageSearchSourceSheet
+{
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:kLang(@"ImageSearchSourceTitle")
+                                                                   message:kLang(@"ImageSearchSourceSubtitle")
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+
+    __weak typeof(self) weakSelf = self;
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        UIAlertAction *cameraAction = [UIAlertAction actionWithTitle:kLang(@"ImageSearchTakePhoto")
+                                                               style:UIAlertActionStyleDefault
+                                                             handler:^(__unused UIAlertAction *action) {
+            [weakSelf pp_openImageSearchCamera];
+        }];
+        [sheet addAction:cameraAction];
+    }
+
+    UIAlertAction *libraryAction = [UIAlertAction actionWithTitle:kLang(@"ImageSearchChoosePhoto")
+                                                            style:UIAlertActionStyleDefault
+                                                          handler:^(__unused UIAlertAction *action) {
+        [weakSelf pp_openImageSearchPhotoLibrary];
+    }];
+    [sheet addAction:libraryAction];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:(kLang(@"cancel") ?: kLang(@"Cancel"))
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [sheet addAction:cancelAction];
+
+    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
+    if (popover) {
+        popover.sourceView = self.imageSearchButton ?: self.view;
+        popover.sourceRect = self.imageSearchButton ? self.imageSearchButton.bounds : self.view.bounds;
+        popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
+    }
+
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (void)pp_openImageSearchCamera
+{
+    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        [AppMgr showSnakBar:kLang(@"ImageSearchCameraUnavailable")
+                  withColor:nil
+                andDuration:2.0
+              containerView:self.view];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [PPPermissionHelper requestCameraPermissionFromViewController:self completion:^(BOOL granted) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || !granted) {
+                return;
+            }
+            [strongSelf pp_presentImageSearchPickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
+        });
+    }];
+}
+
+- (void)pp_openImageSearchPhotoLibrary
+{
+    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypePhotoLibrary]) {
+        [AppMgr showSnakBar:kLang(@"ImageSearchPhotoLibraryUnavailable")
+                  withColor:nil
+                andDuration:2.0
+              containerView:self.view];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [PPPermissionHelper requestPhotoLibraryPermissionFromViewController:self completion:^(BOOL granted) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || !granted) {
+                return;
+            }
+            [strongSelf pp_presentImageSearchPickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
+        });
+    }];
+}
+
+- (void)pp_presentImageSearchPickerWithSourceType:(UIImagePickerControllerSourceType)sourceType
+{
+    if (![UIImagePickerController isSourceTypeAvailable:sourceType]) {
+        NSString *message = (sourceType == UIImagePickerControllerSourceTypeCamera)
+            ? kLang(@"ImageSearchCameraUnavailable")
+            : kLang(@"ImageSearchPhotoLibraryUnavailable");
+        [AppMgr showSnakBar:message withColor:nil andDuration:2.0 containerView:self.view];
+        return;
+    }
+
     UIImagePickerController *picker = [[UIImagePickerController alloc] init];
     picker.delegate = self;
-    picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+    picker.sourceType = sourceType;
     picker.allowsEditing = NO;
+    picker.modalPresentationStyle = UIModalPresentationFullScreen;
 
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad && picker.popoverPresentationController) {
-        picker.popoverPresentationController.sourceView = self.view;
-        picker.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
-                                                                      CGRectGetMidY(self.view.bounds),
-                                                                      1,
-                                                                      1);
-        picker.popoverPresentationController.permittedArrowDirections = 0;
+    if (sourceType == UIImagePickerControllerSourceTypePhotoLibrary &&
+        UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad &&
+        picker.popoverPresentationController) {
+        picker.popoverPresentationController.sourceView = self.imageSearchButton ?: self.view;
+        picker.popoverPresentationController.sourceRect = self.imageSearchButton ? self.imageSearchButton.bounds : self.view.bounds;
+        picker.popoverPresentationController.permittedArrowDirections = UIPopoverArrowDirectionAny;
     }
 
     [self presentViewController:picker animated:YES completion:nil];
@@ -2341,7 +2772,10 @@ UINavigationControllerDelegate>
 - (void)imagePickerController:(UIImagePickerController *)picker
  didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info
 {
-    UIImage *image = info[UIImagePickerControllerOriginalImage];
+    UIImage *image = info[UIImagePickerControllerEditedImage];
+    if (![image isKindOfClass:UIImage.class]) {
+        image = info[UIImagePickerControllerOriginalImage];
+    }
 
     __weak typeof(self) weakSelf = self;
     [picker dismissViewControllerAnimated:YES completion:^{
@@ -2356,37 +2790,80 @@ UINavigationControllerDelegate>
 
 - (void)runDirectImageSearch:(UIImage *)image
 {
-    if (!image) return;
+    if (!image) {
+        [AppMgr showSnakBar:kLang(@"ImageSearchImageRequired")
+                  withColor:nil
+                andDuration:2.0
+              containerView:self.view];
+        return;
+    }
 
-    [self showLoading:YES];
+    NSInteger generation = self.imageSearchRequestGeneration + 1;
+    self.imageSearchRequestGeneration = generation;
+    self.currentSearchRequestID += 1;
+    self.lastImageSearchImage = image;
+    self.lastQuery = nil;
+    self.searchTextField.text = @"";
+    [self pp_updateSearchPlaceholderVisibility];
+
+    self.imageSearchResultRefs = @[];
+    self.imageSearchRawResults = @[];
+    self.imageSearchAllResults = @[];
+    self.allSearchResults = @[];
+    self.results = @[];
+    [self pp_hideAllBadges];
+    [self applyResultsAnimated:NO];
+    [self pp_setImageSearchLoading:YES];
+    [self pp_setImageSearchLoadingOverlayVisible:YES animated:YES];
+    [self pp_hideSkeleton];
+    [self updateEmptyState];
+    [self updateHeaderStateAnimated:YES];
+
+    if (!self.isHeroCollapsed) {
+        [self setHeroCollapsed:YES animated:YES];
+    }
 
     __weak typeof(self) weakSelf = self;
     [[PPImageSearchService shared] searchWithImage:image
                                               mode:PPImageSearchModeAuto
                                              limit:@20
                                         completion:^(NSDictionary * _Nullable response, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || generation != strongSelf.imageSearchRequestGeneration) {
+                return;
+            }
 
-        [strongSelf showLoading:NO];
+            strongSelf.isSearching = NO;
+            [strongSelf pp_setImageSearchLoading:NO];
+            [strongSelf pp_setImageSearchLoadingOverlayVisible:NO animated:YES];
 
-        if (error) {
-            NSLog(@"Image search error: %@", error.localizedDescription);
-            [AppMgr showSnakBar:kLang(@"ImageSearchError") withColor:nil andDuration:2.0 containerView:self.view];
-            return;
-        }
+            if (error) {
+                NSLog(@"Image search error: %@", error.localizedDescription);
+                [strongSelf pp_clearImageSearchState];
+                [strongSelf pp_hideAllBadges];
+                strongSelf.results = @[];
+                [strongSelf applyResultsAnimated:NO];
+                [strongSelf updateEmptyState];
+                [strongSelf updateHeaderStateAnimated:YES];
+                [strongSelf pp_animateImageSearchErrorFeedback];
+                NSString *message = error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"ImageSearchError");
+                [AppMgr showSnakBar:message withColor:nil andDuration:2.0 containerView:strongSelf.view];
+                return;
+            }
 
-        NSDictionary *metadata = [response[@"metadata"] isKindOfClass:[NSDictionary class]]
-            ? response[@"metadata"]
-            : @{};
-        NSArray *results = [response[@"results"] isKindOfClass:[NSArray class]]
-            ? response[@"results"]
-            : @[];
-        NSArray *resultRefs = [metadata[@"resultRefs"] isKindOfClass:[NSArray class]]
-            ? metadata[@"resultRefs"]
-            : @[];
+            NSDictionary *metadata = [response[@"metadata"] isKindOfClass:[NSDictionary class]]
+                ? response[@"metadata"]
+                : @{};
+            NSArray *results = [response[@"results"] isKindOfClass:[NSArray class]]
+                ? response[@"results"]
+                : @[];
+            NSArray *resultRefs = [metadata[@"resultRefs"] isKindOfClass:[NSArray class]]
+                ? metadata[@"resultRefs"]
+                : @[];
 
-        [strongSelf renderDirectImageSearchResults:results resultRefs:resultRefs metadata:metadata];
+            [strongSelf renderDirectImageSearchResults:results resultRefs:resultRefs metadata:metadata];
+        });
     }];
 }
 
@@ -2394,17 +2871,18 @@ UINavigationControllerDelegate>
                             resultRefs:(NSArray *)resultRefs
                               metadata:(NSDictionary *)metadata
 {
+    (void)metadata;
+
     if (!resultRefs || resultRefs.count == 0) {
         self.imageSearchResultRefs = @[];
         self.imageSearchRawResults = @[];
+        self.imageSearchAllResults = @[];
         self.allSearchResults = @[];
         self.results = @[];
+        [self pp_hideAllBadges];
         [self applyResultsAnimated:NO];
         [self updateEmptyState];
-
-        [self updateEmptyStateForImageSearch:NO];
-        self.emptyTitleLabel.text = kLang(@"ImageSearchNoResultsTitle");
-        self.emptySubtitleLabel.text = kLang(@"ImageSearchNoResultsSubtitle");
+        [self updateHeaderStateAnimated:YES];
         return;
     }
 
@@ -2428,15 +2906,388 @@ UINavigationControllerDelegate>
         }
     }
 
-    self.results = viewModels.copy;
+    self.imageSearchAllResults = viewModels.copy;
     self.allSearchResults = @[];
-    [self applyResultsAnimated:YES];
-    [self updateEmptyState];
-    [self updateHeaderStateAnimated:YES];
+    [self pp_selectBestSegmentForImageSearchRefs:resultRefs];
+    [self pp_updateImageSearchSegmentBadgesWithRefs:resultRefs];
+    [self pp_updateSegmentButtonsSelectionAnimated:YES];
+    [self pp_applyImageSearchSegmentFilterAnimated:YES];
 
     if (!self.isHeroCollapsed) {
         [self setHeroCollapsed:YES animated:YES];
     }
+}
+
+- (BOOL)pp_isImageSearchMode
+{
+    return self.lastImageSearchImage != nil;
+}
+
+- (void)pp_clearImageSearchState
+{
+    self.lastImageSearchImage = nil;
+    self.imageSearchResultRefs = @[];
+    self.imageSearchRawResults = @[];
+    self.imageSearchAllResults = @[];
+    [self pp_setImageSearchLoading:NO];
+    [self pp_setImageSearchLoadingOverlayVisible:NO animated:YES];
+}
+
+- (void)pp_applyImageSearchSegmentFilterAnimated:(BOOL)animated
+{
+    NSInteger selectedIndex = self.selectedSearchSegment;
+    if (selectedIndex < PPSearchSegmentAds || selectedIndex > PPSearchSegmentAccessories) {
+        selectedIndex = PPSearchSegmentAds;
+    }
+
+    NSMutableArray<PPUniversalCellViewModel *> *filtered = [NSMutableArray array];
+    for (PPUniversalCellViewModel *viewModel in self.imageSearchAllResults) {
+        if ([self pp_imageSearchViewModel:viewModel belongsToSegment:selectedIndex]) {
+            [filtered addObject:viewModel];
+        }
+    }
+
+    self.results = filtered.copy;
+    [self applyResultsAnimated:animated];
+    [self updateEmptyState];
+    [self updateHeaderStateAnimated:YES];
+
+    if (animated && self.results.count > 0) {
+        [self pp_animateVisibleImageSearchResultsIfNeeded];
+    }
+}
+
+- (BOOL)pp_imageSearchViewModel:(PPUniversalCellViewModel *)viewModel
+               belongsToSegment:(PPSearchSegment)segment
+{
+    NSDictionary *ref = [viewModel.ModelObject isKindOfClass:NSDictionary.class]
+        ? (NSDictionary *)viewModel.ModelObject
+        : nil;
+    NSString *kind = [ref[@"kind"] isKindOfClass:NSString.class] ? ref[@"kind"] : nil;
+
+    switch (segment) {
+        case PPSearchSegmentAds:
+            return [kind isEqualToString:@"pet_ad"] || [kind isEqualToString:@"adoption"];
+        case PPSearchSegmentAccessories:
+            return [kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"];
+        case PPSearchSegmentServices:
+            return NO;
+    }
+    return NO;
+}
+
+- (void)pp_updateImageSearchSegmentBadgesWithRefs:(NSArray<NSDictionary *> *)refs
+{
+    NSInteger adsCount = 0;
+    NSInteger accessoriesCount = 0;
+
+    for (NSDictionary *ref in refs) {
+        if (![ref isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *kind = [ref[@"kind"] isKindOfClass:NSString.class] ? ref[@"kind"] : nil;
+        if ([kind isEqualToString:@"pet_ad"] || [kind isEqualToString:@"adoption"]) {
+            adsCount += 1;
+        } else if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
+            accessoriesCount += 1;
+        }
+    }
+
+    [self pp_updateBadge:self.adsBadge count:adsCount];
+    [self pp_updateBadge:self.servicesBadge count:0];
+    [self pp_updateBadge:self.accessoriesBadge count:accessoriesCount];
+}
+
+- (void)pp_selectBestSegmentForImageSearchRefs:(NSArray<NSDictionary *> *)refs
+{
+    NSInteger currentCount = [self pp_countImageSearchRefs:refs forSegment:self.selectedSearchSegment];
+    if (currentCount > 0) {
+        return;
+    }
+
+    NSInteger adsCount = [self pp_countImageSearchRefs:refs forSegment:PPSearchSegmentAds];
+    NSInteger accessoriesCount = [self pp_countImageSearchRefs:refs forSegment:PPSearchSegmentAccessories];
+
+    self.selectedSearchSegment = (adsCount > 0 || accessoriesCount == 0)
+        ? PPSearchSegmentAds
+        : PPSearchSegmentAccessories;
+}
+
+- (NSInteger)pp_countImageSearchRefs:(NSArray<NSDictionary *> *)refs
+                          forSegment:(PPSearchSegment)segment
+{
+    NSInteger count = 0;
+    for (NSDictionary *ref in refs) {
+        if (![ref isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *kind = [ref[@"kind"] isKindOfClass:NSString.class] ? ref[@"kind"] : nil;
+        if (segment == PPSearchSegmentAds &&
+            ([kind isEqualToString:@"pet_ad"] || [kind isEqualToString:@"adoption"])) {
+            count += 1;
+        } else if (segment == PPSearchSegmentAccessories &&
+                   ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"])) {
+            count += 1;
+        }
+    }
+    return count;
+}
+
+- (void)pp_setImageSearchLoading:(BOOL)loading
+{
+    UIButton *button = self.imageSearchButton;
+    if (!button) {
+        return;
+    }
+
+    UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+    NSString *symbolName = loading ? @"magnifyingglass" : @"camera.fill";
+    [button setImage:[UIImage systemImageNamed:symbolName withConfiguration:config]
+            forState:UIControlStateNormal];
+    button.enabled = !loading;
+    button.alpha = loading ? 0.82 : 1.0;
+    button.accessibilityValue = loading ? kLang(@"ImageSearchPreparing") : nil;
+
+    [button.layer removeAnimationForKey:@"pp.imageSearch.loadingPulse"];
+    button.transform = CGAffineTransformIdentity;
+
+    if (loading && !UIAccessibilityIsReduceMotionEnabled()) {
+        CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+        pulse.fromValue = @(0.96);
+        pulse.toValue = @(1.045);
+        pulse.duration = 0.72;
+        pulse.autoreverses = YES;
+        pulse.repeatCount = HUGE_VALF;
+        pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [button.layer addAnimation:pulse forKey:@"pp.imageSearch.loadingPulse"];
+    }
+}
+
+- (void)pp_setImageSearchLoadingOverlayVisible:(BOOL)visible animated:(BOOL)animated
+{
+    UIView *hostView = self.imageSearchLoadingView;
+    UIView *cardView = self.imageSearchLoadingCardView;
+    if (!hostView || !cardView) {
+        return;
+    }
+
+    self.imageSearchLoadingTitleLabel.text = kLang(@"ImageSearchLoadingTitle");
+    self.imageSearchLoadingSubtitleLabel.text = kLang(@"ImageSearchLoadingSubtitle");
+
+    if (visible == self.imageSearchLoadingVisible && hostView.hidden == !visible) {
+        if (visible) {
+            [self pp_startImageSearchLoadingAnimations];
+        }
+        return;
+    }
+
+    self.imageSearchLoadingVisible = visible;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+
+    if (visible) {
+        hostView.hidden = NO;
+        [self pp_startImageSearchLoadingAnimations];
+
+        if (!animated || reduceMotion) {
+            hostView.alpha = 1.0;
+            cardView.alpha = 1.0;
+            cardView.transform = CGAffineTransformIdentity;
+            return;
+        }
+
+        hostView.alpha = 0.0;
+        cardView.alpha = 0.0;
+        cardView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
+                                                     CGAffineTransformMakeScale(0.975, 0.975));
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.42
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            hostView.alpha = 1.0;
+            cardView.alpha = 1.0;
+            cardView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+        return;
+    }
+
+    void (^finishHidden)(void) = ^{
+        hostView.hidden = YES;
+        hostView.alpha = 0.0;
+        cardView.alpha = 1.0;
+        cardView.transform = CGAffineTransformIdentity;
+        [self pp_stopImageSearchLoadingAnimations];
+    };
+
+    if (!animated || reduceMotion) {
+        finishHidden();
+        return;
+    }
+
+    [UIView animateWithDuration:0.20
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn
+                     animations:^{
+        hostView.alpha = 0.0;
+        cardView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -6.0),
+                                                     CGAffineTransformMakeScale(0.985, 0.985));
+    } completion:^(__unused BOOL finished) {
+        finishHidden();
+    }];
+}
+
+- (void)pp_startImageSearchLoadingAnimations
+{
+    [self pp_stopImageSearchLoadingAnimations];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
+        self.imageSearchLoadingIconView.alpha = 1.0;
+        return;
+    }
+
+    CABasicAnimation *orbSpin = [CABasicAnimation animationWithKeyPath:@"transform.rotation.z"];
+    orbSpin.fromValue = @(0.0);
+    orbSpin.toValue = @(M_PI * 2.0);
+    orbSpin.duration = 2.4;
+    orbSpin.repeatCount = HUGE_VALF;
+    orbSpin.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    [self.imageSearchLoadingOrbView.layer addAnimation:orbSpin forKey:@"pp.imageSearch.loading.orbSpin"];
+
+    CABasicAnimation *orbPulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    orbPulse.fromValue = @(0.965);
+    orbPulse.toValue = @(1.035);
+    orbPulse.duration = 0.9;
+    orbPulse.autoreverses = YES;
+    orbPulse.repeatCount = HUGE_VALF;
+    orbPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.imageSearchLoadingOrbView.layer addAnimation:orbPulse forKey:@"pp.imageSearch.loading.orbPulse"];
+
+    CABasicAnimation *iconPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    iconPulse.fromValue = @(0.70);
+    iconPulse.toValue = @(1.0);
+    iconPulse.duration = 0.72;
+    iconPulse.autoreverses = YES;
+    iconPulse.repeatCount = HUGE_VALF;
+    iconPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.imageSearchLoadingIconView.layer addAnimation:iconPulse forKey:@"pp.imageSearch.loading.iconPulse"];
+}
+
+- (void)pp_stopImageSearchLoadingAnimations
+{
+    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbSpin"];
+    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbPulse"];
+    [self.imageSearchLoadingIconView.layer removeAnimationForKey:@"pp.imageSearch.loading.iconPulse"];
+    self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
+    self.imageSearchLoadingIconView.alpha = 1.0;
+}
+
+- (void)pp_imageSearchButtonTouchDown:(UIButton *)button
+{
+    if (!button.enabled || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [UIView animateWithDuration:0.12
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    } completion:nil];
+}
+
+- (void)pp_imageSearchButtonTouchUp:(UIButton *)button
+{
+    if (!button || UIAccessibilityIsReduceMotionEnabled()) {
+        button.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+         usingSpringWithDamping:0.74
+          initialSpringVelocity:0.45
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_animateVisibleImageSearchResultsIfNeeded
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        NSArray<UICollectionViewCell *> *visibleCells = self.collectionView.visibleCells;
+        NSArray<UICollectionViewCell *> *sortedCells =
+            [visibleCells sortedArrayUsingComparator:^NSComparisonResult(UICollectionViewCell *cellA,
+                                                                         UICollectionViewCell *cellB) {
+            NSIndexPath *indexPathA = [self.collectionView indexPathForCell:cellA];
+            NSIndexPath *indexPathB = [self.collectionView indexPathForCell:cellB];
+            if (!indexPathA || !indexPathB) {
+                return NSOrderedSame;
+            }
+            return [indexPathA compare:indexPathB];
+        }];
+
+        [sortedCells enumerateObjectsUsingBlock:^(UICollectionViewCell *cell,
+                                                  NSUInteger idx,
+                                                  __unused BOOL *stop) {
+            cell.alpha = 0.0;
+            cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 14.0),
+                                                     CGAffineTransformMakeScale(0.985, 0.985));
+            [UIView animateWithDuration:0.34
+                                  delay:MIN(0.045 * idx, 0.18)
+                 usingSpringWithDamping:0.86
+                  initialSpringVelocity:0.48
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                cell.alpha = 1.0;
+                cell.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+    });
+}
+
+- (void)pp_animateImageSearchEmptyStateIfNeeded
+{
+    if (UIAccessibilityIsReduceMotionEnabled() || self.emptyStateIconView.hidden) {
+        return;
+    }
+
+    [self.emptyStateIconView.layer removeAnimationForKey:@"pp.imageSearch.emptyPulse"];
+    CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    pulse.fromValue = @(0.96);
+    pulse.toValue = @(1.04);
+    pulse.duration = 0.42;
+    pulse.autoreverses = YES;
+    pulse.repeatCount = 1;
+    pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.emptyStateIconView.layer addAnimation:pulse forKey:@"pp.imageSearch.emptyPulse"];
+}
+
+- (void)pp_animateImageSearchErrorFeedback
+{
+    if (UIAccessibilityIsReduceMotionEnabled() || !self.imageSearchButton) {
+        return;
+    }
+
+    CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+    shake.values = @[@0.0, @(-5.0), @4.0, @(-2.0), @0.0];
+    shake.duration = 0.28;
+    shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [self.imageSearchButton.layer addAnimation:shake forKey:@"pp.imageSearch.errorShake"];
 }
 
 - (nullable PPUniversalCellViewModel *)viewModelForImageSearchRef:(NSDictionary *)ref
@@ -2449,35 +3300,59 @@ UINavigationControllerDelegate>
 
     NSMutableDictionary *refWithDoc = [ref mutableCopy];
     refWithDoc[@"docID"] = docID;
+    NSDictionary *safeLightResult = [lightResult isKindOfClass:NSDictionary.class] ? lightResult : @{};
+    NSString *title = [safeLightResult[@"title"] isKindOfClass:NSString.class] ? safeLightResult[@"title"] : @"";
+    NSString *imageURL = [safeLightResult[@"imageUrl"] isKindOfClass:NSString.class] ? safeLightResult[@"imageUrl"] : @"";
+    if (imageURL.length == 0 && [safeLightResult[@"imageURL"] isKindOfClass:NSString.class]) {
+        imageURL = safeLightResult[@"imageURL"];
+    }
+    if (imageURL.length == 0 && [safeLightResult[@"thumbnailURL"] isKindOfClass:NSString.class]) {
+        imageURL = safeLightResult[@"thumbnailURL"];
+    }
+    if (imageURL.length == 0 && [safeLightResult[@"thumbnailUrl"] isKindOfClass:NSString.class]) {
+        imageURL = safeLightResult[@"thumbnailUrl"];
+    }
+    NSNumber *price = [safeLightResult[@"price"] isKindOfClass:NSNumber.class] ? safeLightResult[@"price"] : nil;
 
     if ([kind isEqualToString:@"pet_ad"]) {
-        PetAd *ad = [PetAd new];
-        ad.adID = docID;
-        ad.adTitle = lightResult[@"title"] ?: @"";
-        ad.price = lightResult[@"price"];
-
-        if (lightResult[@"imageUrl"]) {
-            PetImageItem *item = [PetImageItem itemWithURL:lightResult[@"imageUrl"] width:0 height:0 blurHash:nil];
-            ad.imageItems = @[item];
-        }
-
         PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForAds];
+        vm.ModelID = docID;
+        vm.title = title;
+        vm.price = price;
+        vm.finalPrice = price;
+        vm.priceText = price ? ([GM formatPrice:price currencyCode:vm.currencyCode] ?: @"") : @"";
+        vm.imageURL = imageURL;
+        vm.badgeText = kLang(@"Ads");
+        vm.availabilityText = kLang(@"Available");
+        vm.preferredAspectRatio = 0.98;
         vm.ModelObject = refWithDoc;
         return vm;
     }
 
     if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
-        PetAccessory *accessory = [PetAccessory new];
-        accessory.accessoryID = docID;
-        accessory.name = lightResult[@"title"] ?: @"";
-        accessory.price = lightResult[@"price"];
-        accessory.accessKindType = [kind isEqualToString:@"medicine"] ? 4 : 1;
-
-        if (lightResult[@"imageUrl"]) {
-            accessory.imageURLsArray = @[lightResult[@"imageUrl"]];
-        }
-
         PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForMarket];
+        vm.ModelID = docID;
+        vm.title = title;
+        vm.price = price;
+        vm.finalPrice = price;
+        vm.priceText = price ? ([GM formatPrice:price currencyCode:vm.currencyCode] ?: @"") : @"";
+        vm.imageURL = imageURL;
+        vm.badgeText = kLang(@"Accessories");
+        vm.availabilityText = @"";
+        vm.preferredAspectRatio = 0.78;
+        vm.ModelObject = refWithDoc;
+        return vm;
+    }
+
+    if ([kind isEqualToString:@"adoption"]) {
+        PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForAdopt];
+        vm.ModelID = docID;
+        vm.title = title.length > 0 ? title : kLang(@"AdoptPet");
+        vm.priceText = @"";
+        vm.imageURL = imageURL;
+        vm.badgeText = kLang(@"For Adoption");
+        vm.availabilityText = kLang(@"Available");
+        vm.preferredAspectRatio = 0.98;
         vm.ModelObject = refWithDoc;
         return vm;
     }
@@ -2519,6 +3394,8 @@ UINavigationControllerDelegate>
             object = [PetAd adFromFirestoreData:data documentID:docID];
         } else if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
             object = [[PetAccessory alloc] initWithDictionary:data documentID:docID];
+        } else if ([kind isEqualToString:@"adoption"]) {
+            object = [[AdoptPetModel alloc] initWithSnapshot:snapshot];
         }
 
         if (completion) completion(object);
@@ -2532,7 +3409,6 @@ UINavigationControllerDelegate>
 
 - (void)showLoading:(BOOL)show
 {
-    self.isSearching = show;
     if (show) {
         [self pp_showSkeletonIfNeeded];
     } else {

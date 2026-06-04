@@ -42,10 +42,22 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
         self.clipsToBounds = NO;
         [self setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
         [self setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_applicationDidBecomeActive)
+                                                     name:UIApplicationDidBecomeActiveNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_reduceMotionStatusDidChange)
+                                                     name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                                   object:nil];
         [self pp_rebuildViews];
         [self updateCurrentStepIndex:0 completedStepIndex:-1 animated:NO];
     }
     return self;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (CGSize)intrinsicContentSize {
@@ -59,6 +71,33 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
         return;
     }
     [self setNeedsLayout];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self restartCurrentStepMotionIfNeeded];
+    });
+}
+
+- (void)restartCurrentStepMotionIfNeeded {
+    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+}
+
+- (void)stopCurrentStepMotion {
+    [self pp_stopCurrentStepMotion];
+}
+
+- (void)pp_applicationDidBecomeActive {
+    [self restartCurrentStepMotionIfNeeded];
+}
+
+- (void)pp_reduceMotionStatusDidChange {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopCurrentStepMotion];
+        return;
+    }
+    [self restartCurrentStepMotionIfNeeded];
 }
 
 - (void)pp_rebuildViews {
