@@ -743,7 +743,7 @@ static BOOL PPPaymentShouldRequireHostedQIBCheckoutForRuntime(void)
 {
     // Phase 2 hosted checkout is not yet implemented on the server.
     // Allow legacy QIB SDK (Phase 1) on all iOS versions for now.
-    return NO;
+    return YES;
 }
 
 static NSURL *PPPaymentHostedCheckoutURLFromString(NSString *urlString)
