@@ -9070,6 +9070,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
     } completion:nil];
+
+    if (section == PPHomeSectionPremiumCare && [cell isKindOfClass:PPHomePremiumCareCell.class]) {
+        [(PPHomePremiumCareCell *)cell pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
+    }
 }
 
 - (void)pp_animateHomeEntranceForSupplementaryView:(UICollectionReusableView *)supplementaryView
@@ -9246,6 +9250,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     cell.alpha = initialAlpha;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
     cell.transform = CGAffineTransformScale(transform, scale, scale);
+    if (section == PPHomeSectionPremiumCare && [cell isKindOfClass:PPHomePremiumCareCell.class] && !isLateAppearance) {
+        [(PPHomePremiumCareCell *)cell pp_preparePostLayoutEntranceState];
+    }
     [CATransaction commit];
 }
 

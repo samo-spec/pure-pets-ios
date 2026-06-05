@@ -348,11 +348,16 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 @property (nonatomic, assign) NSInteger heroAnimationLoadToken;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) BOOL didStartGlowAnimation;
+@property (nonatomic, assign) BOOL didFinishInitialDataLoad;
+@property (nonatomic, assign) BOOL didRevealLoadedDecor;
 - (void)pp_buildBackgroundAtmosphereInView:(UIView *)hostView;
 - (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius;
 - (void)pp_prepareEntranceState;
 - (void)pp_beginEntranceAnimationIfNeeded;
 - (void)pp_beginAmbientGlowAnimationIfNeeded;
+- (void)pp_stopAmbientGlowAnimation;
+- (void)pp_noteInitialDataLoadProgress;
+- (void)pp_revealLoadedDecorIfNeeded;
 - (void)pp_configureHeroAnimationIfNeeded;
 - (void)pp_revealResolvedHeroAnimation;
 - (void)pp_styleNavigationSectionControl;
@@ -434,8 +439,14 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 {
     [super viewDidAppear:animated];
     [self pp_beginEntranceAnimationIfNeeded];
-    [self pp_beginAmbientGlowAnimationIfNeeded];
-    [self pp_configureHeroAnimationIfNeeded];
+    BOOL hadRevealedLoadedDecor = self.didRevealLoadedDecor;
+    [self pp_revealLoadedDecorIfNeeded];
+    if (hadRevealedLoadedDecor || !self.didFinishInitialDataLoad) {
+        [self pp_configureHeroAnimationIfNeeded];
+    }
+    if (self.didRevealLoadedDecor) {
+        [self pp_beginAmbientGlowAnimationIfNeeded];
+    }
 }
 
 - (void)dealloc
@@ -476,6 +487,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [super viewWillDisappear:animated];
     [self.searchField resignFirstResponder];
     [self.heroAnimationView stop];
+    [self pp_stopAmbientGlowAnimation];
     [self pp_restoreKeyboardManagerOverridesIfNeeded];
     if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
         [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
@@ -934,6 +946,8 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     view.translatesAutoresizingMaskIntoConstraints = NO;
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
+    view.alpha = 0.0;
+    view.hidden = YES;
     view.layer.cornerRadius = radius;
     view.layer.shadowRadius = 68.0;
     view.layer.shadowOpacity = 0.28;
@@ -950,6 +964,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                                          self.backgroundGlowBottomView];
     for (UIView *view in floatingViews) {
         view.alpha = 0.0;
+        view.hidden = YES;
         view.transform = CGAffineTransformMakeScale(0.92, 0.92);
     }
 
@@ -986,6 +1001,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.filterButton.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
     self.heroIconView.alpha = 0.0;
     self.heroIconView.transform = CGAffineTransformMakeScale(0.90, 0.90);
+    self.heroAnimationView.hidden = YES;
     self.heroAnimationView.alpha = 0.0;
     self.heroAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
 }
@@ -1003,20 +1019,6 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         (void)stop;
         [UIView animateWithDuration:0.44
                               delay:0.02 * idx
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
-    NSArray<UIView *> *glowViews = @[self.backgroundGlowTopView,
-                                     self.backgroundGlowMiddleView,
-                                     self.backgroundGlowBottomView];
-    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:0.82
-                              delay:0.05 + (0.04 * idx)
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
             view.alpha = 1.0;
@@ -1084,7 +1086,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
 - (void)pp_beginAmbientGlowAnimationIfNeeded
 {
-    if (self.didStartGlowAnimation) {
+    if (self.didStartGlowAnimation || !self.didRevealLoadedDecor || UIAccessibilityIsReduceMotionEnabled()) {
         return;
     }
     self.didStartGlowAnimation = YES;
@@ -1103,6 +1105,72 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                      animations:^{
         self.backgroundGlowBottomView.transform = CGAffineTransformMakeTranslation(18.0, -14.0);
     } completion:nil];
+}
+
+- (void)pp_stopAmbientGlowAnimation
+{
+    self.didStartGlowAnimation = NO;
+    for (UIView *view in @[self.backgroundGlowTopView,
+                           self.backgroundGlowMiddleView,
+                           self.backgroundGlowBottomView]) {
+        [view.layer removeAllAnimations];
+        if (!view.hidden) {
+            view.transform = CGAffineTransformIdentity;
+        }
+    }
+}
+
+- (void)pp_noteInitialDataLoadProgress
+{
+    if (self.loadingMedicines || self.loadingVets) {
+        return;
+    }
+    if (!self.didFinishInitialDataLoad) {
+        self.didFinishInitialDataLoad = YES;
+    }
+    [self pp_revealLoadedDecorIfNeeded];
+}
+
+- (void)pp_revealLoadedDecorIfNeeded
+{
+    if (!self.didFinishInitialDataLoad || self.didRevealLoadedDecor || !self.isViewLoaded || !self.view.window) {
+        return;
+    }
+    self.didRevealLoadedDecor = YES;
+
+    NSArray<UIView *> *glowViews = @[self.backgroundGlowTopView,
+                                     self.backgroundGlowMiddleView,
+                                     self.backgroundGlowBottomView];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        for (UIView *view in glowViews) {
+            view.hidden = NO;
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        [self pp_configureHeroAnimationIfNeeded];
+        return;
+    }
+
+    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        view.hidden = NO;
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformConcat(CGAffineTransformMakeScale(0.90, 0.90),
+                                                 CGAffineTransformMakeTranslation(idx == 1 ? -10.0 : 10.0, 14.0));
+        [UIView animateWithDuration:0.72
+                              delay:0.06 + (0.055 * idx)
+             usingSpringWithDamping:0.92
+              initialSpringVelocity:0.08
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    [self pp_configureHeroAnimationIfNeeded];
+    [self pp_beginAmbientGlowAnimationIfNeeded];
 }
 
 - (void)pp_configureHeroAnimationIfNeeded
@@ -1167,6 +1235,13 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
 - (void)pp_revealResolvedHeroAnimation
 {
+    if (!self.didFinishInitialDataLoad) {
+        self.heroAnimationView.hidden = YES;
+        self.heroAnimationView.alpha = 0.0;
+        self.heroIconView.hidden = NO;
+        return;
+    }
+
     self.heroAnimationView.loopAnimation = YES;
     self.heroAnimationView.hidden = NO;
     self.heroIconView.hidden = YES;
@@ -1174,9 +1249,17 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [self.heroAnimationView layoutIfNeeded];
     [self.heroAnimationView play];
 
-    [UIView animateWithDuration:0.26
-                          delay:self.didAnimateEntrance ? 0.08 : 0.34
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroAnimationView.alpha = 1.0;
+        self.heroAnimationView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.46
+                          delay:self.didRevealLoadedDecor ? 0.20 : 0.34
+         usingSpringWithDamping:0.91
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.heroAnimationView.alpha = 1.0;
         self.heroAnimationView.transform = CGAffineTransformIdentity;
@@ -1564,6 +1647,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
             return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
         }];
         [self pp_applyFiltersAndReload];
+        [self pp_noteInitialDataLoadProgress];
     }];
 
     [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> *vetsArray, NSError * _Nullable error) {
@@ -1575,6 +1659,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
             return [PPPetCareSafeString(a.title) localizedCaseInsensitiveCompare:PPPetCareSafeString(b.title)];
         }];
         [self pp_applyFiltersAndReload];
+        [self pp_noteInitialDataLoadProgress];
     }];
 }
 

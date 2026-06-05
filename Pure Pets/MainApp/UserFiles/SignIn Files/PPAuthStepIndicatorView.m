@@ -9,6 +9,9 @@
 static NSString * const PPAuthStepDotMotionKey = @"pp_auth_step_dot_breath";
 static NSString * const PPAuthStepHaloScaleKey = @"pp_auth_step_halo_scale";
 static NSString * const PPAuthStepHaloOpacityKey = @"pp_auth_step_halo_opacity";
+static NSString * const PPAuthStepDotColorKey = @"pp_auth_step_dot_color";
+static NSString * const PPAuthStepHaloColorKey = @"pp_auth_step_halo_color";
+static NSString * const PPAuthStepHaloShadowColorKey = @"pp_auth_step_halo_shadow_color";
 static NSString * const PPAuthStepIconMotionKey = @"pp_auth_step_icon_breath";
 static NSString * const PPAuthStepLabelFloatKey = @"pp_auth_step_label_float";
 static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity";
@@ -25,6 +28,41 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
 @end
 
 @implementation PPAuthStepIndicatorView
+
+- (NSArray<UIColor *> *)pp_appStepAnimationPalette
+{
+    UIColor *primaryColor = AppPrimaryClr ?: [GM appPrimaryColor];
+    UIColor *pageColor = AppBageColor();
+    UIColor *lighterColor = AppPrimaryClrShiner ?: [GM AppPrimaryColorShainer];
+
+    primaryColor = primaryColor ?: lighterColor ?: pageColor;
+    lighterColor = lighterColor ?: primaryColor ?: pageColor;
+    pageColor = pageColor ?: lighterColor ?: primaryColor;
+
+    return @[primaryColor, pageColor, lighterColor];
+}
+
+- (UIColor *)pp_primaryColorForStepIndex:(NSInteger)stepIndex
+{
+    NSArray<UIColor *> *colors = [self pp_appStepAnimationPalette];
+    UIColor *primaryColor = colors.firstObject;
+    UIColor *lighterColor = colors.count > 2 ? colors[2] : primaryColor;
+    return (stepIndex % 2 == 0) ? primaryColor : lighterColor;
+}
+
+- (UIColor *)pp_companionColorForStepIndex:(NSInteger)stepIndex
+{
+    NSArray<UIColor *> *colors = [self pp_appStepAnimationPalette];
+    UIColor *primaryColor = colors.firstObject;
+    UIColor *lighterColor = colors.count > 2 ? colors[2] : primaryColor;
+    return (stepIndex % 2 == 0) ? lighterColor : primaryColor;
+}
+
+- (UIColor *)pp_pageColorForStepAnimation
+{
+    NSArray<UIColor *> *colors = [self pp_appStepAnimationPalette];
+    return colors.count > 1 ? colors[1] : colors.firstObject;
+}
 
 - (instancetype)initWithStepTitles:(NSArray<NSString *> *)stepTitles {
     self = [super initWithFrame:CGRectZero];
@@ -205,7 +243,6 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
     NSInteger count = self.stepTitles.count;
     if (count <= 0) return;
 
-    UIColor *accentColor = AppPrimaryClr ?: [GM appPrimaryColor];
     UIColor *pendingColor = [UIColor tertiarySystemFillColor];
     UIColor *pendingBorder = [UIColor quaternaryLabelColor];
     CGFloat maxDotSize = 32.0;
@@ -240,6 +277,9 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
         BOOL completed = (index <= self.completedStepIndex);
         BOOL current = (index == self.currentStepIndex);
         BOOL pending = (!completed && !current);
+        UIColor *stepColor = [self pp_primaryColorForStepIndex:index];
+        UIColor *stepCompanionColor = [self pp_companionColorForStepIndex:index];
+        UIColor *stepPageColor = [self pp_pageColorForStepAnimation];
         CGFloat dotSize = current ? maxDotSize : (completed ? doneDotSize : pendingDotSize);
         CGFloat dotOriginY = dotY + ((maxDotSize - dotSize) * 0.5);
         dotSizes[index] = @(dotSize);
@@ -260,19 +300,19 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
         halo.frame = CGRectZero;
 
         if (completed) {
-            dot.backgroundColor = accentColor;
-            [dot pp_setBorderColor:accentColor];
+            dot.backgroundColor = stepColor;
+            [dot pp_setBorderColor:stepColor];
             icon.image = [UIImage systemImageNamed:@"checkmark"];
             icon.tintColor = UIColor.whiteColor;
-            label.textColor = accentColor;
+            label.textColor = stepColor;
             label.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
             label.alpha = 0.92;
         } else if (current) {
-            dot.backgroundColor = accentColor;
-            [dot pp_setBorderColor:accentColor];
+            dot.backgroundColor = stepColor;
+            [dot pp_setBorderColor:stepColor];
             icon.image = [UIImage systemImageNamed:@"smallcircle.filled.circle.fill"];
             icon.tintColor = UIColor.whiteColor;
-            label.textColor = accentColor;
+            label.textColor = stepColor;
             label.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
             label.alpha = 1.0;
 
@@ -282,17 +322,23 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
                                     haloSize,
                                     haloSize);
             halo.layer.cornerRadius = haloSize * 0.5;
-            halo.backgroundColor = [accentColor colorWithAlphaComponent:0.16];
+            halo.backgroundColor = [stepColor colorWithAlphaComponent:0.16];
             halo.layer.borderWidth = 1.2;
-            [halo pp_setBorderColor:[accentColor colorWithAlphaComponent:0.24]];
-            halo.layer.shadowColor = accentColor.CGColor;
+            [halo pp_setBorderColor:[stepCompanionColor colorWithAlphaComponent:0.26]];
+            halo.layer.shadowColor = stepCompanionColor.CGColor;
             halo.layer.shadowOpacity = shouldAnimate ? 0.18 : 0.08;
             halo.layer.shadowRadius = shouldAnimate ? 9.0 : 4.0;
             halo.layer.shadowOffset = CGSizeZero;
             halo.hidden = NO;
 
             if (shouldAnimate) {
-                [self pp_applyCurrentMotionToDot:dot halo:halo icon:icon label:label];
+                [self pp_applyCurrentMotionToDot:dot
+                                            halo:halo
+                                            icon:icon
+                                           label:label
+                                    primaryColor:stepColor
+                                  companionColor:stepCompanionColor
+                                        pageColor:stepPageColor];
             }
         } else if (pending) {
             dot.backgroundColor = pendingColor;
@@ -317,7 +363,9 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
                                      MAX(0.0, maxX - minX),
                                      2.0);
         BOOL progressed = (index < self.currentStepIndex || index <= self.completedStepIndex);
-        connector.backgroundColor = progressed ? accentColor : [UIColor quaternarySystemFillColor];
+        connector.backgroundColor = progressed
+            ? [[self pp_primaryColorForStepIndex:index] colorWithAlphaComponent:0.86]
+            : [UIColor quaternarySystemFillColor];
     }
 }
 
@@ -335,8 +383,11 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
 
 - (void)pp_removeMotionFromDot:(UIView *)dot halo:(UIView *)halo icon:(UIImageView *)icon label:(UILabel *)label {
     [dot.layer removeAnimationForKey:PPAuthStepDotMotionKey];
+    [dot.layer removeAnimationForKey:PPAuthStepDotColorKey];
     [halo.layer removeAnimationForKey:PPAuthStepHaloScaleKey];
     [halo.layer removeAnimationForKey:PPAuthStepHaloOpacityKey];
+    [halo.layer removeAnimationForKey:PPAuthStepHaloColorKey];
+    [halo.layer removeAnimationForKey:PPAuthStepHaloShadowColorKey];
     [icon.layer removeAnimationForKey:PPAuthStepIconMotionKey];
     [label.layer removeAnimationForKey:PPAuthStepLabelFloatKey];
     [label.layer removeAnimationForKey:PPAuthStepLabelOpacityKey];
@@ -368,11 +419,65 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
     [layer addAnimation:animation forKey:key];
 }
 
-- (void)pp_applyCurrentMotionToDot:(UIView *)dot halo:(UIView *)halo icon:(UIImageView *)icon label:(UILabel *)label {
-    [self pp_applyScalePulseToLayer:dot.layer key:PPAuthStepDotMotionKey from:1.0 to:1.055 duration:1.85 delay:0.0];
-    [self pp_applyScalePulseToLayer:halo.layer key:PPAuthStepHaloScaleKey from:1.0 to:1.16 duration:2.65 delay:0.08];
-    [self pp_applyOpacityPulseToLayer:halo.layer key:PPAuthStepHaloOpacityKey from:0.42 to:0.86 duration:2.65 delay:0.08];
-    [self pp_applyScalePulseToLayer:icon.layer key:PPAuthStepIconMotionKey from:1.0 to:1.08 duration:1.85 delay:0.18];
+- (void)pp_applyColorPulseToLayer:(CALayer *)layer
+                               key:(NSString *)key
+                              from:(UIColor *)fromColor
+                                to:(UIColor *)toColor
+                          duration:(CFTimeInterval)duration
+                             delay:(CFTimeInterval)delay
+                           keyPath:(NSString *)keyPath
+{
+    if (!layer || [layer animationForKey:key] || !fromColor || !toColor || keyPath.length == 0) return;
+    UIColor *resolvedFromColor = fromColor;
+    UIColor *resolvedToColor = toColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedFromColor = [fromColor resolvedColorWithTraitCollection:self.traitCollection];
+        resolvedToColor = [toColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:keyPath];
+    animation.fromValue = (__bridge id)resolvedFromColor.CGColor;
+    animation.toValue = (__bridge id)resolvedToColor.CGColor;
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.beginTime = CACurrentMediaTime() + delay;
+    animation.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.4 :0.0 :0.2 :1.0];
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_applyCurrentMotionToDot:(UIView *)dot
+                              halo:(UIView *)halo
+                              icon:(UIImageView *)icon
+                             label:(UILabel *)label
+                      primaryColor:(UIColor *)primaryColor
+                    companionColor:(UIColor *)companionColor
+                          pageColor:(UIColor *)pageColor
+{
+    [self pp_applyScalePulseToLayer:dot.layer key:PPAuthStepDotMotionKey from:1.0 to:1.045 duration:2.25 delay:0.0];
+    [self pp_applyScalePulseToLayer:halo.layer key:PPAuthStepHaloScaleKey from:1.0 to:1.18 duration:3.45 delay:0.08];
+    [self pp_applyOpacityPulseToLayer:halo.layer key:PPAuthStepHaloOpacityKey from:0.40 to:0.82 duration:3.45 delay:0.08];
+    [self pp_applyScalePulseToLayer:icon.layer key:PPAuthStepIconMotionKey from:1.0 to:1.065 duration:2.25 delay:0.18];
+    [self pp_applyColorPulseToLayer:dot.layer
+                                 key:PPAuthStepDotColorKey
+                                from:primaryColor
+                                  to:companionColor
+                            duration:3.20
+                               delay:0.12
+                             keyPath:@"backgroundColor"];
+    [self pp_applyColorPulseToLayer:halo.layer
+                                 key:PPAuthStepHaloColorKey
+                                from:[pageColor colorWithAlphaComponent:0.44]
+                                  to:[companionColor colorWithAlphaComponent:0.20]
+                            duration:3.45
+                               delay:0.08
+                             keyPath:@"backgroundColor"];
+    [self pp_applyColorPulseToLayer:halo.layer
+                                 key:PPAuthStepHaloShadowColorKey
+                                from:companionColor
+                                  to:primaryColor
+                            duration:3.45
+                               delay:0.08
+                             keyPath:@"shadowColor"];
 
     if (![label.layer animationForKey:PPAuthStepLabelFloatKey]) {
         CABasicAnimation *floatAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];

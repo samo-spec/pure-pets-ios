@@ -376,7 +376,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     }
 
     [self.heroCardView bringSubviewToFront:self.heroSubtitleLabel];
-    [self.view bringSubviewToFront:self.paymentBackgroundGlowTopView];
+    if (self.paymentBackgroundGlowTopView && self.heroCardView.superview == self.view) {
+        [self.view insertSubview:self.paymentBackgroundGlowTopView belowSubview:self.heroCardView];
+    }
 }
 
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded
@@ -387,6 +389,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     topGlowView.userInteractionEnabled = NO;
     topGlowView.clipsToBounds = NO;
+    topGlowView.alpha = 0.0;
+    topGlowView.hidden = NO;
     topGlowView.layer.cornerRadius = 136.0;
     topGlowView.layer.shadowRadius = 68.0;
     topGlowView.layer.shadowOpacity = 0.28;
@@ -623,7 +627,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 - (void)setlocViewViewAtTop
 {
-    self.locView = [PPAddressPickerView showInViewController:self width:self.view.hx_w - 42];
+    CGFloat initialPickerWidth = MAX(CGRectGetWidth(self.view.bounds) - 36.0, 58.0);
+    self.locView = [PPAddressPickerView showInViewController:self width:initialPickerWidth];
     [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
     __weak typeof(self) weakSelf = self;
     self.locView.onPickAddress = ^{
@@ -631,7 +636,40 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     };
     [self.locView expandAndLock];
 
-    // Re-anchor the address picker below the hero card instead of safe-area top
+    for (NSLayoutConstraint *constraint in self.locView.constraints) {
+        BOOL touchesPicker = constraint.firstItem == self.locView || constraint.secondItem == self.locView;
+        BOOL isWidthConstraint =
+            constraint.firstAttribute == NSLayoutAttributeWidth ||
+            constraint.secondAttribute == NSLayoutAttributeWidth;
+        if (touchesPicker && isWidthConstraint) {
+            constraint.active = NO;
+        }
+    }
+
+    for (NSLayoutConstraint *constraint in self.view.constraints) {
+        BOOL touchesPicker = constraint.firstItem == self.locView || constraint.secondItem == self.locView;
+        BOOL isHorizontal =
+            constraint.firstAttribute == NSLayoutAttributeLeading ||
+            constraint.firstAttribute == NSLayoutAttributeTrailing ||
+            constraint.firstAttribute == NSLayoutAttributeLeft ||
+            constraint.firstAttribute == NSLayoutAttributeRight ||
+            constraint.firstAttribute == NSLayoutAttributeCenterX ||
+            constraint.secondAttribute == NSLayoutAttributeLeading ||
+            constraint.secondAttribute == NSLayoutAttributeTrailing ||
+            constraint.secondAttribute == NSLayoutAttributeLeft ||
+            constraint.secondAttribute == NSLayoutAttributeRight ||
+            constraint.secondAttribute == NSLayoutAttributeCenterX;
+        if (touchesPicker && isHorizontal) {
+            constraint.active = NO;
+        }
+    }
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.locView.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor],
+        [self.locView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor]
+    ]];
+
+    // Re-anchor the address picker below the hero card instead of safe-area top.
     self.locView.topConstraint.active = NO;
     self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:16.0];
     self.locView.topConstraint.active = YES;
@@ -930,6 +968,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.paymentBackgroundGlowTopView.alpha = 1.0;
+        self.paymentBackgroundGlowTopView.hidden = NO;
         self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
@@ -943,6 +982,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroCardView.alpha = 0.0;
     self.heroCardView.transform = CGAffineTransformMakeTranslation(0.0, 24.0);
     self.paymentBackgroundGlowTopView.alpha = 0.0;
+    self.paymentBackgroundGlowTopView.hidden = NO;
     self.paymentBackgroundGlowTopView.transform = CGAffineTransformMakeScale(0.92, 0.92);
 
     for (UIView *view in @[self.heroLargeOrbView, self.heroSmallOrbView]) {
@@ -974,6 +1014,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.paymentBackgroundGlowTopView.alpha = 1.0;
+        self.paymentBackgroundGlowTopView.hidden = NO;
         self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
         self.heroCardView.alpha = 1.0;
         self.heroCardView.transform = CGAffineTransformIdentity;
@@ -989,6 +1030,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.paymentBackgroundGlowTopView.alpha = 1.0;
+        self.paymentBackgroundGlowTopView.hidden = NO;
         self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
@@ -1049,15 +1091,20 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroCardView.layer.shadowOpacity = dark ? 0.0 : 0.08;
 
     self.paymentBackgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.14 : 0.17];
+    self.paymentBackgroundGlowTopView.hidden = NO;
     self.paymentBackgroundGlowTopView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.24 : 0.22].CGColor;
     self.paymentBackgroundGlowTopView.layer.shadowOpacity = 0.28;
     self.paymentBackgroundGlowTopView.layer.shadowRadius = 68.0;
     self.paymentBackgroundGlowTopView.layer.shadowOffset = CGSizeZero;
 
+    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.heroGradientLayer.opacity = 1.0;
     self.heroGradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.0 : 0.0].CGColor,
+        (id)[accent colorWithAlphaComponent:dark ? 0.20 : 0.13].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
+    self.heroGradientLayer.locations = nil;
 
     self.heroLargeOrbView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.08];
     self.heroLargeOrbView.layer.shadowColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.16].CGColor;
@@ -1192,6 +1239,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [self pp_stopPaymentHeroAmbientMotion];
+        self.paymentBackgroundGlowTopView.alpha = 1.0;
+        self.paymentBackgroundGlowTopView.hidden = NO;
         self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
         self.heroLargeOrbView.transform = CGAffineTransformIdentity;
         self.heroSmallOrbView.transform = CGAffineTransformIdentity;
@@ -1225,6 +1274,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     [self.paymentBackgroundGlowTopView.layer removeAllAnimations];
     [self.heroLargeOrbView.layer removeAllAnimations];
     [self.heroSmallOrbView.layer removeAllAnimations];
+    self.paymentBackgroundGlowTopView.hidden = NO;
     self.paymentBackgroundGlowTopView.transform = CGAffineTransformIdentity;
     self.heroLargeOrbView.transform = CGAffineTransformIdentity;
     self.heroSmallOrbView.transform = CGAffineTransformIdentity;

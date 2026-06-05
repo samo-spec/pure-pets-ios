@@ -8,6 +8,10 @@
 #import "PPHomePremiumCareCell.h"
 
 static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
+static CGFloat const PPHomePremiumCareTopGlowRestingAlpha = 0.60;
+static CGFloat const PPHomePremiumCareMiddleGlowRestingAlpha = 1.00;
+static CGFloat const PPHomePremiumCareBottomGlowRestingAlpha = 0.00;
+static CGFloat const PPHomePremiumCareOrbRestingAlpha = 1.00;
 
 @implementation PPHomePremiumCareCell {
     UIView *_surfaceView;
@@ -34,6 +38,10 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     NSString *_currentCareAnimationName;
     NSInteger _careAnimationLoadToken;
     BOOL _didRevealCurrentCareAnimation;
+    BOOL _didPlayPostLayoutEntrance;
+    BOOL _shouldDeferDecorativeReveal;
+    BOOL _didRevealDecorativeAtmosphere;
+    NSInteger _decorativeEntranceToken;
 }
 
 + (NSString *)reuseIdentifier
@@ -401,13 +409,23 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _careAnimationView.hidden = YES;
     _careAnimationView.alpha = 0.0;
     _iconImageView.hidden = NO;
+    _iconImageView.alpha = 1.0;
+    _iconImageView.transform = CGAffineTransformIdentity;
+    for (UIView *view in @[_iconPlateView, _eyebrowLabel, _titleLabel, _subtitleLabel, _ctaView]) {
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
+    }
     _currentCareAnimationName = nil;
+    _didPlayPostLayoutEntrance = NO;
+    _shouldDeferDecorativeReveal = NO;
+    _didRevealDecorativeAtmosphere = NO;
     _eyebrowLabel.text = nil;
     _titleLabel.text = nil;
     _subtitleLabel.text = nil;
     //_medicinePillLabel.text = nil;
     //_vetPillLabel.text = nil;
     _ctaLabel.text = nil;
+    [self pp_prepareDecorativeAtmosphereForEntrance];
 }
 
 - (void)didMoveToWindow
@@ -507,11 +525,154 @@ static UIColor *PremiumSoftCardBorderColor(void)
             : ((idx % 2 == 0) ? 2.5 : 2.0);
     }];
 
-    if (!CGAffineTransformEqualToTransform(_topBackgroundGlowView.transform, CGAffineTransformIdentity) ||
-        !CGAffineTransformEqualToTransform(_middleBackgroundGlowView.transform, CGAffineTransformIdentity) ||
-        !CGAffineTransformEqualToTransform(_bottomLeadingGlowView.transform, CGAffineTransformIdentity)) {
+    if (_shouldDeferDecorativeReveal && !_didRevealDecorativeAtmosphere) {
+        [self pp_prepareDecorativeAtmosphereForEntrance];
+    } else {
+        [self pp_applyDecorativeAtmosphereRevealedState];
         [self pp_startBackgroundMotionIfNeeded];
     }
+}
+
+- (NSArray<UIView *> *)pp_decorativeAtmosphereViews
+{
+    NSMutableArray<UIView *> *views = [NSMutableArray arrayWithCapacity:5];
+    for (UIView *view in @[_topBackgroundGlowView, _middleBackgroundGlowView, _bottomLeadingGlowView, _largeOrbView, _smallOrbView]) {
+        if (view) {
+            [views addObject:view];
+        }
+    }
+    return views.copy;
+}
+
+- (CGFloat)pp_targetAlphaForBackgroundDotAtIndex:(NSUInteger)index
+{
+    (void)index;
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return isDark ? 0.20 : 0.26;
+}
+
+- (void)pp_prepareDecorativeAtmosphereForEntrance
+{
+    _decorativeEntranceToken += 1;
+    _didRevealDecorativeAtmosphere = NO;
+
+    for (UIView *view in [self pp_decorativeAtmosphereViews]) {
+        [view.layer removeAllAnimations];
+        view.hidden = NO;
+        view.alpha = 0.0;
+    }
+    _topBackgroundGlowView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(18.0, -10.0),
+                                                               CGAffineTransformMakeScale(0.95, 0.95));
+    _middleBackgroundGlowView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(-14.0, 10.0),
+                                                                  CGAffineTransformMakeScale(0.96, 0.96));
+    _bottomLeadingGlowView.transform = CGAffineTransformMakeScale(0.96, 0.96);
+    _largeOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    _smallOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+
+    [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)idx;
+        (void)stop;
+        [dotView.layer removeAllAnimations];
+        dotView.hidden = NO;
+        dotView.alpha = 0.0;
+        dotView.transform = CGAffineTransformMakeScale(0.72, 0.72);
+    }];
+
+    if (!_didPlayPostLayoutEntrance) {
+        [_careAnimationView stop];
+    }
+    _careAnimationView.hidden = YES;
+    _careAnimationView.alpha = 0.0;
+    _careAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
+}
+
+- (void)pp_applyDecorativeAtmosphereRevealedState
+{
+    _didRevealDecorativeAtmosphere = YES;
+
+    _topBackgroundGlowView.hidden = NO;
+    _topBackgroundGlowView.alpha = PPHomePremiumCareTopGlowRestingAlpha;
+    _topBackgroundGlowView.transform = CGAffineTransformIdentity;
+
+    _middleBackgroundGlowView.hidden = NO;
+    _middleBackgroundGlowView.alpha = PPHomePremiumCareMiddleGlowRestingAlpha;
+    _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
+
+    _bottomLeadingGlowView.hidden = NO;
+    _bottomLeadingGlowView.alpha = PPHomePremiumCareBottomGlowRestingAlpha;
+    _bottomLeadingGlowView.transform = CGAffineTransformIdentity;
+
+    _largeOrbView.hidden = NO;
+    _largeOrbView.alpha = PPHomePremiumCareOrbRestingAlpha;
+    _largeOrbView.transform = CGAffineTransformIdentity;
+
+    _smallOrbView.hidden = NO;
+    _smallOrbView.alpha = PPHomePremiumCareOrbRestingAlpha;
+    _smallOrbView.transform = CGAffineTransformIdentity;
+
+    [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        dotView.hidden = NO;
+        dotView.alpha = [self pp_targetAlphaForBackgroundDotAtIndex:idx];
+        dotView.transform = CGAffineTransformIdentity;
+    }];
+}
+
+- (void)pp_revealDecorativeAtmosphereWithDelay:(NSTimeInterval)delay
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyDecorativeAtmosphereRevealedState];
+        return;
+    }
+
+    _decorativeEntranceToken += 1;
+    NSInteger entranceToken = _decorativeEntranceToken;
+    _didRevealDecorativeAtmosphere = YES;
+    for (UIView *view in [self pp_decorativeAtmosphereViews]) {
+        view.hidden = NO;
+    }
+
+    NSArray<NSNumber *> *targetAlphas = @[
+        @(PPHomePremiumCareTopGlowRestingAlpha),
+        @(PPHomePremiumCareMiddleGlowRestingAlpha),
+        @(PPHomePremiumCareBottomGlowRestingAlpha),
+        @(PPHomePremiumCareOrbRestingAlpha),
+        @(PPHomePremiumCareOrbRestingAlpha)
+    ];
+    [[self pp_decorativeAtmosphereViews] enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        NSTimeInterval viewDelay = delay + 0.02 + MIN((double)idx * 0.045, 0.16);
+        [UIView animateWithDuration:0.62
+                              delay:viewDelay
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = targetAlphas[idx].doubleValue;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        dotView.hidden = NO;
+        [UIView animateWithDuration:0.36
+                              delay:delay + 0.18 + MIN((double)idx * 0.035, 0.12)
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            dotView.alpha = [self pp_targetAlphaForBackgroundDotAtIndex:idx];
+            dotView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((delay + 0.72) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self->_decorativeEntranceToken == entranceToken &&
+            !self->_shouldDeferDecorativeReveal &&
+            self->_didRevealDecorativeAtmosphere) {
+            [self pp_startBackgroundMotionIfNeeded];
+        }
+    });
 }
 
 - (void)pp_addPetCareGlowTranslationToView:(UIView *)view
@@ -543,6 +704,10 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
 - (void)pp_startBackgroundMotionIfNeeded
 {
+    if (_shouldDeferDecorativeReveal || !_didRevealDecorativeAtmosphere) {
+        return;
+    }
+
     if (!self.window) {
         return;
     }
@@ -613,12 +778,11 @@ static UIColor *PremiumSoftCardBorderColor(void)
         dotView.transform = CGAffineTransformIdentity;
     }];
 
-    _topBackgroundGlowView.alpha = 0.6;
-    _topBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _middleBackgroundGlowView.alpha = 1.0;
-    _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _bottomLeadingGlowView.alpha = 0.0;
-    _bottomLeadingGlowView.transform = CGAffineTransformIdentity;
+    if (_shouldDeferDecorativeReveal || !_didRevealDecorativeAtmosphere) {
+        [self pp_prepareDecorativeAtmosphereForEntrance];
+    } else {
+        [self pp_applyDecorativeAtmosphereRevealedState];
+    }
 }
 
 - (void)configure
@@ -714,6 +878,18 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
 - (void)pp_revealConfiguredCareAnimation
 {
+    if (_shouldDeferDecorativeReveal && !_didPlayPostLayoutEntrance) {
+        _careAnimationView.hidden = YES;
+        _careAnimationView.alpha = 0.0;
+        _careAnimationView.transform = CGAffineTransformMakeScale(0.88, 0.88);
+        _iconImageView.hidden = NO;
+        return;
+    }
+
+    if (!_careAnimationView.sceneModel) {
+        return;
+    }
+
     BOOL isAlreadyRevealed =
         _didRevealCurrentCareAnimation
         && !_careAnimationView.hidden
@@ -755,8 +931,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _iconImageView.alpha = 1.0;
     _iconImageView.transform = CGAffineTransformMakeScale(0.90, 0.90);
 
-    [UIView animateWithDuration:0.26
-                          delay:0.08
+    [UIView animateWithDuration:0.40
+                          delay:_didPlayPostLayoutEntrance ? 0.16 : 0.08
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
         self->_careAnimationView.alpha = 1.0;
@@ -767,6 +943,110 @@ static UIColor *PremiumSoftCardBorderColor(void)
         self->_iconImageView.hidden = YES;
         self->_iconImageView.transform = CGAffineTransformIdentity;
     }];
+}
+
+- (void)pp_preparePostLayoutEntranceState
+{
+    _didPlayPostLayoutEntrance = NO;
+    _shouldDeferDecorativeReveal = YES;
+    _didRevealDecorativeAtmosphere = NO;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        _shouldDeferDecorativeReveal = NO;
+        [self pp_applyDecorativeAtmosphereRevealedState];
+        for (UIView *view in @[_iconPlateView, _iconImageView, _eyebrowLabel, _titleLabel, _subtitleLabel, _ctaView]) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        if (_careAnimationView.sceneModel) {
+            [self pp_revealConfiguredCareAnimation];
+        }
+        return;
+    }
+
+    [self pp_prepareDecorativeAtmosphereForEntrance];
+
+    _iconPlateView.alpha = 0.0;
+    _iconPlateView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 7.0),
+                                                       CGAffineTransformMakeScale(0.94, 0.94));
+    _iconImageView.hidden = NO;
+    _iconImageView.alpha = 0.0;
+    _iconImageView.transform = CGAffineTransformMakeScale(0.90, 0.90);
+
+    NSArray<UIView *> *copyViews = @[_eyebrowLabel, _titleLabel, _subtitleLabel];
+    for (UIView *view in copyViews) {
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    }
+
+    _ctaView.alpha = 0.0;
+    _ctaView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 10.0),
+                                                 CGAffineTransformMakeScale(0.98, 0.98));
+}
+
+- (void)pp_playPostLayoutEntranceWithDelay:(NSTimeInterval)delay
+{
+    if (_didPlayPostLayoutEntrance) {
+        return;
+    }
+    _didPlayPostLayoutEntrance = YES;
+    _shouldDeferDecorativeReveal = NO;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyDecorativeAtmosphereRevealedState];
+        for (UIView *view in @[_iconPlateView, _iconImageView, _eyebrowLabel, _titleLabel, _subtitleLabel, _ctaView]) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        if (_careAnimationView.sceneModel) {
+            [self pp_revealConfiguredCareAnimation];
+        }
+        return;
+    }
+
+    [self pp_revealDecorativeAtmosphereWithDelay:delay];
+
+    [UIView animateWithDuration:0.44
+                          delay:delay
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.10
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self->_iconPlateView.alpha = 1.0;
+        self->_iconPlateView.transform = CGAffineTransformIdentity;
+        self->_iconImageView.alpha = 1.0;
+        self->_iconImageView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    NSArray<UIView *> *copyViews = @[_eyebrowLabel, _titleLabel, _subtitleLabel];
+    [copyViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        [UIView animateWithDuration:0.40
+                              delay:delay + 0.07 + (0.045 * idx)
+             usingSpringWithDamping:0.94
+              initialSpringVelocity:0.08
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    [UIView animateWithDuration:0.44
+                          delay:delay + 0.22
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.10
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self->_ctaView.alpha = 1.0;
+        self->_ctaView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    if (_careAnimationView.sceneModel) {
+        [self pp_revealConfiguredCareAnimation];
+    } else {
+        [self pp_configureCareAnimationNamed:PPHomePremiumCareMedicineAnimationName];
+    }
 }
 
 @end
