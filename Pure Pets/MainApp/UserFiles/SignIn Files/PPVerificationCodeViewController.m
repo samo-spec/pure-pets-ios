@@ -91,8 +91,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
-    self.edgesForExtendedLayout = UIRectEdgeNone;
-    self.extendedLayoutIncludesOpaqueBars = NO;
+    self.edgesForExtendedLayout = UIRectEdgeAll;
+    self.extendedLayoutIncludesOpaqueBars = YES;
     self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
     self.navigationItem.hidesBackButton = YES;
@@ -116,6 +116,11 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     });
 
     
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self pp_configureNavigationChrome];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -180,6 +185,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 - (void)setupScroll {
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
 
     self.contentView = [[UIView alloc] init];
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -188,7 +194,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     [self.scrollView addSubview:self.contentView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -290,14 +296,22 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)pp_configureNavigationChrome {
     self.navigationController.navigationBarHidden = NO;
-    self.navigationController.navigationBar.translucent = NO;
+    self.navigationController.navigationBar.translucent = YES;
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
+    appearance.backgroundEffect = nil;
     appearance.shadowColor = UIColor.clearColor;
+    appearance.shadowImage = [UIImage new];
     self.navigationController.navigationBar.standardAppearance = appearance;
     self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     self.navigationController.navigationBar.compactAppearance = appearance;
+    if (@available(iOS 15.0, *)) {
+        self.navigationController.navigationBar.compactScrollEdgeAppearance = appearance;
+    }
+    self.navigationController.navigationBar.backgroundColor = UIColor.clearColor;
+    [self.navigationController.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+    self.navigationController.navigationBar.shadowImage = [UIImage new];
     self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.labelColor;
 
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];

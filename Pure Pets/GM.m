@@ -1858,6 +1858,7 @@ CGSize getImageSizeSafely(UIImage *image) {
 }
 +(void)logoutFromConroller:(UIViewController *)VC
 {
+    (void)VC;
     [[NSNotificationCenter defaultCenter] postNotificationName:@"stopAllListener"
                                                         object:self
                                                       userInfo:nil];
@@ -1865,15 +1866,11 @@ CGSize getImageSizeSafely(UIImage *image) {
     // Put your action here
     [GM clearUserProfileDefaults];
 
-    // Logout from Firebase Auth
-    NSError *signOutError;
-    BOOL status = [[FIRAuth auth] signOut:&signOutError];
-
-    if (!status) {
-        //NSLog(@"AppManager: Error signing out: %@", signOutError);
-    } else {
-        //NSLog(@"AppManager: Sign out successfull auth");
-    }
+    [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"AppManager: Error signing out: %@", error.localizedDescription ?: @"Unknown error");
+        }
+    }];
 
     // After all tasks are complete, perform the segue
     //NSLog(@"AppManager: Sign out Complete");

@@ -102,7 +102,6 @@
 
 @end
 
-static NSString * const PPPaymentSimulatedPaymentSuccessDefaultsKey = @"PPSimulatedPaymentSuccessEnabled";
 static NSString * const PPPaymentOfficialEmailFallback = @"admin@pure-pets.net";
 
 static UIViewController *PPPaymentTopViewControllerFromRoot(UIViewController *rootViewController)
@@ -743,7 +742,7 @@ static BOOL PPPaymentShouldRequireHostedQIBCheckoutForRuntime(void)
 {
     // Phase 2 hosted checkout is not yet implemented on the server.
     // Allow legacy QIB SDK (Phase 1) on all iOS versions for now.
-    return YES;
+    return NO;
 }
 
 static NSURL *PPPaymentHostedCheckoutURLFromString(NSString *urlString)
@@ -790,23 +789,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
 @implementation PPPaymentManager
 
-+ (BOOL)isSimulatedPaymentSuccessEnabled
-{
-#if DEBUG
-    return [[NSUserDefaults standardUserDefaults] boolForKey:PPPaymentSimulatedPaymentSuccessDefaultsKey];
-#else
-    return NO;
-#endif
-}
 
-+ (void)setSimulatedPaymentSuccessEnabled:(BOOL)enabled
-{
-#if DEBUG
-    [[NSUserDefaults standardUserDefaults] setBool:enabled forKey:PPPaymentSimulatedPaymentSuccessDefaultsKey];
-#else
-    (void)enabled;
-#endif
-}
 
 + (instancetype)shared
 {
@@ -1229,12 +1212,10 @@ static void PPQIBTryLoadFrameworkBundle(void)
     //
     // However, the secret still transits through the client, which is a
     // residual security risk. This path is only used on iOS runtimes where
-    // the current QIB SDK is proven stable. iOS 26+ requires the hosted
-    // checkout contract above.
+     // checkout contract above.
     //
     // Migration checklist (H-14-phase2):
-    //   [ ] QIB provides hosted-checkout / server-to-server endpoint
-    //   [ ] createQibSession Cloud Function returns paymentUrl instead of secretKey
+     //   [ ] createQibSession Cloud Function returns paymentUrl instead of secretKey
     //   [x] iOS opens paymentUrl in SFSafariViewController (see gate above)
     //   [ ] Remove QPRequestParameters + secretKey injection below
     //   [ ] Remove PPQIBTryLoadFrameworkBundle dependency
@@ -1309,28 +1290,8 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPPaymentSetValueForCandidateKeys(params, @[@"parentViewController", @"viewController"], presenter);
         PPPaymentSetValueForCandidateKeys(params, @[@"delegate"], self);
 
-    NSString *mode = PPPaymentSessionValue(resolvedSession, @[
-        @"mode", @"paymentMode", @"environment", @"env"
-    ]);
-    if (mode.length == 0) {
-        mode = @"live";
-    }
-
-    NSString *sessionCurrency = PPPaymentSessionValue(resolvedSession, @[
-        @"currency", @"currencyCode"
-    ]).uppercaseString;
-    if (sessionCurrency.length != 3) {
-        sessionCurrency = PPPaymentTrimmedString(requestedCurrency).uppercaseString;
-    }
-    if (sessionCurrency.length != 3) {
-        sessionCurrency = PPPaymentTrimmedString(order.currency).uppercaseString;
-    }
-    if (sessionCurrency.length != 3) {
-        sessionCurrency = PPPaymentResolvedCurrencyCode();
-    }
-    if (sessionCurrency.length != 3) {
-        sessionCurrency = @"QAR";
-    }
+    NSString *mode = @"LIVE";
+    NSString *sessionCurrency = @"QAR";
     order.currency = sessionCurrency;
 
     PPORDERLog(@"Launching legacy QIB bootstrap | orderId=%@ | mode=%@ | currency=%@ | requestedCurrency=%@ | qibSessionId=%@",
@@ -1353,7 +1314,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
             ? shipping[@"displayName"]
             : @"";
 
-        NSString *countryISO = PPPaymentResolvedCountryISOCode();
+        NSString *countryISO = @"QA";
 
         NSNumber *amountNumber = @((order.totalAmount > 0 ? order.totalAmount : order.amount));
         PPPaymentSetValueForCandidateKeys(params, @[@"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"], gatewayId);

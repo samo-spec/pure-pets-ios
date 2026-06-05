@@ -1429,7 +1429,11 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_handleUserDidSignOutNotification:(NSNotification *)notification
 {
     (void)notification;
+    [self.instrumentManager resetForSignOut];
+    self.userInstruments = @[];
     [self pp_applyAddresses:@[]];
+    [self.paymentCollection reloadData];
+    [self pp_refreshCheckoutCallToAction];
 }
 
 - (void)pp_handlePricingConfigurationDidChangeNotification:(NSNotification *)notification

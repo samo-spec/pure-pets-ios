@@ -25,6 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
                          completion:(void(^)(NSArray<UserPaymentInstrument *> * _Nullable instruments, NSError * _Nullable error))completion;
 
 - (void)stopListening;
+- (void)resetForSignOut;
 
 - (void)updateInstrument:(UserPaymentInstrument *)instrument
                  forUser:(NSString *)userID

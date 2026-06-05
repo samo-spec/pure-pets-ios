@@ -47,6 +47,11 @@
     }
 }
 
+- (void)resetForSignOut {
+    [self stopListening];
+    [self.instruments removeAllObjects];
+}
+
 #pragma mark - LISTEN FOR CHANGES (Realtime)
 
 - (void)listenForInstrumentsForUser:(NSString *)userID

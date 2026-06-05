@@ -8,6 +8,7 @@
 #import "PPPetProfile.h"
 #import "PPPetReminder.h"
 #import "PPPetProfileManager.h"
+#import "UserPaymentInstrumentManager.h"
 
 
 @import FirebaseAuth;
@@ -1039,6 +1040,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
 
     [self pp_stopTokenRefreshTimer];
     self.currentToken = nil;
+    [[UserPaymentInstrumentManager sharedManager] resetForSignOut];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"deviceToken"];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"PPUserTokenID"];
     [[NSUserDefaults standardUserDefaults] synchronize];
@@ -2637,6 +2639,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [self pp_stopTokenRefreshTimer];
     [self stopListeningCurrentUserPermissions];
     [self stopListeningCurrentUserBlockedState];
+    [[UserPaymentInstrumentManager sharedManager] resetForSignOut];
     [self clearUserDefaults];
     self.currentToken = nil;
     [[AppDataListenerManager shared] stopAllListeners];

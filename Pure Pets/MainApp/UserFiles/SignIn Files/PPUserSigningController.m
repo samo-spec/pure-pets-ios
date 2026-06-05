@@ -122,6 +122,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.edgesForExtendedLayout = UIRectEdgeAll;
+    self.extendedLayoutIncludesOpaqueBars = YES;
     self.navigationItem.hidesBackButton = YES;
     [self setupView];
     [self setupConstraints];
@@ -206,6 +208,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.scrollView.scrollEnabled = YES;
     self.scrollView.alwaysBounceVertical = NO;
     self.scrollView.backgroundColor = UIColor.clearColor;
+    self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     [self.view addSubview:self.scrollView];
     
     // Container Stack
@@ -251,13 +254,22 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 - (void)pp_configureNavigationChrome {
     self.navigationController.navigationBarHidden = NO;
+    self.navigationController.navigationBar.translucent = YES;
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
+    appearance.backgroundEffect = nil;
     appearance.shadowColor = UIColor.clearColor;
+    appearance.shadowImage = [UIImage new];
     self.navigationController.navigationBar.standardAppearance = appearance;
     self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     self.navigationController.navigationBar.compactAppearance = appearance;
+    if (@available(iOS 15.0, *)) {
+        self.navigationController.navigationBar.compactScrollEdgeAppearance = appearance;
+    }
+    self.navigationController.navigationBar.backgroundColor = UIColor.clearColor;
+    [self.navigationController.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+    self.navigationController.navigationBar.shadowImage = [UIImage new];
     self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.labelColor;
 
     UIStackView *titleStack = [[UIStackView alloc] init];
@@ -362,6 +374,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_configureNavigationChrome];
     
     
     UIButtonConfiguration *config = self.countryCodePickerBtn.configuration;
@@ -788,7 +801,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     stackTrailing.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],

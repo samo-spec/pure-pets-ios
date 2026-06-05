@@ -1023,7 +1023,7 @@
 "Yes" = "نعم";
 "No" = "لا";
 
-"Welcome to Pure Pets" = "مرحباً بك في Pure Pets";
+"Welcome to Pure Pets" = "مرحباً بك في بيور بتس";
 "Maybe Later" = "ربما لاحقاً";
 "Sign in with Google" = "تسجيل الدخول باستخدام Google";
 "Mobile Number" = "رقم الجوال";
@@ -1134,7 +1134,7 @@
 "auth_account_blocked_message" = "لا يمكن استخدام هذا الحساب حالياً.";
 
 /* Headers */
-"auth_title_welcome" = "مرحباً بك في Pure Pets";
+"auth_title_welcome" = "مرحباً بك في بيور بتس";
 "auth_subtitle_continue" = "سجّل الدخول لمتابعة رحلتك مع حيوانك الأليف";
 
 /* Apple Token Errors */
@@ -1731,7 +1731,7 @@
 "Hero_Hello" = "مرحباً";
 "Hero_SweetDreams" = "أحلام سعيدة";
 "Hero_HowAreYou" = "كيف حالك";
-"Hero_Brand" = "بيور بيتس";
+"Hero_Brand" = "بيور بتس";
 "Hero_TrendingNow" = "الرائج الآن";
 "Hero_FindingNearby" = "جارٍ تحديد الأقرب";
 "Hero_LocationNeeded" = "الموقع مطلوب";
@@ -2264,7 +2264,7 @@
 "Address" = "العنوان";
 
 /* App Identity */
-"AppName" = "Pure Pets";
+"AppName" = "بيور بتس";
 
 /* Payment Form – Billing */
 "BillingNameTitle" = "اسم صاحب الفاتورة";

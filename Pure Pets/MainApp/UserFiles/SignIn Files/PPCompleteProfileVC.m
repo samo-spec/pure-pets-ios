@@ -359,8 +359,8 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 {
     [super viewDidLoad];
 
-    self.edgesForExtendedLayout = UIRectEdgeNone;
-    self.extendedLayoutIncludesOpaqueBars = NO;
+    self.edgesForExtendedLayout = UIRectEdgeAll;
+    self.extendedLayoutIncludesOpaqueBars = YES;
     self.baseBottomContentInset = PPCompleteProfileDefaultBottomInset;
     self.modalInPresentation = YES;
     self.presentationController.delegate = self;
@@ -390,6 +390,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_configureNavigationChrome];
     self.view.semanticContentAttribute = PPCompleteProfileCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPCompleteProfileCurrentSemanticAttribute();
     [self pp_applyCanvas];
@@ -505,7 +506,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     self.topBarView = topBar;
 
     UIButton *skipButton = [self pp_actionButtonWithTitle:kLang(@"Skip") systemImageName:nil filled:NO action:@selector(onDismiss)];
-    UIButton *saveButton = [self pp_actionButtonWithTitle:kLang(@"Save") systemImageName:@"checkmark" filled:YES action:@selector(saveTapped)];
+    UIButton *saveButton = [self pp_actionButtonWithTitle:kLang(@"Save") systemImageName:nil filled:YES action:@selector(saveTapped)];
     [topBar addSubview:skipButton];
     [topBar addSubview:saveButton];
     self.skipBTN = skipButton;
@@ -543,14 +544,22 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     }
 
     self.navigationController.navigationBarHidden = NO;
-    self.navigationController.navigationBar.translucent = NO;
+    self.navigationController.navigationBar.translucent = YES;
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
+    appearance.backgroundEffect = nil;
     appearance.shadowColor = UIColor.clearColor;
+    appearance.shadowImage = [UIImage new];
     self.navigationController.navigationBar.standardAppearance = appearance;
     self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
     self.navigationController.navigationBar.compactAppearance = appearance;
+    if (@available(iOS 15.0, *)) {
+        self.navigationController.navigationBar.compactScrollEdgeAppearance = appearance;
+    }
+    self.navigationController.navigationBar.backgroundColor = UIColor.clearColor;
+    [self.navigationController.navigationBar setBackgroundImage:[UIImage new] forBarMetrics:UIBarMetricsDefault];
+    self.navigationController.navigationBar.shadowImage = [UIImage new];
     self.navigationController.navigationBar.tintColor = [self pp_brandColor];
     self.navigationItem.title = kLang(@"Complete_Profile");
 
@@ -563,7 +572,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                                                     filled:NO
                                                     action:@selector(onDismiss)];
     UIButton *saveButton = [self pp_actionButtonWithTitle:kLang(@"Save")
-                                           systemImageName:@"checkmark"
+                                           systemImageName:nil
                                                     filled:YES
                                                     action:@selector(saveTapped)];
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:skipButton];
@@ -583,7 +592,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     stepTrailing.priority = UILayoutPriorityDefaultHigh;
 
     NSLayoutConstraint *stepTop = self.navigationController
-        ? [stepView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16.0]
+        ? [stepView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:20.0]
         : [stepView.topAnchor constraintEqualToAnchor:self.topBarView.bottomAnchor constant:12.0];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -606,13 +615,14 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     [button setTitle:title ?: @"" forState:UIControlStateNormal];
     UIImage *image = systemImageName.length > 0 ? [UIImage systemImageNamed:systemImageName] : nil;
     [button setImage:image forState:UIControlStateNormal];
+    BOOL hasImage = (image != nil);
     button.titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     button.layer.cornerRadius = 22.0;
     button.layer.masksToBounds = NO;
-    button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
-    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, -3.0, 0.0, 3.0);
-    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 3.0, 0.0, -3.0);
-    button.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    button.contentEdgeInsets = UIEdgeInsetsMake(10.0, hasImage ? 14.0 : 18.0, 10.0, hasImage ? 14.0 : 18.0);
+    button.imageEdgeInsets = hasImage ? UIEdgeInsetsMake(0.0, -3.0, 0.0, 3.0) : UIEdgeInsetsZero;
+    button.titleEdgeInsets = hasImage ? UIEdgeInsetsMake(0.0, 3.0, 0.0, -3.0) : UIEdgeInsetsZero;
+    button.semanticContentAttribute = hasImage ? UISemanticContentAttributeForceLeftToRight : PPCompleteProfileCurrentSemanticAttribute();
     button.tintColor = filled ? UIColor.whiteColor : [self pp_brandColor];
     [button setTitleColor:(filled ? UIColor.whiteColor : (AppPrimaryTextClr ?: UIColor.labelColor)) forState:UIControlStateNormal];
     button.backgroundColor = filled ? [self pp_brandColor] : [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
@@ -644,6 +654,8 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                 NSForegroundColorAttributeName: titleColor
             }];
         }
+        config.image = hasImage ? image : nil;
+        config.imagePadding = hasImage ? 6.0 : 0.0;
         config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary<NSAttributedStringKey,id> *attributes = [incoming mutableCopy];
             attributes[NSFontAttributeName] = resolvedFont;
