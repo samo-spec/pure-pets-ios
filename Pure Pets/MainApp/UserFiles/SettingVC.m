@@ -7,8 +7,10 @@
 #import "ProfileVC.h"
 #import "PPImageLoaderManager.h"
 #import "PPModernAvatarRenderer.h"
+#import "PPFirebaseSessionBridge.h"
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <SafariServices/SFSafariViewController.h>
+@import FirebaseFunctions;
 @import UserNotifications;
 
 
@@ -22,6 +24,149 @@ NSString * const PPThemePreferenceDidChangeNotification = @"PPThemePreferenceDid
 // MARK: Legal URLs — update these to the production website URLs when available.
 static NSString *const kPPPrivacyPolicyURL   = @"https://pure-pets.net/privacy";
 static NSString *const kPPTermsOfServiceURL  = @"https://pure-pets.net";
+
+static NSString *PPSettingsLocalizedString(NSString *key, NSString *fallback)
+{
+    NSString *value = kLang(key);
+    if ([value isKindOfClass:NSString.class] &&
+        value.length > 0 &&
+        ![value isEqualToString:key]) {
+        return value;
+    }
+    return fallback ?: key ?: @"";
+}
+
+static BOOL PPSettingsTextContainsAnyToken(NSString *text, NSArray<NSString *> *tokens)
+{
+    if (text.length == 0) return NO;
+    for (NSString *token in tokens) {
+        if (token.length > 0 && [text containsString:token]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static void PPSettingsAppendErrorText(NSError *error, NSMutableArray<NSString *> *parts, NSUInteger depth)
+{
+    if (!error || depth > 2) return;
+    if (error.localizedDescription.length) [parts addObject:error.localizedDescription];
+    if (error.localizedFailureReason.length) [parts addObject:error.localizedFailureReason];
+    if (error.localizedRecoverySuggestion.length) [parts addObject:error.localizedRecoverySuggestion];
+
+    for (id value in error.userInfo.allValues) {
+        if ([value isKindOfClass:NSString.class]) {
+            [parts addObject:(NSString *)value];
+        } else if ([value isKindOfClass:NSError.class]) {
+            PPSettingsAppendErrorText((NSError *)value, parts, depth + 1);
+        } else if ([value isKindOfClass:NSDictionary.class] ||
+                   [value isKindOfClass:NSArray.class]) {
+            [parts addObject:[value description]];
+        }
+    }
+}
+
+static NSString *PPSettingsCombinedErrorText(NSError *error)
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    PPSettingsAppendErrorText(error, parts, 0);
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
+static BOOL PPSettingsDeleteAccountErrorRequiresRecentLogin(NSError *error)
+{
+    if (!error) return NO;
+    if (error.code == FIRAuthErrorCodeRequiresRecentLogin) return YES;
+
+    NSString *text = PPSettingsCombinedErrorText(error);
+    return PPSettingsTextContainsAnyToken(text, @[
+        @"requires-recent-login",
+        @"requires_recent_login",
+        @"recent login",
+        @"recent sign-in",
+        @"recent sign in",
+        @"recent re-auth",
+        @"recent reauth",
+        @"reauthenticate",
+        @"reauthentication",
+        @"sign in again",
+        @"sign-in again",
+        @"session refresh",
+        @"could not refresh your session",
+        @"couldn't refresh your session"
+    ]);
+}
+
+static BOOL PPSettingsDeleteAccountErrorIsOffline(NSError *error)
+{
+    NSString *text = PPSettingsCombinedErrorText(error);
+    return PPSettingsTextContainsAnyToken(text, @[
+        @"client is offline",
+        @"network is unavailable",
+        @"network connection was lost",
+        @"internet connection appears to be offline",
+        @"timed out"
+    ]) ||
+    error.code == FIRFunctionsErrorCodeUnavailable ||
+    error.code == FIRFunctionsErrorCodeDeadlineExceeded;
+}
+
+static BOOL PPSettingsDeleteAccountErrorIsDeviceVerification(NSError *error)
+{
+    NSString *text = PPSettingsCombinedErrorText(error);
+    return PPSettingsTextContainsAnyToken(text, @[
+        @"app check",
+        @"appcheck",
+        @"app attest",
+        @"appattest",
+        @"devicecheck",
+        @"device check"
+    ]);
+}
+
+static NSString *PPSettingsDeleteAccountFailureMessage(NSError *error)
+{
+    if (PPSettingsDeleteAccountErrorRequiresRecentLogin(error)) {
+        return PPSettingsLocalizedString(@"delete_account_session_verify_message",
+                                         @"We could not verify this account deletion request. Please try deleting your account again.");
+    }
+
+    if (PPSettingsDeleteAccountErrorIsOffline(error)) {
+        return PPSettingsLocalizedString(@"delete_account_offline_message",
+                                         @"Please check your connection, then try deleting your account again.");
+    }
+
+    if (PPSettingsDeleteAccountErrorIsDeviceVerification(error)) {
+        return PPSettingsLocalizedString(@"delete_account_device_verification_message",
+                                         @"We could not verify this device right now. Please try again.");
+    }
+
+    if ([PPFirebaseSessionBridge isAuthOrAppCheckError:error] ||
+        error.code == FIRFunctionsErrorCodeUnauthenticated) {
+        return PPSettingsLocalizedString(@"delete_account_sign_in_required_message",
+                                         @"Please sign in again, then return to Settings and delete your account.");
+    }
+
+    if (error.code == FIRFunctionsErrorCodePermissionDenied) {
+        return PPSettingsLocalizedString(@"delete_account_permission_denied_message",
+                                         @"We could not verify this account deletion request. Please sign in again and retry.");
+    }
+
+    return PPSettingsLocalizedString(@"delete_account_failed_message",
+                                     @"We could not delete your account right now. Please try again in a moment.");
+}
+
+static NSString *PPSettingsLogoutFailureMessage(NSError *error)
+{
+    NSString *message = [PPFirebaseSessionBridge publicMessageForError:error fallbackKey:@"logout_failed_message"];
+    if ([message isKindOfClass:NSString.class] &&
+        message.length > 0 &&
+        ![message isEqualToString:@"logout_failed_message"]) {
+        return message;
+    }
+    return PPSettingsLocalizedString(@"logout_failed_message",
+                                     @"We could not log you out right now. Please try again.");
+}
 
 #pragma mark - PPSettingsRowModel
 
@@ -355,11 +500,6 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     return (NSInteger)self.sections[section].rows.count;
 }
 
-- (nullable NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
-{
-    return self.sections[section].headerTitle;
-}
-
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
@@ -601,6 +741,44 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
             }
         }
     }
+}
+
+- (nullable UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
+{
+    if (section < 0 || section >= (NSInteger)self.sections.count) return nil;
+
+    NSString *title = self.sections[section].headerTitle;
+    if (title.length == 0) return nil;
+
+    UIView *container = [[UIView alloc] initWithFrame:CGRectZero];
+    container.backgroundColor = UIColor.clearColor;
+    container.layoutMargins = UIEdgeInsetsMake(0.0, PPScreenMargin + 2.0, 0.0, PPScreenMargin + 2.0);
+    container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectZero];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.text = title;
+    label.font = [GM boldFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    label.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.76] ?: [UIColor secondaryLabelColor];
+    label.textAlignment = [Language alignmentForCurrentLanguage];
+    label.numberOfLines = 1;
+    label.adjustsFontForContentSizeCategory = YES;
+    label.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [container addSubview:label];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [label.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
+        [label.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
+        [label.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-6.0]
+    ]];
+
+    return container;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+{
+    if (section < 0 || section >= (NSInteger)self.sections.count) return CGFLOAT_MIN;
+    return self.sections[section].headerTitle.length > 0 ? 44.0 : CGFLOAT_MIN;
 }
 
 - (UITableViewCell *)pp_navigationCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
@@ -1047,8 +1225,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (void)pp_confirmDeleteAccount
 {
-    NSString *title = kLang(@"delete_account") ?: @"Delete Account";
-    NSString *message = kLang(@"delete_account_warning") ?: @"This will permanently delete your account and all associated data. This action cannot be undone.";
+    NSString *title = PPSettingsLocalizedString(@"delete_account", @"Delete Account");
+    NSString *message = PPSettingsLocalizedString(@"delete_account_warning", @"This will permanently delete your account and remove access to your Pure Pets data. This action cannot be undone.");
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
                                                                   message:message
@@ -1075,33 +1253,79 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (void)pp_executeAccountDeletion
 {
+    FIRUser *authUser = [FIRAuth auth].currentUser;
+    if (!authUser.uid.length) {
+        [PPHUD showError:PPSettingsLocalizedString(@"delete_account_failed", @"Could not delete account")
+                subtitle:PPSettingsLocalizedString(@"delete_account_sign_in_required_message", @"Please sign in again, then return to Settings and delete your account.")
+                   delay:2.6];
+        return;
+    }
+
+    [self pp_executeAccountDeletionForcingSessionRefresh:YES didRetryAuth:NO];
+}
+
+- (void)pp_executeAccountDeletionForcingSessionRefresh:(BOOL)forceSessionRefresh
+                                          didRetryAuth:(BOOL)didRetryAuth
+{
     [PPHUD showIndeterminateIn:self.view
-                         title:(kLang(@"deleting_account") ?: @"Deleting account…")
+                         title:PPSettingsLocalizedString(@"deleting_account", @"Deleting account...")
                       subtitle:nil];
 
-    FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
     __weak typeof(self) weakSelf = self;
-    [[functions HTTPSCallableWithName:@"deleteUserAccount"]
-     callWithObject:@{}
-     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceSessionRefresh completion:^(NSError * _Nullable authError) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
 
-            [PPHUD dismiss];
+        if (authError) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [PPHUD dismiss];
+                [strongSelf pp_presentAccountDeletionFailureForError:authError];
+            });
+            return;
+        }
 
-            if (error) {
-                NSLog(@"[SettingVC] Delete account failed: %@", error.localizedDescription);
-                [PPHUD showError:(kLang(@"delete_account_failed") ?: @"Failed to delete account")
-                        subtitle:error.localizedDescription];
-                return;
-            }
+        FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
+        [[functions HTTPSCallableWithName:@"deleteUserAccount"]
+         callWithObject:@{}
+         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
 
-            [UserManager.sharedManager logoutAndClearAll];
-            [GM logoutFromConroller:strongSelf];
-            [PPHUD showSuccess:(kLang(@"account_deleted") ?: @"Account deleted")];
-        });
+                if (error) {
+                    NSLog(@"[SettingVC] Delete account failed: %@", error.localizedDescription ?: error);
+                    if (!didRetryAuth &&
+                        !PPSettingsDeleteAccountErrorRequiresRecentLogin(error) &&
+                        [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                        [strongSelf pp_executeAccountDeletionForcingSessionRefresh:YES didRetryAuth:YES];
+                        return;
+                    }
+
+                    [PPHUD dismiss];
+                    [strongSelf pp_presentAccountDeletionFailureForError:error];
+                    return;
+                }
+
+                [PPHUD dismiss];
+                [PPHUD showSuccess:PPSettingsLocalizedString(@"account_deleted", @"Account deleted")];
+                [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable signOutError) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (signOutError) {
+                            NSLog(@"[SettingVC] Account deleted, but local sign-out reported: %@", signOutError.localizedDescription ?: signOutError);
+                        }
+                        [strongSelf pp_finishLocalLogoutAndReloadUI];
+                    });
+                }];
+            });
+        }];
     }];
+}
+
+- (void)pp_presentAccountDeletionFailureForError:(NSError *)error
+{
+    [PPHUD showError:PPSettingsLocalizedString(@"delete_account_failed", @"Could not delete account")
+            subtitle:PPSettingsDeleteAccountFailureMessage(error)
+               delay:2.6];
 }
 
 #pragma mark - Logout
@@ -1109,13 +1333,80 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 - (void)pp_confirmLogout
 {
     __weak typeof(self) weakSelf = self;
-    [GM showDeleteConfirmationFrom:self
-                             title:(kLang(@"Logout") ?: @"Logout")
-                           message:(kLang(@"LogoutMessage") ?: @"Are you sure you want to log out?")
-                        completion:^(BOOL confirmed) {
-        if (!confirmed) return;
-        [GM logoutFromConroller:weakSelf];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:PPSettingsLocalizedString(@"Logout", @"Logout")
+                                                                   message:PPSettingsLocalizedString(@"LogoutMessage", @"Are you sure you want to log out?")
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:PPSettingsLocalizedString(@"cancel", @"Cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:PPSettingsLocalizedString(@"Logout", @"Logout")
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction *action) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf pp_performLogout];
+    }]];
+
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)pp_performLogout
+{
+    [PPHUD showIndeterminateIn:self.view
+                         title:PPSettingsLocalizedString(@"logging_out", @"Logging out...")
+                      subtitle:nil];
+
+    __weak typeof(self) weakSelf = self;
+    [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            [PPHUD dismiss];
+
+            if (error) {
+                NSLog(@"[SettingVC] Logout failed: %@", error.localizedDescription ?: error);
+                [PPHUD showError:PPSettingsLocalizedString(@"logout_failed", @"Could not log out")
+                        subtitle:PPSettingsLogoutFailureMessage(error)
+                           delay:2.4];
+                return;
+            }
+
+            [strongSelf pp_finishLocalLogoutAndReloadUI];
+        });
     }];
+}
+
+- (void)pp_finishLocalLogoutAndReloadUI
+{
+    [UserManager.sharedManager logoutAndClearAll];
+    [self pp_reloadRootControllerAfterLogout];
+}
+
+- (void)pp_reloadRootControllerAfterLogout
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *window = [self pp_keyWindow];
+        if (!window) return;
+
+        UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+        UIViewController *newRoot = [[PPRootTabBarController alloc] init];
+        if (!newRoot) return;
+
+        newRoot.view.semanticContentAttribute = semantic;
+        window.semanticContentAttribute = semantic;
+
+        [UIView transitionWithView:window
+                          duration:0.32
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                        animations:^{
+            BOOL old = [UIView areAnimationsEnabled];
+            [UIView setAnimationsEnabled:NO];
+            window.rootViewController = newRoot;
+            [window makeKeyAndVisible];
+            [UIView setAnimationsEnabled:old];
+        } completion:nil];
+    });
 }
 
 #pragma mark - Language Reload

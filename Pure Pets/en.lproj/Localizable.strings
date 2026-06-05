@@ -1690,6 +1690,8 @@
 "Message…" = "Message…";
 "SimilarAaccess" = "You May Also Need"; //Accessories for This Pet";
 "New Message" = "New Message";
+"chat_notification_file" = "File";
+"chat_notification_accessibility_hint" = "Open this chat.";
 "empty_chats_title" = "No conversations yet";
 "empty_chats_subtitle" = "Start chatting with pet owners and sellers.";
 "empty_chats_button" = "Start a chat";
@@ -2414,7 +2416,23 @@
 "Loading"                   = "Loading";
 
 "delete_account" = "Delete Account";
+"delete_account_warning" = "This will permanently delete your account and remove access to your Pure Pets data. This action cannot be undone.";
+"deleting_account" = "Deleting account...";
+"account_deleted" = "Account deleted";
+"delete_account_failed" = "Could not delete account";
+"delete_account_failed_message" = "We could not delete your account right now. Please try again in a moment.";
+"delete_account_recent_login_title" = "Sign in again to delete account";
+"delete_account_recent_login_message" = "We could not verify this account deletion request. Please try deleting your account again.";
+"delete_account_session_verify_message" = "We could not verify this account deletion request. Please try deleting your account again.";
+"delete_account_sign_out_action" = "Log Out";
+"delete_account_offline_message" = "Please check your connection, then try deleting your account again.";
+"delete_account_device_verification_message" = "We could not verify this device right now. Please try again.";
+"delete_account_sign_in_required_message" = "Please sign in again, then return to Settings and delete your account.";
+"delete_account_permission_denied_message" = "We could not verify this account deletion request. Please sign in again and retry.";
 "Logout" = "Logout";
+"logging_out" = "Logging out...";
+"logout_failed" = "Could not log out";
+"logout_failed_message" = "We could not log you out right now. Please try again.";
 "Add" = "Add";
 "pet_profiles_title" = "Pet Profiles";
 "pet_profiles_subtitle" = "Manage your pets, vaccines, and defaults";

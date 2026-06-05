@@ -24,6 +24,7 @@ static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 #import "UserManager.h"
 #import "UserModel.h"
 #import "PPFirebaseSessionBridge.h"
+#import "PPInAppChatNotificationPresenter.h"
 
 static NSDate *PPThreadActivityDate(ChatThreadModel *thread) {
     if (![thread isKindOfClass:ChatThreadModel.class]) {
@@ -135,6 +136,9 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 - (void)pp_openSupportChatViaFirestoreFallbackWithSupportUser:(UserModel *)supportUser
                                                    customerID:(NSString *)customerID
                                                    completion:(void (^)(ChatThreadModel * _Nullable thread, NSError * _Nullable error))completion;
+- (void)pp_presentForegroundChatNotificationForThreadID:(NSString *)threadID
+                                                message:(ChatMessageModel *)message
+                                         receiverUserID:(NSString *)receiverUserID;
 
 @end
 
@@ -708,6 +712,65 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
+- (void)pp_presentForegroundChatNotificationForThreadID:(NSString *)threadID
+                                                message:(ChatMessageModel *)message
+                                         receiverUserID:(NSString *)receiverUserID
+{
+    if (threadID.length == 0 || !message) {
+        return;
+    }
+
+    if (receiverUserID.length > 0 &&
+        message.senderID.length > 0 &&
+        [message.senderID isEqualToString:receiverUserID]) {
+        return;
+    }
+
+    if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive ||
+        self.isHandlingNotificationHandoff ||
+        [self.mutedThreadIDsStorage containsObject:threadID] ||
+        (self.activeThreadID.length && [self.activeThreadID isEqualToString:threadID])) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [ChManager fetchThreadWithID:threadID completion:^(ChatThreadModel * _Nullable thread) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || !thread) {
+                return;
+            }
+
+            if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive ||
+                strongSelf.isHandlingNotificationHandoff ||
+                [strongSelf.mutedThreadIDsStorage containsObject:threadID] ||
+                (strongSelf.activeThreadID.length && [strongSelf.activeThreadID isEqualToString:threadID])) {
+                return;
+            }
+
+            NSMutableDictionary<NSString *, id> *userInfo = [@{
+                @"type": @"chat",
+                @"threadID": threadID,
+                @"threadId": threadID
+            } mutableCopy];
+
+            if (message.ID.length > 0) {
+                userInfo[@"messageID"] = message.ID;
+                userInfo[@"messageId"] = message.ID;
+            }
+            if (message.senderID.length > 0) {
+                userInfo[@"senderID"] = message.senderID;
+                userInfo[@"senderId"] = message.senderID;
+            }
+
+            [[PPInAppChatNotificationPresenter sharedPresenter]
+             showChatNotificationForThread:thread
+                                    message:message
+                                   userInfo:userInfo.copy];
+        });
+    }];
+}
+
 
 
 - (void)startGlobalIncomingMessageListenerForUser:(NSString *)userID
@@ -823,6 +886,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
                 NSLog(@"🔔 [GlobalIncoming] Sound fired");
                 [ChManager playIncomingMessageFeedback];
+                ChatMessageModel *message =
+                    [[ChatMessageModel alloc] initWithDictionary:change.document.data ?: @{}];
+                if (message.ID.length == 0) {
+                    message.ID = messageID;
+                }
+                [strongSelf pp_presentForegroundChatNotificationForThreadID:threadID
+                                                                    message:message
+                                                             receiverUserID:resolvedUserID];
             }
         }
 

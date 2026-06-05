@@ -672,7 +672,23 @@
 "Add Item" = "أضف";
 "Add" = "أضف";
 "delete_account" = "حذف الحساب";
+"delete_account_warning" = "سيتم حذف حسابك نهائياً وإزالة الوصول إلى بياناتك في Pure Pets. لا يمكن التراجع عن هذا الإجراء.";
+"deleting_account" = "جارٍ حذف الحساب...";
+"account_deleted" = "تم حذف الحساب";
+"delete_account_failed" = "تعذر حذف الحساب";
+"delete_account_failed_message" = "تعذر حذف حسابك حالياً. حاول مرة أخرى بعد قليل.";
+"delete_account_recent_login_title" = "سجّل الدخول مرة أخرى لحذف الحساب";
+"delete_account_recent_login_message" = "تعذر التحقق من طلب حذف الحساب. حاول حذف حسابك مرة أخرى.";
+"delete_account_session_verify_message" = "تعذر التحقق من طلب حذف الحساب. حاول حذف حسابك مرة أخرى.";
+"delete_account_sign_out_action" = "تسجيل الخروج";
+"delete_account_offline_message" = "تحقق من اتصالك، ثم حاول حذف حسابك مرة أخرى.";
+"delete_account_device_verification_message" = "تعذر التحقق من هذا الجهاز حالياً. حاول مرة أخرى.";
+"delete_account_sign_in_required_message" = "يرجى تسجيل الدخول مرة أخرى، ثم الرجوع إلى الإعدادات وحذف حسابك.";
+"delete_account_permission_denied_message" = "تعذر التحقق من طلب حذف الحساب. يرجى تسجيل الدخول مرة أخرى والمحاولة.";
 "Logout" = "تسجيل خروج";
+"logging_out" = "جارٍ تسجيل الخروج...";
+"logout_failed" = "تعذر تسجيل الخروج";
+"logout_failed_message" = "تعذر تسجيل خروجك حالياً. حاول مرة أخرى.";
 "Tap to set" = "تعيين علي الخريطة";
 "unsaved_changes_title" = "تغييرات غير محفوظة" ;
 "leave_button" = "مغادرة" ;
@@ -1640,6 +1656,8 @@
 "Message…" = "رسالة ...";
 "SimilarAaccess" = "قد تحتاج أيضًا";
 "New Message" = "رسالة جديدة";
+"chat_notification_file" = "ملف";
+"chat_notification_accessibility_hint" = "افتح هذه المحادثة.";
 
 
 /* ========================= */

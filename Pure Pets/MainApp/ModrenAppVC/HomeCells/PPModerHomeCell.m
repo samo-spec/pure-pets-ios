@@ -392,8 +392,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
     CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
-    self.imagePlateWidthConstraint.constant = (isAll ? 48.0 : 52.0) * scale;
-    self.imagePlateHeightConstraint.constant = (isAll ? 48.0 : 52.0) * scale;
+    self.imagePlateWidthConstraint.constant = (isAll ? 48.0 : 48.0) * scale;
+    self.imagePlateHeightConstraint.constant = (isAll ? 48.0 : 48.0) * scale;
     self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
     self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
 }
@@ -444,8 +444,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
     BOOL isAll = self.isAllOption;
     self.bottomGlowLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.34].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.08 : 0.16].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.38].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.08 : 0.19].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
     ];
 }
