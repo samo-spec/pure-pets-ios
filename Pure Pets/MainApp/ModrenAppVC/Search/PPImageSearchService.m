@@ -16,11 +16,36 @@
 
 @implementation PPImageSearchService
 
-static const CGFloat PPImageSearchInitialMaxSide = 720.0;
-static const CGFloat PPImageSearchMinimumMaxSide = 480.0;
-static const CGFloat PPImageSearchInitialJPEGQuality = 0.68;
-static const CGFloat PPImageSearchMinimumJPEGQuality = 0.44;
-static const NSUInteger PPImageSearchMaxBase64Length = 880000;
+static const CGFloat PPImageSearchInitialMaxSide = 1024.0;
+static const CGFloat PPImageSearchMinimumMaxSide = 512.0;
+static const CGFloat PPImageSearchInitialJPEGQuality = 0.72;
+static const CGFloat PPImageSearchMinimumJPEGQuality = 0.48;
+static const NSUInteger PPImageSearchMaxBase64Length = 1100000;
+static const NSInteger PPImageSearchFunctionsErrorCodeResourceExhausted = 8;
+
+static NSString *PPImageSearchDisplayMessageForError(NSError *error)
+{
+    NSString *rawMessage = error.localizedDescription ?: @"";
+    NSString *normalized = rawMessage.lowercaseString;
+    BOOL isRawInternal =
+        [normalized isEqualToString:@"internal"] ||
+        [normalized containsString:@"internal error"] ||
+        [normalized containsString:@"image understanding"] ||
+        [normalized containsString:@"gemini"] ||
+        [normalized containsString:@"api key"] ||
+        error.code == FIRFunctionsErrorCodeInternal ||
+        error.code == FIRFunctionsErrorCodeFailedPrecondition ||
+        error.code == FIRFunctionsErrorCodeUnavailable ||
+        error.code == FIRFunctionsErrorCodeDeadlineExceeded ||
+        error.code == PPImageSearchFunctionsErrorCodeResourceExhausted;
+
+    if (isRawInternal) {
+        NSString *message = kLang(@"ImageSearchServiceUnavailable");
+        return message.length > 0 ? message : kLang(@"ImageSearchError");
+    }
+
+    return rawMessage.length > 0 ? rawMessage : kLang(@"ImageSearchError");
+}
 
 + (instancetype)shared {
     static PPImageSearchService *sharedInstance = nil;
@@ -148,7 +173,14 @@ static const NSUInteger PPImageSearchMaxBase64Length = 880000;
                                                   NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
-                if (completion) { completion(nil, error); }
+                NSString *message = PPImageSearchDisplayMessageForError(error);
+                NSMutableDictionary *userInfo = [NSMutableDictionary dictionaryWithDictionary:error.userInfo ?: @{}];
+                userInfo[NSLocalizedDescriptionKey] = message ?: @"";
+                userInfo[NSUnderlyingErrorKey] = error;
+                NSError *displayError = [NSError errorWithDomain:@"PPImageSearchService"
+                                                            code:error.code
+                                                        userInfo:userInfo.copy];
+                if (completion) { completion(nil, displayError); }
                 return;
             }
 

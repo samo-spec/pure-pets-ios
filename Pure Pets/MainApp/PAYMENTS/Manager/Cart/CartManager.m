@@ -18,7 +18,11 @@
 @property (nonatomic, assign, readwrite) double deliveryFee;
 @property (nonatomic, assign, readwrite) BOOL cashOnDeliveryEnabled;
 @property (nonatomic, assign, readwrite) BOOL onlinePaymentEnabled;
+@property (nonatomic, assign, readwrite) BOOL applePayEnabled;
+@property (nonatomic, assign, readwrite) BOOL ooredooMoneyEnabled;
+@property (nonatomic, assign, readwrite) BOOL napsEnabled;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> pricingListener;
 
 @end
 @implementation CartManager
@@ -30,6 +34,9 @@
         _deliveryFee = 22.0;
         _cashOnDeliveryEnabled = YES;
         _onlinePaymentEnabled = YES;
+        _applePayEnabled = YES;
+        _ooredooMoneyEnabled = YES;
+        _napsEnabled = YES;
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(pp_handleAppDidBecomeActiveNotification:)
                                                      name:UIApplicationDidBecomeActiveNotification
@@ -83,12 +90,15 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
 
 - (void)refreshPricingConfiguration
 {
+    if (self.pricingListener) {
+        return;
+    }
     FIRDocumentReference *settingsRef = [[[FIRFirestore firestore] collectionWithPath:@"CommerceConfig"]
                                          documentWithPath:@"payments"];
     __weak typeof(self) weakSelf = self;
-    [settingsRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    self.pricingListener = [settingsRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[Cart] ⚠️ Pricing config fetch failed: %@", error.localizedDescription);
+            NSLog(@"[Cart] ⚠️ Pricing config live listen failed: %@", error.localizedDescription);
             [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartPricingFetch];
             return;
         }
@@ -102,14 +112,23 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     double nextDeliveryFee = PPCartNormalizedDeliveryFee(data[@"deliveryFee"], self.deliveryFee > 0.0 ? self.deliveryFee : 22.0);
     BOOL nextCashEnabled = PPCartBoolOrDefault(data[@"cashOnDeliveryEnabled"], YES);
     BOOL nextOnlineEnabled = PPCartBoolOrDefault(data[@"onlinePaymentEnabled"], YES);
+    BOOL nextAppleEnabled = PPCartBoolOrDefault(data[@"applePayEnabled"], YES);
+    BOOL nextOoredooEnabled = PPCartBoolOrDefault(data[@"ooredooMoneyEnabled"], YES);
+    BOOL nextNapsEnabled = PPCartBoolOrDefault(data[@"napsEnabled"], YES);
 
     BOOL changed = (fabs(self.deliveryFee - nextDeliveryFee) > 0.009) ||
                    (self.cashOnDeliveryEnabled != nextCashEnabled) ||
-                   (self.onlinePaymentEnabled != nextOnlineEnabled);
+                   (self.onlinePaymentEnabled != nextOnlineEnabled) ||
+                   (self.applePayEnabled != nextAppleEnabled) ||
+                   (self.ooredooMoneyEnabled != nextOoredooEnabled) ||
+                   (self.napsEnabled != nextNapsEnabled);
 
     self.deliveryFee = nextDeliveryFee;
     self.cashOnDeliveryEnabled = nextCashEnabled;
     self.onlinePaymentEnabled = nextOnlineEnabled;
+    self.applePayEnabled = nextAppleEnabled;
+    self.ooredooMoneyEnabled = nextOoredooEnabled;
+    self.napsEnabled = nextNapsEnabled;
 
     if (changed) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kCartPricingConfigurationDidChangeNotification object:nil];
@@ -725,12 +744,16 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
 - (void)stopListeningToCartChanges {
     [self.cartListener remove];
     self.cartListener = nil;
+    [self.pricingListener remove];
+    self.pricingListener = nil;
 }
 
 - (void)dealloc
 {
     [self.cartListener remove];
     self.cartListener = nil;
+    [self.pricingListener remove];
+    self.pricingListener = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIApplicationDidBecomeActiveNotification
                                                   object:nil];

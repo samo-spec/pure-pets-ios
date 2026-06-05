@@ -1898,6 +1898,9 @@
 "auth_register_required_title" = "Please Register";
 "payment_qib_gateway_desc" = "Pay securely via QIB gateway";
 "payment_cash_delivery_desc" = "Pay when you receive your order";
+"payment_applepay_desc" = "Secure payment using Apple Pay.";
+"payment_ooredoo_desc" = "Pay using your Ooredoo Money wallet.";
+"payment_naps_desc" = "Pay using NAPS debit card.";
 "payment_header_pay_through" = "Pay through";
 "payment_screen_eyebrow" = "Secure checkout";
 "payment_screen_title" = "Choose your payment method";
@@ -2895,6 +2898,7 @@
 "listing_visible_success" = "Visible in public browsing.";
 "listing_visibility_failed" = "Could not update visibility. Please try again.";
 "ImageSearchError" = "Image search failed. Please try again.";
+"ImageSearchServiceUnavailable" = "Image search is temporarily unavailable. Please try again.";
 "ImageSearchImageRequired" = "Please choose an image first.";
 "ImageSearchCompressionFailed" = "We couldn't prepare this image. Please try another photo.";
 "ImageSearchImageTooLarge" = "This image is too large. Please try a smaller photo.";
@@ -2914,5 +2918,6 @@
 "ImageSearchHeroResultsSubtitleFormat" = "%ld visual matches from your photo.";
 "ImageSearchLoadingTitle" = "Searching your photo";
 "ImageSearchLoadingSubtitle" = "Matching visual details with live Pure Pets listings.";
+"ImageSearchDetectedSubtitle" = "AI detected in your photo";
 
 "UnableToLoadDetails" = "Unable to load details.";

@@ -26,6 +26,7 @@
 #import "ServiceModel.h"
 #import "PPPermissionHelper.h"
 #import "PPImageSearchService.h"
+#import "PPNovaChatViewController.h"
 
 typedef NS_ENUM(NSUInteger, PPSearchSection) {
     PPSearchSectionResults = 0
@@ -71,6 +72,8 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) UIImageView *searchFieldIconView;
 @property (nonatomic, strong) UITextField *searchTextField;
 @property (nonatomic, strong) UILabel *searchPlaceholderLabel;
+@property (nonatomic, strong) UIView *bottomSearchFadeView;
+@property (nonatomic, strong) CAGradientLayer *bottomSearchFadeLayer;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 
@@ -85,7 +88,6 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *heroMeshLayer;
 @property (nonatomic, strong) CAGradientLayer *heroShineLayer;
-@property (nonatomic, strong) UIView *heroNoiseView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -97,6 +99,7 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) UILabel *scopePillLabel;
 @property (nonatomic, strong) UILabel *countPillLabel;
 @property (nonatomic, strong) UILabel *queryPillLabel;
+@property (nonatomic, strong) UIButton *novaNavigationButton;
 
 @property (nonatomic, assign) PPSearchSegment selectedSearchSegment;
 @property (nonatomic, strong) UIView *segmentGlassView;
@@ -161,11 +164,12 @@ UINavigationControllerDelegate>
     [self setupSearch];
     [self setupHeroHeader];
     [self setupCollectionView];
+    [self setupBottomSearchFade];
     [self setupDataSource];
     [self setupSearchSegment];
     [self setupEmptyState];
     [self setupImageSearchLoadingState];
-    [self.view bringSubviewToFront:self.searchBarContainerView];
+    [self pp_updateSearchLayering];
     [self warmUpSearchCacheIfNeeded];
     [self updateHeaderStateAnimated:NO];
     [self updateEmptyState];
@@ -239,6 +243,8 @@ UINavigationControllerDelegate>
 {
     [super viewDidLayoutSubviews];
 
+    [self pp_applyPremiumHeroBackgroundStyle];
+
     CGRect heroBounds = self.heroCardView.bounds;
     // Use screen-based fallback if hero hasn't been laid out yet (first pass)
     CGFloat gradientW = heroBounds.size.width;
@@ -262,6 +268,24 @@ UINavigationControllerDelegate>
     self.imageSearchLoadingOrbView.layer.cornerRadius = CGRectGetWidth(self.imageSearchLoadingOrbView.bounds) * 0.5;
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
+    [self pp_updateBottomSearchFadeLayer];
+    [self pp_updateSearchLayering];
+
+    [self.view bringSubviewToFront:self.searchBarContainerView];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if (previousTraitCollection.userInterfaceStyle != self.traitCollection.userInterfaceStyle) {
+            [self pp_applyPremiumHeroBackgroundStyle];
+            [self pp_updateBottomSearchFadeLayer];
+            [self pp_updateSegmentButtonsSelectionAnimated:NO];
+            [self pp_applyNovaNavigationButtonStyle];
+            [self updateHeaderStateAnimated:NO];
+        }
+    }
 }
 
 - (void)dealloc
@@ -287,7 +311,7 @@ UINavigationControllerDelegate>
 - (void)pp_keyboardWillHide:(NSNotification *)notification
 {
     self.searchBarBottomConstraint.active = NO;
-    self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:16.0];
+    self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:26.0];
     self.searchBarBottomConstraint.active = YES;
 }
 
@@ -385,9 +409,20 @@ UINavigationControllerDelegate>
 
     self.primaryGlowView = primaryGlow;
     self.secondaryGlowView = secondaryGlow;
+    [self pp_sendBackdropGlowsToBack];
     // Start hidden — animateHeroIfNeeded fades them in with breathing
     primaryGlow.alpha = 0.0;
     secondaryGlow.alpha = 0.0;
+}
+
+- (void)pp_sendBackdropGlowsToBack
+{
+    if (self.secondaryGlowView.superview == self.view) {
+        [self.view sendSubviewToBack:self.secondaryGlowView];
+    }
+    if (self.primaryGlowView.superview == self.view) {
+        [self.view sendSubviewToBack:self.primaryGlowView];
+    }
 }
 
 - (void)BackToMain
@@ -435,6 +470,153 @@ UINavigationControllerDelegate>
         ]];
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:dismissBtn];
     }
+
+    UIButton *novaBtn = [self pp_makeNovaNavigationButton];
+    self.novaNavigationButton = novaBtn;
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:novaBtn];
+    [self pp_applyNovaNavigationButtonStyle];
+}
+
+- (UIButton *)pp_makeNovaNavigationButton
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.adjustsImageWhenHighlighted = NO;
+    button.showsTouchWhenHighlighted = NO;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    button.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    button.titleLabel.font = [self pp_novaNavigationTitleFont];
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.82;
+    button.accessibilityLabel = kLang(@"nova_title");
+    button.accessibilityHint = kLang(@"nova_subtitle");
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+
+    button.contentEdgeInsets = UIEdgeInsetsZero;
+    button.titleEdgeInsets = UIEdgeInsetsZero;
+    button.imageEdgeInsets = UIEdgeInsetsZero;
+
+    button.layer.cornerRadius = 18.0;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.layer.borderWidth = 1.0;
+    button.layer.masksToBounds = NO;
+
+    [button addTarget:self action:@selector(pp_novaNavigationButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_novaNavigationButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_novaNavigationButtonTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
+    [button addTarget:self action:@selector(pp_novaNavigationButtonTouchUp:) forControlEvents:UIControlEventTouchCancel];
+    [button addTarget:self action:@selector(pp_novaNavigationButtonTouchUp:) forControlEvents:UIControlEventTouchDragExit];
+    [button addTarget:self action:@selector(pp_novaButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    [button setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [button setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [NSLayoutConstraint activateConstraints:@[
+        [button.widthAnchor constraintEqualToConstant:36.0],
+        [button.heightAnchor constraintEqualToConstant:36.0]
+    ]];
+
+    return button;
+}
+
+- (UIFont *)pp_novaNavigationTitleFont
+{
+    return [GM BlackFontWithSize:16.0] ?: [GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBlack];
+}
+
+- (NSAttributedString *)pp_novaNavigationAttributedTitleWithColor:(UIColor *)color alpha:(CGFloat)alpha
+{
+    UIColor *resolvedColor = color ?: (AppPrimaryClr ?: UIColor.systemPinkColor);
+    UIFont *font = [self pp_novaNavigationTitleFont];
+    NSDictionary *attributes = @{
+        NSFontAttributeName: font,
+        NSForegroundColorAttributeName: [resolvedColor colorWithAlphaComponent:alpha]
+    };
+    return [[NSAttributedString alloc] initWithString:@"N" attributes:attributes];
+}
+
+- (void)pp_applyNovaNavigationButtonStyle
+{
+    UIButton *button = self.novaNavigationButton;
+    if (!button) {
+        return;
+    }
+
+    UIColor *foreground = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *background = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    UIColor *stroke = [foreground colorWithAlphaComponent:0.18];
+    UIColor *shadow = UIColor.blackColor;
+    if (@available(iOS 13.0, *)) {
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            background = [foreground colorWithAlphaComponent:0.12];
+            stroke = [foreground colorWithAlphaComponent:0.28];
+        }
+    }
+
+    button.titleLabel.font = [self pp_novaNavigationTitleFont];
+    button.backgroundColor = background;
+    button.tintColor = foreground;
+    [button setAttributedTitle:[self pp_novaNavigationAttributedTitleWithColor:foreground alpha:1.0]
+                      forState:UIControlStateNormal];
+    [button setAttributedTitle:[self pp_novaNavigationAttributedTitleWithColor:foreground alpha:0.62]
+                      forState:UIControlStateHighlighted];
+    [button setTitleColor:foreground forState:UIControlStateNormal];
+    [button setTitleColor:[foreground colorWithAlphaComponent:0.62] forState:UIControlStateHighlighted];
+    [button pp_setBorderColor:stroke];
+    [button pp_setShadowColor:shadow];
+    button.layer.shadowOpacity = 0.10f;
+    button.layer.shadowRadius = 10.0f;
+    button.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+}
+
+- (void)pp_novaButtonTapped
+{
+    [self.view endEditing:YES];
+    [PPFunc triggerLightHaptic];
+    [PPNovaChatViewController presentNovaFromViewController:self];
+}
+
+- (void)pp_novaNavigationButtonTouchDown:(UIButton *)button
+{
+    if (!button || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [UIView animateWithDuration:0.14
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.965, 0.965);
+        button.layer.shadowOpacity = 0.06f;
+        button.layer.shadowRadius = 6.0f;
+    } completion:nil];
+}
+
+- (void)pp_novaNavigationButtonTouchUp:(UIButton *)button
+{
+    if (!button) {
+        return;
+    }
+
+    void (^updates)(void) = ^{
+        button.transform = CGAffineTransformIdentity;
+        button.layer.shadowOpacity = 0.10f;
+        button.layer.shadowRadius = 10.0f;
+    };
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.78
+          initialSpringVelocity:0.42
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:updates
+                     completion:nil];
 }
 
 - (void)pp_dismissTapped
@@ -473,7 +655,16 @@ UINavigationControllerDelegate>
     NSString *placeholderText = [self pp_modernSearchPlaceholderText];
     UIView *chromeView = [UIView new];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
-    chromeView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.96];
+    if (@available(iOS 13.0, *)) {
+        chromeView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [[UIColor colorWithRed:0.10 green:0.08 blue:0.11 alpha:1.0] colorWithAlphaComponent:0.96];
+            }
+            return [[UIColor whiteColor] colorWithAlphaComponent:0.96];
+        }];
+    } else {
+        chromeView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.96];
+    }
     //chromeView.semanticContentAttribute = semanticAttribute;
     chromeView.layer.cornerRadius = 20.0;
     chromeView.layer.masksToBounds = NO;
@@ -540,19 +731,21 @@ UINavigationControllerDelegate>
     UIButton *cameraButton = [UIButton buttonWithType:UIButtonTypeSystem];
     cameraButton.translatesAutoresizingMaskIntoConstraints = NO;
     UIImageSymbolConfiguration *cameraCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
-    [cameraButton setImage:[UIImage systemImageNamed:@"camera.fill" withConfiguration:cameraCfg]
+        [self pp_imageSearchCameraSymbolConfigurationWithPointSize:22.0
+                                                            weight:UIImageSymbolWeightSemibold];
+    [cameraButton setPreferredSymbolConfiguration:cameraCfg forImageInState:UIControlStateNormal];
+    [cameraButton setImage:[self pp_imageSearchCameraSymbolWithConfiguration:cameraCfg]
                   forState:UIControlStateNormal];
     cameraButton.tintColor = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
-    cameraButton.backgroundColor = [(AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0]) colorWithAlphaComponent:0.10];
-    cameraButton.layer.cornerRadius = 17.0;
+    cameraButton.backgroundColor = UIColor.clearColor;
+    cameraButton.layer.cornerRadius = 0.0;
     cameraButton.layer.masksToBounds = NO;
-    cameraButton.layer.borderWidth = 1.0;
-    [cameraButton pp_setBorderColor:[cameraButton.tintColor colorWithAlphaComponent:0.18]];
-    [cameraButton pp_setShadowColor:cameraButton.tintColor];
-    cameraButton.layer.shadowOpacity = 0.10f;
-    cameraButton.layer.shadowRadius = 10.0f;
-    cameraButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    cameraButton.layer.borderWidth = 0.0;
+    [cameraButton pp_setBorderColor:UIColor.clearColor];
+    [cameraButton pp_setShadowColor:UIColor.clearColor];
+    cameraButton.layer.shadowOpacity = 0.0f;
+    cameraButton.layer.shadowRadius = 0.0f;
+    cameraButton.layer.shadowOffset = CGSizeZero;
     cameraButton.accessibilityLabel = kLang(@"ImageSearchButtonAccessibilityLabel");
     cameraButton.accessibilityHint = kLang(@"ImageSearchButtonAccessibilityHint");
     cameraButton.accessibilityTraits = UIAccessibilityTraitButton;
@@ -569,7 +762,7 @@ UINavigationControllerDelegate>
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [container.heightAnchor constraintEqualToConstant:60.0],
+        [container.heightAnchor constraintEqualToConstant:64.0],
 
         [chromeView.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
         [chromeView.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
@@ -593,8 +786,8 @@ UINavigationControllerDelegate>
 
         [cameraButton.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-10.0],
         [cameraButton.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [cameraButton.widthAnchor constraintEqualToConstant:34.0],
-        [cameraButton.heightAnchor constraintEqualToConstant:34.0],
+        [cameraButton.widthAnchor constraintEqualToConstant:38.0],
+        [cameraButton.heightAnchor constraintEqualToConstant:38.0],
 
         [placeholderLabel.leadingAnchor constraintEqualToAnchor:textField.leadingAnchor],
         [placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:textField.trailingAnchor],
@@ -602,7 +795,7 @@ UINavigationControllerDelegate>
     ]];
 
     NSLayoutConstraint *bottomConstraint =
-        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
+        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:26.0];
     [constraints addObject:bottomConstraint];
     self.searchBarBottomConstraint = bottomConstraint;
 
@@ -614,7 +807,151 @@ UINavigationControllerDelegate>
     self.searchTextField = textField;
     self.searchPlaceholderLabel = placeholderLabel;
     self.imageSearchButton = cameraButton;
+    [self pp_applyImageSearchButtonSymbolEffectIfAvailable:cameraButton];
     [self pp_updateSearchPlaceholderVisibility];
+}
+
+- (UIColor *)pp_imageSearchSymbolColor
+{
+    return AppPrimaryClr ?: [UIColor colorWithRed:1.0 green:0.22 blue:0.42 alpha:1.0];
+}
+
+- (UIImageSymbolConfiguration *)pp_imageSearchCameraSymbolConfigurationWithPointSize:(CGFloat)pointSize
+                                                                              weight:(UIImageSymbolWeight)weight
+{
+    UIImageSymbolConfiguration *configuration =
+        [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];
+    UIColor *symbolColor = [self pp_imageSearchSymbolColor];
+
+    if (@available(iOS 15.0, *)) {
+        UIImageSymbolConfiguration *hierarchical =
+            [UIImageSymbolConfiguration configurationWithHierarchicalColor:symbolColor];
+        configuration = [configuration configurationByApplyingConfiguration:hierarchical];
+    }
+
+    if (@available(iOS 26.0, *)) {
+        UIImageSymbolConfiguration *gradient =
+            [UIImageSymbolConfiguration configurationWithColorRenderingMode:UIImageSymbolColorRenderingModeGradient];
+        configuration = [configuration configurationByApplyingConfiguration:gradient];
+    }
+
+    return configuration;
+}
+
+- (UIImage *)pp_imageSearchCameraSymbolWithConfiguration:(UIImageSymbolConfiguration *)configuration
+{
+    UIImage *image = [UIImage systemImageNamed:@"camera.viewfinder" withConfiguration:configuration];
+    return image ?: [UIImage systemImageNamed:@"camera.fill" withConfiguration:configuration];
+}
+
+- (void)pp_applyImageSearchButtonSymbolEffectIfAvailable:(UIButton *)button
+{
+    if (!button.imageView || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    if (@available(iOS 18.0, *)) {
+        Class wiggleClass = NSClassFromString(@"NSSymbolWiggleEffect");
+        if (![wiggleClass respondsToSelector:@selector(effect)]) {
+            return;
+        }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        id effect = [wiggleClass performSelector:@selector(effect)];
+#pragma clang diagnostic pop
+        if (effect) {
+            [button.imageView addSymbolEffect: [[NSSymbolWiggleEffect effect] effectWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
+        }
+    }
+}
+
+- (BOOL)pp_heroUsesDarkSurface
+{
+    if (@available(iOS 13.0, *)) {
+        return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+- (UIColor *)pp_heroPrimaryTextColor
+{
+    return [self pp_heroUsesDarkSurface]
+    ? [UIColor colorWithWhite:0.96 alpha:1.0]
+    : (AppPrimaryTextClr ?: UIColor.labelColor);
+}
+
+- (UIColor *)pp_heroSecondaryTextColor
+{
+    return [self pp_heroUsesDarkSurface]
+    ? [UIColor colorWithWhite:0.78 alpha:1.0]
+    : ([AppSecondaryTextClr colorWithAlphaComponent:0.78] ?: UIColor.secondaryLabelColor);
+}
+
+- (UIColor *)pp_heroPanelBackgroundColor
+{
+    return [self pp_heroUsesDarkSurface]
+    ? [UIColor colorWithWhite:1.0 alpha:0.055]
+    : [UIColor colorWithWhite:1.0 alpha:0.74];
+}
+
+- (UIColor *)pp_heroPanelBorderColor
+{
+    return [self pp_heroUsesDarkSurface]
+    ? [UIColor colorWithWhite:1.0 alpha:0.09]
+    : [UIColor colorWithWhite:0.0 alpha:0.055];
+}
+
+- (void)pp_applyPremiumHeroBackgroundStyle
+{
+    if (!self.heroCardView || !self.heroGradientLayer || !self.heroMeshLayer || !self.heroShineLayer) {
+        return;
+    }
+
+    BOOL dark = [self pp_heroUsesDarkSurface];
+    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
+    UIColor *surfaceTop = dark
+    ? [UIColor colorWithRed:0.085 green:0.088 blue:0.102 alpha:1.0]
+    : [UIColor colorWithRed:0.992 green:0.990 blue:0.984 alpha:1.0];
+    UIColor *surfaceMid = dark
+    ? [UIColor colorWithRed:0.108 green:0.112 blue:0.128 alpha:1.0]
+    : [UIColor colorWithRed:0.974 green:0.976 blue:0.972 alpha:1.0];
+    UIColor *surfaceBottom = dark
+    ? [UIColor colorWithRed:0.058 green:0.062 blue:0.074 alpha:1.0]
+    : [UIColor colorWithRed:0.930 green:0.938 blue:0.940 alpha:1.0];
+    UIColor *coolAccent = dark
+    ? [UIColor colorWithRed:0.34 green:0.48 blue:0.56 alpha:1.0]
+    : [UIColor colorWithRed:0.58 green:0.69 blue:0.72 alpha:1.0];
+
+    self.heroCardView.backgroundColor = surfaceMid;
+    [self.heroCardView pp_setBorderColor:[self pp_heroPanelBorderColor]];
+    [self.heroCardShadowView pp_setShadowColor:dark ? UIColor.blackColor : [UIColor colorWithRed:0.22 green:0.19 blue:0.20 alpha:1.0]];
+    self.heroCardShadowView.layer.shadowOpacity = dark ? 0.24f : 0.10f;
+    self.heroCardShadowView.layer.shadowRadius = dark ? 30.0f : 22.0f;
+    self.heroCardShadowView.layer.shadowOffset = CGSizeMake(0.0, dark ? 18.0 : 12.0);
+
+    self.heroGradientLayer.colors = @[
+        (id)surfaceTop.CGColor,
+        (id)surfaceMid.CGColor,
+        (id)surfaceBottom.CGColor
+    ];
+    self.heroMeshLayer.colors = @[
+        (id)[accent colorWithAlphaComponent:(dark ? 0.26 : 0.13)].CGColor,
+        (id)[coolAccent colorWithAlphaComponent:(dark ? 0.18 : 0.10)].CGColor,
+        (id)[UIColor clearColor].CGColor,
+        (id)[UIColor clearColor].CGColor
+    ];
+    self.heroShineLayer.colors = @[
+        (id)[UIColor colorWithWhite:1.0 alpha:(dark ? 0.10 : 0.72)].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:(dark ? 0.04 : 0.18)].CGColor,
+        (id)[UIColor clearColor].CGColor
+    ];
+
+    self.eyebrowLabel.textColor = accent;
+    self.heroTitleLabel.textColor = [self pp_heroPrimaryTextColor];
+    self.heroSubtitleLabel.textColor = [self pp_heroSecondaryTextColor];
+    self.heroCollapseToggleButton.tintColor = [[self pp_heroSecondaryTextColor] colorWithAlphaComponent:0.56];
+    self.segmentGlassView.backgroundColor = [self pp_heroPanelBackgroundColor];
+    [self.segmentGlassView pp_setBorderColor:[self pp_heroPanelBorderColor]];
 }
 
 - (void)setupHeroHeader
@@ -628,9 +965,9 @@ UINavigationControllerDelegate>
   //  heroShadowView.semanticContentAttribute = semanticAttribute;
     heroShadowView.layer.cornerRadius = PPCornerHero;
     [heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    heroShadowView.layer.shadowOpacity = 0.18f;
-    heroShadowView.layer.shadowRadius = 28.0f;
-    heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    heroShadowView.layer.shadowOpacity = 0.10f;
+    heroShadowView.layer.shadowRadius = 24.0f;
+    heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     if (@available(iOS 13.0, *)) {
         heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -641,44 +978,27 @@ UINavigationControllerDelegate>
     heroCard.layer.cornerRadius = PPCornerHero;
     heroCard.layer.masksToBounds = YES;
     heroCard.layer.borderWidth = 1.0;
-    [heroCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    [heroCard pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.06]];
     if (@available(iOS 13.0, *)) {
         heroCard.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     CAGradientLayer *gradient = [CAGradientLayer layer];
-    gradient.colors = @[
-        (id)[UIColor colorWithRed:0.14 green:0.07 blue:0.16 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.23 green:0.10 blue:0.19 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.34 green:0.16 blue:0.17 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.46 green:0.23 blue:0.16 alpha:1.0].CGColor
-    ];
-    gradient.locations = @[@0.0, @0.30, @0.72, @1.0];
-    gradient.startPoint = CGPointMake(0.0, 0.1);
-    gradient.endPoint = CGPointMake(1.0, 1.0);
+    gradient.locations = @[@0.0, @0.58, @1.0];
+    gradient.startPoint = CGPointMake(0.08, 0.0);
+    gradient.endPoint = CGPointMake(0.92, 1.0);
     [heroCard.layer insertSublayer:gradient atIndex:0];
 
     CAGradientLayer *mesh = [CAGradientLayer layer];
-    mesh.colors = @[
-        (id)[UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:0.26].CGColor,
-        (id)[UIColor colorWithRed:0.66 green:0.30 blue:0.40 alpha:0.18].CGColor,
-        (id)[UIColor clearColor].CGColor,
-        (id)[UIColor colorWithRed:0.18 green:0.28 blue:0.34 alpha:0.18].CGColor
-    ];
-    mesh.locations = @[@0.0, @0.28, @0.64, @1.0];
-    mesh.startPoint = CGPointMake(1.0, 0.0);
-    mesh.endPoint = CGPointMake(0.0, 1.0);
+    mesh.locations = @[@0.0, @0.36, @0.70, @1.0];
+    mesh.startPoint = CGPointMake(0.0, 0.0);
+    mesh.endPoint = CGPointMake(1.0, 1.0);
     [heroCard.layer insertSublayer:mesh above:gradient];
 
     CAGradientLayer *shine = [CAGradientLayer layer];
-    shine.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:0.22].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.05].CGColor,
-        (id)[UIColor clearColor].CGColor
-    ];
-    shine.locations = @[@0.0, @0.06, @0.20];
+    shine.locations = @[@0.0, @0.12, @0.34];
     shine.startPoint = CGPointMake(0.0, 0.0);
-    shine.endPoint = CGPointMake(0.0, 1.0);
+    shine.endPoint = CGPointMake(1.0, 0.62);
     [heroCard.layer insertSublayer:shine above:mesh];
 
     // Set initial gradient frames so they render on the first frame (before viewDidLayoutSubviews)
@@ -688,22 +1008,10 @@ UINavigationControllerDelegate>
     mesh.frame = initialGradientFrame;
     shine.frame = initialGradientFrame;
 
-    UIView *noiseView = [UIView new];
-    noiseView.translatesAutoresizingMaskIntoConstraints = NO;
-    noiseView.userInteractionEnabled = NO;
-    noiseView.backgroundColor = [UIColor colorWithPatternImage:[self pp_noiseImageWithSize:CGSizeMake(64, 64) opacity:0.028]];
-    [heroCard addSubview:noiseView];
-    [NSLayoutConstraint activateConstraints:@[
-        [noiseView.topAnchor constraintEqualToAnchor:heroCard.topAnchor],
-        [noiseView.leadingAnchor constraintEqualToAnchor:heroCard.leadingAnchor],
-        [noiseView.trailingAnchor constraintEqualToAnchor:heroCard.trailingAnchor],
-        [noiseView.bottomAnchor constraintEqualToAnchor:heroCard.bottomAnchor]
-    ]];
-
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrow.font = [GM boldFontWithSize:PPFontFootnote];
-    eyebrow.textColor = [UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:0.94];
+    eyebrow.textColor = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
     eyebrow.textAlignment = textAlignment;
     eyebrow.text = kLang(@"SearchHeroEyebrow");
 
@@ -712,7 +1020,7 @@ UINavigationControllerDelegate>
     UILabel *titleLabel = [UILabel new];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:31] ?: [UIFont systemFontOfSize:31.0 weight:UIFontWeightBold];
-    titleLabel.textColor = UIColor.whiteColor;
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.numberOfLines = 2;
     titleLabel.textAlignment = textAlignment;
     titleLabel.text = kLang(@"SearchHeroTitle");
@@ -720,7 +1028,7 @@ UINavigationControllerDelegate>
     UILabel *subtitleLabel = [UILabel new];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.76];
+    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78] ?: UIColor.secondaryLabelColor;
     subtitleLabel.numberOfLines = 3;
     subtitleLabel.textAlignment = textAlignment;
 
@@ -731,12 +1039,12 @@ UINavigationControllerDelegate>
     UIView *segmentRowView = [UIView new];
     segmentRowView.translatesAutoresizingMaskIntoConstraints = NO;
    // segmentRowView.semanticContentAttribute = semanticAttribute;
-    segmentRowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.05];
+    segmentRowView.backgroundColor = [self pp_heroPanelBackgroundColor];
     segmentRowView.layer.cornerRadius = 22.0;
     segmentRowView.layer.masksToBounds = NO;
     segmentRowView.clipsToBounds = NO;
     segmentRowView.layer.borderWidth = 1.0;
-    [segmentRowView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    [segmentRowView pp_setBorderColor:[self pp_heroPanelBorderColor]];
     if (@available(iOS 13.0, *)) {
         segmentRowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -812,7 +1120,7 @@ UINavigationControllerDelegate>
         [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
     [toggleButton setImage:[UIImage systemImageNamed:@"chevron.up" withConfiguration:toggleCfg]
                   forState:UIControlStateNormal];
-    toggleButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.35];
+    toggleButton.tintColor = [[self pp_heroSecondaryTextColor] colorWithAlphaComponent:0.56];
     [toggleButton addTarget:self action:@selector(heroCollapseToggleTapped) forControlEvents:UIControlEventTouchUpInside];
     [heroCard addSubview:toggleButton];
 
@@ -888,7 +1196,6 @@ UINavigationControllerDelegate>
     self.heroGradientLayer = gradient;
     self.heroMeshLayer = mesh;
     self.heroShineLayer = shine;
-    self.heroNoiseView = noiseView;
     self.eyebrowLabel = eyebrow;
     self.heroTitleLabel = titleLabel;
     self.heroSubtitleLabel = subtitleLabel;
@@ -911,6 +1218,7 @@ UINavigationControllerDelegate>
     self.heroSubtitleLabel.alpha = 0.0;
     self.segmentGlassView.alpha = 0.0;
     self.heroCollapseToggleButton.alpha = 0.0;
+    [self pp_applyPremiumHeroBackgroundStyle];
 }
 
 - (void)setupCollectionView
@@ -934,7 +1242,7 @@ UINavigationControllerDelegate>
     [collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:@"PPUniversalCell"];
 
     [self.view addSubview:collectionView];
-    [self.view sendSubviewToBack:collectionView];
+    [self pp_sendBackdropGlowsToBack];
     [NSLayoutConstraint activateConstraints:@[
         [collectionView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0],
         [collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -943,6 +1251,70 @@ UINavigationControllerDelegate>
     ]];
 
     self.collectionView = collectionView;
+}
+
+- (void)setupBottomSearchFade
+{
+    if (self.bottomSearchFadeView || !self.searchBarContainerView) {
+        return;
+    }
+
+    UIView *fadeView = [UIView new];
+    fadeView.translatesAutoresizingMaskIntoConstraints = NO;
+    fadeView.userInteractionEnabled = NO;
+    fadeView.backgroundColor = UIColor.clearColor;
+
+    CAGradientLayer *fadeLayer = [CAGradientLayer layer];
+    fadeLayer.startPoint = CGPointMake(0.5, 0.0);
+    fadeLayer.endPoint = CGPointMake(0.5, 1.0);
+    fadeLayer.locations = @[@0.0, @0.62, @1.0];
+    [fadeView.layer addSublayer:fadeLayer];
+
+    [self.view addSubview:fadeView];
+    [NSLayoutConstraint activateConstraints:@[
+        [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [fadeView.heightAnchor constraintEqualToConstant:98.0]
+    ]];
+
+    self.bottomSearchFadeView = fadeView;
+    self.bottomSearchFadeLayer = fadeLayer;
+    [self pp_updateBottomSearchFadeLayer];
+}
+
+- (void)pp_updateBottomSearchFadeLayer
+{
+    if (!self.bottomSearchFadeLayer || !self.bottomSearchFadeView) {
+        return;
+    }
+
+    UIColor *backgroundColor = AppBageColor() ?: self.view.backgroundColor ?: UIColor.systemBackgroundColor;
+    if (@available(iOS 13.0, *)) {
+        backgroundColor = [backgroundColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    self.bottomSearchFadeLayer.frame = self.bottomSearchFadeView.bounds;
+    self.bottomSearchFadeLayer.colors = @[
+        (id)[backgroundColor colorWithAlphaComponent:0.0].CGColor,
+        (id)[backgroundColor colorWithAlphaComponent:0.76].CGColor,
+        (id)[backgroundColor colorWithAlphaComponent:1.0].CGColor
+    ];
+}
+
+- (void)pp_updateSearchLayering
+{
+    [self pp_sendBackdropGlowsToBack];
+    UIView *topGlowView = self.secondaryGlowView.superview == self.view ? self.secondaryGlowView : self.primaryGlowView;
+    if (self.collectionView.superview == self.view && topGlowView.superview == self.view) {
+        [self.view insertSubview:self.collectionView aboveSubview:topGlowView];
+    }
+    if (self.bottomSearchFadeView.superview == self.view) {
+        [self.view bringSubviewToFront:self.bottomSearchFadeView];
+    }
+    if (self.searchBarContainerView.superview == self.view) {
+        [self.view bringSubviewToFront:self.searchBarContainerView];
+    }
 }
 
 - (void)setupDataSource
@@ -1664,47 +2036,52 @@ UINavigationControllerDelegate>
     [self setPill:self.countPillLabel hidden:!showCountPill animated:animated];
 
     UIColor *scopeTint = [self pp_scopeTintColorForSelectedSegment];
+    UIColor *primaryText = [self pp_heroPrimaryTextColor];
+    UIColor *secondaryText = [self pp_heroSecondaryTextColor];
+    UIColor *neutralPillBackground = [self pp_heroPanelBackgroundColor];
+    UIColor *neutralPillBorder = [self pp_heroPanelBorderColor];
+    BOOL darkHero = [self pp_heroUsesDarkSurface];
     UIColor *statusBackground = nil;
     UIColor *statusForeground = nil;
 
     if (hasImageSearchMode && self.isSearching) {
-        statusBackground = [[UIColor colorWithRed:0.98 green:0.69 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
-        statusForeground = [UIColor colorWithRed:1.0 green:0.94 blue:0.80 alpha:1.0];
+        statusBackground = [[UIColor colorWithRed:0.95 green:0.67 blue:0.22 alpha:1.0] colorWithAlphaComponent:(darkHero ? 0.22 : 0.13)];
+        statusForeground = darkHero ? [UIColor colorWithRed:1.0 green:0.88 blue:0.58 alpha:1.0] : [UIColor colorWithRed:0.55 green:0.34 blue:0.06 alpha:1.0];
     } else if (hasImageSearchMode && self.results.count > 0) {
-        statusBackground = [scopeTint colorWithAlphaComponent:0.22];
-        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.98];
+        statusBackground = [scopeTint colorWithAlphaComponent:(darkHero ? 0.22 : 0.12)];
+        statusForeground = darkHero ? [UIColor colorWithWhite:0.98 alpha:1.0] : scopeTint;
     } else if (hasImageSearchMode) {
-        statusBackground = [UIColor colorWithWhite:1.0 alpha:0.08];
-        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.88];
+        statusBackground = neutralPillBackground;
+        statusForeground = secondaryText;
     } else if (!hasValidQuery) {
-        statusBackground = [[UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:1.0] colorWithAlphaComponent:0.18];
-        statusForeground = [UIColor colorWithRed:1.0 green:0.96 blue:0.88 alpha:0.98];
+        statusBackground = [scopeTint colorWithAlphaComponent:(darkHero ? 0.18 : 0.10)];
+        statusForeground = darkHero ? [UIColor colorWithWhite:0.96 alpha:1.0] : scopeTint;
     } else if (self.isSearching) {
-        statusBackground = [[UIColor colorWithRed:0.98 green:0.69 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
-        statusForeground = [UIColor colorWithRed:1.0 green:0.94 blue:0.80 alpha:1.0];
+        statusBackground = [[UIColor colorWithRed:0.95 green:0.67 blue:0.22 alpha:1.0] colorWithAlphaComponent:(darkHero ? 0.22 : 0.13)];
+        statusForeground = darkHero ? [UIColor colorWithRed:1.0 green:0.88 blue:0.58 alpha:1.0] : [UIColor colorWithRed:0.55 green:0.34 blue:0.06 alpha:1.0];
     } else if (self.results.count > 0) {
-        statusBackground = [scopeTint colorWithAlphaComponent:0.22];
-        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.98];
+        statusBackground = [scopeTint colorWithAlphaComponent:(darkHero ? 0.22 : 0.12)];
+        statusForeground = darkHero ? [UIColor colorWithWhite:0.98 alpha:1.0] : scopeTint;
     } else {
-        statusBackground = [UIColor colorWithWhite:1.0 alpha:0.08];
-        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.88];
+        statusBackground = neutralPillBackground;
+        statusForeground = secondaryText;
     }
 
     self.statusPillLabel.backgroundColor = statusBackground;
     self.statusPillLabel.textColor = statusForeground;
-    [self.statusPillLabel pp_setBorderColor:[statusForeground colorWithAlphaComponent:0.10]];
+    [self.statusPillLabel pp_setBorderColor:[statusForeground colorWithAlphaComponent:(darkHero ? 0.16 : 0.10)]];
 
-    self.scopePillLabel.backgroundColor = [scopeTint colorWithAlphaComponent:0.18];
-    self.scopePillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
-    [self.scopePillLabel pp_setBorderColor:[scopeTint colorWithAlphaComponent:0.18]];
+    self.scopePillLabel.backgroundColor = [scopeTint colorWithAlphaComponent:(darkHero ? 0.20 : 0.11)];
+    self.scopePillLabel.textColor = darkHero ? [UIColor colorWithWhite:0.98 alpha:1.0] : scopeTint;
+    [self.scopePillLabel pp_setBorderColor:[scopeTint colorWithAlphaComponent:(darkHero ? 0.24 : 0.15)]];
 
-    self.countPillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-    self.countPillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.88];
-    [self.countPillLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.06]];
+    self.countPillLabel.backgroundColor = neutralPillBackground;
+    self.countPillLabel.textColor = secondaryText;
+    [self.countPillLabel pp_setBorderColor:neutralPillBorder];
 
-    self.queryPillLabel.backgroundColor = [[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18];
-    self.queryPillLabel.textColor = [[UIColor colorWithRed:1.0 green:0.95 blue:0.83 alpha:1.0] colorWithAlphaComponent:0.95];
-    [self.queryPillLabel pp_setBorderColor:[[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18]];
+    self.queryPillLabel.backgroundColor = [scopeTint colorWithAlphaComponent:(darkHero ? 0.18 : 0.10)];
+    self.queryPillLabel.textColor = primaryText;
+    [self.queryPillLabel pp_setBorderColor:[scopeTint colorWithAlphaComponent:(darkHero ? 0.24 : 0.14)]];
 
     [self pp_updateSegmentButtonsSelectionAnimated:animated];
 }
@@ -1806,15 +2183,15 @@ UINavigationControllerDelegate>
     label.textInsets = UIEdgeInsetsMake(PPSpaceXS + 2.0, PPSpaceMD, PPSpaceXS + 2.0, PPSpaceMD);
     label.font = [GM MidFontWithSize:PPFontCaption1];
     label.textAlignment = NSTextAlignmentCenter;
-    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.92];
+    label.textColor = [self pp_heroSecondaryTextColor];
     label.lineBreakMode = NSLineBreakByTruncatingTail;
     [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    label.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+    label.backgroundColor = [self pp_heroPanelBackgroundColor];
     label.layer.cornerRadius = 14.0;
     label.layer.masksToBounds = YES;
     label.layer.borderWidth = 0.5;
-    [label pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.06]];
+    [label pp_setBorderColor:[self pp_heroPanelBorderColor]];
     [NSLayoutConstraint activateConstraints:@[
         [label.heightAnchor constraintEqualToConstant:28.0]
     ]];
@@ -1828,8 +2205,8 @@ UINavigationControllerDelegate>
     label.textInsets = UIEdgeInsetsMake(3.0, 7.0, 3.0, 7.0);
     label.textAlignment = NSTextAlignmentCenter;
     label.font = [GM boldFontWithSize:10.0] ?: [UIFont systemFontOfSize:10.0 weight:UIFontWeightBold];
-    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
-    label.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    label.textColor = [self pp_heroSecondaryTextColor];
+    label.backgroundColor = [self pp_heroPanelBackgroundColor];
     label.layer.cornerRadius = 10.0;
     label.layer.masksToBounds = YES;
     label.alpha = 0.0;
@@ -2157,10 +2534,10 @@ UINavigationControllerDelegate>
     button.tag = segment;
    // button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    button.backgroundColor = [self pp_heroPanelBackgroundColor];
     button.layer.cornerRadius = 18.0;
     button.layer.borderWidth = 1.0;
-    [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    [button pp_setBorderColor:[self pp_heroPanelBorderColor]];
     button.layer.shadowOpacity = 0.0f;
     button.layer.shadowRadius = 12.0f;
     button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -2175,7 +2552,7 @@ UINavigationControllerDelegate>
                                                                         withConfiguration:iconConfiguration]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.tag = kPPSearchSegmentIconTag;
-    iconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.82];
+    iconView.tintColor = [self pp_heroSecondaryTextColor];
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
     UILabel *countLabel = [self makeBadgeLabel];
@@ -2197,7 +2574,7 @@ UINavigationControllerDelegate>
     titleLabel.tag = kPPSearchSegmentTitleTag;
     titleLabel.text = title ?: @"";
     titleLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+    titleLabel.textColor = [self pp_heroSecondaryTextColor];
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 1;
     titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -2315,27 +2692,30 @@ UINavigationControllerDelegate>
     button.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
 
     void (^updates)(void) = ^{
+        BOOL darkHero = [self pp_heroUsesDarkSurface];
+        CGFloat selectedFillAlpha = darkHero ? 0.24 : 0.12;
+        CGFloat selectedBorderAlpha = darkHero ? 0.34 : 0.18;
         button.backgroundColor = selected
-            ? [accentColor colorWithAlphaComponent:0.24]
-            : [UIColor colorWithWhite:1.0 alpha:0.08];
+            ? [accentColor colorWithAlphaComponent:selectedFillAlpha]
+            : [self pp_heroPanelBackgroundColor];
         [button pp_setBorderColor:(selected
-            ? [accentColor colorWithAlphaComponent:0.34]
-            : [UIColor colorWithWhite:1.0 alpha:0.08])];
+            ? [accentColor colorWithAlphaComponent:selectedBorderAlpha]
+            : [self pp_heroPanelBorderColor])];
         [button pp_setShadowColor:accentColor];
-        button.layer.shadowOpacity = selected ? 0.14f : 0.0f;
+        button.layer.shadowOpacity = (selected && darkHero) ? 0.12f : 0.0f;
 
         UIColor *contentColor = selected
-            ? [UIColor colorWithWhite:1.0 alpha:0.98]
-            : [UIColor colorWithWhite:1.0 alpha:0.84];
+            ? (darkHero ? [UIColor colorWithWhite:0.98 alpha:1.0] : accentColor)
+            : [self pp_heroSecondaryTextColor];
         iconView.tintColor = contentColor;
         titleLabel.textColor = contentColor;
 
         countLabel.backgroundColor = selected
-            ? [UIColor colorWithWhite:1.0 alpha:0.18]
-            : [UIColor colorWithWhite:1.0 alpha:0.12];
+            ? [accentColor colorWithAlphaComponent:(darkHero ? 0.30 : 0.16)]
+            : [self pp_heroPanelBackgroundColor];
         countLabel.textColor = selected
-            ? [UIColor colorWithWhite:1.0 alpha:0.98]
-            : [UIColor colorWithWhite:1.0 alpha:0.84];
+            ? (darkHero ? [UIColor colorWithWhite:0.98 alpha:1.0] : accentColor)
+            : [self pp_heroSecondaryTextColor];
     };
 
     if (!animated) {
@@ -2500,9 +2880,9 @@ UINavigationControllerDelegate>
 
     if (!UIAccessibilityIsReduceMotionEnabled()) {
         CABasicAnimation *shineDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        shineDrift.fromValue = @(-36.0);
-        shineDrift.toValue = @(36.0);
-        shineDrift.duration = 5.4;
+        shineDrift.fromValue = @(-18.0);
+        shineDrift.toValue = @(18.0);
+        shineDrift.duration = 8.4;
         shineDrift.autoreverses = YES;
         shineDrift.repeatCount = HUGE_VALF;
         shineDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -2554,48 +2934,30 @@ UINavigationControllerDelegate>
     );
 }
 
-#pragma mark - Visual Helpers
-
-- (UIImage *)pp_noiseImageWithSize:(CGSize)size opacity:(CGFloat)opacity
-{
-    UIGraphicsBeginImageContextWithOptions(size, NO, 1.0);
-    CGContextRef ctx = UIGraphicsGetCurrentContext();
-    if (!ctx) {
-        UIGraphicsEndImageContext();
-        return [UIImage new];
-    }
-    for (NSInteger y = 0; y < (NSInteger)size.height; y++) {
-        for (NSInteger x = 0; x < (NSInteger)size.width; x++) {
-            CGFloat v = arc4random_uniform(256) / 255.0;
-            CGContextSetFillColorWithColor(ctx, [UIColor colorWithWhite:v alpha:opacity].CGColor);
-            CGContextFillRect(ctx, CGRectMake(x, y, 1.0, 1.0));
-        }
-    }
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image ?: [UIImage new];
-}
-
 #pragma mark - UICollectionViewDelegateFlowLayout
 
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    CGFloat availableWidth = collectionView.bounds.size.width - (kPPSearchHorizontalInset * 2.0);
-    NSInteger itemCount = [collectionView numberOfItemsInSection:indexPath.section];
-
-    if (indexPath.item == 100) {
-        CGFloat heroHeight = MIN(availableWidth * 0.78, 286.0);
-        if (itemCount == 1) {
-            heroHeight = MIN(availableWidth * 0.82, 310.0);
-        }
-        return CGSizeMake(availableWidth, MAX(heroHeight, 224.0));
+    UIEdgeInsets sectionInset = UIEdgeInsetsMake(0.0,
+                                                 kPPSearchHorizontalInset,
+                                                 64.0,
+                                                 kPPSearchHorizontalInset);
+    CGFloat interitemSpacing = kPPSearchInteritemSpacing;
+    UICollectionViewFlowLayout *flowLayout =
+    [collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]
+    ? (UICollectionViewFlowLayout *)collectionViewLayout
+    : nil;
+    if (flowLayout) {
+        sectionInset = flowLayout.sectionInset;
+        interitemSpacing = flowLayout.minimumInteritemSpacing;
     }
 
-    CGFloat gridWidth = 360;
-    CGFloat itemHeight = gridWidth + 1.2;
-    return CGSizeMake(gridWidth, itemHeight);
+    CGFloat availableWidth = collectionView.bounds.size.width - sectionInset.left - sectionInset.right;
+    CGFloat gridWidth = floor((availableWidth - interitemSpacing) / 2.0);
+    CGFloat itemHeight = 320.0;
+    return CGSizeMake(MAX(0.0, gridWidth), itemHeight);
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -2787,6 +3149,288 @@ UINavigationControllerDelegate>
     [picker dismissViewControllerAnimated:YES completion:nil];
 }
 
+- (nullable NSDictionary *)pp_dictionaryFromObject:(id)object
+{
+    return [object isKindOfClass:NSDictionary.class] ? (NSDictionary *)object : nil;
+}
+
+- (NSArray *)pp_arrayFromObject:(id)object
+{
+    return [object isKindOfClass:NSArray.class] ? (NSArray *)object : @[];
+}
+
+- (NSString *)pp_stringFromObject:(id)object
+{
+    NSString *string = @"";
+    if ([object isKindOfClass:NSString.class]) {
+        string = (NSString *)object;
+    } else if ([object isKindOfClass:NSNumber.class]) {
+        string = [(NSNumber *)object stringValue];
+    }
+    return [string stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+}
+
+- (NSNumber *)pp_numberFromObject:(id)object
+{
+    if ([object isKindOfClass:NSNumber.class]) {
+        return (NSNumber *)object;
+    }
+    NSString *string = [self pp_stringFromObject:object];
+    if (string.length == 0) {
+        return nil;
+    }
+
+    static NSNumberFormatter *formatter;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        formatter = [NSNumberFormatter new];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    });
+
+    NSNumber *number = [formatter numberFromString:string];
+    if (number) {
+        return number;
+    }
+
+    double raw = string.doubleValue;
+    return raw > 0.0 ? @(raw) : nil;
+}
+
+- (NSString *)pp_firstStringInDictionary:(NSDictionary *)dictionary
+                                    keys:(NSArray<NSString *> *)keys
+{
+    if (![dictionary isKindOfClass:NSDictionary.class]) {
+        return @"";
+    }
+    for (NSString *key in keys) {
+        NSString *value = [self pp_stringFromObject:dictionary[key]];
+        if (value.length > 0) {
+            return value;
+        }
+    }
+    return @"";
+}
+
+- (NSNumber *)pp_firstNumberInDictionary:(NSDictionary *)dictionary
+                                    keys:(NSArray<NSString *> *)keys
+{
+    if (![dictionary isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    for (NSString *key in keys) {
+        NSNumber *number = [self pp_numberFromObject:dictionary[key]];
+        if (number) {
+            return number;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_normalizedImageSearchKindFromDictionary:(NSDictionary *)dictionary
+{
+    NSString *rawKind = [self pp_firstStringInDictionary:dictionary
+                                                    keys:@[@"kind", @"type", @"resultKind", @"collection"]];
+    NSString *kind = [[rawKind.lowercaseString stringByReplacingOccurrencesOfString:@"-" withString:@"_"]
+                      stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+
+    if (kind.length == 0) {
+        NSNumber *accessKindType = [self pp_numberFromObject:dictionary[@"accessKindType"]];
+        if (accessKindType) {
+            return accessKindType.integerValue == 4 ? @"medicine" : @"product";
+        }
+    }
+
+    if ([kind isEqualToString:@"product"] ||
+        [kind isEqualToString:@"products"] ||
+        [kind isEqualToString:@"accessory"] ||
+        [kind isEqualToString:@"accessories"] ||
+        [kind isEqualToString:@"petaccessories"] ||
+        [kind isEqualToString:@"petaccessory"]) {
+        NSNumber *accessKindType = [self pp_numberFromObject:dictionary[@"accessKindType"]];
+        return accessKindType.integerValue == 4 ? @"medicine" : @"product";
+    }
+
+    if ([kind isEqualToString:@"medicine"] || [kind isEqualToString:@"medicines"]) {
+        return @"medicine";
+    }
+
+    if ([kind isEqualToString:@"pet_ad"] ||
+        [kind isEqualToString:@"pet_ads"] ||
+        [kind isEqualToString:@"petad"] ||
+        [kind isEqualToString:@"pets"] ||
+        [kind isEqualToString:@"pets_for_sale"]) {
+        return @"pet_ad";
+    }
+
+    if ([kind isEqualToString:@"adoption"] ||
+        [kind isEqualToString:@"adopt"] ||
+        [kind isEqualToString:@"adopt_pets"] ||
+        [kind isEqualToString:@"adoptpet"]) {
+        return @"adoption";
+    }
+
+    return kind;
+}
+
+- (NSString *)pp_imageSearchIdentityForKind:(NSString *)kind
+                                      docID:(NSString *)docID
+{
+    if (kind.length == 0 || docID.length == 0) {
+        return @"";
+    }
+    return [NSString stringWithFormat:@"%@|%@", kind, docID];
+}
+
+- (NSArray<NSDictionary *> *)pp_normalizedImageSearchRefsFromArray:(NSArray *)refs
+{
+    NSMutableArray<NSDictionary *> *normalizedRefs = [NSMutableArray array];
+    for (id object in refs) {
+        NSDictionary *rawRef = [self pp_dictionaryFromObject:object];
+        if (!rawRef) {
+            continue;
+        }
+
+        NSString *kind = [self pp_normalizedImageSearchKindFromDictionary:rawRef];
+        NSString *docID = [self pp_firstStringInDictionary:rawRef
+                                                      keys:@[@"id", @"docID", @"documentID", @"objectID", @"itemID", @"itemId"]];
+        if (kind.length == 0 || docID.length == 0) {
+            continue;
+        }
+
+        NSMutableDictionary *ref = rawRef.mutableCopy ?: [NSMutableDictionary dictionary];
+        ref[@"kind"] = kind;
+        ref[@"id"] = docID;
+        ref[@"docID"] = docID;
+        [normalizedRefs addObject:ref.copy];
+    }
+    return normalizedRefs.copy;
+}
+
+- (NSArray<NSDictionary *> *)pp_imageSearchResultRefsFromResponse:(NSDictionary *)response
+                                                         metadata:(NSDictionary *)metadata
+                                                          results:(NSArray *)results
+{
+    NSArray *candidateRefs = [self pp_arrayFromObject:metadata[@"resultRefs"]];
+    if (candidateRefs.count == 0) {
+        candidateRefs = [self pp_arrayFromObject:response[@"resultRefs"]];
+    }
+
+    NSArray<NSDictionary *> *normalizedRefs = [self pp_normalizedImageSearchRefsFromArray:candidateRefs];
+    if (normalizedRefs.count > 0) {
+        return normalizedRefs;
+    }
+
+    return [self pp_normalizedImageSearchRefsFromArray:results];
+}
+
+- (NSDictionary<NSString *, NSDictionary *> *)pp_imageSearchLightResultsByIdentity:(NSArray *)results
+{
+    NSMutableDictionary<NSString *, NSDictionary *> *lookup = [NSMutableDictionary dictionary];
+    for (id object in results) {
+        NSDictionary *result = [self pp_dictionaryFromObject:object];
+        if (!result) {
+            continue;
+        }
+        NSString *kind = [self pp_normalizedImageSearchKindFromDictionary:result];
+        NSString *docID = [self pp_firstStringInDictionary:result
+                                                      keys:@[@"id", @"docID", @"documentID", @"objectID", @"itemID", @"itemId"]];
+        NSString *identity = [self pp_imageSearchIdentityForKind:kind docID:docID];
+        if (identity.length > 0 && !lookup[identity]) {
+            lookup[identity] = result;
+        }
+    }
+    return lookup.copy;
+}
+
+- (NSString *)pp_imageSearchMediaURLFromObject:(id)object
+{
+    NSString *string = [self pp_stringFromObject:object];
+    if (string.length > 0) {
+        return string;
+    }
+
+    NSDictionary *dictionary = [self pp_dictionaryFromObject:object];
+    if (dictionary) {
+        NSString *mediaType = [[self pp_firstStringInDictionary:dictionary
+                                                           keys:@[@"media_type", @"mediaType", @"type", @"mimeType", @"contentType"]] lowercaseString];
+        NSString *thumbnail = [self pp_firstStringInDictionary:dictionary
+                                                          keys:@[@"thumbnail_url", @"thumbnailURL", @"thumbnailUrl", @"thumbURL", @"coverURL", @"coverUrl"]];
+        NSString *direct = [self pp_firstStringInDictionary:dictionary
+                                                       keys:@[@"url", @"imageUrl", @"imageURL", @"downloadURL", @"downloadUrl", @"path"]];
+        BOOL isVideo = [mediaType isEqualToString:@"video"] || [mediaType hasPrefix:@"video/"];
+        return isVideo ? (thumbnail.length > 0 ? thumbnail : direct) : (direct.length > 0 ? direct : thumbnail);
+    }
+
+    NSArray *array = [self pp_arrayFromObject:object];
+    for (id item in array) {
+        NSString *url = [self pp_imageSearchMediaURLFromObject:item];
+        if (url.length > 0) {
+            return url;
+        }
+    }
+    return @"";
+}
+
+- (NSDictionary *)pp_firstImageSearchMediaMetadataFromObject:(id)object
+{
+    NSDictionary *dictionary = [self pp_dictionaryFromObject:object];
+    if (dictionary) {
+        return dictionary;
+    }
+
+    NSArray *array = [self pp_arrayFromObject:object];
+    for (id item in array) {
+        NSDictionary *itemDictionary = [self pp_dictionaryFromObject:item];
+        if (itemDictionary) {
+            return itemDictionary;
+        }
+    }
+    return nil;
+}
+
+- (NSDictionary *)pp_firstImageSearchMediaMetadataFromDictionary:(NSDictionary *)dictionary
+{
+    for (NSString *key in @[@"imageMeta", @"imageItems", @"imageItemsRaw", @"media", @"images", @"photos"]) {
+        NSDictionary *metadata = [self pp_firstImageSearchMediaMetadataFromObject:dictionary[key]];
+        if (metadata) {
+            return metadata;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_firstImageSearchImageURLFromDictionary:(NSDictionary *)dictionary
+{
+    NSString *direct = [self pp_firstStringInDictionary:dictionary
+                                                   keys:@[@"imageUrl", @"imageURL", @"thumbnailURL", @"thumbnailUrl", @"thumbnail_url", @"mainImage", @"mainImageUrl", @"photoURL", @"thumbnail", @"coverImage", @"coverUrl", @"image"]];
+    if (direct.length > 0) {
+        return direct;
+    }
+
+    for (NSString *key in @[@"imageMeta", @"imageItems", @"imageItemsRaw", @"imageURLsArray", @"imageURLs", @"imageUrls", @"imagesURLs", @"images", @"photos", @"media", @"files"]) {
+        NSString *url = [self pp_imageSearchMediaURLFromObject:dictionary[key]];
+        if (url.length > 0) {
+            return url;
+        }
+    }
+    return @"";
+}
+
+- (CGFloat)pp_imageSearchAspectRatioFromMetadata:(NSDictionary *)metadata
+                                        fallback:(CGFloat)fallback
+{
+    NSNumber *width = [self pp_firstNumberInDictionary:metadata
+                                                  keys:@[@"thumbnail_width", @"thumbnailWidth", @"width", @"imageWidth"]];
+    NSNumber *height = [self pp_firstNumberInDictionary:metadata
+                                                   keys:@[@"thumbnail_height", @"thumbnailHeight", @"height", @"imageHeight"]];
+    if (width.doubleValue <= 0.0 || height.doubleValue <= 0.0) {
+        return fallback;
+    }
+    CGFloat ratio = height.doubleValue / width.doubleValue;
+    return MAX(0.68, MIN(1.24, ratio));
+}
+
 - (void)runDirectImageSearch:(UIImage *)image
 {
     if (!image) {
@@ -2810,6 +3454,7 @@ UINavigationControllerDelegate>
     self.imageSearchAllResults = @[];
     self.allSearchResults = @[];
     self.results = @[];
+    self.isSearching = YES;
     [self pp_hideAllBadges];
     [self applyResultsAnimated:NO];
     [self pp_setImageSearchLoading:YES];
@@ -2851,17 +3496,14 @@ UINavigationControllerDelegate>
                 return;
             }
 
-            NSDictionary *metadata = [response[@"metadata"] isKindOfClass:[NSDictionary class]]
-                ? response[@"metadata"]
-                : @{};
-            NSArray *results = [response[@"results"] isKindOfClass:[NSArray class]]
-                ? response[@"results"]
-                : @[];
-            NSArray *resultRefs = [metadata[@"resultRefs"] isKindOfClass:[NSArray class]]
-                ? metadata[@"resultRefs"]
-                : @[];
+            NSDictionary *metadata = [strongSelf pp_dictionaryFromObject:response[@"metadata"]] ?: @{};
+            NSDictionary *detected = [strongSelf pp_dictionaryFromObject:response[@"detected"]] ?: @{};
+            NSArray *results = [strongSelf pp_arrayFromObject:response[@"results"]];
+            NSArray *resultRefs = [strongSelf pp_imageSearchResultRefsFromResponse:response
+                                                                          metadata:metadata
+                                                                           results:results];
 
-            [strongSelf renderDirectImageSearchResults:results resultRefs:resultRefs metadata:metadata];
+            [strongSelf renderDirectImageSearchResults:results resultRefs:resultRefs metadata:detected];
         });
     }];
 }
@@ -2870,9 +3512,29 @@ UINavigationControllerDelegate>
                             resultRefs:(NSArray *)resultRefs
                               metadata:(NSDictionary *)metadata
 {
-    (void)metadata;
+    NSDictionary *safeMetadata = [self pp_dictionaryFromObject:metadata] ?: @{};
+    NSArray *safeResults = [self pp_arrayFromObject:results];
+    NSArray *safeResultRefs = [self pp_normalizedImageSearchRefsFromArray:[self pp_arrayFromObject:resultRefs]];
+    if (safeResultRefs.count == 0) {
+        safeResultRefs = [self pp_normalizedImageSearchRefsFromArray:safeResults];
+    }
 
-    if (!resultRefs || resultRefs.count == 0) {
+    if (safeMetadata[@"speciesText"] || safeMetadata[@"productType"]) {
+        NSString *species = [self pp_stringFromObject:safeMetadata[@"speciesText"]];
+        NSString *breed = [self pp_stringFromObject:safeMetadata[@"breedText"]];
+        NSString *product = [self pp_stringFromObject:safeMetadata[@"productType"]];
+
+        if (species.length > 0) {
+            NSString *full = [NSString stringWithFormat:@"%@ %@", species.capitalizedString, breed];
+            self.heroTitleLabel.text = [full stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            self.heroSubtitleLabel.text = kLang(@"ImageSearchDetectedSubtitle");
+        } else if (product.length > 0) {
+            self.heroTitleLabel.text = product.capitalizedString;
+            self.heroSubtitleLabel.text = kLang(@"ImageSearchDetectedSubtitle");
+        }
+    }
+
+    if (safeResultRefs.count == 0) {
         self.imageSearchResultRefs = @[];
         self.imageSearchRawResults = @[];
         self.imageSearchAllResults = @[];
@@ -2885,19 +3547,28 @@ UINavigationControllerDelegate>
         return;
     }
 
-    self.imageSearchResultRefs = resultRefs;
-    self.imageSearchRawResults = results;
+    self.imageSearchResultRefs = safeResultRefs;
+    self.imageSearchRawResults = safeResults;
 
-    NSMutableArray<PPUniversalCellViewModel *> *viewModels = [NSMutableArray arrayWithCapacity:resultRefs.count];
+    NSDictionary<NSString *, NSDictionary *> *lightResultsByIdentity =
+        [self pp_imageSearchLightResultsByIdentity:safeResults];
+    NSMutableArray<PPUniversalCellViewModel *> *viewModels = [NSMutableArray arrayWithCapacity:safeResultRefs.count];
     NSMutableSet<NSString *> *seen = [NSMutableSet set];
 
-    for (NSUInteger i = 0; i < resultRefs.count; i++) {
-        NSDictionary *ref = resultRefs[i];
-        NSDictionary *lightResult = (i < results.count) ? results[i] : nil;
-
-        NSString *refID = [NSString stringWithFormat:@"%@|%@", ref[@"kind"] ?: @"", ref[@"id"] ?: @""];
-        if ([seen containsObject:refID]) continue;
+    for (NSUInteger i = 0; i < safeResultRefs.count; i++) {
+        NSDictionary *ref = safeResultRefs[i];
+        NSString *kind = [self pp_stringFromObject:ref[@"kind"]];
+        NSString *docID = [self pp_stringFromObject:ref[@"docID"]];
+        NSString *refID = [self pp_imageSearchIdentityForKind:kind docID:docID];
+        if (refID.length == 0 || [seen containsObject:refID]) {
+            continue;
+        }
         [seen addObject:refID];
+
+        NSDictionary *lightResult = lightResultsByIdentity[refID];
+        if (!lightResult && i < safeResults.count) {
+            lightResult = [self pp_dictionaryFromObject:safeResults[i]];
+        }
 
         PPUniversalCellViewModel *vm = [self viewModelForImageSearchRef:ref lightResult:lightResult];
         if (vm) {
@@ -2907,8 +3578,8 @@ UINavigationControllerDelegate>
 
     self.imageSearchAllResults = viewModels.copy;
     self.allSearchResults = @[];
-    [self pp_selectBestSegmentForImageSearchRefs:resultRefs];
-    [self pp_updateImageSearchSegmentBadgesWithRefs:resultRefs];
+    [self pp_selectBestSegmentForImageSearchRefs:safeResultRefs];
+    [self pp_updateImageSearchSegmentBadgesWithRefs:safeResultRefs];
     [self pp_updateSegmentButtonsSelectionAnimated:YES];
     [self pp_applyImageSearchSegmentFilterAnimated:YES];
 
@@ -3040,10 +3711,18 @@ UINavigationControllerDelegate>
     }
 
     UIImageSymbolConfiguration *config =
-        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
-    NSString *symbolName = loading ? @"magnifyingglass" : @"camera.fill";
-    [button setImage:[UIImage systemImageNamed:symbolName withConfiguration:config]
-            forState:UIControlStateNormal];
+        [UIImageSymbolConfiguration configurationWithPointSize:18.0 weight:UIImageSymbolWeightSemibold];
+    if (loading) {
+        [button setImage:[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:config]
+                forState:UIControlStateNormal];
+    } else {
+        config = [self pp_imageSearchCameraSymbolConfigurationWithPointSize:26.0
+                                                                     weight:UIImageSymbolWeightSemibold];
+        [button setPreferredSymbolConfiguration:config forImageInState:UIControlStateNormal];
+        [button setImage:[self pp_imageSearchCameraSymbolWithConfiguration:config]
+                forState:UIControlStateNormal];
+        [self pp_applyImageSearchButtonSymbolEffectIfAvailable:button];
+    }
     button.enabled = !loading;
     button.alpha = loading ? 0.82 : 1.0;
     button.accessibilityValue = loading ? kLang(@"ImageSearchPreparing") : nil;
@@ -3189,6 +3868,8 @@ UINavigationControllerDelegate>
         return;
     }
 
+    [self pp_applyImageSearchButtonSymbolEffectIfAvailable:button];
+
     [UIView animateWithDuration:0.12
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
@@ -3292,38 +3973,74 @@ UINavigationControllerDelegate>
 - (nullable PPUniversalCellViewModel *)viewModelForImageSearchRef:(NSDictionary *)ref
                                                        lightResult:(nullable NSDictionary *)lightResult
 {
-    NSString *kind = ref[@"kind"];
-    NSString *docID = ref[@"id"];
+    NSDictionary *safeRef = [self pp_dictionaryFromObject:ref] ?: @{};
+    NSDictionary *safeLightResult = [self pp_dictionaryFromObject:lightResult] ?: @{};
+    NSString *kind = [self pp_normalizedImageSearchKindFromDictionary:safeRef];
+    NSString *docID = [self pp_firstStringInDictionary:safeRef
+                                                  keys:@[@"docID", @"id", @"documentID", @"objectID", @"itemID", @"itemId"]];
 
-    if (!kind || !docID) return nil;
+    if (kind.length == 0 || docID.length == 0) return nil;
 
-    NSMutableDictionary *refWithDoc = [ref mutableCopy];
+    NSMutableDictionary *refWithDoc = safeRef.mutableCopy ?: [NSMutableDictionary dictionary];
+    refWithDoc[@"kind"] = kind;
+    refWithDoc[@"id"] = docID;
     refWithDoc[@"docID"] = docID;
-    NSDictionary *safeLightResult = [lightResult isKindOfClass:NSDictionary.class] ? lightResult : @{};
-    NSString *title = [safeLightResult[@"title"] isKindOfClass:NSString.class] ? safeLightResult[@"title"] : @"";
-    NSString *imageURL = [safeLightResult[@"imageUrl"] isKindOfClass:NSString.class] ? safeLightResult[@"imageUrl"] : @"";
-    if (imageURL.length == 0 && [safeLightResult[@"imageURL"] isKindOfClass:NSString.class]) {
-        imageURL = safeLightResult[@"imageURL"];
+
+    NSString *title = [self pp_firstStringInDictionary:safeLightResult
+                                                  keys:@[@"title", @"name", @"nameEn", @"adTitle", @"details", @"desc", @"description"]];
+    if (title.length == 0) {
+        title = [self pp_firstStringInDictionary:safeRef
+                                            keys:@[@"title", @"name", @"nameEn", @"adTitle", @"details", @"desc", @"description"]];
     }
-    if (imageURL.length == 0 && [safeLightResult[@"thumbnailURL"] isKindOfClass:NSString.class]) {
-        imageURL = safeLightResult[@"thumbnailURL"];
+
+    NSString *imageURL = [self pp_firstImageSearchImageURLFromDictionary:safeLightResult];
+    if (imageURL.length == 0) {
+        imageURL = [self pp_firstImageSearchImageURLFromDictionary:safeRef];
     }
-    if (imageURL.length == 0 && [safeLightResult[@"thumbnailUrl"] isKindOfClass:NSString.class]) {
-        imageURL = safeLightResult[@"thumbnailUrl"];
+
+    NSNumber *price = [self pp_firstNumberInDictionary:safeLightResult
+                                                  keys:@[@"finalPrice", @"price", @"sellPrice"]];
+    if (!price) {
+        price = [self pp_firstNumberInDictionary:safeRef
+                                            keys:@[@"finalPrice", @"price", @"sellPrice"]];
     }
-    NSNumber *price = [safeLightResult[@"price"] isKindOfClass:NSNumber.class] ? safeLightResult[@"price"] : nil;
+
+    NSString *currencyCode = [self pp_firstStringInDictionary:safeLightResult
+                                                         keys:@[@"currencyCode", @"currency"]];
+    if (currencyCode.length == 0) {
+        currencyCode = [self pp_firstStringInDictionary:safeRef
+                                                   keys:@[@"currencyCode", @"currency"]];
+    }
+
+    NSDictionary *mediaMetadata = [self pp_firstImageSearchMediaMetadataFromDictionary:safeLightResult];
+    if (!mediaMetadata) {
+        mediaMetadata = [self pp_firstImageSearchMediaMetadataFromDictionary:safeRef];
+    }
+    NSString *mediaType = [[self pp_firstStringInDictionary:mediaMetadata
+                                                       keys:@[@"media_type", @"mediaType", @"type", @"mimeType", @"contentType"]] lowercaseString];
+    BOOL isVideo = [mediaType isEqualToString:@"video"] || [mediaType hasPrefix:@"video/"];
+    NSString *videoThumbnailURL = [self pp_firstStringInDictionary:mediaMetadata
+                                                              keys:@[@"thumbnail_url", @"thumbnailURL", @"thumbnailUrl"]];
+    NSString *videoURL = [self pp_firstStringInDictionary:mediaMetadata
+                                                     keys:@[@"url", @"downloadURL", @"downloadUrl"]];
 
     if ([kind isEqualToString:@"pet_ad"]) {
         PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForAds];
         vm.ModelID = docID;
         vm.title = title;
+        vm.modelType = kind;
         vm.price = price;
         vm.finalPrice = price;
+        if (currencyCode.length > 0) vm.currencyCode = currencyCode;
         vm.priceText = price ? ([GM formatPrice:price currencyCode:vm.currencyCode] ?: @"") : @"";
         vm.imageURL = imageURL;
+        vm.mediaMetadata = mediaMetadata;
+        vm.isVideoMedia = isVideo;
+        vm.videoURL = isVideo ? videoURL : @"";
+        vm.videoThumbnailURL = isVideo ? videoThumbnailURL : @"";
         vm.badgeText = kLang(@"Ads");
         vm.availabilityText = kLang(@"Available");
-        vm.preferredAspectRatio = 0.98;
+        vm.preferredAspectRatio = [self pp_imageSearchAspectRatioFromMetadata:mediaMetadata fallback:0.98];
         vm.ModelObject = refWithDoc;
         return vm;
     }
@@ -3332,13 +4049,19 @@ UINavigationControllerDelegate>
         PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForMarket];
         vm.ModelID = docID;
         vm.title = title;
+        vm.modelType = kind;
         vm.price = price;
         vm.finalPrice = price;
+        if (currencyCode.length > 0) vm.currencyCode = currencyCode;
         vm.priceText = price ? ([GM formatPrice:price currencyCode:vm.currencyCode] ?: @"") : @"";
         vm.imageURL = imageURL;
+        vm.mediaMetadata = mediaMetadata;
+        vm.isVideoMedia = isVideo;
+        vm.videoURL = isVideo ? videoURL : @"";
+        vm.videoThumbnailURL = isVideo ? videoThumbnailURL : @"";
         vm.badgeText = kLang(@"Accessories");
         vm.availabilityText = @"";
-        vm.preferredAspectRatio = 0.78;
+        vm.preferredAspectRatio = [self pp_imageSearchAspectRatioFromMetadata:mediaMetadata fallback:0.78];
         vm.ModelObject = refWithDoc;
         return vm;
     }
@@ -3347,11 +4070,16 @@ UINavigationControllerDelegate>
         PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForAdopt];
         vm.ModelID = docID;
         vm.title = title.length > 0 ? title : kLang(@"AdoptPet");
+        vm.modelType = kind;
         vm.priceText = @"";
         vm.imageURL = imageURL;
+        vm.mediaMetadata = mediaMetadata;
+        vm.isVideoMedia = isVideo;
+        vm.videoURL = isVideo ? videoURL : @"";
+        vm.videoThumbnailURL = isVideo ? videoThumbnailURL : @"";
         vm.badgeText = kLang(@"For Adoption");
         vm.availabilityText = kLang(@"Available");
-        vm.preferredAspectRatio = 0.98;
+        vm.preferredAspectRatio = [self pp_imageSearchAspectRatioFromMetadata:mediaMetadata fallback:0.98];
         vm.ModelObject = refWithDoc;
         return vm;
     }
@@ -3375,13 +4103,14 @@ UINavigationControllerDelegate>
         return;
     }
 
-    [[AppMgr.dF documentWithPath:[NSString stringWithFormat:@"%@/%@", collection, docID]]
-     getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
+    FIRFirestore *db = [AppManager sharedInstance].dF ?: [FIRFirestore firestore];
+    FIRDocumentReference *documentRef =
+    [db documentWithPath:[NSString stringWithFormat:@"%@/%@", collection, docID]];
+    [documentRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
         if (error || !snapshot.exists) {
             if (completion) completion(nil);
             return;
         }
-
         NSDictionary *data = snapshot.data;
         if (!data) {
             if (completion) completion(nil);

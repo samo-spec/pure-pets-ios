@@ -60,9 +60,14 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 - (NSArray<UserPaymentInstrument *> *)pp_displayedInstruments
 {
     PaymentMethod *qibMethod = [self methodForID:@"qib"] ?: [self methodForID:@"card"];
+    PaymentMethod *applePayMethod = [self methodForID:@"applepay"];
+    PaymentMethod *ooredooMethod = [self methodForID:@"ooredoo"];
+    PaymentMethod *napsMethod = [self methodForID:@"naps"];
     PaymentMethod *cashMethod = [self methodForID:@"cash"];
 
     NSMutableArray<UserPaymentInstrument *> *result = [NSMutableArray array];
+    
+    // Built-in Cards / QIB
     if (qibMethod && [CartManager sharedManager].onlinePaymentEnabled) {
         NSString *qibSubtitle = qibMethod.methodDescription.length > 0
         ? qibMethod.methodDescription
@@ -71,6 +76,29 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
                                                         method:qibMethod
                                                       subtitle:qibSubtitle]];
     }
+    
+    // Apple Pay
+    if (applePayMethod && [CartManager sharedManager].applePayEnabled) {
+        [result addObject:[self pp_makeBuiltInInstrumentWithID:@"built_in_applepay"
+                                                        method:applePayMethod
+                                                      subtitle:applePayMethod.methodDescription]];
+    }
+    
+    // Ooredoo Money
+    if (ooredooMethod && [CartManager sharedManager].ooredooMoneyEnabled) {
+        [result addObject:[self pp_makeBuiltInInstrumentWithID:@"built_in_ooredoo"
+                                                        method:ooredooMethod
+                                                      subtitle:ooredooMethod.methodDescription]];
+    }
+    
+    // NAPS
+    if (napsMethod && [CartManager sharedManager].napsEnabled) {
+        [result addObject:[self pp_makeBuiltInInstrumentWithID:@"built_in_naps"
+                                                        method:napsMethod
+                                                      subtitle:napsMethod.methodDescription]];
+    }
+
+    // Cash on Delivery
     if (cashMethod && [CartManager sharedManager].cashOnDeliveryEnabled) {
         NSString *cashSubtitle = cashMethod.methodDescription.length > 0
         ? cashMethod.methodDescription
@@ -83,14 +111,26 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
     for (UserPaymentInstrument *instrument in self.userInstruments) {
         if (!instrument.instrumentID.length) { continue; }
         if ([self pp_isBuiltInInstrument:instrument]) { continue; }
+        
         NSString *normalizedMethodID = PPPaymentSelectionNormalizedMethodID(instrument.methodID);
-        BOOL isCashInstrument = [normalizedMethodID isEqualToString:@"cash"];
-        if (isCashInstrument && ![CartManager sharedManager].cashOnDeliveryEnabled) {
+        
+        if ([normalizedMethodID isEqualToString:@"cash"] && ![CartManager sharedManager].cashOnDeliveryEnabled) {
             continue;
         }
-        if (!isCashInstrument && ![CartManager sharedManager].onlinePaymentEnabled) {
+        if ([normalizedMethodID isEqualToString:@"applepay"] && ![CartManager sharedManager].applePayEnabled) {
             continue;
         }
+        if ([normalizedMethodID isEqualToString:@"ooredoo"] && ![CartManager sharedManager].ooredooMoneyEnabled) {
+            continue;
+        }
+        if ([normalizedMethodID isEqualToString:@"naps"] && ![CartManager sharedManager].napsEnabled) {
+            continue;
+        }
+        if (![normalizedMethodID isEqualToString:@"cash"] && ![CartManager sharedManager].onlinePaymentEnabled) {
+            // General online payment block for cards/etc
+            continue;
+        }
+        
         [result addObject:instrument];
     }
     return result;
@@ -306,15 +346,36 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    (void)collectionViewLayout;
-    CGFloat availableWidth = collectionView.bounds.size.width;
+    UIEdgeInsets sectionInset = UIEdgeInsetsZero;
     CGFloat spacing = 16.0;
-    // 2 columns, account for margins if needed. The collection view might already have section insets.
-    // If sectionInset is (12, 0, 24, 0) as seen before, width is full. So we subtract the spacing.
-    // But let's check `PPSelectPaymentVC.m` for section inset, wait it has `layout.minimumInteritemSpacing = 0.0`.
-    // We should make width = (availableWidth - spacing) / 2.0; and use itemHeight = 120.0
-    CGFloat itemWidth = (availableWidth - 32.0 - spacing) / 2.0; // 32 is 16 on each side maybe?
-    return CGSizeMake(MAX(0.0, itemWidth), 146.0);
+    UICollectionViewFlowLayout *flowLayout =
+    [collectionViewLayout isKindOfClass:[UICollectionViewFlowLayout class]]
+    ? (UICollectionViewFlowLayout *)collectionViewLayout
+    : nil;
+    if (flowLayout) {
+        sectionInset = flowLayout.sectionInset;
+        spacing = flowLayout.minimumInteritemSpacing;
+    }
+
+    CGFloat availableWidth = collectionView.bounds.size.width;
+    CGFloat contentWidth = availableWidth - sectionInset.left - sectionInset.right;
+    CGFloat itemHeight = 146.0;
+
+    NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
+    if (displayed.count == 1 && indexPath.item == 0) {
+        UserPaymentInstrument *instrument = displayed.firstObject;
+        NSString *methodID = PPPaymentSelectionNormalizedMethodID(instrument.methodID);
+        BOOL isCashOnlyMethod =
+        [methodID isEqualToString:@"cash"] ||
+        [instrument.instrumentID isEqualToString:kPPBuiltInCashInstrumentID] ||
+        instrument.method.type == PaymentMethodTypeCash;
+        if (isCashOnlyMethod) {
+            return CGSizeMake(MAX(0.0, contentWidth), itemHeight);
+        }
+    }
+
+    CGFloat itemWidth = (contentWidth - spacing) / 2.0;
+    return CGSizeMake(MAX(0.0, itemWidth), itemHeight);
 }
 
 

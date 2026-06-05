@@ -717,7 +717,7 @@
 "searchOnly" = "بحث";
 "search" = "البحث";
 "SearchHeroEyebrow" = "بحث بيور بيتس";
-"SearchHeroTitle" = "ابحث في السوق";
+"SearchHeroTitle" = "ابحث في بيور بتس";
 "SearchHeroIdleSubtitle" = "اعثر على الحيوانات والإكسسوارات والخدمات والمتخصصين من مساحة بحث واحدة.";
 "SearchHeroTypingHint" = "اكتب حرفين أو أكثر";
 "SearchHeroSearching" = "جارٍ البحث في الحيوانات والإكسسوارات والخدمات القريبة.";
@@ -1862,6 +1862,9 @@
 "auth_register_required_title" = "يرجى التسجيل";
 "payment_qib_gateway_desc" = "ادفع بشكل آمن عبر بوابة QIB";
 "payment_cash_delivery_desc" = "ادفع عند استلام طلبك";
+"payment_applepay_desc" = "دفع آمن باستخدام Apple Pay.";
+"payment_ooredoo_desc" = "ادفع باستخدام محفظة Ooredoo Money.";
+"payment_naps_desc" = "ادفع باستخدام بطاقة الخصم NAPS.";
 "payment_header_pay_through" = "الدفع من خلال";
 "payment_screen_eyebrow" = "دفع آمن";
 "payment_screen_title" = "اختر طريقة الدفع المناسبة";
@@ -2404,7 +2407,7 @@
 
 
 
-"pet_profiles_title" = "ملفات الحيوانات الأليفة";
+"pet_profiles_title" = "مل��ات الحيوانات الأليفة";
 "pet_profiles_subtitle" = "إدارة الحيوانات، التطعيمات، والحيوان الافتراضي";
 "pet_profiles_manage" = "إدارة الحيوانات";
 "pet_profiles_add_first" = "أضف أول حيوان أليف";
@@ -2883,6 +2886,7 @@
 "listing_visible_success" = "أصبح ظاهراً في التصفح العام.";
 "listing_visibility_failed" = "تعذر تحديث الظهور. حاول مرة أخرى.";
 "ImageSearchError" = "تعذر البحث بالصورة. حاول مرة أخرى.";
+"ImageSearchServiceUnavailable" = "البحث بالصورة غير متاح مؤقتًا. حاول مرة أخرى.";
 "ImageSearchImageRequired" = "يرجى اختيار صورة أولاً.";
 "ImageSearchCompressionFailed" = "تعذر تجهيز هذه الصورة. جرّب صورة أخرى.";
 "ImageSearchImageTooLarge" = "هذه الصورة كبيرة جدًا. جرّب صورة أصغر.";
@@ -2902,5 +2906,6 @@
 "ImageSearchHeroResultsSubtitleFormat" = "%ld نتيجة مرئية من صورتك.";
 "ImageSearchLoadingTitle" = "جارٍ البحث في صورتك";
 "ImageSearchLoadingSubtitle" = "نطابق التفاصيل المرئية مع إعلانات ومنتجات بيور بيتس المباشرة.";
+"ImageSearchDetectedSubtitle" = "تم التعرف عليه من صورتك";
 
 "UnableToLoadDetails" = "تعذر تحميل التفاصيل.";

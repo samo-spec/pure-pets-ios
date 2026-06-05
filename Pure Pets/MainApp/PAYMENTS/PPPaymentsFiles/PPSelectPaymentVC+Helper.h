@@ -29,7 +29,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-@interface PPSelectPaymentVC (PPPaymentHelper) <UICollectionViewDelegate, UICollectionViewDataSource, UISheetPresentationControllerDelegate, PaymentHeightDelegate, PPPaymentMethodCellDelegate>
+@interface PPSelectPaymentVC (PPPaymentHelper) <UICollectionViewDelegate,
+                                                UICollectionViewDataSource,
+                                                UICollectionViewDelegateFlowLayout,
+                                                UISheetPresentationControllerDelegate,
+                                                PaymentHeightDelegate,
+                                                PPPaymentMethodCellDelegate>
 
 - (void)setSummuryViewAtBottom;
 - (PaymentMethod *)method:(NSString *)title icon:(NSString *)icon color:(UIColor *)color;

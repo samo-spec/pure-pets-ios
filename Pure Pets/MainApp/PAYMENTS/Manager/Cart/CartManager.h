@@ -18,6 +18,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) double deliveryFee;
 @property (nonatomic, assign, readonly) BOOL cashOnDeliveryEnabled;
 @property (nonatomic, assign, readonly) BOOL onlinePaymentEnabled;
+@property (nonatomic, assign, readonly) BOOL applePayEnabled;
+@property (nonatomic, assign, readonly) BOOL ooredooMoneyEnabled;
+@property (nonatomic, assign, readonly) BOOL napsEnabled;
 
 + (instancetype)sharedManager;
 - (BOOL)addItem:(CartItem *)item;
