@@ -743,6 +743,7 @@
 		F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EDCB252D6ED9DC00C83328 /* ArchCell.m */; };
 		F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */; };
 		F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */; };
+		F2EE91D82FD2668C00940729 /* SearchImage.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91D72FD2668C00940729 /* SearchImage.lottie */; };
 		F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */; };
 		F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */; };
 		F2EF8EE52F8775CA00A797B3 /* PPProfileTextViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE42F8775CA00A797B3 /* PPProfileTextViewCell.m */; };
@@ -2243,6 +2244,7 @@
 		F2EDCB242D6ED9DC00C83328 /* ArchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchCell.h; sourceTree = "<group>"; };
 		F2EDCB252D6ED9DC00C83328 /* ArchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchCell.m; sourceTree = "<group>"; };
 		F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = ArchCell.xib; sourceTree = "<group>"; };
+		F2EE91D72FD2668C00940729 /* SearchImage.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = SearchImage.lottie; sourceTree = "<group>"; };
 		F2EF8EDD2F87752400A797B3 /* PPProfileTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileTextFieldCell.h; sourceTree = "<group>"; };
 		F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileTextFieldCell.m; sourceTree = "<group>"; };
 		F2EF8EE02F87757A00A797B3 /* PPProfilePhoneCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfilePhoneCell.h; sourceTree = "<group>"; };
@@ -5134,6 +5136,7 @@
 		F2FE42C42D06EEE00082D346 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F2EE91D72FD2668C00940729 /* SearchImage.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
@@ -5300,6 +5303,7 @@
 				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
 				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
 				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
+				F2EE91D82FD2668C00940729 /* SearchImage.lottie in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
 				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
 				F299C1722C9D820C00EFA142 /* ZXQRScanViewController.xib in Resources */,
