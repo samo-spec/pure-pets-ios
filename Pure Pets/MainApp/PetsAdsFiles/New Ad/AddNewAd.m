@@ -496,7 +496,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (UIColor *)pp_adCanvasColor
 {
-    return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    return AppPageColor();
 }
 
 - (UIColor *)pp_adSurfaceColor
@@ -603,9 +603,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     }
     self.isHydratingFormData = NO;
     [self pp_refreshFormHeroContent];
-    
-    
-    // PPImageCollection owns editor notifications and picker handling.
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    tap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:tap];
+}
+
+- (void)pp_dismissKeyboard {
+    [self.view endEditing:YES];
 }
 
 #pragma mark - Media Access (PPImageCollection)

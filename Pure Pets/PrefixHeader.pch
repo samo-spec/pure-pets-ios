@@ -438,6 +438,8 @@ static inline UIColor *AppBageColor(void)
     }];
 }
 
+static inline UIColor *AppPageColor(void) { return AppBageColor(); }
+
 
 
 static inline UIColor *PPBackgroundColorForIOS26(UIColor *fallbackColor) {

@@ -2096,13 +2096,13 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     OptionModel *addUsed = [OptionModel optionWithID:@"addUsedButton"
                                                title:kLang(@"addUsedButton")
-                                           imageName:@"AccessiconColor"
+                                           imageName:@"AccessIconNew.selected"
                                          systemImage:nil
                                                desc:kLang(@"addUsedButton_desc")];
 
     OptionModel *adopt   = [OptionModel optionWithID:@"addPetForAdoption"
                                                title:kLang(@"addPetForAdoption")
-                                           imageName:@"adoptionColor"
+                                           imageName:@"blindColor.selected"
                                          systemImage:nil
                                                desc:kLang(@"addPetForAdoption_desc")];
 

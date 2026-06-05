@@ -389,7 +389,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppPageColor();
     self.isHydratingFormData = YES;
     self.hasUserModifiedForm = NO;
 
@@ -402,6 +402,14 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     }
     self.isHydratingFormData = NO;
     [self pp_refreshTitle];
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    tap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:tap];
+}
+
+- (void)pp_dismissKeyboard {
+    [self.view endEditing:YES];
 }
 
 - (void)viewWillAppear:(BOOL)animated {

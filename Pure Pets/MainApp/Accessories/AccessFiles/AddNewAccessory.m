@@ -437,6 +437,14 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleBlockedStateNotification:)
                                                  name:PPUserManagerDidUpdateBlockedStateNotification object:UserManager.sharedManager];
     [self pp_refreshMediaLocalizedText];
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    tap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:tap];
+}
+
+- (void)pp_dismissKeyboard {
+    [self.view endEditing:YES];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -660,7 +668,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     }
 }
 
-- (void)setBackAndCorners { self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr); }
+- (void)setBackAndCorners { self.view.backgroundColor = AppPageColor(); }
 
 - (void)pp_setupUploadProgressView {
     if (self.uploadProgressView) return;
