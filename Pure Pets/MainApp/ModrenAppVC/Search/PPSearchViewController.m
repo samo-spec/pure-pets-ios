@@ -28,6 +28,23 @@
 #import "PPImageSearchService.h"
 #import "PPNovaChatViewController.h"
 
+#if __has_include(<Lottie/Lottie.h>)
+#import <Lottie/Lottie.h>
+#define PPSEARCH_HAS_LOTTIE 1
+#elif __has_include("Lottie.h")
+#import "Lottie.h"
+#define PPSEARCH_HAS_LOTTIE 1
+#elif __has_include(<lottie-ios_Oc/Lottie.h>)
+#import <lottie-ios_Oc/Lottie.h>
+#define PPSEARCH_HAS_LOTTIE 1
+#elif __has_include(<lottie_ios_Oc/Lottie.h>)
+#import <lottie_ios_Oc/Lottie.h>
+#define PPSEARCH_HAS_LOTTIE 1
+#else
+@class LOTAnimationView;
+#define PPSEARCH_HAS_LOTTIE 0
+#endif
+
 typedef NS_ENUM(NSUInteger, PPSearchSection) {
     PPSearchSectionResults = 0
 };
@@ -46,6 +63,8 @@ static NSInteger const kPPSearchSegmentIconTag = 9101;
 static NSInteger const kPPSearchSegmentTitleTag = 9102;
 static NSInteger const kPPSearchSegmentCountTag = 9103;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
+static BOOL const kPPImageSearchUseLegacyLoadingCAAnimations = NO;
+static NSString * const kPPImageSearchLoadingLottiePath = @"SearchingLottile.lottie";
 
 @interface PPSearchRankedResult : NSObject
 
@@ -118,6 +137,11 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) UILabel *imageSearchLoadingTitleLabel;
 @property (nonatomic, strong) UILabel *imageSearchLoadingSubtitleLabel;
 @property (nonatomic, strong) CAGradientLayer *imageSearchLoadingOrbGradientLayer;
+@property (nonatomic, strong) UIView *imageSearchLoadingOrbInnerGlowView;
+@property (nonatomic, strong, nullable) LOTAnimationView *imageSearchLoadingLottieView;
+@property (nonatomic, assign) BOOL imageSearchLoadingLottieRequested;
+@property (nonatomic, assign) BOOL imageSearchLoadingLottieReady;
+@property (nonatomic, assign) BOOL imageSearchLoadingLottieUnavailable;
 @property (nonatomic, assign) BOOL imageSearchLoadingVisible;
 
 @property (nonatomic, assign) BOOL isSearching;
@@ -1452,6 +1476,7 @@ UINavigationControllerDelegate>
     ];
     orbGradient.startPoint = CGPointMake(0.0, 0.0);
     orbGradient.endPoint = CGPointMake(1.0, 1.0);
+    orbGradient.hidden = YES;
     [orbView.layer insertSublayer:orbGradient atIndex:0];
 
     UIView *orbInnerGlow = [UIView new];
@@ -1459,6 +1484,7 @@ UINavigationControllerDelegate>
     orbInnerGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
     orbInnerGlow.layer.cornerRadius = 18.0;
     orbInnerGlow.layer.masksToBounds = YES;
+    orbInnerGlow.hidden = YES;
 
     UIImageSymbolConfiguration *iconConfig =
         [UIImageSymbolConfiguration configurationWithPointSize:28.0 weight:UIImageSymbolWeightSemibold];
@@ -1470,6 +1496,17 @@ UINavigationControllerDelegate>
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.tintColor = UIColor.whiteColor;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+#if PPSEARCH_HAS_LOTTIE
+    LOTAnimationView *lottieView = [[LOTAnimationView alloc] init];
+    lottieView.translatesAutoresizingMaskIntoConstraints = NO;
+    lottieView.contentMode = UIViewContentModeScaleAspectFit;
+    lottieView.userInteractionEnabled = NO;
+    lottieView.backgroundColor = UIColor.clearColor;
+    lottieView.opaque = NO;
+    lottieView.hidden = YES;
+    lottieView.alpha = 0.0;
+#endif
 
     UILabel *titleLabel = [UILabel new];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1489,6 +1526,9 @@ UINavigationControllerDelegate>
 
     [orbView addSubview:orbInnerGlow];
     [orbView addSubview:iconView];
+#if PPSEARCH_HAS_LOTTIE
+    [orbView addSubview:lottieView];
+#endif
     [cardView addSubview:orbView];
     [cardView addSubview:titleLabel];
     [cardView addSubview:subtitleLabel];
@@ -1510,8 +1550,8 @@ UINavigationControllerDelegate>
 
         [orbView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:24.0],
         [orbView.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [orbView.widthAnchor constraintEqualToConstant:76.0],
-        [orbView.heightAnchor constraintEqualToConstant:76.0],
+        [orbView.widthAnchor constraintEqualToConstant:96.0],
+        [orbView.heightAnchor constraintEqualToConstant:96.0],
 
         [orbInnerGlow.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor constant:-10.0],
         [orbInnerGlow.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor constant:-10.0],
@@ -1533,6 +1573,15 @@ UINavigationControllerDelegate>
         [subtitleLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0]
     ]];
 
+#if PPSEARCH_HAS_LOTTIE
+    [NSLayoutConstraint activateConstraints:@[
+        [lottieView.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor],
+        [lottieView.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor],
+        [lottieView.widthAnchor constraintEqualToAnchor:orbView.widthAnchor multiplier:1.0],
+        [lottieView.heightAnchor constraintEqualToAnchor:orbView.heightAnchor multiplier:1.0]
+    ]];
+#endif
+
     self.imageSearchLoadingView = hostView;
     self.imageSearchLoadingCardView = cardView;
     self.imageSearchLoadingOrbView = orbView;
@@ -1540,6 +1589,11 @@ UINavigationControllerDelegate>
     self.imageSearchLoadingTitleLabel = titleLabel;
     self.imageSearchLoadingSubtitleLabel = subtitleLabel;
     self.imageSearchLoadingOrbGradientLayer = orbGradient;
+    self.imageSearchLoadingOrbInnerGlowView = orbInnerGlow;
+#if PPSEARCH_HAS_LOTTIE
+    self.imageSearchLoadingLottieView = lottieView;
+    [self pp_prepareImageSearchLoadingLottieIfNeeded];
+#endif
 }
 
 #pragma mark - UITextFieldDelegate
@@ -3816,13 +3870,117 @@ UINavigationControllerDelegate>
     }];
 }
 
+- (void)pp_prepareImageSearchLoadingLottieIfNeeded
+{
+#if PPSEARCH_HAS_LOTTIE
+    LOTAnimationView *lottieView = self.imageSearchLoadingLottieView;
+    if (!lottieView || self.imageSearchLoadingLottieRequested) {
+        return;
+    }
+
+    self.imageSearchLoadingLottieRequested = YES;
+    self.imageSearchLoadingLottieUnavailable = NO;
+    [self pp_applyImageSearchLoadingLottieVisualState];
+    __weak typeof(self) weakSelf = self;
+    __weak LOTAnimationView *weakLottieView = lottieView;
+    [AppClasses fetchLottieJSONFromFirebasePath:kPPImageSearchLoadingLottiePath
+                                     completion:^(NSDictionary *jsonDict, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            LOTAnimationView *lottieView = weakLottieView;
+            if (!self || !lottieView) {
+                return;
+            }
+
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                self.imageSearchLoadingLottieReady = NO;
+                self.imageSearchLoadingLottieUnavailable = YES;
+                [self pp_applyImageSearchLoadingLottieVisualState];
+                return;
+            }
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                self.imageSearchLoadingLottieReady = NO;
+                self.imageSearchLoadingLottieUnavailable = YES;
+                [self pp_applyImageSearchLoadingLottieVisualState];
+                return;
+            }
+
+            [lottieView setSceneModel:composition];
+            lottieView.loopAnimation = YES;
+            lottieView.animationSpeed = 1.0;
+            lottieView.animationProgress = 0.0;
+            lottieView.hidden = NO;
+            lottieView.alpha = 1.0;
+            self.imageSearchLoadingLottieReady = YES;
+            self.imageSearchLoadingLottieUnavailable = NO;
+            [self pp_applyImageSearchLoadingLottieVisualState];
+            [self pp_updateImageSearchLoadingLottiePlayback];
+        });
+    }];
+#endif
+}
+
+- (void)pp_applyImageSearchLoadingLottieVisualState
+{
+    BOOL showLottie = self.imageSearchLoadingLottieReady;
+    BOOL showLegacyCircle = self.imageSearchLoadingLottieUnavailable && !showLottie;
+    self.imageSearchLoadingOrbGradientLayer.hidden = !showLegacyCircle;
+    self.imageSearchLoadingOrbInnerGlowView.hidden = !showLegacyCircle;
+    self.imageSearchLoadingIconView.alpha = showLottie ? 0.0 : 1.0;
+#if PPSEARCH_HAS_LOTTIE
+    self.imageSearchLoadingLottieView.hidden = !showLottie;
+    self.imageSearchLoadingLottieView.alpha = showLottie ? 1.0 : 0.0;
+#endif
+}
+
+- (void)pp_updateImageSearchLoadingLottiePlayback
+{
+#if PPSEARCH_HAS_LOTTIE
+    LOTAnimationView *lottieView = self.imageSearchLoadingLottieView;
+    if (!lottieView || !self.imageSearchLoadingLottieReady) {
+        return;
+    }
+
+    BOOL shouldPlay =
+        self.imageSearchLoadingVisible &&
+        self.imageSearchLoadingView.hidden == NO &&
+        self.view.window != nil &&
+        !UIAccessibilityIsReduceMotionEnabled();
+
+    if (shouldPlay) {
+        [lottieView play];
+        return;
+    }
+
+    [lottieView stop];
+    lottieView.animationProgress = 0.0;
+#endif
+}
+
+- (void)pp_pauseLegacyImageSearchLoadingCAAnimations
+{
+    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbSpin"];
+    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbPulse"];
+    [self.imageSearchLoadingIconView.layer removeAnimationForKey:@"pp.imageSearch.loading.iconPulse"];
+    self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
+    [self pp_applyImageSearchLoadingLottieVisualState];
+}
+
 - (void)pp_startImageSearchLoadingAnimations
 {
-    [self pp_stopImageSearchLoadingAnimations];
+    [self pp_pauseLegacyImageSearchLoadingCAAnimations];
+    [self pp_prepareImageSearchLoadingLottieIfNeeded];
+    [self pp_updateImageSearchLoadingLottiePlayback];
+
+    if (!kPPImageSearchUseLegacyLoadingCAAnimations) {
+        return;
+    }
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
-        self.imageSearchLoadingIconView.alpha = 1.0;
+        self.imageSearchLoadingIconView.alpha = self.imageSearchLoadingLottieReady ? 0.0 : 1.0;
         return;
     }
 
@@ -3855,11 +4013,11 @@ UINavigationControllerDelegate>
 
 - (void)pp_stopImageSearchLoadingAnimations
 {
-    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbSpin"];
-    [self.imageSearchLoadingOrbView.layer removeAnimationForKey:@"pp.imageSearch.loading.orbPulse"];
-    [self.imageSearchLoadingIconView.layer removeAnimationForKey:@"pp.imageSearch.loading.iconPulse"];
-    self.imageSearchLoadingOrbView.transform = CGAffineTransformIdentity;
-    self.imageSearchLoadingIconView.alpha = 1.0;
+    [self pp_pauseLegacyImageSearchLoadingCAAnimations];
+#if PPSEARCH_HAS_LOTTIE
+    [self.imageSearchLoadingLottieView stop];
+    self.imageSearchLoadingLottieView.animationProgress = 0.0;
+#endif
 }
 
 - (void)pp_imageSearchButtonTouchDown:(UIButton *)button

@@ -7,6 +7,157 @@
 
 #import "AppClasses.h"
 
+#if __has_include(<SSZipArchive/SSZipArchive.h>)
+#import <SSZipArchive/SSZipArchive.h>
+#endif
+
+#if __has_include(<SSZipArchive/SSZipArchive.h>)
+static NSDictionary *PPDotLottieJSONFromData(NSData *data, NSError **error) {
+    if (![data isKindOfClass:NSData.class] || data.length == 0) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"No .lottie data"}];
+        }
+        return nil;
+    }
+
+    NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
+    void (^cleanupTempDir)(void) = ^{
+        if (tempDir.length == 0) {
+            return;
+        }
+        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+            [[NSFileManager defaultManager] removeItemAtPath:tempDir error:nil];
+        });
+    };
+
+    NSString *zipPath = [tempDir stringByAppendingPathComponent:@"anim.lottie"];
+    NSError *fsErr = nil;
+    [[NSFileManager defaultManager] createDirectoryAtPath:tempDir withIntermediateDirectories:YES attributes:nil error:&fsErr];
+    if (fsErr) {
+        if (error) {
+            *error = fsErr;
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    if (![data writeToFile:zipPath options:NSDataWritingAtomic error:&fsErr]) {
+        if (error) {
+            *error = fsErr ?: [NSError errorWithDomain:@"LottieFetch"
+                                                  code:-3
+                                              userInfo:@{NSLocalizedDescriptionKey: @"Failed to write .lottie"}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    NSString *unzipDir = [tempDir stringByAppendingPathComponent:@"unzipped"];
+    BOOL unzipOK = [SSZipArchive unzipFileAtPath:zipPath toDestination:unzipDir];
+    if (!unzipOK) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-4
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to unzip .lottie"}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    NSString *manifestPath = [unzipDir stringByAppendingPathComponent:@"manifest.json"];
+    NSData *manifestData = [NSData dataWithContentsOfFile:manifestPath];
+    if (!manifestData) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-5
+                                     userInfo:@{NSLocalizedDescriptionKey: @"manifest.json not found in .lottie"}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    NSError *manifestErr = nil;
+    NSDictionary *manifest = [NSJSONSerialization JSONObjectWithData:manifestData options:kNilOptions error:&manifestErr];
+    if (manifestErr || ![manifest isKindOfClass:[NSDictionary class]]) {
+        if (error) {
+            *error = manifestErr ?: [NSError errorWithDomain:@"LottieFetch"
+                                                        code:-6
+                                                    userInfo:@{NSLocalizedDescriptionKey: @"Invalid manifest.json"}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    NSArray *anims = manifest[@"animations"];
+    NSDictionary *chosen = nil;
+    if ([anims isKindOfClass:[NSArray class]] && anims.count > 0) {
+        for (NSDictionary *a in anims) {
+            if ([a isKindOfClass:[NSDictionary class]] && [a[@"default"] boolValue]) {
+                chosen = a;
+                break;
+            }
+        }
+        if (!chosen) {
+            chosen = anims.firstObject;
+        }
+    }
+
+    NSString *jsonRelPath = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"json"] ?: @"") : @"";
+    NSString *animationID = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"id"] ?: @"") : @"";
+    if (jsonRelPath.length == 0 && animationID.length > 0) {
+        jsonRelPath = [NSString stringWithFormat:@"animations/%@.json", animationID];
+    }
+    if (jsonRelPath.length == 0) {
+        jsonRelPath = @"animations/animation.json";
+    }
+
+    NSString *jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
+    NSData *jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+    if (!jsonData) {
+        NSString *animationsDir = [unzipDir stringByAppendingPathComponent:@"animations"];
+        NSArray<NSString *> *animationFiles =
+            [[NSFileManager defaultManager] contentsOfDirectoryAtPath:animationsDir error:nil];
+        for (NSString *fileName in animationFiles) {
+            if (![fileName.lowercaseString hasSuffix:@".json"]) {
+                continue;
+            }
+            jsonRelPath = [@"animations" stringByAppendingPathComponent:fileName];
+            jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
+            jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+            if (jsonData) {
+                break;
+            }
+        }
+    }
+
+    if (!jsonData) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-7
+                                     userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"Animation JSON not found at %@", jsonRelPath]}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    NSError *jsonErr = nil;
+    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:jsonData options:kNilOptions error:&jsonErr];
+    if (jsonErr || ![json isKindOfClass:[NSDictionary class]]) {
+        if (error) {
+            *error = jsonErr ?: [NSError errorWithDomain:@"LottieFetch"
+                                                    code:-8
+                                                userInfo:@{NSLocalizedDescriptionKey: @"Invalid animation JSON inside .lottie"}];
+        }
+        cleanupTempDir();
+        return nil;
+    }
+
+    cleanupTempDir();
+    return json;
+}
+#endif
+
 static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BOOL *found, NSError **error) {
     if (found) {
         *found = NO;
@@ -18,7 +169,10 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 
     NSString *fileName = storagePath.lastPathComponent;
     NSString *extension = fileName.pathExtension.length > 0 ? fileName.pathExtension : @"json";
-    if (![extension.lowercaseString isEqualToString:@"json"]) {
+    NSString *lowercaseExtension = extension.lowercaseString;
+    BOOL isJSON = [lowercaseExtension isEqualToString:@"json"];
+    BOOL isDotLottie = [lowercaseExtension isEqualToString:@"lottie"];
+    if (!isJSON && !isDotLottie) {
         return nil;
     }
 
@@ -35,6 +189,20 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
     NSData *data = [NSData dataWithContentsOfFile:path options:0 error:error];
     if (!data) {
         return nil;
+    }
+
+    if (isDotLottie) {
+#if __has_include(<SSZipArchive/SSZipArchive.h>)
+        return PPDotLottieJSONFromData(data, error);
+#else
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-9
+                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                    @".lottie support requires SSZipArchive. Add `pod 'SSZipArchive'` or supply a .json file."}];
+        }
+        return nil;
+#endif
     }
 
     id json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:error];
@@ -510,99 +678,14 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
         // === .LOTTIE SUPPORT ===
         // Requires SSZipArchive to unzip the dotlottie package
 #if __has_include(<SSZipArchive/SSZipArchive.h>)
-        // 1) Write the .lottie bytes to a temp file
-        NSString *tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:[[NSUUID UUID] UUIDString]];
-        NSString *zipPath = [tempDir stringByAppendingPathComponent:@"anim.lottie"];
-        NSError *fsErr = nil;
-        [[NSFileManager defaultManager] createDirectoryAtPath:tempDir withIntermediateDirectories:YES attributes:nil error:&fsErr];
-        if (fsErr) {
-            if (completion) completion(nil, fsErr);
-            return;
-        }
-        if (![data writeToFile:zipPath options:NSDataWritingAtomic error:&fsErr]) {
-            if (completion) completion(nil, fsErr ?: [NSError errorWithDomain:@"LottieFetch" code:-3 userInfo:@{NSLocalizedDescriptionKey:@"Failed to write .lottie"}]);
-            return;
-        }
-
-        // 2) Unzip
-        NSString *unzipDir = [tempDir stringByAppendingPathComponent:@"unzipped"];
-        BOOL unzipOK = [SSZipArchive unzipFileAtPath:zipPath toDestination:unzipDir];
-        if (!unzipOK) {
-            if (completion) completion(nil, [NSError errorWithDomain:@"LottieFetch" code:-4 userInfo:@{NSLocalizedDescriptionKey:@"Failed to unzip .lottie"}]);
-            return;
-        }
-
-        // 3) Read manifest.json
-        NSString *manifestPath = [unzipDir stringByAppendingPathComponent:@"manifest.json"];
-        NSData *manifestData = [NSData dataWithContentsOfFile:manifestPath];
-        if (!manifestData) {
-            if (completion) completion(nil, [NSError errorWithDomain:@"LottieFetch" code:-5 userInfo:@{NSLocalizedDescriptionKey:@"manifest.json not found in .lottie"}]);
-            return;
-        }
-        NSError *manifestErr = nil;
-        NSDictionary *manifest = [NSJSONSerialization JSONObjectWithData:manifestData options:kNilOptions error:&manifestErr];
-        if (manifestErr || ![manifest isKindOfClass:[NSDictionary class]]) {
-            if (completion) completion(nil, manifestErr ?: [NSError errorWithDomain:@"LottieFetch" code:-6 userInfo:@{NSLocalizedDescriptionKey:@"Invalid manifest.json"}]);
-            return;
-        }
-
-        // 4) Pick the animation file
-        // Manifest spec: { "animations": [{ "id":"", "loop":true, "direction":1, "theme":"", "json":"animations/xxx.json", "default":true }, ...] }
-        NSArray *anims = manifest[@"animations"];
-        NSDictionary *chosen = nil;
-        if ([anims isKindOfClass:[NSArray class]] && anims.count > 0) {
-            for (NSDictionary *a in anims) {
-                if ([a isKindOfClass:[NSDictionary class]] && [a[@"default"] boolValue]) { chosen = a; break; }
-            }
-            if (!chosen) chosen = anims.firstObject;
-        }
-        NSString *jsonRelPath = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"json"] ?: @"") : @"";
-        NSString *animationID = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"id"] ?: @"") : @"";
-        if (jsonRelPath.length == 0 && animationID.length > 0) {
-            jsonRelPath = [NSString stringWithFormat:@"animations/%@.json", animationID];
-        }
-        if (jsonRelPath.length == 0) {
-            // Fallback: try common location
-            jsonRelPath = @"animations/animation.json";
-        }
-
-        NSString *jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
-        NSData *jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
-        if (!jsonData) {
-            NSString *animationsDir = [unzipDir stringByAppendingPathComponent:@"animations"];
-            NSArray<NSString *> *animationFiles =
-                [[NSFileManager defaultManager] contentsOfDirectoryAtPath:animationsDir error:nil];
-            for (NSString *fileName in animationFiles) {
-                if (![fileName.lowercaseString hasSuffix:@".json"]) {
-                    continue;
-                }
-                jsonRelPath = [@"animations" stringByAppendingPathComponent:fileName];
-                jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
-                jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
-                if (jsonData) {
-                    break;
-                }
-            }
-        }
-        if (!jsonData) {
-            if (completion) completion(nil, [NSError errorWithDomain:@"LottieFetch" code:-7 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"Animation JSON not found at %@", jsonRelPath]}]);
-            return;
-        }
-
         NSError *jsonErr = nil;
-        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:jsonData options:kNilOptions error:&jsonErr];
-        if (jsonErr || ![json isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *json = PPDotLottieJSONFromData(data, &jsonErr);
+        if (!json) {
             if (completion) completion(nil, jsonErr ?: [NSError errorWithDomain:@"LottieFetch" code:-8 userInfo:@{NSLocalizedDescriptionKey:@"Invalid animation JSON inside .lottie"}]);
             return;
         }
 
-        // 5) Cache the resolved animation JSON using the same key
         [cache setObject:json forKey:cacheKey];
-
-        // 6) Cleanup temp files (best-effort)
-        dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
-            [[NSFileManager defaultManager] removeItemAtPath:tempDir error:nil];
-        });
 
         NSLog(@"✅ Downloaded .lottie, extracted animation JSON, and cached");
         if (completion) completion(json, nil);
@@ -785,7 +868,6 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 }
 
 @end
-
 
 
 
