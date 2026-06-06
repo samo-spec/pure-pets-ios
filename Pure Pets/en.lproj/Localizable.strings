@@ -405,6 +405,16 @@
 "items" = "items";
 "kmessagesSetPalce" = "Receive conversations from";
 "kmsagesSetPalce" = "Receive conversations from";
+"settings_privacy_login_footer" = "Sign in to manage chat privacy and notification preferences.";
+"settings_privacy_login_required_toast" = "Sign in to manage these privacy settings.";
+"settings_chat_notifications_enabled" = "Chat alerts enabled";
+"settings_chat_notifications_disabled" = "Chat alerts disabled";
+"settings_messages_everyone_success" = "Conversations from everyone enabled";
+"settings_messages_no_one_success" = "Conversations disabled";
+"settings_notifications_permission_denied" = "Notifications permission denied";
+"settings_theme_light_active" = "Light mode active";
+"settings_theme_dark_active" = "Dark mode active";
+"settings_theme_system_active" = "System appearance active";
 "languageSetPalce" = "Application language";
 "learn" = "learn";
 "location" = "Location";
@@ -2217,7 +2227,7 @@
 // MARK: - Permission Helper (Apple 5.1.1 compliance)
 "pp_perm_camera_feature" = "Camera Access";
 "pp_perm_photos_feature" = "Photo Library Access";
-"pp_perm_camera_pre_explanation" = "We need camera access to take photos for your ads or profile picture.";
+"pp_perm_camera_pre_explanation" = "We need camera access to take a photo when you choose to use the camera.";
 "pp_perm_photos_pre_explanation" = "We need photo library access to choose images for your ads or profile picture.";
 "pp_perm_denied_message" = "This permission was previously denied. This feature will not work without access. You can enable it in Settings if you choose, or continue without it.";
 "pp_perm_restricted_message" = "This permission is currently unavailable. This feature will not work without access. You can review it in Settings if you choose, or continue without it.";

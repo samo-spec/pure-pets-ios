@@ -16,9 +16,9 @@ typedef void (^PPPermissionResultBlock)(BOOL granted);
 
 /// Request camera permission with a pre-explanation and compliant denied-state handling.
 /// Shows an informational alert explaining *why* the camera is needed before the
-/// system prompt. If access was previously denied, the user sees a neutral
-/// informational alert with Settings and Cancel. A fresh denial is respected
-/// without immediately asking the user to reconsider.
+/// system prompt. The camera pre-prompt has one action only. If access was
+/// previously denied or restricted, the user sees a neutral Settings action and
+/// the native permission prompt is not triggered again.
 + (void)requestCameraPermissionFromViewController:(UIViewController * _Nullable)viewController
                                        completion:(PPPermissionResultBlock)completion;
 

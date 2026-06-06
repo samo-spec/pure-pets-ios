@@ -151,8 +151,8 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
 }
 
 + (void)pp_showDeniedAlertForFeatureType:(PPPermissionFeatureType)featureType
-                             restricted:(BOOL)isRestricted
-                        onViewController:(UIViewController *)viewController
+                              restricted:(BOOL)isRestricted
+                         onViewController:(UIViewController *)viewController
 {
     UIAlertController *alert =
     [UIAlertController alertControllerWithTitle:[self pp_featureTitleForType:featureType]
@@ -165,9 +165,11 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
         [self openAppSettings];
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
+    if (featureType != PPPermissionFeatureTypeCamera) {
+        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                                  style:UIAlertActionStyleCancel
+                                                handler:nil]];
+    }
 
     [self pp_presentAlertController:alert fromViewController:viewController];
 }
@@ -210,6 +212,7 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
             [self showPreExplanationForFeature:[self pp_featureTitleForType:PPPermissionFeatureTypeCamera]
                                        message:[self pp_preExplanationMessageForType:PPPermissionFeatureTypeCamera]
                               onViewController:presenter
+                            allowDeclineAction:NO
                                     completion:^(BOOL userAccepted) {
                 if (!userAccepted) {
                     if (completion) completion(NO);
@@ -278,6 +281,7 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
     [self showPreExplanationForFeature:[self pp_featureTitleForType:PPPermissionFeatureTypePhotos]
                                message:[self pp_preExplanationMessageForType:PPPermissionFeatureTypePhotos]
                       onViewController:presenter
+                    allowDeclineAction:YES
                             completion:^(BOOL userAccepted) {
         if (!userAccepted) {
             if (completion) completion(NO);
@@ -311,6 +315,7 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
 + (void)showPreExplanationForFeature:(NSString *)feature
                              message:(NSString *)message
                     onViewController:(UIViewController *)viewController
+                   allowDeclineAction:(BOOL)allowDeclineAction
                           completion:(void (^)(BOOL userAccepted))completion
 {
     UIViewController *presenter = [self pp_presentingViewControllerFrom:viewController];
@@ -330,11 +335,13 @@ typedef NS_ENUM(NSUInteger, PPPermissionFeatureType) {
         if (completion) completion(YES);
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_not_now")
-                                              style:UIAlertActionStyleCancel
-                                            handler:^(UIAlertAction * _Nonnull action) {
-        if (completion) completion(NO);
-    }]];
+    if (allowDeclineAction) {
+        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_not_now")
+                                                  style:UIAlertActionStyleCancel
+                                                handler:^(UIAlertAction * _Nonnull action) {
+            if (completion) completion(NO);
+        }]];
+    }
 
     [self pp_presentAlertController:alert fromViewController:presenter];
 }

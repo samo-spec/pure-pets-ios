@@ -20,6 +20,33 @@
 
 @end
 
+static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
+static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
+
+static BOOL PPAppDelegateChatAlertsAllowed(void) {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL notificationsEnabled = YES;
+    if ([defaults objectForKey:kPPChatNotificationsPreferenceKey]) {
+        notificationsEnabled = [defaults boolForKey:kPPChatNotificationsPreferenceKey];
+    }
+    BOOL allowsIncomingConversations =
+        [defaults integerForKey:kPPMessagesPrivacyPreferenceKey] != 1;
+    BOOL hasAuthenticatedUser = [FIRAuth auth].currentUser.uid.length > 0;
+    return notificationsEnabled && allowsIncomingConversations && hasAuthenticatedUser;
+}
+
+static BOOL PPAppDelegateIsChatNotificationPayload(NSDictionary *userInfo) {
+    if (![userInfo isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
+    NSString *threadID = [userInfo[@"threadID"] isKindOfClass:NSString.class] ? userInfo[@"threadID"] : @"";
+    if (threadID.length == 0 && [userInfo[@"threadId"] isKindOfClass:NSString.class]) {
+        threadID = userInfo[@"threadId"];
+    }
+    return [type isEqualToString:@"chat"] || threadID.length > 0;
+}
+
 #if PP_HAS_FIREBASE_APPCHECK
 static void PPFetchAppCheckTokenFromProvider(id<FIRAppCheckProvider> provider,
                                              BOOL limitedUse,
@@ -701,6 +728,11 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
               paymentStatus);
     }
     if (!completionHandler) return;
+    if (PPAppDelegateIsChatNotificationPayload(userInfo) &&
+        !PPAppDelegateChatAlertsAllowed()) {
+        completionHandler(0);
+        return;
+    }
     if (@available(iOS 14.0, *)) {
         completionHandler(UNNotificationPresentationOptionBanner |
                           UNNotificationPresentationOptionList |

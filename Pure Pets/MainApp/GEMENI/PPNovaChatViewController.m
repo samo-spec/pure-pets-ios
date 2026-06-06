@@ -1185,7 +1185,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     // novaGenkitChat. Wire-level streaming lets the server start sending the
     // metadata chunk (card IDs, options) before the answer text completes.
     // Set to NO to fall back to the buffered PPNovaGenkitService path.
-    return YES;
+    return NO;
 }
 
 - (void)setupNovaBackend {
@@ -2515,6 +2515,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                     requestID:requestID
                                                    responseID:responseID
                                                       options:replyOptions];
+        } else {
+            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
         }
         return;
     }
@@ -9055,7 +9057,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if (![msg.senderID isEqualToString:@"nova_bot_id"]) {
             continue;
         }
-        if (msg.messageType != ChatMessageTypeText) {
+        if (msg.messageType != ChatMessageTypeText &&
+            msg.messageType != ChatMessageTypeSystem) {
             break;
         }
         if ([msg.text isEqualToString:text]) {
@@ -9063,7 +9066,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
         break;
     }
-    [self addNovaMessage:text];
+
+    ChatMessageModel *msg = [[ChatMessageModel alloc] init];
+    msg.ID = [[NSUUID UUID] UUIDString];
+    msg.text = text;
+    msg.timestamp = [NSDate date];
+    msg.status = ChatMessageStatusSent;
+    msg.messageType = ChatMessageTypeSystem;
+    msg.senderID = @"nova_bot_id";
+    [self pp_appendNovaMessageModel:msg updateReason:@"insert_system_fallback"];
 }
 
 - (void)addMessageWithText:(NSString *)text isIncoming:(BOOL)isIncoming {

@@ -17,6 +17,8 @@ static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
 static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
+static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
+static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
 
 #import "ChManager.h"
 #import <UIKit/UIKit.h>
@@ -25,6 +27,17 @@ static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 #import "UserModel.h"
 #import "PPFirebaseSessionBridge.h"
 #import "PPInAppChatNotificationPresenter.h"
+
+static BOOL PPChatAlertsAllowed(void) {
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    BOOL notificationsEnabled = YES;
+    if ([defaults objectForKey:kPPChatNotificationsPreferenceKey]) {
+        notificationsEnabled = [defaults boolForKey:kPPChatNotificationsPreferenceKey];
+    }
+    BOOL allowsIncomingConversations =
+        [defaults integerForKey:kPPMessagesPrivacyPreferenceKey] != 1;
+    return notificationsEnabled && allowsIncomingConversations;
+}
 
 static NSDate *PPThreadActivityDate(ChatThreadModel *thread) {
     if (![thread isKindOfClass:ChatThreadModel.class]) {
@@ -727,6 +740,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }
 
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive ||
+        !PPChatAlertsAllowed() ||
         self.isHandlingNotificationHandoff ||
         [self.mutedThreadIDsStorage containsObject:threadID] ||
         (self.activeThreadID.length && [self.activeThreadID isEqualToString:threadID])) {
@@ -742,6 +756,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             }
 
             if (UIApplication.sharedApplication.applicationState != UIApplicationStateActive ||
+                !PPChatAlertsAllowed() ||
                 strongSelf.isHandlingNotificationHandoff ||
                 [strongSelf.mutedThreadIDsStorage containsObject:threadID] ||
                 (strongSelf.activeThreadID.length && [strongSelf.activeThreadID isEqualToString:threadID])) {
@@ -880,6 +895,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 [strongSelf.activeThreadID isEqualToString:threadID];
 
             if (UIApplication.sharedApplication.applicationState == UIApplicationStateActive &&
+                PPChatAlertsAllowed() &&
                 !isChatOpen &&
                 ![strongSelf.mutedThreadIDsStorage containsObject:threadID] &&
                 !strongSelf.isHandlingNotificationHandoff) {

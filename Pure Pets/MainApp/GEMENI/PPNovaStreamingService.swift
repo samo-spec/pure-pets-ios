@@ -121,7 +121,7 @@ indirect enum JSONValue: Codable, Sendable {
     private let functions: Functions
 
     override init() {
-        self.functions = Functions.functions()
+        self.functions = Functions.functions(region: "us-central1")
         super.init()
     }
 
@@ -142,12 +142,25 @@ indirect enum JSONValue: Codable, Sendable {
         onTextDelta: @escaping (NSString) -> Void,
         onComplete: @escaping (NSString?, NSDictionary?, NSError?) -> Void
     ) {
+        let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedMessage.isEmpty else {
+            let error = NSError(
+                domain: "PPNovaStreamingService",
+                code: -4,
+                userInfo: [NSLocalizedDescriptionKey: "Nova message is required."]
+            )
+            onComplete(nil, nil, error)
+            return
+        }
+        let normalizedLanguage = language == "en" ? "en" : "ar"
+        let trimmedSessionId = sessionId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
         var requestDict: [String: Any] = [
-            "message": message,
-            "language": language,
+            "message": trimmedMessage,
+            "language": normalizedLanguage,
         ]
-        if let sessionId = sessionId, !sessionId.isEmpty {
-            requestDict["sessionId"] = sessionId
+        if !trimmedSessionId.isEmpty {
+            requestDict["sessionId"] = trimmedSessionId
         }
         if let context = context as? [String: Any] {
             requestDict["context"] = context
