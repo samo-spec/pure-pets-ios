@@ -273,17 +273,20 @@ static BOOL PPCheckoutAddressHasMinimumData(PPAddressModel *address)
 
 static FIRFunctions *PPCheckoutFunctionsClient(void)
 {
-    FIRFunctions *functions = nil;
-    NSString *customDomain = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
-    if (customDomain.length > 0) {
-        functions = [FIRFunctions functionsForCustomDomain:customDomain];
-    } else {
-        NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
-        if (region.length == 0) {
-            region = @"us-central1";
+    static FIRFunctions *functions = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *customDomain = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+        if (customDomain.length > 0) {
+            functions = [FIRFunctions functionsForCustomDomain:customDomain];
+        } else {
+            NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+            if (region.length == 0) {
+                region = @"us-central1";
+            }
+            functions = [FIRFunctions functionsForRegion:region];
         }
-        functions = [FIRFunctions functionsForRegion:region];
-    }
+    });
     // App Check tokens are auto-attached by FIRFunctions when FIRAppCheck is
     // configured globally in AppDelegate. The previous private-API invocation
     // (setUseAppCheckLimitedUseTokens: via NSInvocation) was removed — it

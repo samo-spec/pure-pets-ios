@@ -478,6 +478,21 @@ static NSString *PPPaymentFunctionsRegion(void)
     return configured.length > 0 ? configured : @"us-central1";
 }
 
+static FIRFunctions *PPPaymentQIBFunctionsClient(void)
+{
+    static FIRFunctions *functions = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+        if (customDomain.length > 0) {
+            functions = [FIRFunctions functionsForCustomDomain:customDomain];
+        } else {
+            functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
+        }
+    });
+    return functions;
+}
+
 
 static NSString *PPPaymentFunctionsMessageCandidate(id value, NSInteger depth)
 {
@@ -1396,15 +1411,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
                              appCheckToken:(NSString *)appCheckToken
                                 completion:(void (^)(NSDictionary *session, NSError *error))completion
 {
-    FIRFunctions *functions = nil;
-    NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
-    if (customDomain.length > 0) {
-        functions = [FIRFunctions functionsForCustomDomain:customDomain];
-    } else {
-        functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
-    }
-    
-    FIRHTTPSCallable *callable = [functions HTTPSCallableWithName:@"createQibSession"];
+    FIRHTTPSCallable *callable = [PPPaymentQIBFunctionsClient() HTTPSCallableWithName:@"createQibSession"];
     callable.timeoutInterval = 60.0;
     
     PPORDERLog(@"Creating QIB session via FIRFunctions HTTPSCallable | functionName=createQibSession");
