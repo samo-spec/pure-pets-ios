@@ -451,6 +451,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     // Section: Account
     if (PPIsUserLoggedIn) {
         PPSettingsSectionModel *accountSection = [PPSettingsSectionModel new];
+        accountSection.headerTitle = kLang(@"Account") ?: @"Account";
         NSMutableArray<PPSettingsRowModel *> *accountRows = [NSMutableArray array];
 
         PPSettingsRowModel *deleteAccountRow = [PPSettingsRowModel new];
