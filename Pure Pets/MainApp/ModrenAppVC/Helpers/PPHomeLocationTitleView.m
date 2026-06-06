@@ -58,7 +58,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
         UIColor *liquidBorder = AppForgroundColr ?: surface;
 
         UIButtonConfiguration *configuration =
-            [UIButtonConfiguration clearGlassButtonConfiguration];
+            [UIButtonConfiguration glassButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         configuration.baseForegroundColor = UIColor.clearColor;

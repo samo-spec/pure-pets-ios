@@ -109,7 +109,7 @@ public extension Notification.Name {
     }
 
     private var directionalBackSymbolName: String {
-        useArabic ? "chevron.right" : "chevron.left"
+        "chevron.left"
     }
 
     private func directionalBackImage() -> UIImage? {
@@ -149,7 +149,6 @@ public extension Notification.Name {
     public func presentPicker(from viewController: UIViewController) {
         PhotoManager.shared.createLanguageBundle(languageType: useArabic ? .arabic : .english)
         applyCustomTextManager()
-        applyDirectionalHXImageResources()
 
         let config = createPickerConfiguration()
 
@@ -157,10 +156,19 @@ public extension Notification.Name {
         picker.pickerDelegate = self
         self.pickerController = picker
 
+        // Apply HX image resources after picker creation to avoid override by init
+        applyDirectionalHXImageResources()
+
         // Present as sheet
         picker.modalPresentationStyle = .pageSheet
 
+        previousSemantic = viewController.view.semanticContentAttribute
+        let direction: UISemanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
+        picker.view.semanticContentAttribute = direction
+        picker.navigationBar.semanticContentAttribute = direction
+
         // Force the back indicator to match the active language direction.
+        // Set semantic content attribute first so the nav bar is aware of RTL when applying.
         let chevron = directionalBackImage()
         applyDirectionalBackIndicator(to: picker.navigationBar)
 
@@ -191,11 +199,6 @@ public extension Notification.Name {
             picker.navigationBar.compactScrollEdgeAppearance = appearance
         }
         applyDirectionalBackIndicator(to: picker.navigationBar)
-
-        previousSemantic = viewController.view.semanticContentAttribute
-        let direction: UISemanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
-        picker.view.semanticContentAttribute = direction
-        picker.navigationBar.semanticContentAttribute = direction
 
         viewController.present(picker, animated: true) { [weak self, weak picker] in
             guard let self = self, let picker = picker else { return }

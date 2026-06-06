@@ -30,7 +30,7 @@ static NSString *PPAlertSanitizedText(NSString *text, NSString *fallbackKey)
     UIButton *btn;
 
     if (@available(iOS 26.0, *)) {
-        UIButtonConfiguration *cfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
         cfg.cornerStyle = corner;
 
         // Force DARK Glass
@@ -341,7 +341,7 @@ static NSString *PPAlertSanitizedText(NSString *text, NSString *fallbackKey)
     if (@available(iOS 26.0, *)) {
         // 🧊 iOS 26+ system glass button
         UIButtonConfiguration *cfg = configType == PPButtonConfigrationGlass ? [UIButtonConfiguration glassButtonConfiguration] :
-        configType == PPButtonConfigrationClearGlass ? [UIButtonConfiguration clearGlassButtonConfiguration] :
+        configType == PPButtonConfigrationClearGlass ? [UIButtonConfiguration glassButtonConfiguration] :
         configType == PPButtonConfigrationFilled ? [UIButtonConfiguration filledButtonConfiguration] :
         configType == PPButtonConfigrationPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
         configType == PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentClearGlassButtonConfiguration] :

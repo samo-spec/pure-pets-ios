@@ -1092,7 +1092,7 @@ UITextFieldDelegate,PPChildCellDelegate
     UIButton *bgButton;
     if (@available(iOS 26.0, *)) {
         // 🧊 iOS 26+ system glass button
-        UIButtonConfiguration *cfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
         
         cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];

@@ -66,7 +66,7 @@
     // === iOS 26 Glass Button Container ===
     UIButtonConfiguration *cfg;
     if (@available(iOS 26.0, *)) {
-        cfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+        cfg = [UIButtonConfiguration glassButtonConfiguration];
     } else {
         cfg = [UIButtonConfiguration filledButtonConfiguration];
     }

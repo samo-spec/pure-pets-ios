@@ -554,7 +554,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     
     UIButtonConfiguration *glassConfig;
     if (@available(iOS 26.0, *)) {
-        glassConfig = [UIButtonConfiguration clearGlassButtonConfiguration];
+        glassConfig = [UIButtonConfiguration glassButtonConfiguration];
     } else {
         glassConfig = [UIButtonConfiguration filledButtonConfiguration];
     }

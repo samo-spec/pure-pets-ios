@@ -218,7 +218,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     // Country code picker button
     UIButtonConfiguration *btnCfg;
     if (@available(iOS 26.0, *)) {
-        btnCfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+        btnCfg = [UIButtonConfiguration glassButtonConfiguration];
     } else {
         btnCfg = [UIButtonConfiguration filledButtonConfiguration];
     }

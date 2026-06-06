@@ -44,7 +44,7 @@ static const CGFloat kPPNormalCellHeight       = 48.0;
 
         UIButtonConfiguration *config;
         if (@available(iOS 26.0, *)) {
-            config = [UIButtonConfiguration clearGlassButtonConfiguration];
+            config = [UIButtonConfiguration glassButtonConfiguration];
         } else {
             config = [UIButtonConfiguration plainButtonConfiguration];
         }

@@ -25,7 +25,7 @@ public extension Notification.Name {
     @objc public var useArabic: Bool = false
 
     private var directionalBackSymbolName: String {
-        useArabic ? "chevron.right" : "chevron.left"
+        "chevron.left"
     }
 
     private func directionalBackImage() -> UIImage? {

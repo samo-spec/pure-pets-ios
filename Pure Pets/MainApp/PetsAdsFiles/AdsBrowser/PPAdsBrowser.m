@@ -1042,7 +1042,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
         // Create cellBgButton button
        
         if (@available(iOS 26.0, *)) {
-            UIButtonConfiguration *config = [UIButtonConfiguration clearGlassButtonConfiguration];
+            UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
             config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
             self.cellBgButton = [UIButton buttonWithConfiguration:config primaryAction:nil];

@@ -2351,7 +2351,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     if (@available(iOS 26.0, *)) {
         // 🧊 iOS 26+ system glass button
         UIButtonConfiguration *cfg = configType == PPButtonConfigrationGlass ? [UIButtonConfiguration glassButtonConfiguration] :
-        configType == PPButtonConfigrationClearGlass ? [UIButtonConfiguration clearGlassButtonConfiguration] :
+        configType == PPButtonConfigrationClearGlass ? [UIButtonConfiguration glassButtonConfiguration] :
         configType == PPButtonConfigrationFilled ? [UIButtonConfiguration filledButtonConfiguration] :
         configType == PPButtonConfigrationPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
         configType == PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentClearGlassButtonConfiguration] :

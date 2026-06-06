@@ -205,7 +205,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
         // Defensive: configuration may be nil
         UIButtonConfiguration *cfg =
         self.glassView
-            .configuration ?: [UIButtonConfiguration clearGlassButtonConfiguration];
+            .configuration ?: [UIButtonConfiguration glassButtonConfiguration];
 
         UIColor *baseColor = color ?: UIColor.labelColor;
         CGFloat alpha = MAX(0.0, MIN(opacity, 1.0));
@@ -551,7 +551,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
     if (@available(iOS 26.0, *)) {
 
         UIButtonConfiguration *cfg =
-        [UIButtonConfiguration clearGlassButtonConfiguration];
+        [UIButtonConfiguration glassButtonConfiguration];
 
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         cfg.image = image;
@@ -619,7 +619,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
 
         // 🔹 NORMAL
         UIButtonConfiguration *normal =
-        [UIButtonConfiguration clearGlassButtonConfiguration];
+        [UIButtonConfiguration glassButtonConfiguration];
 
         normal.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         normal.image = image;
@@ -1101,7 +1101,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
     if (@available(iOS 26.0, *)) {
         // iOS 26+ native glass button
         UIButtonConfiguration *cfg =
-        [UIButtonConfiguration clearGlassButtonConfiguration];
+        [UIButtonConfiguration glassButtonConfiguration];
 
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         cfg.background.backgroundColor =
@@ -1366,7 +1366,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
 
         // Defensive: configuration may be nil
         UIButtonConfiguration *cfg =
-        button.configuration ?: [UIButtonConfiguration clearGlassButtonConfiguration];
+        button.configuration ?: [UIButtonConfiguration glassButtonConfiguration];
 
         UIColor *baseColor = color ?: UIColor.labelColor;
         CGFloat alpha = MAX(0.0, MIN(opacity, 1.0));

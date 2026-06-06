@@ -1052,7 +1052,7 @@
     
     if (@available(iOS 26.0, *)) {
         
-        UIButtonConfiguration *cfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
         //cfg.preferredSymbolConfigurationForImage
         cfg.baseForegroundColor = AppForgroundColr;
@@ -1152,7 +1152,7 @@
     if (@available(iOS 26.0, *)) {
         // 🧊 iOS 26+ system glass button
         UIButtonConfiguration *cfg = configType == Local_PPButtonConfigrationGlass ? [UIButtonConfiguration glassButtonConfiguration] :
-        configType == Local_PPButtonConfigrationClearGlass ? [UIButtonConfiguration clearGlassButtonConfiguration] :
+        configType == Local_PPButtonConfigrationClearGlass ? [UIButtonConfiguration glassButtonConfiguration] :
         configType == Local_PPButtonConfigrationFilled ? [UIButtonConfiguration filledButtonConfiguration] :
         configType == Local_PPButtonConfigrationPromp ? [UIButtonConfiguration prominentGlassButtonConfiguration] :
         configType == Local_PPButtonConfigrationClearPromp ? [UIButtonConfiguration prominentClearGlassButtonConfiguration] :

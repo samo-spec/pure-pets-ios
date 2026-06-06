@@ -45,7 +45,7 @@
         BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         UIColor *liquidBorderColor = AppForgroundColr ?: UIColor.whiteColor;
         UIButtonConfiguration *configuration =
-            [UIButtonConfiguration clearGlassButtonConfiguration];
+            [UIButtonConfiguration glassButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         configuration.baseForegroundColor = UIColor.clearColor;
