@@ -16,7 +16,6 @@
 
 
 
-static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 static NSString *const kSettingsNotificationsKey   = @"notificationsSet";
 NSString * const PPThemePreferenceDidChangeNotification = @"PPThemePreferenceDidChangeNotification";
@@ -192,6 +191,8 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 @property (nonatomic, assign) BOOL toggleEnabled;
 @property (nonatomic, copy, nullable) NSArray<NSString *> *segmentTitles;
 @property (nonatomic, assign) NSInteger segmentIndex;
+@property (nonatomic, assign) BOOL enabled;
+@property (nonatomic, copy, nullable) NSString *disabledHint;
 @property (nonatomic, copy, nullable) void (^onToggle)(BOOL isOn);
 @property (nonatomic, copy, nullable) void (^onTap)(void);
 @property (nonatomic, copy, nullable) void (^onSegmentChange)(NSInteger index);
@@ -210,6 +211,7 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
     self = [super init];
     if (self) {
         _toggleEnabled = YES;
+        _enabled = YES;
     }
     return self;
 }
@@ -305,6 +307,18 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - Build Sections
 
+- (BOOL)pp_boolPreferenceForKey:(NSString *)key defaultValue:(BOOL)defaultValue
+{
+    if (key.length == 0) {
+        return defaultValue;
+    }
+    id storedValue = [self.prefs objectForKey:key];
+    if (!storedValue) {
+        return defaultValue;
+    }
+    return [self.prefs boolForKey:key];
+}
+
 - (void)pp_buildSections
 {
     NSMutableArray<PPSettingsSectionModel *> *allSections = [NSMutableArray array];
@@ -352,16 +366,6 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     appSection.headerTitle = kLang(@"AppSetting");
     NSMutableArray<PPSettingsRowModel *> *appRows = [NSMutableArray array];
 
-    PPSettingsRowModel *autoPlayRow = [PPSettingsRowModel new];
-    autoPlayRow.type = PPSettingsRowTypeToggle;
-    autoPlayRow.title = kLang(@"autoPlaySetPalce") ?: @"Auto-play Videos";
-    autoPlayRow.iconName = @"play.circle.fill";
-    autoPlayRow.iconTint = UIColor.whiteColor;
-    autoPlayRow.iconBackground = [UIColor systemBlueColor];
-    autoPlayRow.toggleValue = [self.prefs boolForKey:kSettingsAutoPlayKey];
-    autoPlayRow.onToggle = ^(BOOL isOn) { [weakSelf.prefs setBool:isOn forKey:kSettingsAutoPlayKey]; };
-    [appRows addObject:autoPlayRow];
-
     PPSettingsRowModel *langRow = [PPSettingsRowModel new];
     langRow.type = PPSettingsRowTypeLanguage;
     langRow.title = kLang(@"Language") ?: @"Language";
@@ -382,6 +386,11 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     // Section: Privacy
     PPSettingsSectionModel *privacySection = [PPSettingsSectionModel new];
     privacySection.headerTitle = kLang(@"PrivacySetting");
+    BOOL privacyControlsEnabled = PPIsUserLoggedIn;
+    NSString *privacyLoginHint =
+        PPSettingsLocalizedString(@"settings_privacy_login_footer",
+                                  @"Sign in to manage chat privacy and notification preferences.");
+    privacySection.footerTitle = privacyControlsEnabled ? nil : privacyLoginHint;
     NSMutableArray<PPSettingsRowModel *> *privacyRows = [NSMutableArray array];
 
     PPSettingsRowModel *notiRow = [PPSettingsRowModel new];
@@ -390,7 +399,11 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     notiRow.iconName = @"bell.badge.fill";
     notiRow.iconTint = UIColor.whiteColor;
     notiRow.iconBackground = [UIColor systemRedColor];
-    notiRow.toggleValue = [self.prefs boolForKey:kSettingsNotificationsKey];
+    notiRow.enabled = privacyControlsEnabled;
+    notiRow.toggleEnabled = privacyControlsEnabled;
+    notiRow.disabledHint = privacyLoginHint;
+    notiRow.subtitle = nil;
+    notiRow.toggleValue = [self pp_boolPreferenceForKey:kSettingsNotificationsKey defaultValue:YES];
     notiRow.onToggle = ^(BOOL isOn) { [weakSelf pp_handleNotificationToggle:isOn]; };
     [privacyRows addObject:notiRow];
 
@@ -398,7 +411,11 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     PPSettingsRowModel *messagesRow = [PPSettingsRowModel new];
     messagesRow.type = PPSettingsRowTypeNavigation;
     messagesRow.title = kLang(@"kmessagesSetPalce") ?: @"Messages";
-    messagesRow.subtitle = (savedPrivacy == 1) ? (kLang(@"noOne") ?: @"No one") : (kLang(@"everyone") ?: @"Everyone");
+    messagesRow.enabled = privacyControlsEnabled;
+    messagesRow.disabledHint = privacyLoginHint;
+    messagesRow.subtitle = privacyControlsEnabled
+        ? ((savedPrivacy == 1) ? (kLang(@"noOne") ?: @"No one") : (kLang(@"everyone") ?: @"Everyone"))
+        : nil;
     messagesRow.iconName = @"message.fill";
     messagesRow.iconTint = UIColor.whiteColor;
     messagesRow.iconBackground = [UIColor systemGreenColor];
@@ -598,14 +615,17 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:kSettingsCellID];
     cell.textLabel.text = row.title;
     cell.textLabel.font = [GM MidFontWithSize:15];
-    cell.textLabel.textColor = AppPrimaryTextClr;
+    cell.textLabel.textColor = row.enabled ? AppPrimaryTextClr : AppSecondaryTextClr;
+    cell.textLabel.enabled = row.enabled;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.backgroundColor = AppForgroundColr;
     cell.detailTextLabel.text = row.subtitle;
     cell.detailTextLabel.font = [GM fontWithSize:12];
     cell.detailTextLabel.textColor = AppSecondaryTextClr;
+    cell.detailTextLabel.enabled = row.enabled;
     cell.detailTextLabel.numberOfLines = 2;
     cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+    cell.imageView.alpha = row.enabled ? 1.0 : 0.45;
 
     UISwitch *toggle = [[UISwitch alloc] init];
     toggle.on = row.toggleValue;
@@ -616,6 +636,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     toggle.tag = indexPath.section * 100 + indexPath.row;
     [toggle addTarget:self action:@selector(pp_switchToggled:) forControlEvents:UIControlEventValueChanged];
     cell.accessoryView = toggle;
+    cell.contentView.alpha = row.enabled ? 1.0 : 0.72;
     return cell;
 }
 
@@ -782,6 +803,45 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     return self.sections[section].headerTitle.length > 0 ? 44.0 : CGFLOAT_MIN;
 }
 
+- (nullable UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
+{
+    if (section < 0 || section >= (NSInteger)self.sections.count) return nil;
+
+    NSString *title = self.sections[section].footerTitle;
+    if (title.length == 0) return nil;
+
+    UIView *container = [[UIView alloc] initWithFrame:CGRectZero];
+    container.backgroundColor = UIColor.clearColor;
+    container.layoutMargins = UIEdgeInsetsMake(4.0, PPScreenMargin + 2.0, 8.0, PPScreenMargin + 2.0);
+    container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectZero];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.text = title;
+    label.font = [GM fontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightRegular];
+    label.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.72] ?: [UIColor secondaryLabelColor];
+    label.textAlignment = [Language alignmentForCurrentLanguage];
+    label.numberOfLines = 0;
+    label.adjustsFontForContentSizeCategory = YES;
+    label.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [container addSubview:label];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [label.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
+        [label.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
+        [label.topAnchor constraintEqualToAnchor:container.layoutMarginsGuide.topAnchor],
+        [label.bottomAnchor constraintLessThanOrEqualToAnchor:container.layoutMarginsGuide.bottomAnchor]
+    ]];
+
+    return container;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
+{
+    if (section < 0 || section >= (NSInteger)self.sections.count) return CGFLOAT_MIN;
+    return self.sections[section].footerTitle.length > 0 ? 64.0 : CGFLOAT_MIN;
+}
+
 - (UITableViewCell *)pp_navigationCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
 {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:kSettingsCellID];
@@ -792,13 +852,17 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         cell.textLabel.textColor = UIColor.systemRedColor;
         cell.accessoryType = UITableViewCellAccessoryNone;
     } else {
-        cell.textLabel.textColor = AppPrimaryTextClr;
-        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+        cell.textLabel.textColor = row.enabled ? AppPrimaryTextClr : AppSecondaryTextClr;
+        cell.accessoryType = row.enabled ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
     }
+    cell.textLabel.enabled = row.enabled;
     cell.detailTextLabel.text = row.subtitle;
     cell.detailTextLabel.font = [GM fontWithSize:13];
     cell.detailTextLabel.textColor = AppSecondaryTextClr;
+    cell.detailTextLabel.enabled = row.enabled;
     cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+    cell.imageView.alpha = row.enabled ? 1.0 : 0.45;
+    cell.contentView.alpha = row.enabled ? 1.0 : 0.72;
     return cell;
 }
 
@@ -846,7 +910,18 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section >= (NSInteger)self.sections.count ||
+        indexPath.row >= (NSInteger)self.sections[indexPath.section].rows.count) {
+        return;
+    }
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    if (!row.enabled) {
+        NSString *hint = row.disabledHint ?: self.sections[indexPath.section].footerTitle;
+        if (hint.length > 0) {
+            [PPHUD showInfo:hint];
+        }
+        return;
+    }
     if (row.onTap) { row.onTap(); }
 }
 
@@ -869,6 +944,14 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     if (section < (NSInteger)self.sections.count &&
         row < (NSInteger)self.sections[section].rows.count) {
         PPSettingsRowModel *model = self.sections[section].rows[row];
+        if (!model.enabled || !model.toggleEnabled) {
+            sender.on = model.toggleValue;
+            NSString *hint = model.disabledHint ?: self.sections[section].footerTitle;
+            if (hint.length > 0) {
+                [PPHUD showInfo:hint];
+            }
+            return;
+        }
         model.toggleValue = sender.isOn;
         if (model.onToggle) { model.onToggle(sender.isOn); }
     }
@@ -941,6 +1024,18 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     }
     [self pp_buildSections];
     [self.tableView reloadData];
+    [PPHUD showSuccess:[self pp_themeFeedbackMessageForIndex:index]];
+}
+
+- (NSString *)pp_themeFeedbackMessageForIndex:(NSInteger)index
+{
+    if (index == 0) {
+        return PPSettingsLocalizedString(@"settings_theme_light_active", @"Light mode active");
+    }
+    if (index == 1) {
+        return PPSettingsLocalizedString(@"settings_theme_dark_active", @"Dark mode active");
+    }
+    return PPSettingsLocalizedString(@"settings_theme_system_active", @"System appearance active");
 }
 
 - (UITableViewCell *)pp_themeCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
@@ -1116,7 +1211,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         BOOL authorized = (settings.authorizationStatus == UNAuthorizationStatusAuthorized ||
                            settings.authorizationStatus == UNAuthorizationStatusProvisional ||
                            settings.authorizationStatus == UNAuthorizationStatusEphemeral);
-        BOOL prefEnabled = [weakSelf.prefs boolForKey:kSettingsNotificationsKey];
+        BOOL prefEnabled = [weakSelf pp_boolPreferenceForKey:kSettingsNotificationsKey defaultValue:YES];
         if (!authorized && prefEnabled) {
             [weakSelf.prefs setBool:NO forKey:kSettingsNotificationsKey];
         }
@@ -1129,8 +1224,17 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (void)pp_handleNotificationToggle:(BOOL)isOn
 {
+    if (!PPIsUserLoggedIn) {
+        [self pp_buildSections];
+        [self.tableView reloadData];
+        [PPHUD showInfo:PPSettingsLocalizedString(@"settings_privacy_login_required_toast",
+                                                  @"Sign in to manage these privacy settings.")];
+        return;
+    }
     if (isOn) { [self pp_requestNotificationAuthorization]; return; }
     [self.prefs setBool:NO forKey:kSettingsNotificationsKey];
+    [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_chat_notifications_disabled",
+                                                 @"Chat alerts disabled")];
 }
 
 - (void)pp_requestNotificationAuthorization
@@ -1144,12 +1248,19 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-            if (granted) {
+            if (error) {
+                [strongSelf.prefs setBool:NO forKey:kSettingsNotificationsKey];
+                [PPHUD showError:PPSettingsLocalizedString(@"settings_notifications_permission_denied",
+                                                          @"Notifications are not available right now.")];
+            } else if (granted) {
                 [strongSelf.prefs setBool:YES forKey:kSettingsNotificationsKey];
                 [UIApplication.sharedApplication registerForRemoteNotifications];
+                [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_chat_notifications_enabled",
+                                                             @"Chat alerts enabled")];
             } else {
                 [strongSelf.prefs setBool:NO forKey:kSettingsNotificationsKey];
-                [PPHUD showError:kLang(@"Notifications permission denied")];
+                [PPHUD showError:PPSettingsLocalizedString(@"settings_notifications_permission_denied",
+                                                          @"Notifications permission denied")];
             }
             [strongSelf pp_buildSections];
             [strongSelf.tableView reloadData];
@@ -1161,23 +1272,44 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (void)pp_showMessagesPrivacyPicker
 {
+    if (!PPIsUserLoggedIn) {
+        [PPHUD showInfo:PPSettingsLocalizedString(@"settings_privacy_login_required_toast",
+                                                  @"Sign in to manage these privacy settings.")];
+        return;
+    }
+
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"kmessagesSetPalce")
                                                                   message:nil
                                                            preferredStyle:UIAlertControllerStyleActionSheet];
     __weak typeof(self) weakSelf = self;
     [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"everyone") ?: @"Everyone")
                                               style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction *a) {
+                                            handler:^(__unused UIAlertAction *a) {
         [weakSelf.prefs setInteger:0 forKey:kSettingsMessagesPrivacyKey];
         [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+        [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_messages_everyone_success",
+                                                     @"Conversations from everyone enabled")];
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"noOne") ?: @"No one")
                                               style:UIAlertActionStyleDefault
-                                            handler:^(UIAlertAction *a) {
+                                            handler:^(__unused UIAlertAction *a) {
         [weakSelf.prefs setInteger:1 forKey:kSettingsMessagesPrivacyKey];
         [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+        [PPHUD showSuccess:PPSettingsLocalizedString(@"settings_messages_no_one_success",
+                                                     @"Conversations disabled")];
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") style:UIAlertActionStyleCancel handler:nil]];
+
+    UIPopoverPresentationController *popover = alert.popoverPresentationController;
+    if (popover) {
+        popover.sourceView = self.view;
+        popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                        CGRectGetMidY(self.view.bounds),
+                                        1.0,
+                                        1.0);
+        popover.permittedArrowDirections = 0;
+    }
+
     [self presentViewController:alert animated:YES completion:nil];
 }
 

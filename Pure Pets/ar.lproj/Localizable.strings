@@ -405,6 +405,16 @@
 "items" = "أصناف";
 "kmessagesSetPalce" = "إستلام المحادثات من";
 "kmsagesSetPalce" = "إستلام المحادثات من";
+"settings_privacy_login_footer" = "سجّل الدخول لإدارة خصوصية المحادثات وتفضيلات التنبيهات.";
+"settings_privacy_login_required_toast" = "سجّل الدخول لإدارة إعدادات الخصوصية هذه.";
+"settings_chat_notifications_enabled" = "تم تفعيل تنبيهات المحادثات";
+"settings_chat_notifications_disabled" = "تم تعطيل تنبيهات المحادثات";
+"settings_messages_everyone_success" = "تم السماح باستلام المحادثات من الجميع";
+"settings_messages_no_one_success" = "تم تعطيل استلام المحادثات";
+"settings_notifications_permission_denied" = "تم رفض إذن التنبيهات";
+"settings_theme_light_active" = "تم تفعيل الوضع الفاتح";
+"settings_theme_dark_active" = "تم تفعيل الوضع الداكن";
+"settings_theme_system_active" = "تم تفعيل مظهر النظام";
 "languageSetPalce" = "لغة التطبيق";
 "learn" = "تعلم";
 "location" = "الموقع";
@@ -2193,7 +2203,7 @@
 // MARK: - Permission Helper (Apple 5.1.1 compliance)
 "pp_perm_camera_feature" = "الوصول إلى الكاميرا";
 "pp_perm_photos_feature" = "الوصول إلى الصور";
-"pp_perm_camera_pre_explanation" = "نحتاج إلى الكاميرا لالتقاط صور لإعلاناتك أو صورتك الشخصية.";
+"pp_perm_camera_pre_explanation" = "نحتاج إلى الكاميرا لالتقاط صورة داخل التطبيق عند اختيارك استخدام الكاميرا.";
 "pp_perm_photos_pre_explanation" = "نحتاج إلى مكتبة الصور لاختيار صور لإعلاناتك أو صورتك الشخصية.";
 "pp_perm_denied_message" = "تم رفض هذا الإذن سابقاً. لن تعمل هذه الميزة بدون الوصول. يمكنك تفعيله من الإعدادات إذا رغبت، أو المتابعة بدونه.";
 "pp_perm_restricted_message" = "هذا الإذن غير متاح حالياً. لن تعمل هذه الميزة بدون الوصول. يمكنك مراجعته من الإعدادات إذا رغبت، أو المتابعة بدونه.";

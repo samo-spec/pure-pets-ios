@@ -1640,7 +1640,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         NSAttributedString *attrText = showsServiceMeta
             ? [self pp_serviceRatingMetaAttributedStringForService:service]
             : [self pp_weightMetaAttributedStringWithText:weightText];
-        [self pp_applyServiceMetaPillWithAttributedText:attrText];
+        UIColor *borderColor = showsWeightMeta
+            ? PPUniversalCellDynamicColor([UIColor colorWithRed:0.11 green:0.56 blue:0.51 alpha:0.18],
+                                          [UIColor colorWithWhite:1.0 alpha:0.16])
+            : PPUniversalCellDynamicColor([UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0],
+                                          [UIColor colorWithWhite:1.0 alpha:0.14]);
+        [self pp_applyServiceMetaPillWithAttributedText:attrText borderColor:borderColor];
     } else {
         self.serviceMetaLabel.text = @"";
         self.serviceMetaLabel.attributedText = nil;
@@ -2015,6 +2020,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 }
 
 - (void)pp_applyServiceMetaPillWithAttributedText:(NSAttributedString *)attrText
+                                      borderColor:(UIColor *)borderColor
 {
     self.serviceMetaLabel.text = @"";
     self.serviceMetaLabel.attributedText = attrText;
@@ -2024,7 +2030,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                                                         [UIColor colorWithWhite:0.14 alpha:1.0]);
     self.serviceMetaLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
     self.serviceMetaLabel.layer.borderWidth = 1.0;
-    [self.serviceMetaLabel pp_setBorderColor:[UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0]];
+    [self.serviceMetaLabel pp_setBorderColor:borderColor ?: PPUniversalCellDynamicColor([UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0],
+                                                                                        [UIColor colorWithWhite:1.0 alpha:0.14])];
     self.serviceMetaLabel.hidden = attrText.length == 0;
     self.serviceMetaCollapsedConstraint.active = attrText.length == 0;
 }

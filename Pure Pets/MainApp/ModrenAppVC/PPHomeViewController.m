@@ -68,6 +68,7 @@
 @end
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
+static NSString * const PPHomeLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
 static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
@@ -182,6 +183,21 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     }
 
     PPHomeApplyFallbackPromoPalette(card, idx);
+}
+
+static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
+{
+    if (!target || !selector || ![target respondsToSelector:selector]) {
+        return;
+    }
+
+    IMP implementation = [target methodForSelector:selector];
+    if (!implementation) {
+        return;
+    }
+
+    void (*sendMessage)(id, SEL) = (void (*)(id, SEL))implementation;
+    sendMessage(target, selector);
 }
 
 @interface PPHomePetProfileCardCell : UICollectionViewCell
@@ -1033,6 +1049,9 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath
                                                  kind:(nullable NSString *)kind;
 - (void)pp_refreshThemeSensitiveHomeContent;
+- (void)pp_refreshVisibleHomeAppearanceForCurrentTheme;
+- (void)pp_refreshLanguageSensitiveHomeContent;
+- (void)pp_refreshVisibleHomeHeadersForCurrentLanguage;
 - (void)pp_refreshHomeAppearanceChromeWithoutCollectionReload;
 - (void)pp_refreshSuggestionsForAppearanceIfNeeded;
 - (NSString *)pp_homeSuggestionsRefreshSignature;
@@ -1045,6 +1064,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
                                            defaultPet:(nullable PPPetProfile *)defaultPet
                                               loading:(BOOL)loading;
 - (void)handleThemePreferenceDidChange:(NSNotification *)notification;
+- (void)handleLanguageDidChange:(NSNotification *)notification;
 - (void)pp_applyCurrentLanguageDirectionToHomeUI;
 - (void)pp_forceHomeCollectionLayoutRefresh;
 - (void)pp_scheduleInitialMainKindsLayoutRefresh;
@@ -1130,6 +1150,8 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @property (nonatomic, assign) BOOL didAutoScrollNearbyServices;
 @property (nonatomic, assign) BOOL didFillSuggestionsOnce;
 @property (nonatomic, assign) BOOL didApplyInitialHomeAppearanceRefresh;
+@property (nonatomic, assign) BOOL needsVisibleHomeThemeAppearanceRefresh;
+@property (nonatomic, assign) BOOL needsVisibleHomeLanguageRefresh;
 @property (nonatomic, copy, nullable) NSString *lastHomeSuggestionsAppearanceSignature;
 @property (nonatomic, copy, nullable) NSString *lastCurrentOrdersSectionSignature;
 @property (nonatomic, copy, nullable) NSString *lastBuyAgainSectionSignature;
@@ -2207,6 +2229,98 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     });
 }
 
+- (void)pp_refreshVisibleHomeAppearanceForCurrentTheme
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_refreshVisibleHomeAppearanceForCurrentTheme];
+        });
+        return;
+    }
+
+    if (!self.isViewLoaded || !self.collectionView || !self.dataSource) {
+        return;
+    }
+
+    CGPoint preservedOffset = self.collectionView.contentOffset;
+    NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
+    NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray arrayWithCapacity:visibleIndexPaths.count];
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        PPHomeItem *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+        if (item) {
+            [visibleIdentifiers addObject:item];
+        }
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        if (@available(iOS 13.0, *)) {
+            self.collectionView.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+        }
+
+        [self.view pp_resolveLayerColorsRecursively];
+
+        if (visibleIdentifiers.count > 0) {
+            NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+            [self pp_reconfigureHomeItems:visibleIdentifiers inSnapshot:snapshot];
+        }
+
+        NSArray<NSString *> *themeRefreshSelectorNames = @[
+            @"refreshThemeAppearance",
+            @"pp_refreshThemeColors",
+            @"pp_refreshAppearance",
+            @"pp_applyTheme",
+            @"pp_applyPalette",
+            @"pp_applyThemeColors"
+        ];
+
+        for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+            if (@available(iOS 13.0, *)) {
+                cell.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+            }
+
+            for (NSString *selectorName in themeRefreshSelectorNames) {
+                PPHomeInvokeVoidSelectorIfAvailable(cell, NSSelectorFromString(selectorName));
+            }
+
+            [cell pp_resolveLayerColorsRecursively];
+            [cell setNeedsLayout];
+            [cell.contentView setNeedsLayout];
+            [cell.contentView layoutIfNeeded];
+            [cell layoutIfNeeded];
+        }
+
+        for (UICollectionReusableView *header in
+             [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
+            if (@available(iOS 13.0, *)) {
+                header.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+            }
+
+            for (NSString *selectorName in themeRefreshSelectorNames) {
+                PPHomeInvokeVoidSelectorIfAvailable(header, NSSelectorFromString(selectorName));
+            }
+
+            [header pp_resolveLayerColorsRecursively];
+            [header setNeedsLayout];
+            [header layoutIfNeeded];
+        }
+
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+    }];
+    [CATransaction commit];
+
+    CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
+    CGFloat maxOffsetY = MAX(minOffsetY,
+                             self.collectionView.contentSize.height -
+                             CGRectGetHeight(self.collectionView.bounds) +
+                             self.collectionView.adjustedContentInset.bottom);
+    CGFloat targetOffsetY = MIN(MAX(preservedOffset.y, minOffsetY), maxOffsetY);
+    self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
+}
+
 - (void)pp_refreshInitialHomeRevealDependentContent
 {
     if (![self pp_isInitialHomeRevealSettled] || !self.isViewLoaded || !self.collectionView) {
@@ -2245,13 +2359,127 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self pp_refreshHomeLocationTitleViewAnimated:NO];
 
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
-        cell.semanticContentAttribute = semantic;
-        cell.contentView.semanticContentAttribute = semantic;
+        PPHomeApplySemanticToViewTree(cell, semantic);
     }
 
     for (UICollectionReusableView *header in
          [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
         PPHomeApplySemanticToViewTree(header, semantic);
+    }
+}
+
+- (void)pp_refreshVisibleHomeHeadersForCurrentLanguage
+{
+    if (!self.isViewLoaded || !self.collectionView || !self.dataSource) {
+        return;
+    }
+
+    NSArray<NSNumber *> *sectionIdentifiers = self.dataSource.snapshot.sectionIdentifiers ?: @[];
+    __weak typeof(self) weakSelf = self;
+    for (UICollectionReusableView *visibleHeader in
+         [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
+        if (![visibleHeader isKindOfClass:PPSectionHeaderView.class]) {
+            PPHomeApplySemanticToViewTree(visibleHeader, PPHomeCurrentSemanticAttribute());
+            continue;
+        }
+
+        NSIndexPath *indexPath = [self.collectionView indexPathForSupplementaryView:visibleHeader];
+        if (!indexPath || indexPath.section >= (NSInteger)sectionIdentifiers.count) {
+            continue;
+        }
+
+        PPSectionHeaderView *header = (PPSectionHeaderView *)visibleHeader;
+        PPHomeSection section = (PPHomeSection)sectionIdentifiers[indexPath.section].integerValue;
+        PPHomeHeaderConfig *cfg = [self headerConfigForSection:section];
+        if (cfg.hidden) {
+            header.hidden = YES;
+            continue;
+        }
+
+        header.hidden = NO;
+        [header configureWithTitle:cfg.title
+                          subtitle:cfg.subtitle
+                       actionTitle:cfg.actionTitle
+                          iconName:cfg.iconName
+                              menu:cfg.section == PPHomeSectionMainKinds ? nil : cfg.menu
+                     ppHomeSection:cfg.section];
+        header.onTap = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            [self handleSeeAllForSection:cfg.section];
+        };
+        PPHomeApplySemanticToViewTree(header, PPHomeCurrentSemanticAttribute());
+    }
+}
+
+- (void)pp_refreshLanguageSensitiveHomeContent
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_refreshLanguageSensitiveHomeContent];
+        });
+        return;
+    }
+
+    if (!self.isViewLoaded) {
+        return;
+    }
+
+    self.needsVisibleHomeLanguageRefresh = NO;
+    CGPoint preservedOffset = self.collectionView ? self.collectionView.contentOffset : CGPointZero;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        [self pp_applyCurrentLanguageDirectionToHomeUI];
+        if ([self pp_canOwnHomeNavigationChrome]) {
+            [self configureNavigationBar];
+        }
+        [self refreshHeroSectionAppearance];
+        [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+        [self pp_refreshHomeLocationTitleViewAnimated:NO];
+
+        if (self.collectionView && self.dataSource) {
+            NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+            if ([self pp_isSectionPresent:PPHomeSectionQuickActions inSnapshot:snapshot]) {
+                [self reloadSection:PPHomeSectionQuickActions];
+                snapshot = self.dataSource.snapshot;
+            }
+            if ([self pp_isSectionPresent:PPHomeSectionServices inSnapshot:snapshot]) {
+                [self reloadSection:PPHomeSectionServices];
+                snapshot = self.dataSource.snapshot;
+            }
+
+            NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
+            NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray arrayWithCapacity:visibleIndexPaths.count];
+            for (NSIndexPath *indexPath in visibleIndexPaths) {
+                PPHomeItem *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+                if (item) {
+                    [visibleIdentifiers addObject:item];
+                }
+            }
+            if (visibleIdentifiers.count > 0) {
+                [self pp_reconfigureHomeItems:visibleIdentifiers inSnapshot:self.dataSource.snapshot];
+            }
+
+            [self pp_refreshVisibleHomeHeadersForCurrentLanguage];
+            [self.collectionView.collectionViewLayout invalidateLayout];
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
+        }
+
+        [self pp_applyCurrentLanguageDirectionToHomeUI];
+        [self setNeedsStatusBarAppearanceUpdate];
+    }];
+    [CATransaction commit];
+
+    if (self.collectionView) {
+        CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
+        CGFloat maxOffsetY = MAX(minOffsetY,
+                                 self.collectionView.contentSize.height -
+                                 CGRectGetHeight(self.collectionView.bounds) +
+                                 self.collectionView.adjustedContentInset.bottom);
+        CGFloat targetOffsetY = MIN(MAX(preservedOffset.y, minOffsetY), maxOffsetY);
+        self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
     }
 }
 
@@ -2321,17 +2549,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return;
     }
 
-    NSArray<NSNumber *> *themeSections = @[
-        @(PPHomeSectionSuggestions),
-        @(PPHomeSectionAccessories),
-        @(PPHomeSectionPremiumSearch),
-        @(PPHomeSectionPremiumCare),
-        @(PPHomeSectionLastFood),
-        @(PPHomeSectionNearbyServices),
-        @(PPHomeSectionAdsNearBy),
-        @(PPHomeSectionBuyAgain)
-    ];
-
     [self pp_applyOrderDetailsBackgroundAppearance];
     if ([self pp_canOwnHomeNavigationChrome]) {
         [self configureNavigationBar];
@@ -2342,26 +2559,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self refreshHeroSectionAppearance];
     [self setNeedsStatusBarAppearanceUpdate];
 
-    NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
-    NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray array];
-    for (NSIndexPath *indexPath in visibleIndexPaths) {
-        NSNumber *sectionNumber = @([self sectionTypeForIndexPath:indexPath]);
-        if (![themeSections containsObject:sectionNumber]) {
-            continue;
-        }
-
-        PPHomeItem *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
-        if (item) {
-            [visibleIdentifiers addObject:item];
-        }
-    }
-
-    if (visibleIdentifiers.count > 0) {
-        NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-        [self pp_reconfigureHomeItems:visibleIdentifiers inSnapshot:snapshot];
-    }
-
-    [self pp_refreshVisibleHomeCardsForSections:themeSections];
+    [self pp_refreshVisibleHomeAppearanceForCurrentTheme];
     [self.collectionView.collectionViewLayout invalidateLayout];
     [self.collectionView setNeedsLayout];
     [self.collectionView layoutIfNeeded];
@@ -2756,6 +2954,22 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
 
     switch (section) {
+        case PPHomeSectionQuickActions:
+            for (PPHomeQuickActionModel *qa in [self pp_homeQuickActions]) {
+                PPHomeItem *item = [PPHomeItem new];
+                item.payload = qa;
+                [items addObject:item];
+            }
+            break;
+
+        case PPHomeSectionServices:
+            for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
+                PPHomeItem *item = [PPHomeItem new];
+                item.payload = service;
+                [items addObject:item];
+            }
+            break;
+
         case PPHomeSectionCurrentOrders:
             [items addObjectsFromArray:[self pp_homeCurrentOrderItems]];
             break;
@@ -3197,9 +3411,15 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
               name:PPUserManagerDidUpdateUserAccessNotification
               object:nil];
 
-    // Language changes rebuild the root controller via SceneDelegate/Language.
-    // Home must not do a second in-place language reload, which can leave stale
-    // collection work running during the root swap on older iPad/iOS builds.
+    // Root rebuild is still the primary language-change path, but Home also
+    // refreshes visible cells/menus in place for iPad sessions where the
+    // existing root remains alive long enough to display stale semantics.
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(handleLanguageDidChange:)
+               name:PPHomeLanguageDidChangeNotification
+              object:nil];
+
     [[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(handleThemePreferenceDidChange:)
@@ -5772,8 +5992,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 - (void)handleThemePreferenceDidChange:(NSNotification *)notification
 {
     (void)notification;
+    self.needsVisibleHomeThemeAppearanceRefresh = YES;
     [self pp_refreshThemeSensitiveHomeContent];
     [self pp_forceHomeCollectionLayoutRefresh];
+}
+
+- (void)handleLanguageDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    self.needsVisibleHomeLanguageRefresh = YES;
+    [self pp_refreshLanguageSensitiveHomeContent];
 }
 
 - (void)handleAdUploadCompletedNotification:(NSNotification *)notification
@@ -5823,6 +6051,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 
     [self refreshHeroSectionAppearance];
+    if (self.needsVisibleHomeThemeAppearanceRefresh) {
+        self.needsVisibleHomeThemeAppearanceRefresh = NO;
+        [self pp_refreshVisibleHomeAppearanceForCurrentTheme];
+    }
+    if (self.needsVisibleHomeLanguageRefresh) {
+        [self pp_refreshLanguageSensitiveHomeContent];
+    }
     if (self.homeLocationManager) {
         CLAuthorizationStatus status;
         if (@available(iOS 14.0, *)) {
@@ -11117,6 +11352,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        self.needsVisibleHomeThemeAppearanceRefresh = YES;
         [self pp_refreshThemeSensitiveHomeContent];
         [self pp_forceHomeCollectionLayoutRefresh];
     }
