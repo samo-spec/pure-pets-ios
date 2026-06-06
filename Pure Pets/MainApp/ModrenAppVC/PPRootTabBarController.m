@@ -1381,8 +1381,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         dockHeight = 86.0;
     }
     [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPIOS26() ? -6 : 4],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPIOS26() ? -2 : 4)],
+        [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? -6 : 4],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:PPIOS26() ? 6 : -4],
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
@@ -2031,7 +2031,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
-            [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
+            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
             [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]

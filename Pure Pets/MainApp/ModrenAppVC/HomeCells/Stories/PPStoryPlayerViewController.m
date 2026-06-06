@@ -469,6 +469,7 @@ shouldChangeTextInRange:(NSRange)range
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor blackColor];
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     _imageView = [[UIImageView alloc] initWithFrame:self.view.bounds];
     _imageView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -483,6 +484,7 @@ shouldChangeTextInRange:(NSRange)range
 
     _progressContainer = [[UIView alloc] init];
     _progressContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _progressContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:_progressContainer];
     [NSLayoutConstraint activateConstraints:@[
         [_progressContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
@@ -1091,22 +1093,20 @@ shouldChangeTextInRange:(NSRange)range
     }
 
     CGFloat midX = self.view.bounds.size.width * 0.5;
+    BOOL isRTL = Language.isRTL;
 
-    // LEFT SIDE → Previous
-    if (loc.x < midX) {
+    BOOL tappedPreviousSide = isRTL ? (loc.x > midX) : (loc.x < midX);
 
-        // Previous item
+    if (tappedPreviousSide) {
         if (self.currentItemIndex > 0) {
             self.currentItemIndex -= 1;
             [self showItem];
         }
-        // Previous story
         else if (self.currentStoryIndex > 0) {
             self.currentStoryIndex -= 1;
             [self loadStory];
         }
     }
-    // RIGHT SIDE → Next
     else {
         [self nextItem];
     }

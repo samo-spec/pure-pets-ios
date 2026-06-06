@@ -17,23 +17,7 @@
 
 #pragma mark - Incoming Message Feedback
  
- 
-
-- (void)applyTopFadeMaskWithColor:(UIColor *)color onView:(UIView *)view {
-   
-    [self.view layoutIfNeeded];
-    [view layoutIfNeeded];
-    CAGradientLayer *mainGradient =
-    [UIView gradientLayerWithColors:@[
-        [color colorWithAlphaComponent:0.7],
-        [color colorWithAlphaComponent:0.5],
-        [color colorWithAlphaComponent:0.3],
-        [color colorWithAlphaComponent:0.1],
-        [color colorWithAlphaComponent:0.0] ] direction:PPGradientDirectionTopToBottom frame:CGRectMake(view.hx_x, view.hx_y,
-                                                                                                        view.hx_w,
-                                                                                                        view.hx_h)];
-    [view.layer insertSublayer:mainGradient atIndex:0];
-}
+  
   
 #pragma mark - Setup Views
 

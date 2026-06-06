@@ -334,8 +334,9 @@ UINavigationControllerDelegate>
 
 - (void)pp_keyboardWillHide:(NSNotification *)notification
 {
+    CGFloat bottomOffset = PPIOS26() ? 26.0 : -10.0;
     self.searchBarBottomConstraint.active = NO;
-    self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:26.0];
+    self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:bottomOffset];
     self.searchBarBottomConstraint.active = YES;
 }
 
@@ -493,6 +494,10 @@ UINavigationControllerDelegate>
             [dismissBtn.heightAnchor constraintEqualToConstant:32.0]
         ]];
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:dismissBtn];
+    }
+    else
+    {
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
     }
 
     UIButton *novaBtn = [self pp_makeNovaNavigationButton];
@@ -818,8 +823,9 @@ UINavigationControllerDelegate>
         [placeholderLabel.centerYAnchor constraintEqualToAnchor:textField.centerYAnchor]
     ]];
 
+    CGFloat bottomOffset = PPIOS26() ? 26.0 : -10.0;
     NSLayoutConstraint *bottomConstraint =
-        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:26.0];
+        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:bottomOffset];
     [constraints addObject:bottomConstraint];
     self.searchBarBottomConstraint = bottomConstraint;
 

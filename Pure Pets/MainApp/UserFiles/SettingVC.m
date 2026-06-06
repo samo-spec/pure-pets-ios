@@ -127,8 +127,8 @@ static BOOL PPSettingsDeleteAccountErrorIsDeviceVerification(NSError *error)
 static NSString *PPSettingsDeleteAccountFailureMessage(NSError *error)
 {
     if (PPSettingsDeleteAccountErrorRequiresRecentLogin(error)) {
-        return PPSettingsLocalizedString(@"delete_account_session_verify_message",
-                                         @"We could not verify this account deletion request. Please try deleting your account again.");
+        return PPSettingsLocalizedString(@"delete_account_sign_in_required_message",
+                                         @"Please sign in again, then return to Settings and delete your account.");
     }
 
     if (PPSettingsDeleteAccountErrorIsOffline(error)) {
@@ -143,8 +143,8 @@ static NSString *PPSettingsDeleteAccountFailureMessage(NSError *error)
 
     if ([PPFirebaseSessionBridge isAuthOrAppCheckError:error] ||
         error.code == FIRFunctionsErrorCodeUnauthenticated) {
-        return PPSettingsLocalizedString(@"delete_account_sign_in_required_message",
-                                         @"Please sign in again, then return to Settings and delete your account.");
+        return PPSettingsLocalizedString(@"delete_account_session_verify_message",
+                                         @"We could not verify this account deletion request. Please try deleting your account again.");
     }
 
     if (error.code == FIRFunctionsErrorCodePermissionDenied) {
@@ -1261,7 +1261,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         return;
     }
 
-    [self pp_executeAccountDeletionForcingSessionRefresh:YES didRetryAuth:NO];
+    [self pp_executeAccountDeletionForcingSessionRefresh:NO didRetryAuth:NO];
 }
 
 - (void)pp_executeAccountDeletionForcingSessionRefresh:(BOOL)forceSessionRefresh
@@ -1284,39 +1284,63 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
             return;
         }
 
-        FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
-        [[functions HTTPSCallableWithName:@"deleteUserAccount"]
-         callWithObject:@{}
-         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        FIRUser *authUser = [FIRAuth auth].currentUser;
+        if (!authUser) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                __strong typeof(weakSelf) strongSelf = weakSelf;
-                if (!strongSelf) return;
+                [PPHUD dismiss];
+                [strongSelf pp_presentAccountDeletionFailureForError:[NSError errorWithDomain:FIRAuthErrorDomain code:FIRAuthErrorCodeRequiresRecentLogin userInfo:nil]];
+            });
+            return;
+        }
+        
+        NSDate *lastSignIn = authUser.metadata.lastSignInDate;
+        BOOL needsRecentLogin = YES;
+        if (lastSignIn) {
+            needsRecentLogin = fabs([lastSignIn timeIntervalSinceNow]) > 300.0;
+        }
+        
+        if (needsRecentLogin) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [PPHUD dismiss];
+                [strongSelf pp_presentAccountDeletionFailureForError:[NSError errorWithDomain:FIRAuthErrorDomain code:FIRAuthErrorCodeRequiresRecentLogin userInfo:nil]];
+            });
+            return;
+        }
 
-                if (error) {
-                    NSLog(@"[SettingVC] Delete account failed: %@", error.localizedDescription ?: error);
-                    if (!didRetryAuth &&
-                        !PPSettingsDeleteAccountErrorRequiresRecentLogin(error) &&
-                        [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
-                        [strongSelf pp_executeAccountDeletionForcingSessionRefresh:YES didRetryAuth:YES];
+        NSString *uid = authUser.uid;
+        [[UserManager sharedManager] deleteUserDocumentForUID:uid completion:^(NSError * _Nullable docErr) {
+            // Proceed to delete auth user even if doc deletion fails, to ensure account removal
+            [authUser deleteWithCompletion:^(NSError * _Nullable error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (!strongSelf) return;
+
+                    if (error) {
+                        NSLog(@"[SettingVC] Delete account failed: %@", error.localizedDescription ?: error);
+                        if (!didRetryAuth &&
+                            !PPSettingsDeleteAccountErrorRequiresRecentLogin(error) &&
+                            [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                            [strongSelf pp_executeAccountDeletionForcingSessionRefresh:YES didRetryAuth:YES];
+                            return;
+                        }
+
+                        [PPHUD dismiss];
+                        [strongSelf pp_presentAccountDeletionFailureForError:error];
                         return;
                     }
 
                     [PPHUD dismiss];
-                    [strongSelf pp_presentAccountDeletionFailureForError:error];
-                    return;
-                }
-
-                [PPHUD dismiss];
-                [PPHUD showSuccess:PPSettingsLocalizedString(@"account_deleted", @"Account deleted")];
-                [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable signOutError) {
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if (signOutError) {
-                            NSLog(@"[SettingVC] Account deleted, but local sign-out reported: %@", signOutError.localizedDescription ?: signOutError);
-                        }
-                        [strongSelf pp_finishLocalLogoutAndReloadUI];
-                    });
-                }];
-            });
+                    [PPHUD showSuccess:PPSettingsLocalizedString(@"account_deleted", @"Account deleted")];
+                    [UserManager.sharedManager signOutCurrentUserWithCompletion:^(NSError * _Nullable signOutError) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if (signOutError) {
+                                NSLog(@"[SettingVC] Account deleted, but local sign-out reported: %@", signOutError.localizedDescription ?: signOutError);
+                            }
+                            [strongSelf pp_finishLocalLogoutAndReloadUI];
+                        });
+                    }];
+                });
+            }];
         }];
     }];
 }

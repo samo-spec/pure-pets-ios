@@ -110,8 +110,18 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
 @property (nonatomic, assign) BOOL recordingSessionEnded;
 @property (nonatomic, strong) NSLayoutConstraint *textViewHeightConstraint;
 @property (nonatomic, strong) UIButton *textBackgroundView;
+@property (nonatomic, strong) UIControl *replyPreviewView;
+@property (nonatomic, strong) UIView *replyAccentView;
+@property (nonatomic, strong) UIImageView *replyIconView;
+@property (nonatomic, strong) UILabel *replyTitleLabel;
+@property (nonatomic, strong) UILabel *replySubtitleLabel;
+@property (nonatomic, strong) UIButton *replyCancelButton;
+@property (nonatomic, strong) NSLayoutConstraint *replyPreviewHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *stackTopConstraint;
 - (void)pp_applyCurrentTheme;
 - (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active;
+- (void)pp_buildReplyPreview;
+- (void)pp_setReplyPreviewVisible:(BOOL)visible animated:(BOOL)animated;
 @end
 
 @implementation PPChatInputBarView
@@ -260,6 +270,8 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
                           action:@selector(actionButtonTapped)
                 forControlEvents:UIControlEventTouchUpInside];
 
+    [self pp_buildReplyPreview];
+
     self.stack =
     [[UIStackView alloc] initWithArrangedSubviews:@[
         self.mediaButton,
@@ -273,12 +285,14 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     self.stack.translatesAutoresizingMaskIntoConstraints = NO;
 
     [self.contentContainer addSubview:self.stack];
+    self.stackTopConstraint =
+        [self.stack.topAnchor constraintEqualToAnchor:self.replyPreviewView.bottomAnchor constant:0.0];
     
     // Constraints
     [NSLayoutConstraint activateConstraints:@[
         [self.stack.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:12],
         [self.stack.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-12],
-        [self.stack.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:12],
+        self.stackTopConstraint,
         [self.stack.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-12],
         [self.actionsButton.widthAnchor constraintEqualToConstant:44.0],
         [self.actionsButton.heightAnchor constraintEqualToConstant:44.0],
@@ -359,6 +373,89 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     }
 }
 
+- (void)pp_buildReplyPreview
+{
+    self.replyPreviewView = [[UIControl alloc] init];
+    self.replyPreviewView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyPreviewView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.replyPreviewView.alpha = 0.0;
+    self.replyPreviewView.hidden = YES;
+    self.replyPreviewView.clipsToBounds = YES;
+    self.replyPreviewView.layer.cornerRadius = 16.0;
+    self.replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    if (@available(iOS 13.0, *)) {
+        self.replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contentContainer addSubview:self.replyPreviewView];
+
+    self.replyAccentView = [[UIView alloc] init];
+    self.replyAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyAccentView.layer.cornerRadius = 2.0;
+    [self.replyPreviewView addSubview:self.replyAccentView];
+
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                        weight:UIImageSymbolWeightSemibold
+                                                         scale:UIImageSymbolScaleMedium];
+    self.replyIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"arrowshape.turn.up.left.fill"] imageByApplyingSymbolConfiguration:iconConfig]];
+    self.replyIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.replyPreviewView addSubview:self.replyIconView];
+
+    self.replyTitleLabel = [[UILabel alloc] init];
+    self.replyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyTitleLabel.font = [GM boldFontWithSize:12.0];
+    self.replyTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.replyTitleLabel.numberOfLines = 1;
+    [self.replyPreviewView addSubview:self.replyTitleLabel];
+
+    self.replySubtitleLabel = [[UILabel alloc] init];
+    self.replySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replySubtitleLabel.font = [GM MidFontWithSize:13.0];
+    self.replySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.replySubtitleLabel.numberOfLines = 1;
+    self.replySubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self.replyPreviewView addSubview:self.replySubtitleLabel];
+
+    self.replyCancelButton = [self iconButton:@"xmark"];
+    self.replyCancelButton.accessibilityLabel = kLang(@"chat_reply_cancel");
+    [self.replyCancelButton addTarget:self
+                               action:@selector(pp_replyCancelTapped)
+                     forControlEvents:UIControlEventTouchUpInside];
+    [self.replyPreviewView addSubview:self.replyCancelButton];
+
+    self.replyPreviewHeightConstraint =
+        [self.replyPreviewView.heightAnchor constraintEqualToConstant:0.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.replyPreviewView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:12.0],
+        [self.replyPreviewView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-12.0],
+        [self.replyPreviewView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:12.0],
+        self.replyPreviewHeightConstraint,
+
+        [self.replyAccentView.leadingAnchor constraintEqualToAnchor:self.replyPreviewView.leadingAnchor constant:12.0],
+        [self.replyAccentView.topAnchor constraintEqualToAnchor:self.replyPreviewView.topAnchor constant:12.0],
+        [self.replyAccentView.bottomAnchor constraintEqualToAnchor:self.replyPreviewView.bottomAnchor constant:-12.0],
+        [self.replyAccentView.widthAnchor constraintEqualToConstant:4.0],
+
+        [self.replyIconView.leadingAnchor constraintEqualToAnchor:self.replyAccentView.trailingAnchor constant:10.0],
+        [self.replyIconView.centerYAnchor constraintEqualToAnchor:self.replyPreviewView.centerYAnchor],
+        [self.replyIconView.widthAnchor constraintEqualToConstant:18.0],
+        [self.replyIconView.heightAnchor constraintEqualToConstant:18.0],
+
+        [self.replyCancelButton.trailingAnchor constraintEqualToAnchor:self.replyPreviewView.trailingAnchor constant:-8.0],
+        [self.replyCancelButton.centerYAnchor constraintEqualToAnchor:self.replyPreviewView.centerYAnchor],
+
+        [self.replyTitleLabel.leadingAnchor constraintEqualToAnchor:self.replyIconView.trailingAnchor constant:10.0],
+        [self.replyTitleLabel.trailingAnchor constraintEqualToAnchor:self.replyCancelButton.leadingAnchor constant:-8.0],
+        [self.replyTitleLabel.topAnchor constraintEqualToAnchor:self.replyPreviewView.topAnchor constant:9.0],
+
+        [self.replySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.replyTitleLabel.leadingAnchor],
+        [self.replySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.replyTitleLabel.trailingAnchor],
+        [self.replySubtitleLabel.topAnchor constraintEqualToAnchor:self.replyTitleLabel.bottomAnchor constant:1.0],
+    ]];
+}
+
 - (void)pp_applyCurrentTheme
 {
     BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
@@ -405,6 +502,14 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     [self pp_applyIconButtonTheme:self.actionsButton
                        systemName:actionName
                            active:(self.actionMode == PPActionButtonModeSend)];
+
+    self.replyPreviewView.backgroundColor = surfaceColor;
+    self.replyPreviewView.layer.borderColor = borderColor.CGColor;
+    self.replyAccentView.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.replyIconView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.replyTitleLabel.textColor = PPChatInputBarTextColor(self.traitCollection);
+    self.replySubtitleLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
+    [self pp_applyIconButtonTheme:self.replyCancelButton systemName:@"xmark" active:NO];
 }
 
 - (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active
@@ -952,6 +1057,71 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     b.clipsToBounds = YES;
     b.layer.cornerRadius = 22;
     return b;
+}
+
+- (void)setReplyPreviewTitle:(NSString *)title subtitle:(NSString *)subtitle animated:(BOOL)animated
+{
+    self.replyTitleLabel.text = title.length > 0 ? title : kLang(@"chat_replying");
+    self.replySubtitleLabel.text = subtitle.length > 0 ? subtitle : kLang(@"Message");
+    [self pp_setReplyPreviewVisible:YES animated:animated];
+}
+
+- (void)clearReplyPreviewAnimated:(BOOL)animated
+{
+    [self pp_setReplyPreviewVisible:NO animated:animated];
+}
+
+- (void)pp_replyCancelTapped
+{
+    if ([self.delegate respondsToSelector:@selector(inputBarDidCancelReply:)]) {
+        [self.delegate inputBarDidCancelReply:self];
+    } else {
+        [self clearReplyPreviewAnimated:YES];
+    }
+}
+
+- (void)pp_setReplyPreviewVisible:(BOOL)visible animated:(BOOL)animated
+{
+    if (visible) {
+        self.replyPreviewView.hidden = NO;
+    }
+
+    self.replyPreviewHeightConstraint.constant = visible ? 54.0 : 0.0;
+    self.stackTopConstraint.constant = visible ? 8.0 : 0.0;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+
+    void (^changes)(void) = ^{
+        self.replyPreviewView.alpha = visible ? 1.0 : 0.0;
+        self.replyPreviewView.transform =
+            visible ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 8.0);
+        [self layoutIfNeeded];
+        [self.superview layoutIfNeeded];
+    };
+
+    void (^finish)(BOOL) = ^(__unused BOOL finished) {
+        self.replyPreviewView.hidden = !visible;
+        if ([self.delegate respondsToSelector:@selector(inputBar:didChangeHeight:)]) {
+            [self.delegate inputBar:self didChangeHeight:CGRectGetHeight(self.bounds)];
+        }
+    };
+
+    if (!animated || reduceMotion) {
+        changes();
+        finish(YES);
+        return;
+    }
+
+    if (visible) {
+        self.replyPreviewView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.3
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:finish];
 }
 
 /*#pragma mark - Table View

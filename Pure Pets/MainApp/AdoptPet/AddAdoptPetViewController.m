@@ -456,7 +456,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 #pragma mark - Build Table View
 
 - (void)pp_buildTableView {
-    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
     tableView.delegate   = self;
     tableView.dataSource = self;

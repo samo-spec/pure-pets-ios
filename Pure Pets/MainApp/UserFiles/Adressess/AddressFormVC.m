@@ -10,10 +10,16 @@
 #import "CityModel.h"
 #import "GM.h"
 #import "LocationPickerViewController.h"
+#import "CountryCodeModel.h"
+#import "PPSelectOptionViewController.h"
+//#import "PPButtonHelper.h"
 @import FirebaseAuth;
 @import CoreLocation;
 #import <float.h>
 #import <math.h>
+#import "Lottie.h"
+ 
+
 
 typedef NS_ENUM(NSInteger, PPAddressSectionKind) {
     PPAddressSectionKindRecipient = 0,
@@ -168,6 +174,142 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
     if (target && action) {
         [self.textField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
+    }
+}
+
+@end
+
+#pragma mark - PPAddressPhoneCell
+
+@interface PPAddressPhoneCell : PPAddressBaseCell
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UIButton *countryCodeButton;
+@property (nonatomic, strong) UITextField *phoneTextField;
+@property (nonatomic, assign) PPAddressFieldKind fieldKind;
+- (void)configureWithTitle:(NSString *)title
+             countryCodeTitle:(NSString *)countryCodeTitle
+                    phoneText:(NSString *)phoneText
+                 placeholder:(NSString *)placeholder
+                  fieldKind:(PPAddressFieldKind)fieldKind
+                     target:(id)target
+              countryAction:(SEL)countryAction
+               phoneAction:(SEL)phoneAction
+                   delegate:(id<UITextFieldDelegate>)delegate;
+@end
+
+@implementation PPAddressPhoneCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.contentView addSubview:_titleLabel];
+
+    // Country code picker button
+    UIButtonConfiguration *btnCfg;
+    if (@available(iOS 26.0, *)) {
+        btnCfg = [UIButtonConfiguration clearGlassButtonConfiguration];
+    } else {
+        btnCfg = [UIButtonConfiguration filledButtonConfiguration];
+    }
+    btnCfg.contentInsets = NSDirectionalEdgeInsetsMake(8, 10, 8, 10);
+    _countryCodeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _countryCodeButton.configuration = btnCfg;
+    _countryCodeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _countryCodeButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.94];
+    _countryCodeButton.layer.cornerRadius = 14;
+    _countryCodeButton.clipsToBounds = YES;
+    _countryCodeButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    _countryCodeButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    [self.contentView addSubview:_countryCodeButton];
+    [_countryCodeButton.widthAnchor constraintEqualToConstant:108].active = YES;
+    [_countryCodeButton.heightAnchor constraintEqualToConstant:36].active = YES;
+
+    // Phone text field
+    _phoneTextField = [[UITextField alloc] init];
+    _phoneTextField.translatesAutoresizingMaskIntoConstraints = NO;
+    _phoneTextField.borderStyle = UITextBorderStyleNone;
+    _phoneTextField.backgroundColor = UIColor.clearColor;
+    _phoneTextField.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    _phoneTextField.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    _phoneTextField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
+    _phoneTextField.textContentType = UITextContentTypeTelephoneNumber;
+    _phoneTextField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    _phoneTextField.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    _phoneTextField.textAlignment = NSTextAlignmentLeft;
+    [self.contentView addSubview:_phoneTextField];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+
+        [_countryCodeButton.leftAnchor constraintEqualToAnchor:_titleLabel.leftAnchor],
+        [_countryCodeButton.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
+        [_countryCodeButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+
+        [_phoneTextField.leftAnchor constraintEqualToAnchor:_countryCodeButton.rightAnchor constant:10.0],
+        [_phoneTextField.rightAnchor constraintEqualToAnchor:_titleLabel.rightAnchor],
+        [_phoneTextField.centerYAnchor constraintEqualToAnchor:_countryCodeButton.centerYAnchor],
+        [_phoneTextField.heightAnchor constraintGreaterThanOrEqualToConstant:24.0]
+    ]];
+
+    return self;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    [_countryCodeButton removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];
+    [_phoneTextField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
+}
+
+- (void)configureWithTitle:(NSString *)title
+             countryCodeTitle:(NSString *)countryCodeTitle
+                    phoneText:(NSString *)phoneText
+                 placeholder:(NSString *)placeholder
+                  fieldKind:(PPAddressFieldKind)fieldKind
+                     target:(id)target
+              countryAction:(SEL)countryAction
+               phoneAction:(SEL)phoneAction
+                   delegate:(id<UITextFieldDelegate>)delegate
+{
+    self.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.titleLabel.text = title ?: @"";
+    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    self.fieldKind = fieldKind;
+    NSAttributedString *attributedCode = [[NSAttributedString alloc] initWithString:countryCodeTitle ?: @""
+                                                                         attributes:@{
+        NSFontAttributeName: [GM boldFontWithSize:16] ?: [UIFont boldSystemFontOfSize:16],
+        NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.systemOrangeColor
+    }];
+    [self.countryCodeButton setAttributedTitle:attributedCode forState:UIControlStateNormal];
+
+    self.phoneTextField.text = phoneText ?: @"";
+    self.phoneTextField.placeholder = placeholder ?: @"";
+    self.phoneTextField.tag = fieldKind;
+    self.phoneTextField.delegate = delegate;
+
+    [self.countryCodeButton removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];
+    if (target && countryAction) {
+        [self.countryCodeButton addTarget:target action:countryAction forControlEvents:UIControlEventTouchUpInside];
+    }
+
+    [self.phoneTextField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
+    if (target && phoneAction) {
+        [self.phoneTextField addTarget:target action:phoneAction forControlEvents:UIControlEventEditingChanged];
     }
 }
 
@@ -641,6 +783,9 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
 @property (nonatomic, copy) NSString *draftFullName;
 @property (nonatomic, copy) NSString *draftPhoneNumber;
+@property (nonatomic, copy) NSString *draftPhoneDigits;
+@property (nonatomic, copy) NSString *currentPhoneCode;
+@property (nonatomic, strong) CountryCodeModel *autoDetectedCountry;
 @property (nonatomic, copy) NSString *draftAddressLine1;
 @property (nonatomic, copy) NSString *draftAddressLine2;
 @property (nonatomic, copy) NSString *draftPostalCode;
@@ -897,7 +1042,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
 - (void)pp_buildTableView
 {
-    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
     tableView.delegate = self;
     tableView.dataSource = self;
@@ -913,6 +1058,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     }
 
     [tableView registerClass:PPAddressTextFieldCell.class forCellReuseIdentifier:@"PPAddressTextFieldCell"];
+    [tableView registerClass:PPAddressPhoneCell.class forCellReuseIdentifier:@"PPAddressPhoneCell"];
     [tableView registerClass:PPAddressSelectorCell.class forCellReuseIdentifier:@"PPAddressSelectorCell"];
     [tableView registerClass:PPAddressSwitchCell.class forCellReuseIdentifier:@"PPAddressSwitchCell"];
     [tableView registerClass:PPAddressActionCell.class forCellReuseIdentifier:@"PPAddressActionCell"];
@@ -1026,11 +1172,26 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     iconBadge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [cardView addSubview:iconBadge];
 
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"]];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = brandClr;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [iconBadge addSubview:iconView];
+    UIImageView *iconFallback = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"]];
+    iconFallback.translatesAutoresizingMaskIntoConstraints = NO;
+    iconFallback.tintColor = brandClr;
+    iconFallback.contentMode = UIViewContentModeScaleAspectFit;
+    [iconBadge addSubview:iconFallback];
+
+    LOTAnimationView *iconLottie = [[LOTAnimationView alloc] init];
+    iconLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    iconLottie.contentMode = UIViewContentModeScaleAspectFit;
+    iconLottie.loopAnimation = YES;
+    iconLottie.alpha = 0.0;
+    [iconBadge addSubview:iconLottie];
+    [Styling setAnimationNamed:@"Home2location.lottie" toView:iconLottie withSpeed:0.6 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
+        if (success) {
+            iconFallback.alpha = 0.0;
+            [UIView animateWithDuration:0.3 animations:^{
+                iconLottie.alpha = 1.0;
+            }];
+        }
+    }];
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1117,10 +1278,15 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [iconBadge.widthAnchor constraintEqualToConstant:62.0],
         [iconBadge.heightAnchor constraintEqualToConstant:62.0],
 
-        [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:28.0],
-        [iconView.heightAnchor constraintEqualToConstant:28.0],
+        [iconFallback.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
+        [iconFallback.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
+        [iconFallback.widthAnchor constraintEqualToConstant:28.0],
+        [iconFallback.heightAnchor constraintEqualToConstant:28.0],
+
+        [iconLottie.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
+        [iconLottie.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
+        [iconLottie.widthAnchor constraintEqualToConstant:108.0],
+        [iconLottie.heightAnchor constraintEqualToConstant:108.0],
 
         [eyebrowPill.topAnchor constraintEqualToAnchor:gradientBar.bottomAnchor constant:16.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
@@ -1171,6 +1337,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
     self.draftFullName = [self pp_trimmedString:preferredName];
     self.draftPhoneNumber = [self pp_trimmedString:preferredPhone];
+    [self pp_parsePhoneNumber:self.draftPhoneNumber];
     self.draftAddressLine1 = [self pp_trimmedString:self.address.addressLine1];
     self.draftAddressLine2 = [self pp_trimmedString:self.address.addressLine2];
     self.draftPostalCode = [self pp_trimmedString:self.address.postalCode];
@@ -1979,8 +2146,8 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 {
     switch ([self pp_sectionKindForSection:indexPath.section]) {
         case PPAddressSectionKindRecipient: {
-            PPAddressTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPAddressTextFieldCell" forIndexPath:indexPath];
             if (indexPath.row == 0) {
+                PPAddressTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPAddressTextFieldCell" forIndexPath:indexPath];
                 [cell configureWithTitle:kLang(@"FullName") ?: @"Full name"
                                     text:self.draftFullName
                              placeholder:kLang(@"FullNamePlaceholder") ?: @"Who should receive this order?"
@@ -1992,20 +2159,24 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
                                   target:self
                                   action:@selector(pp_textFieldEditingChanged:)
                                 delegate:self];
+                return cell;
             } else {
+                PPAddressPhoneCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPAddressPhoneCell" forIndexPath:indexPath];
+                NSString *flag = self.autoDetectedCountry.flag ?: @"";
+                NSString *codeTitle = flag.length > 0
+                    ? [NSString stringWithFormat:@"%@ %@", flag, self.currentPhoneCode]
+                    : (self.currentPhoneCode ?: @"+974");
                 [cell configureWithTitle:kLang(@"MobileNo_Palce") ?: @"Phone number"
-                                    text:self.draftPhoneNumber
+                        countryCodeTitle:codeTitle
+                               phoneText:self.draftPhoneDigits
                              placeholder:kLang(@"MobileNo_Palce") ?: @"Add a reachable phone number"
-                            keyboardType:UIKeyboardTypePhonePad
-                         textContentType:UITextContentTypeTelephoneNumber
-                           returnKeyType:UIReturnKeyNext
-                  autocapitalizationType:UITextAutocapitalizationTypeNone
                                fieldKind:PPAddressFieldKindPhoneNumber
                                   target:self
-                                  action:@selector(pp_textFieldEditingChanged:)
+                           countryAction:@selector(pp_showAddressCountryCodePicker)
+                            phoneAction:@selector(pp_phoneFieldChanged:)
                                 delegate:self];
+                return cell;
             }
-            return cell;
         }
 
         case PPAddressSectionKindStreet: {
@@ -2718,6 +2889,96 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [cell.contentView pp_setBorderColor:borderClr];
         cell.layer.shadowOpacity = isDark ? 0.02 : 0.05;
     }
+}
+
+#pragma mark - Country Code
+
+- (void)pp_parsePhoneNumber:(NSString *)fullPhone
+{
+    NSString *trimmed = [self pp_trimmedString:fullPhone];
+    self.draftPhoneDigits = @"";
+    self.currentPhoneCode = @"+974";
+    self.autoDetectedCountry = nil;
+
+    if (trimmed.length == 0 || ![trimmed hasPrefix:@"+"]) {
+        CountryModel *modelCountry = self.selectedCountry ?: [self pp_countryFromPhoneNumber:PPCurrentUser.MobileNo];
+        if (modelCountry) {
+            NSString *rawCode = [self pp_trimmedString:modelCountry.countryCode];
+            if (rawCode.length > 0) {
+                self.currentPhoneCode = [rawCode hasPrefix:@"+"] ? rawCode : [@"+" stringByAppendingString:rawCode];
+                self.draftPhoneDigits = trimmed;
+                return;
+            }
+        }
+        self.draftPhoneDigits = trimmed;
+        return;
+    }
+
+    CountryModel *matchedCountry = [self pp_countryFromPhoneNumber:trimmed];
+    if (matchedCountry) {
+        NSString *rawCode = [self pp_trimmedString:matchedCountry.countryCode];
+        NSString *dialCode = rawCode.length > 0
+            ? ([rawCode hasPrefix:@"+"] ? rawCode : [@"+" stringByAppendingString:rawCode])
+            : @"+974";
+        self.currentPhoneCode = dialCode;
+        self.draftPhoneDigits = [trimmed substringFromIndex:dialCode.length];
+        [self pp_matchCountryCodeModel:self.currentPhoneCode];
+    } else {
+        self.draftPhoneDigits = trimmed;
+    }
+}
+
+- (void)pp_matchCountryCodeModel:(NSString *)phoneCode
+{
+    NSArray<CountryCodeModel *> *countries = [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    for (CountryCodeModel *code in countries) {
+        if ([code.phoneCode isEqualToString:phoneCode]) {
+            self.autoDetectedCountry = code;
+            return;
+        }
+    }
+}
+
+- (void)pp_showAddressCountryCodePicker
+{
+    NSMutableArray<CountryCodeModel *> *countries =
+        [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    if (countries.count == 0) return;
+
+    __weak typeof(self) w = self;
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:countries title:@"" row:nil
+        presentationStyle:PPSelectOptionPresentationSheet
+        completion:^(id _Nullable selectedObject) {
+            if (![selectedObject isKindOfClass:[CountryCodeModel class]]) return;
+            CountryCodeModel *selected = (CountryCodeModel *)selectedObject;
+            NSString *safeCode = selected.phoneCode.length ? selected.phoneCode : (w.currentPhoneCode ?: @"+974");
+            if (safeCode.length == 0) return;
+            w.autoDetectedCountry = selected;
+            w.currentPhoneCode = safeCode;
+            [w.tableView reloadRowsAtIndexPaths:@[[w pp_indexPathForFieldKind:PPAddressFieldKindPhoneNumber]]
+                                       withRowAnimation:UITableViewRowAnimationNone];
+        }];
+    vc.optionCellBackgroundColor = UIColor.secondarySystemBackgroundColor;
+    [self presentViewController:vc animated:YES completion:nil];
+}
+
+- (void)pp_phoneFieldChanged:(UITextField *)textField
+{
+    NSString *raw = textField.text ?: @"";
+    NSCharacterSet *digitsSet = [NSCharacterSet decimalDigitCharacterSet];
+    NSMutableString *digits = [NSMutableString string];
+    for (NSUInteger i = 0; i < raw.length; i++) {
+        unichar ch = [raw characterAtIndex:i];
+        if ([digitsSet characterIsMember:ch]) {
+            [digits appendFormat:@"%C", ch];
+        }
+    }
+    if (![textField.text isEqualToString:digits]) {
+        textField.text = digits;
+    }
+    self.draftPhoneDigits = digits;
+    self.draftPhoneNumber = [NSString stringWithFormat:@"%@%@", self.currentPhoneCode ?: @"+974", digits];
 }
 
 @end

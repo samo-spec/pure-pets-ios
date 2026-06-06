@@ -8,6 +8,8 @@
 #import <ImageIO/ImageIO.h>
 #import <math.h>
 #import <float.h>
+#import "Lottie.h"
+#import <lottie_ios_Oc/Lottie.h>
 @import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseStorage;
@@ -24,6 +26,7 @@ static NSString * const PPAdTextFieldCellID  = @"PPAdTextFieldCell";
 static NSString * const PPAdSelectorCellID   = @"PPAdSelectorCell";
 static NSString * const PPAdSwitchCellID     = @"PPAdSwitchCell";
 static NSString * const PPAdTextViewCellID   = @"PPAdTextViewCell";
+static NSString * const PPAdPairFieldCellID  = @"PPAdPairFieldCell";
 
 static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     if (!isfinite(coordinate.latitude) || !isfinite(coordinate.longitude)) return NO;
@@ -131,6 +134,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, strong) NSArray *selectorOptions;
 @property (nonatomic, copy) NSString *selectorTitle;
 @property (nonatomic, copy) void(^onChangeBlock)(id oldValue, id newValue);
+@property (nonatomic, strong) PPAdFormField *pairedField;
 @end
 
 @implementation PPAdFormField
@@ -139,6 +143,306 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self) { _height = 52.0; _required = NO; _disabled = NO; }
     return self;
 }
+@end
+
+#pragma mark - PPAdPairedFieldSlotView
+
+@interface PPAdPairedFieldSlotView : UIControl <UITextFieldDelegate>
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *valueLabel;
+@property (nonatomic, strong) UIImageView *chevronView;
+@property (nonatomic, strong) UITextField *textField;
+@property (nonatomic, strong) UISwitch *toggleSwitch;
+@property (nonatomic, strong) PPAdFormField *field;
+@property (nonatomic, assign) BOOL effectiveDisabled;
+@property (nonatomic, copy) void(^onSelectField)(PPAdFormField *field);
+@property (nonatomic, copy) void(^onTextChanged)(PPAdFormField *field, NSString *text);
+@property (nonatomic, copy) void(^onSwitchChanged)(PPAdFormField *field, BOOL isOn);
+- (void)configureWithField:(PPAdFormField *)field disabled:(BOOL)disabled;
+@end
+
+@implementation PPAdPairedFieldSlotView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = PPAdFormSurfaceColor();
+        self.clipsToBounds = NO;
+        self.layer.cornerRadius = 20.0;
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+        self.layer.borderWidth = 1.0;
+        [self pp_setBorderColor:PPAdFormBorderColor()];
+        [self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
+        self.layer.shadowOpacity = 0.045;
+        self.layer.shadowRadius = 10.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+        self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+        [self addTarget:self action:@selector(pp_handleTap) forControlEvents:UIControlEventTouchUpInside];
+
+        _titleLabel = [[UILabel alloc] init];
+        _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        _titleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+        _titleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.82];
+        _titleLabel.textAlignment = PPAdCurrentTextAlignment();
+        _titleLabel.adjustsFontSizeToFitWidth = YES;
+        _titleLabel.minimumScaleFactor = 0.76;
+        _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        [self addSubview:_titleLabel];
+
+        _valueLabel = [[UILabel alloc] init];
+        _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        _valueLabel.font = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
+        _valueLabel.textColor = PPAdFormPrimaryTextColor();
+        _valueLabel.textAlignment = PPAdCurrentTextAlignment();
+        _valueLabel.adjustsFontSizeToFitWidth = YES;
+        _valueLabel.minimumScaleFactor = 0.72;
+        _valueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        [self addSubview:_valueLabel];
+
+        _chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:PPAdForwardSymbolName()]];
+        _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
+        _chevronView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.56];
+        _chevronView.contentMode = UIViewContentModeScaleAspectFit;
+        [self addSubview:_chevronView];
+
+        _textField = [[UITextField alloc] init];
+        _textField.translatesAutoresizingMaskIntoConstraints = NO;
+        _textField.font = [GM MidFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightMedium];
+        _textField.textColor = PPAdFormPrimaryTextColor();
+        _textField.textAlignment = PPAdCurrentTextAlignment();
+        _textField.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+        _textField.backgroundColor = UIColor.clearColor;
+        _textField.delegate = self;
+        _textField.returnKeyType = UIReturnKeyDone;
+        _textField.clearButtonMode = UITextFieldViewModeNever;
+        _textField.adjustsFontSizeToFitWidth = YES;
+        _textField.minimumFontSize = 10.0;
+        [_textField addTarget:self action:@selector(pp_textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
+        [self addSubview:_textField];
+
+        _toggleSwitch = [[UISwitch alloc] init];
+        _toggleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
+        _toggleSwitch.onTintColor = PPAdFormAccentColor();
+        _toggleSwitch.transform = CGAffineTransformMakeScale(0.84, 0.84);
+        [_toggleSwitch addTarget:self action:@selector(pp_switchDidChange:) forControlEvents:UIControlEventValueChanged];
+        [self addSubview:_toggleSwitch];
+
+        [_toggleSwitch setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [_toggleSwitch setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [_valueLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+        [_textField setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [_titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:9.0],
+            [_titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14.0],
+            [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
+            [_titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:14.0],
+
+            [_chevronView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
+            [_chevronView.centerYAnchor constraintEqualToAnchor:_valueLabel.centerYAnchor],
+            [_chevronView.widthAnchor constraintEqualToConstant:10.0],
+            [_chevronView.heightAnchor constraintEqualToConstant:10.0],
+
+            [_valueLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+            [_valueLabel.trailingAnchor constraintEqualToAnchor:_chevronView.leadingAnchor constant:-6.0],
+            [_valueLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:7.0],
+            [_valueLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-8.0],
+
+            [_textField.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+            [_textField.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
+            [_textField.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:5.0],
+            [_textField.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-7.0],
+            [_textField.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
+
+            [_toggleSwitch.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
+            [_toggleSwitch.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-10.0],
+            [_toggleSwitch.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor constant:10.0],
+            [_toggleSwitch.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-4.0]
+        ]];
+    }
+    return self;
+}
+
+- (NSString *)pp_displayValueForField:(PPAdFormField *)field
+{
+    id value = field.value;
+    if (!value) {
+        return nil;
+    }
+    if ([value isKindOfClass:NSString.class]) {
+        return (NSString *)value;
+    }
+    if ([value respondsToSelector:@selector(formDisplayText)]) {
+        return [value performSelector:@selector(formDisplayText)];
+    }
+    if ([value respondsToSelector:@selector(KindName)]) {
+        return [value performSelector:@selector(KindName)];
+    }
+    if ([value respondsToSelector:@selector(SubKindName)]) {
+        return [value performSelector:@selector(SubKindName)];
+    }
+    return [NSString stringWithFormat:@"%@", value];
+}
+
+- (void)configureWithField:(PPAdFormField *)field disabled:(BOOL)disabled
+{
+    self.field = field;
+    self.effectiveDisabled = disabled;
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.titleLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.valueLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.textField.textAlignment = PPAdCurrentTextAlignment();
+    self.textField.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.chevronView.image = [UIImage systemImageNamed:PPAdForwardSymbolName()];
+
+    self.titleLabel.text = field.title ?: @"";
+    BOOL isSelector = (field.fieldType == PPAdFieldTypeSelector);
+    BOOL isText = (field.fieldType == PPAdFieldTypeText || field.fieldType == PPAdFieldTypeInteger);
+    BOOL isSwitch = (field.fieldType == PPAdFieldTypeSwitch);
+
+    self.valueLabel.hidden = !isSelector;
+    self.chevronView.hidden = !isSelector || disabled;
+    self.textField.hidden = !isText;
+    self.toggleSwitch.hidden = !isSwitch;
+
+    self.enabled = !disabled;
+    self.userInteractionEnabled = !disabled;
+    BOOL lockedDisplayValue = disabled && isSelector && field.value != nil;
+    self.alpha = lockedDisplayValue ? 1.0 : (disabled ? 0.56 : 1.0);
+    self.textField.enabled = !disabled;
+    self.toggleSwitch.enabled = !disabled;
+
+    if (isSelector) {
+        NSString *displayValue = [self pp_displayValueForField:field];
+        if (displayValue.length > 0) {
+            self.valueLabel.text = displayValue;
+            self.valueLabel.textColor = PPAdFormAccentColor();
+        } else {
+            self.valueLabel.text = field.placeholder ?: field.selectorTitle;
+            self.valueLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.68];
+        }
+    } else if (isText) {
+        UIColor *placeholderColor = [UIColor.placeholderTextColor colorWithAlphaComponent:0.70];
+        self.textField.attributedPlaceholder = field.placeholder.length
+            ? [[NSAttributedString alloc] initWithString:field.placeholder
+                                             attributes:@{NSForegroundColorAttributeName: placeholderColor}]
+            : nil;
+        self.textField.keyboardType = (field.fieldType == PPAdFieldTypeInteger) ? UIKeyboardTypeNumberPad : UIKeyboardTypeDefault;
+        self.textField.text = field.value ? [NSString stringWithFormat:@"%@", field.value] : @"";
+    } else if (isSwitch) {
+        self.toggleSwitch.on = [field.value boolValue];
+    }
+}
+
+- (void)pp_handleTap
+{
+    if (self.effectiveDisabled || self.field.fieldType != PPAdFieldTypeSelector) {
+        return;
+    }
+    if (self.onSelectField) {
+        self.onSelectField(self.field);
+    }
+}
+
+- (void)pp_textFieldDidChange:(UITextField *)textField
+{
+    if (self.onTextChanged) {
+        self.onTextChanged(self.field, textField.text);
+    }
+}
+
+- (void)pp_switchDidChange:(UISwitch *)sender
+{
+    if (self.onSwitchChanged) {
+        self.onSwitchChanged(self.field, sender.isOn);
+    }
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+    return YES;
+}
+
+@end
+
+#pragma mark - PPAdPairFieldCell
+
+@interface PPAdPairFieldCell : PPAdBaseCell
+@property (nonatomic, strong) UIStackView *fieldStackView;
+@property (nonatomic, strong) PPAdPairedFieldSlotView *primarySlotView;
+@property (nonatomic, strong) PPAdPairedFieldSlotView *secondarySlotView;
+@property (nonatomic, copy) void(^onSelectField)(PPAdFormField *field);
+@property (nonatomic, copy) void(^onTextChanged)(PPAdFormField *field, NSString *text);
+@property (nonatomic, copy) void(^onSwitchChanged)(PPAdFormField *field, BOOL isOn);
+- (void)configureWithPrimaryField:(PPAdFormField *)primaryField
+                   secondaryField:(PPAdFormField *)secondaryField
+                   primaryDisabled:(BOOL)primaryDisabled
+                 secondaryDisabled:(BOOL)secondaryDisabled;
+@end
+
+@implementation PPAdPairFieldCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        _primarySlotView = [[PPAdPairedFieldSlotView alloc] initWithFrame:CGRectZero];
+        _primarySlotView.translatesAutoresizingMaskIntoConstraints = NO;
+
+        _secondarySlotView = [[PPAdPairedFieldSlotView alloc] initWithFrame:CGRectZero];
+        _secondarySlotView.translatesAutoresizingMaskIntoConstraints = NO;
+
+        _fieldStackView = [[UIStackView alloc] initWithArrangedSubviews:@[_primarySlotView, _secondarySlotView]];
+        _fieldStackView.translatesAutoresizingMaskIntoConstraints = NO;
+        _fieldStackView.axis = UILayoutConstraintAxisHorizontal;
+        _fieldStackView.alignment = UIStackViewAlignmentFill;
+        _fieldStackView.distribution = UIStackViewDistributionFillEqually;
+        _fieldStackView.spacing = 14.0;
+        _fieldStackView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+        [self.contentView addSubview:_fieldStackView];
+
+        __weak typeof(self) weakSelf = self;
+        void (^selectBlock)(PPAdFormField *) = ^(PPAdFormField *field) {
+            if (weakSelf.onSelectField) weakSelf.onSelectField(field);
+        };
+        void (^textBlock)(PPAdFormField *, NSString *) = ^(PPAdFormField *field, NSString *text) {
+            if (weakSelf.onTextChanged) weakSelf.onTextChanged(field, text);
+        };
+        void (^switchBlock)(PPAdFormField *, BOOL) = ^(PPAdFormField *field, BOOL isOn) {
+            if (weakSelf.onSwitchChanged) weakSelf.onSwitchChanged(field, isOn);
+        };
+
+        _primarySlotView.onSelectField = selectBlock;
+        _primarySlotView.onTextChanged = textBlock;
+        _primarySlotView.onSwitchChanged = switchBlock;
+        _secondarySlotView.onSelectField = selectBlock;
+        _secondarySlotView.onTextChanged = textBlock;
+        _secondarySlotView.onSwitchChanged = switchBlock;
+
+        [NSLayoutConstraint activateConstraints:@[
+            [_fieldStackView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8.0],
+            [_fieldStackView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [_fieldStackView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+            [_fieldStackView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-8.0]
+        ]];
+    }
+    return self;
+}
+
+- (void)configureWithPrimaryField:(PPAdFormField *)primaryField
+                   secondaryField:(PPAdFormField *)secondaryField
+                  primaryDisabled:(BOOL)primaryDisabled
+                secondaryDisabled:(BOOL)secondaryDisabled
+{
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.fieldStackView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    [self.primarySlotView configureWithField:primaryField disabled:primaryDisabled];
+    [self.secondarySlotView configureWithField:secondaryField disabled:secondaryDisabled];
+}
+
 @end
 
 #pragma mark - PPAdTextFieldCell
@@ -808,8 +1112,16 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
-    [topGlow pp_setShadowColor:[UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0]];
+    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.10]
+            : [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
+    }];
+    [topGlow pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.24]
+            : [UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0];
+    }]];
     topGlow.layer.shadowOpacity = 0.10;
     topGlow.layer.shadowRadius = 62.0;
     topGlow.layer.shadowOffset = CGSizeZero;
@@ -817,8 +1129,16 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
-    [bottomGlow pp_setShadowColor:[UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0]];
+    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.06]
+            : [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
+    }];
+    [bottomGlow pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [PPAdFormAccentColor() colorWithAlphaComponent:0.16]
+            : [UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0];
+    }]];
     bottomGlow.layer.shadowOpacity = 0.08;
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
@@ -827,13 +1147,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [self.view insertSubview:bottomGlow belowSubview:self.tableView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
+        [topGlow.widthAnchor constraintEqualToConstant:0.0],
+        [topGlow.heightAnchor constraintEqualToConstant:0.0],
         [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-64.0],
         [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:80.0],
 
-        [bottomGlow.widthAnchor constraintEqualToConstant:210.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:210.0],
+        [bottomGlow.widthAnchor constraintEqualToConstant:0.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:0.0],
         [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:44.0],
         [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-68.0]
     ]];
@@ -857,7 +1177,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     cardView.layer.cornerRadius = 34.0;
     cardView.layer.cornerCurve = kCACornerCurveContinuous;
     cardView.layer.borderWidth = 1.0;
-    [cardView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.68]];
+    [cardView pp_setBorderColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor.whiteColor colorWithAlphaComponent:0.08]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.68];
+    }]];
     [cardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cardView.layer.shadowOpacity = 0.08;
     cardView.layer.shadowRadius = 24.0;
@@ -866,7 +1190,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:0.06 alpha:0.55]
+            : [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    }];
     tintView.layer.cornerRadius = 34.0;
     tintView.layer.cornerCurve = kCACornerCurveContinuous;
     tintView.layer.masksToBounds = YES;
@@ -885,10 +1213,18 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     UIView *secondaryGlow = [[UIView alloc] init];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.38];
+    secondaryGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [accentColor colorWithAlphaComponent:0.08]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.38];
+    }];
     secondaryGlow.userInteractionEnabled = NO;
     secondaryGlow.layer.cornerRadius = 58.0;
-    [secondaryGlow pp_setShadowColor:[[UIColor whiteColor] colorWithAlphaComponent:0.44]];
+    [secondaryGlow pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [accentColor colorWithAlphaComponent:0.12]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.44];
+    }]];
     secondaryGlow.layer.shadowOpacity = 0.18;
     secondaryGlow.layer.shadowRadius = 24.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -902,26 +1238,53 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     UIView *iconBadge = [[UIView alloc] init];
     iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
-    iconBadge.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.66];
+    iconBadge.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [AppForgroundColr colorWithAlphaComponent:0.14]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.66];
+    }];
     iconBadge.layer.cornerRadius = 31.0;
     iconBadge.layer.cornerCurve = kCACornerCurveContinuous;
     iconBadge.layer.borderWidth = 1.0;
     [iconBadge pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
-    [iconBadge pp_setShadowColor:[accentColor colorWithAlphaComponent:0.30]];
+    [iconBadge pp_setShadowColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [accentColor colorWithAlphaComponent:0.10]
+            : [accentColor colorWithAlphaComponent:0.30];
+    }]];
     iconBadge.layer.shadowOpacity = 0.16;
     iconBadge.layer.shadowRadius = 18.0;
     iconBadge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [cardView addSubview:iconBadge];
 
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"square.and.pencil"]];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = accentColor;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [iconBadge addSubview:iconView];
+    UIImageView *iconFallback = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"square.and.pencil"]];
+    iconFallback.translatesAutoresizingMaskIntoConstraints = NO;
+    iconFallback.tintColor = accentColor;
+    iconFallback.contentMode = UIViewContentModeScaleAspectFit;
+    [iconBadge addSubview:iconFallback];
+
+    LOTAnimationView *iconLottie = [[LOTAnimationView alloc] init];
+    iconLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    iconLottie.contentMode = UIViewContentModeScaleAspectFit;
+    iconLottie.loopAnimation = YES;
+    iconLottie.alpha = 0.0;
+    [iconBadge addSubview:iconLottie];
+    [Styling setAnimationNamed:@"Speaker.lottie" toView:iconLottie withSpeed:0.8 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
+        if (success) {
+            iconFallback.alpha = 0.0;
+            [UIView animateWithDuration:0.3 animations:^{
+                iconLottie.alpha = 1.0;
+            }];
+        }
+    }];
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [AppForgroundColr colorWithAlphaComponent:0.08]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.74];
+    }];
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.cornerCurve = kCACornerCurveContinuous;
     eyebrowPill.layer.borderWidth = 1.0;
@@ -958,7 +1321,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     metaLabel.textColor = [accentColor colorWithAlphaComponent:0.92];
     metaLabel.numberOfLines = 2;
     metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [AppForgroundColr colorWithAlphaComponent:0.10]
+            : [UIColor.whiteColor colorWithAlphaComponent:0.78];
+    }];
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.cornerCurve = kCACornerCurveContinuous;
     metaLabel.layer.borderWidth = 1.0;
@@ -997,10 +1364,15 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [iconBadge.widthAnchor constraintEqualToConstant:62.0],
         [iconBadge.heightAnchor constraintEqualToConstant:62.0],
 
-        [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:28.0],
-        [iconView.heightAnchor constraintEqualToConstant:28.0],
+        [iconFallback.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
+        [iconFallback.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
+        [iconFallback.widthAnchor constraintEqualToConstant:28.0],
+        [iconFallback.heightAnchor constraintEqualToConstant:28.0],
+
+        [iconLottie.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
+        [iconLottie.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
+        [iconLottie.widthAnchor constraintEqualToConstant:88.0],
+        [iconLottie.heightAnchor constraintEqualToConstant:88.0],
 
         [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
@@ -2325,6 +2697,16 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (indexPath.section >= 0 && indexPath.section < (NSInteger)self.formSections.count) {
+        NSMutableArray<PPAdFormField *> *section = self.formSections[indexPath.section];
+        if (indexPath.row >= 0 && indexPath.row < (NSInteger)section.count) {
+            PPAdFormField *field = section[indexPath.row];
+            if (field.pairedField) {
+                return MAX(field.height, 88.0);
+            }
+        }
+    }
+
     if (indexPath.row == 1 || indexPath.row == 2) {
         return 74.0;
     }
@@ -2362,6 +2744,18 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     cell.backgroundColor = UIColor.clearColor;
     cell.clipsToBounds = NO;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    if ([cell isKindOfClass:PPAdPairFieldCell.class]) {
+        cell.contentView.backgroundColor = UIColor.clearColor;
+        cell.contentView.layer.cornerRadius = 0.0;
+        cell.contentView.layer.masksToBounds = NO;
+        cell.contentView.layer.borderWidth = 0.0;
+        [cell.contentView pp_setBorderColor:UIColor.clearColor];
+        cell.layer.shadowOpacity = 0.0;
+        cell.layer.shadowRadius = 0.0;
+        cell.layer.shadowOffset = CGSizeZero;
+        cell.layer.masksToBounds = NO;
+        return;
+    }
     cell.contentView.backgroundColor = [self pp_adSurfaceColor];
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
@@ -2419,6 +2813,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     for (NSMutableArray<PPAdFormField *> *section in self.formSections) {
         for (PPAdFormField *field in section) {
             if ([field.tag isEqualToString:tag]) return field;
+            if ([field.pairedField.tag isEqualToString:tag]) return field.pairedField;
         }
     }
     return nil;
@@ -2428,7 +2823,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     for (NSInteger s = 0; s < (NSInteger)self.formSections.count; s++) {
         NSMutableArray<PPAdFormField *> *section = self.formSections[s];
         for (NSInteger r = 0; r < (NSInteger)section.count; r++) {
-            if ([section[r].tag isEqualToString:tag]) {
+            PPAdFormField *field = section[r];
+            if ([field.tag isEqualToString:tag] ||
+                [field.pairedField.tag isEqualToString:tag]) {
                 return [NSIndexPath indexPathForRow:r inSection:s];
             }
         }
@@ -2470,6 +2867,28 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self presentViewController:vc animated:YES completion:nil];
 }
 
+- (void)pp_applyText:(NSString *)text toField:(PPAdFormField *)field
+{
+    if (!field) return;
+    id oldValue = field.value;
+    if (field.fieldType == PPAdFieldTypeInteger) {
+        field.value = text.length > 0 ? @(text.integerValue) : nil;
+    } else {
+        field.value = text ?: @"";
+    }
+    if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
+    if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
+}
+
+- (void)pp_applySwitchValue:(BOOL)isOn toField:(PPAdFormField *)field
+{
+    if (!field) return;
+    id oldValue = field.value;
+    field.value = @(isOn);
+    if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
+    if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
+}
+
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
@@ -2485,6 +2904,34 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     PPAdFormField *field = self.formSections[indexPath.section][indexPath.row];
     __weak typeof(self) weakSelf = self;
     BOOL effectiveDisabled = field.disabled || self.formDisabled;
+
+    if (field.pairedField) {
+        PPAdPairFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdPairFieldCellID forIndexPath:indexPath];
+        PPAdFormField *secondaryField = field.pairedField;
+        BOOL secondaryDisabled = secondaryField.disabled || self.formDisabled;
+        [cell configureWithPrimaryField:field
+                         secondaryField:secondaryField
+                        primaryDisabled:effectiveDisabled
+                      secondaryDisabled:secondaryDisabled];
+        [cell applyDisabledState:self.formDisabled];
+        cell.onSelectField = ^(PPAdFormField *selectedField) {
+            if (!selectedField || selectedField.disabled || weakSelf.formDisabled) return;
+            if ([selectedField.tag isEqualToString:kadLocation]) {
+                [weakSelf pp_presentAdLocationPicker];
+                return;
+            }
+            if (selectedField.fieldType == PPAdFieldTypeSelector) {
+                [weakSelf pp_presentSelectorForField:selectedField];
+            }
+        };
+        cell.onTextChanged = ^(PPAdFormField *changedField, NSString *text) {
+            [weakSelf pp_applyText:text toField:changedField];
+        };
+        cell.onSwitchChanged = ^(PPAdFormField *changedField, BOOL isOn) {
+            [weakSelf pp_applySwitchValue:isOn toField:changedField];
+        };
+        return cell;
+    }
 
     switch (field.fieldType) {
         case PPAdFieldTypeText:
@@ -2546,6 +2993,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if (self.formDisabled) return;
     PPAdFormField *field = self.formSections[indexPath.section][indexPath.row];
+    if (field.pairedField) return;
     
     if ([field.tag isEqualToString:kadLocation]) {
         [self pp_presentAdLocationPicker];
@@ -2577,69 +3025,70 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     };
     [basicSection addObject:titleField];
 
+    PPAdFormField *catField = [PPAdFormField new];
+    catField.tag = kcategory;
+    catField.title = kLang(@"Species");
+    catField.selectorTitle = kLang(@"Species");
+    catField.fieldType = PPAdFieldTypeSelector;
+    catField.required = YES;
+    catField.height = 88.0;
+
+    PPAdFormField *subField = [PPAdFormField new];
+    subField.tag = ksubcategory;
+    subField.title = kLang(@"Breed");
+    subField.selectorTitle = kLang(@"Breed");
+    subField.fieldType = PPAdFieldTypeSelector;
+    subField.required = YES;
+    subField.height = rowHeight;
+    subField.onChangeBlock = ^(id oldValue, id newValue) {
+        if (![newValue isKindOfClass:[SubKindModel class]]) return;
+        weakSelf.adModel.subcategory = ((SubKindModel *)newValue).ID;
+    };
+
     if (self.selectedMainKind) {
         weakSelf.selectedKind = self.selectedMainKind;
         weakSelf.adModel.category = self.selectedMainKind.ID;
-
-        PPAdFormField *subField = [PPAdFormField new];
-        subField.tag = ksubcategory;
-        subField.title = kLang(@"Breed");
-        subField.selectorTitle = kLang(@"Breed");
-        subField.fieldType = PPAdFieldTypeSelector;
-        subField.required = YES;
-        subField.height = rowHeight;
+        catField.value = self.selectedMainKind;
+        catField.selectorOptions = @[self.selectedMainKind];
+        catField.disabled = YES;
         subField.disabled = NO;
         subField.selectorOptions = self.selectedMainKind.SubKindsArray ?: @[];
-        subField.onChangeBlock = ^(id oldValue, id newValue) {
-            if (![newValue isKindOfClass:[SubKindModel class]]) return;
-            weakSelf.adModel.subcategory = ((SubKindModel *)newValue).ID;
-        };
-        [basicSection addObject:subField];
     } else {
-        PPAdFormField *catField = [PPAdFormField new];
-        catField.tag = kcategory;
-        catField.title = kLang(@"Species");
-        catField.selectorTitle = kLang(@"Species");
-        catField.fieldType = PPAdFieldTypeSelector;
-        catField.required = YES;
-        catField.height = rowHeight;
         catField.selectorOptions = MKM.MainKindsArray;
+        subField.disabled = YES;
         catField.onChangeBlock = ^(id oldValue, id newValue) {
-            PPAdFormField *subF = [weakSelf fieldForTag:ksubcategory];
             if (![newValue isKindOfClass:[MainKindsModel class]]) {
                 weakSelf.selectedKind = nil;
                 weakSelf.adModel.category = 0;
-                subF.disabled = YES; subF.selectorOptions = @[]; subF.value = nil;
+                subField.disabled = YES; subField.selectorOptions = @[]; subField.value = nil;
                 [weakSelf pp_reloadFieldWithTag:ksubcategory];
                 return;
             }
             MainKindsModel *kind = newValue;
             weakSelf.selectedKind = kind;
             weakSelf.adModel.category = kind.ID;
-            subF.disabled = NO;
-            subF.selectorOptions = kind.SubKindsArray ?: @[];
+            subField.disabled = NO;
+            subField.selectorOptions = kind.SubKindsArray ?: @[];
             [weakSelf pp_reloadFieldWithTag:ksubcategory];
         };
-        [basicSection addObject:catField];
-
-        PPAdFormField *subField = [PPAdFormField new];
-        subField.tag = ksubcategory;
-        subField.title = kLang(@"Breed");
-        subField.selectorTitle = kLang(@"Breed");
-        subField.fieldType = PPAdFieldTypeSelector;
-        subField.required = YES;
-        subField.height = rowHeight;
-        subField.disabled = YES;
-        subField.onChangeBlock = ^(id oldValue, id newValue) {
-            if (![newValue isKindOfClass:[SubKindModel class]]) return;
-            weakSelf.adModel.subcategory = ((SubKindModel *)newValue).ID;
-        };
-        [basicSection addObject:subField];
     }
+    catField.pairedField = subField;
+    [basicSection addObject:catField];
     [self.formSections addObject:basicSection];
 
     // Section 1: Pet Details
     NSMutableArray<PPAdFormField *> *petSection = [NSMutableArray array];
+
+    PPAdFormField *ageField = [PPAdFormField new];
+    ageField.tag = kpetAge;
+    ageField.title = kLang(@"age_months");
+    ageField.placeholder = kLang(@"enter_pet_age_in_months");
+    ageField.fieldType = PPAdFieldTypeInteger;
+    ageField.required = YES;
+    ageField.height = 88.0;
+    ageField.onChangeBlock = ^(id oldValue, id newValue) {
+        weakSelf.adModel.petAgeMonths = newValue;
+    };
 
     PPAdFormField *genderField = [PPAdFormField new];
     genderField.tag = @"isFemale";
@@ -2650,18 +3099,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     genderField.onChangeBlock = ^(id oldValue, id newValue) {
         weakSelf.adModel.isFemale = [newValue boolValue];
     };
-    [petSection addObject:genderField];
-
-    PPAdFormField *ageField = [PPAdFormField new];
-    ageField.tag = kpetAge;
-    ageField.title = kLang(@"age_months");
-    ageField.placeholder = kLang(@"enter_pet_age_in_months");
-    ageField.fieldType = PPAdFieldTypeInteger;
-    ageField.required = YES;
-    ageField.height = rowHeight;
-    ageField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.petAgeMonths = newValue;
-    };
+    ageField.pairedField = genderField;
     [petSection addObject:ageField];
     [self.formSections addObject:petSection];
 
@@ -2712,6 +3150,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self.tableView registerClass:[PPAdSelectorCell class] forCellReuseIdentifier:PPAdSelectorCellID];
     [self.tableView registerClass:[PPAdSwitchCell class] forCellReuseIdentifier:PPAdSwitchCellID];
     [self.tableView registerClass:[PPAdTextViewCell class] forCellReuseIdentifier:PPAdTextViewCellID];
+    [self.tableView registerClass:[PPAdPairFieldCell class] forCellReuseIdentifier:PPAdPairFieldCellID];
 
     self.tableView.estimatedSectionFooterHeight = 0.000001;
     self.tableView.sectionFooterHeight = 0.000001;
@@ -2958,8 +3397,13 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     NSMutableArray *errors = [NSMutableArray array];
     for (NSMutableArray<PPAdFormField *> *section in self.formSections) {
         for (PPAdFormField *f in section) {
-            if (f.required && (f.value == nil || ([f.value isKindOfClass:NSString.class] && [f.value length] == 0))) {
-                [errors addObject:f];
+            NSArray<PPAdFormField *> *fieldsToValidate = f.pairedField ? @[f, f.pairedField] : @[f];
+            for (PPAdFormField *candidate in fieldsToValidate) {
+                if (candidate.required &&
+                    (candidate.value == nil ||
+                     ([candidate.value isKindOfClass:NSString.class] && [candidate.value length] == 0))) {
+                    [errors addObject:candidate];
+                }
             }
         }
     }

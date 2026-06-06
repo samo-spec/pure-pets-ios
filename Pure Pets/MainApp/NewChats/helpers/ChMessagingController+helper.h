@@ -27,7 +27,6 @@
  
 
  
-- (void)applyTopFadeMaskWithColor:(UIColor *)color onView:(UIView *)view;
 - (void)presentMediaPickerForType:(NSString *)uti;
  
 @end

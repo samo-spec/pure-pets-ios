@@ -771,21 +771,6 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     UIView *c = [[UIView alloc] initWithFrame:CGRectMake(0,0,w,h)];
     c.backgroundColor = UIColor.clearColor; c.userInteractionEnabled = NO;
     c.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    CGFloat cr = h/2.0;
-    if (@available(iOS 13.0, *)) {
-        UIVisualEffectView *bv = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]];
-        bv.frame = c.bounds; bv.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-        bv.userInteractionEnabled = NO; bv.layer.cornerRadius = cr; bv.layer.masksToBounds = YES;
-        [c addSubview:bv];
-        UIView *tv = [[UIView alloc] initWithFrame:bv.bounds];
-        tv.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-        tv.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.00];
-        [bv.contentView addSubview:tv];
-    } else { c.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.12]; }
-    c.layer.cornerRadius = cr; c.layer.borderWidth = 1.0;
-    [c pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0]];
-    [c pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0]];
-    c.layer.shadowOffset = CGSizeMake(0,0); c.layer.shadowOpacity = 0; c.layer.shadowRadius = 0;
     UIStackView *sk = [[UIStackView alloc] init];
     sk.axis = UILayoutConstraintAxisVertical; sk.alignment = UIStackViewAlignmentCenter;
     sk.spacing = ss.length ? 1.0 : 0.0; sk.translatesAutoresizingMaskIntoConstraints = NO; sk.userInteractionEnabled = NO;
@@ -913,9 +898,9 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 #pragma mark - Form (TableView Setup)
 
 - (void)initForm {
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBageColor();
     self.view.clipsToBounds = YES;
-    UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tv.translatesAutoresizingMaskIntoConstraints = NO;
     tv.delegate = self; tv.dataSource = self;
     tv.separatorStyle = UITableViewCellSeparatorStyleNone;

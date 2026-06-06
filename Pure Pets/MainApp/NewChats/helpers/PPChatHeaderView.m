@@ -26,7 +26,7 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
 @property (nonatomic, strong) UIImageView *avatarView;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UILabel *statusLabel;
-@property (nonatomic, strong) UIButton *blurView;
+@property (nonatomic, strong) UIView *blurView;
 @property (nonatomic, strong) UIStackView *labelsStack;
 
 @property (nonatomic, strong) UIView *onlineDotView;
@@ -50,14 +50,9 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
 
-    self.layer.cornerRadius = 10;
-    self.clipsToBounds= YES;
-    self.layer.masksToBounds = NO;
-
-    self.blurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
-    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self addSubview:self.blurView];
+    [self createPremiumBlurBackground];
 
     // Dismiss (close) button, glass style
     self.dismissButton =
@@ -411,10 +406,36 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
     }];
 }
 
+- (void)createPremiumBlurBackground
+{
+    self.blurView = [[UIView alloc] init];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.blurView.backgroundColor = UIColor.clearColor;
+    self.blurView.clipsToBounds = YES;
+    self.blurView.layer.cornerRadius = PPCornerHero;
+    if (@available(iOS 13.0, *)) {
+        self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    [Styling addBlurToView:self.blurView
+                 blurStyle:UIBlurEffectStyleExtraLight
+              cornerRadius:PPCornerHero
+                     alpha:0.85
+          insertAtPosition:0];
+
+    [self addSubview:self.blurView];
+
+    [self.blurView pp_setShadowColor:AppShadowClr];
+    self.blurView.layer.shadowOpacity = 0.12;
+    self.blurView.layer.shadowRadius = 16;
+    self.blurView.layer.shadowOffset = CGSizeMake(0, 4);
+    self.blurView.layer.masksToBounds = NO;
+}
+
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    [Styling addLiquidGlassBorderToView:self.blurView cornerRadius:32];
+    [Styling addLiquidGlassBorderToView:self.blurView cornerRadius:PPCornerHero];
 }
 
 #pragma mark - Actions

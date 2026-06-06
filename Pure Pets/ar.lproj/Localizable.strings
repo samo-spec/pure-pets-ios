@@ -2858,6 +2858,26 @@
 /* Chat send errors */
 "chat_message_failed_title" = "لم يتم إرسال الرسالة";
 "chat_retry_send_message" = "تحقق من الاتصال وحاول إرسال الرسالة مرة أخرى.";
+"copy" = "نسخ";
+"reply" = "رد";
+"chat_copied" = "تم النسخ";
+"chat_media_view" = "عرض";
+"chat_media_download" = "تنزيل";
+"chat_media_opening" = "جارٍ الفتح...";
+"chat_media_saving" = "جارٍ الحفظ...";
+"chat_media_downloading" = "جارٍ التنزيل...";
+"chat_media_saved" = "تم الحفظ في الصور";
+"chat_media_download_complete" = "اكتمل التنزيل";
+"chat_media_save_failed" = "تعذر حفظ الوسائط.";
+"chat_media_unavailable" = "هذه الوسائط غير متاحة.";
+"chat_replying" = "رد";
+"chat_replying_to_format" = "رد على %@";
+"chat_reply_sender_you" = "أنت";
+"chat_reply_image" = "صورة";
+"chat_reply_video" = "فيديو";
+"chat_reply_audio" = "رسالة صوتية";
+"chat_reply_unavailable" = "الرسالة الأصلية غير متاحة.";
+"chat_reply_cancel" = "إلغاء الرد";
 
 /* Premium intro */
 "intro_brand_kicker" = "عناية متكاملة بكل اهتمام";

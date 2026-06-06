@@ -2870,6 +2870,26 @@
 /* Chat send errors */
 "chat_message_failed_title" = "Message not sent";
 "chat_retry_send_message" = "Check your connection and try sending the message again.";
+"copy" = "Copy";
+"reply" = "Reply";
+"chat_copied" = "Copied";
+"chat_media_view" = "View";
+"chat_media_download" = "Download";
+"chat_media_opening" = "Opening...";
+"chat_media_saving" = "Saving...";
+"chat_media_downloading" = "Downloading...";
+"chat_media_saved" = "Saved to Photos";
+"chat_media_download_complete" = "Download complete";
+"chat_media_save_failed" = "Could not save media.";
+"chat_media_unavailable" = "This media is not available.";
+"chat_replying" = "Replying";
+"chat_replying_to_format" = "Replying to %@";
+"chat_reply_sender_you" = "You";
+"chat_reply_image" = "Photo";
+"chat_reply_video" = "Video";
+"chat_reply_audio" = "Voice message";
+"chat_reply_unavailable" = "Original message is not available.";
+"chat_reply_cancel" = "Cancel reply";
 
 /* Premium intro */
 "intro_brand_kicker" = "Care, thoughtfully connected";

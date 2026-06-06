@@ -38,8 +38,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.backgroundColor = UIColor.clearColor;
         self.contentView.backgroundColor = UIColor.clearColor;
         self.contentView.clipsToBounds = NO;
+        self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-        // Glow view behind ring for unseen stories
         _glowView = [[UIView alloc] initWithFrame:CGRectZero];
         _glowView.translatesAutoresizingMaskIntoConstraints = NO;
         _glowView.backgroundColor = UIColor.clearColor;
@@ -47,12 +47,12 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _glowView.alpha = 0.0;
         [self.contentView addSubview:_glowView];
 
-        // Ring host container
         _ringHostView = [[UIView alloc] initWithFrame:CGRectZero];
         _ringHostView.translatesAutoresizingMaskIntoConstraints = NO;
         _ringHostView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.03];
         _ringHostView.layer.cornerRadius = PPStoryRingHostSize * 0.5;
         _ringHostView.layer.masksToBounds = NO;
+        _ringHostView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
         [self.contentView addSubview:_ringHostView];
 
         // Avatar

@@ -30,6 +30,10 @@ NS_ASSUME_NONNULL_BEGIN
                   time:(NSDate *)date
            isIncoming:(BOOL)isIncoming
                status:(ChatMessageStatus)status;
+- (void)setReplyPreviewTitle:(nullable NSString *)title
+                    subtitle:(nullable NSString *)subtitle
+                  isIncoming:(BOOL)isIncoming;
+- (void)clearReplyPreview;
  @end
 
 NS_ASSUME_NONNULL_END

@@ -16,6 +16,8 @@
 @property (nonatomic, assign) BOOL isIncoming;
 @property (nonatomic, strong) ChatMessageModel *message;
 @property (nonatomic, assign) BOOL didUpdateLayoutOnce;
+@property (nonatomic, assign) float ppContextPreviousShadowOpacity;
+@property (nonatomic, assign) BOOL ppContextSuppressedShadow;
 
 @end
 @implementation ChatMessageCell
@@ -98,7 +100,10 @@
 
 - (void)prepareForReuse {
     [super prepareForReuse];
+    [self pp_setContextFocusSuppressed:NO];
     self.didUpdateLayoutOnce = NO;
+    self.bubbleMaxWidthConstraint.active = NO;
+    self.bubbleMaxWidthConstraint = nil;
     self.bubbleLeadingConstraint.active = YES;
     self.bubbleTrailingConstraint.active = NO;
 }
@@ -119,6 +124,7 @@
     // Max bubble width (same logic as before)
     CGFloat maxBubbleWidth = messageModel.mediaWidth ?: maxWidth * 0.8;
     NSLog(@"maxBubbleWidth %f",maxBubbleWidth);
+    self.bubbleMaxWidthConstraint.active = NO;
     self.bubbleMaxWidthConstraint = [self.bubbleView.widthAnchor constraintLessThanOrEqualToConstant:maxBubbleWidth];
     self.bubbleMaxWidthConstraint.active = YES;
     
@@ -188,9 +194,29 @@
 
 #pragma mark - Long-Press Context Menu
 
+- (void)pp_setContextFocusSuppressed:(BOOL)suppressed
+{
+    if (suppressed) {
+        if (!self.ppContextSuppressedShadow) {
+            self.ppContextPreviousShadowOpacity = self.bubbleView.layer.shadowOpacity;
+        }
+        self.ppContextSuppressedShadow = YES;
+        self.bubbleView.layer.shadowOpacity = 0.0;
+        return;
+    }
+
+    if (self.ppContextSuppressedShadow) {
+        self.bubbleView.layer.shadowOpacity = self.ppContextPreviousShadowOpacity;
+    }
+    self.ppContextSuppressedShadow = NO;
+}
+
 - (nullable UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                          configurationForMenuAtLocation:(CGPoint)location
 {
+    UIImpactFeedbackGenerator *feedback =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurredWithIntensity:0.45];
     return [UIContextMenuConfiguration configurationWithIdentifier:nil
                                                    previewProvider:nil
                                                     actionProvider:^UIMenu * _Nullable(NSArray<UIMenuElement *> * _Nonnull suggestedActions) {
@@ -201,20 +227,8 @@
 - (UIMenu *)makeContextMenu
 {
     NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-    
-    // Copy action
-    if (self.message.text.length > 0) {
-        UIImage *copyIcon = [UIImage systemImageNamed:@"doc.on.doc"];
-        UIAction *copyAction = [UIAction actionWithTitle:kLang(@"copy")
-                                                   image:copyIcon
-                                              identifier:nil
-                                                 handler:^(__kindof UIAction * _Nonnull action) {
-            [UIPasteboard generalPasteboard].string = self.message.text;
-        }];
-        [actions addObject:copyAction];
-    }
-    
-    // Reply action
+
+    // Reply action first: holding a message should make the reply path feel primary.
     UIImage *replyIcon = [UIImage systemImageNamed:@"arrowshape.turn.up.left"];
     UIAction *replyAction = [UIAction actionWithTitle:kLang(@"reply")
                                                 image:replyIcon
@@ -226,13 +240,56 @@
     }];
     [actions addObject:replyAction];
     
+    // Copy action
+    if (self.message.text.length > 0) {
+        UIImage *copyIcon = [UIImage systemImageNamed:@"doc.on.doc"];
+        UIAction *copyAction = [UIAction actionWithTitle:kLang(@"copy")
+                                                   image:copyIcon
+                                              identifier:nil
+                                                 handler:^(__kindof UIAction * _Nonnull action) {
+            [UIPasteboard generalPasteboard].string = self.message.text;
+            if ([self.delegate respondsToSelector:@selector(chatMessageCellDidRequestCopy:)]) {
+                [self.delegate chatMessageCellDidRequestCopy:self];
+            }
+        }];
+        [actions addObject:copyAction];
+    }
+
     return [UIMenu menuWithTitle:@"" children:actions];
 }
 
 - (nullable UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
                        previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
 {
-    return [[UITargetedPreview alloc] initWithView:self.bubbleView];
+    [self pp_setContextFocusSuppressed:YES];
+    UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
+    parameters.backgroundColor = UIColor.clearColor;
+    parameters.visiblePath =
+        [UIBezierPath bezierPathWithRoundedRect:self.bubbleView.bounds
+                                   cornerRadius:30.0];
+    return [[UITargetedPreview alloc] initWithView:self.bubbleView
+                                       parameters:parameters];
+}
+
+- (nullable UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                        previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+    UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
+    parameters.backgroundColor = UIColor.clearColor;
+    parameters.visiblePath =
+        [UIBezierPath bezierPathWithRoundedRect:self.bubbleView.bounds
+                                   cornerRadius:30.0];
+    return [[UITargetedPreview alloc] initWithView:self.bubbleView
+                                       parameters:parameters];
+}
+
+- (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+       willEndForConfiguration:(UIContextMenuConfiguration *)configuration
+                      animator:(id<UIContextMenuInteractionAnimating>)animator
+{
+    [animator addCompletion:^{
+        [self pp_setContextFocusSuppressed:NO];
+    }];
 }
 
 @end

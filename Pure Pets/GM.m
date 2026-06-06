@@ -2174,9 +2174,9 @@ CGSize getImageSizeSafely(UIImage *image) {
 +(UISemanticContentAttribute)setSemantic
 {
     if(Language.isRTL)
-        return UISemanticContentAttributeForceLeftToRight;
-    else
         return UISemanticContentAttributeForceRightToLeft;
+    else
+        return UISemanticContentAttributeForceLeftToRight;
 }
 
 

@@ -1498,13 +1498,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     
     [NSLayoutConstraint activateConstraints:@[
-        // Action button trailing & vertical alignment
-       
-        [_actionButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:horizontalMargin],
+        [_actionButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-horizontalMargin],
         [_searchButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:trailingMargin],
-        
-        
- 
     ]];
 
     // Style action button
@@ -1525,8 +1520,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         [self addSubview:_stackView];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_stackView.leadingAnchor constraintEqualToAnchor:_actionButton.trailingAnchor constant:4],
-            [_stackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:0],
+            [_stackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:0],
+            [_stackView.trailingAnchor constraintEqualToAnchor:_actionButton.leadingAnchor constant:-8],
             [_stackView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
             [_stackView.heightAnchor constraintEqualToAnchor:self.heightAnchor],
         ]];
@@ -1616,8 +1611,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         [_searchButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor constant:0],
         [_actionButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor constant:0],
         
-        [self.tabBar.leadingAnchor constraintEqualToAnchor:_actionButton.trailingAnchor constant:-16],
-        [self.tabBar.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:0],
+        [self.tabBar.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:0],
+        [self.tabBar.trailingAnchor constraintEqualToAnchor:_actionButton.leadingAnchor constant:-8],
         [self.tabBar.centerYAnchor constraintEqualToAnchor:self.actionButton.centerYAnchor constant:10],
     ]];
      

@@ -454,7 +454,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)pp_buildTableView
 {
-    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
     tableView.delegate = self;
     tableView.dataSource = self;
@@ -1431,7 +1431,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
         return 56.0;
     }
         else  if ([self pp_isAddressActionRow:indexPath]) {
-            return 64.0;
+            return 72.0;
         }
     
     return UITableViewAutomaticDimension;

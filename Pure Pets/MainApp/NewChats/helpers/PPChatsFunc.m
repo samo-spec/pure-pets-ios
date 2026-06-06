@@ -311,20 +311,8 @@ bubble.layer.mask = mask;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     mask.frame = b;
-    [CATransaction commit];
-
-    if (mask.path) {
-        CABasicAnimation *anim =
-            [CABasicAnimation animationWithKeyPath:@"path"];
-        anim.fromValue = (__bridge id)mask.path;
-        anim.toValue   = (__bridge id)newPath;
-        anim.duration  = 0.28;
-        anim.timingFunction =
-            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [mask addAnimation:anim forKey:@"pp_liquid_merge"];
-    }
-
     mask.path = newPath;
+    [CATransaction commit];
  
 }
 

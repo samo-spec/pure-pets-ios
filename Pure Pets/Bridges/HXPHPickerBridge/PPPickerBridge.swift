@@ -108,11 +108,48 @@ public extension Notification.Name {
         return englishFallback
     }
 
+    private var directionalBackSymbolName: String {
+        useArabic ? "chevron.right" : "chevron.left"
+    }
+
+    private func directionalBackImage() -> UIImage? {
+        UIImage(systemName: directionalBackSymbolName)?
+            .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+            .withRenderingMode(.alwaysTemplate)
+    }
+
+    private func applyDirectionalHXImageResources() {
+        HX.imageResource.picker.preview.back = .system(directionalBackSymbolName)
+    }
+
+    private func applyDirectionalBackIndicator(to navigationBar: UINavigationBar) {
+        let chevron = directionalBackImage()
+        navigationBar.backIndicatorImage = chevron
+        navigationBar.backIndicatorTransitionMaskImage = chevron
+
+        if #available(iOS 15.0, *) {
+            func appearanceWithBackIndicator(_ source: UINavigationBarAppearance?) -> UINavigationBarAppearance {
+                let appearance =
+                    (source?.copy() as? UINavigationBarAppearance) ??
+                    (navigationBar.standardAppearance.copy() as! UINavigationBarAppearance)
+                appearance.setBackIndicatorImage(chevron, transitionMaskImage: chevron)
+                return appearance
+            }
+
+            navigationBar.standardAppearance = appearanceWithBackIndicator(navigationBar.standardAppearance)
+            navigationBar.scrollEdgeAppearance = appearanceWithBackIndicator(navigationBar.scrollEdgeAppearance)
+            navigationBar.compactAppearance = appearanceWithBackIndicator(navigationBar.compactAppearance)
+            navigationBar.compactScrollEdgeAppearance = appearanceWithBackIndicator(navigationBar.compactScrollEdgeAppearance)
+        }
+    }
+
     // MARK: - Present Picker
 
     @objc(presentPickerFromViewController:)
     public func presentPicker(from viewController: UIViewController) {
+        PhotoManager.shared.createLanguageBundle(languageType: useArabic ? .arabic : .english)
         applyCustomTextManager()
+        applyDirectionalHXImageResources()
 
         let config = createPickerConfiguration()
 
@@ -124,11 +161,8 @@ public extension Notification.Name {
         picker.modalPresentationStyle = .pageSheet
 
         // Force the back indicator to match the active language direction.
-        let backSymbolName = useArabic ? "chevron.right" : "chevron.left"
-        let chevron = UIImage(systemName: backSymbolName)?
-            .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
-        picker.navigationBar.backIndicatorImage = chevron
-        picker.navigationBar.backIndicatorTransitionMaskImage = chevron
+        let chevron = directionalBackImage()
+        applyDirectionalBackIndicator(to: picker.navigationBar)
 
         if #available(iOS 15.0, *) {
             let appearance = UINavigationBarAppearance()
@@ -154,14 +188,19 @@ public extension Notification.Name {
             picker.navigationBar.standardAppearance = appearance
             picker.navigationBar.scrollEdgeAppearance = appearance
             picker.navigationBar.compactAppearance = appearance
+            picker.navigationBar.compactScrollEdgeAppearance = appearance
         }
+        applyDirectionalBackIndicator(to: picker.navigationBar)
 
         previousSemantic = viewController.view.semanticContentAttribute
         let direction: UISemanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
         picker.view.semanticContentAttribute = direction
         picker.navigationBar.semanticContentAttribute = direction
 
-        viewController.present(picker, animated: true)
+        viewController.present(picker, animated: true) { [weak self, weak picker] in
+            guard let self = self, let picker = picker else { return }
+            self.applyDirectionalBackIndicator(to: picker.navigationBar)
+        }
     }
 
     /// Swift-only convenience with completion handler.
@@ -256,19 +295,19 @@ public extension Notification.Name {
         // Hide the "Original" button on the bottom toolbar
         config.photoList.bottomView.isHiddenOriginalButton = true
         config.previewView.bottomView.isHiddenOriginalButton = true
+        config.editor.toolsView.toolOptions = pp_editorToolOptionsForCurrentMode()
 
         return config
     }
 
     private func pp_editorToolOptionsForCurrentMode() -> [EditorConfiguration.ToolsView.Options] {
         let options = EditorConfiguration.ToolsView.default.toolOptions
-        guard allowVideo else {
-            return options
-        }
         return options.filter { option in
             switch option.type {
-            case .chartlet, .music:
+            case .chartlet:
                 return false
+            case .music:
+                return !allowVideo
             default:
                 return true
             }
@@ -343,6 +382,17 @@ extension PPPickerBridge: PhotoPickerControllerDelegate {
     ) { }
 
     #if HXPICKER_ENABLE_EDITOR
+    public func pickerController(
+        _ pickerController: PhotoPickerController,
+        shouldEditPhotoAsset photoAsset: PhotoAsset,
+        editorConfig: EditorConfiguration,
+        atIndex: Int
+    ) -> EditorConfiguration? {
+        var config = editorConfig
+        config.toolsView.toolOptions = pp_editorToolOptionsForCurrentMode()
+        return config
+    }
+
     public func pickerController(
         _ pickerController: PhotoPickerController,
         shouldEditVideoAsset videoAsset: PhotoAsset,

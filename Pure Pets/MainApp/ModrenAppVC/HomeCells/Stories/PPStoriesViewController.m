@@ -45,7 +45,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
 
-    // Modern glass backdrop card with liquid border
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
     _glassBackdrop = [[UIVisualEffectView alloc] initWithEffect:blur];
     _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
@@ -55,9 +54,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     _glassBackdrop.layer.borderWidth = 1.0;
     [_glassBackdrop pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.18]];
     [_glassBackdrop pp_setShadowColor:[AppForgroundColr colorWithAlphaComponent:0.10]];
-     [self.view addSubview:_glassBackdrop];
+    [self.view addSubview:_glassBackdrop];
 
-    // Tinted overlay inside the glass for AppForgroundColr warmth
     UIView *tintOverlay = [UIView new];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     tintOverlay.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.06];
@@ -121,131 +119,151 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     [self pp_applySectionTitle];
 }
 
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    [self startObservingStories];
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [Styling addLiquidGlassBorderToView:_glassBackdrop cornerRadius:24.0];
 }
 
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    [self stopObservingStories];
-}
+#pragma mark - Public
 
-- (void)dealloc {
-    [self stopObservingStories];
-}
-
-- (void)setSectionTitleText:(NSString * _Nullable)sectionTitleText {
-    _sectionTitleText = [sectionTitleText copy];
-    [self pp_applySectionTitle];
-}
-
-- (void)setSectionTitleLocalizationKey:(NSString * _Nullable)sectionTitleLocalizationKey {
-    _sectionTitleLocalizationKey = [sectionTitleLocalizationKey copy];
-    [self pp_applySectionTitle];
-}
-
-- (void)startObservingStories {
-    if (self.storiesListener) {
-        return;
-    }
-
-    __weak typeof(self) weakSelf = self;
-    self.storiesListener = [[PPStoriesManager shared] observeStoriesWithCompletion:^(NSArray<PPStory *> *stories, NSError * _Nullable error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-            [self pp_applyIncomingStories:error ? @[] : (stories ?: @[]) error:error];
-        });
-    }];
-
-    if (!self.storiesListener) {
-        [self reloadStories];
-    }
-}
-
-- (void)stopObservingStories {
-    [self.storiesListener remove];
-    self.storiesListener = nil;
-}
-
-- (void)reloadStories {
+- (void)reloadStories
+{
     __weak typeof(self) weakSelf = self;
     [[PPStoriesManager shared] fetchStoriesWithCompletion:^(NSArray<PPStory *> *stories, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-            [self pp_applyIncomingStories:error ? @[] : (stories ?: @[]) error:error];
-        });
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf pp_applyIncomingStories:stories error:error];
     }];
 }
 
-#pragma mark - CollectionView
-
-- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    (void)collectionView; (void)section;
-    return self.stories.count + ([self pp_hasCurrentUserEntry] ? 1 : 0);
-}
-
-- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
-                           cellForItemAtIndexPath:(NSIndexPath *)indexPath
+- (void)startObservingStories
 {
-    PPStoryCollectionViewCell *cell =
-        [collectionView dequeueReusableCellWithReuseIdentifier:@"StoryCell" forIndexPath:indexPath];
+    if (self.storiesListener) return;
 
     __weak typeof(self) weakSelf = self;
-    cell.onAddBadgeTapped = nil;
-    if ([self pp_isCurrentUserEntryAtIndex:indexPath.item]) {
-        PPStory *story = [self pp_currentUserDisplayStory];
-        [cell configureWithStory:story currentUserEntry:YES showAddBadge:YES];
+    self.storiesListener =
+        [[PPStoriesManager shared] observeStoriesWithCompletion:^(NSArray<PPStory *> *stories, NSError *error) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf pp_applyIncomingStories:stories error:error];
+        }];
+}
+
+- (void)stopObservingStories
+{
+    if (self.storiesListener) {
+        [self.storiesListener remove];
+        self.storiesListener = nil;
+    }
+}
+
+- (void)dealloc
+{
+    [self stopObservingStories];
+}
+
+#pragma mark - Player Configuration
+
+- (void)pp_configureStoryPlayerForOptimisticUpdates:(PPStoryPlayerViewController *)player
+{
+    __weak typeof(self) weakSelf = self;
+    player.onStoryUpdated = ^(PPStory *story) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf.collectionView reloadData];
+    };
+}
+
+- (NSArray<PPStory *> *)pp_playableStories
+{
+    NSMutableArray<PPStory *> *result = [NSMutableArray array];
+    if (self.currentUserStory && self.currentUserStory.items.count > 0) {
+        [result addObject:self.currentUserStory];
+    }
+    if (self.stories.count > 0) {
+        [result addObjectsFromArray:self.stories];
+    }
+    return result;
+}
+
+#pragma mark - UICollectionViewDataSource
+
+- (NSInteger)numberOfSectionsInCollectionView:(UICollectionView *)collectionView
+{
+    (void)collectionView;
+    return 1;
+}
+
+- (NSInteger)collectionView:(UICollectionView *)collectionView
+     numberOfItemsInSection:(NSInteger)section
+{
+    (void)collectionView; (void)section;
+    NSInteger count = self.stories.count;
+    if ([self pp_hasCurrentUserEntry]) {
+        count += 1;
+    }
+    return count;
+}
+
+- (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+                  cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPStoryCollectionViewCell *cell =
+        [collectionView dequeueReusableCellWithReuseIdentifier:@"StoryCell"
+                                                  forIndexPath:indexPath];
+
+    BOOL isCurrentUserEntry = [self pp_isCurrentUserEntryAtIndex:indexPath.item];
+    BOOL isEmpty = isCurrentUserEntry && (self.currentUserStory.items.count == 0);
+
+    if (isCurrentUserEntry) {
+        PPStory *displayStory = self.currentUserStory ?: [self pp_currentUserDisplayStory];
+        [cell configureWithStory:displayStory
+               currentUserEntry:YES
+                   showAddBadge:isEmpty];
+        __weak typeof(self) weakSelf = self;
         cell.onAddBadgeTapped = ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            [self pp_handleAddStoryTapped];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf pp_handleCurrentUserStoryTap];
         };
     } else {
-        PPStory *story = [self pp_storyForDisplayIndex:indexPath.item];
-        if (story) {
-            [cell configureWithStory:story currentUserEntry:NO showAddBadge:NO];
+        NSInteger storyIndex = [self pp_hasCurrentUserEntry] ? indexPath.item - 1 : indexPath.item;
+        if (storyIndex >= 0 && storyIndex < (NSInteger)self.stories.count) {
+            PPStory *story = self.stories[storyIndex];
+            [cell configureWithStory:story];
         }
     }
 
-    // Staggered entrance animation (first load only)
-    if (!self.hasPlayedEntrance) {
-        NSTimeInterval delay = indexPath.item * 0.06;
-        [cell playEntranceAnimationWithDelay:delay];
+    if (!self.hasPlayedEntrance && self.stories.count > 0) {
+        [cell playEntranceAnimationWithDelay:indexPath.item * 0.06];
     }
 
     return cell;
 }
 
-- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
-    if (indexPath.item < 0 || indexPath.item >= [self collectionView:collectionView numberOfItemsInSection:indexPath.section]) {
+#pragma mark - UICollectionViewDelegate
+
+- (void)collectionView:(UICollectionView *)collectionView
+didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (self.isUploadingStory) return;
+
+    BOOL isCurrentUserEntry = [self pp_isCurrentUserEntryAtIndex:indexPath.item];
+    if (isCurrentUserEntry && self.currentUserStory.items.count == 0) {
         return;
     }
 
-    if ([self pp_isCurrentUserEntryAtIndex:indexPath.item]) {
-        if (self.currentUserStory.items.count > 0) {
-            NSArray<PPStory *> *playableStories = [self pp_playableStories];
-            if (playableStories.count > 0) {
-                PPStoryPlayerViewController *player =
-                    [[PPStoryPlayerViewController alloc] initWithStories:playableStories startIndex:0];
-                [self pp_configureStoryPlayerForOptimisticUpdates:player];
-                player.modalPresentationStyle = UIModalPresentationFullScreen;
-                UIViewController *presenter = self.parentViewController ?: self;
-                if (!presenter.presentedViewController) {
-                    [presenter presentViewController:player animated:YES completion:nil];
-                }
-            }
-        } else {
-            [self pp_handleAddStoryTapped];
+    PPStory *story = nil;
+    if (isCurrentUserEntry) {
+        story = self.currentUserStory;
+    } else {
+        NSInteger storyIndex = [self pp_hasCurrentUserEntry] ? indexPath.item - 1 : indexPath.item;
+        if (storyIndex >= 0 && storyIndex < (NSInteger)self.stories.count) {
+            story = self.stories[storyIndex];
         }
-        return;
     }
-
-    PPStory *story = [self pp_storyForDisplayIndex:indexPath.item];
-    if (story.items.count == 0) {
-        return;
-    }
+    if (!story || story.items.count == 0) return;
 
     if (!story.isSeen) {
         story.isSeen = YES;
@@ -297,14 +315,12 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     self.stories = otherStories.copy;
     [self.collectionView reloadData];
 
-    // Mark entrance as played after first load
     if (isFirstLoad && (otherStories.count > 0 || [self pp_hasCurrentUserEntry])) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             self.hasPlayedEntrance = YES;
         });
     }
 
-    // Preserve scroll position unless near beginning
     CGFloat currentOffsetX = self.collectionView.contentOffset.x;
     CGFloat threshold = 60.0;
 
@@ -313,8 +329,11 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
             [self.collectionView layoutIfNeeded];
             if ([self.collectionView numberOfItemsInSection:0] > 0) {
                 NSIndexPath *firstIndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                UICollectionViewScrollPosition position = Language.isRTL
+                    ? UICollectionViewScrollPositionRight
+                    : UICollectionViewScrollPositionLeft;
                 [self.collectionView scrollToItemAtIndexPath:firstIndexPath
-                                            atScrollPosition:UICollectionViewScrollPositionLeft
+                                            atScrollPosition:position
                                                     animated:NO];
             }
         });
@@ -347,87 +366,41 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     return [self pp_hasCurrentUserEntry] && index == 0;
 }
 
-- (NSInteger)pp_currentUserEntryOffset {
-    return [self pp_hasCurrentUserEntry] ? 1 : 0;
-}
-
 - (PPStory *)pp_currentUserDisplayStory {
-    UserModel *currentUser = [UserManager sharedManager].currentUser;
-    if (self.currentUserStory.items.count > 0) {
-        if (!self.currentUserStory.userImageURL) {
-            self.currentUserStory.userImageURL = currentUser.UserImageUrl ?: [FIRAuth auth].currentUser.photoURL;
-        }
-        self.currentUserStory.userName = kLang(@"your_story");
-        return self.currentUserStory;
-    }
-
-    PPStory *displayStory = [PPStory new];
-    displayStory.userID = [self pp_currentUserID];
-    displayStory.userName = kLang(@"your_story");
-    displayStory.userImageURL = currentUser.UserImageUrl ?: [FIRAuth auth].currentUser.photoURL;
-    displayStory.items = @[];
-    displayStory.isSeen = YES;
-    return displayStory;
+    PPStory *story = [[PPStory alloc] init];
+    story.userID = [self pp_currentUserID];
+    story.userName = kLang(@"story_your_story");
+    story.items = @[];
+    return story;
 }
 
-- (PPStory * _Nullable)pp_storyForDisplayIndex:(NSInteger)displayIndex {
-    NSInteger modelIndex = displayIndex - [self pp_currentUserEntryOffset];
-    if (modelIndex < 0 || modelIndex >= (NSInteger)self.stories.count) return nil;
-    return self.stories[modelIndex];
-}
+#pragma mark - Current User Story Actions
 
-- (NSArray<PPStory *> *)pp_playableStories {
-    NSMutableArray<PPStory *> *all = [NSMutableArray array];
-    if (self.currentUserStory.items.count > 0) {
-        [all addObject:self.currentUserStory];
-    }
-    [all addObjectsFromArray:self.stories ?: @[]];
-    return all.copy;
-}
-
-- (void)pp_configureStoryPlayerForOptimisticUpdates:(PPStoryPlayerViewController *)player {
-    __weak typeof(self) weakSelf = self;
-    player.onStoryUpdated = ^(PPStory *story) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || ![story isKindOfClass:PPStory.class]) return;
-        NSString *currentUserID = [self pp_currentUserID];
-        if (currentUserID.length == 0 || ![story.userID isEqualToString:currentUserID]) return;
-        self.currentUserStory = story;
-        if ([self pp_hasCurrentUserEntry] && [self.collectionView numberOfItemsInSection:0] > 0) {
-            [self.collectionView reloadItemsAtIndexPaths:@[[NSIndexPath indexPathForItem:0 inSection:0]]];
-        }
-    };
-}
-
-- (void)pp_handleAddStoryTapped {
-    if (self.isUploadingStory) return;
-
-    UIViewController *presenter = self.parentViewController ?: self;
-    if (!presenter || presenter.presentedViewController) return;
-
-    self.imagePicker = [[ImagePicker alloc] initWithPresentingViewController:presenter];
+- (void)pp_handleCurrentUserStoryTap
+{
+    self.imagePicker = [[ImagePicker alloc] initWithPresentingViewController:self];
     __weak typeof(self) weakSelf = self;
     [self.imagePicker showImageSourceSelection:^(UIImage * _Nullable image, NSError * _Nullable error) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-        if (error || !image) return;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || !image) return;
 
-        self.isUploadingStory = YES;
-        [PPHUD showLoading:kLang(@"story_uploading")];
-        [[PPStoriesManager shared] addImageStoryItemForCurrentUser:image completion:^(NSError * _Nullable writeError) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                self.isUploadingStory = NO;
-                [PPHUD dismiss];
-                if (writeError) {
-                    [PPHUD showInfo:kLang(@"story_upload_failed")];
-                    return;
-                }
-                [PPHUD showSuccess:kLang(@"post_story_sucsses")];
-                [self reloadStories];
-            });
+        strongSelf.isUploadingStory = YES;
+        [PPHUD showLoading];
+
+        [[PPStoriesManager shared] addImageStoryItemForCurrentUser:image completion:^(NSError *error) {
+            strongSelf.isUploadingStory = NO;
+            [PPHUD dismiss];
+
+            if (error) {
+                [PPHUD showError:error.localizedDescription ?: kLang(@"story_upload_failed")];
+                return;
+            }
+            [strongSelf reloadStories];
         }];
     }];
 }
+
+#pragma mark - Section Title
 
 - (void)pp_applySectionTitle {
     if (!self.isViewLoaded) return;

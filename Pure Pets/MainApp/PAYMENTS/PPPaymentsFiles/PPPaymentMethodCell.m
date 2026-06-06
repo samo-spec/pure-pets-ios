@@ -22,8 +22,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIStackView *brandStack;
 @property (nonatomic, strong) NSArray<UIImageView *> *brandImageViews;
-@property (nonatomic, strong) UIButton *menuButton;
-@property (nonatomic, strong) UIView *selectionView;
+ @property (nonatomic, strong) UIView *selectionView;
 @property (nonatomic, strong) UIImageView *selectionImageView;
 @property (nonatomic, strong) UIImageView *disclosureView;
 @property (nonatomic, strong) UITapGestureRecognizer *tapGesture;
@@ -62,8 +61,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.subtitleLabel.text = @"";
     self.statusLabel.text = @"";
     self.iconView.image = nil;
-    self.menuButton.hidden = YES;
-    self.menuButton.menu = nil;
+     
     self.brandStack.hidden = YES;
     self.disclosureView.hidden = YES;
     self.selectionView.hidden = NO;
@@ -153,22 +151,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.selectionImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.selectionImageView.contentMode = UIViewContentModeCenter;
     [self.selectionView addSubview:self.selectionImageView];
-
-    self.menuButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.menuButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.menuButton.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.9];
-    self.menuButton.hidden = YES;
-    self.menuButton.showsMenuAsPrimaryAction = YES;
-    self.menuButton.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.72];
-    self.menuButton.layer.cornerRadius = 14.0;
-    self.menuButton.layer.cornerCurve = kCACornerCurveContinuous;
-    UIImageSymbolConfiguration *menuConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:15.0
-                                                    weight:UIImageSymbolWeightSemibold
-                                                     scale:UIImageSymbolScaleSmall];
-    [self.menuButton setImage:[[UIImage systemImageNamed:@"ellipsis"] imageByApplyingSymbolConfiguration:menuConfig]
-                     forState:UIControlStateNormal];
-    [self.surfaceView addSubview:self.menuButton];
+  
 
     self.disclosureView = [[UIImageView alloc] initWithImage:[self pp_disclosureImage]];
     self.disclosureView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -243,7 +226,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     [self.surfaceView addGestureRecognizer:self.tapGesture];
 
     self.statusTrailingToMenuConstraint =
-    [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.menuButton.leadingAnchor constant:-8.0];
+    [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0];
     self.statusTrailingToSurfaceConstraint =
     [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kPPPaymentCellInnerInset];
     self.statusTrailingToSurfaceConstraint.active = YES;
@@ -264,10 +247,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
         [self.iconView.widthAnchor constraintLessThanOrEqualToConstant:22.0],
         [self.iconView.heightAnchor constraintLessThanOrEqualToConstant:22.0],
 
-        [self.menuButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-12.0],
-        [self.menuButton.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-12.0],
-        [self.menuButton.widthAnchor constraintEqualToConstant:kPPPaymentCellActionSize],
-        [self.menuButton.heightAnchor constraintEqualToConstant:kPPPaymentCellActionSize],
+ 
 
         [self.selectionView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
         [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
@@ -325,16 +305,15 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     BOOL isQIBMethod = (method.type == PaymentMethodTypeQIB || [method.methodID.lowercaseString isEqualToString:@"qib"]);
     [self pp_configureBrandRowForQIB:isQIBMethod];
 
-    BOOL isBuiltIn = [instrument.instrumentID hasPrefix:@"builtin_"];
-    self.menuButton.hidden = isBuiltIn;
-    [self pp_updateStatusTrailingForMenuVisible:!isBuiltIn];
+    //BOOL isBuiltIn = [instrument.instrumentID hasPrefix:@"builtin_"];
+    [self pp_updateStatusTrailingForMenuVisible:NO];//  [self pp_updateStatusTrailingForMenuVisible:!isBuiltIn];
     self.disclosureView.hidden = YES;
     self.selectionView.hidden = NO;
-    [self pp_applyMenuForEditableInstrument:!isBuiltIn];
+ 
     [self pp_applyDashedBorderVisible:NO];
     [self updateSelectionState:instrument.isDefault animated:NO];
     [self pp_updateAccessibilityText];
-}
+ }
 
 - (void)configureAsAddNewIndexPath:(NSIndexPath *)indexPath
 {
@@ -353,14 +332,13 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     self.titleLabel.text = kLang(@"payment_add_method");
     self.subtitleLabel.text = kLang(@"payment_add_method_subtitle");
     self.brandStack.hidden = YES;
-    self.menuButton.hidden = YES;
-    self.menuButton.menu = nil;
+ 
     [self pp_updateStatusTrailingForMenuVisible:NO];
     self.selectionView.hidden = YES;
     self.disclosureView.image = [self pp_disclosureImage];
     self.disclosureView.hidden = NO;
 
-    [self pp_applyMenuForEditableInstrument:NO];
+   
     [self pp_applyDashedBorderVisible:YES];
     [self updateSelectionState:NO animated:NO];
     [self pp_updateAccessibilityText];
@@ -515,47 +493,7 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     return [[UIImage systemImageNamed:symbolName] imageByApplyingSymbolConfiguration:configuration];
 }
 
-- (void)pp_applyMenuForEditableInstrument:(BOOL)editable
-{
-    if (!editable || !self.instrument || !self.method) {
-        self.menuButton.menu = nil;
-        return;
-    }
 
-    __weak typeof(self) weakSelf = self;
-    UIAction *editAction = [UIAction actionWithTitle:kLang(@"edit")
-                                               image:[UIImage systemImageNamed:@"pencil"]
-                                          identifier:nil
-                                             handler:^(__kindof UIAction * _Nonnull action) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if ([strongSelf.delegate respondsToSelector:@selector(paymentMethodCellDidRequestEdit:instrument:method:)]) {
-            [strongSelf.delegate paymentMethodCellDidRequestEdit:strongSelf instrument:strongSelf.instrument method:strongSelf.method];
-        }
-    }];
-
-    UIAction *defaultAction = [UIAction actionWithTitle:kLang(@"DefaultMethodLabel")
-                                                  image:[UIImage systemImageNamed:@"checkmark.circle"]
-                                             identifier:nil
-                                                handler:^(__kindof UIAction * _Nonnull action) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if ([strongSelf.delegate respondsToSelector:@selector(paymentMethodCellDidRequestDefault:instrument:method:)]) {
-            [strongSelf.delegate paymentMethodCellDidRequestDefault:strongSelf instrument:strongSelf.instrument method:strongSelf.method];
-        }
-    }];
-
-    UIAction *deleteAction = [UIAction actionWithTitle:kLang(@"Delete")
-                                                 image:[UIImage systemImageNamed:@"trash"]
-                                            identifier:nil
-                                               handler:^(__kindof UIAction * _Nonnull action) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if ([strongSelf.delegate respondsToSelector:@selector(paymentMethodCellDidRequestDelete:instrument:method:)]) {
-            [strongSelf.delegate paymentMethodCellDidRequestDelete:strongSelf instrument:strongSelf.instrument method:strongSelf.method];
-        }
-    }];
-    deleteAction.attributes = UIMenuElementAttributesDestructive;
-
-    self.menuButton.menu = [UIMenu menuWithTitle:@"" children:@[editAction, defaultAction, deleteAction]];
-}
 
 - (void)pp_configureBrandRowForQIB:(BOOL)isVisible
 {
@@ -608,7 +546,10 @@ static CGFloat const kPPPaymentCellActionSize = 30.0;
     NSString *symbolName = @"card2";
     if ([normalizedMethodID isEqualToString:@"cash"] || method.type == PaymentMethodTypeCash) {
         symbolName = @"shippingbox.fill";
-    } else if ([normalizedMethodID isEqualToString:@"qib"]) {
+    }
+    else if ([normalizedMethodID isEqualToString:@"applepay"] || method.type == PaymentMethodTypeApplePay) {
+        symbolName = @"appleLogo";
+    }else if ([normalizedMethodID isEqualToString:@"qib"]) {
         symbolName = @"lock.shield.fill";
     }
 

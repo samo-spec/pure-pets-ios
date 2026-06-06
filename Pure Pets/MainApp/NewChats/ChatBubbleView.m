@@ -17,6 +17,12 @@
 @property (nonatomic, strong, readwrite) UILabel *messageLabel;
 @property (nonatomic, strong, readwrite) UILabel *timeLabel;
 @property (nonatomic, strong, readwrite) UIImageView *statusImageView;
+@property (nonatomic, strong) UIView *replyPreviewView;
+@property (nonatomic, strong) UIView *replyAccentView;
+@property (nonatomic, strong) UILabel *replyTitleLabel;
+@property (nonatomic, strong) UILabel *replySubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *replyPreviewHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *timeBottomConstraint;
 @property (nonatomic) NSLayoutConstraint *maxWidthConstraint;
 @property (nonatomic, readwrite) BOOL isIncoming;
 @property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingConstraint;
@@ -24,6 +30,7 @@
 
 @property (nonatomic) NSLayoutConstraint *messageTop;
 @property (nonatomic) NSLayoutConstraint *messageBottom;
+@property (nonatomic, assign) BOOL replyPreviewVisible;
 
 @property (nonatomic, strong) NSLayoutConstraint *minHeightConstraint;
 
@@ -101,12 +108,47 @@
 #pragma mark - Subviews
 
 - (void)setupSubviews {
+    _replyPreviewView = [[UIView alloc] init];
+    _replyPreviewView.translatesAutoresizingMaskIntoConstraints = NO;
+    _replyPreviewView.hidden = YES;
+    _replyPreviewView.clipsToBounds = YES;
+    _replyPreviewView.layer.cornerRadius = 13.0;
+    _replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    if (@available(iOS 13.0, *)) {
+        _replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:_replyPreviewView];
+
+    _replyAccentView = [[UIView alloc] init];
+    _replyAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    _replyAccentView.layer.cornerRadius = 1.5;
+    [_replyPreviewView addSubview:_replyAccentView];
+
+    _replyTitleLabel = [[UILabel alloc] init];
+    _replyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _replyTitleLabel.font = [GM boldFontWithSize:11.0];
+    _replyTitleLabel.numberOfLines = 1;
+    _replyTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [_replyPreviewView addSubview:_replyTitleLabel];
+
+    _replySubtitleLabel = [[UILabel alloc] init];
+    _replySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _replySubtitleLabel.font = [GM MidFontWithSize:12.0];
+    _replySubtitleLabel.numberOfLines = 1;
+    _replySubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _replySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [_replyPreviewView addSubview:_replySubtitleLabel];
+
     _messageLabel = [[UILabel alloc] init];
     _messageLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _messageLabel.numberOfLines = 0;
     _messageLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _messageLabel.font = [GM fontWithSize:16];
     _messageLabel.adjustsFontForContentSizeCategory = YES;
+    [_messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                   forAxis:UILayoutConstraintAxisVertical];
+    [_messageLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                   forAxis:UILayoutConstraintAxisHorizontal];
     [self addSubview:_messageLabel];
 
     _timeLabel = [[UILabel alloc] init];
@@ -115,6 +157,10 @@
     _timeLabel.textColor = [UIColor lightGrayColor];
     _timeLabel.adjustsFontForContentSizeCategory = YES;
     _timeLabel.textAlignment = NSTextAlignmentLeft;
+    [_timeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisHorizontal];
+    [_timeLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                  forAxis:UILayoutConstraintAxisHorizontal];
     [self addSubview:_timeLabel];
 
     _statusImageView = [[UIImageView alloc] init];
@@ -122,6 +168,8 @@
     _statusImageView.contentMode = UIViewContentModeScaleAspectFit;
     _statusImageView.tintColor = [UIColor whiteColor];
     _statusImageView.clipsToBounds = YES;
+    [_statusImageView setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                      forAxis:UILayoutConstraintAxisHorizontal];
     [self addSubview:_statusImageView];
 }
 
@@ -153,13 +201,36 @@
         [self.contentGuide.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
     ]];
 
+    self.replyPreviewHeightConstraint =
+        [self.replyPreviewView.heightAnchor constraintEqualToConstant:0.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.replyPreviewView.topAnchor constraintEqualToAnchor:self.contentGuide.topAnchor],
+        [self.replyPreviewView.leadingAnchor constraintEqualToAnchor:self.contentGuide.leadingAnchor],
+        [self.replyPreviewView.trailingAnchor constraintEqualToAnchor:self.contentGuide.trailingAnchor],
+        self.replyPreviewHeightConstraint,
+
+        [self.replyAccentView.leadingAnchor constraintEqualToAnchor:self.replyPreviewView.leadingAnchor constant:9.0],
+        [self.replyAccentView.centerYAnchor constraintEqualToAnchor:self.replyPreviewView.centerYAnchor],
+        [self.replyAccentView.widthAnchor constraintEqualToConstant:3.0],
+        [self.replyAccentView.heightAnchor constraintEqualToConstant:26.0],
+
+        [self.replyTitleLabel.leadingAnchor constraintEqualToAnchor:self.replyAccentView.trailingAnchor constant:8.0],
+        [self.replyTitleLabel.trailingAnchor constraintEqualToAnchor:self.replyPreviewView.trailingAnchor constant:-9.0],
+        [self.replyTitleLabel.topAnchor constraintEqualToAnchor:self.replyPreviewView.topAnchor constant:6.0],
+
+        [self.replySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.replyTitleLabel.leadingAnchor],
+        [self.replySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.replyTitleLabel.trailingAnchor],
+        [self.replySubtitleLabel.topAnchor constraintEqualToAnchor:self.replyTitleLabel.bottomAnchor constant:1.0],
+    ]];
+
     self.minHeightConstraint =
         [self.heightAnchor constraintGreaterThanOrEqualToConstant:48.0];
     self.minHeightConstraint.active = YES;
 
     // 3) CONSTRAIN messageLabel INSIDE contentGuide (CRITICAL)
     self.messageTop =
-        [self.messageLabel.topAnchor constraintEqualToAnchor:self.contentGuide.topAnchor];
+        [self.messageLabel.topAnchor constraintEqualToAnchor:self.replyPreviewView.bottomAnchor];
     self.messageBottom =
         [self.messageLabel.bottomAnchor constraintEqualToAnchor:self.contentGuide.bottomAnchor];
 
@@ -170,10 +241,8 @@
        
     ]];
 
-    // Time label: below message label (unchanged)
-    [NSLayoutConstraint activateConstraints:@[
-         [self.timeLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-padding]
-    ]];
+    self.timeBottomConstraint =
+        [self.timeLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-padding];
 
     // Status icon: vertically aligned with time label baseline (trailing inside bubble)
     [NSLayoutConstraint activateConstraints:@[
@@ -214,7 +283,6 @@
     self.singleLineConstraints = @[
         [self.messageLabel.trailingAnchor constraintEqualToAnchor:self.timeLabel.leadingAnchor constant:-6],
         [self.timeLabel.trailingAnchor constraintEqualToAnchor:self.statusImageView.leadingAnchor constant:-4],
-        [self.statusImageView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
 
         [self.messageLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
         [self.timeLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -229,10 +297,6 @@
         [self.timeLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentGuide.leadingAnchor],
 
         [self.timeLabel.trailingAnchor constraintEqualToAnchor:self.statusImageView.leadingAnchor constant:-4],
-        [self.timeLabel.bottomAnchor constraintEqualToAnchor:self.contentGuide.bottomAnchor],
-
-        [self.statusImageView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
-        [self.statusImageView.bottomAnchor constraintEqualToAnchor:self.contentGuide.bottomAnchor],
     ];
 }
 
@@ -265,12 +329,23 @@
         return;
     }
 
+    if (self.replyPreviewVisible) {
+        isSingleLine = NO;
+    }
+
     [NSLayoutConstraint deactivateConstraints:self.singleLineConstraints];
     [NSLayoutConstraint deactivateConstraints:self.multiLineConstraints];
+    self.timeBottomConstraint.active = !isSingleLine;
 
     if (isSingleLine) {
+        self.minHeightConstraint.constant = 48.0;
+        self.messageTop.constant = 0.0;
+        self.messageBottom.constant = 0.0;
         [NSLayoutConstraint activateConstraints:self.singleLineConstraints];
     } else {
+        self.minHeightConstraint.constant = self.replyPreviewVisible ? 108.0 : 62.0;
+        self.messageTop.constant = self.replyPreviewVisible ? 7.0 : 0.0;
+        self.messageBottom.constant = self.replyPreviewVisible ? -24.0 : -22.0;
         [NSLayoutConstraint activateConstraints:self.multiLineConstraints];
     }
 }
@@ -298,6 +373,8 @@
     if (self.contentType == ChatBubbleContentTypeAudio) {
         return;
     }
+
+    [self clearReplyPreview];
     
     self.contentType = ChatBubbleContentTypeText;
     self.isIncoming = isIncoming;
@@ -318,7 +395,7 @@
     
     
     
-    BOOL emojiOnly = [self isEmojiOnlyText:message];
+    BOOL emojiOnly = !self.replyPreviewVisible && [self isEmojiOnlyText:message];
     if (emojiOnly) {
         self.messageLabel.font = [GM fontWithSize:64];
         self.messageLabel.textAlignment = NSTextAlignmentCenter;
@@ -390,6 +467,70 @@
     // 5️⃣ Final layout pass
     //[self updateSingleLineLayoutIfNeeded]; // removed call
     [self setNeedsLayout];
+}
+
+- (void)setReplyPreviewTitle:(nullable NSString *)title
+                    subtitle:(nullable NSString *)subtitle
+                  isIncoming:(BOOL)isIncoming
+{
+    if (title.length == 0 && subtitle.length == 0) {
+        [self clearReplyPreview];
+        return;
+    }
+
+    self.replyPreviewVisible = YES;
+    self.replyPreviewView.hidden = NO;
+    self.replyPreviewHeightConstraint.constant = 44.0;
+    self.replyTitleLabel.text = title.length > 0 ? title : kLang(@"chat_replying");
+    self.replySubtitleLabel.text = subtitle.length > 0 ? subtitle : kLang(@"Message");
+    self.messageLabel.font = [GM fontWithSize:16];
+    self.messageLabel.textAlignment = NSTextAlignmentNatural;
+    self.timeLabel.hidden = NO;
+    self.backgroundColor = !isIncoming ? PPChatBubbleMineColor : PPChatBubbleSomeoneColor;
+    self.timeLabel.textColor = isIncoming ? PPChatTimeSomeoneColor : PPChatTimeMineColor;
+    if (isIncoming) {
+        self.statusImageView.hidden = YES;
+    }
+    [self pp_applyReplyPreviewThemeForIncoming:isIncoming];
+    [self updateLayoutForSingleLine:NO];
+    [self setNeedsLayout];
+    [self invalidateIntrinsicContentSize];
+}
+
+- (void)clearReplyPreview
+{
+    self.replyPreviewVisible = NO;
+    self.replyPreviewHeightConstraint.constant = 0.0;
+    self.timeBottomConstraint.active = NO;
+    self.messageTop.constant = 0.0;
+    self.messageBottom.constant = 0.0;
+    self.minHeightConstraint.constant = 48.0;
+    self.replyTitleLabel.text = nil;
+    self.replySubtitleLabel.text = nil;
+    self.replyPreviewView.hidden = YES;
+    [self invalidateIntrinsicContentSize];
+}
+
+- (void)pp_applyReplyPreviewThemeForIncoming:(BOOL)isIncoming
+{
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.replyAccentView.backgroundColor = accent;
+
+    UIColor *fill = isIncoming
+        ? [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.84]
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.12];
+    UIColor *border = isIncoming
+        ? [[UIColor separatorColor] colorWithAlphaComponent:0.30]
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.16];
+
+    self.replyPreviewView.backgroundColor = fill;
+    self.replyPreviewView.layer.borderColor = border.CGColor;
+    self.replyTitleLabel.textColor = isIncoming
+        ? (GM.PrimaryTextColor ?: UIColor.labelColor)
+        : (AppForgroundColr ?: UIColor.labelColor);
+    self.replySubtitleLabel.textColor = isIncoming
+        ? [UIColor.secondaryLabelColor colorWithAlphaComponent:0.94]
+        : [(AppForgroundColr ?: UIColor.labelColor) colorWithAlphaComponent:0.72];
 }
 
 - (BOOL)isSingleLineMessage {

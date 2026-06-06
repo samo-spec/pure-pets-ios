@@ -26,6 +26,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)inputBarDidTapAttachImage:(PPChatInputBarView *)bar;
 - (void)inputBarDidTapAttachVideo:(PPChatInputBarView *)bar;
 - (void)inputBar:(PPChatInputBarView *)bar didChangeHeight:(CGFloat)newHeight;
+@optional
+- (void)inputBarDidCancelReply:(PPChatInputBarView *)bar;
+@required
 - (void)inputBarDidToggleRecordingPreview:(PPChatInputBarView *)bar;
 - (void)finishVoiceRecordingAndSend;
 - (void)inputBarDidStopRecordingPreview:(PPChatInputBarView *)bar;
@@ -41,6 +44,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setRecordingLocked:(BOOL)locked;
 - (void)resetRecordingUI;
 - (void)appendRecordingWaveSample:(float)level;
+- (void)setReplyPreviewTitle:(NSString *)title subtitle:(NSString *)subtitle animated:(BOOL)animated;
+- (void)clearReplyPreviewAnimated:(BOOL)animated;
 @property (nonatomic, strong) PPRecordingBarView *recordingBar;
 @property (nonatomic, assign) PPActionButtonMode actionMode;
 @property (nonatomic, strong) PPRecordingLockPillView *lockPill;

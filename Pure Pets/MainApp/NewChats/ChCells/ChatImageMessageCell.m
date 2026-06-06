@@ -18,6 +18,14 @@
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UIImageView *statusIcon;
 @property (nonatomic, strong) UIView *bottomBlurView;
+@property (nonatomic, strong) UIVisualEffectView *mediaActionRail;
+@property (nonatomic, strong) UIButton *viewMediaButton;
+@property (nonatomic, strong) UIButton *downloadMediaButton;
+@property (nonatomic, strong) UIView *replyPreviewView;
+@property (nonatomic, strong) UIView *replyAccentView;
+@property (nonatomic, strong) UILabel *replyTitleLabel;
+@property (nonatomic, strong) UILabel *replySubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *replyPreviewHeightConstraint;
 
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, strong) UIImageView *offlinePlaceholderView;
@@ -207,9 +215,174 @@
             [self.retryButton.widthAnchor constraintEqualToConstant:44],
             [self.retryButton.heightAnchor constraintEqualToConstant:44],
         ]];
+
+        [self setupPremiumMediaActions];
+        [self setupReplyPreview];
+        UILongPressGestureRecognizer *replyPress =
+            [[UILongPressGestureRecognizer alloc] initWithTarget:self
+                                                          action:@selector(handleReplyLongPress:)];
+        replyPress.minimumPressDuration = 0.34;
+        [self.bubbleView addGestureRecognizer:replyPress];
         
     }
     return self;
+}
+
+- (void)setupPremiumMediaActions
+{
+    UIBlurEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+    self.mediaActionRail = [[UIVisualEffectView alloc] initWithEffect:effect];
+    self.mediaActionRail.translatesAutoresizingMaskIntoConstraints = NO;
+    self.mediaActionRail.clipsToBounds = YES;
+    self.mediaActionRail.layer.cornerRadius = 20.0;
+    self.mediaActionRail.alpha = 0.0;
+    if (@available(iOS 13.0, *)) {
+        self.mediaActionRail.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.bubbleView addSubview:self.mediaActionRail];
+
+    self.viewMediaButton = [self pp_mediaActionButtonWithSystemName:@"eye.fill"
+                                                 accessibilityTitle:kLang(@"chat_media_view")];
+    [self.viewMediaButton addTarget:self
+                             action:@selector(onViewMediaTapped)
+                   forControlEvents:UIControlEventTouchUpInside];
+
+    self.downloadMediaButton = [self pp_mediaActionButtonWithSystemName:@"arrow.down"
+                                                      accessibilityTitle:kLang(@"chat_media_download")];
+    [self.downloadMediaButton addTarget:self
+                                 action:@selector(onDownloadMediaTapped)
+                       forControlEvents:UIControlEventTouchUpInside];
+
+    UIStackView *stack =
+        [[UIStackView alloc] initWithArrangedSubviews:@[
+            self.viewMediaButton,
+            self.downloadMediaButton
+        ]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.alignment = UIStackViewAlignmentCenter;
+    stack.distribution = UIStackViewDistributionEqualSpacing;
+    stack.spacing = 4.0;
+    [self.mediaActionRail.contentView addSubview:stack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.mediaActionRail.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:10.0],
+        [self.mediaActionRail.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-10.0],
+        [self.mediaActionRail.heightAnchor constraintEqualToConstant:40.0],
+        [self.mediaActionRail.widthAnchor constraintEqualToConstant:84.0],
+
+        [stack.leadingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.leadingAnchor constant:4.0],
+        [stack.trailingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.trailingAnchor constant:-4.0],
+        [stack.topAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.topAnchor constant:2.0],
+        [stack.bottomAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.bottomAnchor constant:-2.0],
+
+        [self.viewMediaButton.widthAnchor constraintEqualToConstant:36.0],
+        [self.viewMediaButton.heightAnchor constraintEqualToConstant:36.0],
+        [self.downloadMediaButton.widthAnchor constraintEqualToConstant:36.0],
+        [self.downloadMediaButton.heightAnchor constraintEqualToConstant:36.0],
+    ]];
+}
+
+- (void)setupReplyPreview
+{
+    self.replyPreviewView = [[UIView alloc] init];
+    self.replyPreviewView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyPreviewView.hidden = YES;
+    self.replyPreviewView.clipsToBounds = YES;
+    self.replyPreviewView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.44];
+    self.replyPreviewView.layer.cornerRadius = 14.0;
+    if (@available(iOS 13.0, *)) {
+        self.replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.bubbleView addSubview:self.replyPreviewView];
+
+    self.replyAccentView = [[UIView alloc] init];
+    self.replyAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyAccentView.layer.cornerRadius = 1.5;
+    [self.replyPreviewView addSubview:self.replyAccentView];
+
+    self.replyTitleLabel = [[UILabel alloc] init];
+    self.replyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyTitleLabel.font = [GM boldFontWithSize:11.0];
+    self.replyTitleLabel.textColor = UIColor.whiteColor;
+    self.replyTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.replyTitleLabel.numberOfLines = 1;
+    [self.replyPreviewView addSubview:self.replyTitleLabel];
+
+    self.replySubtitleLabel = [[UILabel alloc] init];
+    self.replySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replySubtitleLabel.font = [GM MidFontWithSize:12.0];
+    self.replySubtitleLabel.textColor = [UIColor.whiteColor colorWithAlphaComponent:0.78];
+    self.replySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.replySubtitleLabel.numberOfLines = 1;
+    self.replySubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self.replyPreviewView addSubview:self.replySubtitleLabel];
+
+    self.replyPreviewHeightConstraint =
+        [self.replyPreviewView.heightAnchor constraintEqualToConstant:0.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.replyPreviewView.topAnchor constraintEqualToAnchor:self.mediaActionRail.bottomAnchor constant:8.0],
+        [self.replyPreviewView.leadingAnchor constraintEqualToAnchor:self.bubbleView.leadingAnchor constant:10.0],
+        [self.replyPreviewView.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-10.0],
+        self.replyPreviewHeightConstraint,
+
+        [self.replyAccentView.leadingAnchor constraintEqualToAnchor:self.replyPreviewView.leadingAnchor constant:9.0],
+        [self.replyAccentView.centerYAnchor constraintEqualToAnchor:self.replyPreviewView.centerYAnchor],
+        [self.replyAccentView.widthAnchor constraintEqualToConstant:3.0],
+        [self.replyAccentView.heightAnchor constraintEqualToConstant:26.0],
+
+        [self.replyTitleLabel.leadingAnchor constraintEqualToAnchor:self.replyAccentView.trailingAnchor constant:8.0],
+        [self.replyTitleLabel.trailingAnchor constraintEqualToAnchor:self.replyPreviewView.trailingAnchor constant:-9.0],
+        [self.replyTitleLabel.topAnchor constraintEqualToAnchor:self.replyPreviewView.topAnchor constant:6.0],
+
+        [self.replySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.replyTitleLabel.leadingAnchor],
+        [self.replySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.replyTitleLabel.trailingAnchor],
+        [self.replySubtitleLabel.topAnchor constraintEqualToAnchor:self.replyTitleLabel.bottomAnchor constant:1.0],
+    ]];
+}
+
+- (UIButton *)pp_mediaActionButtonWithSystemName:(NSString *)systemName
+                             accessibilityTitle:(NSString *)accessibilityTitle
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                        weight:UIImageSymbolWeightSemibold
+                                                         scale:UIImageSymbolScaleMedium];
+    UIImage *image = [[UIImage systemImageNamed:systemName] imageByApplyingSymbolConfiguration:config];
+    [button setImage:image forState:UIControlStateNormal];
+    button.tintColor = UIColor.whiteColor;
+    button.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.10];
+    button.layer.cornerRadius = 18.0;
+    button.clipsToBounds = YES;
+    button.accessibilityLabel = accessibilityTitle;
+    [button addTarget:self action:@selector(pp_mediaActionTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_mediaActionTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+    return button;
+}
+
+- (void)pp_mediaActionTouchDown:(UIButton *)button
+{
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    } completion:nil];
+}
+
+- (void)pp_mediaActionTouchUp:(UIButton *)button
+{
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.4
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (void)onRetryTapped
@@ -225,6 +398,31 @@
                        maxWidth:self.widthConstraint.constant
                        message:self.message
                  groupPosition:self.groupPosition];
+}
+
+- (void)onViewMediaTapped
+{
+    if ([self.delegate respondsToSelector:@selector(chatImageMessageCellDidTapView:)]) {
+        [self.delegate chatImageMessageCellDidTapView:self];
+    }
+}
+
+- (void)onDownloadMediaTapped
+{
+    if ([self.delegate respondsToSelector:@selector(chatImageMessageCellDidTapDownload:)]) {
+        [self.delegate chatImageMessageCellDidTapDownload:self];
+    }
+}
+
+- (void)handleReplyLongPress:(UILongPressGestureRecognizer *)gesture
+{
+    if (gesture.state != UIGestureRecognizerStateBegan) return;
+    UIImpactFeedbackGenerator *feedback =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurredWithIntensity:0.55];
+    if ([self.delegate respondsToSelector:@selector(chatImageMessageCellDidRequestReply:)]) {
+        [self.delegate chatImageMessageCellDidRequestReply:self];
+    }
 }
 
 
@@ -257,6 +455,7 @@
     self.message = message;
     self.groupPosition = groupPosition;
     self.boundMessageID = message.ID;
+    [self updateMediaActionsForMessage:message animated:YES];
 
     // Toggle horizontal alignment
     if (isIncoming) {
@@ -399,6 +598,65 @@
    // [UIView performWithoutAnimation:^{
        // [self layoutIfNeeded];
    // }];
+}
+
+- (void)setReplyPreviewTitle:(nullable NSString *)title
+                    subtitle:(nullable NSString *)subtitle
+                  isIncoming:(BOOL)isIncoming
+{
+    if (title.length == 0 && subtitle.length == 0) {
+        [self clearReplyPreview];
+        return;
+    }
+
+    self.replyPreviewView.hidden = NO;
+    self.replyPreviewHeightConstraint.constant = 44.0;
+    self.replyTitleLabel.text = title.length > 0 ? title : kLang(@"chat_replying");
+    self.replySubtitleLabel.text = subtitle.length > 0 ? subtitle : kLang(@"Message");
+    self.replyAccentView.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.replyPreviewView.backgroundColor = isIncoming
+        ? [[UIColor blackColor] colorWithAlphaComponent:0.36]
+        : [[UIColor blackColor] colorWithAlphaComponent:0.44];
+}
+
+- (void)clearReplyPreview
+{
+    self.replyPreviewHeightConstraint.constant = 0.0;
+    self.replyTitleLabel.text = nil;
+    self.replySubtitleLabel.text = nil;
+    self.replyPreviewView.hidden = YES;
+}
+
+- (void)updateMediaActionsForMessage:(ChatMessageModel *)message animated:(BOOL)animated
+{
+    BOOL canView = (message.localImage != nil || message.fileURL.length > 0 || self.imageViewMsg.image != nil);
+    BOOL canDownload = (message.fileURL.length > 0 || message.localImage != nil || self.imageViewMsg.image != nil);
+    self.viewMediaButton.enabled = canView;
+    self.downloadMediaButton.enabled = canDownload && !message.isUploading;
+    self.viewMediaButton.alpha = canView ? 1.0 : 0.45;
+    self.downloadMediaButton.alpha = self.downloadMediaButton.enabled ? 1.0 : 0.45;
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    void (^changes)(void) = ^{
+        self.mediaActionRail.alpha = canView ? 1.0 : 0.0;
+        self.mediaActionRail.transform = canView
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(0.94, 0.94);
+    };
+
+    if (!animated || reduceMotion || self.mediaActionRail.alpha > 0.95) {
+        changes();
+        return;
+    }
+
+    self.mediaActionRail.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    [UIView animateWithDuration:0.22
+                          delay:0.02
+         usingSpringWithDamping:0.84
+          initialSpringVelocity:0.2
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:nil];
 }
 
 /// Update only the status-related UI (status icon/tint) for the given message, if currently bound.
@@ -592,6 +850,7 @@
     } else {
         [self hideOverlaysAnimated:YES];
     }
+    [self updateMediaActionsForMessage:msg animated:YES];
 }
 
 - (void)prepareForReuse {
@@ -605,6 +864,11 @@
     // Reset overlays and placeholder
     [self hideOverlaysAnimated:NO];
     [self hideOfflinePlaceholderAnimated:NO];
+    self.mediaActionRail.alpha = 0.0;
+    self.mediaActionRail.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    self.viewMediaButton.transform = CGAffineTransformIdentity;
+    self.downloadMediaButton.transform = CGAffineTransformIdentity;
+    [self clearReplyPreview];
     
     
 }
