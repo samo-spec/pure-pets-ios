@@ -1786,7 +1786,41 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                           fromUser:(NSString *)senderID
 {
     NSString *myUserID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID;
-    if (!threadID.length || !senderID.length || !myUserID.length) return;
+    if (!threadID.length || !myUserID.length) return;
+
+    NSString *resolvedSenderID = senderID ?: @"";
+    if (resolvedSenderID.length == 0) {
+        FIRDocumentReference *threadRef =
+        [[[FIRFirestore firestore]
+          collectionWithPath:@"Chats"]
+         documentWithPath:threadID];
+
+        [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error || !snapshot.exists) {
+                NSLog(@"❌ [Read] Could not resolve sender for thread %@: %@", threadID, error.localizedDescription ?: @"missing thread");
+                return;
+            }
+
+            NSArray<NSString *> *identityCandidates = [self pp_identityCandidatesForRequestedUID:myUserID];
+            NSArray *members = [snapshot.data[@"members"] isKindOfClass:NSArray.class] ? snapshot.data[@"members"] : @[];
+            NSString *peerUserID = @"";
+            for (NSString *candidate in members) {
+                if (![candidate isKindOfClass:NSString.class]) continue;
+                if (candidate.length > 0 && ![identityCandidates containsObject:candidate]) {
+                    peerUserID = candidate;
+                    break;
+                }
+            }
+
+            if (peerUserID.length == 0) {
+                NSLog(@"❌ [Read] Could not resolve peer user for thread %@", threadID);
+                return;
+            }
+
+            [self markMessagesAsReadInThread:threadID fromUser:peerUserID];
+        }];
+        return;
+    }
 
     FIRCollectionReference *messagesRef =
     [[[[FIRFirestore firestore]
@@ -1794,9 +1828,9 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
       documentWithPath:threadID]
      collectionWithPath:@"Messages"];
 
-    // ✅ Only messages SENT BY other user AND RECEIVED by me
+    // ✅ Only messages SENT BY other user AND RECEIVED by me.
     FIRQuery *query =
-    [[[messagesRef queryWhereField:@"senderID" isEqualTo:senderID]
+    [[[messagesRef queryWhereField:@"senderID" isEqualTo:resolvedSenderID]
       queryWhereField:@"receiverID" isEqualTo:myUserID]
      queryWhereField:@"status" isLessThan:@(ChatMessageStatusRead)];
 
@@ -1809,6 +1843,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         if (snap.documents.count == 0) {
             NSLog(@"ℹ️ [Read] No unread messages to mark");
+            NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
+            if (counts[threadID]) {
+                [counts removeObjectForKey:threadID];
+                self.liveUnreadCounts = counts;
+                [[NSNotificationCenter defaultCenter]
+                 postNotificationName:@"UnreadCountsUpdated"
+                 object:nil];
+            }
             return;
         }
 
@@ -1838,7 +1880,15 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             } else {
                 NSLog(@"✅ [Read] Marked %lu messages as READ",
                       (unsigned long)snap.documents.count);
-                 
+
+                NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
+                if (counts[threadID]) {
+                    [counts removeObjectForKey:threadID];
+                    self.liveUnreadCounts = counts;
+                    [[NSNotificationCenter defaultCenter]
+                     postNotificationName:@"UnreadCountsUpdated"
+                     object:nil];
+                }
             }
         }];
     }];

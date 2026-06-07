@@ -311,8 +311,8 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     UIColor *surfaceBase = isDark
         ? [UIColor colorWithRed:0.075 green:0.083 blue:0.105 alpha:1.0]
         : PPModernHomeActionLightSurfaceColor();
-    UIColor *top = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.10 : 0.011);
-    UIColor *bottom = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.18 : 0.025);
+    UIColor *top = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.10 : 0.019);
+    UIColor *bottom = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.18 : 0.035);
     UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
  
     self.surfaceLayer.colors = @[

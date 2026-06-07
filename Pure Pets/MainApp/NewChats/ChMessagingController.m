@@ -407,12 +407,12 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 - (void)markThreadMessagesAsReadIfNeeded
 {
     if (!self.isViewVisible) return;
-    if (!self.chatThread.ID.length || !self.threadOtherUser.ID.length) return;
+    if (!self.chatThread.ID.length) return;
 
     self.didMarkMessagesAsRead = YES;
     [[ChManager sharedManager]
      markMessagesAsReadInThread:self.chatThread.ID
-     fromUser:self.threadOtherUser.ID];
+     fromUser:[self resolvedOtherUserID]];
 }
 
 - (void)activateRealtimeAfterInitialLoadIfNeeded
@@ -434,6 +434,16 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     NSString *otherUserID = self.threadOtherUser.ID;
     if (otherUserID.length == 0) {
         otherUserID = self.chatThread.otherUser.ID;
+    }
+    if (otherUserID.length == 0) {
+        NSString *currentUserID = [FIRAuth auth].currentUser.uid ?: UserManager.sharedManager.currentUser.ID ?: @"";
+        for (NSString *candidate in self.chatThread.memberIDs ?: @[]) {
+            if (![candidate isKindOfClass:NSString.class]) continue;
+            if (candidate.length > 0 && ![candidate isEqualToString:currentUserID]) {
+                otherUserID = candidate;
+                break;
+            }
+        }
     }
     return otherUserID ?: @"";
 }

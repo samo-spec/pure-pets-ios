@@ -849,6 +849,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_configureTopBadgeLabel:self.reasonBadgeLabel];
     self.reasonBadgeLabel.hidden = YES;
     [self.imageContainer addSubview:self.reasonBadgeLabel];
+    self.reasonBadgeLabel.alpha = 0;
 
     self.discountBadgeLabel = [self pp_makeBadgeLabel];
     [self pp_configureTopBadgeLabel:self.discountBadgeLabel];
@@ -2501,7 +2502,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     PPUniversalInsetLabel *leftMostBadge = nil;
 
     for (PPUniversalInsetLabel *badge in visibleBadges) {
-        [constraints addObject:[badge.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:12.0]];
+        if ([self pp_isAdContext] && badge == self.reasonBadgeLabel) {
+            [constraints addObject:[badge.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:-8.0]];
+        } else {
+            [constraints addObject:[badge.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:12.0]];
+        }
 
         if (badge == self.discountBadgeLabel) {
             if (isRTL) {

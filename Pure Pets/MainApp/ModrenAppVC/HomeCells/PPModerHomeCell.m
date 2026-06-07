@@ -160,8 +160,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
     self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:54.0];
     self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:54.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:48.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:48.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:68.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:68.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -356,7 +356,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     UIColor *selectedBorder = [accent colorWithAlphaComponent:0.42];
     UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
+    UIColor *plateColor = AppPageColor();// PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     CGFloat glowOpacity = selected
         ? (self.isAllOption ? 0.38 : 0.77)
@@ -392,8 +392,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
     CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
-    self.imagePlateWidthConstraint.constant = (isAll ? 48.0 : 48.0) * scale;
-    self.imagePlateHeightConstraint.constant = (isAll ? 48.0 : 48.0) * scale;
+    self.imagePlateWidthConstraint.constant = (isAll ? 50.0 : 50.0) * scale;
+    self.imagePlateHeightConstraint.constant = (isAll ? 50.0 : 50.0) * scale;
     self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
     self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
 }

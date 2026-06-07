@@ -516,7 +516,6 @@
 		F291F51B2D71361E00A2B971 /* LBHamburgerButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */; };
 		F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */; };
 		F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2957C292EEF424F00006CB3 /* TrashManager.m */; };
-		F2963F482E39ECFD001D944C /* MainAppCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2963F462E39ECFD001D944C /* MainAppCell.m */; };
 		F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D562E4ABAC7003A7005 /* SearchResultItem.m */; };
 		F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D592E4ABAF2003A7005 /* SearchManager.m */; };
 		F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D5C2E4ABB2E003A7005 /* AppSearchResultsVC.m */; };
@@ -744,8 +743,6 @@
 		F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EDCB252D6ED9DC00C83328 /* ArchCell.m */; };
 		F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */; };
 		F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */; };
-		F2EE91D82FD2668C00940729 /* SearchImage.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91D72FD2668C00940729 /* SearchImage.lottie */; };
-		F2EE91DA2FD2673000940729 /* SearchImage2.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91D92FD2673000940729 /* SearchImage2.lottie */; };
 		F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */; };
 		F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */; };
 		F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */; };
@@ -1795,8 +1792,6 @@
 		F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatHeaderView.m; sourceTree = "<group>"; };
 		F2957C282EEF424600006CB3 /* TrashManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrashManager.h; sourceTree = "<group>"; };
 		F2957C292EEF424F00006CB3 /* TrashManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TrashManager.m; sourceTree = "<group>"; };
-		F2963F462E39ECFD001D944C /* MainAppCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainAppCell.m; sourceTree = "<group>"; };
-		F2963F472E39ECFD001D944C /* MainAppCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainAppCell.h; sourceTree = "<group>"; };
 		F2977D552E4ABABD003A7005 /* SearchResultItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchResultItem.h; sourceTree = "<group>"; };
 		F2977D562E4ABAC7003A7005 /* SearchResultItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchResultItem.m; sourceTree = "<group>"; };
 		F2977D582E4ABAD9003A7005 /* SearchManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchManager.h; sourceTree = "<group>"; };
@@ -2249,8 +2244,6 @@
 		F2EDCB242D6ED9DC00C83328 /* ArchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchCell.h; sourceTree = "<group>"; };
 		F2EDCB252D6ED9DC00C83328 /* ArchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchCell.m; sourceTree = "<group>"; };
 		F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = ArchCell.xib; sourceTree = "<group>"; };
-		F2EE91D72FD2668C00940729 /* SearchImage.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = SearchImage.lottie; sourceTree = "<group>"; };
-		F2EE91D92FD2673000940729 /* SearchImage2.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = SearchImage2.lottie; sourceTree = "<group>"; };
 		F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = SearchingLottile.lottie; sourceTree = "<group>"; };
 		F2EF8EDD2F87752400A797B3 /* PPProfileTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileTextFieldCell.h; sourceTree = "<group>"; };
 		F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileTextFieldCell.m; sourceTree = "<group>"; };
@@ -4653,20 +4646,10 @@
 				F2C391512DE7073900AE432C /* Helpers */,
 				F2E1345A2DDC6CBD006770E5 /* Accessories */,
 				F2CDB0AA2DCCB2FB0009E210 /* PetsAdsFiles */,
-				F2BAF9422DCCA4D5006AC874 /* PetCategoryFiles */,
 				F2E78D5E2F1812C800C5AE68 /* AdsViewer Files */,
 				F2CDB0A82DCCB0AA0009E210 /* AppAssets.xcassets */,
 			);
 			path = MainApp;
-			sourceTree = "<group>";
-		};
-		F2BAF9422DCCA4D5006AC874 /* PetCategoryFiles */ = {
-			isa = PBXGroup;
-			children = (
-				F2963F472E39ECFD001D944C /* MainAppCell.h */,
-				F2963F462E39ECFD001D944C /* MainAppCell.m */,
-			);
-			path = PetCategoryFiles;
 			sourceTree = "<group>";
 		};
 		F2C391512DE7073900AE432C /* Helpers */ = {
@@ -5146,8 +5129,6 @@
 			isa = PBXGroup;
 			children = (
 				F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */,
-				F2EE91D92FD2673000940729 /* SearchImage2.lottie */,
-				F2EE91D72FD2668C00940729 /* SearchImage.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
@@ -5313,10 +5294,8 @@
 				F2AEC14E2D6E821200B55427 /* CardsCell.xib in Resources */,
 				F2A260932D20C55A00081E59 /* deletealert.png in Resources */,
 				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
-				F2EE91DA2FD2673000940729 /* SearchImage2.lottie in Resources */,
 				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
 				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
-				F2EE91D82FD2668C00940729 /* SearchImage.lottie in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
 				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
 				F299C1722C9D820C00EFA142 /* ZXQRScanViewController.xib in Resources */,
@@ -6018,7 +5997,6 @@
 				F21E09322E451A4B00690BC5 /* Language.m in Sources */,
 				F2A2F1B02EB13C6000BD1261 /* PPAddressModel.m in Sources */,
 				F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */,
-				F2963F482E39ECFD001D944C /* MainAppCell.m in Sources */,
 				F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */,
 				F2B6F7B22E37CFB300AC0DAE /* ChatMessageModel.m in Sources */,
 				F29952602F2C3E6100F50031 /* WaveformGenerator.m in Sources */,
