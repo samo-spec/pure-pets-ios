@@ -6715,7 +6715,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [cell configureWithDefaultPet:strongSelf.defaultPetProfile
                                  petCount:strongSelf.petProfiles.count
                                 isLoading:strongSelf.petProfilesLoading
-                                 expanded:strongSelf.isPetProfileCardExpanded];
+                                 expanded:YES ];//strongSelf.isPetProfileCardExpanded];
             cell.onToggleExpanded = ^(BOOL expanded) {
                 strongSelf.isPetProfileCardExpanded = expanded;
                 [[NSUserDefaults standardUserDefaults] setBool:expanded forKey:PPHomePetProfileCardExpandedKey];

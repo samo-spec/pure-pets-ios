@@ -1802,7 +1802,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                         [lower containsString:@"found"] ||
                         [lower containsString:@"here are"];
     NSArray<NSString *> *resultTerms = @[
-        @"نتائج", @"نتيجة", @"خيار��ت", @"خيار", @"خدمات", @"خدمة",
+        @"نتائج", @"نتيجة", @"خيارات", @"خيار", @"خدمات", @"خدمة",
         @"عيادات", @"عيادة", @"منتجات", @"منتج", @"results", @"options",
         @"services", @"service", @"clinics", @"clinic", @"vets", @"products"
     ];
