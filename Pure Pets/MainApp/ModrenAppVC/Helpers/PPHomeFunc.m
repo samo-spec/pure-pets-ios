@@ -314,9 +314,9 @@ static inline CGFloat PPHomeAdoptHeight(CGFloat width)
         return 198.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 176.0;
+        return 186.0;
     }
-    return 176.0;
+    return 186.0;
 }
 
 static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
@@ -575,7 +575,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.contentInsets =
      NSDirectionalEdgeInsetsMake(8,
                                         PPHomeSpacingBase,
-                                        PPHomeSpacingBase,
+                                        PPHomeSpacingBase + 4,
                                         PPHomeSpacingBase);
  
     
