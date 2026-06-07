@@ -573,19 +573,11 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     // 12pt margin on each side
     section.contentInsets =
-    PPHomeFullWidthSectionInsets();
-
-    // ❌ No header
-    // ❌ No orthogonal scrolling
-    // ❌ No decoration
-    
-    
-    NSCollectionLayoutDecorationItem *divider =
-    [NSCollectionLayoutDecorationItem
-     backgroundDecorationItemWithElementKind:PPHomeSectionDividerKind];
-
-    divider.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
-    //section.decorationItems = @[divider];
+     NSDirectionalEdgeInsetsMake(8,
+                                        PPHomeSpacingBase,
+                                        PPHomeSpacingBase,
+                                        PPHomeSpacingBase);
+ 
     
     return section;
  }
@@ -788,7 +780,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth) - 10.0,
-                                             PPHomeAccessoryCardHeight(availableWidth) + 10.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) - 10.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeightMin,
                                              YES);
@@ -817,7 +809,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:(1.0 / 3.0)]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:54]];
+      [NSCollectionLayoutDimension absoluteDimension:58]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -830,7 +822,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:54]];
+      [NSCollectionLayoutDimension absoluteDimension:58]];
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize

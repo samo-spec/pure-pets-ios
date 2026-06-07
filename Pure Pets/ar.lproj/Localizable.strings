@@ -2544,6 +2544,10 @@
 "home_pet_profile_meta_reminders" = "التذكيرات";
 "home_pet_profile_open_hint" = "يفتح محرر ملف الحيوان الأليف";
 "home_pet_profile_create_hint" = "يفتح ملفات الحيوانات لإضافة أول حيوان أليف";
+"home_pet_profile_expand" = "توسيع";
+"home_pet_profile_collapse" = "طي";
+"home_pet_profile_expand_hint" = "يعرض تفاصيل ملف الحيوان";
+"home_pet_profile_collapse_hint" = "يعرض تفاصيل أقل لملف الحيوان";
 "ipad_promo_title" = "لماذا ملفات الحيوانات؟";
 "ipad_promo_body" = "🐾 احفظ كل تفاصيل حيوانك في مكان واحد\n💉 تتبع التطعيمات ومواعيد الجرعات القادمة\n⏰ ضع تذكيرات للطعام والزيارات البيطرية والعناية\n📋 وصول سريع للسلالة والعمر والملاحظات الصحية";
 "pet_breed_unknown" = "سلالة غير معروفة";

@@ -356,7 +356,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     UIColor *selectedBorder = [accent colorWithAlphaComponent:0.42];
     UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = AppPageColor();// PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
+    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     CGFloat glowOpacity = selected
         ? (self.isAllOption ? 0.38 : 0.77)

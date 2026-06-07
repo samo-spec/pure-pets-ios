@@ -63,14 +63,14 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _cardView.adjustsImageWhenHighlighted = NO;
     _cardView.clipsToBounds = NO;
     _cardView.layer.masksToBounds = NO;
-    _cardView.layer.cornerRadius = PPCornerMedium + 4;
+    _cardView.layer.cornerRadius = PPCornerMedium + 0;
     _cardView.layer.cornerCurve = kCACornerCurveContinuous;
     [_cardView pp_setShadowColor:UIColor.blackColor];
     _cardView.layer.shadowOpacity = 0.06;
     _cardView.layer.shadowRadius = 12.0;
     
     UIButtonConfiguration *config = _cardView.configuration;
-    config.background.cornerRadius = PPCornerMedium + 4;
+    config.background.cornerRadius = PPCornerMedium + 0;
     _cardView .configuration = config;
     
     
@@ -80,7 +80,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _surfaceView = [[UIView alloc] init];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     _surfaceView.userInteractionEnabled = NO;
-    _surfaceView.layer.cornerRadius = PPCornerMedium + 4;
+    _surfaceView.layer.cornerRadius = PPCornerMedium + 0;
     _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     _surfaceView.layer.masksToBounds = YES;
     [_cardView addSubview:_surfaceView];
@@ -301,13 +301,13 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     
     switch (service.type) {
         case PPHomeServiceTypeMainService:
-            return PPHomeServiceRGBA(255.0, 99.0, 71.0, 1.0); // tomato/orange
+            return PPHomeServiceRGBA(255.0, 99.0, 71.0, 0.5); // tomato/orange
         case PPHomeServiceTypeVet:
-            return PPHomeServiceRGBA(35.0, 118.0, 171.0, 1.0);
+            return PPHomeServiceRGBA(35.0, 118.0, 171.0,0.5);
         case PPHomeServiceTypeGrooming:
-            return PPHomeServiceRGBA(219.0, 127.0, 69.0, 1.0);
+            return PPHomeServiceRGBA(219.0, 127.0, 69.0, 0.5);
         case PPHomeServiceTypeTraining:
-            return PPHomeServiceRGBA(122.0, 94.0, 193.0, 1.0);
+            return PPHomeServiceRGBA(122.0, 94.0, 193.0, 0.5);
         case PPHomeServiceTypeFood:
         default:
             return PPHomeServiceRGBA(86.0, 132.0, 60.0, 1.0);

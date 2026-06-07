@@ -2553,6 +2553,10 @@
 "home_pet_profile_meta_reminders" = "Reminders";
 "home_pet_profile_open_hint" = "Opens the pet profile editor";
 "home_pet_profile_create_hint" = "Opens pet profiles so you can add your first pet";
+"home_pet_profile_expand" = "Expand";
+"home_pet_profile_collapse" = "Collapse";
+"home_pet_profile_expand_hint" = "Shows pet profile details";
+"home_pet_profile_collapse_hint" = "Shows fewer pet profile details";
 "ipad_promo_title" = "Why Pet Profiles?";
 "ipad_promo_body" = "🐾 Keep all your pet details in one place\n💉 Track vaccinations & next-due dates\n⏰ Set reminders for food, vet visits & grooming\n📋 Quick access to breed, age & health notes";
 "pet_breed_unknown" = "Unknown breed";
