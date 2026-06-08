@@ -674,6 +674,7 @@
 		F2C638602E5132A3007E4CE4 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = F2C6385F2E5132A3007E4CE4 /* cities.json */; };
 		F2C890112F5C100000A1B2C3 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */; };
 		F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */ = {isa = PBXBuildFile; fileRef = F273146C2F31168400FFA0B8 /* PPOrder.h */; };
+		F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */; };
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
 		F2CA8DD02F1DC1C900AD4416 /* PPChatsFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */; };
 		F2CA8DD32F1DCF2500AD4416 /* ChMessagingController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */; };
@@ -1518,6 +1519,8 @@
 		F272E5AD2E2B95DA00ECC7A5 /* VetViewerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetViewerViewController.m; sourceTree = "<group>"; };
 		F273146C2F31168400FFA0B8 /* PPOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrder.h; sourceTree = "<group>"; };
 		F273146D2F31169000FFA0B8 /* PPOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrder.m; sourceTree = "<group>"; };
+		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
+		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F27314752F3117BD00FFA0B8 /* PPOrderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderManager.h; sourceTree = "<group>"; };
 		F27314762F3117D800FFA0B8 /* PPOrderManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderManager.m; sourceTree = "<group>"; };
 		F27314792F31188100FFA0B8 /* PPPaymentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPaymentManager.h; sourceTree = "<group>"; };
@@ -3646,6 +3649,8 @@
 			children = (
 				F273146C2F31168400FFA0B8 /* PPOrder.h */,
 				F273146D2F31169000FFA0B8 /* PPOrder.m */,
+				F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */,
+				F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */,
 			);
 			path = Orders;
 			sourceTree = "<group>";
@@ -5481,6 +5486,7 @@
 				F28DD58A2F0193A700FF2671 /* PPHomeServicesCell.m in Sources */,
 				F28A0A0A2EE9C96B00EE5055 /* EllipsePageControl.h in Sources */,
 				F273146E2F31169000FFA0B8 /* PPOrder.m in Sources */,
+				F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */,
 				F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */,
 				F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */,
 				F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */,

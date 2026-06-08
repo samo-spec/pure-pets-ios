@@ -2974,3 +2974,29 @@
 "ImageSearchDetectedSubtitle" = "AI detected in your photo";
 
 "UnableToLoadDetails" = "Unable to load details.";
+
+/* Fulfillment Orders (Phase 15 — customer-side, read-only) */
+"fulfillment_section_title" = "Fulfillment Progress";
+"fulfillment_summary_pending" = "Pending";
+"fulfillment_summary_completed" = "Completed";
+"fulfillment_owner_platform" = "Pure Pets";
+"fulfillment_owner_partner" = "Partner";
+"fulfillment_items_count" = "%ld items";
+"fulfillment_no_events" = "No events recorded.";
+"fulfillment_not_available" = "Fulfillment details not available.";
+"fulfillment_loading" = "Loading fulfillment…";
+
+/* Fulfillment status labels (Phase 15) */
+"fulfillment_status_new_request" = "Waiting for provider";
+"fulfillment_status_accepted" = "Accepted";
+"fulfillment_status_rejected" = "Declined";
+"fulfillment_status_preparing" = "Preparing";
+"fulfillment_status_ready_for_pickup" = "Ready for pickup";
+"fulfillment_status_delivery_requested" = "Delivery requested";
+"fulfillment_status_awaiting_handover" = "Awaiting handover";
+"fulfillment_status_handed_over" = "Handed over";
+"fulfillment_status_completed" = "Completed";
+"fulfillment_status_cancelled" = "Cancelled";
+"fulfillment_status_failed" = "Failed";
+"fulfillment_status_returned" = "Returned";
+"fulfillment_status_unknown" = "In progress";

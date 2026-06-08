@@ -10,6 +10,7 @@
 #import "AccessViewerVC.h"
 #import "PetAccessoryManager.h"
 #import "PPOrderManager.h"
+#import "PPFulfillmentOrder.h"
 #import "PPAddressesManager.h"
 #import "AddressFormVC.h"
 #import "AppClasses.h"
@@ -2455,7 +2456,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     [super viewDidLayoutSubviews];
     [self layoutViews];
-    
+
     if (self.headerCard) {
         [self pp_updateHeaderHeroLiquidBorder];
         // L-03: Refresh shadowPath after Auto Layout resolves final bounds
@@ -2491,9 +2492,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
 - (void)setupDefaults
 {
-    
+
     UIColor *premiumBackground = [UIColor colorWithRed:0.98 green:0.97 blue:0.96 alpha:1.0];
-    
+
     self.view.backgroundColor = AppBageColor();
     self.lineItems = [NSMutableArray array];
     self.accessoryCache = [NSMutableDictionary dictionary];
@@ -2511,7 +2512,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.isOrderDetailsScreenVisible = NO;
     self.isProgressTimelineExpanded = NO;
     self.lastObservedOrderStatusKey = nil;
-    
+
     self.dateFormatter = [[NSDateFormatter alloc] init];
     self.dateFormatter.locale = [NSLocale currentLocale];
     [self.dateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM yyyy h:mm a"];
@@ -2590,7 +2591,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:leftButtonImageName target:self action:@selector(onBack:)];
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     }
-    
+
     UIButton *supportButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"headphones.dots" target:self action:@selector(contactSupportTapped)];
     UIBarButtonItem *supportItem = [[UIBarButtonItem alloc] initWithCustomView:supportButton];
     UIButton *shareButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"square.and.arrow.up" target:self action:@selector(shareOrderTapped)];
@@ -2633,7 +2634,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.tableView registerClass:[OrderItemCell class] forCellReuseIdentifier:kOrderDetailsItemCellID];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:kOrderDetailsPlaceholderCellID];
     [self.view addSubview:self.tableView];
-    
+
     [self setupHeaderView];
     [self setupFooterView];
     [self setupLoadingOverlay];
@@ -2644,7 +2645,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     self.headerContainer = [[UIView alloc] initWithFrame:CGRectZero];
     self.headerContainer.backgroundColor = UIColor.clearColor;
-    
+
     self.headerCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.headerCard.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
     self.headerCard.layer.cornerRadius = 34.0;
@@ -2665,7 +2666,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UITapGestureRecognizer *orderIDTapGesture =
     [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(orderIDTapped)];
     [self.orderIDLabel addGestureRecognizer:orderIDTapGesture];
-    
+
     self.statusSummaryCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.statusSummaryCard.layer.cornerRadius = 24.0;
     self.statusSummaryCard.layer.masksToBounds = YES;
@@ -2761,7 +2762,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
     self.headerSeparatorBottom = [[UIView alloc] initWithFrame:CGRectZero];
     self.headerSeparatorBottom.hidden = YES;
-    
+
     self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
     self.summaryPanel.layer.cornerRadius = 22.0;
     self.summaryPanel.layer.masksToBounds = YES;
@@ -2773,7 +2774,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.dateLabel.numberOfLines = 0;
     self.dateLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self.summaryPanel addSubview:self.dateLabel];
-    
+
     self.totalPriceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.totalPriceLabel.font = [GM boldFontWithSize:28];
     self.totalPriceLabel.textColor = UIColor.labelColor;
@@ -2781,20 +2782,20 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.totalPriceLabel.adjustsFontSizeToFitWidth = YES;
     self.totalPriceLabel.minimumScaleFactor = 0.68;
     [self.summaryPanel addSubview:self.totalPriceLabel];
-    
+
     self.paymentProviderLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.paymentProviderLabel.font = [GM MidFontWithSize:13];
     self.paymentProviderLabel.textColor = UIColor.secondaryLabelColor;
     self.paymentProviderLabel.numberOfLines = 0;
     self.paymentProviderLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self.summaryPanel addSubview:self.paymentProviderLabel];
-    
+
     self.deliveryAddressLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.deliveryAddressLabel.font = [GM MidFontWithSize:14];
     self.deliveryAddressLabel.textColor = UIColor.secondaryLabelColor;
     self.deliveryAddressLabel.numberOfLines = 2;
     self.deliveryAddressLabel.hidden = YES;
-    
+
     self.tableView.tableHeaderView = self.headerContainer;
 }
 
@@ -2834,7 +2835,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.openMapButton setImage:[UIImage systemImageNamed:@"map.fill"] forState:UIControlStateNormal];
     [self.openMapButton addTarget:self action:@selector(openMapTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.deliveryMapCard addSubview:self.openMapButton];
-    
+
     self.deliveryMapView = [[MKMapView alloc] initWithFrame:CGRectZero];
     self.deliveryMapView.delegate = self;
     self.deliveryMapView.layer.cornerRadius = 18.0;
@@ -2851,10 +2852,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UITapGestureRecognizer *mapTapGesture =
     [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openMapTapped)];
     [self.deliveryMapView addGestureRecognizer:mapTapGesture];
-    
+
     self.actionButtonsStack = [[UIView alloc] initWithFrame:CGRectZero];
     [self.footerContainer addSubview:self.actionButtonsStack];
-    
+
     self.contactSupportButton = [self actionButtonWithTitle:kLang(@"order_support_button")
                                                       image:@"headphones"
                                                   tintColor:[GM appPrimaryColor]
@@ -2891,7 +2892,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                                    image:@"exclamationmark.bubble"
                                                tintColor:[GM appPrimaryColor]
                                                 selector:@selector(reportIssueTapped)];
-    
+
     [self.deliveryMapCard addSubview:self.editLocationButton];
     [self.actionButtonsStack addSubview:self.trackOrderButton];
     [self.actionButtonsStack addSubview:self.viewRequestsButton];
@@ -2908,7 +2909,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.postOrderHintLabel.numberOfLines = 0;
     self.postOrderHintLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.footerContainer addSubview:self.postOrderHintLabel];
-    
+
     self.tableView.tableFooterView = self.footerContainer;
     [self refreshActionButtonAppearances];
 }
@@ -2924,8 +2925,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.layer.borderWidth = 1.0;
     [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
-    
-    
+
+
     if (@available(iOS 26.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
         config.attributedTitle = [[NSAttributedString alloc] initWithString:(title ?: @"")
@@ -2943,7 +2944,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         button.configuration = config;
     }
-    
+
     else if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration tintedButtonConfiguration];
         config.attributedTitle = [[NSAttributedString alloc] initWithString:(title ?: @"")
@@ -2982,7 +2983,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.loadingOverlay.hidden = YES;
     self.loadingOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.28];
     [self.view addSubview:self.loadingOverlay];
-    
+
     self.loadingIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleLarge];
     self.loadingIndicator.hidesWhenStopped = YES;
     self.loadingIndicator.color = [GM appPrimaryColor];
@@ -3005,7 +3006,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                                      MIN(height * 0.42, 320.0),
                                                      MIN(210.0, width * 0.52),
                                                      MIN(210.0, width * 0.52));
-    
+
     [self layoutHeaderView];
     [self layoutFooterView];
 }
@@ -3033,11 +3034,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat cardWidth = MAX(0.0, width - 32.0);
     self.headerContainer.frame = CGRectMake(0, 0, width, 1.0);
     self.headerCard.frame = CGRectMake(cardX, 8.0, cardWidth, 1.0);
-    
+
     BOOL isRTL = ([Language languageVal] == 1);
     NSTextAlignment leading = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     NSTextAlignment trailing = isRTL ? NSTextAlignmentLeft : NSTextAlignmentRight;
-    
+
     self.orderIDLabel.textAlignment = leading;
     self.orderStatusLabel.textAlignment = leading;
     self.statusSummarySubtitleLabel.textAlignment = leading;
@@ -3200,7 +3201,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                           metaColumnWidth,
                                           metaHeight);
     }
-    
+
     self.headerSeparatorBottom.frame = CGRectZero;
     self.headerSeparatorTop.frame = CGRectZero;
     self.deliveryAddressLabel.frame = CGRectZero;
@@ -3736,7 +3737,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     ? (CGRectGetMaxY(self.editLocationButton.frame) + 14.0)
     : (CGRectGetMaxY(self.deliveryMapView.frame) + 14.0);
     self.deliveryMapCard.frame = CGRectMake(contentX, 12.0, contentWidth, mapCardHeight);
-    
+
     NSArray<UIButton *> *orderedButtons = [self orderedActionButtons];
     NSMutableArray<UIButton *> *visibleButtons = [NSMutableArray array];
     for (UIButton *button in orderedButtons) {
@@ -4044,15 +4045,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [self.view setNeedsLayout];
         return;
     }
-    
+
     NSString *orderID = [self displayOrderReference];
     if (orderID.length == 0) orderID = @"--";
     self.orderIDLabel.text = [NSString stringWithFormat:@"#%@", orderID];
-    
+
     if ([self.order.createdAt isKindOfClass:NSDate.class]) {
         dateValue = [self multilineOrderDateValueFromDate:self.order.createdAt];
     }
-    
+
     totalValue = [self formattedTotalForOrder:self.order];
     paymentValue = [self paymentProviderTextForOrder:self.order];
     self.dateLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"OrderDate") value:dateValue emphasis:NO alignment:leading];
@@ -4060,7 +4061,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.paymentProviderLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"PaymentMethod") value:paymentValue emphasis:NO alignment:leading];
     self.deliveryAddressLabel.text = [NSString stringWithFormat:@"%@: %@", kLang(@"DeliveryAddress"), [self resolvedDeliveryAddressText]];
     self.orderStatusLabel.text = [self displayStatusTitleForOrder:self.order];
-    
+
     [self updateStatusStyle];
     [self updateStatusStepper];
     [self buildLineItems];
@@ -4068,6 +4069,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self resolveSelectedAddressFromOrderIfNeeded];
     [self refreshDeliveryMap];
     [self updateButtonsState];
+    [self configureFulfillmentSection];
     [self.view setNeedsLayout];
 }
 
@@ -4423,7 +4425,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)buildLineItems
 {
     [self.lineItems removeAllObjects];
-    
+
     for (id rawItem in self.order.items ?: @[]) {
         NSMutableDictionary *line = [@{
             @"itemId": @"",
@@ -4433,7 +4435,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             @"imageURL": @"",
             @"needsLookup": @(NO)
         } mutableCopy];
-        
+
         if ([rawItem isKindOfClass:NSString.class]) {
             NSString *itemID = [self safeString:rawItem];
             if (itemID.length == 0) continue;
@@ -4442,41 +4444,41 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             [self.lineItems addObject:line];
             continue;
         }
-        
+
         if (![rawItem isKindOfClass:NSDictionary.class]) {
             continue;
         }
-        
+
         NSDictionary *item = (NSDictionary *)rawItem;
         NSString *itemID = [self itemIDFromOrderItem:item];
         NSString *name = [self safeString:(item[@"name"] ?: item[@"title"])];
         NSInteger quantity = [self integerFromValue:(item[@"qty"] ?: item[@"quantity"]) fallback:1];
         double price = [self doubleFromValue:(item[@"price"] ?: item[@"unitPrice"] ?: item[@"finalPrice"]) fallback:0.0];
         NSString *imageURL = [self imageURLFromData:item];
-        
+
         line[@"itemId"] = itemID ?: @"";
         line[@"name"] = name ?: @"";
         line[@"quantity"] = @(MAX(1, quantity));
         line[@"price"] = @(MAX(0.0, price));
         line[@"imageURL"] = imageURL ?: @"";
-        
+
         BOOL needsLookup = (itemID.length > 0) && (name.length == 0 || imageURL.length == 0 || price <= 0.0);
         line[@"needsLookup"] = @(needsLookup);
-        
+
         if (itemID.length == 0 && name.length == 0) {
             continue;
         }
-        
+
         [self.lineItems addObject:line];
     }
-    
+
     [self.tableView reloadData];
 }
 
 - (void)resolveLineItemsIfNeeded
 {
     if (self.lineItems.count == 0) return;
-    
+
     __weak typeof(self) weakSelf = self;
     for (NSMutableDictionary *line in self.lineItems) {
         BOOL needsLookup = [line[@"needsLookup"] boolValue];
@@ -4484,17 +4486,17 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         if (!needsLookup || itemID.length == 0) {
             continue;
         }
-        
+
         NSDictionary *cached = self.accessoryCache[itemID];
         if (cached) {
             [self applyAccessoryData:cached toLineItemsWithID:itemID];
             continue;
         }
-        
+
         if ([self.inFlightAccessoryIDs containsObject:itemID]) {
             continue;
         }
-        
+
         [self.inFlightAccessoryIDs addObject:itemID];
         [self fetchAccessoryDataForID:itemID completion:^(NSDictionary * _Nullable data) {
             dispatch_async(dispatch_get_main_queue(), ^{
@@ -4512,15 +4514,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)applyAccessoryData:(NSDictionary *)data toLineItemsWithID:(NSString *)itemID
 {
     if (itemID.length == 0 || ![data isKindOfClass:NSDictionary.class]) return;
-    
+
     NSString *name = [self safeString:(data[@"name"] ?: data[@"title"])];
     NSString *imageURL = [self imageURLFromData:data];
     double price = [self doubleFromValue:(data[@"finalPrice"] ?: data[@"price"]) fallback:0.0];
-    
+
     for (NSMutableDictionary *line in self.lineItems) {
         NSString *lineID = [self safeString:line[@"itemId"]];
         if (![lineID isEqualToString:itemID]) continue;
-        
+
         if ([self safeString:line[@"name"]].length == 0 && name.length > 0) {
             line[@"name"] = name;
         }
@@ -4532,7 +4534,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         }
         line[@"needsLookup"] = @(NO);
     }
-    
+
     [self.tableView reloadData];
 }
 
@@ -4541,19 +4543,19 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)refreshDeliveryMap
 {
     [self.deliveryMapView removeAnnotations:self.deliveryMapView.annotations];
-    
+
     CLLocationCoordinate2D coordinate = [self currentDeliveryCoordinate];
     NSString *subtitle = [self deliverySubtitle];
-    
+
     MKPointAnnotation *annotation = [[MKPointAnnotation alloc] init];
     annotation.coordinate = coordinate;
     annotation.title = kLang(@"DeliveryLocation");
     annotation.subtitle = subtitle.length > 0 ? subtitle : kLang(@"DeliveryLocationSub");
     [self.deliveryMapView addAnnotation:annotation];
-    
+
     MKCoordinateRegion region = MKCoordinateRegionMakeWithDistance(coordinate, 1200, 1200);
     [self.deliveryMapView setRegion:region animated:NO];
-    
+
     NSString *resolvedSubtitle = subtitle.length > 0 ? subtitle : kLang(@"DeliveryLocationSub");
     self.deliveryAddressLabel.text = [NSString stringWithFormat:@"%@: %@", kLang(@"DeliveryAddress"), resolvedSubtitle];
     self.deliveryMapTitleLabel.text = kLang(@"DeliveryLocation");
@@ -4565,21 +4567,21 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class] ? self.order.shippingAddressSnapshot : nil;
     double latitude = [self doubleFromValue:(snapshot[@"latitude"] ?: snapshot[@"lat"]) fallback:NAN];
     double longitude = [self doubleFromValue:(snapshot[@"longitude"] ?: snapshot[@"lng"]) fallback:NAN];
-    
+
     if (isfinite(latitude) && isfinite(longitude) && CLLocationCoordinate2DIsValid(CLLocationCoordinate2DMake(latitude, longitude))) {
         return CLLocationCoordinate2DMake(latitude, longitude);
     }
-    
+
     CLLocationCoordinate2D pointsCoordinate = [self coordinateFromLocationPointsString:[self safeString:snapshot[@"locationPoints"]]];
     if (CLLocationCoordinate2DIsValid(pointsCoordinate)) {
         return pointsCoordinate;
     }
-    
+
     pointsCoordinate = [self coordinateFromLocationPointsString:self.selectedAddressModel.locationPoints];
     if (CLLocationCoordinate2DIsValid(pointsCoordinate)) {
         return pointsCoordinate;
     }
-    
+
     return CLLocationCoordinate2DMake(25.285447, 51.531040);
 }
 
@@ -4623,10 +4625,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         cell.imageView.tintColor = [GM appPrimaryColor];
         return cell;
     }
-    
+
     OrderItemCell *cell = [tableView dequeueReusableCellWithIdentifier:kOrderDetailsItemCellID forIndexPath:indexPath];
     cell.backgroundColor = UIColor.clearColor;
-    
+
     if (indexPath.row >= (NSInteger)self.lineItems.count) {
         NSLog(@"❌ [OrderDetails] lineItems out of bounds: row=%ld count=%lu", (long)indexPath.row, (unsigned long)self.lineItems.count);
         return cell;
@@ -4642,27 +4644,27 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     BOOL canOpenAccessoryViewer = itemID.length > 0;
     cell.selectionStyle = canOpenAccessoryViewer ? UITableViewCellSelectionStyleDefault : UITableViewCellSelectionStyleNone;
     cell.accessoryType = UITableViewCellAccessoryNone;
-    
+
     if (name.length == 0) {
         name = (itemID.length > 0) ? itemID : kLang(@"order_item");
     }
-    
+
     cell.nameLabel.text = name;
     cell.quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)quantity];
-    
+
     if (quantity <= 0) {
         NSLog(@"[OrderDetails] Warning: order item '%@' has quantity %ld", itemID, (long)quantity);
     }
     double lineTotal = MAX(0.0, unitPrice) * MAX(1, quantity);
     cell.priceLabel.text = [NSString stringWithFormat:@"%.2f %@", lineTotal, currency];
-    
+
     NSString *imageURL = [self safeString:line[@"imageURL"]];
     if (imageURL.length > 0) {
         [GM setImageFromUrlString:imageURL imageView:cell.itemImageView phImage:@"placeholder"];
     } else {
         cell.itemImageView.image = [UIImage imageNamed:@"placeholder"];
     }
-    
+
     return cell;
 }
 
@@ -4754,7 +4756,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (MKAnnotationView *)mapView:(MKMapView *)mapView viewForAnnotation:(id<MKAnnotation>)annotation
 {
     if ([annotation isKindOfClass:MKUserLocation.class]) return nil;
-    
+
     static NSString * const markerID = @"OrderDeliveryMarker";
     MKAnnotationView *view = [mapView dequeueReusableAnnotationViewWithIdentifier:markerID];
     if (!view) {
@@ -4822,7 +4824,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
                                               style:UIAlertActionStyleCancel
                                             handler:nil]];
-    
+
     if (sheet.popoverPresentationController) {
         UIBarButtonItem *sourceBarButton = self.navigationItem.rightBarButtonItems.count > 1 ? self.navigationItem.rightBarButtonItems.lastObject : nil;
         if (sourceBarButton) {
@@ -4872,7 +4874,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [self showErrorMessage:kLang(@"order_missing_id")];
         return;
     }
-    
+
     [self startLoading];
     PPOrderSupportDraft *draft = [PPOrderSupportDraft new];
     draft.actionType = PPOrderCustomerActionTypeCancel;
@@ -4903,10 +4905,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)shareOrderTapped
 {
     if (!self.order) return;
-    
+
     NSString *orderID = [self displayOrderReference];
     if (orderID.length == 0) orderID = @"--";
-    
+
     NSString *shareText = [NSString stringWithFormat:@"%@ #%@\n%@: %@\n%@: %@",
                            kLang(@"OrderID"),
                            orderID,
@@ -4954,7 +4956,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             [weakSelf showInfoMessage:kLang(@"addr_empty_subtitle")];
             return;
         }
-        
+
         PPSelectOptionViewController *vc =
         [[PPSelectOptionViewController alloc] initWithOptions:addresses
                                                         title:kLang(@"Select Delivery Location")
@@ -4973,12 +4975,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             sheet.prefersGrabberVisible = YES;
         }
     };
-    
+
     if (self.availableAddresses.count > 0) {
         presentPicker(self.availableAddresses);
         return;
     }
-    
+
     [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nonnull addresses, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!error && addresses.count > 0) {
@@ -4986,7 +4988,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                 presentPicker(addresses);
                 return;
             }
-            
+
             [PPAlertHelper showConfirmationIn:self
                                         title:kLang(@"addr_empty_title")
                                      subtitle:kLang(@"addr_empty_subtitle")
@@ -5005,13 +5007,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)resolveSelectedAddressFromOrderIfNeeded
 {
     if (!self.order || self.isResolvingAddress) return;
-    
+
     NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class] ? self.order.shippingAddressSnapshot : nil;
     NSString *shippingAddressID = [self safeString:self.order.shippingAddressId];
     if (shippingAddressID.length == 0) {
         shippingAddressID = [self safeString:snapshot[@"addressID"]];
     }
-    
+
     if (snapshot.count > 0) {
         PPAddressModel *snapshotAddress = [[PPAddressModel alloc] initWithDictionary:snapshot documentID:shippingAddressID];
         if (snapshotAddress) {
@@ -5039,7 +5041,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [self refreshDeliveryMap];
         return;
     }
-    
+
     self.isResolvingAddress = YES;
     __weak typeof(self) weakSelf = self;
     [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nonnull addresses, NSError * _Nullable error) {
@@ -5051,7 +5053,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                 [strongSelf refreshDeliveryMap];
                 return;
             }
-            
+
             strongSelf.availableAddresses = addresses;
             PPAddressModel *matched = [strongSelf preferredAddressFromList:addresses shippingAddressID:shippingAddressID];
             if (matched) {
@@ -5071,7 +5073,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (targetID.length == 0) {
         targetID = [self safeString:self.order.shippingAddressSnapshot[@"addressID"]];
     }
-    
+
     if (targetID.length > 0) {
         for (PPAddressModel *address in addresses) {
             NSString *candidate = [self effectiveAddressID:address];
@@ -5080,7 +5082,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             }
         }
     }
-    
+
     NSString *snapshotDisplay = [self safeString:self.order.shippingAddressSnapshot[@"displayName"]];
     if (snapshotDisplay.length > 0) {
         for (PPAddressModel *address in addresses) {
@@ -5089,11 +5091,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             }
         }
     }
-    
+
     if (self.selectedAddressModel) {
         return nil;
     }
-    
+
     for (PPAddressModel *address in addresses) {
         if (address.isDefault) return address;
     }
@@ -5115,32 +5117,32 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)updateDeliveryAddressWithAddress:(PPAddressModel *)address
 {
     if (!address) return;
-    
+
     NSString *addressID = [self effectiveAddressID:address];
     NSDictionary *snapshot = [self shippingSnapshotFromAddress:address];
     if (snapshot.count == 0) {
         [self showErrorMessage:kLang(@"checkout_invalid_address")];
         return;
     }
-    
+
     self.selectedAddressModel = address;
     self.order.shippingAddressId = addressID;
     self.order.shippingAddressSnapshot = snapshot;
     [self refreshDeliveryMap];
-    
+
     NSString *orderID = [self safeString:self.order.orderId];
     if (orderID.length == 0) {
         [self showSuccessMessage:kLang(@"LocationUpdated")];
         return;
     }
-    
+
     [self startLoading];
     NSDictionary *payload = @{
         @"shippingAddressId": addressID ?: @"",
         @"shippingAddressSnapshot": snapshot ?: @{},
         @"updatedAt": [FIRTimestamp timestamp]
     };
-    
+
     FIRDocumentReference *ref = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderID];
     __weak typeof(self) weakSelf = self;
     [ref updateData:payload completion:^(NSError * _Nullable error) {
@@ -5162,7 +5164,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (!address) return @{};
     NSString *addressID = [self effectiveAddressID:address];
     if (addressID.length == 0) return @{};
-    
+
     NSMutableDictionary *snapshot = [[address toDictionary] mutableCopy];
     snapshot[@"addressID"] = addressID;
     snapshot[@"displayName"] = address.displayName ?: @"";
@@ -5174,13 +5176,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         userID = [FIRAuth auth].currentUser.uid ?: @"";
     }
     snapshot[@"userID"] = userID ?: @"";
-    
+
     CLLocationCoordinate2D coordinate = [self coordinateFromLocationPointsString:[self safeString:address.locationPoints]];
     if (CLLocationCoordinate2DIsValid(coordinate)) {
         snapshot[@"latitude"] = @(coordinate.latitude);
         snapshot[@"longitude"] = @(coordinate.longitude);
     }
-    
+
     return snapshot.copy;
 }
 
@@ -5192,7 +5194,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         if (completion) completion(nil);
         return;
     }
-    
+
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *primaryRef = [[db collectionWithPath:@"petAccessories"] documentWithPath:itemID];
     [primaryRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
@@ -5200,7 +5202,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             if (completion) completion(snapshot.data);
             return;
         }
-        
+
         FIRDocumentReference *fallbackRef = [[db collectionWithPath:@"Accessories"] documentWithPath:itemID];
         [fallbackRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable fallbackSnapshot, NSError * _Nullable fallbackError) {
             if (fallbackError || !fallbackSnapshot.exists) {
@@ -5716,16 +5718,16 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (self.selectedAddressModel.displayName.length > 0) {
         return self.selectedAddressModel.displayName;
     }
-    
+
     NSDictionary *snapshot = [self.order.shippingAddressSnapshot isKindOfClass:NSDictionary.class] ? self.order.shippingAddressSnapshot : nil;
     if (!snapshot) return @"--";
-    
+
     NSArray<NSString *> *preferredKeys = @[@"displayName", @"address", @"locatioName", @"addressLine1"];
     for (NSString *key in preferredKeys) {
         NSString *value = [self safeString:snapshot[key]];
         if (value.length > 0) return value;
     }
-    
+
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSString *line1 = [self safeString:snapshot[@"addressLine1"]];
     NSString *line2 = [self safeString:snapshot[@"addressLine2"]];
@@ -5733,7 +5735,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (line1.length > 0) [parts addObject:line1];
     if (line2.length > 0) [parts addObject:line2];
     if (postal.length > 0) [parts addObject:postal];
-    
+
     if (parts.count == 0) return @"--";
     return [parts componentsJoinedByString:@", "];
 }
@@ -5744,12 +5746,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (trimmed.length == 0) {
         return kCLLocationCoordinate2DInvalid;
     }
-    
+
     NSArray<NSString *> *parts = [trimmed componentsSeparatedByString:@","];
     if (parts.count < 2) {
         return kCLLocationCoordinate2DInvalid;
     }
-    
+
     double latitude = [parts[0] doubleValue];
     double longitude = [parts[1] doubleValue];
     CLLocationCoordinate2D coordinate = CLLocationCoordinate2DMake(latitude, longitude);
@@ -5782,13 +5784,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (NSString *)imageURLFromData:(NSDictionary *)data
 {
     if (![data isKindOfClass:NSDictionary.class]) return @"";
-    
+
     NSArray<NSString *> *keys = @[@"image", @"imageURL", @"imageUrl", @"photo", @"icon"];
     for (NSString *key in keys) {
         NSString *value = [self safeString:data[key]];
         if (value.length > 0) return value;
     }
-    
+
     id imageURLsArray = data[@"imageURLsArray"];
     if ([imageURLsArray isKindOfClass:NSArray.class]) {
         NSArray *arr = (NSArray *)imageURLsArray;
@@ -5949,19 +5951,183 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [self showInfoMessage:kLang(@"DeliveryLocationSub")];
         return;
     }
-    
+
     // Prefer Google Maps if installed, else fall back to Apple Maps.
     NSString *googleURLString = [NSString stringWithFormat:@"comgooglemaps://?q=%f,%f&center=%f,%f&zoom=15", c.latitude, c.longitude, c.latitude, c.longitude];
     NSURL *googleURL = [NSURL URLWithString:googleURLString];
-    
+
     if (googleURL && [UIApplication.sharedApplication canOpenURL:googleURL]) {
         [UIApplication.sharedApplication openURL:googleURL options:@{} completionHandler:nil];
         return;
     }
-    
+
     NSURL *appleURL = [NSURL URLWithString:[NSString stringWithFormat:@"https://maps.apple.com/?q=%f,%f", c.latitude, c.longitude]];
     if (appleURL) {
         [UIApplication.sharedApplication openURL:appleURL options:@{} completionHandler:nil];
     }
 }
+
+#pragma mark - Fulfillment (Phase 15 — read-only, customer-side)
+
+- (void)configureFulfillmentSection
+{
+    if (!self.order.hasFulfillmentOrders) {
+        self.tableView.tableFooterView = nil;
+        return;
+    }
+    PPweakify(self);
+    [[PPOrderManager shared] fetchFulfillmentOrdersWithIDs:self.order.fulfillmentOrderIDs completion:^(NSArray<PPFulfillmentOrder *> *orders) {
+        PPstrongify(self);
+        if (!self) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIView *card = [self buildFulfillmentGroupsCard:orders];
+            self.tableView.tableFooterView = card;
+        });
+    }];
+}
+
+- (UIView *)buildFulfillmentGroupsCard:(NSArray<PPFulfillmentOrder *> *)orders
+{
+    if (orders.count == 0) return nil;
+
+    UIView *card = [[UIView alloc] init];
+    card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.95];
+    card.layer.cornerRadius = PPCornerCard;
+    card.layer.masksToBounds = YES;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.text = kLang(@"fulfillment_section_title");
+    titleLabel.font = [GM boldFontWithSize:PPFontHeadline];
+    titleLabel.textColor = AppPrimaryTextClr;
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [card addSubview:titleLabel];
+
+    UILabel *summaryLabel = [[UILabel alloc] init];
+    NSInteger pending = [self.order.fulfillmentSummary[@"pendingCount"] integerValue];
+    NSInteger total = [self.order.fulfillmentSummary[@"totalCount"] integerValue];
+    summaryLabel.text = [NSString stringWithFormat:@"%ld/%ld %@", (long)(total - pending), (long)total, kLang(@"fulfillment_summary_completed")];
+    summaryLabel.font = [GM MidFontWithSize:PPFontCallout];
+    summaryLabel.textColor = AppSecondaryTextClr;
+    summaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [card addSubview:summaryLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [titleLabel.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPSpaceBase],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-PPSpaceBase],
+        [titleLabel.topAnchor constraintEqualToAnchor:card.topAnchor constant:PPSpaceBase],
+        [summaryLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [summaryLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [summaryLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:PPSpaceSM],
+    ]];
+
+    UIView *previous = summaryLabel;
+    for (PPFulfillmentOrder *fo in orders) {
+        UIView *group = [self buildFulfillmentGroupCard:fo];
+        group.translatesAutoresizingMaskIntoConstraints = NO;
+        [card addSubview:group];
+        [NSLayoutConstraint activateConstraints:@[
+            [group.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+            [group.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+            [group.topAnchor constraintEqualToAnchor:previous.bottomAnchor constant:PPSpaceSM],
+        ]];
+        previous = group;
+    }
+
+    [[previous.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-PPSpaceBase] setActive:YES];
+
+    CGFloat width = CGRectGetWidth(UIScreen.mainScreen.bounds) - 32.0;
+    CGRect fit = [card systemLayoutSizeFittingSize:CGSizeMake(width, UIViewNoIntrinsicMetric)
+                     withHorizontalFittingPriority:UILayoutPriorityRequired
+                           verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    card.frame = CGRectMake(0, 0, width, fit.height);
+    return card;
+}
+
+- (UIView *)buildFulfillmentGroupCard:(PPFulfillmentOrder *)fo
+{
+    UIView *group = [[UIView alloc] init];
+    group.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.55];
+    group.layer.cornerRadius = PPCornerMedium;
+    group.layer.masksToBounds = YES;
+
+    UILabel *ownerLabel = [[UILabel alloc] init];
+    ownerLabel.text = [fo.ownerType isEqualToString:@"partner"] ? kLang(@"fulfillment_owner_partner") : kLang(@"fulfillment_owner_platform");
+    ownerLabel.font = [GM boldFontWithSize:PPFontSubheadline];
+    ownerLabel.textColor = AppPrimaryTextClr;
+    ownerLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [group addSubview:ownerLabel];
+
+    UILabel *statusBadge = [[UILabel alloc] init];
+    statusBadge.text = [NSString stringWithFormat:@"  %@  ", [self fulfillmentStatusDisplayName:fo.status]];
+    statusBadge.font = [GM boldFontWithSize:10];
+    UIColor *sc = [self fulfillmentStatusColor:fo.status];
+    statusBadge.textColor = sc;
+    statusBadge.backgroundColor = [sc colorWithAlphaComponent:0.12];
+    statusBadge.layer.cornerRadius = PPCornerSmall / 2.0;
+    statusBadge.clipsToBounds = YES;
+    statusBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    [group addSubview:statusBadge];
+
+    UILabel *metaLabel = [[UILabel alloc] init];
+    metaLabel.text = [NSString stringWithFormat:kLang(@"fulfillment_items_count"), (long)fo.itemCount];
+    metaLabel.font = [GM MidFontWithSize:PPFontFootnote];
+    metaLabel.textColor = AppSecondaryTextClr;
+    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [group addSubview:metaLabel];
+
+    UILabel *amountLabel = [[UILabel alloc] init];
+    amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.providerNet];
+    amountLabel.font = [GM MidFontWithSize:PPFontCallout];
+    amountLabel.textColor = AppPrimaryClr;
+    amountLabel.textAlignment = NSTextAlignmentRight;
+    amountLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    [group addSubview:amountLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [ownerLabel.leadingAnchor constraintEqualToAnchor:group.leadingAnchor constant:PPSpaceMD],
+        [ownerLabel.topAnchor constraintEqualToAnchor:group.topAnchor constant:PPSpaceMD],
+        [statusBadge.trailingAnchor constraintEqualToAnchor:group.trailingAnchor constant:-PPSpaceMD],
+        [statusBadge.centerYAnchor constraintEqualToAnchor:ownerLabel.centerYAnchor],
+        [metaLabel.leadingAnchor constraintEqualToAnchor:ownerLabel.leadingAnchor],
+        [metaLabel.topAnchor constraintEqualToAnchor:ownerLabel.bottomAnchor constant:4.0],
+        [amountLabel.trailingAnchor constraintEqualToAnchor:group.trailingAnchor constant:-PPSpaceMD],
+        [amountLabel.topAnchor constraintEqualToAnchor:statusBadge.bottomAnchor constant:6.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:group.bottomAnchor constant:-PPSpaceMD],
+    ]];
+    return group;
+}
+
+- (NSString *)fulfillmentStatusDisplayName:(NSString *)status
+{
+    static NSDictionary *map = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        map = @{
+            @"new_request":        kLang(@"fulfillment_status_new_request"),
+            @"accepted":           kLang(@"fulfillment_status_accepted"),
+            @"rejected":           kLang(@"fulfillment_status_rejected"),
+            @"preparing":          kLang(@"fulfillment_status_preparing"),
+            @"ready_for_pickup":   kLang(@"fulfillment_status_ready_for_pickup"),
+            @"delivery_requested": kLang(@"fulfillment_status_delivery_requested"),
+            @"awaiting_handover":  kLang(@"fulfillment_status_awaiting_handover"),
+            @"handed_over":        kLang(@"fulfillment_status_handed_over"),
+            @"completed":          kLang(@"fulfillment_status_completed"),
+            @"cancelled":          kLang(@"fulfillment_status_cancelled"),
+            @"failed":             kLang(@"fulfillment_status_failed"),
+            @"returned":           kLang(@"fulfillment_status_returned"),
+        };
+    });
+    NSString *name = map[status];
+    return name.length > 0 ? name : kLang(@"fulfillment_status_unknown");
+}
+
+- (UIColor *)fulfillmentStatusColor:(NSString *)status
+{
+    NSString *s = status;
+    if ([s isEqualToString:@"accepted"] || [s isEqualToString:@"completed"] || [s isEqualToString:@"ready_for_pickup"]) return UIColor.systemGreenColor;
+    if ([s isEqualToString:@"new_request"] || [s isEqualToString:@"preparing"] || [s isEqualToString:@"delivery_requested"] || [s isEqualToString:@"awaiting_handover"]) return UIColor.systemOrangeColor;
+    if ([s isEqualToString:@"rejected"] || [s isEqualToString:@"cancelled"] || [s isEqualToString:@"failed"] || [s isEqualToString:@"returned"]) return UIColor.systemRedColor;
+    return UIColor.systemGrayColor;
+}
+
 @end

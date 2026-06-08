@@ -11,6 +11,7 @@
 #import "PPOrder.h"
 @class PPAddressModel;
 @class FIRListenerRegistration;
+@class PPFulfillmentOrder;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -199,8 +200,16 @@ typedef NS_ENUM(NSInteger, PPOrderCustomerActionType) {
                     forOrder:(PPOrder *)order
              draftIdentifier:(NSString *)draftIdentifier
                     progress:(void (^ _Nullable)(double progress))progress
-                  completion:(void (^)(NSArray<PPOrderSupportAttachment *> *attachments,
-                                       NSError * _Nullable error))completion;
+                   completion:(void (^)(NSArray<PPOrderSupportAttachment *> *attachments,
+                                        NSError * _Nullable error))completion;
+
+#pragma mark - Fulfillment (Phase 15 — read-only, customer-side)
+
+- (void)fetchFulfillmentOrdersWithIDs:(NSArray<NSString *> *)fulfillmentIDs
+                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders))completion;
+
+- (id<FIRListenerRegistration>)observeFulfillmentEventsForFulfillmentID:(NSString *)fulfillmentID
+                                                               onChange:(void (^)(NSArray<NSDictionary *> *events))onChange;
 
 @end
 

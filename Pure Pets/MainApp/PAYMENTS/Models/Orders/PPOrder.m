@@ -296,7 +296,20 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
 
     order.deliveryStatus = PPOrderTrimmedString(data[@"deliveryStatus"]);
 
+    // Per-owner fulfillment fields (Phase 15 — additive, backward-compatible)
+    if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
+        order.fulfillmentOrderIDs = data[@"fulfillmentOrderIDs"];
+    }
+    if ([data[@"fulfillmentSummary"] isKindOfClass:NSDictionary.class]) {
+        order.fulfillmentSummary = data[@"fulfillmentSummary"];
+    }
+
     return order;
+}
+
+- (BOOL)hasFulfillmentOrders
+{
+    return self.fulfillmentOrderIDs.count > 0;
 }
 
 - (NSDictionary<NSString *, id> *)exportToDictionary

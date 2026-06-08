@@ -7,6 +7,7 @@
 
 
 #import "PPOrderManager.h"
+#import "PPFulfillmentOrder.h"
 #import <FirebaseFirestore/FirebaseFirestore.h>
 #import <FirebaseAuth/FirebaseAuth.h>
 @import FirebaseFunctions;
@@ -1818,6 +1819,56 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         (void)weakSelf;
     };
     uploadNext();
+}
+
+#pragma mark - Fulfillment (Phase 15 — read-only, customer-side)
+
+- (void)fetchFulfillmentOrdersWithIDs:(NSArray<NSString *> *)fulfillmentIDs
+                           completion:(void (^)(NSArray<PPFulfillmentOrder *> *orders))completion
+{
+    if (fulfillmentIDs.count == 0) {
+        if (completion) completion(@[]);
+        return;
+    }
+    FIRFirestore *db = [FIRFirestore firestore];
+    dispatch_group_t group = dispatch_group_create();
+    NSMutableArray<PPFulfillmentOrder *> *results = [NSMutableArray array];
+
+    for (NSString *fid in fulfillmentIDs) {
+        dispatch_group_enter(group);
+        [[[db collectionWithPath:@"FulfillmentOrders"] documentWithPath:fid]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot *snap, NSError *error) {
+            if (snap.exists && [snap.data isKindOfClass:NSDictionary.class]) {
+                PPFulfillmentOrder *fo = [PPFulfillmentOrder fromDictionary:snap.data fulfillmentID:snap.documentID];
+                [results addObject:fo];
+            }
+            dispatch_group_leave(group);
+        }];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (completion) completion([results copy]);
+    });
+}
+
+- (id<FIRListenerRegistration>)observeFulfillmentEventsForFulfillmentID:(NSString *)fulfillmentID
+                                                               onChange:(void (^)(NSArray<NSDictionary *> *events))onChange
+{
+    if (!onChange || fulfillmentID.length == 0) return nil;
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRQuery *q = [[[[db collectionWithPath:@"FulfillmentOrders"] documentWithPath:fulfillmentID]
+                    collectionWithPath:@"events"] queryOrderedByField:@"createdAt" descending:YES];
+    q = [q queryLimitedTo:30];
+    return [q addSnapshotListener:^(FIRQuerySnapshot *snap, NSError *error) {
+        if (error || !onChange) return;
+        NSMutableArray<NSDictionary *> *events = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snap.documents) {
+            NSMutableDictionary *entry = [[doc data] isKindOfClass:NSDictionary.class] ? [[doc data] mutableCopy] : [NSMutableDictionary dictionary];
+            entry[@"eventId"] = doc.documentID;
+            [events addObject:[entry copy]];
+        }
+        dispatch_async(dispatch_get_main_queue(), ^{ onChange([events copy]); });
+    }];
 }
 
 @end

@@ -2962,3 +2962,29 @@
 "ImageSearchDetectedSubtitle" = "تم التعرف عليه من صورتك";
 
 "UnableToLoadDetails" = "تعذر تحميل التفاصيل.";
+
+/* طلبات التنفيذ (المرحلة ١٥ — جانب العميل، للقراءة فقط) */
+"fulfillment_section_title" = "حالة تنفيذ الطلب";
+"fulfillment_summary_pending" = "قيد الانتظار";
+"fulfillment_summary_completed" = "مكتمل";
+"fulfillment_owner_platform" = "بيور بيتس";
+"fulfillment_owner_partner" = "شريك";
+"fulfillment_items_count" = "%ld عناصر";
+"fulfillment_no_events" = "لا توجد أحداث مسجلة.";
+"fulfillment_not_available" = "تفاصيل التنفيذ غير متوفرة.";
+"fulfillment_loading" = "جارٍ تحميل التنفيذ…";
+
+/* تصنيفات حالة التنفيذ (المرحلة ١٥) */
+"fulfillment_status_new_request" = "بانتظار مزود الخدمة";
+"fulfillment_status_accepted" = "تم القبول";
+"fulfillment_status_rejected" = "تم الرفض";
+"fulfillment_status_preparing" = "جاري التحضير";
+"fulfillment_status_ready_for_pickup" = "جاهز للاستلام";
+"fulfillment_status_delivery_requested" = "تم طلب التوصيل";
+"fulfillment_status_awaiting_handover" = "بانتظار التسليم";
+"fulfillment_status_handed_over" = "تم التسليم للمندوب";
+"fulfillment_status_completed" = "مكتمل";
+"fulfillment_status_cancelled" = "ملغي";
+"fulfillment_status_failed" = "فشل";
+"fulfillment_status_returned" = "مرتجع";
+"fulfillment_status_unknown" = "قيد التنفيذ";
