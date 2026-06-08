@@ -381,6 +381,7 @@ typedef NS_ENUM(NSInteger, IconPostions) {
 
 typedef NS_ENUM(NSUInteger, PPSheetDetentStyle) {
     PPSheetDetentStyleMediumOnly,
+    PPSheetDetentStyle35,
     PPSheetDetentStyle70,
     PPSheetDetentStyle80,
     PPSheetDetentStyleAdsView,

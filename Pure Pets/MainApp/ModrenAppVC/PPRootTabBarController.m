@@ -1381,8 +1381,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         dockHeight = 86.0;
     }
     [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? -6 : 4],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:PPIOS26() ? 6 : -4],
+        [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? -0 : 4],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:PPIOS26() ? 12 : -4],
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
@@ -1627,12 +1627,12 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }
     [novaConstraints addObjectsFromArray:@[
         [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0],
-        [button.widthAnchor constraintEqualToConstant:54.0],
-        [button.heightAnchor constraintEqualToConstant:54.0],
+        [button.widthAnchor constraintEqualToConstant:58.0],
+        [button.heightAnchor constraintEqualToConstant:58.0],
         [animationView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [animationView.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [animationView.widthAnchor constraintEqualToConstant:42.0],
-        [animationView.heightAnchor constraintEqualToConstant:42.0]
+        [animationView.widthAnchor constraintEqualToConstant:38.0],
+        [animationView.heightAnchor constraintEqualToConstant:38.0]
     ]];
     [NSLayoutConstraint activateConstraints:novaConstraints];
 
@@ -1979,19 +1979,20 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
 - (void)addPlusTabBarButton {
 
+    
 
     UIButton *showAddMenuButton = [UIButton buttonWithType:UIButtonTypeSystem];
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
     showAddMenuButton.adjustsImageWhenHighlighted = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:17
+    [UIImageSymbolConfiguration configurationWithPointSize:19
                                                      weight:UIImageSymbolWeightSemibold
                                                       scale:UIImageSymbolScaleLarge];
 
-    UIImage *icon = [[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig]
-                     imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIImage *icon = [[[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig] imageWithTintColor:accentColor]
+                     imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
     if (@available(iOS 26.0, *)) {
         UIButtonConfiguration *configuration =
             [UIButtonConfiguration glassButtonConfiguration];
@@ -1999,6 +2000,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.baseForegroundColor = accentColor;
         configuration.contentInsets = NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
+        configuration.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
+        configuration.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
         showAddMenuButton.configuration = configuration;
         showAddMenuButton.tintColor = accentColor;
     } else {
@@ -2033,8 +2036,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
             [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
-            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
-            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
+            [showAddMenuButton.widthAnchor constraintEqualToConstant:64.0],
+            [showAddMenuButton.heightAnchor constraintEqualToConstant:64.0]
         ]];
         // Symbol effect (iOS 26+ only)
         __weak UIButton *weakButton = showAddMenuButton;
@@ -2127,11 +2130,13 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             [self openAdoptionEditor];
         }
     }];
+    
+    [PPFunc presentFloatingSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle35];
 
-    [PPHomeHelper presentViewControllerSafely:vc
-                                         from:self
-                                     animated:YES
-                                   completion:nil];
+    //[PPHomeHelper presentViewControllerSafely:vc
+                                         //from:self
+                                     //animated:YES
+                                  // completion:nil];
 }
 
 

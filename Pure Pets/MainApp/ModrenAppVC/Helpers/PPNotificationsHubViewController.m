@@ -671,6 +671,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 @interface PPNotificationsHubViewController ()
 @property (nonatomic, strong) UIView *backgroundTopGlowView;
+@property (nonatomic, strong) UIView *backgroundMidGlowView;
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *topChromeContainerView;
 @property (nonatomic, strong) PPHubTopTabsView *tabsView;
@@ -690,7 +691,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = AppBageColor();// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppSurfColor;
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];
@@ -722,13 +723,34 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     CGFloat safeTop = self.view.safeAreaInsets.top;
     CGFloat safeBottom = self.view.safeAreaInsets.bottom;
 
-    self.backgroundTopGlowView.frame = CGRectMake(-72.0, safeTop - 44.0, width * 0.72, width * 0.72);
-    self.backgroundBottomGlowView.frame = CGRectMake(width - (width * 0.60) + 40.0,
-                                                     height - (width * 0.56) - safeBottom - 90.0,
-                                                     width * 0.60,
-                                                     width * 0.60);
-    self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
-    self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
+    CGFloat topSize = MIN(360.0, MAX(248.0, width * 0.74));
+    CGFloat midSize = MIN(300.0, MAX(210.0, width * 0.58));
+    CGFloat bottomSize = MIN(340.0, MAX(220.0, width * 0.66));
+
+    self.backgroundTopGlowView.frame = CGRectMake(width - (topSize * 0.62),
+                                                  safeTop - (topSize * 0.72),
+                                                  topSize, topSize);
+
+    self.backgroundMidGlowView.frame = CGRectMake(-(midSize * 0.44),
+                                                  MAX(112.0, height * 0.28),
+                                                  midSize, midSize);
+
+    self.backgroundBottomGlowView.frame = CGRectMake(width - (bottomSize * 0.56),
+                                                     height - (bottomSize * 0.62),
+                                                     bottomSize, bottomSize);
+
+    NSArray<UIView *> *glowViews = @[
+        self.backgroundTopGlowView,
+        self.backgroundMidGlowView,
+        self.backgroundBottomGlowView
+    ];
+
+    for (UIView *glowView in glowViews) {
+        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
+        glowView.layer.cornerRadius = radius;
+        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
+    }
+    self.backgroundMidGlowView.alpha = 0.5;
 
     CGFloat chromeWidth = floor(width * 0.90);
     self.topChromeContainerView.frame = CGRectMake(0.0, 0.0, chromeWidth, kPPHubTopBarHeight);
@@ -754,13 +776,85 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:0.10];
-    [self.view addSubview:self.backgroundTopGlowView];
+    self.backgroundTopGlowView.clipsToBounds = NO;
+    self.backgroundTopGlowView.layer.masksToBounds = NO;
+    self.backgroundTopGlowView.layer.shadowOffset = CGSizeZero;
+    [self.view insertSubview:self.backgroundTopGlowView atIndex:0];
+
+    self.backgroundMidGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundMidGlowView.userInteractionEnabled = NO;
+    self.backgroundMidGlowView.clipsToBounds = NO;
+    self.backgroundMidGlowView.layer.masksToBounds = NO;
+    self.backgroundMidGlowView.layer.shadowOffset = CGSizeZero;
+    self.backgroundMidGlowView.alpha = 0.5;
+    [self.view insertSubview:self.backgroundMidGlowView atIndex:0];
 
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.06];
-    [self.view addSubview:self.backgroundBottomGlowView];
+    self.backgroundBottomGlowView.clipsToBounds = NO;
+    self.backgroundBottomGlowView.layer.masksToBounds = NO;
+    self.backgroundBottomGlowView.layer.shadowOffset = CGSizeZero;
+    [self.view insertSubview:self.backgroundBottomGlowView atIndex:0];
+
+    [self pp_updateGlowAppearance];
+}
+
+- (void)pp_updateGlowAppearance
+{
+    BOOL isDark = NO;
+    if (@available(iOS 12.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+
+    UIColor *primaryColor = NewBgColor ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *secondaryColor = AppPrimaryClr ?: [primaryColor colorWithAlphaComponent:1.0];
+    UIColor *bottomFadeColor = isDark
+        ? UIColor.blackColor
+        : [UIColor colorWithRed:0.98 green:0.66 blue:0.46 alpha:1.0];
+
+    [self pp_applyGlowView:self.backgroundTopGlowView
+                    color:AppSurfColor
+             surfaceAlpha:isDark ? 0.13 : 0.075
+            shadowOpacity:isDark ? 0.16f : 0.10f
+             shadowRadius:isDark ? 82.0 : 74.0];
+
+    [self pp_applyGlowView:self.backgroundMidGlowView
+                    color:secondaryColor
+             surfaceAlpha:isDark ? 0.10 : 0.055
+            shadowOpacity:isDark ? 0.12f : 0.075f
+             shadowRadius:isDark ? 72.0 : 64.0];
+
+    [self pp_applyGlowView:self.backgroundBottomGlowView
+                    color:bottomFadeColor
+             surfaceAlpha:isDark ? 0.030 : 0.050
+            shadowOpacity:isDark ? 0.08f : 0.045f
+             shadowRadius:isDark ? 62.0 : 54.0];
+}
+
+- (void)pp_applyGlowView:(UIView *)glowView
+                   color:(UIColor *)color
+            surfaceAlpha:(CGFloat)surfaceAlpha
+           shadowOpacity:(CGFloat)shadowOpacity
+            shadowRadius:(CGFloat)shadowRadius
+{
+    if (!glowView || !color) return;
+
+    glowView.alpha = 1.0;
+    glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
+    glowView.layer.shadowColor = AppClearClr.CGColor;
+    glowView.layer.shadowOpacity = 0;
+    glowView.layer.shadowRadius = 0;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
+            [self pp_updateGlowAppearance];
+            self.view.backgroundColor = AppSurfColor;
+        }
+    }
 }
 
 - (void)pp_setupTopChrome

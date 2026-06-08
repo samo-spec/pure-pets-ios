@@ -167,6 +167,19 @@ static FIRFunctions *PPOrderFunctionsClient(void) {
     return functions;
 }
 
+static FIRFunctions *PPOrderDefaultFunctionsClient(void) {
+    static FIRFunctions *functions = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSString *region = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+        if (region.length == 0) {
+            region = @"us-central1";
+        }
+        functions = [FIRFunctions functionsForRegion:region];
+    });
+    return functions;
+}
+
 static NSString *PPOrderFunctionsMessageCandidate(id value, NSInteger depth) {
     if (!value || depth > 4) return @"";
 
@@ -1624,7 +1637,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             return;
         }
 
-        [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
+        [[PPOrderDefaultFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
          callWithObject:payload ?: @{}
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
             if (error) {

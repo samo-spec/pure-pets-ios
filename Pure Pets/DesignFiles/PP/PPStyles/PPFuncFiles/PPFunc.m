@@ -306,7 +306,8 @@ NS_ASSUME_NONNULL_BEGIN
     UISheetPresentationControllerDetent *customMedium80 = UISheetPresentationControllerDetent.mediumDetent;
     UISheetPresentationControllerDetent *customMedium300 = UISheetPresentationControllerDetent.mediumDetent;
     UISheetPresentationControllerDetent *adsViewDent = UISheetPresentationControllerDetent.mediumDetent;
-
+    UISheetPresentationControllerDetent *customMedium350 = UISheetPresentationControllerDetent.mediumDetent;
+    
     if (@available(iOS 16.0, *)) {
 
         chatsDent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"chatsDent"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
@@ -333,6 +334,10 @@ NS_ASSUME_NONNULL_BEGIN
             return 400; // your custom medium height
         }];
         
+        customMedium350 = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"customMedium350"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+            return 350; // your custom medium height
+        }];
+        
     } else {
         // Fallback on earlier versions
     }
@@ -343,6 +348,12 @@ NS_ASSUME_NONNULL_BEGIN
         if (sheet) {
             // Configure detents
             switch (style) {
+                    
+                case PPSheetDetentStyle35:
+                    sheet.detents = @[customMedium350];
+                    break;
+                    
+                    
                 case PPSheetDetentStyle70:
                     sheet.detents = @[customMedium];
                     sheet.largestUndimmedDetentIdentifier = UISheetPresentationControllerDetentIdentifierMedium;
