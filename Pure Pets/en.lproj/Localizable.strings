@@ -3000,3 +3000,8 @@
 "fulfillment_status_failed" = "Failed";
 "fulfillment_status_returned" = "Returned";
 "fulfillment_status_unknown" = "In progress";
+
+/* Provider Marketplace (Phase 20B) */
+"accessory_view_market_badge" = "Marketplace";
+"accessory_view_market_provider" = "Market Provider";
+"accessory_view_sold_by" = "Sold by";

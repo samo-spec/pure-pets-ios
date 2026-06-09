@@ -1250,6 +1250,16 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     return self.accessAds.condition == AccessConditionsUsed;
 }
 
+- (BOOL)pp_isProviderMarketplaceItem
+{
+    if (self.accessAds.ownerID.length == 0) return NO;
+    if ([[UserManager sharedManager].currentUser.ID isEqualToString:self.accessAds.ownerID]) return NO;
+    if ([self pp_isUsedAccessory]) return NO;
+    if ([self.accessAds.ownerType isEqualToString:@"partner"]) return YES;
+    if ([self.accessAds.source isEqualToString:@"provider_marketplace"]) return YES;
+    return self.accessAds.ownerID.length > 0 && ![self pp_isUsedAccessory];
+}
+
 - (BOOL)pp_shouldShowCartBar
 {
     return ![self pp_isUsedAccessory];
@@ -1257,6 +1267,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (NSString *)pp_sellerMetaText
 {
+    if ([self pp_isProviderMarketplaceItem]) {
+        return kLang(@"accessory_view_sold_by");
+    }
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSString *sellerTitle = [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_title") : kLang(@"accessory_view_store_badge");
     NSString *conditionText = [PetAccessory conditionTextForAccessory:self.accessAds];
@@ -1271,18 +1284,28 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (NSString *)pp_sellerEyebrowText
 {
+    if ([self pp_isProviderMarketplaceItem]) {
+        NSString *name = self.ownerModel.UserName ?: self.ownerModel.displayName ?: kLang(@"accessory_view_market_provider");
+        return name;
+    }
     return [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_contact") : kLang(@"accessory_view_store_support");
 }
 
 - (NSString *)pp_sellerStatusBadgeText
 {
+    if ([self pp_isProviderMarketplaceItem]) return kLang(@"accessory_view_market_badge");
     return [self pp_isUsedAccessory] ? kLang(@"accessory_view_private_seller") : kLang(@"accessory_view_store_badge");
 }
 
 - (void)pp_updateSellerStatusBadgeStyle
 {
-    BOOL isUsedAccessory = [self pp_isUsedAccessory];
-    UIColor *accent = isUsedAccessory ? AppPrimaryClr : [UIColor systemGreenColor];
+    UIColor *accent;
+    if ([self pp_isProviderMarketplaceItem]) {
+        accent = AppPrimaryClr;
+    } else {
+        BOOL isUsedAccessory = [self pp_isUsedAccessory];
+        accent = isUsedAccessory ? AppPrimaryClr : [UIColor systemGreenColor];
+    }
     self.sellerStatusBadgeLabel.text = [self pp_sellerStatusBadgeText];
     self.sellerStatusBadgeLabel.textColor = accent;
     self.sellerStatusBadgeLabel.backgroundColor = [accent colorWithAlphaComponent:0.11];
@@ -1292,6 +1315,22 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)pp_updateSellerAvatar
 {
+    if ([self pp_isProviderMarketplaceItem]) {
+        UIImage *placeholder = self.ownerModel
+            ? [PPModernAvatarRenderer avatarImageForName:self.ownerModel.UserName size:kAVSellerAvatarSize]
+            : [UIImage imageNamed:@"PPLogo"];
+        self.sellerAvatarImageView.image = placeholder;
+        self.sellerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+        NSString *imageURL = PPSafeString(self.ownerModel.UserImageUrl.absoluteString);
+        if (imageURL.length > 0) {
+            [PPImageLoaderManager.shared setImageOnImageView:self.sellerAvatarImageView
+                                                         url:imageURL
+                                                 placeholder:placeholder
+                                                  complation:^(UIImage *image, NSString *urlString) {}];
+        }
+        return;
+    }
+
     // For new accessories, show first-party store branding.
     if (![self pp_isUsedAccessory]) {
         self.sellerAvatarImageView.image = [UIImage imageNamed:@"PPLogo"];
@@ -1318,6 +1357,18 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)pp_updateSellerActions
 {
+    if ([self pp_isProviderMarketplaceItem]) {
+        NSString *uid = [UserManager sharedManager].currentUser.ID;
+        BOOL isOwnItem = [self.accessAds.ownerID isEqualToString:uid];
+        self.chatActionButton.hidden = isOwnItem;
+        BOOL hasPhone = self.ownerModel.MobileNo.length > 0;
+        self.callActionButton.hidden = !hasPhone;
+        self.shareActionButton.hidden = NO;
+        self.supportActionButton.hidden = NO;
+        self.sellerActionsTopToChatConstraint.active = YES;
+        return;
+    }
+
     BOOL isUsedAccessory = [self pp_isUsedAccessory];
 
     self.chatActionButton.hidden = !isUsedAccessory;
@@ -2048,6 +2099,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)loadOwnerModelIfNeeded
 {
     if (self.ownerModel || self.isResolvingOwner || self.accessAds.ownerID.length == 0) {
+        return;
+    }
+    if (![self pp_isUsedAccessory] && ![self pp_isProviderMarketplaceItem]) {
         return;
     }
     self.isResolvingOwner = YES;
