@@ -505,7 +505,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         });
     }];
 }
- 
+
 
 
 
@@ -632,7 +632,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     if (limit > 0) {
         query = [query queryLimitedTo:limit];
     }
-    
+
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot,
                                         NSError * _Nullable error) {
 
@@ -728,7 +728,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 - (void)createAccessory:(PetAccessory *)accessory
                  images:(NSArray<UIImage *> *)images
              completion:(void (^)(NSError * _Nullable error))completion {
-    
+
     // Validate inputs
     if (!accessory) {
         if (completion) {
@@ -746,29 +746,29 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
         return;
     }
-    
+
     // Generate accessory ID if not provided
     if (!accessory.accessoryID || accessory.accessoryID.length == 0) {
         accessory.accessoryID = [[NSUUID UUID] UUIDString];
     }
-    
+
     // Set creation timestamp only when creating new models.
     // Editing flows can reuse this method and must keep their original createdAt.
     if (!accessory.createdAt) {
         accessory.createdAt = [NSDate date];
     }
-    
+
     if (!accessory.ownerID || accessory.ownerID.length == 0) {
         accessory.ownerID = UserManager.sharedManager.currentUser.ID ?: @"unknown";
     }
-    
+
     // Validate images
     if (images.count == 0) {
         // Create accessory without images
         [self saveAccessoryToDatabase:accessory completion:completion];
         return;
     }
-    
+
     // Validate maximum image count
     NSUInteger maxImages = 10; // Adjust as needed
     if (images.count > maxImages) {
@@ -782,22 +782,22 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
         return;
     }
-    
+
     NSLog(@"🆕 Creating accessory '%@' with %ld images", accessory.name, (long)images.count);
-    
+
     // 🗑️ Capture old image URLs before overwriting (edit reuse path)
     NSArray<NSString *> *previousImageURLs = [accessory.imageURLsArray copy] ?: @[];
-    
+
     // Upload images in parallel
     dispatch_group_t uploadGroup = dispatch_group_create();
     NSMutableArray<NSString *> *downloadURLs = [NSMutableArray array];
     NSMutableArray<NSDictionary *> *imageMetadata = [NSMutableArray array];
     NSMutableArray<NSError *> *uploadErrors = [NSMutableArray array];
     NSLock *arrayLock = [[NSLock alloc] init];
-    
+
     for (NSInteger i = 0; i < images.count; i++) {
         UIImage *image = images[i];
-        
+
         // Strict mode: invalid images are treated as real upload failures.
         if (![image isKindOfClass:[UIImage class]] || image.size.width == 0 || image.size.height == 0) {
             NSLog(@"❌ Invalid image at index %ld", (long)i);
@@ -811,21 +811,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [arrayLock unlock];
             continue;
         }
-        
+
         dispatch_group_enter(uploadGroup);
-        
+
         // Upload on background queue with autorelease pool
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             @autoreleasepool {
                 // Optimize image for upload
                 UIImage *optimizedImage = [self optimizeImageForUpload:image];
-                
+
                 // Encode as PNG (lossless)
                 NSData *imageData = UIImagePNGRepresentation(optimizedImage);
-                
+
                 if (!imageData || imageData.length == 0) {
                     NSLog(@"❌ Failed to compress image at index %ld", (long)i);
-                    
+
                     [arrayLock lock];
                     [uploadErrors addObject:
                      [NSError errorWithDomain:@"PetAccessoryManager"
@@ -834,16 +834,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                                 @"index": @(i),
                                                 @"imageSize": NSStringFromCGSize(image.size)}]];
                     [arrayLock unlock];
-                    
+
                     dispatch_group_leave(uploadGroup);
                     return;
                 }
-                
+
                 // Check file size (optional limit)
                 NSUInteger maxFileSize = 10 * 1024 * 1024; // 10MB for PNG
                 if (imageData.length > maxFileSize) {
                     NSLog(@"❌ Image at index %ld is too large (%lu bytes)", (long)i, (unsigned long)imageData.length);
-                    
+
                     [arrayLock lock];
                     [uploadErrors addObject:
                      [NSError errorWithDomain:@"PetAccessoryManager"
@@ -852,21 +852,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                                 @"index": @(i),
                                                 @"maxSize": @(maxFileSize)}]];
                     [arrayLock unlock];
-                    
+
                     dispatch_group_leave(uploadGroup);
                     return;
                 }
-                
+
                 // Create filename with accessory ID and index
                 NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.png",
                                       accessory.accessoryID,
                                       (long)i,
                                       @((NSInteger)[[NSDate date] timeIntervalSince1970])];
-                
+
                 // Upload to Firebase Storage
                 NSString *storagePath = [NSString stringWithFormat:@"petAccessories/%@", fileName];
                 FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
-                
+
                 // Prepare metadata
                 FIRStorageMetadata *firebaseMetadata = [[FIRStorageMetadata alloc] init];
                 firebaseMetadata.contentType = @"image/png";
@@ -880,11 +880,11 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     @"file_size": @(imageData.length).stringValue,
                     @"is_primary": (i == 0) ? @"true" : @"false"
                 };
-                
+
                 // Upload with progress tracking (optional)
                 FIRStorageUploadTask *uploadTask = [storageRef putData:imageData
                                                               metadata:firebaseMetadata];
-                
+
                 // Optional: Monitor upload progress
                 [uploadTask observeStatus:FIRStorageTaskStatusProgress
                                  handler:^(FIRStorageTaskSnapshot *snapshot) {
@@ -892,17 +892,17 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     // double percentComplete = 100.0 * (snapshot.progress.completedUnitCount /
                     //                                   (double)snapshot.progress.totalUnitCount);
                 }];
-                
+
                 [uploadTask observeStatus:FIRStorageTaskStatusSuccess
                                  handler:^(FIRStorageTaskSnapshot *snapshot) {
-                    
+
                     // Get download URL
                     [storageRef downloadURLWithCompletion:^(NSURL * _Nullable downloadURL,
                                                            NSError * _Nullable urlError) {
                         if (urlError) {
                             NSLog(@"❌ Failed to get download URL for image %ld: %@",
                                   (long)i, urlError.localizedDescription);
-                            
+
                             [arrayLock lock];
                             [uploadErrors addObject:urlError];
                             [arrayLock unlock];
@@ -918,35 +918,35 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                 @"storage_path": storagePath,
                                 @"uploaded_at": firebaseMetadata.customMetadata[@"upload_timestamp"]
                             };
-                            
+
                             [arrayLock lock];
                             [downloadURLs addObject:downloadURL.absoluteString];
                             [imageMetadata addObject:imgMeta];
                             [arrayLock unlock];
-                            
+
                             NSLog(@"✅ Uploaded image %ld for accessory '%@'",
                                   (long)i, accessory.name);
                         }
-                        
+
                         dispatch_group_leave(uploadGroup);
                     }];
                 }];
-                
+
                 [uploadTask observeStatus:FIRStorageTaskStatusFailure
                                  handler:^(FIRStorageTaskSnapshot *snapshot) {
                     NSError *error = snapshot.error;
                     NSLog(@"❌ Upload failed for image %ld: %@", (long)i, error.localizedDescription);
-                    
+
                     [arrayLock lock];
                     [uploadErrors addObject:error];
                     [arrayLock unlock];
-                    
+
                     dispatch_group_leave(uploadGroup);
                 }];
             }
         });
     }
-    
+
     // Handle completion when all uploads finish
     dispatch_group_notify(uploadGroup, dispatch_get_main_queue(), ^{
         [self handleCreateCompletionForAccessory:accessory
@@ -966,27 +966,27 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     CGFloat maxDimension = 2048.0; // Maximum dimension
     CGFloat width = image.size.width;
     CGFloat height = image.size.height;
-    
+
     if (width <= maxDimension && height <= maxDimension) {
         return image; // No resizing needed
     }
-    
+
     // Calculate new size maintaining aspect ratio
     CGFloat ratio = width / height;
     CGSize newSize;
-    
+
     if (width > height) {
         newSize = CGSizeMake(maxDimension, maxDimension / ratio);
     } else {
         newSize = CGSizeMake(maxDimension * ratio, maxDimension);
     }
-    
+
     // Create graphics context
     UIGraphicsBeginImageContextWithOptions(newSize, NO, 1.0);
     [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
     UIImage *resizedImage = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     return resizedImage ?: image;
 }
 
@@ -997,13 +997,13 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                           totalImageCount:(NSInteger)totalImageCount
                         previousImageURLs:(NSArray<NSString *> *)previousImageURLs
                                completion:(void (^)(NSError * _Nullable error))completion {
-    
+
     // Calculate final price if needed
     if (accessory.price) {
         // This will trigger the calculation of finalPrice
         [accessory calculateFinalPrice];
     }
-    
+
     // Log summary
     NSLog(@"📊 Creation Summary:");
     NSLog(@"  - Accessory: %@ (ID: %@)", accessory.name, accessory.accessoryID);
@@ -1013,7 +1013,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     NSLog(@"  - Images attempted: %ld", (long)totalImageCount);
     NSLog(@"  - Images uploaded: %ld", (long)downloadURLs.count);
     NSLog(@"  - Upload errors: %ld", (long)uploadErrors.count);
-    
+
     // Strict production mode: all images must upload successfully before Firestore write.
     BOOL hasAnyUploadIssue = (uploadErrors.count > 0 ||
                               downloadURLs.count != totalImageCount ||
@@ -1037,23 +1037,23 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     // Update accessory with image data only after all uploads complete successfully.
     accessory.imageURLsArray = [downloadURLs copy];
     accessory.imageMeta = [imageMetadata copy];
-    
+
     // Save accessory to Firestore
     [self saveAccessoryToDatabase:accessory completion:^(NSError * _Nullable dbError) {
         if (dbError) {
             NSLog(@"❌ Failed to save accessory to database: %@", dbError.localizedDescription);
-            
+
             if (completion) {
                 completion(dbError);
             }
         } else {
             NSLog(@"✅ Successfully created accessory '%@' with %ld images",
                   accessory.name, (long)downloadURLs.count);
-            
+
             // 🗑️ Clean up old images from Storage (for edit reuse path)
             [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:previousImageURLs
                                                     newURLs:accessory.imageURLsArray];
-            
+
             if (completion) {
                 completion(nil);
             }
@@ -1063,13 +1063,13 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
 - (void)saveAccessoryToDatabase:(PetAccessory *)accessory
                      completion:(void (^)(NSError * _Nullable error))completion {
-    
+
     // Get Firestore collection reference
     FIRCollectionReference *collectionRef = [self accessoriesCollection];
-    
+
     // Convert to Firestore dictionary
     NSDictionary *accessoryData = [accessory toFirestoreDictionary];
-    
+
     if (!accessoryData) {
         if (completion) {
             completion([NSError errorWithDomain:@"PetAccessoryManager"
@@ -1078,9 +1078,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
         return;
     }
-    
+
     NSLog(@"💾 Saving accessory '%@' to Firestore...", accessory.name);
-    
+
     // Set document ID if provided, otherwise let Firestore auto-generate
     FIRDocumentReference *docRef;
     if (accessory.accessoryID && accessory.accessoryID.length > 0) {
@@ -1089,7 +1089,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         docRef = [collectionRef documentWithAutoID];
         accessory.accessoryID = docRef.documentID;
     }
-    
+
     // Save to Firestore
     [docRef setData:accessoryData
          completion:^(NSError * _Nullable error) {
@@ -1097,11 +1097,11 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSLog(@"❌ Firestore save failed: %@", error.localizedDescription);
         } else {
            // NSLog(@"✅ Accessory saved to Firestore with ID: %@", docRef.documentID);
-            
+
             // Also update local cache if you have one
             [self updateLocalCacheWithAccessory:accessory];
         }
-        
+
         if (completion) completion(error);
     }];
 }
@@ -1156,7 +1156,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
             accessory.accessoryID = doc.documentID;
             if (accessory) [snapshotItems addObject:accessory];
-            
+
             NSLog(@"listening for kind  %@",accessory.name);
         }
 
@@ -1178,7 +1178,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     if (self.listener) {
         [self.listener remove];
     }
-    
+
     if(mainCategoryID == 0)
     {
         // U4: Prevent retain cycle in accessory listener (all categories)
@@ -1191,7 +1191,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 NSLog(@"Error listening for accessory changes: %@", error.localizedDescription);
                 return;
             }
-            
+
             [strongSelf.accessoriesArray removeAllObjects];
             NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
@@ -1203,7 +1203,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSArray<PetAccessory *> *visibleAccessories =
                 [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
             [strongSelf.accessoriesArray addObjectsFromArray:visibleAccessories];
-            
+
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
             }
@@ -1221,7 +1221,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 NSLog(@"Error listening for accessory changes: %@", error.localizedDescription);
                 return;
             }
-            
+
             [strongSelf.accessoriesArray removeAllObjects];
             NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
@@ -1233,28 +1233,28 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSArray<PetAccessory *> *visibleAccessories =
                 [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
             [strongSelf.accessoriesArray addObjectsFromArray:visibleAccessories];
-            
+
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
             }
         }];
-        
+
     }
-    
+
 }
-    
+
     - (void)loadAllAccessories:(void (^)(NSArray<PetAccessory *> *accessories))updateBlock{
         if (self.listener) {
             [self.listener remove];
         }
-        
+
         [[self.firestore collectionWithPath:@"petAccessories"] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            
+
             if (error) {
                 NSLog(@"Error listening for accessory changes: %@", error.localizedDescription);
                 return;
             }
-            
+
             [self.accessoriesArray removeAllObjects];
             NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
@@ -1266,28 +1266,28 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSArray<PetAccessory *> *visibleAccessories =
                 [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
             [self.accessoriesArray addObjectsFromArray:visibleAccessories];
-            
+
             if (updateBlock) {
                 updateBlock(self.accessoriesArray);
             }
         }];
     }
-    
+
     - (void)addAccessory:(PetAccessory *)accessory completion:(void (^)(NSError * _Nullable error))completion {
         NSDictionary *data = [accessory toFirestoreDictionary];
         [[self.firestore collectionWithPath:@"petAccessories"] addDocumentWithData:data completion:completion];
     }
-    
+
     - (void)uploadAccessory:(PetAccessory *)accessory
     imageObjects:(NSArray<UIImage *> *)images
     completion:(void (^)(NSError * _Nullable error))completion {
-        
+
         // Early exit if no images
         if (images.count == 0) {
             [self addAccessory:accessory completion:completion];
             return;
         }
-        
+
         // Validate inputs
         if (!accessory) {
             if (completion) {
@@ -1297,38 +1297,38 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             return;
         }
-        
+
         // Generate a unique accessory ID if needed
         if (!accessory.accessoryID || accessory.accessoryID.length == 0) {
             accessory.accessoryID = [[NSUUID UUID] UUIDString];
         }
-        
+
         // Create dispatch group for parallel uploads
         dispatch_group_t uploadGroup = dispatch_group_create();
         NSMutableArray<NSString *> *downloadURLs = [NSMutableArray array];
         NSMutableArray<NSError *> *uploadErrors = [NSMutableArray array];
         NSLock *arrayLock = [[NSLock alloc] init];
-        
+
         for (NSInteger i = 0; i < images.count; i++) {
             UIImage *image = images[i];
-            
+
             // Skip invalid images
             if (![image isKindOfClass:[UIImage class]] || image.size.width == 0 || image.size.height == 0) {
                 NSLog(@"❌ Invalid image at index %ld", (long)i);
                 continue;
             }
-            
+
             dispatch_group_enter(uploadGroup);
-            
+
             // Perform upload on background queue
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 @autoreleasepool {
                     // Encode as PNG
                     NSData *imageData = UIImagePNGRepresentation(image);
-                    
+
                     if (!imageData || imageData.length == 0) {
                         NSLog(@"❌ Failed to compress image at index %ld", (long)i);
-                        
+
                         [arrayLock lock];
                         [uploadErrors addObject:
                          [NSError errorWithDomain:@"PetAccessoryManager"
@@ -1336,21 +1336,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                          userInfo:@{NSLocalizedDescriptionKey: @"Failed to compress image",
                                                     @"index": @(i)}]];
                         [arrayLock unlock];
-                        
+
                         dispatch_group_leave(uploadGroup);
                         return;
                     }
-                    
+
                     // Create filename
                     NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.png",
                                           accessory.accessoryID,
                                           (long)i,
                                           @((NSInteger)[[NSDate date] timeIntervalSince1970])];
-                    
+
                     // Upload to Firebase
                     NSString *storagePath = [NSString stringWithFormat:@"petAccessories/%@", fileName];
                     FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
-                    
+
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
                     metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
@@ -1361,46 +1361,46 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                         @"image_height": @(image.size.height).stringValue,
                         @"file_size": @(imageData.length).stringValue
                     };
-                    
+
                     [storageRef putData:imageData
                                metadata:metadata
                              completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-                        
+
                         if (error) {
                             NSLog(@"❌ Upload failed for image %ld: %@", (long)i, error.localizedDescription);
-                            
+
                             [arrayLock lock];
                             [uploadErrors addObject:error];
                             [arrayLock unlock];
-                            
+
                             dispatch_group_leave(uploadGroup);
                             return;
                         }
-                        
+
                         // Get download URL
                         [storageRef downloadURLWithCompletion:^(NSURL * _Nullable downloadURL, NSError * _Nullable urlError) {
                             if (urlError) {
                                 NSLog(@"❌ Failed to get download URL for image %ld: %@",
                                       (long)i, urlError.localizedDescription);
-                                
+
                                 [arrayLock lock];
                                 [uploadErrors addObject:urlError];
                                 [arrayLock unlock];
                             } else if (downloadURL) {
                                 NSLog(@"✅ Uploaded image %ld: %@", (long)i, downloadURL.absoluteString);
-                                
+
                                 [arrayLock lock];
                                 [downloadURLs addObject:downloadURL.absoluteString];
                                 [arrayLock unlock];
                             }
-                            
+
                             dispatch_group_leave(uploadGroup);
                         }];
                     }];
                 }
             });
         }
-        
+
         // Handle completion
         dispatch_group_notify(uploadGroup, dispatch_get_main_queue(), ^{
             [self handleUploadCompletionForAccessory:accessory
@@ -1410,34 +1410,34 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                           completion:completion];
         });
     }
-    
+
     // Helper method for handling completion logic
     - (void)handleUploadCompletionForAccessory:(PetAccessory *)accessory
     downloadURLs:(NSArray<NSString *> *)downloadURLs
     uploadErrors:(NSArray<NSError *> *)uploadErrors
     totalImageCount:(NSInteger)totalCount
     completion:(void (^)(NSError * _Nullable error))completion {
-        
+
         // Update accessory with URLs
         accessory.imageURLsArray = [downloadURLs copy];
-        
+
         // Log summary
         NSLog(@"📊 Upload Summary:");
         NSLog(@"  - Total images: %ld", (long)totalCount);
         NSLog(@"  - Successfully uploaded: %ld", (long)downloadURLs.count);
         NSLog(@"  - Failed: %ld", (long)uploadErrors.count);
-        
+
         // Save to database
         [self addAccessory:accessory completion:^(NSError * _Nullable dbError) {
             if (dbError) {
                 NSLog(@"❌ Database save failed: %@", dbError.localizedDescription);
-                
+
                 if (completion) {
                     if (uploadErrors.count > 0) {
                         // Combine errors
                         NSMutableArray *allErrors = [uploadErrors mutableCopy];
                         [allErrors addObject:dbError];
-                        
+
                         completion([NSError errorWithDomain:@"PetAccessoryManager"
                                                        code:-3
                                                    userInfo:@{
@@ -1450,7 +1450,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 }
             } else {
                 NSLog(@"✅ Accessory saved successfully");
-                
+
                 if (completion) {
                     if (uploadErrors.count > 0) {
                         // Partial success
@@ -1470,15 +1470,15 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
-    
-    
-    
-    
+
+
+
+
+
     - (void)updateAccessory:(PetAccessory *)accessory
     images:(NSArray<UIImage *> *)images
     completion:(void (^)(NSError * _Nullable error))completion {
-        
+
         // Validate accessory
         if (!accessory || !accessory.accessoryID) {
             if (completion) {
@@ -1488,10 +1488,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             return;
         }
-        
+
         // 🗑️ Fetch original image URLs from Firestore BEFORE uploading
         [self pp_fetchImageURLsForAccessoryID:accessory.accessoryID completion:^(NSArray<NSString *> *originalURLsFromDB) {
-        
+
         // Early exit: if no new images, just update the accessory
         if (images.count == 0) {
             [self updateAccessoryInDatabase:accessory completion:^(NSError * _Nullable error) {
@@ -1503,30 +1503,30 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }];
             return;
         }
-        
+
         // Get existing image URLs from the accessory
         NSArray<NSString *> *existingImageURLs = accessory.imageURLsArray ?: @[];
         NSLog(@"🔄 Updating accessory %@ with %ld new images (keeping %ld existing)",
               accessory.accessoryID, (long)images.count, (long)existingImageURLs.count);
-        
+
         // Strategy: Keep existing URLs, upload new images, combine results
         dispatch_group_t uploadGroup = dispatch_group_create();
         NSMutableArray<NSString *> *newDownloadURLs = [NSMutableArray array];
         NSMutableArray<NSError *> *uploadErrors = [NSMutableArray array];
         NSLock *arrayLock = [[NSLock alloc] init];
-        
+
         // Upload new images
         for (NSInteger i = 0; i < images.count; i++) {
             UIImage *image = images[i];
-            
+
             // Validate image
             if (![image isKindOfClass:[UIImage class]] || image.size.width == 0 || image.size.height == 0) {
                 NSLog(@"⚠️ Skipping invalid image at index %ld", (long)i);
                 continue;
             }
-            
+
             dispatch_group_enter(uploadGroup);
-            
+
             // Upload on background queue
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 @autoreleasepool {
@@ -1534,7 +1534,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     NSData *imageData = UIImagePNGRepresentation(image);
                     if (!imageData || imageData.length == 0) {
                         NSLog(@"❌ Failed to compress new image at index %ld", (long)i);
-                        
+
                         [arrayLock lock];
                         [uploadErrors addObject:
                          [NSError errorWithDomain:@"PetAccessoryManager"
@@ -1542,21 +1542,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                          userInfo:@{NSLocalizedDescriptionKey: @"Failed to compress new image",
                                                     @"index": @(i)}]];
                         [arrayLock unlock];
-                        
+
                         dispatch_group_leave(uploadGroup);
                         return;
                     }
-                    
+
                     // Create filename with timestamp to avoid collisions
                     NSString *fileName = [NSString stringWithFormat:@"%@_new_%ld_%@.png",
                                           accessory.accessoryID,
                                           (long)i,
                                           @((NSInteger)[[NSDate date] timeIntervalSince1970])];
-                    
+
                     // Upload to Firebase
                     NSString *storagePath = [NSString stringWithFormat:@"petAccessories/%@", fileName];
                     FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
-                    
+
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
                     metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
@@ -1568,46 +1568,46 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                         @"file_size": @(imageData.length).stringValue,
                         @"is_update": @"true"
                     };
-                    
+
                     [storageRef putData:imageData
                                metadata:metadata
                              completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-                        
+
                         if (error) {
                             NSLog(@"❌ Upload failed for new image %ld: %@", (long)i, error.localizedDescription);
-                            
+
                             [arrayLock lock];
                             [uploadErrors addObject:error];
                             [arrayLock unlock];
-                            
+
                             dispatch_group_leave(uploadGroup);
                             return;
                         }
-                        
+
                         // Get download URL
                         [storageRef downloadURLWithCompletion:^(NSURL * _Nullable downloadURL, NSError * _Nullable urlError) {
                             if (urlError) {
                                 NSLog(@"❌ Failed to get download URL for new image %ld: %@",
                                       (long)i, urlError.localizedDescription);
-                                
+
                                 [arrayLock lock];
                                 [uploadErrors addObject:urlError];
                                 [arrayLock unlock];
                             } else if (downloadURL) {
                                 NSLog(@"✅ Uploaded new image %ld: %@", (long)i, downloadURL.absoluteString);
-                                
+
                                 [arrayLock lock];
                                 [newDownloadURLs addObject:downloadURL.absoluteString];
                                 [arrayLock unlock];
                             }
-                            
+
                             dispatch_group_leave(uploadGroup);
                         }];
                     }];
                 }
             });
         }
-        
+
         // Handle completion
         dispatch_group_notify(uploadGroup, dispatch_get_main_queue(), ^{
             [self handleUpdateCompletionForAccessory:accessory
@@ -1626,28 +1626,28 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         });
         }]; // end pp_fetchImageURLsForAccessoryID block
     }
-    
+
 #pragma mark - Helper Methods for Update
-    
+
     - (void)handleUpdateCompletionForAccessory:(PetAccessory *)accessory
     existingURLs:(NSArray<NSString *> *)existingURLs
     newDownloadURLs:(NSArray<NSString *> *)newDownloadURLs
     uploadErrors:(NSArray<NSError *> *)uploadErrors
     totalNewImages:(NSInteger)totalNewImages
     completion:(void (^)(NSError * _Nullable error))completion {
-        
+
         // Combine existing URLs with new URLs
         NSMutableArray<NSString *> *allImageURLs = [NSMutableArray array];
-        
+
         // Keep existing URLs
         [allImageURLs addObjectsFromArray:existingURLs];
-        
+
         // Add new URLs
         [allImageURLs addObjectsFromArray:newDownloadURLs];
-        
+
         // Update accessory with combined URLs
         accessory.imageURLsArray = [allImageURLs copy];
-        
+
         // Log summary
         NSLog(@"📊 Update Summary for accessory %@:", accessory.accessoryID);
         NSLog(@"  - Existing images kept: %ld", (long)existingURLs.count);
@@ -1655,11 +1655,11 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         NSLog(@"  - New images uploaded: %ld", (long)newDownloadURLs.count);
         NSLog(@"  - Failed uploads: %ld", (long)uploadErrors.count);
         NSLog(@"  - Total images after update: %ld", (long)allImageURLs.count);
-        
+
         // Check if we should proceed despite errors
         BOOL shouldProceed = YES;
         NSString *warningMessage = nil;
-        
+
         if (uploadErrors.count > 0) {
             if (newDownloadURLs.count == 0) {
                 // All new images failed
@@ -1674,7 +1674,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                   (long)newDownloadURLs.count, (long)totalNewImages];
             }
         }
-        
+
         if (!shouldProceed) {
             // All uploads failed and no existing images
             if (completion) {
@@ -1688,18 +1688,18 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             return;
         }
-        
+
         // Update accessory in database
         [self updateAccessoryInDatabase:accessory completion:^(NSError * _Nullable dbError) {
             if (dbError) {
                 NSLog(@"❌ Database update failed: %@", dbError.localizedDescription);
-                
+
                 if (completion) {
                     if (uploadErrors.count > 0) {
                         // Combine upload and database errors
                         NSMutableArray *allErrors = [uploadErrors mutableCopy];
                         [allErrors addObject:dbError];
-                        
+
                         NSError *combinedError = [NSError errorWithDomain:@"PetAccessoryManager"
                                                                      code:-4
                                                                  userInfo:@{
@@ -1714,7 +1714,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             } else {
                 NSLog(@"✅ Accessory updated successfully with %ld total images",
                       (long)allImageURLs.count);
-                
+
                 if (completion) {
                     if (warningMessage) {
                         // Partial success with warning
@@ -1735,10 +1735,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
+
     - (void)updateAccessoryInDatabase:(PetAccessory *)accessory
     completion:(void (^)(NSError * _Nullable error))completion {
-        
+
         // Validate accessory
         if (!accessory || !accessory.accessoryID) {
             if (completion) {
@@ -1748,12 +1748,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             return;
         }
-        
+
         NSLog(@"💾 Updating accessory %@ in database...", accessory.accessoryID);
-        
+
         // Prepare update data
         NSMutableDictionary *updateData = [NSMutableDictionary dictionary];
-        
+
         // Add fields that might have changed
         if (accessory.name) updateData[@"name"] = accessory.name;
         if (accessory.price) updateData[@"price"] = accessory.price;
@@ -1762,56 +1762,56 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         if (accessory.petSubCategoryID > 0) updateData[@"petSubCategoryID"] = @(accessory.petSubCategoryID);
         updateData[@"condition"] = @(accessory.condition);
         updateData[@"accessKindType"] = @(accessory.accessKindType);
-        
+
         // Update image URLs if they exist
         if (accessory.imageURLsArray) {
             updateData[@"imageURLsArray"] = accessory.imageURLsArray;
         }
-        
+
         // Add metadata
         updateData[@"updatedAt"] = [FIRTimestamp timestampWithDate:[NSDate date]];
         updateData[@"updatedBy"] = UserManager.sharedManager.currentUser.ID ?: @"unknown";
-        
+
         // Perform Firestore update
         FIRDocumentReference *docRef = [[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessory.accessoryID];
-        
+
         [docRef updateData:updateData completion:^(NSError * _Nullable error) {
             if (error) {
                 NSLog(@"❌ Firestore update failed: %@", error.localizedDescription);
             } else {
                 NSLog(@"✅ Firestore update successful");
             }
-            
+
             if (completion) completion(error);
         }];
     }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
+
+
     -(void)updateAccessoryWithComplationUpdatedClass:(PetAccessory *)model completion:(void (^)(NSError * _Nullable, PetAccessory * _Nullable updatedModel))completion
     {
         if (!model.accessoryID) {
             if (completion) completion([NSError errorWithDomain:@"InvalidID" code:0 userInfo:nil],model);
             return;
         }
-        
+
         NSDictionary *data = [model toFirestoreDictionary];
         [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:model.accessoryID] setData:data merge:YES];
-        
+
     }
     - (void)updateAccessory:(PetAccessory *)accessory completion:(void (^)(NSError * _Nullable error))completion {
         if (!accessory.accessoryID) {
             if (completion) completion([NSError errorWithDomain:@"InvalidID" code:0 userInfo:nil]);
             return;
         }
-        
+
         NSDictionary *data = [accessory toFirestoreDictionary];
         [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessory.accessoryID]
          setData:data completion:completion];
@@ -1838,7 +1838,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:cleanID]
          updateData:data completion:completion];
     }
-    
+
     - (void)deleteAccessory:(NSString *)accessoryID completion:(void (^)(NSError * _Nullable error))completion {
         // 🗑️ Fetch image URLs before deleting the document so we can clean up Storage
         [self pp_fetchImageURLsForAccessoryID:accessoryID completion:^(NSArray<NSString *> *imageURLs) {
@@ -1853,9 +1853,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }];
         }];
     }
-    
+
 #pragma mark - 🗑️ Storage Cleanup Helpers
-    
+
     - (void)pp_fetchImageURLsForAccessoryID:(NSString *)accessoryID
                                 completion:(void (^)(NSArray<NSString *> *urls))completion {
         if (!accessoryID || accessoryID.length == 0) {
@@ -1874,23 +1874,23 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             if (completion) completion(urls);
         }];
     }
-    
+
     - (NSArray<PetAccessory *> *)filterByMainCategory:(NSInteger)mainCatID subCategory:(NSInteger)subCatID {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"petMainCategoryID == %ld AND petSubCategoryID == %ld", mainCatID, subCatID];
         return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
     }
-    
-    
+
+
     + (void)addFavoriteAccessoryWithID:(NSString *)accessoryID forUserID:(NSString *)userID {
         FIRFirestore *db = [FIRFirestore firestore];
-        
+
         NSDictionary *data = @{
             @"favoritedAt": [FIRTimestamp timestamp]
         };
-        
+
         FIRDocumentReference *userDoc = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
         FIRCollectionReference *favCollection = [userDoc collectionWithPath:@"favoriteAccessories"];
-        
+
         [[favCollection documentWithPath:accessoryID]
          setData:data completion:^(NSError * _Nullable error) {
             if (error) {
@@ -1905,13 +1905,13 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
+
     + (void)removeFavoriteAccessoryWithID:(NSString *)accessoryID forUserID:(NSString *)userID {
         FIRFirestore *db = [FIRFirestore firestore];
-        
+
         FIRDocumentReference *userDoc = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
         FIRCollectionReference *favCollection = [userDoc collectionWithPath:@"favoriteAccessories"];
-        
+
         [[favCollection documentWithPath:accessoryID]
          deleteDocumentWithCompletion:^(NSError * _Nullable error) {
             if (error) {
@@ -1926,15 +1926,15 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
+
     + (void)isAccessoryFavorited:(NSString *)accessoryID
     forUser:(NSString *)userID
     completion:(void (^)(BOOL favorited))completion {
         FIRFirestore *db = [FIRFirestore firestore];
-        
+
         FIRDocumentReference *userDoc = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
         FIRCollectionReference *favCollection = [userDoc collectionWithPath:@"favoriteAccessories"];
-        
+
         [[favCollection documentWithPath:accessoryID]
          getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
             if (error) {
@@ -1945,32 +1945,32 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
+
     + (void)fetchFavoriteAccessoryIDsForUserID:(NSString *)userID
     completion:(void (^)(NSArray<NSString *> *accessoryIDs))completion {
         FIRFirestore *db = [FIRFirestore firestore];
-        
+
         FIRDocumentReference *userDoc = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
         FIRCollectionReference *favCollection = [userDoc collectionWithPath:@"favoriteAccessories"];
-        
+
         [favCollection getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
                 NSLog(@"❌ Error fetching favorite accessories: %@", error.localizedDescription);
                 completion(@[]);
                 return;
             }
-            
+
             NSMutableArray *accessoryIDs = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 [accessoryIDs addObject:doc.documentID];
             }
-            
+
             completion(accessoryIDs);
         }];
     }
-    
-    
-    
+
+
+
     //////
     ///
     ///
@@ -1983,7 +1983,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 completion(@[]);
                 return;
             }
-            
+
             NSMutableArray<PetAccessory *> *accessories = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
@@ -1993,7 +1993,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             completion(accessories);
         }];
     }
-    
+
     + (void)fetchAccessoriesForUserID:(NSString *)userID accessKindType:(AccessKindType)accessKindType completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         FIRFirestore *db = [FIRFirestore firestore];
         [[[db collectionWithPath:@"petAccessories"]
@@ -2003,7 +2003,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 completion(@[]);
                 return;
             }
-            
+
             NSMutableArray<PetAccessory *> *accessories = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
@@ -2011,22 +2011,22 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (item.accessKindType == accessKindType) {
                     [accessories addObject:item];
                 }
-                
+
             }
             completion(accessories);
         }];
     }
-    
+
     + (void)fetchAccessoriesWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         if (itemIDs.count == 0) {
             completion(@[]);
             return;
         }
-        
+
         FIRFirestore *db = [FIRFirestore firestore];
         NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
         dispatch_group_t group = dispatch_group_create();
-        
+
         for (NSString *itemID in itemIDs) {
             dispatch_group_enter(group);
             [[[db collectionWithPath:@"petAccessories"] documentWithPath:itemID]
@@ -2039,23 +2039,23 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 dispatch_group_leave(group);
             }];
         }
-        
+
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             completion(results);
         });
     }
-    
-    
+
+
     + (void)fetchAccessoriesTypeAccessWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         if (itemIDs.count == 0) {
             completion(@[]);
             return;
         }
-        
+
         FIRFirestore *db = [FIRFirestore firestore];
         NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
         dispatch_group_t group = dispatch_group_create();
-        
+
         for (NSString *itemID in itemIDs) {
             dispatch_group_enter(group);
             [[[db collectionWithPath:@"petAccessories"] documentWithPath:itemID]
@@ -2063,30 +2063,30 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (doc.exists && doc.data) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    
+
                     if(item.accessKindType == AccessTypeAccessory)
                         [results addObject:item];
                 }
                 dispatch_group_leave(group);
             }];
         }
-        
+
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             completion(results);
         });
     }
-    
-    
+
+
     + (void)fetchAccessoriesTypeFoodWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         if (itemIDs.count == 0) {
             completion(@[]);
             return;
         }
-        
+
         FIRFirestore *db = [FIRFirestore firestore];
         NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
         dispatch_group_t group = dispatch_group_create();
-        
+
         for (NSString *itemID in itemIDs) {
             dispatch_group_enter(group);
             [[[db collectionWithPath:@"petAccessories"] documentWithPath:itemID]
@@ -2094,38 +2094,75 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (doc.exists && doc.data) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    
+
                     if(item.accessKindType == AccessTypeFood)
                         [results addObject:item];
                 }
                 dispatch_group_leave(group);
             }];
         }
-        
+
         dispatch_group_notify(group, dispatch_get_main_queue(), ^{
             completion(results);
         });
     }
-    
+
+    + (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
+                                         excludingAccessory:(PetAccessory *)exclude
+                                                completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
+        if (ownerID.length == 0) { if (completion) completion(@[]); return; }
+
+        FIRFirestore *db = [FIRFirestore firestore];
+        FIRQuery *query = [[[db collectionWithPath:@"petAccessories"]
+                           queryWhereField:@"ownerID" isEqualTo:ownerID]
+                           queryLimitedTo:25];
+
+        [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+            if (error) {
+                NSLog(@"❌ fetchProviderMarketplaceAccessories error: %@", error.localizedDescription);
+                if (completion) completion(@[]);
+                return;
+            }
+
+            NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
+            NSString *excludeID = exclude.accessoryID;
+            for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                if ([doc.documentID isEqualToString:excludeID]) continue;
+                PetAccessory *acc = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                acc.accessoryID = doc.documentID;
+                if (acc.isBlocked || acc.isDeleted || acc.isDisabled) continue;
+                if (acc.accessKindType != AccessTypeAccessory && acc.accessKindType != AccessTypeFood) continue;
+                if (!acc.showInAppMarket) continue;
+                [results addObject:acc];
+            }
+
+            [results sortUsingComparator:^NSComparisonResult(PetAccessory *a, PetAccessory *b) {
+                return [b.createdAt compare:a.createdAt];
+            }];
+
+            if (completion) completion([results copy]);
+        }];
+    }
+
     + (void)fetchSuggestedAccessoriesForAccess:(PetAccessory *)ad completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         if (!ad || !ad.name || ad.name.length == 0) {
             if (completion) completion(@[]);
             return;
         }
-        
+
         FIRFirestore *db = [FIRFirestore firestore];
         FIRCollectionReference *accessoriesRef = [db collectionWithPath:@"petAccessories"];
-        
+
         FIRQuery *query = [accessoriesRef queryWhereField:@"petMainCategoryID"
                                                 isEqualTo:@(ad.petMainCategoryID)];
-        
+
         if (ad.accessKindType == AccessTypeFood) {
-            
+
         } else {
-            
+
         }
-        
-        
+
+
         //AccessTypeAccessory
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
@@ -2133,25 +2170,25 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (completion) completion(@[]);
                 return;
             }
-            
+
             NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 if ([doc.documentID isEqualToString:ad.accessoryID]) {
                     continue; // Skip the same accessory
                 }
-                
+
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 accessory.accessoryID = doc.documentID;
                 if (accessory.accessKindType == ad.accessKindType) {
                     [results addObject:accessory];
                 }
             }
-            
+
             if (completion) completion(results);
         }];
-        
+
     }
-    
+
     -(PetAccessory *)getAccessoryID:(NSString *)accessID
     {
         for (PetAccessory *accessory in self.accessoriesArray) {
@@ -2159,20 +2196,20 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 return accessory;
             }
         }
-        
+
         return nil;
     }
-    
-    
-    
+
+
+
 #pragma mark - Local Filtering Methods
-    
+
     /// Filter loaded accessories by condition enum (new/used)
     - (NSArray<PetAccessory *> *)filterAccessoriesWithCondition:(AccessConditions)condition {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"condition == %ld", (long)condition];
         return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
     }
-    
+
     /// Filter by mainCategory, subCategory, and condition
     - (NSArray<PetAccessory *> *)filterAccessoriesWithMainCategory:(NSInteger)mainCategoryID
     subCategory:(NSInteger)subCategoryID
@@ -2183,31 +2220,31 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         ];
         return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
     }
-    
+
 #pragma mark - Firestore Real-time Listener with Condition
-    
+
     /// Start listener, optionally filtering by condition (pass 0 to skip)
     - (void)startListeningWithMainCategory:(NSInteger)mainCategoryID
     condition:(AccessConditions)condition
     onArray:(void (^)(NSArray<PetAccessory *> *accessories))updateBlock {
-        
+
         //NSLog(@"PetAccessory: startListeningWithMainCategory : %ld condition: %ld", mainCategoryID,condition);
-        
+
         if (self.listener) {
             [self.listener remove];
         }
-        
+
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                            queryWhereField:@"petMainCategoryID" isEqualTo:@(mainCategoryID)];
-        
+
         if (condition == AccessConditionsNew || condition == AccessConditionsUsed) {
             query = [query queryWhereField:@"condition" isEqualTo:@(condition)];
         }
-        
+
         if (mainCategoryID == 0) {
             query = [query queryWhereField:@"condition" isEqualTo:@(AccessConditionsNew)];
         }
-        
+
         // U4: Prevent retain cycle in accessory condition listener
         __weak typeof(self) weakSelf = self;
         self.listener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
@@ -2221,7 +2258,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 [strongSelf.accessoriesArray addObject:accessory];
-                
+
                 // NSLog(@"PetAccessory: %@", accessory.accessoryID);
             }
             if (updateBlock) {
@@ -2229,28 +2266,28 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
         }];
     }
-    
-    
+
+
     - (NSArray<PetAccessory *> *)filterAccessoriesByKind:(AccessKindType)kind {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"accessKindType == %ld", kind];
         return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
     }
-    
-    
+
+
     - (void)startListeningWithKind:(AccessKindType)kindType
     onUpdate:(void (^)(NSArray<PetAccessory *> *accessories))updateBlock {
-        
+
         if (self.listener) {
             [self.listener remove];
         }
-        
+
         AccessKindType normalizedKind = PPAccessKindTypeNormalize(kindType);
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                            queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
         if (normalizedKind != AccessTypePetMedicine) {
             query = PPAccessoryRequirePublicMarketVisibility(query);
         }
-        
+
         // U4: Prevent retain cycle in accessory kind-only listener
         __weak typeof(self) weakSelf = self;
         self.listener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
@@ -2260,7 +2297,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 NSLog(@"❌ Error listening for accessories: %@", error.localizedDescription);
                 return;
             }
-            
+
             [strongSelf.accessoriesArray removeAllObjects];
             NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
@@ -2275,38 +2312,38 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                       matchingKind:normalizedKind
                        requiresAppMarketVisibility:requiresMarketVisibility];
             [strongSelf.accessoriesArray addObjectsFromArray:visibleItems];
-            
+
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
             }
         }];
     }
-    
-    
+
+
     - (void)fetchAccessoriesOfKind:(AccessKindType)kind
     completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
-        
+
         AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                            queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
         if (normalizedKind != AccessTypePetMedicine) {
             query = PPAccessoryRequirePublicMarketVisibility(query);
         }
-        
+
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
                 NSLog(@"❌ Error fetching by kind: %@", error.localizedDescription);
                 completion(@[]);
                 return;
             }
-            
+
             NSMutableArray *results = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 item.accessoryID = doc.documentID;
                 if (item) [results addObject:item];
             }
-            
+
             BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
             NSArray<PetAccessory *> *visibleItems =
                 [PetAccessoryManager pp_filterItems:results
@@ -2320,16 +2357,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     - (void)fetchAccessoriesForAllMainKinds:(void (^)(NSArray<PetAccessory *> *accessories))completion
     {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-        
+
         FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
-        
+
         // Optional safety limit (adjust if needed)
         // query = [query queryLimitedTo:50];
-        
+
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {
-            
+
             if (error || !snapshot) {
                 NSLog(@"❌ fetchAccessoriesForAllMainKinds error: %@",
                       error.localizedDescription);
@@ -2338,12 +2375,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 });
                 return;
             }
-            
+
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-                
+
                 NSMutableArray<PetAccessory *> *results =
                 [NSMutableArray arrayWithCapacity:snapshot.documents.count];
-                
+
                 for (FIRDocumentSnapshot *doc in snapshot.documents) {
                     PetAccessory *item =
                     [[PetAccessory alloc] initWithDictionary:doc.data
@@ -2354,32 +2391,32 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
                 NSArray<PetAccessory *> *visibleAccessories =
                     [PetAccessoryManager pp_filterVisibleItems:results matchingKind:AccessTypeAccessory];
-                
+
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (completion) completion(visibleAccessories);
                 });
             });
         }];
     }
-    
+
 #pragma mark - Global Food Fetching
     /// Fetch all food accessories for all main kinds (AccessTypeFood only)
     - (void)fetchFoodForAllMainKinds:(void (^)(NSArray<PetAccessory *> *foods))completion
     {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-        
+
         FIRQuery *query =
         [[db collectionWithPath:@"petAccessories"]
          queryWhereField:@"accessKindType" isEqualTo:@(AccessTypeFood)];
         query = PPAccessoryRequirePublicMarketVisibility(query);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
-        
+
         // Optional safety limit
         // query = [query queryLimitedTo:50];
-        
+
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {
-            
+
             if (error || !snapshot) {
                 NSLog(@"❌ fetchFoodForAllMainKinds error: %@",
                       error.localizedDescription);
@@ -2388,12 +2425,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 });
                 return;
             }
-            
+
             dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-                
+
                 NSMutableArray<PetAccessory *> *results =
                 [NSMutableArray arrayWithCapacity:snapshot.documents.count];
-                
+
                 for (FIRDocumentSnapshot *doc in snapshot.documents) {
                     PetAccessory *item =
                     [[PetAccessory alloc] initWithDictionary:doc.data
@@ -2404,73 +2441,73 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
                 NSArray<PetAccessory *> *visibleFoods =
                     [PetAccessoryManager pp_filterVisibleItems:results matchingKind:AccessTypeFood];
-                
+
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (completion) completion(visibleFoods);
                 });
             });
         }];
     }
-    
-    
+
+
 #pragma mark - One-time Migration Helper
     /// One-time migration: Populate missing searchTitle for existing accessories.
     - (void)migrateSearchTitleForExistingAccessories
     {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-        
+
         NSLog(@"🚀 Starting accessories searchTitle migration...");
-        
+
         [[db collectionWithPath:@"petAccessories"]
          getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
-            
+
             if (error || !snapshot) {
                 NSLog(@"❌ Accessories migration failed: %@", error.localizedDescription);
                 return;
             }
-            
+
             __block NSInteger updatedCount = 0;
-            
+
             dispatch_group_t group = dispatch_group_create();
-            
+
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                
+
                 NSString *name = doc.data[@"name"];
                 NSString *searchTitle = doc.data[@"searchTitle"];
-                
+
                 // Skip if already migrated or invalid
                 if (searchTitle.length > 0 || name.length == 0) {
                     continue;
                 }
-                
+
                 dispatch_group_enter(group);
-                
+
                 NSString *normalized =
                 [ArabicNormalizer normalize:name];
-                
+
                 [[doc reference] updateData:@{
                     @"searchTitle": normalized
                 } completion:^(NSError * _Nullable err) {
-                    
+
                     if (err) {
                         NSLog(@"❌ Failed to migrate accessory %@: %@",
                               doc.documentID, err.localizedDescription);
                     } else {
                         updatedCount++;
                     }
-                    
+
                     dispatch_group_leave(group);
                 }];
             }
-            
+
             dispatch_group_notify(group, dispatch_get_main_queue(), ^{
                 NSLog(@"✅ Accessories searchTitle migration completed. Updated: %ld",
                       (long)updatedCount);
             });
         }];
     }
-    
-  
+
+
 #pragma mark - Latest Accessories Fetching
 
 - (void)dealloc {
@@ -2536,4 +2573,4 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
 
 
- 
+

@@ -393,7 +393,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 /// Title / subtitle / price summary — uses reusable PPPetsTitleView (same as ViewerVC)
 - (void)pp_buildSummaryCard {
 
-    
+
     // --- Title Card Container ---
     self.titleCard = [[UIView alloc] init];
     self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
@@ -437,7 +437,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.titleBlurView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
         [self.titleBlurView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
-    
+
     // Tint constraints
     [NSLayoutConstraint activateConstraints:@[
         [tintView.topAnchor constraintEqualToAnchor:self.titleBlurView.contentView.topAnchor],
@@ -446,7 +446,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [tintView.bottomAnchor constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor],
     ]];
 
-    
+
   ;
     [self.contentView addSubview:self.titleCard];
 
@@ -467,7 +467,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
         [self.petsTitleView.bottomAnchor   constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
-    
+
     self.titleCard.hidden = YES;
 }
 
@@ -837,14 +837,39 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 /// Async fetch for suggested accessories
 - (void)pp_fetchSuggestions {
     __weak typeof(self) weakSelf = self;
-    [PetAccessoryManager fetchSuggestedAccessoriesForAccess:self.accessAds
-                                                 completion:^(NSArray<PetAccessory *> *accessories) {
+
+    void (^showCategorySuggestions)(void) = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        strongSelf.suggestedAccessories = accessories ?: @[];
-        [strongSelf refreshSuggestedAccessoriesUI];
-        [strongSelf.accessoryCollectionView reloadData];
-    }];
+        strongSelf.mayLikeLabel.text = kLang(@"SimilarAaccess");
+        [PetAccessoryManager fetchSuggestedAccessoriesForAccess:strongSelf.accessAds
+                                                    completion:^(NSArray<PetAccessory *> *accessories) {
+            __strong typeof(weakSelf) s = weakSelf;
+            if (!s) return;
+            s.suggestedAccessories = accessories ?: @[];
+            [s refreshSuggestedAccessoriesUI];
+            [s.accessoryCollectionView reloadData];
+        }];
+    };
+
+    if ([self pp_isProviderMarketplaceItem]) {
+        [PetAccessoryManager fetchProviderMarketplaceAccessoriesForOwnerID:self.accessAds.ownerID
+                                                        excludingAccessory:self.accessAds
+                                                               completion:^(NSArray<PetAccessory *> *results) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (results.count >= 2) {
+                strongSelf.suggestedAccessories = results;
+                strongSelf.mayLikeLabel.text = kLang(@"accessory_view_more_from_provider");
+                [strongSelf refreshSuggestedAccessoriesUI];
+                [strongSelf.accessoryCollectionView reloadData];
+            } else {
+                showCategorySuggestions();
+            }
+        }];
+    } else {
+        showCategorySuggestions();
+    }
 }
 
 - (UIView *)pp_surfaceCard {
@@ -1443,14 +1468,14 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)applyAccessoryContent {
     self.heroKindBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", [PetAccessory typeTextForAccessory:self.accessAds]];
     self.heroStockBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", [self.accessAds stockStatusText]];
-    
+
     UIColor *stockBadgeColor = [self pp_stockAccentColor];
     self.heroStockBadgeLabel.backgroundColor = [stockBadgeColor colorWithAlphaComponent:0.96];
-    
+
     [self.petsTitleView configureWithTitle:PPSafeString(self.accessAds.name)
                                    location:[self pp_summarySubtitleText]
                                       price:[self pp_priceText]];
-    
+
     NSString *ownerName;
     if (![self pp_isUsedAccessory]) {
         ownerName = kLang(@"accessory_view_store_name");
@@ -1466,7 +1491,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.stockValueLabel.text = [self.accessAds stockStatusText];
     self.stockValueLabel.textColor = stockBadgeColor;
     self.descView.accessory = self.accessAds;
-    
+
     [self pp_updateSellerAvatar];
     [self pp_updateSellerStatusBadgeStyle];
     [self pp_updateSellerActions];
@@ -1481,7 +1506,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.typeValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.conditionValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.stockValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
- 
+
 }
 
 - (void)refreshSuggestedAccessoriesUI {
@@ -1501,10 +1526,10 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 // In AccessViewerVC.m
 - (void)handleShareAction {
     // Get the current accessory being viewed
-    
-    
+
+
     PetAccessory *currentAccessory = self.accessAds;
-    
+
     // Share the accessory
     [PetAccessory sharePetAccessory:currentAccessory
                  fromViewController:self
@@ -1565,7 +1590,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 }
 
 - (void)shakeButton:(UIButton *)button {
-    
+
     CABasicAnimation *shake = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
     shake.fromValue = @(-0.05);  // small angle in radians
     shake.toValue = @(0.05);
@@ -1573,8 +1598,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     shake.autoreverses = YES;
     shake.repeatCount = HUGE_VALF; // infinite
     [button.layer addAnimation:shake forKey:@"shake"];
-    
-    
+
+
 }
 
 - (void)addToCartButtonTapped:(NSInteger)quantity{
@@ -1648,7 +1673,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     [self.bottomBar performAddToCartSuccessAnimation];
     [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
-    
+
     [self.QtyDelegate updateCartAndReloadCollection];
     [self loadItemsCountInBadge];
     [self checkCartAndAnimateIfNeeded];
@@ -1676,18 +1701,18 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
               withColor:(UIColor *)color
                   width:(CGFloat)width
            cornerRadius:(CGFloat)cornerRadius {
-    
+
     CAShapeLayer *borderLayer = [CAShapeLayer layer];
     borderLayer.strokeColor = color.CGColor;
     borderLayer.fillColor = UIColor.clearColor.CGColor;
     borderLayer.lineWidth = width;
-    
+
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:view.bounds
                                                     cornerRadius:cornerRadius];
     borderLayer.path = path.CGPath;
     borderLayer.frame = view.bounds;
     borderLayer.name = @"PPStrokeLayer";
-    
+
     // Remove old stroke if exists
     for (CALayer *layer in view.layer.sublayers) {
         if ([layer.name isEqualToString:@"PPStrokeLayer"]) {
@@ -1695,7 +1720,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
             break;
         }
     }
-    
+
     [view.layer addSublayer:borderLayer];
 }
 
@@ -1742,7 +1767,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
-    
+
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:YES];
     if (@available(iOS 26.0, *))
         [self ios26Bar];
@@ -1823,7 +1848,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     titleCard.backgroundColor = AppClearClr;
     [self pp_navBarSetTitleViewCentered:titleCard];
-    
+
     if (PPCurrentUser && PPCurrentFIRAuthUser) {
         [PetAdManager isAdFavorited:self.accessAds.accessoryID
                             forUser:PPCurrentUser.ID
@@ -1833,7 +1858,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
             self.favBarButtonItem.image = favorited ? [UIImage systemImageNamed:@"heart.fill"] : [UIImage systemImageNamed:@"heart"];
             self.favBarButtonItem.tintColor = favorited ? [AppPrimaryClr colorWithAlphaComponent:1.2] : UIColor.labelColor;
 
-          
+
         }];
 	}
 }
@@ -1866,7 +1891,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     if (![self pp_ensureSignedInForAction]) {
         return;
     }
-    
+
     self.isFavorite = !self.isFavorite;
 
     if (self.isFavorite) {
@@ -1880,13 +1905,13 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         NSLog(@"❌ Removed from favorites");
     }
-    
+
     if(self.isFavorite)
         [PetAdManager addFavoriteAdWithID:self.accessAds.accessoryID collection:@"favoritesAccessories" forUserID:[UserManager sharedManager].currentUser.ID];
     else
         [PetAdManager removeFavoriteAdWithID:self.accessAds.accessoryID collection:@"favoritesAccessories" forUserID:[UserManager sharedManager].currentUser.ID];
-    
-    
+
+
 }
 
 

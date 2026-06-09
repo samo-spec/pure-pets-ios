@@ -86,6 +86,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)fetchAccessoriesWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
 
 + (void)fetchSuggestedAccessoriesForAccess:(PetAccessory *)ad completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
+
++ (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
+                                    excludingAccessory:(PetAccessory *)exclude
+                                           completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
 @property (nonatomic, strong) UIViewController *ParentVC;
 
 /// Start listener, optionally filtering by condition (pass 0 to skip)
