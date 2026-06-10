@@ -22,11 +22,11 @@ static const CGFloat kSPSpace24 = 24.0;
 static const CGFloat kSPSpace32 = 32.0;
 static const CGFloat kSPAvatarSize = 92.0;
 static const CGFloat kSPAvatarShellSize = 108.0;
-static const CGFloat kSPSurfaceCornerRadius = 26.0;
+static const CGFloat kSPSurfaceCornerRadius = 36.0;
 static const CGFloat kSPButtonHeight = 50.0;
 
 static UIColor *SPSellerInkColor(void) {
-    return AppPrimaryTextClr ?: [UIColor colorWithWhite:0.08 alpha:1.0];
+    return AppPrimaryClr ?: [UIColor colorWithWhite:0.08 alpha:1.0];
 }
 
 static UIColor *SPSellerSecondaryTextColor(void) {
@@ -37,7 +37,7 @@ static UIColor *SPSellerSurfaceColor(UITraitCollection *traitCollection) {
     if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
         return [UIColor colorWithWhite:0.105 alpha:1.0];
     }
-    return AppForgroundColr ?: UIColor.whiteColor;
+    return [AppForgroundColr colorWithAlphaComponent:0.7] ?: UIColor.whiteColor;
 }
 
 static UIColor *SPSellerBackgroundColor(UITraitCollection *traitCollection) {
@@ -297,7 +297,7 @@ static UIColor *SPSellerRoseColor(void) {
 - (UIView *)createSurfaceView {
     UIView *surface = [[UIView alloc] init];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
-    surface.backgroundColor = SPSellerSurfaceColor(self.traitCollection);
+    surface.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.75];
     surface.layer.cornerRadius = kSPSurfaceCornerRadius;
     surface.layer.masksToBounds = NO;
     surface.layer.borderWidth = 1.0;
@@ -306,6 +306,25 @@ static UIColor *SPSellerRoseColor(void) {
     surface.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.24 : 0.08;
     surface.layer.shadowRadius = 24.0;
     surface.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleExtraLight];
+    if (@available(iOS 13.0, *)) {
+        blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    }
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.layer.cornerRadius = kSPSurfaceCornerRadius;
+    blurView.layer.masksToBounds = YES;
+    blurView.userInteractionEnabled = NO;
+    [surface addSubview:blurView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [blurView.topAnchor constraintEqualToAnchor:surface.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
+    ]];
+
     return surface;
 }
 
@@ -336,9 +355,9 @@ static UIColor *SPSellerRoseColor(void) {
     UIImage *image = PPSYSImage(imageName);
     [button setImage:image forState:UIControlStateNormal];
     button.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
-    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, -3.0, 0.0, 3.0);
-    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 3.0, 0.0, -3.0);
+    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
+    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, -6.0, 0.0, 6.0);
+    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, -6.0);
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(handleButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];

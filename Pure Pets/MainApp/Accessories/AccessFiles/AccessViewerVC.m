@@ -42,7 +42,7 @@ static const CGFloat kAVHeroCornerRadius     = 28.0;   // Modern rounded hero co
 static const CGFloat kAVDetailRowCorner      = 18.0;    // Detail row bg
 
 // Layout
-static const CGFloat kAVSectionInset         = 12.0;    // horizontal screen margin
+static const CGFloat kAVSectionInset         = 16.0;    // horizontal screen margin
 static const CGFloat kAVCardPadding          = 20.0;    // inner section padding
 static const CGFloat kAVActionBarHeight      = 50.0;    // action button height
 static const CGFloat kAVDetailRowMinHeight   = 66.0;    // minimum detail row height
@@ -61,7 +61,7 @@ static const CGFloat kAVCardShadowOffsetY    = 3.0;
 static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 static UIColor *AVSellerCardInkColor(void) {
-    return AppPrimaryTextClr ?: [UIColor colorWithWhite:0.08 alpha:1.0];
+    return AppPageColor() ?: [UIColor colorWithWhite:0.08 alpha:1.0];
 }
 
 static UIColor *AVSellerCardAccentColor(void) {
@@ -1086,7 +1086,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         config.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 24.0, 14.0, 24.0);
         config.title = title;
         config.baseForegroundColor = emphasized ? UIColor.whiteColor : AppPrimaryTextClr;
-        config.baseBackgroundColor = emphasized ? AVSellerCardInkColor() : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.64];
+        config.baseBackgroundColor = emphasized ? AppPrimaryClr : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.64];
         config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];
             attrs[NSFontAttributeName] = [GM boldFontWithSize:15];
@@ -1094,7 +1094,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         };
         button.configuration = config;
     } else {
-        button.backgroundColor = emphasized ? AVSellerCardInkColor() : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.9];
+        button.backgroundColor = emphasized ? AppPrimaryClr : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.9];
         [button setTitleColor:emphasized ? UIColor.whiteColor : AppPrimaryTextClr forState:UIControlStateNormal];
         [button setTitle:title forState:UIControlStateNormal];
         [button setImage:icon forState:UIControlStateNormal];
