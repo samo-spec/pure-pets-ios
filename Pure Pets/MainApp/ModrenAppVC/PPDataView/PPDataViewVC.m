@@ -1505,7 +1505,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     CGFloat targetTopInset =
     [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
     ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 12.0)
-    : (PPCurrentSectionsTabBarHeight() + 12.0);
+    : (PPCurrentSectionsTabBarHeight() + (PPIOS26() ? 2.0 : 12.0));
     CGRect sectionsFrame = self.sectionsSegmentedControl.frame;
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
 
@@ -1525,7 +1525,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         }
 
         targetTopInset =
-        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 12.0);
+        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 6.0);
     }
 
     CGFloat bottomInset = 0;

@@ -3006,3 +3006,17 @@
 "accessory_view_market_provider" = "Market Provider";
 "accessory_view_sold_by" = "Sold by";
 "accessory_view_more_from_provider" = "More from this provider";
+"fulfillment_status_delivery_assigned" = "Delivery partner assigned";
+
+/* Premium Seller Profile */
+"premium_seller" = "Premium Seller";
+"verified_quality" = "Verified Quality";
+"premium_seller_description" = "A trusted seller offering high-quality products with excellent customer service.";
+"get_in_touch" = "Get in Touch";
+"seller_items" = "Seller's Items";
+"seller_profile_empty_items" = "No available items from this seller right now.";
+"message" = "Message";
+"call" = "Call";
+"verified" = "Verified";
+"premium_seller_on_platform" = "Premium seller on platform";
+"View_Profile" = "View Profile";

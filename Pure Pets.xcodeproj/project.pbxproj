@@ -509,6 +509,7 @@
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
 		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
+		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
 		F2916F0C2D54A3E400FF0394 /* Beiruti-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */; };
 		F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */; };
@@ -674,7 +675,6 @@
 		F2C638602E5132A3007E4CE4 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = F2C6385F2E5132A3007E4CE4 /* cities.json */; };
 		F2C890112F5C100000A1B2C3 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */; };
 		F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */ = {isa = PBXBuildFile; fileRef = F273146C2F31168400FFA0B8 /* PPOrder.h */; };
-		F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */; };
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
 		F2CA8DD02F1DC1C900AD4416 /* PPChatsFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */; };
 		F2CA8DD32F1DCF2500AD4416 /* ChMessagingController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */; };
@@ -790,6 +790,7 @@
 		F2FFDA192FCDCFC00025B5A9 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA182FCDCFC00025B5A9 /* FirebasePerformance */; };
 		F2FFDA1B2FCDCFC00025B5A9 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA1A2FCDCFC00025B5A9 /* FirebaseRemoteConfig */; };
 		F2FFDA1D2FCDCFC00025B5A9 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA1C2FCDCFC00025B5A9 /* FirebaseStorage */; };
+		F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */; };
 		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
 /* End PBXBuildFile section */
@@ -1519,8 +1520,6 @@
 		F272E5AD2E2B95DA00ECC7A5 /* VetViewerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetViewerViewController.m; sourceTree = "<group>"; };
 		F273146C2F31168400FFA0B8 /* PPOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrder.h; sourceTree = "<group>"; };
 		F273146D2F31169000FFA0B8 /* PPOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrder.m; sourceTree = "<group>"; };
-		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
-		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F27314752F3117BD00FFA0B8 /* PPOrderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOrderManager.h; sourceTree = "<group>"; };
 		F27314762F3117D800FFA0B8 /* PPOrderManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderManager.m; sourceTree = "<group>"; };
 		F27314792F31188100FFA0B8 /* PPPaymentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPaymentManager.h; sourceTree = "<group>"; };
@@ -1784,6 +1783,8 @@
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
 		F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyItemsViewControllerr.m; sourceTree = "<group>"; };
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
+		F290F54D2FD9E943008EADEE /* SellerProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SellerProfileVC.h; sourceTree = "<group>"; };
+		F290F54E2FD9E943008EADEE /* SellerProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SellerProfileVC.m; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -2306,6 +2307,8 @@
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
 		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
+		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -3953,6 +3956,8 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F290F54D2FD9E943008EADEE /* SellerProfileVC.h */,
+				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
 				F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */,
 				F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */,
 				F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */,
@@ -5742,6 +5747,7 @@
 				F2AB48912C72CF3C00D88603 /* JGProgressHUDImageIndicatorView.m in Sources */,
 				F2CDBD252D11526000FE7FA2 /* ChildModel.m in Sources */,
 				F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */,
+				F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
 				F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */,

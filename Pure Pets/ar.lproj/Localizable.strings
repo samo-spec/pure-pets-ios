@@ -2994,3 +2994,17 @@
 "accessory_view_market_provider" = "مزود سوق";
 "accessory_view_sold_by" = "يباع بواسطة";
 "accessory_view_more_from_provider" = "المزيد من هذا المزود";
+"fulfillment_status_delivery_assigned" = "تم تعيين مندوب";
+
+/* Premium Seller Profile */
+"premium_seller" = "بائع متميز";
+"verified_quality" = "جودة موثوقة";
+"premium_seller_description" = "بائع معتمد يوفر منتجات ذات جودة عالية ويتمتع بخدمة عملاء ممتازة.";
+"get_in_touch" = "تواصل مع البائع";
+"seller_items" = "منتجات البائع";
+"seller_profile_empty_items" = "لا توجد منتجات متاحة لهذا البائع حالياً.";
+"message" = "رسالة";
+"call" = "اتصال";
+"verified" = "موثق";
+"premium_seller_on_platform" = "بائع متميز على المنصة";
+"View_Profile" = "عرض الملف الشخصي";

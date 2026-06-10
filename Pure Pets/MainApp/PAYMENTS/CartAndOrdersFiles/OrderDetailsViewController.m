@@ -2271,6 +2271,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIView *backgroundTopGlowView;
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
+@property (nonatomic, strong) CAGradientLayer *backgroundTopGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *backgroundBottomGlowLayer;
 @property (nonatomic, strong) UIView *headerContainer;
 @property (nonatomic, strong) UIView *headerCard;
 @property (nonatomic, strong) CAGradientLayer *headerHeroLiquidBorderLayer;
@@ -2300,6 +2302,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UIView *statusBadge;
 @property (nonatomic, strong) UIImageView *statusIconView;
 @property (nonatomic, strong) UIView *summaryPanel;
+@property (nonatomic, strong) UIVisualEffectView *summaryPanelBlurView;
+@property (nonatomic, strong) CAGradientLayer *summaryPanelGradientLayer;
 @property (nonatomic, strong) UIView *headerSeparatorTop;
 @property (nonatomic, strong) UIView *headerSeparatorBottom;
 
@@ -2351,6 +2355,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_playCheckoutSuccessConfettiIfNeeded;
 - (void)pp_stopCheckoutSuccessConfetti;
 - (void)pp_removeCheckoutSuccessConfettiAnimated:(BOOL)animated;
+- (void)pp_installLiveBackgroundGlowLayersIfNeeded;
+- (void)pp_updateLiveBackgroundGlowFrames;
+- (void)pp_refreshLiveBackgroundGlowColors;
+- (void)pp_startLiveBackgroundGlowsIfNeeded;
+- (void)pp_stopLiveBackgroundGlows;
+- (void)pp_updateMoneySectionChrome;
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_refreshHeaderHeroLiquidBorderColors;
 - (void)pp_updateHeaderHeroLiquidBorder;
@@ -2437,6 +2447,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [super viewDidAppear:animated];
     self.isOrderDetailsScreenVisible = YES;
     [self showEntryPresentationIfNeeded];
+    [self pp_startLiveBackgroundGlowsIfNeeded];
     [self pp_startHeaderHeroLiquidBorderIfNeeded];
     [self pp_startCurrentStatusSummaryMotionIfNeeded];
     [self.progressTimelineView refreshCurrentStatusMotion];
@@ -2446,6 +2457,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
+    [self pp_stopLiveBackgroundGlows];
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCurrentStatusSummaryMotion];
     [self.progressTimelineView refreshCurrentStatusMotion];
@@ -2486,6 +2498,176 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     }
     self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
     self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
+    [self pp_updateLiveBackgroundGlowFrames];
+    [self pp_updateMoneySectionChrome];
+}
+
+- (void)pp_installLiveBackgroundGlowLayersIfNeeded
+{
+    if (!self.backgroundTopGlowLayer && self.backgroundTopGlowView) {
+        self.backgroundTopGlowLayer = [CAGradientLayer layer];
+        self.backgroundTopGlowLayer.name = @"PPOrderLiveBackgroundTopGlow";
+        self.backgroundTopGlowLayer.startPoint = CGPointMake(0.18, 0.16);
+        self.backgroundTopGlowLayer.endPoint = CGPointMake(0.92, 0.92);
+        self.backgroundTopGlowLayer.locations = @[@0.0, @0.42, @1.0];
+        if (@available(iOS 12.0, *)) {
+            self.backgroundTopGlowLayer.type = kCAGradientLayerRadial;
+        }
+        [self.backgroundTopGlowView.layer addSublayer:self.backgroundTopGlowLayer];
+    }
+
+    if (!self.backgroundBottomGlowLayer && self.backgroundBottomGlowView) {
+        self.backgroundBottomGlowLayer = [CAGradientLayer layer];
+        self.backgroundBottomGlowLayer.name = @"PPOrderLiveBackgroundBottomGlow";
+        self.backgroundBottomGlowLayer.startPoint = CGPointMake(0.30, 0.20);
+        self.backgroundBottomGlowLayer.endPoint = CGPointMake(0.88, 0.88);
+        self.backgroundBottomGlowLayer.locations = @[@0.0, @0.48, @1.0];
+        if (@available(iOS 12.0, *)) {
+            self.backgroundBottomGlowLayer.type = kCAGradientLayerRadial;
+        }
+        [self.backgroundBottomGlowView.layer addSublayer:self.backgroundBottomGlowLayer];
+    }
+
+    self.backgroundTopGlowView.layer.masksToBounds = YES;
+    self.backgroundBottomGlowView.layer.masksToBounds = YES;
+}
+
+- (void)pp_updateLiveBackgroundGlowFrames
+{
+    [self pp_installLiveBackgroundGlowLayersIfNeeded];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.backgroundTopGlowLayer.frame = self.backgroundTopGlowView.bounds;
+    self.backgroundBottomGlowLayer.frame = self.backgroundBottomGlowView.bounds;
+    [CATransaction commit];
+    if (self.isOrderDetailsScreenVisible) {
+        [self pp_startLiveBackgroundGlowsIfNeeded];
+    }
+}
+
+- (void)pp_refreshLiveBackgroundGlowColors
+{
+    [self pp_installLiveBackgroundGlowLayersIfNeeded];
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    if (!accent) accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *ink = isDark ? [UIColor colorWithRed:0.01 green:0.02 blue:0.018 alpha:1.0] : [UIColor colorWithRed:0.04 green:0.055 blue:0.048 alpha:1.0];
+    UIColor *mint = [UIColor colorWithRed:0.36 green:0.92 blue:0.74 alpha:1.0];
+    UIColor *warm = [UIColor colorWithRed:0.98 green:0.70 blue:0.34 alpha:1.0];
+
+    self.backgroundTopGlowLayer.colors = @[
+        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.26 : 0.20].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.16 : 0.12].CGColor,
+        (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
+    ];
+    self.backgroundBottomGlowLayer.colors = @[
+        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.22 : 0.16].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.14 : 0.10].CGColor,
+        (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
+    ];
+}
+
+- (void)pp_startLiveBackgroundGlowsIfNeeded
+{
+    [self pp_installLiveBackgroundGlowLayersIfNeeded];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopLiveBackgroundGlows];
+        return;
+    }
+
+    if (![self.backgroundTopGlowView.layer animationForKey:@"pp_order_top_glow_drift"]) {
+        CAAnimationGroup *drift = [CAAnimationGroup animation];
+        CABasicAnimation *x = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        x.fromValue = @(-8.0);
+        x.toValue = @(26.0);
+        CABasicAnimation *y = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+        y.fromValue = @(-4.0);
+        y.toValue = @(18.0);
+        drift.animations = @[x, y];
+        drift.duration = 8.6;
+        drift.autoreverses = YES;
+        drift.repeatCount = HUGE_VALF;
+        drift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.backgroundTopGlowView.layer addAnimation:drift forKey:@"pp_order_top_glow_drift"];
+    }
+
+    if (![self.backgroundBottomGlowView.layer animationForKey:@"pp_order_bottom_glow_drift"]) {
+        CAAnimationGroup *drift = [CAAnimationGroup animation];
+        CABasicAnimation *x = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        x.fromValue = @(12.0);
+        x.toValue = @(-24.0);
+        CABasicAnimation *y = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+        y.fromValue = @(10.0);
+        y.toValue = @(-14.0);
+        drift.animations = @[x, y];
+        drift.duration = 9.8;
+        drift.autoreverses = YES;
+        drift.repeatCount = HUGE_VALF;
+        drift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.backgroundBottomGlowView.layer addAnimation:drift forKey:@"pp_order_bottom_glow_drift"];
+    }
+
+    if (![self.backgroundTopGlowLayer animationForKey:@"pp_order_top_glow_breath"]) {
+        CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        breath.fromValue = @0.52;
+        breath.toValue = @0.92;
+        breath.duration = 5.8;
+        breath.autoreverses = YES;
+        breath.repeatCount = HUGE_VALF;
+        breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.backgroundTopGlowLayer addAnimation:breath forKey:@"pp_order_top_glow_breath"];
+    }
+
+    if (![self.backgroundBottomGlowLayer animationForKey:@"pp_order_bottom_glow_breath"]) {
+        CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        breath.fromValue = @0.44;
+        breath.toValue = @0.82;
+        breath.duration = 6.8;
+        breath.autoreverses = YES;
+        breath.repeatCount = HUGE_VALF;
+        breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.backgroundBottomGlowLayer addAnimation:breath forKey:@"pp_order_bottom_glow_breath"];
+    }
+}
+
+- (void)pp_stopLiveBackgroundGlows
+{
+    [self.backgroundTopGlowView.layer removeAnimationForKey:@"pp_order_top_glow_drift"];
+    [self.backgroundBottomGlowView.layer removeAnimationForKey:@"pp_order_bottom_glow_drift"];
+    [self.backgroundTopGlowLayer removeAnimationForKey:@"pp_order_top_glow_breath"];
+    [self.backgroundBottomGlowLayer removeAnimationForKey:@"pp_order_bottom_glow_breath"];
+    self.backgroundTopGlowView.layer.transform = CATransform3DIdentity;
+    self.backgroundBottomGlowView.layer.transform = CATransform3DIdentity;
+    self.backgroundTopGlowLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.50 : 0.72;
+    self.backgroundBottomGlowLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.42 : 0.64;
+}
+
+- (void)pp_updateMoneySectionChrome
+{
+    if (!self.summaryPanel) return;
+
+    self.summaryPanelBlurView.frame = self.summaryPanel.bounds;
+    self.summaryPanelBlurView.layer.cornerRadius = self.summaryPanel.layer.cornerRadius;
+    self.summaryPanelBlurView.layer.masksToBounds = YES;
+    self.summaryPanelGradientLayer.frame = self.summaryPanel.bounds;
+    self.summaryPanelGradientLayer.cornerRadius = self.summaryPanel.layer.cornerRadius;
+    self.summaryPanel.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.summaryPanel pp_setBorderColor:[[UIColor colorWithRed:0.96 green:0.88 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.22]];
+
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *top = [UIColor colorWithRed:0.06 green:0.09 blue:0.08 alpha:isDark ? 0.94 : 0.88];
+    UIColor *middle = [UIColor colorWithRed:0.08 green:0.14 blue:0.12 alpha:isDark ? 0.86 : 0.78];
+    UIColor *bottom = [UIColor colorWithRed:0.18 green:0.13 blue:0.07 alpha:isDark ? 0.82 : 0.70];
+    self.summaryPanelGradientLayer.colors = @[
+        (__bridge id)top.CGColor,
+        (__bridge id)middle.CGColor,
+        (__bridge id)bottom.CGColor
+    ];
+
+    self.summaryPanel.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.summaryPanel.layer.shadowOpacity = isDark ? 0.22 : 0.14;
+    self.summaryPanel.layer.shadowRadius = 18.0;
+    self.summaryPanel.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 }
 
 #pragma mark - Setup
@@ -2603,13 +2785,16 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.alpha = 0.95;
+    self.backgroundTopGlowView.backgroundColor = UIColor.clearColor;
+    self.backgroundTopGlowView.alpha = 0.92;
     [self.view addSubview:self.backgroundTopGlowView];
 
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.alpha = 0.85;
+    self.backgroundBottomGlowView.backgroundColor = UIColor.clearColor;
+    self.backgroundBottomGlowView.alpha = 0.82;
     [self.view addSubview:self.backgroundBottomGlowView];
+    [self pp_installLiveBackgroundGlowLayersIfNeeded];
 
     UITableViewStyle tableStyle = UITableViewStyleGrouped;
     if (@available(iOS 13.0, *)) {
@@ -2766,7 +2951,22 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
     self.summaryPanel.layer.cornerRadius = 22.0;
     self.summaryPanel.layer.masksToBounds = YES;
+    self.summaryPanel.backgroundColor = UIColor.clearColor;
     [self.headerCard addSubview:self.summaryPanel];
+
+    if (@available(iOS 13.0, *)) {
+        UIBlurEffect *moneyBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+        self.summaryPanelBlurView = [[UIVisualEffectView alloc] initWithEffect:moneyBlur];
+        self.summaryPanelBlurView.userInteractionEnabled = NO;
+        [self.summaryPanel addSubview:self.summaryPanelBlurView];
+    }
+
+    self.summaryPanelGradientLayer = [CAGradientLayer layer];
+    self.summaryPanelGradientLayer.name = @"PPOrderMoneyLiquidFill";
+    self.summaryPanelGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.summaryPanelGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.summaryPanelGradientLayer.locations = @[@0.0, @0.48, @1.0];
+    [self.summaryPanel.layer insertSublayer:self.summaryPanelGradientLayer atIndex:0];
 
     self.dateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.dateLabel.font = [GM MidFontWithSize:13];
@@ -3684,9 +3884,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self pp_refreshCurrentStatusSummaryMotionColors];
     [self.progressTimelineView refreshCurrentStatusMotion];
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopLiveBackgroundGlows];
         [self pp_stopHeaderHeroLiquidBorder];
         [self pp_stopCurrentStatusSummaryMotion];
     } else if (self.isOrderDetailsScreenVisible) {
+        [self pp_startLiveBackgroundGlowsIfNeeded];
         [self pp_startHeaderHeroLiquidBorderIfNeeded];
         [self pp_startCurrentStatusSummaryMotionIfNeeded];
     }
@@ -3851,7 +4053,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.headerCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.97];
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
     self.statusSummaryCard.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.11];
-    self.summaryPanel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.54 : 0.95];
+    self.summaryPanel.backgroundColor = UIColor.clearColor;
     self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.14];
     self.statusProgressChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
     self.statusEtaChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
@@ -3866,8 +4068,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.progressTimelineToggleButton.layer.borderWidth = 1.0;
     [self.progressTimelineToggleButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
     self.progressTimelineToggleIconView.tintColor = accent;
-    self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
-    self.backgroundBottomGlowView.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.14 : 0.08];
+    [self pp_refreshLiveBackgroundGlowColors];
+    [self pp_updateMoneySectionChrome];
     [self pp_refreshHeaderHeroLiquidBorderColors];
     self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
     self.openMapButton.tintColor = accent;
@@ -3899,7 +4101,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:resolvedTitle
                                                                              attributes:@{
         NSFontAttributeName: [GM MidFontWithSize:12],
-        NSForegroundColorAttributeName: [[UIColor secondaryLabelColor] colorWithAlphaComponent:0.96],
+        NSForegroundColorAttributeName: [[UIColor colorWithRed:0.74 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.86],
         NSParagraphStyleAttributeName: style
     }];
     [text appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n"
@@ -3909,7 +4111,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [text appendAttributedString:[[NSAttributedString alloc] initWithString:resolvedValue
                                                                  attributes:@{
         NSFontAttributeName: emphasis ? [GM boldFontWithSize:28] : [GM boldFontWithSize:15],
-        NSForegroundColorAttributeName: UIColor.labelColor,
+        NSForegroundColorAttributeName: emphasis ? [UIColor colorWithRed:0.98 green:0.91 blue:0.70 alpha:1.0] : [[UIColor colorWithRed:0.92 green:0.96 blue:0.94 alpha:1.0] colorWithAlphaComponent:0.94],
         NSParagraphStyleAttributeName: style
     }]];
     return text;
@@ -5639,6 +5841,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIAccessibilityReduceMotionStatusDidChangeNotification
                                                   object:nil];
+    [self pp_stopLiveBackgroundGlows];
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCheckoutSuccessConfetti];
     [self stopRealtimeObservers];
@@ -5991,14 +6194,16 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (orders.count == 0) return nil;
 
     UIView *card = [[UIView alloc] init];
-    card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.95];
-    card.layer.cornerRadius = PPCornerCard;
+    card.backgroundColor = [[UIColor colorWithRed:0.045 green:0.063 blue:0.056 alpha:1.0] colorWithAlphaComponent:0.92];
+    card.layer.cornerRadius = MAX(PPCornerCard, 24.0);
     card.layer.masksToBounds = YES;
+    card.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [card pp_setBorderColor:[[UIColor colorWithRed:0.84 green:0.96 blue:0.88 alpha:1.0] colorWithAlphaComponent:0.18]];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = kLang(@"fulfillment_section_title");
     titleLabel.font = [GM boldFontWithSize:PPFontHeadline];
-    titleLabel.textColor = AppPrimaryTextClr;
+    titleLabel.textColor = [[UIColor colorWithRed:0.94 green:0.98 blue:0.96 alpha:1.0] colorWithAlphaComponent:0.98];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:titleLabel];
 
@@ -6007,7 +6212,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     NSInteger total = [self.order.fulfillmentSummary[@"totalCount"] integerValue];
     summaryLabel.text = [NSString stringWithFormat:@"%ld/%ld %@", (long)(total - pending), (long)total, kLang(@"fulfillment_summary_completed")];
     summaryLabel.font = [GM MidFontWithSize:PPFontCallout];
-    summaryLabel.textColor = AppSecondaryTextClr;
+    summaryLabel.textColor = [[UIColor colorWithRed:0.72 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.88];
     summaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:summaryLabel];
 
@@ -6036,24 +6241,30 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [[previous.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-PPSpaceBase] setActive:YES];
 
     CGFloat width = CGRectGetWidth(UIScreen.mainScreen.bounds) - 32.0;
-    CGRect fit = [card systemLayoutSizeFittingSize:CGSizeMake(width, UIViewNoIntrinsicMetric)
+    CGSize fit = [card systemLayoutSizeFittingSize:CGSizeMake(width, UIViewNoIntrinsicMetric)
                      withHorizontalFittingPriority:UILayoutPriorityRequired
-                           verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+                               verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
     card.frame = CGRectMake(0, 0, width, fit.height);
+    [card layoutIfNeeded];
+    [Styling addLiquidGlassBorderToView:card
+                           cornerRadius:MAX(PPCornerCard, 24.0)
+                                  color:[[UIColor colorWithRed:0.96 green:0.88 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.16]];
     return card;
 }
 
 - (UIView *)buildFulfillmentGroupCard:(PPFulfillmentOrder *)fo
 {
     UIView *group = [[UIView alloc] init];
-    group.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.55];
+    group.backgroundColor = [[UIColor colorWithRed:0.08 green:0.105 blue:0.095 alpha:1.0] colorWithAlphaComponent:0.72];
     group.layer.cornerRadius = PPCornerMedium;
     group.layer.masksToBounds = YES;
+    group.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [group pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
 
     UILabel *ownerLabel = [[UILabel alloc] init];
     ownerLabel.text = [fo.ownerType isEqualToString:@"partner"] ? kLang(@"fulfillment_owner_partner") : kLang(@"fulfillment_owner_platform");
     ownerLabel.font = [GM boldFontWithSize:PPFontSubheadline];
-    ownerLabel.textColor = AppPrimaryTextClr;
+    ownerLabel.textColor = [[UIColor colorWithRed:0.95 green:0.98 blue:0.96 alpha:1.0] colorWithAlphaComponent:0.98];
     ownerLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [group addSubview:ownerLabel];
 
@@ -6071,17 +6282,41 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UILabel *metaLabel = [[UILabel alloc] init];
     metaLabel.text = [NSString stringWithFormat:kLang(@"fulfillment_items_count"), (long)fo.itemCount];
     metaLabel.font = [GM MidFontWithSize:PPFontFootnote];
-    metaLabel.textColor = AppSecondaryTextClr;
+    metaLabel.textColor = [[UIColor colorWithRed:0.72 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.82];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [group addSubview:metaLabel];
 
+    UIView *amountPill = [[UIView alloc] init];
+    amountPill.translatesAutoresizingMaskIntoConstraints = NO;
+    amountPill.backgroundColor = [[UIColor colorWithRed:0.15 green:0.12 blue:0.07 alpha:1.0] colorWithAlphaComponent:0.54];
+    amountPill.layer.cornerRadius = 15.0;
+    amountPill.layer.masksToBounds = YES;
+    amountPill.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [amountPill pp_setBorderColor:[[UIColor colorWithRed:0.98 green:0.82 blue:0.48 alpha:1.0] colorWithAlphaComponent:0.22]];
+    [group addSubview:amountPill];
+
+    if (@available(iOS 13.0, *)) {
+        UIVisualEffectView *amountBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
+        amountBlur.translatesAutoresizingMaskIntoConstraints = NO;
+        amountBlur.userInteractionEnabled = NO;
+        [amountPill addSubview:amountBlur];
+        [NSLayoutConstraint activateConstraints:@[
+            [amountBlur.topAnchor constraintEqualToAnchor:amountPill.topAnchor],
+            [amountBlur.leadingAnchor constraintEqualToAnchor:amountPill.leadingAnchor],
+            [amountBlur.trailingAnchor constraintEqualToAnchor:amountPill.trailingAnchor],
+            [amountBlur.bottomAnchor constraintEqualToAnchor:amountPill.bottomAnchor],
+        ]];
+    }
+
     UILabel *amountLabel = [[UILabel alloc] init];
     amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.providerNet];
-    amountLabel.font = [GM MidFontWithSize:PPFontCallout];
-    amountLabel.textColor = AppPrimaryClr;
-    amountLabel.textAlignment = NSTextAlignmentRight;
+    amountLabel.font = [GM boldFontWithSize:PPFontCallout];
+    amountLabel.textColor = [UIColor colorWithRed:0.98 green:0.91 blue:0.70 alpha:1.0];
+    amountLabel.textAlignment = NSTextAlignmentCenter;
+    amountLabel.adjustsFontSizeToFitWidth = YES;
+    amountLabel.minimumScaleFactor = 0.78;
     amountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [group addSubview:amountLabel];
+    [amountPill addSubview:amountLabel];
 
     [NSLayoutConstraint activateConstraints:@[
         [ownerLabel.leadingAnchor constraintEqualToAnchor:group.leadingAnchor constant:PPSpaceMD],
@@ -6090,8 +6325,14 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [statusBadge.centerYAnchor constraintEqualToAnchor:ownerLabel.centerYAnchor],
         [metaLabel.leadingAnchor constraintEqualToAnchor:ownerLabel.leadingAnchor],
         [metaLabel.topAnchor constraintEqualToAnchor:ownerLabel.bottomAnchor constant:4.0],
-        [amountLabel.trailingAnchor constraintEqualToAnchor:group.trailingAnchor constant:-PPSpaceMD],
-        [amountLabel.topAnchor constraintEqualToAnchor:statusBadge.bottomAnchor constant:6.0],
+        [amountPill.trailingAnchor constraintEqualToAnchor:group.trailingAnchor constant:-PPSpaceMD],
+        [amountPill.topAnchor constraintEqualToAnchor:statusBadge.bottomAnchor constant:8.0],
+        [amountPill.bottomAnchor constraintLessThanOrEqualToAnchor:group.bottomAnchor constant:-PPSpaceMD],
+        [amountPill.leadingAnchor constraintGreaterThanOrEqualToAnchor:metaLabel.trailingAnchor constant:PPSpaceSM],
+        [amountLabel.topAnchor constraintEqualToAnchor:amountPill.topAnchor constant:6.0],
+        [amountLabel.leadingAnchor constraintEqualToAnchor:amountPill.leadingAnchor constant:12.0],
+        [amountLabel.trailingAnchor constraintEqualToAnchor:amountPill.trailingAnchor constant:-12.0],
+        [amountLabel.bottomAnchor constraintEqualToAnchor:amountPill.bottomAnchor constant:-6.0],
         [metaLabel.bottomAnchor constraintEqualToAnchor:group.bottomAnchor constant:-PPSpaceMD],
     ]];
     return group;
