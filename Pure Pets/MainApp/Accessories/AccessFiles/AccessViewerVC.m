@@ -679,11 +679,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self.sellerStatusBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [innerSeller addSubview:self.sellerStatusBadgeLabel];
 
-    self.chatActionButton = [self pp_primaryCTAWithTitle:kLang(@"Chat")
-                                              systemName:@"message.fill"
-                                                selector:@selector(chatBTN:)
-                                              emphasized:YES];
-    [innerSeller addSubview:self.chatActionButton];
+    self.profileActionButton = [self pp_primaryCTAWithTitle:kLang(@"View_Profile")
+                                                 systemName:@"person.crop.circle.fill"
+                                                   selector:@selector(viewProfileTapped:)
+                                                 emphasized:YES];
+    [innerSeller addSubview:self.profileActionButton];
 
     self.callActionButton  = [self pp_secondaryActionWithTitle:kLang(@"Call")
                                                     systemName:@"phone.fill"
@@ -695,16 +695,15 @@ static UIColor *AVSellerCardSurfaceColor(void) {
                                                       systemName:@"headphones"
                                                         selector:@selector(supportTapped)];
 
-    self.profileActionButton = [self pp_primaryCTAWithTitle:kLang(@"View_Profile")
-                                                         systemName:@"person.crop.circle.fill"
-                                                           selector:@selector(viewProfileTapped:)
-                                                        emphasized:NO];
+    self.chatActionButton = [self pp_secondaryActionWithTitle:kLang(@"Chat")
+                                                   systemName:@"message.fill"
+                                                     selector:@selector(chatBTN:)];
 
     self.actionStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.profileActionButton,
         self.callActionButton,
+        self.supportActionButton,
         self.shareActionButton,
-        self.supportActionButton
+        self.chatActionButton
     ]];
     self.actionStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionStackView.axis         = UILayoutConstraintAxisHorizontal;
@@ -713,11 +712,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.actionStackView.alignment    = UIStackViewAlignmentCenter;
     [innerSeller addSubview:self.actionStackView];
 
-    NSLayoutConstraint *chatTopPreferred = [self.chatActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
-    chatTopPreferred.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *profileTopPreferred = [self.profileActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
+    profileTopPreferred.priority = UILayoutPriorityDefaultHigh;
     NSLayoutConstraint *actionsTopPreferred = [self.actionStackView.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
     actionsTopPreferred.priority = UILayoutPriorityDefaultHigh;
-    self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.chatActionButton.bottomAnchor constant:kAVSpace12];
+    self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.profileActionButton.bottomAnchor constant:kAVSpace12];
     self.sellerActionsTopToIdentityConstraint = actionsTopPreferred;
 
     [NSLayoutConstraint activateConstraints:@[
@@ -749,11 +748,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.sellerStatusBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:92.0],
         [self.sellerStatusBadgeLabel.heightAnchor constraintEqualToConstant:kAVSellerStatusPillHeight],
 
-        chatTopPreferred,
-        [self.chatActionButton.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
-        [self.chatActionButton.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
-        [self.chatActionButton.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
-        [self.chatActionButton.heightAnchor constraintEqualToConstant:kAVSellerPrimaryBtnHeight],
+        profileTopPreferred,
+        [self.profileActionButton.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
+        [self.profileActionButton.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
+        [self.profileActionButton.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [self.profileActionButton.heightAnchor constraintEqualToConstant:kAVSellerPrimaryBtnHeight],
 
         [self.actionStackView.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
         [self.actionStackView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
