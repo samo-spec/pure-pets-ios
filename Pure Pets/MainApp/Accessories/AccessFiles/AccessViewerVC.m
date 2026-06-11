@@ -35,7 +35,7 @@ static const CGFloat kAVSpace24              = 24.0;
 static const CGFloat kAVSpace32              = 32.0;
 
 // Border Radius
-static const CGFloat kAVCardCornerRadius     = 24.0;    // Large section surfaces
+static const CGFloat kAVCardCornerRadius     = 32.0;    // Large section surfaces
 static const CGFloat kAVButtonCornerRadius   = 18.0;    // Rounded action pills
 static const CGFloat kAVBadgeCornerRadius    = 999.0;   // Badges: pill
 static const CGFloat kAVHeroCornerRadius     = 28.0;   // Modern rounded hero corners
@@ -52,7 +52,7 @@ static const CGFloat kAVSuggestionBottomInset = 32.0;   // breathing room below 
 static const CGFloat kAVSellerAvatarSize     = 64.0;    // seller identity avatar size
 static const CGFloat kAVSellerAvatarRingSize = 74.0;    // premium avatar shell size
 static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button height
-static const CGFloat kAVSellerStatusPillHeight = 28.0;  // seller badge pill height
+static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill height
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -65,7 +65,7 @@ static UIColor *AVSellerCardInkColor(void) {
 }
 
 static UIColor *AVSellerCardAccentColor(void) {
-    return [UIColor colorWithRed:0.10 green:0.38 blue:0.40 alpha:1.0];
+    return [AppPrimaryClrDarker colorWithAlphaComponent:1.0];
 }
 
 static UIColor *AVSellerCardGoldColor(void) {
@@ -116,7 +116,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @property (nonatomic, strong) UIButton *supportActionButton;
 @property (nonatomic, strong) UIButton *profileActionButton;
 @property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToChatConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToIdentityConstraint;
 
 // ── Details Card ──
 @property (nonatomic, strong) UIView *detailsCardView;
@@ -483,9 +482,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.titleCard.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
         [self.titleCard.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
 
-        [self.petsTitleView.topAnchor      constraintEqualToAnchor:self.titleCard.topAnchor],
-        [self.petsTitleView.leadingAnchor  constraintEqualToAnchor:self.titleCard.leadingAnchor],
-        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
+        [self.petsTitleView.topAnchor      constraintEqualToAnchor:self.titleCard.topAnchor constant:8],
+        [self.petsTitleView.leadingAnchor  constraintEqualToAnchor:self.titleCard.leadingAnchor constant:8],
+        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-8],
         [self.petsTitleView.bottomAnchor   constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
 
@@ -495,7 +494,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 /// Category / type / condition / stock section
 - (void)pp_buildDetailsCard {
 
-    self.detailsCardView = [self pp_surfaceCardClean];
+    self.detailsCardView = [self pp_surfacepage];
     [self.contentView addSubview:self.detailsCardView];
     UIView *innerDetails = [self pp_innerCardOf:self.detailsCardView];
 
@@ -509,7 +508,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.detailsStackView = [[UIStackView alloc] init];
     self.detailsStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.detailsStackView.axis    = UILayoutConstraintAxisVertical;
-    self.detailsStackView.spacing = 12.0;
+    self.detailsStackView.spacing = 16.0;
     [innerDetails addSubview:self.detailsStackView];
 
     UILabel *categoryValue  = nil;
@@ -520,7 +519,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     // ── 2-column grid with distinct modern tints ──
     UIStackView *topPair = [[UIStackView alloc] init];
     topPair.axis = UILayoutConstraintAxisHorizontal;
-    topPair.spacing = 12.0;
+    topPair.spacing = 16.0;
     topPair.distribution = UIStackViewDistributionFillEqually;
 
     [topPair addArrangedSubview:[self pp_detailRowWithTitle:kLang(@"Category")
@@ -534,7 +533,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     UIStackView *bottomPair = [[UIStackView alloc] init];
     bottomPair.axis = UILayoutConstraintAxisHorizontal;
-    bottomPair.spacing = 12.0;
+    bottomPair.spacing = 16.0;
     bottomPair.distribution = UIStackViewDistributionFillEqually;
 
     [bottomPair addArrangedSubview:[self pp_detailRowWithTitle:kLang(@"Condition")
@@ -560,13 +559,13 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.detailsCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-0],
 
         [detailsTitleLabel.topAnchor      constraintEqualToAnchor:innerDetails.topAnchor      constant:kAVCardPadding],
-        [detailsTitleLabel.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding],
+        [detailsTitleLabel.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding + 8],
         [detailsTitleLabel.trailingAnchor constraintEqualToAnchor:innerDetails.trailingAnchor constant:-kAVCardPadding],
 
         [self.detailsStackView.topAnchor      constraintEqualToAnchor:detailsTitleLabel.bottomAnchor       constant:kAVSpace12],
         [self.detailsStackView.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding],
         [self.detailsStackView.trailingAnchor constraintEqualToAnchor:innerDetails.trailingAnchor constant:-kAVCardPadding],
-        [self.detailsStackView.bottomAnchor   constraintEqualToAnchor:innerDetails.bottomAnchor   constant:-kAVCardPadding],
+        [self.detailsStackView.bottomAnchor   constraintEqualToAnchor:innerDetails.bottomAnchor   constant:-8],
     ]];
 }
 
@@ -578,9 +577,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self.contentView addSubview:self.descView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.descView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor   constant:kAVSpace8],
-        [self.descView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
-        [self.descView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
+        [self.descView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor   constant:kAVCardPadding],
+        [self.descView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVCardPadding],
+        [self.descView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVCardPadding],
     ]];
 }
 
@@ -714,15 +713,12 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     NSLayoutConstraint *profileTopPreferred = [self.profileActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
     profileTopPreferred.priority = UILayoutPriorityDefaultHigh;
-    NSLayoutConstraint *actionsTopPreferred = [self.actionStackView.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
-    actionsTopPreferred.priority = UILayoutPriorityDefaultHigh;
     self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.profileActionButton.bottomAnchor constant:kAVSpace12];
-    self.sellerActionsTopToIdentityConstraint = actionsTopPreferred;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor constant:kAVSectionSpacing],
-        [self.sellerSectionView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
-        [self.sellerSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
+        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor constant:kAVCardPadding],
+        [self.sellerSectionView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVCardPadding],
+        [self.sellerSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVCardPadding],
 
         [self.sellerAccentGlowView.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:-54.0],
         [self.sellerAccentGlowView.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:42.0],
@@ -931,6 +927,34 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = AppBackgroundClr;
+    card.layer.cornerRadius = 26;
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = kAVSectionBorderWidth;
+    [card pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.00]];
+    if (@available(iOS 13.0, *)) {
+        card.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    card.tag = 100;
+
+    [wrapper addSubview:card];
+    [NSLayoutConstraint activateConstraints:@[
+        [card.topAnchor      constraintEqualToAnchor:wrapper.topAnchor],
+        [card.leadingAnchor  constraintEqualToAnchor:wrapper.leadingAnchor],
+        [card.trailingAnchor constraintEqualToAnchor:wrapper.trailingAnchor],
+        [card.bottomAnchor   constraintEqualToAnchor:wrapper.bottomAnchor],
+    ]];
+    return wrapper;
+}
+
+
+- (UIView *)pp_surfacepage {
+    UIView *wrapper = [[UIView alloc] init];
+    wrapper.translatesAutoresizingMaskIntoConstraints = NO;
+    wrapper.backgroundColor = UIColor.clearColor;
+
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = AppPageColor();
     card.layer.cornerRadius = 26;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
@@ -1176,7 +1200,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     UIView *iconShell = [[UIView alloc] init];
     iconShell.translatesAutoresizingMaskIntoConstraints = NO;
     iconShell.backgroundColor = [tintColor colorWithAlphaComponent:0.18];
-    iconShell.layer.cornerRadius = 16.0;
+    iconShell.layer.cornerRadius = 22.0;
     iconShell.layer.masksToBounds = YES;
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:systemName
@@ -1245,7 +1269,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGSize)pp_suggestionItemSize {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    CGFloat itemWidth = width * 0.4;
+    CGFloat itemWidth = width * 0.45;
     return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.74));
 }
 
@@ -1501,8 +1525,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         self.callActionButton.hidden = isOwnItem || !hasPhone;
         self.shareActionButton.hidden = NO;
         self.supportActionButton.hidden = NO;
-        self.sellerActionsTopToChatConstraint.active = !isOwnItem;
-        self.sellerActionsTopToIdentityConstraint.active = isOwnItem;
         return;
     }
 
@@ -1510,8 +1532,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.callActionButton.hidden = YES;
     self.shareActionButton.hidden = NO;
     self.supportActionButton.hidden = NO;
-    self.sellerActionsTopToChatConstraint.active = NO;
-    self.sellerActionsTopToIdentityConstraint.active = YES;
 }
 
 - (void)pp_applySellerSemanticDirection

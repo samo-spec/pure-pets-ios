@@ -2281,6 +2281,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
 @property (nonatomic, strong) UIView *statusSummaryCard;
+@property (nonatomic, strong) UIView *ambientDot1;
+@property (nonatomic, strong) UIView *ambientDot2;
+@property (nonatomic, strong) UIView *ambientDot3;
 @property (nonatomic, strong) UILabel *statusSummarySubtitleLabel;
 @property (nonatomic, strong) UIView *statusProgressChip;
 @property (nonatomic, strong) UIImageView *statusProgressChipIconView;
@@ -2857,6 +2860,18 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.statusSummaryCard.layer.masksToBounds = YES;
     [self.headerCard addSubview:self.statusSummaryCard];
 
+    self.ambientDot1 = [[UIView alloc] initWithFrame:CGRectZero];
+    self.ambientDot1.userInteractionEnabled = NO;
+    [self.statusSummaryCard addSubview:self.ambientDot1];
+
+    self.ambientDot2 = [[UIView alloc] initWithFrame:CGRectZero];
+    self.ambientDot2.userInteractionEnabled = NO;
+    [self.statusSummaryCard addSubview:self.ambientDot2];
+
+    self.ambientDot3 = [[UIView alloc] initWithFrame:CGRectZero];
+    self.ambientDot3.userInteractionEnabled = NO;
+    [self.statusSummaryCard addSubview:self.ambientDot3];
+
     self.statusBadgeHaloView = [[UIView alloc] initWithFrame:CGRectZero];
     self.statusBadgeHaloView.userInteractionEnabled = NO;
     self.statusBadgeHaloView.layer.masksToBounds = NO;
@@ -3331,6 +3346,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat statusSummaryBottom = MAX(CGRectGetMaxY(self.statusProgressChip.frame), CGRectGetMaxY(self.statusEtaChip.frame));
     CGFloat statusSummaryHeight = statusSummaryBottom + statusCardInset;
     self.statusSummaryCard.frame = CGRectMake(padding, statusCardY, separatorWidth, statusSummaryHeight);
+
+    self.ambientDot1.frame = CGRectMake(-18, -18, 56, 56);
+    self.ambientDot1.layer.cornerRadius = 28.0;
+    self.ambientDot2.frame = CGRectMake(separatorWidth - 36, statusSummaryHeight - 24, 72, 72);
+    self.ambientDot2.layer.cornerRadius = 36.0;
+    self.ambientDot3.frame = CGRectMake(separatorWidth * 0.4, statusSummaryHeight - 12, 32, 32);
+    self.ambientDot3.layer.cornerRadius = 16.0;
 
     CGFloat toggleButtonSize = 36.0;
     CGFloat timelineHeaderY = CGRectGetMaxY(self.statusSummaryCard.frame) + 18.0;
@@ -3836,10 +3858,56 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                         to:1.0
                                   duration:2.15
                                 beginDelay:0.22];
+
+    [self pp_addSummaryScalePulseToLayer:self.ambientDot1.layer
+                                     key:@"PPAmbientDot1ScaleKey"
+                               fromScale:1.0
+                                 toScale:1.24
+                                duration:3.4
+                              beginDelay:0.0];
+    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot1.layer
+                                       key:@"PPAmbientDot1OpacityKey"
+                                      from:0.06
+                                        to:0.18
+                                  duration:3.4
+                                beginDelay:0.0];
+                                
+    [self pp_addSummaryScalePulseToLayer:self.ambientDot2.layer
+                                     key:@"PPAmbientDot2ScaleKey"
+                               fromScale:1.0
+                                 toScale:1.15
+                                duration:4.1
+                              beginDelay:0.8];
+    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot2.layer
+                                       key:@"PPAmbientDot2OpacityKey"
+                                      from:0.04
+                                        to:0.14
+                                  duration:4.1
+                                beginDelay:0.8];
+                                
+    [self pp_addSummaryScalePulseToLayer:self.ambientDot3.layer
+                                     key:@"PPAmbientDot3ScaleKey"
+                               fromScale:1.0
+                                 toScale:1.32
+                                duration:2.8
+                              beginDelay:1.2];
+    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot3.layer
+                                       key:@"PPAmbientDot3OpacityKey"
+                                      from:0.08
+                                        to:0.24
+                                  duration:2.8
+                                beginDelay:1.2];
 }
 
 - (void)pp_stopCurrentStatusSummaryMotion
 {
+    [self.ambientDot1.layer removeAnimationForKey:@"PPAmbientDot1ScaleKey"];
+    [self.ambientDot1.layer removeAnimationForKey:@"PPAmbientDot1OpacityKey"];
+    [self.ambientDot2.layer removeAnimationForKey:@"PPAmbientDot2ScaleKey"];
+    [self.ambientDot2.layer removeAnimationForKey:@"PPAmbientDot2OpacityKey"];
+    [self.ambientDot3.layer removeAnimationForKey:@"PPAmbientDot3ScaleKey"];
+    [self.ambientDot3.layer removeAnimationForKey:@"PPAmbientDot3OpacityKey"];
+
     [self.statusBadge.layer removeAnimationForKey:PPOrderSummaryStatusBadgeMotionKey];
     [self.statusBadgeHaloView.layer removeAnimationForKey:PPOrderSummaryStatusHaloScaleKey];
     [self.statusBadgeHaloView.layer removeAnimationForKey:PPOrderSummaryStatusHaloOpacityKey];
@@ -4052,7 +4120,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
     self.headerCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.97];
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
-    self.statusSummaryCard.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.11];
+    self.statusSummaryCard.backgroundColor = AppForgroundColr;
+    
+    self.ambientDot1.backgroundColor = [accent colorWithAlphaComponent:0.06];
+    self.ambientDot2.backgroundColor = [accent colorWithAlphaComponent:0.04];
+    self.ambientDot3.backgroundColor = [accent colorWithAlphaComponent:0.08];
+    
+    self.statusSummaryCard.layer.borderWidth = 1.0;
+    [self.statusSummaryCard pp_setBorderColor:[accent colorWithAlphaComponent:0.12]];
+    
     self.summaryPanel.backgroundColor = UIColor.clearColor;
     self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.14];
     self.statusProgressChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
