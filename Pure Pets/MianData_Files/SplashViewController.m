@@ -56,7 +56,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 - (void)pp_completeLaunchIfNeededForced:(BOOL)forced;
 - (nullable UIWindow *)pp_transitionWindow;
 - (void)pp_swapRootViewController:(UIViewController *)rootViewController
-                         onWindow:(UIWindow *)window;
+                          onWindow:(UIWindow *)window;
 @end
 
 @implementation SplashViewController
@@ -83,7 +83,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
         self.logoAnimationView.contentMode = UIViewContentModeScaleAspectFit;
         self.logoAnimationView.loopAnimation = YES;
     }
-   //[self.view addSubview:self.logoAnimationView];
+    //[self.view addSubview:self.logoAnimationView];
     
     
     
