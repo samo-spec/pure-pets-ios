@@ -4149,7 +4149,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:resolvedTitle
                                                                              attributes:@{
         NSFontAttributeName: [GM MidFontWithSize:12],
-        NSForegroundColorAttributeName: [[UIColor colorWithRed:0.74 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.86],
+        NSForegroundColorAttributeName: UIColor.secondaryLabelColor,
         NSParagraphStyleAttributeName: style
     }];
     [text appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n"
@@ -4159,7 +4159,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [text appendAttributedString:[[NSAttributedString alloc] initWithString:resolvedValue
                                                                  attributes:@{
         NSFontAttributeName: emphasis ? [GM boldFontWithSize:28] : [GM boldFontWithSize:15],
-        NSForegroundColorAttributeName: emphasis ? [UIColor colorWithRed:0.98 green:0.91 blue:0.70 alpha:1.0] : [[UIColor colorWithRed:0.92 green:0.96 blue:0.94 alpha:1.0] colorWithAlphaComponent:0.94],
+        NSForegroundColorAttributeName: UIColor.labelColor,
         NSParagraphStyleAttributeName: style
     }]];
     return text;
