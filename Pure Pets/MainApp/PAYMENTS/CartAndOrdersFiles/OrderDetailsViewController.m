@@ -2309,6 +2309,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UIView *headerSeparatorBottom;
 
 @property (nonatomic, strong) UIView *footerContainer;
+@property (nonatomic, strong, nullable) UIView *fulfillmentSectionCard;
 @property (nonatomic, strong) UIView *deliveryMapCard;
 @property (nonatomic, strong) UILabel *deliveryMapTitleLabel;
 @property (nonatomic, strong) UILabel *deliveryMapSubtitleLabel;
@@ -2341,6 +2342,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) NSArray<PPOrderSupportRequest *> *supportRequests;
 @property (nonatomic, strong) NSArray<PPOrderTimelineEvent *> *timelineEvents;
 @property (nonatomic, strong) NSArray<PPOrderEligibilityDecision *> *eligibilityDecisions;
+@property (nonatomic, strong) NSArray<PPFulfillmentOrder *> *fulfillmentOrders;
 @property (nonatomic, strong) id<FIRListenerRegistration> orderDocumentListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> requestsListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> timelineListener;
@@ -2970,6 +2972,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     self.footerContainer = [[UIView alloc] initWithFrame:CGRectZero];
     self.footerContainer.backgroundColor = UIColor.clearColor;
+
+    self.fulfillmentSectionCard = [[UIView alloc] initWithFrame:CGRectZero];
+    self.fulfillmentSectionCard.hidden = YES;
+    [self.footerContainer addSubview:self.fulfillmentSectionCard];
 
     self.deliveryMapCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
@@ -3925,7 +3931,19 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat topButtonSize = 46.0;
     BOOL isRTL = [Language isRTL];
 
-    self.deliveryMapCard.frame = CGRectMake(contentX, 12.0, contentWidth, 1.0);
+    CGFloat nextSectionY = 12.0;
+    if (self.fulfillmentSectionCard && !self.fulfillmentSectionCard.hidden) {
+        CGRect fulfillmentFrame = self.fulfillmentSectionCard.frame;
+        fulfillmentFrame.origin.x = contentX;
+        fulfillmentFrame.origin.y = nextSectionY;
+        fulfillmentFrame.size.width = contentWidth;
+        self.fulfillmentSectionCard.frame = fulfillmentFrame;
+        nextSectionY = CGRectGetMaxY(fulfillmentFrame) + 16.0;
+    } else {
+        self.fulfillmentSectionCard.frame = CGRectZero;
+    }
+
+    self.deliveryMapCard.frame = CGRectMake(contentX, nextSectionY, contentWidth, 1.0);
     CGFloat openMapX = isRTL ? mapCardPadding : (contentWidth - mapCardPadding - topButtonSize);
     self.openMapButton.frame = CGRectMake(openMapX, mapHeaderY, topButtonSize, topButtonSize);
 
@@ -3958,7 +3976,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat mapCardHeight = (!self.editLocationButton.hidden)
     ? (CGRectGetMaxY(self.editLocationButton.frame) + 14.0)
     : (CGRectGetMaxY(self.deliveryMapView.frame) + 14.0);
-    self.deliveryMapCard.frame = CGRectMake(contentX, 12.0, contentWidth, mapCardHeight);
+    self.deliveryMapCard.frame = CGRectMake(contentX, nextSectionY, contentWidth, mapCardHeight);
 
     NSArray<UIButton *> *orderedButtons = [self orderedActionButtons];
     NSMutableArray<UIButton *> *visibleButtons = [NSMutableArray array];
@@ -4039,6 +4057,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         footerHeight = CGRectGetMaxY(self.postOrderHintLabel.frame) + 12.0;
     } else if (visibleCount == 0) {
         footerHeight = CGRectGetMaxY(self.deliveryMapCard.frame) + 12.0;
+    }
+    if (!self.fulfillmentSectionCard.hidden && CGRectGetMaxY(self.fulfillmentSectionCard.frame) > footerHeight) {
+        footerHeight = CGRectGetMaxY(self.fulfillmentSectionCard.frame) + 12.0;
     }
     self.footerContainer.frame = CGRectMake(0, 0, width, footerHeight);
     self.tableView.tableFooterView = self.footerContainer;
@@ -6202,7 +6223,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)configureFulfillmentSection
 {
     if (!self.order.hasFulfillmentOrders) {
-        self.tableView.tableFooterView = nil;
+        self.fulfillmentOrders = @[];
+        self.fulfillmentSectionCard.hidden = YES;
+        self.fulfillmentSectionCard.frame = CGRectZero;
+        [self layoutFooterView];
         return;
     }
     PPweakify(self);
@@ -6210,10 +6234,49 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         PPstrongify(self);
         if (!self) return;
         dispatch_async(dispatch_get_main_queue(), ^{
-            UIView *card = [self buildFulfillmentGroupsCard:orders];
-            self.tableView.tableFooterView = card;
+            self.fulfillmentOrders = orders ?: @[];
+            UIView *card = [self buildFulfillmentGroupsCard:self.fulfillmentOrders];
+            [self.fulfillmentSectionCard removeFromSuperview];
+            self.fulfillmentSectionCard = card ?: [[UIView alloc] initWithFrame:CGRectZero];
+            self.fulfillmentSectionCard.hidden = (card == nil);
+            [self.footerContainer addSubview:self.fulfillmentSectionCard];
+            [self.footerContainer sendSubviewToBack:self.fulfillmentSectionCard];
+            [self layoutFooterView];
         });
     }];
+}
+
+- (NSDictionary<NSString *, NSNumber *> *)fulfillmentSummaryMetricsForOrders:(NSArray<PPFulfillmentOrder *> *)orders
+{
+    NSInteger total = orders.count;
+    NSInteger completed = 0;
+
+    for (PPFulfillmentOrder *order in orders ?: @[]) {
+        NSString *status = PPOrderStepperNormalizedKey(order.status);
+        if ([status isEqualToString:@"completed"]) {
+            completed += 1;
+        }
+    }
+
+    NSDictionary *summary = [self.order.fulfillmentSummary isKindOfClass:NSDictionary.class] ? self.order.fulfillmentSummary : nil;
+    NSInteger backendTotal = [summary[@"total"] integerValue];
+    if (backendTotal <= 0) {
+        backendTotal = [summary[@"totalCount"] integerValue];
+    }
+    NSInteger backendCompleted = [summary[@"completedCount"] integerValue];
+
+    if (total <= 0) {
+        total = MAX(0, backendTotal);
+    }
+    if (completed <= 0 && backendCompleted > 0) {
+        completed = backendCompleted;
+    }
+
+    completed = MIN(MAX(0, completed), MAX(0, total));
+    return @{
+        @"total": @(MAX(0, total)),
+        @"completed": @(completed)
+    };
 }
 
 - (UIView *)buildFulfillmentGroupsCard:(NSArray<PPFulfillmentOrder *> *)orders
@@ -6236,9 +6299,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [card addSubview:titleLabel];
 
     UILabel *summaryLabel = [[UILabel alloc] init];
-    NSInteger pending = [self.order.fulfillmentSummary[@"pendingCount"] integerValue];
-    NSInteger total = [self.order.fulfillmentSummary[@"totalCount"] integerValue];
-    summaryLabel.text = [NSString stringWithFormat:@"%ld/%ld %@", (long)(total - pending), (long)total, kLang(@"fulfillment_summary_completed")];
+    NSDictionary<NSString *, NSNumber *> *metrics = [self fulfillmentSummaryMetricsForOrders:orders];
+    NSInteger total = metrics[@"total"].integerValue;
+    NSInteger completed = metrics[@"completed"].integerValue;
+    summaryLabel.text = [NSString stringWithFormat:@"%ld/%ld %@", (long)completed, (long)total, kLang(@"fulfillment_summary_completed")];
     summaryLabel.font = [GM MidFontWithSize:PPFontCallout];
     summaryLabel.textColor = UIColor.secondaryLabelColor;
     summaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
