@@ -2305,8 +2305,6 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UIView *statusBadge;
 @property (nonatomic, strong) UIImageView *statusIconView;
 @property (nonatomic, strong) UIView *summaryPanel;
-@property (nonatomic, strong) UIVisualEffectView *summaryPanelBlurView;
-@property (nonatomic, strong) CAGradientLayer *summaryPanelGradientLayer;
 @property (nonatomic, strong) UIView *headerSeparatorTop;
 @property (nonatomic, strong) UIView *headerSeparatorBottom;
 
@@ -2363,7 +2361,6 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_refreshLiveBackgroundGlowColors;
 - (void)pp_startLiveBackgroundGlowsIfNeeded;
 - (void)pp_stopLiveBackgroundGlows;
-- (void)pp_updateMoneySectionChrome;
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_refreshHeaderHeroLiquidBorderColors;
 - (void)pp_updateHeaderHeroLiquidBorder;
@@ -2480,14 +2477,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                       cornerRadius:self.headerCard.layer.cornerRadius].CGPath;
     }
     if (self.statusSummaryCard) {
-        [Styling addLiquidGlassBorderToView:self.statusSummaryCard cornerRadius:24 color:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
         [self pp_refreshCurrentStatusSummaryMotionColors];
         if (self.isOrderDetailsScreenVisible) {
             [self pp_startCurrentStatusSummaryMotionIfNeeded];
         }
-    }
-    if (self.summaryPanel) {
-        [Styling addLiquidGlassBorderToView:self.summaryPanel cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
     }
     if (self.progressTimelineToggleButton) {
         [Styling addLiquidGlassBorderToView:self.progressTimelineToggleButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
@@ -2502,7 +2495,6 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
     self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
     [self pp_updateLiveBackgroundGlowFrames];
-    [self pp_updateMoneySectionChrome];
 }
 
 - (void)pp_installLiveBackgroundGlowLayersIfNeeded
@@ -2643,34 +2635,6 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.backgroundBottomGlowView.layer.transform = CATransform3DIdentity;
     self.backgroundTopGlowLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.50 : 0.72;
     self.backgroundBottomGlowLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.42 : 0.64;
-}
-
-- (void)pp_updateMoneySectionChrome
-{
-    if (!self.summaryPanel) return;
-
-    self.summaryPanelBlurView.frame = self.summaryPanel.bounds;
-    self.summaryPanelBlurView.layer.cornerRadius = self.summaryPanel.layer.cornerRadius;
-    self.summaryPanelBlurView.layer.masksToBounds = YES;
-    self.summaryPanelGradientLayer.frame = self.summaryPanel.bounds;
-    self.summaryPanelGradientLayer.cornerRadius = self.summaryPanel.layer.cornerRadius;
-    self.summaryPanel.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [self.summaryPanel pp_setBorderColor:[[UIColor colorWithRed:0.96 green:0.88 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.22]];
-
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *top = [UIColor colorWithRed:0.06 green:0.09 blue:0.08 alpha:isDark ? 0.94 : 0.88];
-    UIColor *middle = [UIColor colorWithRed:0.08 green:0.14 blue:0.12 alpha:isDark ? 0.86 : 0.78];
-    UIColor *bottom = [UIColor colorWithRed:0.18 green:0.13 blue:0.07 alpha:isDark ? 0.82 : 0.70];
-    self.summaryPanelGradientLayer.colors = @[
-        (__bridge id)top.CGColor,
-        (__bridge id)middle.CGColor,
-        (__bridge id)bottom.CGColor
-    ];
-
-    self.summaryPanel.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.summaryPanel.layer.shadowOpacity = isDark ? 0.22 : 0.14;
-    self.summaryPanel.layer.shadowRadius = 18.0;
-    self.summaryPanel.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 }
 
 #pragma mark - Setup
@@ -2966,22 +2930,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
     self.summaryPanel.layer.cornerRadius = 22.0;
     self.summaryPanel.layer.masksToBounds = YES;
-    self.summaryPanel.backgroundColor = UIColor.clearColor;
+    self.summaryPanel.backgroundColor = AppForgroundColr;
+    self.summaryPanel.layer.borderWidth = 1.0;
+    [self.summaryPanel pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.12]];
     [self.headerCard addSubview:self.summaryPanel];
-
-    if (@available(iOS 13.0, *)) {
-        UIBlurEffect *moneyBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
-        self.summaryPanelBlurView = [[UIVisualEffectView alloc] initWithEffect:moneyBlur];
-        self.summaryPanelBlurView.userInteractionEnabled = NO;
-        [self.summaryPanel addSubview:self.summaryPanelBlurView];
-    }
-
-    self.summaryPanelGradientLayer = [CAGradientLayer layer];
-    self.summaryPanelGradientLayer.name = @"PPOrderMoneyLiquidFill";
-    self.summaryPanelGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.summaryPanelGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.summaryPanelGradientLayer.locations = @[@0.0, @0.48, @1.0];
-    [self.summaryPanel.layer insertSublayer:self.summaryPanelGradientLayer atIndex:0];
 
     self.dateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.dateLabel.font = [GM MidFontWithSize:13];
@@ -4145,7 +4097,6 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.progressTimelineToggleButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
     self.progressTimelineToggleIconView.tintColor = accent;
     [self pp_refreshLiveBackgroundGlowColors];
-    [self pp_updateMoneySectionChrome];
     [self pp_refreshHeaderHeroLiquidBorderColors];
     self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
     self.openMapButton.tintColor = accent;
@@ -6270,16 +6221,17 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (orders.count == 0) return nil;
 
     UIView *card = [[UIView alloc] init];
-    card.backgroundColor = [[UIColor colorWithRed:0.045 green:0.063 blue:0.056 alpha:1.0] colorWithAlphaComponent:0.92];
+    card.backgroundColor = AppForgroundColr;
     card.layer.cornerRadius = MAX(PPCornerCard, 24.0);
     card.layer.masksToBounds = YES;
-    card.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [card pp_setBorderColor:[[UIColor colorWithRed:0.84 green:0.96 blue:0.88 alpha:1.0] colorWithAlphaComponent:0.18]];
+    card.layer.borderWidth = 1.0;
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    [card pp_setBorderColor:[accent colorWithAlphaComponent:0.12]];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = kLang(@"fulfillment_section_title");
     titleLabel.font = [GM boldFontWithSize:PPFontHeadline];
-    titleLabel.textColor = [[UIColor colorWithRed:0.94 green:0.98 blue:0.96 alpha:1.0] colorWithAlphaComponent:0.98];
+    titleLabel.textColor = UIColor.labelColor;
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:titleLabel];
 
@@ -6288,7 +6240,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     NSInteger total = [self.order.fulfillmentSummary[@"totalCount"] integerValue];
     summaryLabel.text = [NSString stringWithFormat:@"%ld/%ld %@", (long)(total - pending), (long)total, kLang(@"fulfillment_summary_completed")];
     summaryLabel.font = [GM MidFontWithSize:PPFontCallout];
-    summaryLabel.textColor = [[UIColor colorWithRed:0.72 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.88];
+    summaryLabel.textColor = UIColor.secondaryLabelColor;
     summaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [card addSubview:summaryLabel];
 
@@ -6322,25 +6274,23 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
     card.frame = CGRectMake(0, 0, width, fit.height);
     [card layoutIfNeeded];
-    [Styling addLiquidGlassBorderToView:card
-                           cornerRadius:MAX(PPCornerCard, 24.0)
-                                  color:[[UIColor colorWithRed:0.96 green:0.88 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.16]];
     return card;
 }
 
 - (UIView *)buildFulfillmentGroupCard:(PPFulfillmentOrder *)fo
 {
     UIView *group = [[UIView alloc] init];
-    group.backgroundColor = [[UIColor colorWithRed:0.08 green:0.105 blue:0.095 alpha:1.0] colorWithAlphaComponent:0.72];
+    group.backgroundColor = AppForgroundColr;
     group.layer.cornerRadius = PPCornerMedium;
     group.layer.masksToBounds = YES;
-    group.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [group pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+    group.layer.borderWidth = 1.0;
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    [group pp_setBorderColor:[accent colorWithAlphaComponent:0.06]];
 
     UILabel *ownerLabel = [[UILabel alloc] init];
     ownerLabel.text = [fo.ownerType isEqualToString:@"partner"] ? kLang(@"fulfillment_owner_partner") : kLang(@"fulfillment_owner_platform");
     ownerLabel.font = [GM boldFontWithSize:PPFontSubheadline];
-    ownerLabel.textColor = [[UIColor colorWithRed:0.95 green:0.98 blue:0.96 alpha:1.0] colorWithAlphaComponent:0.98];
+    ownerLabel.textColor = UIColor.labelColor;
     ownerLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [group addSubview:ownerLabel];
 
@@ -6358,36 +6308,23 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UILabel *metaLabel = [[UILabel alloc] init];
     metaLabel.text = [NSString stringWithFormat:kLang(@"fulfillment_items_count"), (long)fo.itemCount];
     metaLabel.font = [GM MidFontWithSize:PPFontFootnote];
-    metaLabel.textColor = [[UIColor colorWithRed:0.72 green:0.82 blue:0.78 alpha:1.0] colorWithAlphaComponent:0.82];
+    metaLabel.textColor = UIColor.secondaryLabelColor;
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     [group addSubview:metaLabel];
 
     UIView *amountPill = [[UIView alloc] init];
     amountPill.translatesAutoresizingMaskIntoConstraints = NO;
-    amountPill.backgroundColor = [[UIColor colorWithRed:0.15 green:0.12 blue:0.07 alpha:1.0] colorWithAlphaComponent:0.54];
+    amountPill.backgroundColor = [accent colorWithAlphaComponent:0.08];
     amountPill.layer.cornerRadius = 15.0;
     amountPill.layer.masksToBounds = YES;
-    amountPill.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [amountPill pp_setBorderColor:[[UIColor colorWithRed:0.98 green:0.82 blue:0.48 alpha:1.0] colorWithAlphaComponent:0.22]];
+    amountPill.layer.borderWidth = 1.0;
+    [amountPill pp_setBorderColor:[accent colorWithAlphaComponent:0.12]];
     [group addSubview:amountPill];
-
-    if (@available(iOS 13.0, *)) {
-        UIVisualEffectView *amountBlur = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
-        amountBlur.translatesAutoresizingMaskIntoConstraints = NO;
-        amountBlur.userInteractionEnabled = NO;
-        [amountPill addSubview:amountBlur];
-        [NSLayoutConstraint activateConstraints:@[
-            [amountBlur.topAnchor constraintEqualToAnchor:amountPill.topAnchor],
-            [amountBlur.leadingAnchor constraintEqualToAnchor:amountPill.leadingAnchor],
-            [amountBlur.trailingAnchor constraintEqualToAnchor:amountPill.trailingAnchor],
-            [amountBlur.bottomAnchor constraintEqualToAnchor:amountPill.bottomAnchor],
-        ]];
-    }
 
     UILabel *amountLabel = [[UILabel alloc] init];
     amountLabel.text = [NSString stringWithFormat:@"%@ %.0f", fo.currency, fo.providerNet];
     amountLabel.font = [GM boldFontWithSize:PPFontCallout];
-    amountLabel.textColor = [UIColor colorWithRed:0.98 green:0.91 blue:0.70 alpha:1.0];
+    amountLabel.textColor = UIColor.labelColor;
     amountLabel.textAlignment = NSTextAlignmentCenter;
     amountLabel.adjustsFontSizeToFitWidth = YES;
     amountLabel.minimumScaleFactor = 0.78;
