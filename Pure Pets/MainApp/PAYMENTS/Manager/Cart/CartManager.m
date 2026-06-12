@@ -8,6 +8,7 @@
 #import "PetAccessoryManager.h"
 #import "PPCartCalculator.h"
 #import "PPFirestoreErrorNotifier.h"
+#import "PPAlertHelper.h"
 #import <UIKit/UIKit.h>
 #import <math.h>
 
@@ -21,6 +22,7 @@
 @property (nonatomic, assign, readwrite) BOOL applePayEnabled;
 @property (nonatomic, assign, readwrite) BOOL ooredooMoneyEnabled;
 @property (nonatomic, assign, readwrite) BOOL napsEnabled;
+@property (nonatomic, assign, readwrite) BOOL allowMultiProviderCart;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> pricingListener;
 
@@ -37,6 +39,7 @@
         _applePayEnabled = YES;
         _ooredooMoneyEnabled = YES;
         _napsEnabled = YES;
+        _allowMultiProviderCart = NO;
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(pp_handleAppDidBecomeActiveNotification:)
                                                      name:UIApplicationDidBecomeActiveNotification
@@ -82,6 +85,18 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     return fallback;
 }
 
+static void PPCartCompleteAdd(PPCartAddItemCompletion completion, BOOL success, BOOL didCancel)
+{
+    if (!completion) { return; }
+    if ([NSThread isMainThread]) {
+        completion(success, didCancel);
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(success, didCancel);
+        });
+    }
+}
+
 - (void)pp_handleAppDidBecomeActiveNotification:(NSNotification *)notification
 {
     (void)notification;
@@ -115,13 +130,15 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     BOOL nextAppleEnabled = PPCartBoolOrDefault(data[@"applePayEnabled"], YES);
     BOOL nextOoredooEnabled = PPCartBoolOrDefault(data[@"ooredooMoneyEnabled"], YES);
     BOOL nextNapsEnabled = PPCartBoolOrDefault(data[@"napsEnabled"], YES);
+    BOOL nextAllowMultiProviderCart = PPCartBoolOrDefault(data[@"allowMultiProviderCart"], NO);
 
     BOOL changed = (fabs(self.deliveryFee - nextDeliveryFee) > 0.009) ||
                    (self.cashOnDeliveryEnabled != nextCashEnabled) ||
                    (self.onlinePaymentEnabled != nextOnlineEnabled) ||
                    (self.applePayEnabled != nextAppleEnabled) ||
                    (self.ooredooMoneyEnabled != nextOoredooEnabled) ||
-                   (self.napsEnabled != nextNapsEnabled);
+                   (self.napsEnabled != nextNapsEnabled) ||
+                   (self.allowMultiProviderCart != nextAllowMultiProviderCart);
 
     self.deliveryFee = nextDeliveryFee;
     self.cashOnDeliveryEnabled = nextCashEnabled;
@@ -129,6 +146,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     self.applePayEnabled = nextAppleEnabled;
     self.ooredooMoneyEnabled = nextOoredooEnabled;
     self.napsEnabled = nextNapsEnabled;
+    self.allowMultiProviderCart = nextAllowMultiProviderCart;
 
     if (changed) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kCartPricingConfigurationDidChangeNotification object:nil];
@@ -198,7 +216,8 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         @"quantity": @(MAX(quantity, 0)),
         @"price": @(item.price),
         @"originalPrice": @(item.originalPrice),
-        @"imageURL": item.imageURL ?: @""
+        @"imageURL": item.imageURL ?: @"",
+        @"providerID": item.providerID ?: @""
     } mutableCopy];
     if (item.stockQuantity != NSNotFound) {
         payload[@"stockQuantity"] = @(MAX(item.stockQuantity, 0));
@@ -243,6 +262,10 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     }
     if (item.price < 0.01 || isnan(item.price)) {
         NSLog(@"[Cart] Reject add: invalid price (%.4f) for itemID=%@", item.price, item.itemID);
+        return NO;
+    }
+    if ([self shouldConfirmProviderSwitchForItem:item]) {
+        NSLog(@"[Cart] Reject add: provider switch requires user confirmation for itemID=%@", item.itemID);
         return NO;
     }
 
@@ -319,6 +342,77 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     return YES;
 }
 
+- (BOOL)shouldConfirmProviderSwitchForItem:(CartItem *)item
+{
+    if (self.allowMultiProviderCart) { return NO; }
+    NSString *incomingProviderID = item.providerID ?: @"";
+    if (incomingProviderID.length == 0) { return NO; }
+
+    for (CartItem *existing in self.cartItems) {
+        NSString *existingProviderID = existing.providerID ?: @"";
+        if (existingProviderID.length == 0) { continue; }
+        if (![existingProviderID isEqualToString:incomingProviderID]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)addItem:(CartItem *)item
+presentingViewController:(UIViewController *)presentingViewController
+     completion:(PPCartAddItemCompletion)completion
+{
+    if (![item isKindOfClass:CartItem.class] || item.itemID.length == 0) {
+        PPCartCompleteAdd(completion, NO, NO);
+        return;
+    }
+
+    if (!UserManager.sharedManager.isUserLoggedIn) {
+        PPCartCompleteAdd(completion, NO, NO);
+        return;
+    }
+
+    if (![self shouldConfirmProviderSwitchForItem:item]) {
+        BOOL didAdd = [self addItem:item];
+        PPCartCompleteAdd(completion, didAdd, NO);
+        return;
+    }
+
+    UIViewController *presenter = presentingViewController ?: AppMgr.topViewController;
+    if (!presenter) {
+        PPCartCompleteAdd(completion, NO, NO);
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [PPAlertHelper showConfirmationIn:presenter
+                                    title:kLang(@"cart_provider_switch_title")
+                                 subtitle:kLang(@"cart_provider_switch_message")
+                            confirmButton:kLang(@"cart_provider_switch_confirm")
+                             cancelButton:kLang(@"cart_provider_switch_cancel")
+                                     icon:nil
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            (void)text;
+            if (!didConfirm) {
+                PPCartCompleteAdd(completion, NO, YES);
+                return;
+            }
+
+            [self clearCartAndSyncToFirestoreWithCompletion:^(BOOL success) {
+                if (!success) {
+                    PPCartCompleteAdd(completion, NO, NO);
+                    return;
+                }
+
+                BOOL didAdd = [self addItem:item];
+                PPCartCompleteAdd(completion, didAdd, NO);
+            }];
+        } cancelBlock:^{
+            PPCartCompleteAdd(completion, NO, YES);
+        }];
+    });
+}
+
 
 - (NSInteger)indexOfCartItemForItem:(CartItem *)myitem {
     for (NSInteger i = 0; i < self.cartItems.count; i++) {
@@ -341,6 +435,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             @"price": @(item.price),
             @"originalPrice": @(item.originalPrice),
             @"imageURL": item.imageURL ?: @"",
+            @"providerID": item.providerID ?: @"",
         } mutableCopy];
         if (item.stockQuantity != NSNotFound) {
             dict[@"stockQuantity"] = @(MAX(item.stockQuantity, 0));
@@ -374,6 +469,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             item.originalPrice = item.price;
         }
         item.imageURL = dict[@"imageURL"] ?: @"";
+        item.providerID = [dict[@"providerID"] isKindOfClass:NSString.class] ? dict[@"providerID"] : @"";
         [self.cartItems addObject:item];
     }
     //[[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
@@ -384,6 +480,60 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+}
+
+- (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion
+{
+    NSArray<CartItem *> *items = [self.cartItems copy];
+    NSString *userID = PPCurrentFIRAuthUser.uid;
+    if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
+
+    if (items.count == 0 || userID.length == 0) {
+        [self clearCart];
+        if (completion) { completion(YES); }
+        return;
+    }
+
+    NSMutableArray<CartItem *> *itemsToClear = [NSMutableArray array];
+    for (CartItem *item in items) {
+        if (item.itemID.length > 0) { [itemsToClear addObject:item]; }
+    }
+    if (itemsToClear.count == 0) {
+        [self clearCart];
+        if (completion) { completion(YES); }
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRCollectionReference *cartItemsRef =
+    [[[db collectionWithPath:@"UsersCol"]
+      documentWithPath:userID]
+     collectionWithPath:@"cartItems"];
+
+    FIRWriteBatch *batch = [db batch];
+    for (CartItem *item in itemsToClear) {
+        [batch deleteDocument:[cartItemsRef documentWithPath:item.itemID]];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [batch commitWithCompletion:^(NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ Failed to clear cart during provider switch: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartBatchSync];
+            if (completion) { completion(NO); }
+            return;
+        }
+        [weakSelf.cartItems removeAllObjects];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        if (completion) { completion(YES); }
+    }];
+}
+
+- (void)clearCartAndSyncToFirestore
+{
+    [self clearCartAndSyncToFirestoreWithCompletion:nil];
 }
 /*
 - (void)addItem:(CartItem *)item {
@@ -425,7 +575,8 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             @"quantity": @(item.quantity),
             @"price": @(item.price),
             @"originalPrice": @(item.originalPrice),
-            @"imageURL": item.imageURL ?: @""
+            @"imageURL": item.imageURL ?: @"",
+            @"providerID": item.providerID ?: @""
         } mutableCopy];
         if (item.stockQuantity != NSNotFound) {
             data[@"stockQuantity"] = @(MAX(0, item.stockQuantity));
@@ -494,6 +645,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
                 item.originalPrice = item.price;
             }
             item.imageURL = doc[@"imageURL"] ?: @"";
+            item.providerID = [doc[@"providerID"] isKindOfClass:NSString.class] ? doc[@"providerID"] : @"";
 
             CartItem *existing = mergedByItemID[item.itemID];
             if (existing) {
@@ -507,6 +659,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
                 }
                 if (item.name.length > 0) { existing.name = item.name; }
                 if (item.imageURL.length > 0) { existing.imageURL = item.imageURL; }
+                if (item.providerID.length > 0) { existing.providerID = item.providerID; }
                 if (item.price > 0) { existing.price = item.price; }
             } else {
                 mergedByItemID[item.itemID] = item;

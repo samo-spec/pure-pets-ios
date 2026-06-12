@@ -764,6 +764,10 @@
 
 "AddedToCart" = "✔︎ Added";
 "ItemAddedToYourCart" = "Item added to your cart.";
+"cart_provider_switch_title" = "Cart belongs to another provider";
+"cart_provider_switch_message" = "This cart currently belongs to another provider. Adding this item will clear the current cart and start a new one.";
+"cart_provider_switch_confirm" = "Clear & Add";
+"cart_provider_switch_cancel" = "Cancel";
 
 
 "tempDesc" = "Keep your parrot happy, active, and mentally stimulated with this fun and colorful toy set. Designed to satisfy your bird’s natural curiosity and chewing instincts, it helps prevent boredom and encourages healthy behavior. Made from safe, non-toxic materials suitable for all parrot breeds — perfect for hanging in cages or play stands.";
@@ -2470,6 +2474,42 @@
 "notifications_inbox_category_chat" = "Chats";
 "notifications_inbox_category_orders" = "Orders";
 "notifications_inbox_category_updates" = "Updates";
+"notifications_inbox_customer_delivery_requested_title" = "Your Order Is Ready";
+"notifications_inbox_customer_delivery_requested_body" = "Your order is packed and ready for shipment. A delivery partner will be assigned shortly.";
+"notifications_inbox_customer_delivery_assigned_title" = "Delivery Partner Assigned";
+"notifications_inbox_customer_delivery_assigned_body" = "A delivery partner has been assigned to your order and will collect it shortly.";
+"notifications_inbox_customer_delivery_on_the_way_title" = "Your Order Is On the Way";
+"notifications_inbox_customer_delivery_on_the_way_body" = "Your order has been collected and is now on its way to you.";
+"notifications_inbox_customer_delivery_delivered_title" = "Order Delivered";
+"notifications_inbox_customer_delivery_delivered_body" = "Your order has been delivered successfully. Thank you for choosing Pure Pets.";
+"notifications_inbox_customer_delivery_completed_title" = "Order Completed";
+"notifications_inbox_customer_delivery_completed_body" = "Your order has been completed successfully. Thank you for shopping with Pure Pets.";
+"notifications_inbox_customer_delivery_update_title" = "Delivery Update";
+"notifications_inbox_customer_delivery_cancelled_body" = "The delivery for your order has been cancelled. Please contact support if you need assistance.";
+"notifications_inbox_customer_delivery_failed_body" = "We were unable to complete your delivery. Our team will review the order and update you shortly.";
+"notifications_inbox_customer_delivery_delayed_body" = "Your delivery needs a little more time. Our team is reviewing the order and will update you shortly.";
+"notifications_inbox_order_reference_fallback" = "your order";
+"notifications_inbox_order_payment_confirmed_title" = "Payment Confirmed";
+"notifications_inbox_order_payment_confirmed_body_format" = "Payment for %@ is confirmed.";
+"notifications_inbox_order_processing_title" = "Order Processing";
+"notifications_inbox_order_processing_body_format" = "%@ is now being prepared.";
+"notifications_inbox_order_shipped_title" = "Order Shipped";
+"notifications_inbox_order_shipped_body_format" = "%@ is on the way.";
+"notifications_inbox_order_delivered_title" = "Order Delivered";
+"notifications_inbox_order_delivered_body_format" = "%@ has been delivered.";
+"notifications_inbox_order_cancelled_title" = "Order Cancelled";
+"notifications_inbox_order_cancelled_body_format" = "%@ was cancelled.";
+"notifications_inbox_order_failed_title" = "Payment Failed";
+"notifications_inbox_order_failed_body_format" = "%@ could not be completed.";
+"notifications_inbox_order_cash_collected_title" = "Cash Payment Collected";
+"notifications_inbox_order_cash_collected_body_format" = "Cash payment for %@ was collected successfully.";
+"notifications_inbox_new_delivery_request_title" = "New Delivery Request";
+"notifications_inbox_new_delivery_request_body" = "A new order is ready for pickup. Please review the details and accept the delivery request.";
+"notifications_inbox_delivery_request_closed_title" = "Delivery Request Closed";
+"notifications_inbox_delivery_request_closed_body" = "This delivery request is no longer available.";
+"notifications_inbox_new_order_title" = "New Order";
+"notifications_inbox_new_order_title_format" = "New Order %@";
+"notifications_inbox_order_items_total_format" = "%@ item(s) • %@ %@";
 "pet_reminder_add" = "Add Reminder";
 "pet_reminder_edit" = "Edit Reminder";
 "pet_reminder_title" = "Reminder title";
@@ -3019,4 +3059,4 @@
 "call" = "Call";
 "verified" = "Verified";
 "premium_seller_on_platform" = "Premium seller on platform";
-"View_Profile" = "View Profile";
+"View_Profile" = "Explore all seller products";

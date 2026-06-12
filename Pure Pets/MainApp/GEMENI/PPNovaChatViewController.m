@@ -8911,37 +8911,49 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product
                             requestID:(NSString *)requestID
                            responseID:(NSString *)responseID {
-    [PPHUD showLoading:@""];
-
     CartItem *item = [[CartItem alloc] initWithAccessory:product quantity:1];
     item.type = product.isPetMedicine ? @"petMedicine" : @"petAccessory";
 
-    BOOL success = [[CartManager sharedManager] addItem:item];
-
-    if (success) {
-        NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
-        [PPAnalytics logAddToCartItemID:product.accessoryID
-                                    name:product.name
-                                category:category
-                                   price:product.finalPrice.doubleValue
-                                quantity:1];
-
-        UINotificationFeedbackGenerator *fb = [[UINotificationFeedbackGenerator alloc] init];
-        [fb prepare];
-        [fb notificationOccurred:UINotificationFeedbackTypeSuccess];
+    CartManager *cart = [CartManager sharedManager];
+    BOOL needsProviderSwitchConfirmation = [cart shouldConfirmProviderSwitchForItem:item];
+    if (!needsProviderSwitchConfirmation) {
+        [PPHUD showLoading:@""];
     }
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-
-        [PPHUD dismiss];
-        if (success) {
-            [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
-            self.pendingCartProduct = nil; // Clear after adding
-            [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
-        } else {
-            [PPHUD showError:kLang(@"nova_add_to_cart_failed")];
+    __weak typeof(self) weakSelf = self;
+    [cart addItem:item
+    presentingViewController:self
+       completion:^(BOOL success, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) { return; }
+        if (needsProviderSwitchConfirmation) {
+            [PPHUD showLoading:@""];
         }
-    });
+        if (success) {
+            NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
+            [PPAnalytics logAddToCartItemID:product.accessoryID
+                                       name:product.name
+                                   category:category
+                                      price:product.finalPrice.doubleValue
+                                   quantity:1];
+            
+            UINotificationFeedbackGenerator *fb = [[UINotificationFeedbackGenerator alloc] init];
+            [fb prepare];
+            [fb notificationOccurred:UINotificationFeedbackTypeSuccess];
+        }
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            
+            [PPHUD dismiss];
+            if (success) {
+                [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
+                self.pendingCartProduct = nil; // Clear after adding
+                [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
+            } else {
+                [PPHUD showError:kLang(@"nova_add_to_cart_failed")];
+            }
+        });
+    }] ;
 }
 
 - (void)pp_sendNovaCartConfirmationFollowUpForProduct:(PetAccessory *)product {

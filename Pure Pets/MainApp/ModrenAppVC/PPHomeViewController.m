@@ -11166,10 +11166,34 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         if (existing) {
             [cart updateQuantity:safeQuantity forItem:item completion:nil];
         } else {
-            BOOL didAdd = [cart addItem:item];
-            if (!didAdd) {
-                [PPHUD showError:kLang(@"Out of stock")];
-            }
+            __weak typeof(self) weakSelf = self;
+            [cart addItem:item
+presentingViewController:self
+       completion:^(BOOL didAdd, BOOL didCancel) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) { return; }
+                if (didCancel) {
+                    [self updateCartQuantityBadge];
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:kCartUpdatedNotification
+                                      object:nil];
+                    return;
+                }
+                if (!didAdd) {
+                    [PPHUD showError:kLang(@"Out of stock")];
+                    return;
+                }
+                if (safeQuantity == 1) {
+                    [PPFunc triggerLightHaptic];
+                } else {
+                    [PPFunc triggerMediumHaptic];
+                }
+                [self updateCartQuantityBadge];
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:kCartUpdatedNotification
+                                  object:nil];
+            }];
+            return;
         }
 
         if (safeQuantity == 1) {

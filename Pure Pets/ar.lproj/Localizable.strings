@@ -789,6 +789,10 @@
 
 "AddedToCart" = "✔︎ تمت الإضافة";
 "ItemAddedToYourCart" = "تمت إضافة العنصر إلى سلة التسوق الخاصة بك.";
+"cart_provider_switch_title" = "السلة تابعة لمزود آخر";
+"cart_provider_switch_message" = "تنتمي هذه السلة حاليًا إلى مزود آخر. ستفرغ إضافة هذا العنصر السلة الحالية وتبدأ سلة جديدة.";
+"cart_provider_switch_confirm" = "تفريغ وإضافة";
+"cart_provider_switch_cancel" = "إلغاء";
 
 
 "tempDesc" = "اجعل طائرك الببغاء سعيدًا ونشيطًا بهذا الطقم الممتع والملوّن من الألعاب. صُممت لتلبية فضول الطيور الطبيعي وغريزة المضغ لديها، مما يساعد على منع الملل وتشجيع السلوك الصحي. مصنوعة من مواد آمنة وغير سامة مناسبة لجميع أنواع الببغاوات — مثالية للتعليق داخل الأقفاص أو أماكن اللعب.";
@@ -2461,6 +2465,42 @@
 "notifications_inbox_category_chat" = "الدردشات";
 "notifications_inbox_category_orders" = "الطلبات";
 "notifications_inbox_category_updates" = "التحديثات";
+"notifications_inbox_customer_delivery_requested_title" = "طلبك جاهز";
+"notifications_inbox_customer_delivery_requested_body" = "تم تجهيز طلبك للشحن، وسيتم تعيين مندوب توصيل قريبًا.";
+"notifications_inbox_customer_delivery_assigned_title" = "تم تعيين مندوب التوصيل";
+"notifications_inbox_customer_delivery_assigned_body" = "تم تعيين مندوب توصيل لطلبك وسيستلمه قريبًا.";
+"notifications_inbox_customer_delivery_on_the_way_title" = "طلبك في الطريق";
+"notifications_inbox_customer_delivery_on_the_way_body" = "تم استلام طلبك وهو الآن في الطريق إليك.";
+"notifications_inbox_customer_delivery_delivered_title" = "تم تسليم الطلب";
+"notifications_inbox_customer_delivery_delivered_body" = "تم تسليم طلبك بنجاح. شكرًا لاختيارك بيور بتس.";
+"notifications_inbox_customer_delivery_completed_title" = "اكتمل الطلب";
+"notifications_inbox_customer_delivery_completed_body" = "اكتمل طلبك بنجاح. شكرًا لتسوقك من بيور بتس.";
+"notifications_inbox_customer_delivery_update_title" = "تحديث التوصيل";
+"notifications_inbox_customer_delivery_cancelled_body" = "تم إلغاء توصيل طلبك. يرجى التواصل مع الدعم إذا كنت تحتاج إلى مساعدة.";
+"notifications_inbox_customer_delivery_failed_body" = "تعذر إكمال التوصيل. سيراجع فريقنا الطلب ويحدثك قريبًا.";
+"notifications_inbox_customer_delivery_delayed_body" = "يحتاج توصيل طلبك إلى وقت إضافي قليلًا. سيراجع فريقنا الطلب ويحدثك قريبًا.";
+"notifications_inbox_order_reference_fallback" = "طلبك";
+"notifications_inbox_order_payment_confirmed_title" = "تم تأكيد الدفع";
+"notifications_inbox_order_payment_confirmed_body_format" = "تم تأكيد دفع %@.";
+"notifications_inbox_order_processing_title" = "جاري تجهيز الطلب";
+"notifications_inbox_order_processing_body_format" = "يتم تجهيز %@ الآن.";
+"notifications_inbox_order_shipped_title" = "تم شحن الطلب";
+"notifications_inbox_order_shipped_body_format" = "%@ في الطريق إليك.";
+"notifications_inbox_order_delivered_title" = "تم تسليم الطلب";
+"notifications_inbox_order_delivered_body_format" = "تم تسليم %@.";
+"notifications_inbox_order_cancelled_title" = "تم إلغاء الطلب";
+"notifications_inbox_order_cancelled_body_format" = "تم إلغاء %@.";
+"notifications_inbox_order_failed_title" = "فشل الدفع";
+"notifications_inbox_order_failed_body_format" = "تعذر إكمال %@.";
+"notifications_inbox_order_cash_collected_title" = "تم تحصيل الدفع";
+"notifications_inbox_order_cash_collected_body_format" = "تم تحصيل قيمة %@ بنجاح.";
+"notifications_inbox_new_delivery_request_title" = "طلب توصيل جديد";
+"notifications_inbox_new_delivery_request_body" = "يوجد طلب جديد جاهز للاستلام. راجع التفاصيل واقبل طلب التوصيل.";
+"notifications_inbox_delivery_request_closed_title" = "تم إغلاق طلب التوصيل";
+"notifications_inbox_delivery_request_closed_body" = "لم يعد طلب التوصيل هذا متاحًا.";
+"notifications_inbox_new_order_title" = "طلب جديد";
+"notifications_inbox_new_order_title_format" = "طلب جديد %@";
+"notifications_inbox_order_items_total_format" = "%@ عنصر • %@ %@";
 "pet_reminder_add" = "إضافة تذكير";
 "pet_reminder_edit" = "تعديل التذكير";
 "pet_reminder_title" = "عنوان التذكير";
@@ -3007,4 +3047,4 @@
 "call" = "اتصال";
 "verified" = "موثق";
 "premium_seller_on_platform" = "بائع متميز على المنصة";
-"View_Profile" = "عرض ملف البائع";
+"View_Profile" = "استكشف كل منتجات البائع";

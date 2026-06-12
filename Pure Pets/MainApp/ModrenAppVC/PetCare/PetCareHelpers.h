@@ -111,6 +111,7 @@ PPPetCareHelperInline CartItem * _Nullable PPPetCareCartItemForMedicine(VetMedic
     item.price = MAX(medicine.price, 0.0);
     item.originalPrice = MAX(medicine.price, 0.0);
     item.imageURL = PPPetCareSafeString(medicine.imageUrl);
+    item.providerID = PPPetCareSafeString(medicine.userId);
     item.type = @"petMedicine";
     return item;
 }

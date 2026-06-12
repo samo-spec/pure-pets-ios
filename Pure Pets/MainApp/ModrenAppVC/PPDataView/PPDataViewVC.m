@@ -3042,25 +3042,42 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         CartManager *cart = [CartManager sharedManager];
         CartItem *existing = [cart getCartItemForItemID:accessory.accessoryID];
         CartItem *item = [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
-        BOOL didAddNewItem = NO;
 
         if (existing) {
             [cart updateQuantity:safeQuantity forItem:item completion:nil];
         } else {
-            BOOL didAdd = [cart addItem:item];
-            if (!didAdd) {
-                [PPHUD showError:kLang(@"Out of stock")];
-            } else {
-                didAddNewItem = YES;
-            }
+            __weak typeof(self) weakSelf = self;
+            [cart addItem:item
+presentingViewController:self
+               completion:^(BOOL didAdd, BOOL didCancel) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) { return; }
+                if (didCancel) {
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:kCartUpdatedNotification
+                                      object:nil];
+                    return;
+                }
+                if (!didAdd) {
+                    [PPHUD showError:kLang(@"Out of stock")];
+                    return;
+                }
+                if (safeQuantity == 1) {
+                    [PPFunc triggerLightHaptic];
+                    [PPHUD showSuccess:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
+                } else {
+                    [PPFunc triggerMediumHaptic];
+                }
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:kCartUpdatedNotification
+                                  object:nil];
+            }];
+            return;
         }
         
         if (safeQuantity == 1) {
             // First add
             [PPFunc triggerLightHaptic];
-            if (didAddNewItem) {
-                [PPHUD showSuccess:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
-            }
         }
         else {
             // Increment / decrement

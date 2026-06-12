@@ -9,7 +9,10 @@
 #import <Foundation/Foundation.h>
 #import "PetAccessory.h"
 #import "CartItem.h"
+@class UIViewController;
 NS_ASSUME_NONNULL_BEGIN
+
+typedef void (^PPCartAddItemCompletion)(BOOL success, BOOL didCancel);
 
 @interface CartManager : NSObject
 
@@ -21,9 +24,13 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign, readonly) BOOL applePayEnabled;
 @property (nonatomic, assign, readonly) BOOL ooredooMoneyEnabled;
 @property (nonatomic, assign, readonly) BOOL napsEnabled;
+@property (nonatomic, assign, readonly) BOOL allowMultiProviderCart;
 
 + (instancetype)sharedManager;
 - (BOOL)addItem:(CartItem *)item;
+- (void)addItem:(CartItem *)item
+presentingViewController:(UIViewController * _Nullable)presentingViewController
+     completion:(PPCartAddItemCompletion _Nullable)completion;
 - (void)syncCartToFirestore:(NSArray<CartItem *> *)items;
 - (void)saveCart;
 - (void)clearCart;
@@ -43,6 +50,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (double)subtotalAmount;
 - (double)totalAmount;
 - (BOOL)isCartEmpty;
+- (BOOL)shouldConfirmProviderSwitchForItem:(CartItem *)item;
+- (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion;
+- (void)clearCartAndSyncToFirestore;
 - (void)refreshPricingConfiguration;
 @end
 

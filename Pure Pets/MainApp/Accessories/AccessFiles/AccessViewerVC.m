@@ -1763,44 +1763,46 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     NSInteger safeQty = MIN(requestedQty, availableToAdd);
     CartItem *item = [[CartItem alloc] initWithAccessory:self.accessAds quantity:safeQty];
-    BOOL didAdd = [[CartManager sharedManager] addItem:item];
-    if (!didAdd) {
-        [self.bottomBar performAddToCartFailureAnimation];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        UIAlertController *outOfStockAlert =
-            [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
-                                                message:nil
-                                         preferredStyle:UIAlertControllerStyleAlert];
-        [outOfStockAlert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
-                                                            style:UIAlertActionStyleDefault
-                                                          handler:nil]];
-        [self presentViewController:outOfStockAlert animated:YES completion:nil];
-        return;
-    }
+    __weak typeof(self) weakSelf = self;
+    [[CartManager sharedManager] addItem:item
+                presentingViewController:self
+                              completion:^(BOOL didAdd, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) { return; }
+        if (!didAdd) {
+            [self.bottomBar performAddToCartFailureAnimation];
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+            UIAlertController *outOfStockAlert =
+                [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
+                                                    message:nil
+                                             preferredStyle:UIAlertControllerStyleAlert];
+            [outOfStockAlert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:nil]];
+            [self presentViewController:outOfStockAlert animated:YES completion:nil];
+            return;
+        }
 
-    NSString *message = nil;
-    if (safeQty < requestedQty) {
-        message = [NSString stringWithFormat:@"%@ %ld %@",
-                   kLang(@"Only"),
-                   (long)availableToAdd,
-                   kLang(@"left in stock")];
-    } else {
-        message = kLang(@"ItemAddedToYourCart");
-    }
+        NSString *message = safeQty < requestedQty
+            ? [NSString stringWithFormat:@"%@ %ld %@",
+               kLang(@"Only"),
+               (long)availableToAdd,
+               kLang(@"left in stock")]
+            : kLang(@"ItemAddedToYourCart");
 
-    [PPAnalytics logAddToCartItemID:self.accessAds.accessoryID
-                               name:self.accessAds.name
-                           category:[NSString stringWithFormat:@"acc-%ld", (long)self.accessAds.petMainCategoryID]
-                              price:self.accessAds.finalPrice.doubleValue
-                           quantity:safeQty];
+        [PPAnalytics logAddToCartItemID:self.accessAds.accessoryID
+                                   name:self.accessAds.name
+                               category:[NSString stringWithFormat:@"acc-%ld", (long)self.accessAds.petMainCategoryID]
+                                  price:self.accessAds.finalPrice.doubleValue
+                               quantity:safeQty];
 
-    [self.bottomBar performAddToCartSuccessAnimation];
-    [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
-
-    [self.QtyDelegate updateCartAndReloadCollection];
-    [self loadItemsCountInBadge];
-    [self checkCartAndAnimateIfNeeded];
-    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
+        [self.bottomBar performAddToCartSuccessAnimation];
+        [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
+        [self.QtyDelegate updateCartAndReloadCollection];
+        [self loadItemsCountInBadge];
+        [self checkCartAndAnimateIfNeeded];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
+    }];
 }
 
 -(void)supportTapped
