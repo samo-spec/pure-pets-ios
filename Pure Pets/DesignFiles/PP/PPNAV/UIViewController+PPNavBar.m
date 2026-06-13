@@ -1080,7 +1080,42 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 }
 
  
+- (UIButton *)makeIOS26PlainButtonWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                     action:(SEL)action {
 
+    UIButton *button = [UIButton new];
+    CGFloat btnSize = PPIOS26() ? 38 :38 ;
+    
+    
+    
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+ 
+ 
+        config.baseForegroundColor = UIColor.labelColor;
+        config.background.backgroundColor = UIColor.clearColor;
+         button.configuration = config;
+
+        
+
+    } else {
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:image forState:UIControlStateNormal];
+        button.tintColor = UIColor.labelColor;
+     }
+    [button setImage:image forState:UIControlStateNormal];
+
+    button.adjustsImageWhenHighlighted = NO;
+    button.layer.cornerRadius = btnSize/2;
+    button.clipsToBounds = YES;
+    
+   
+
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+
+    return button;
+}
 #pragma mark - PPButton circle button helper
 - (UIButton *)pp_ButtonWithSystemName:(NSString *)imageName action:(SEL)action {
     UIButton *btn;

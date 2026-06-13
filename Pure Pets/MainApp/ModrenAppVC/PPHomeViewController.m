@@ -3699,8 +3699,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [NSLayoutConstraint activateConstraints:@[
         [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
         [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12 ],
-        [button.widthAnchor constraintEqualToConstant:56.0],
-        [button.heightAnchor constraintEqualToConstant:56.0],
+        [button.widthAnchor constraintEqualToConstant:54.0],
+        [button.heightAnchor constraintEqualToConstant:54.0],
 
         [halo.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
@@ -6321,7 +6321,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     switch (section) {
         case PPHomeSectionSuggestions: {
             cfg.hidden = NO;
-            cfg.title = kLang(@"SuggestedForYou");
+            cfg.title = kLang(@"home_header_picks_for_you") ?: kLang(@"SuggestedForYou");
             //cfg.actionTitle = kLang(@"ShowLess");
             cfg.iconName = arrowImage;
              cfg.subtitle = kLang(@"RecommendedForYouHint");
@@ -6356,7 +6356,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionCurrentOrders: {
             cfg.hidden = !self.isCurrentOrdersExpanded ||
                          !(self.currentOrdersLoading || [self pp_featuredHomeOrder] != nil);
-            cfg.title = kLang(@"Home_LastOrderTitle");
+            cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_LastOrderTitle");
             cfg.subtitle = kLang(@"Home_LastOrderSubtitle");
             cfg.actionTitle = kLang(@"OrderHistory");
             cfg.iconName = arrowImage;
@@ -6366,7 +6366,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionMainKinds:
         {
             cfg.hidden = NO;
-            cfg.title = kLang(@"MainCategories");
+            cfg.title = kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories");
             cfg.actionTitle = self.isMainKindsExpanded
                 ? kLang(@"ShowLess")
                 : kLang(@"ShowAll");
@@ -6381,7 +6381,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionAccessories: {
             cfg.hidden = NO;
-            cfg.title = kLang(@"Accessories");
+            cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Accessories");
            // cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = @"list.bullet";
 
@@ -6399,9 +6399,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionAdsNearBy: {
             cfg.hidden = NO;
             if (self.nearbyShowingRecentlyAdded) {
-                cfg.title = kLang(@"Home_RecentlyAdded") ?: @"Recently Added";
+                cfg.title = kLang(@"home_header_most_popular") ?: kLang(@"Home_RecentlyAdded") ?: @"Recently Added";
             } else {
-                cfg.title = kLang(@"Home_NearbyAds");
+                cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyAds");
             }
            // cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = arrowImage;
@@ -6411,9 +6411,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionNearbyServices: {
             cfg.hidden = (self.nearbyServiceProviders.count == 0 && !self.nearbyServicesLoading);
             if (self.nearbyServicesShowingLatest) {
-                cfg.title = kLang(@"Home_ServiceProviders") ?: @"Service Providers";
+                cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_ServiceProviders") ?: @"Service Providers";
             } else {
-                cfg.title = kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
+                cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
             }
             cfg.subtitle = kLang(@"Home_ServiceProvidersSubtitle") ?: @"Find grooming, training & more";
             cfg.iconName = arrowImage;
@@ -6422,7 +6422,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionLastFood: {
             cfg.hidden = self.lastFoodAccessories.count == 0;
-            cfg.title = kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
+            cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
             cfg.subtitle = kLang(@"Home_LastFoodSubtitle") ?: @"Recently added pet food";
             cfg.iconName = arrowImage;
             break;
@@ -6430,7 +6430,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionBuyAgain: {
             cfg.hidden = self.buyAgainEntries.count == 0;
-            cfg.title = kLang(@"Home_BuyAgainTitle");
+            cfg.title = kLang(@"home_header_picks_for_you") ?: kLang(@"Home_BuyAgainTitle");
             cfg.subtitle = kLang(@"Home_BuyAgainSubtitle");
             cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = arrowImage;
@@ -6854,15 +6854,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [cell configureWithTitle:kLang(@"Adopt a Pet")
                             subtitle:kLang(@"Find your new best friend")
                            seedImage:[UIImage imageNamed:@"icn_cat"]];
-
-            __weak typeof(cell) weakCell = cell;
-            cell.onTap = ^{
-                __strong typeof(weakCell) tappedCell = weakCell;
-                NSIndexPath *path = [collectionView indexPathForCell:tappedCell];
-                if (path) {
-                    [strongSelf collectionView:collectionView didSelectItemAtIndexPath:path];
-                }
-            };
 
             return cell;
         }
@@ -7945,7 +7936,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         ? kLang(@"ShowLess")
         : kLang(@"ShowAll");
 
-    [header configureWithTitle:kLang(@"MainCategories")
+    [header configureWithTitle:(kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories"))
                       subtitle:nil
                    actionTitle:actionTitle
                       iconName:iconName
@@ -8276,6 +8267,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self pp_scheduleNovaFloatingScrollSettle];
 }
 
+- (BOOL)collectionView:(UICollectionView *)collectionView
+shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    if (section == PPHomeSectionAdopt &&
+        (collectionView.tracking || collectionView.dragging || collectionView.decelerating)) {
+        return NO;
+    }
+    return YES;
+}
+
 - (void)collectionView:(UICollectionView *)collectionView
     didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
@@ -8483,7 +8485,8 @@ didHighlightItemAtIndexPath:(NSIndexPath *)indexPath
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionHero ||
         section == PPHomeSectionCurrentOrders ||
-        section == PPHomeSectionCarousel) {
+        section == PPHomeSectionCarousel ||
+        section == PPHomeSectionAdopt) {
         return;
     }
 
@@ -9961,6 +9964,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (UIBarButtonItem *)pp_buildCartBarButtonItem
 {
     self.homeCartButton = [self pp_ButtonWithSystemName:@"cart" action:@selector(cartClick)];
+
     self.homeCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart", @"Shopping cart");
     self.homeCartButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_hint", @"Double-tap to open your cart");
 
@@ -9974,23 +9978,50 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
     [NSLayoutConstraint deactivateConstraints:sizeConstraints];
 
-    CGFloat cartButtonSide = 44.0;
+    CGFloat cartButtonSide = 40.0;
     self.homeCartButton.translatesAutoresizingMaskIntoConstraints = YES;
     self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
-    self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.homeCartButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.homeCartButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
+    //self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-   
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.image = [[UIImage systemImageNamed:@"cart"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        configuration.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
-    if (@available(iOS 15.0, *)) {
+        UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
+        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
+        background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ?: [UIColor colorWithWhite:1.0 alpha:0.72];
+        background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.16];
+        background.strokeWidth = 0.7;
+        background.cornerRadius = cartButtonSide * 0.5;
+        configuration.background = background;
+        self.homeCartButton.configuration = configuration;
+    } else if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.homeCartButton.configuration;
         if (configuration) {
+            configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            configuration.background.backgroundInsets = NSDirectionalEdgeInsetsZero;
             configuration.background.cornerRadius = cartButtonSide * 0.5;
             self.homeCartButton.configuration = configuration;
         }
-    } else {
-        self.homeCartButton.layer.cornerRadius = cartButtonSide * 0.5;
     }
+
+    self.homeCartButton.clipsToBounds = NO;
+    self.homeCartButton.layer.masksToBounds = NO;
+    self.homeCartButton.layer.cornerRadius = cartButtonSide * 0.5;
+    if (@available(iOS 13.0, *)) {
+        self.homeCartButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.homeCartButton pp_setShadowColor:UIColor.clearColor];
+    self.homeCartButton.layer.shadowOpacity = 0.0;
+    self.homeCartButton.layer.shadowRadius = 0.0;
+    self.homeCartButton.layer.shadowOffset = CGSizeZero;
+    self.homeCartButton.layer.shadowPath = nil;
 
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];
 }

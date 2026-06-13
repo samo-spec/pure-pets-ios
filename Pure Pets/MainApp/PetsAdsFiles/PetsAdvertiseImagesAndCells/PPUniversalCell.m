@@ -907,7 +907,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceLabel = [[UILabel alloc] init];
     self.priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.priceLabel.adjustsFontSizeToFitWidth = YES;
-    self.priceLabel.minimumScaleFactor = 0.78;
+    self.priceLabel.minimumScaleFactor = 0.88;
     self.priceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [self.priceLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.priceContainerView addSubview:self.priceLabel];

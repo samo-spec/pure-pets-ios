@@ -2036,8 +2036,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
             [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
-            [showAddMenuButton.widthAnchor constraintEqualToConstant:64.0],
-            [showAddMenuButton.heightAnchor constraintEqualToConstant:64.0]
+            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
         ]];
         // Symbol effect (iOS 26+ only)
         __weak UIButton *weakButton = showAddMenuButton;

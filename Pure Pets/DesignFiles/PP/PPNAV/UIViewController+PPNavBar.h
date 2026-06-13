@@ -120,7 +120,9 @@ static CGFloat    const kPPKeyBaseButtonSize = 44.0;
                                   button:(UIButton * _Nullable)button
                                    title:(NSString * _Nullable)title
                                 showBack:(BOOL)showBack;
-
+- (UIButton *)makeIOS26PlainButtonWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                     action:(SEL)action;
 /// Sugar for your names:
 - (UIView * _Nullable)PPLTRNavigationBarWithButton:(UIButton * _Nullable)button
                                              title:(NSString * _Nullable)title

@@ -53,7 +53,7 @@ PPPetCareHelperInline UIColor *PPPetCareSecondaryTextColor(void)
 
 PPPetCareHelperInline UIColor *PPPetCareAccentColor(void)
 {
-    return AppPrimaryClr ?: UIColor.systemTealColor;
+    return AppPrimaryClrShiner ?: UIColor.systemTealColor;
 }
 
 
@@ -64,7 +64,7 @@ PPPetCareHelperInline UIColor *PPPetCareSurfaceColor(void)
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
             return dark
             ? [AppBackgroundClr colorWithAlphaComponent:0.075]
-            : [AppBackgroundClr colorWithAlphaComponent:1];
+            : [AppForgroundColr colorWithAlphaComponent:1];
         }];
     }
     return [UIColor colorWithWhite:1.0 alpha:0.76];

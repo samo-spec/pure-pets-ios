@@ -2663,6 +2663,12 @@
 
 /* ── Nearby Service Providers Section ── */
 "Home_NearbyServiceProviders" = "Nearby Service Providers";
+"home_header_discover_by_category" = "Discover by category";
+"home_header_most_requested" = "Most requested";
+"home_header_featured_products" = "Featured products";
+"home_header_picks_for_you" = "Picks for you";
+"home_header_most_popular" = "Most popular";
+"home_header_near_you" = "Near you";
 "Home_ServiceProviders" = "Service Providers";
 "Home_ServiceProvidersSubtitle" = "Find grooming, training & more";
 "Home_NoServicesAvailable" = "No services available yet";

@@ -11,7 +11,7 @@
 static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 
-@interface PetAdoptCollectionViewCell ()
+@interface PetAdoptCollectionViewCell () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) UIView *cardSurfaceView;
 @property (nonatomic, strong) UIView *contentWrapView;
@@ -37,6 +37,8 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 @property (nonatomic, assign) BOOL didRequestAnimation;
 @property (nonatomic, assign) BOOL animationLoaded;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, strong) UITapGestureRecognizer *cardTapGesture;
+@property (nonatomic, strong) UILongPressGestureRecognizer *cardPressGesture;
 
 @end
 
@@ -255,13 +257,19 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     [_ctaPillView addSubview:_ctaIconView];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleTap)];
+    tap.cancelsTouchesInView = NO;
+    tap.delegate = self;
     [_cardSurfaceView addGestureRecognizer:tap];
+    self.cardTapGesture = tap;
 
     UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] initWithTarget:self
                                                                                         action:@selector(pp_handlePress:)];
-    press.minimumPressDuration = 0.01;
+    press.minimumPressDuration = 0.12;
+    press.allowableMovement = 8.0;
     press.cancelsTouchesInView = NO;
+    press.delegate = self;
     [_cardSurfaceView addGestureRecognizer:press];
+    self.cardPressGesture = press;
 }
 
 - (void)pp_buildConstraints {
@@ -490,10 +498,11 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 #pragma mark - Actions
 
 - (void)pp_handleTap {
-    [self pp_emitTapFeedback];
-    if (self.onTap) {
-        self.onTap();
+    if (!self.onTap) {
+        return;
     }
+    [self pp_emitTapFeedback];
+    self.onTap();
 }
 
 - (void)pp_handlePress:(UILongPressGestureRecognizer *)gesture {
@@ -522,6 +531,49 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
             self.contentWrapView.transform = CGAffineTransformIdentity;
         } completion:nil];
     }
+}
+
+- (UIScrollView *)pp_enclosingScrollView
+{
+    UIView *view = self.superview;
+    while (view) {
+        if ([view isKindOfClass:UIScrollView.class]) {
+            return (UIScrollView *)view;
+        }
+        view = view.superview;
+    }
+    return nil;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+{
+    UIScrollView *scrollView = [self pp_enclosingScrollView];
+    if (scrollView.dragging || scrollView.decelerating) {
+        return NO;
+    }
+
+    UIGestureRecognizerState panState = scrollView.panGestureRecognizer.state;
+    if (panState == UIGestureRecognizerStateBegan ||
+        panState == UIGestureRecognizerStateChanged) {
+        return NO;
+    }
+
+    if (gestureRecognizer == self.cardTapGesture && self.onTap == nil) {
+        return NO;
+    }
+
+    return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+{
+    UIScrollView *scrollView = [self pp_enclosingScrollView];
+    if (otherGestureRecognizer == scrollView.panGestureRecognizer ||
+        gestureRecognizer == scrollView.panGestureRecognizer) {
+        return NO;
+    }
+    return NO;
 }
 
 - (void)pp_emitTapFeedback {

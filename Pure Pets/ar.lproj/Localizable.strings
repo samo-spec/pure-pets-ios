@@ -2654,6 +2654,12 @@
 
 /* ── Nearby Service Providers Section ── */
 "Home_NearbyServiceProviders" = "مزودو الخدمات القريبون";
+"home_header_discover_by_category" = "اكتشف حسب الفئة";
+"home_header_most_requested" = "الأكثر طلباً";
+"home_header_featured_products" = "منتجات مميزة";
+"home_header_picks_for_you" = "مختارات لك";
+"home_header_most_popular" = "الأكثر شعبية";
+"home_header_near_you" = "بالقرب منك";
 "Home_ServiceProviders" = "مزودو الخدمات";
 "Home_ServiceProvidersSubtitle" = "تصفح خدمات العناية والتدريب والمزيد";
 "Home_NoServicesAvailable" = "لا توجد خدمات متاحة حالياً";
@@ -2682,7 +2688,7 @@
 "home_premium_care_eyebrow" = "رعاية مميزة";
 "home_premium_care_title" = "مركز العناية البيطري";
 "home_premium_care_subtitle" = "أدوية الحيوانات والرعاية البيطرية في مكان واحد أنيق.";
-"home_premium_care_cta" = "افتح مركز الرعاية";
+"home_premium_care_cta" = "استكشف العيادات . إطلب خدمة بيطرية";
 "pet_care_title" = "رعاية الحيوانات";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";

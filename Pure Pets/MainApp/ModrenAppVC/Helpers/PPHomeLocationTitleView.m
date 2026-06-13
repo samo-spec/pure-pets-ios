@@ -107,15 +107,11 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.tintOverlayView.layer.cornerRadius = radius;
     self.glassChromeButton.layer.cornerRadius = radius;
     self.haloView.layer.cornerRadius = CGRectGetHeight(self.haloView.bounds) * 0.5;
-    self.haloView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.haloView.bounds
-                                   cornerRadius:self.haloView.layer.cornerRadius].CGPath;
+    self.haloView.layer.shadowPath = nil;
     self.iconPlateView.layer.cornerRadius = CGRectGetHeight(self.iconPlateView.bounds) * 0.5;
     self.stateDotView.layer.cornerRadius = CGRectGetHeight(self.stateDotView.bounds) * 0.5;
     self.pulseRingView.layer.cornerRadius = CGRectGetHeight(self.pulseRingView.bounds) * 0.5;
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:radius].CGPath;
+    self.layer.shadowPath = nil;
     [self pp_configureSystemGlassChromeIfNeeded];
 }
 
@@ -313,8 +309,10 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.alpha = PPHomeLocationTitleRestingAlpha;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
-    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    self.layer.shadowRadius = 12.0;
+    self.layer.shadowOffset = CGSizeZero;
+    self.layer.shadowRadius = 0.0;
+    self.layer.shadowOpacity = 0.0;
+    self.layer.shadowPath = nil;
     self.isAccessibilityElement = YES;
 
     self.haloView = [[UIView alloc] init];
@@ -524,10 +522,11 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.haloView.backgroundColor = UIColor.clearColor;
     self.haloView.layer.shadowColor = status.CGColor;
     self.haloView.layer.shadowOpacity = 0.0f;
-    self.layer.shadowColor = [UIColor colorWithWhite:0.02 alpha:1.0].CGColor;
-    self.layer.shadowOpacity = usesSystemGlassChrome
-        ? (dark ? 0.10f : 0.025f)
-        : (dark ? 0.16f : 0.04f);
+    self.layer.shadowColor = UIColor.clearColor.CGColor;
+    self.layer.shadowOpacity = 0.0f;
+    self.layer.shadowRadius = 0.0f;
+    self.layer.shadowOffset = CGSizeZero;
+    self.layer.shadowPath = nil;
 
     self.iconPlateView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.24 : 0.12)];
     self.iconPlateView.layer.borderColor =
