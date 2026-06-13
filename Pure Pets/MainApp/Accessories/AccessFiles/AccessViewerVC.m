@@ -693,6 +693,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.supportActionButton = [self pp_secondaryActionWithTitle:kLang(@"Support")
                                                       systemName:@"headphones"
                                                         selector:@selector(supportTapped)];
+    self.supportActionButton.hidden = YES;
 
     self.chatActionButton = [self pp_secondaryActionWithTitle:kLang(@"Chat")
                                                    systemName:@"message.fill"
@@ -700,7 +701,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     self.actionStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.callActionButton,
-        self.supportActionButton,
         self.shareActionButton,
         self.chatActionButton
     ]];
@@ -1521,17 +1521,15 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     if (hasRealOwner) {
         UserModel *owner = [self pp_resolvedOwnerModel];
         BOOL hasPhone = owner && owner.MobileNo.length > 0;
-        self.chatActionButton.hidden = isOwnItem;
+        self.chatActionButton.hidden = NO;
         self.callActionButton.hidden = isOwnItem || !hasPhone;
         self.shareActionButton.hidden = NO;
-        self.supportActionButton.hidden = NO;
         return;
     }
 
-    self.chatActionButton.hidden = YES;
+    self.chatActionButton.hidden = NO;
     self.callActionButton.hidden = YES;
     self.shareActionButton.hidden = NO;
-    self.supportActionButton.hidden = NO;
 }
 
 - (void)pp_applySellerSemanticDirection
@@ -1544,8 +1542,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     NSArray<UIButton *> *buttons = @[
         self.chatActionButton,
         self.callActionButton,
-        self.shareActionButton,
-        self.supportActionButton
+        self.shareActionButton
     ];
     for (UIButton *button in buttons) {
         button.semanticContentAttribute = semantic;
@@ -1561,7 +1558,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.chatActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Chat"), sellerName];
     self.callActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Call"), sellerName];
     self.shareActionButton.accessibilityLabel = kLang(@"Share");
-    self.supportActionButton.accessibilityLabel = kLang(@"Support");
 }
 
 - (void)pp_updateBottomBarVisibility

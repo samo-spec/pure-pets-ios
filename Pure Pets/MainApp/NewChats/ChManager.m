@@ -698,25 +698,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1]
         }];
 
-        // ─────────────────────────────
-        // 5️⃣ Push notification (fire-and-forget)
-        // ─────────────────────────────
-        if (msg.receiverID.length) {
-            [self sendChatPushToUserID:msg.receiverID
-                                 title:kLang(@"New Message")
-                                  body:lastMessageText
-                              threadID:threadID
-                              senderID:resolvedSenderID
-                             messageID:msg.ID
-                            completion:^(BOOL didAcceptPush) {
-                if (!didAcceptPush) return;
-                [self markMessageAsDelivered:msg.ID threadID:threadID];
-            }];
-        }
-
-        // ─────────────────────────────
-        // 6️⃣ Completion (MAIN THREAD)
-        // ─────────────────────────────
+        (void)msg;
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(nil);
