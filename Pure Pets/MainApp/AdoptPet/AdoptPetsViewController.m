@@ -40,7 +40,18 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 @property (nonatomic, strong) NSMutableArray<AdoptPetModel *> *items;
 @property (nonatomic, strong) NSMutableArray<AdoptPetModel *> *filteredItems;
 @property (nonatomic, strong) id<FIRListenerRegistration> listener;
-@property (nonatomic, strong) UILabel *emptyLabel;
+@property (nonatomic, strong) UIView *heroHeaderView;
+@property (nonatomic, strong) UIView *heroIconPlateView;
+@property (nonatomic, strong) UIImageView *heroIconView;
+@property (nonatomic, strong) UILabel *heroEyebrowLabel;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
+@property (nonatomic, strong) UILabel *heroCountLabel;
+@property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, strong) UIImageView *emptyStateIconView;
+@property (nonatomic, strong) UILabel *emptyStateTitleLabel;
+@property (nonatomic, strong) UILabel *emptyStateSubtitleLabel;
+@property (nonatomic, strong) UIButton *emptyStateActionButton;
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) PPSearchFilterView *filterView;
 @property (nonatomic, strong) UIButton *filterButton;
@@ -53,6 +64,9 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 @property (nonatomic, strong) NSLayoutConstraint *filterHeightConstraint;
 @property (nonatomic, assign) BOOL isFilterExpanded;
 @property (nonatomic, assign) BOOL didAnimateSearchChrome;
+@property (nonatomic, assign) BOOL hasReceivedInitialSnapshot;
+@property (nonatomic, assign) BOOL isShowingLoadError;
+@property (nonatomic, copy) NSString *loadErrorMessage;
 @end
 
 @implementation AdoptPetsViewController
@@ -64,15 +78,18 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.items = [NSMutableArray array];
     self.filteredItems = [NSMutableArray array];
 
+    [self pp_setupHeroHeader];
     [self pp_setupSearchBar];
     [self pp_setupCollectionView];
     [self pp_setupEmptyStateLabel];
+    [self pp_prepareListEntranceStateIfNeeded];
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"AdoptPet") showBack:YES];
     [self pp_updateSearchChromeForCurrentTraits];
+    [self pp_prepareListEntranceStateIfNeeded];
     [self startListening];
 }
 
@@ -84,9 +101,15 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self pp_updateCollectionInsetsForBottomBar];
+    self.heroHeaderView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroHeaderView.bounds
+                                   cornerRadius:self.heroHeaderView.layer.cornerRadius].CGPath;
     self.searchSurfaceView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.searchSurfaceView.bounds
                                    cornerRadius:self.searchSurfaceView.layer.cornerRadius].CGPath;
+    self.emptyStateView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.emptyStateView.bounds
+                                   cornerRadius:self.emptyStateView.layer.cornerRadius].CGPath;
 }
 
 - (void)viewDidDisappear:(BOOL)animated {
@@ -108,6 +131,131 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 }
 
 #pragma mark - Search Bar
+
+- (void)pp_prepareListEntranceStateIfNeeded {
+    if (self.didAnimateSearchChrome || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.heroHeaderView.alpha = 0.0;
+    self.heroHeaderView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 10.0),
+                                CGAffineTransformMakeScale(0.985, 0.985));
+    self.searchSurfaceView.alpha = 0.0;
+    self.searchSurfaceView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
+                                CGAffineTransformMakeScale(0.985, 0.985));
+    self.collectionView.alpha = 0.0;
+    self.collectionView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+}
+
+- (void)pp_setupHeroHeader {
+    self.heroHeaderView = [[UIView alloc] init];
+    self.heroHeaderView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroHeaderView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.heroHeaderView.layer.cornerRadius = 28.0;
+    self.heroHeaderView.layer.masksToBounds = NO;
+    self.heroHeaderView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    PPApplyContinuousCorners(self.heroHeaderView, 28.0);
+    [self.heroHeaderView pp_setShadowColor:UIColor.blackColor];
+    self.heroHeaderView.layer.shadowOpacity = 0.045;
+    self.heroHeaderView.layer.shadowRadius = 18.0;
+    self.heroHeaderView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [self.view addSubview:self.heroHeaderView];
+
+    self.heroIconPlateView = [[UIView alloc] init];
+    self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroIconPlateView.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
+    self.heroIconPlateView.layer.cornerRadius = 22.0;
+    self.heroIconPlateView.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(self.heroIconPlateView, 22.0);
+    [self.heroHeaderView addSubview:self.heroIconPlateView];
+
+    self.heroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"heart.circle.fill"]];
+    self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroIconView.tintColor = GM.appPrimaryColor;
+    [self.heroIconPlateView addSubview:self.heroIconView];
+
+    self.heroEyebrowLabel = [[UILabel alloc] init];
+    self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroEyebrowLabel.font = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+    self.heroEyebrowLabel.textColor = [GM.appPrimaryColor colorWithAlphaComponent:0.92];
+    self.heroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroEyebrowLabel.text = kLang(@"adopt_list_eyebrow");
+    [self.heroHeaderView addSubview:self.heroEyebrowLabel];
+
+    self.heroTitleLabel = [[UILabel alloc] init];
+    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTitleLabel.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.heroTitleLabel.minimumScaleFactor = 0.82;
+    self.heroTitleLabel.text = kLang(@"adopt_list_title");
+    [self.heroHeaderView addSubview:self.heroTitleLabel];
+
+    self.heroSubtitleLabel = [[UILabel alloc] init];
+    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
+    self.heroSubtitleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroSubtitleLabel.numberOfLines = 2;
+    self.heroSubtitleLabel.text = kLang(@"adopt_list_subtitle");
+    [self.heroHeaderView addSubview:self.heroSubtitleLabel];
+
+    self.heroCountLabel = [[UILabel alloc] init];
+    self.heroCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroCountLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    self.heroCountLabel.textColor = GM.appPrimaryColor;
+    self.heroCountLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroCountLabel.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.09];
+    self.heroCountLabel.layer.cornerRadius = 15.0;
+    self.heroCountLabel.layer.masksToBounds = YES;
+    NSString *initialCountFormat = kLang(@"adopt_list_count_format");
+    if (initialCountFormat.length == 0) {
+        initialCountFormat = @"%ld";
+    }
+    self.heroCountLabel.text = [NSString stringWithFormat:initialCountFormat, (long)0];
+    [self.heroHeaderView addSubview:self.heroCountLabel];
+
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroHeaderView.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8.0],
+        [self.heroHeaderView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [self.heroHeaderView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+        [self.heroHeaderView.heightAnchor constraintGreaterThanOrEqualToConstant:116.0],
+
+        [self.heroIconPlateView.leadingAnchor constraintEqualToAnchor:self.heroHeaderView.leadingAnchor constant:16.0],
+        [self.heroIconPlateView.topAnchor constraintEqualToAnchor:self.heroHeaderView.topAnchor constant:18.0],
+        [self.heroIconPlateView.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroIconPlateView.heightAnchor constraintEqualToConstant:44.0],
+
+        [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconPlateView.centerXAnchor],
+        [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
+        [self.heroIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.heroIconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroIconPlateView.trailingAnchor constant:12.0],
+        [self.heroEyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroCountLabel.leadingAnchor constant:-10.0],
+        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroHeaderView.topAnchor constant:18.0],
+
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroHeaderView.trailingAnchor constant:-16.0],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroEyebrowLabel.bottomAnchor constant:4.0],
+
+        [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroHeaderView.leadingAnchor constant:16.0],
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroHeaderView.trailingAnchor constant:-16.0],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroIconPlateView.bottomAnchor constant:14.0],
+        [self.heroSubtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroHeaderView.bottomAnchor constant:-16.0],
+
+        [self.heroCountLabel.trailingAnchor constraintEqualToAnchor:self.heroHeaderView.trailingAnchor constant:-16.0],
+        [self.heroCountLabel.centerYAnchor constraintEqualToAnchor:self.heroIconPlateView.centerYAnchor],
+        [self.heroCountLabel.heightAnchor constraintEqualToConstant:30.0],
+        [self.heroCountLabel.widthAnchor constraintGreaterThanOrEqualToConstant:88.0]
+    ]];
+}
 
 - (void)pp_setupSearchBar {
     self.searchContainer = [[UIView alloc] init];
@@ -183,9 +331,8 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.filterView.transform = CGAffineTransformMakeTranslation(0.0, -8.0);
     [self.view addSubview:self.filterView];
 
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [self.searchContainer.topAnchor constraintEqualToAnchor:safe.topAnchor constant:8.0],
+        [self.searchContainer.topAnchor constraintEqualToAnchor:self.heroHeaderView.bottomAnchor constant:10.0],
         [self.searchContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [self.searchContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
 
@@ -273,23 +420,42 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.didAnimateSearchChrome = YES;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroHeaderView.alpha = 1.0;
+        self.heroHeaderView.transform = CGAffineTransformIdentity;
         self.searchSurfaceView.alpha = 1.0;
         self.searchSurfaceView.transform = CGAffineTransformIdentity;
+        self.collectionView.alpha = 1.0;
+        self.collectionView.transform = CGAffineTransformIdentity;
         return;
     }
 
-    self.searchSurfaceView.alpha = 0.0;
-    self.searchSurfaceView.transform =
-        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -10.0),
-                                CGAffineTransformMakeScale(0.98, 0.98));
+    [self.view layoutIfNeeded];
     [UIView animateWithDuration:0.46
-                          delay:0.04
+                          delay:0.02
          usingSpringWithDamping:0.88
           initialSpringVelocity:0.20
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
+        self.heroHeaderView.alpha = 1.0;
+        self.heroHeaderView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.46
+                          delay:0.08
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
         self.searchSurfaceView.alpha = 1.0;
         self.searchSurfaceView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.34
+                          delay:0.16
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.collectionView.alpha = 1.0;
+        self.collectionView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -629,21 +795,90 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 }
 
 - (void)pp_setupEmptyStateLabel {
-    self.emptyLabel = [[UILabel alloc] init];
-    self.emptyLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.emptyLabel.numberOfLines = 0;
-    self.emptyLabel.textAlignment = NSTextAlignmentCenter;
-    self.emptyLabel.font = [GM MidFontWithSize:15];
-    self.emptyLabel.textColor = GM.SecondaryTextColor;
-    self.emptyLabel.text = kLang(@"No pets available");
-    self.emptyLabel.hidden = YES;
-    [self.view addSubview:self.emptyLabel];
+    self.emptyStateView = [[UIView alloc] init];
+    self.emptyStateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.emptyStateView.layer.cornerRadius = 28.0;
+    self.emptyStateView.layer.masksToBounds = NO;
+    self.emptyStateView.hidden = YES;
+    self.emptyStateView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    PPApplyContinuousCorners(self.emptyStateView, 28.0);
+    [self.emptyStateView pp_setShadowColor:UIColor.blackColor];
+    self.emptyStateView.layer.shadowOpacity = 0.04;
+    self.emptyStateView.layer.shadowRadius = 18.0;
+    self.emptyStateView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [self.view addSubview:self.emptyStateView];
+
+    UIView *iconPlate = [[UIView alloc] init];
+    iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
+    iconPlate.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
+    iconPlate.layer.cornerRadius = 25.0;
+    iconPlate.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(iconPlate, 25.0);
+    [self.emptyStateView addSubview:iconPlate];
+
+    self.emptyStateIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"pawprint.fill"]];
+    self.emptyStateIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateIconView.tintColor = GM.appPrimaryColor;
+    self.emptyStateIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconPlate addSubview:self.emptyStateIconView];
+
+    self.emptyStateTitleLabel = [[UILabel alloc] init];
+    self.emptyStateTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateTitleLabel.numberOfLines = 2;
+    self.emptyStateTitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.emptyStateTitleLabel.font = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
+    self.emptyStateTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    [self.emptyStateView addSubview:self.emptyStateTitleLabel];
+
+    self.emptyStateSubtitleLabel = [[UILabel alloc] init];
+    self.emptyStateSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateSubtitleLabel.numberOfLines = 0;
+    self.emptyStateSubtitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.emptyStateSubtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    self.emptyStateSubtitleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
+    [self.emptyStateView addSubview:self.emptyStateSubtitleLabel];
+
+    self.emptyStateActionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.emptyStateActionButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.emptyStateActionButton.titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold];
+    self.emptyStateActionButton.tintColor = UIColor.whiteColor;
+    self.emptyStateActionButton.backgroundColor = GM.appPrimaryColor;
+    self.emptyStateActionButton.layer.cornerRadius = 20.0;
+    self.emptyStateActionButton.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(self.emptyStateActionButton, 20.0);
+    [self.emptyStateActionButton addTarget:self action:@selector(pp_emptyStateActionTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.emptyStateView addSubview:self.emptyStateActionButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.emptyLabel.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.emptyLabel.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-40],
-        [self.emptyLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:24],
-        [self.emptyLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-24]
+        [self.emptyStateView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.emptyStateView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:24.0],
+        [self.emptyStateView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28.0],
+        [self.emptyStateView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-28.0],
+
+        [iconPlate.topAnchor constraintEqualToAnchor:self.emptyStateView.topAnchor constant:24.0],
+        [iconPlate.centerXAnchor constraintEqualToAnchor:self.emptyStateView.centerXAnchor],
+        [iconPlate.widthAnchor constraintEqualToConstant:50.0],
+        [iconPlate.heightAnchor constraintEqualToConstant:50.0],
+
+        [self.emptyStateIconView.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
+        [self.emptyStateIconView.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+        [self.emptyStateIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.emptyStateIconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [self.emptyStateTitleLabel.topAnchor constraintEqualToAnchor:iconPlate.bottomAnchor constant:16.0],
+        [self.emptyStateTitleLabel.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor constant:22.0],
+        [self.emptyStateTitleLabel.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor constant:-22.0],
+
+        [self.emptyStateSubtitleLabel.topAnchor constraintEqualToAnchor:self.emptyStateTitleLabel.bottomAnchor constant:8.0],
+        [self.emptyStateSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.emptyStateView.leadingAnchor constant:24.0],
+        [self.emptyStateSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.emptyStateView.trailingAnchor constant:-24.0],
+
+        [self.emptyStateActionButton.topAnchor constraintEqualToAnchor:self.emptyStateSubtitleLabel.bottomAnchor constant:18.0],
+        [self.emptyStateActionButton.centerXAnchor constraintEqualToAnchor:self.emptyStateView.centerXAnchor],
+        [self.emptyStateActionButton.heightAnchor constraintEqualToConstant:40.0],
+        [self.emptyStateActionButton.widthAnchor constraintGreaterThanOrEqualToConstant:142.0],
+        [self.emptyStateActionButton.bottomAnchor constraintEqualToAnchor:self.emptyStateView.bottomAnchor constant:-24.0]
     ]];
 }
 
@@ -672,9 +907,16 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 
         if (error) {
             NSLog(@"[AdoptPets] listener error: %@", error.localizedDescription);
+            strongSelf.isShowingLoadError = YES;
+            strongSelf.loadErrorMessage = error.localizedDescription;
+            strongSelf.hasReceivedInitialSnapshot = YES;
+            [strongSelf pp_updateEmptyState];
             return;
         }
 
+        strongSelf.isShowingLoadError = NO;
+        strongSelf.loadErrorMessage = nil;
+        strongSelf.hasReceivedInitialSnapshot = YES;
         strongSelf.items = pets.mutableCopy ?: [NSMutableArray array];
         [strongSelf pp_rebuildFilterContentIfNeeded:NO];
         [strongSelf pp_applySearchAndFilter];
@@ -684,7 +926,59 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 }
 
 - (void)pp_updateEmptyState {
-    self.emptyLabel.hidden = (self.filteredItems.count > 0);
+    [self pp_updateHeroCount];
+
+    BOOL hasVisibleData = self.filteredItems.count > 0;
+    BOOL showError = self.isShowingLoadError && !hasVisibleData;
+    BOOL showEmpty = !hasVisibleData && self.hasReceivedInitialSnapshot;
+    BOOL show = showError || showEmpty;
+    self.emptyStateView.hidden = !show;
+    self.collectionView.hidden = show && self.filteredItems.count == 0;
+    if (!show) {
+        return;
+    }
+
+    if (showError) {
+        self.emptyStateIconView.image = [UIImage systemImageNamed:@"wifi.exclamationmark"];
+        self.emptyStateTitleLabel.text = kLang(@"adopt_list_error_title");
+        self.emptyStateSubtitleLabel.text = self.loadErrorMessage.length > 0 ? self.loadErrorMessage : kLang(@"adopt_list_error_subtitle");
+        [self.emptyStateActionButton setTitle:kLang(@"KLang_Retry") forState:UIControlStateNormal];
+        self.emptyStateActionButton.hidden = NO;
+        return;
+    }
+
+    BOOL hasActiveFilters = self.searchBar.text.length > 0 || [self.filterView activeFilters].count > 0;
+    self.emptyStateIconView.image = [UIImage systemImageNamed:hasActiveFilters ? @"line.3.horizontal.decrease.circle" : @"heart.circle.fill"];
+    self.emptyStateTitleLabel.text = hasActiveFilters ? kLang(@"adopt_list_no_results_title") : kLang(@"adopt_list_empty_title");
+    self.emptyStateSubtitleLabel.text = hasActiveFilters ? kLang(@"adopt_list_no_results_subtitle") : kLang(@"adopt_list_empty_subtitle");
+    [self.emptyStateActionButton setTitle:(hasActiveFilters ? kLang(@"Reset") : kLang(@"adopt_list_add_action")) forState:UIControlStateNormal];
+    self.emptyStateActionButton.hidden = NO;
+}
+
+- (void)pp_updateHeroCount {
+    NSString *format = kLang(@"adopt_list_count_format");
+    if (format.length == 0) {
+        format = @"%ld";
+    }
+    self.heroCountLabel.text = [NSString stringWithFormat:format, (long)self.items.count];
+}
+
+- (void)pp_emptyStateActionTapped {
+    if (self.isShowingLoadError) {
+        [self startListening];
+        return;
+    }
+
+    BOOL hasActiveFilters = self.searchBar.text.length > 0 || [self.filterView activeFilters].count > 0;
+    if (hasActiveFilters) {
+        self.searchBar.text = @"";
+        [self.filterView resetAll];
+        [self pp_applySearchAndFilter];
+        [self pp_updateFilterButtonAppearanceAnimated:YES];
+        return;
+    }
+
+    [self addNewPetForAdopt];
 }
 
 #pragma mark - Navigation Actions
@@ -789,7 +1083,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     cell.hideTopBadge = NO;
     //vm.finalPrice = @425;
     [cell applyViewModel:vm
-                 context:PPCellForAds
+                 context:PPCellForAdopt
               layoutMode:PPCellLayoutModePinterest
             discountMode:PPDiscountStyleBadge
              imageLoader:^(UIImageView * _Nullable iv, NSString * _Nullable url, UIImage * _Nullable ph, UIView * _Nullable card) {

@@ -48,6 +48,7 @@
 "Button.choose.photoFromCamera" = "استخدام الصور";
 "Button.choose.photoFromPicker" = "إختيار";
 "CageName" = "القفص";
+"subscription_management_title" = "إدارة الاشتراك";
 "Camel" = "إبل";
 "Cancel" = "إلغاء";
 "preview" = "معاينة";
@@ -3054,3 +3055,27 @@
 "verified" = "موثق";
 "premium_seller_on_platform" = "بائع متميز على المنصة";
 "View_Profile" = "استكشف كل منتجات البائع";
+
+/* Premium Adoption */
+"adopt_list_eyebrow" = "التبني";
+"adopt_list_title" = "اعثر على رفيق لطيف";
+"adopt_list_subtitle" = "تصفح حيوانات تنتظر بيتاً موثوقاً، ثم افتح الإعلان لمعرفة التفاصيل والتواصل.";
+"adopt_list_count_format" = "%ld متاح";
+"adopt_list_error_title" = "تعذر تحميل حيوانات التبني";
+"adopt_list_error_subtitle" = "تحقق من الاتصال وحاول مرة أخرى.";
+"adopt_list_empty_title" = "لا توجد حيوانات متاحة حالياً";
+"adopt_list_empty_subtitle" = "عند نشر إعلانات التبني ستظهر هنا.";
+"adopt_list_no_results_title" = "لا توجد نتائج مطابقة";
+"adopt_list_no_results_subtitle" = "جرب مسح البحث أو تغيير الفلاتر.";
+"adopt_list_add_action" = "إضافة حيوان";
+"adopt_detail_story_title" = "عن هذا الحيوان";
+"adopt_detail_no_details" = "لم تتم إضافة تفاصيل بعد.";
+"adopt_detail_available_now" = "متاح للتبني";
+"adopt_form_eyebrow" = "منشور تبني";
+"adopt_form_create_title" = "أنشئ إعلاناً موثوقاً";
+"adopt_form_create_subtitle" = "أضف تفاصيل واضحة والموقع والصور ليسهل على العائلة المناسبة اتخاذ القرار.";
+"adopt_form_edit_title" = "حسّن هذا الإعلان";
+"adopt_form_edit_subtitle" = "حافظ على دقة المنشور بتحديث التفاصيل والوسائط.";
+"adopt_form_progress_format" = "%ld/%ld جاهز";
+"adopt_form_pet_info_hint" = "الاسم، النوع، السلالة، والعمر.";
+"adopt_form_additional_info_hint" = "الجنس، المدينة، والقصة التي يحتاجها المتبني.";

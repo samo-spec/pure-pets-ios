@@ -348,6 +348,12 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
                                          PPImageCollectionDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIView *formHeroView;
+@property (nonatomic, strong) UILabel *formHeroEyebrowLabel;
+@property (nonatomic, strong) UILabel *formHeroTitleLabel;
+@property (nonatomic, strong) UILabel *formHeroSubtitleLabel;
+@property (nonatomic, strong) UILabel *formHeroProgressLabel;
+@property (nonatomic, strong) UIImageView *formHeroIconView;
 
 @property (nonatomic, copy)   NSString       *draftName;
 @property (nonatomic, strong) MainKindsModel *draftMainKind;
@@ -375,6 +381,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
 @property (nonatomic, copy, nullable) dispatch_block_t saveTimeoutBlock;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 @end
 
 @implementation AddAdoptPetViewController
@@ -402,6 +409,8 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     }
     self.isHydratingFormData = NO;
     [self pp_refreshTitle];
+    [self pp_refreshFormHero];
+    [self pp_prepareFormEntranceStateIfNeeded];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
     tap.cancelsTouchesInView = NO;
@@ -416,6 +425,12 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     [super viewWillAppear:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
     [self pp_refreshTitle];
+    [self pp_prepareFormEntranceStateIfNeeded];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self pp_runFormEntranceAnimationIfNeeded];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -485,6 +500,111 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         [tableView.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor]
     ]];
     self.tableView = tableView;
+    [self pp_setupFormHeroHeader];
+}
+
+- (void)pp_setupFormHeroHeader {
+    UIView *header = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, UIScreen.mainScreen.bounds.size.width, 158.0)];
+    header.backgroundColor = UIColor.clearColor;
+
+    self.formHeroView = [[UIView alloc] init];
+    self.formHeroView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.formHeroView.layer.cornerRadius = 28.0;
+    self.formHeroView.layer.masksToBounds = NO;
+    self.formHeroView.semanticContentAttribute = PPAdoptCurrentSemanticAttribute();
+    PPApplyContinuousCorners(self.formHeroView, 28.0);
+    [self.formHeroView pp_setShadowColor:UIColor.blackColor];
+    self.formHeroView.layer.shadowOpacity = 0.045;
+    self.formHeroView.layer.shadowRadius = 18.0;
+    self.formHeroView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [header addSubview:self.formHeroView];
+
+    UIView *iconPlate = [[UIView alloc] init];
+    iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
+    iconPlate.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
+    iconPlate.layer.cornerRadius = 22.0;
+    iconPlate.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(iconPlate, 22.0);
+    [self.formHeroView addSubview:iconPlate];
+
+    self.formHeroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"camera.macro.circle.fill"]];
+    self.formHeroIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroIconView.tintColor = GM.appPrimaryColor;
+    self.formHeroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconPlate addSubview:self.formHeroIconView];
+
+    self.formHeroEyebrowLabel = [[UILabel alloc] init];
+    self.formHeroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroEyebrowLabel.font = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+    self.formHeroEyebrowLabel.textColor = [GM.appPrimaryColor colorWithAlphaComponent:0.92];
+    self.formHeroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.formHeroEyebrowLabel.text = kLang(@"adopt_form_eyebrow");
+    [self.formHeroView addSubview:self.formHeroEyebrowLabel];
+
+    self.formHeroTitleLabel = [[UILabel alloc] init];
+    self.formHeroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroTitleLabel.font = [GM boldFontWithSize:23.0] ?: [UIFont systemFontOfSize:23.0 weight:UIFontWeightBold];
+    self.formHeroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.formHeroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.formHeroTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.formHeroTitleLabel.minimumScaleFactor = 0.82;
+    [self.formHeroView addSubview:self.formHeroTitleLabel];
+
+    self.formHeroSubtitleLabel = [[UILabel alloc] init];
+    self.formHeroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroSubtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
+    self.formHeroSubtitleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
+    self.formHeroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.formHeroSubtitleLabel.numberOfLines = 2;
+    [self.formHeroView addSubview:self.formHeroSubtitleLabel];
+
+    self.formHeroProgressLabel = [[UILabel alloc] init];
+    self.formHeroProgressLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formHeroProgressLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    self.formHeroProgressLabel.textColor = GM.appPrimaryColor;
+    self.formHeroProgressLabel.textAlignment = NSTextAlignmentCenter;
+    self.formHeroProgressLabel.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.09];
+    self.formHeroProgressLabel.layer.cornerRadius = 15.0;
+    self.formHeroProgressLabel.layer.masksToBounds = YES;
+    [self.formHeroView addSubview:self.formHeroProgressLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.formHeroView.topAnchor constraintEqualToAnchor:header.topAnchor constant:8.0],
+        [self.formHeroView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:20.0],
+        [self.formHeroView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-20.0],
+        [self.formHeroView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-12.0],
+
+        [iconPlate.leadingAnchor constraintEqualToAnchor:self.formHeroView.leadingAnchor constant:16.0],
+        [iconPlate.topAnchor constraintEqualToAnchor:self.formHeroView.topAnchor constant:18.0],
+        [iconPlate.widthAnchor constraintEqualToConstant:44.0],
+        [iconPlate.heightAnchor constraintEqualToConstant:44.0],
+
+        [self.formHeroIconView.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
+        [self.formHeroIconView.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+        [self.formHeroIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.formHeroIconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [self.formHeroEyebrowLabel.leadingAnchor constraintEqualToAnchor:iconPlate.trailingAnchor constant:12.0],
+        [self.formHeroEyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.formHeroProgressLabel.leadingAnchor constant:-10.0],
+        [self.formHeroEyebrowLabel.topAnchor constraintEqualToAnchor:self.formHeroView.topAnchor constant:18.0],
+
+        [self.formHeroTitleLabel.leadingAnchor constraintEqualToAnchor:self.formHeroEyebrowLabel.leadingAnchor],
+        [self.formHeroTitleLabel.trailingAnchor constraintEqualToAnchor:self.formHeroView.trailingAnchor constant:-16.0],
+        [self.formHeroTitleLabel.topAnchor constraintEqualToAnchor:self.formHeroEyebrowLabel.bottomAnchor constant:4.0],
+
+        [self.formHeroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.formHeroView.leadingAnchor constant:16.0],
+        [self.formHeroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.formHeroView.trailingAnchor constant:-16.0],
+        [self.formHeroSubtitleLabel.topAnchor constraintEqualToAnchor:iconPlate.bottomAnchor constant:14.0],
+        [self.formHeroSubtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.formHeroView.bottomAnchor constant:-16.0],
+
+        [self.formHeroProgressLabel.trailingAnchor constraintEqualToAnchor:self.formHeroView.trailingAnchor constant:-16.0],
+        [self.formHeroProgressLabel.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+        [self.formHeroProgressLabel.heightAnchor constraintEqualToConstant:30.0],
+        [self.formHeroProgressLabel.widthAnchor constraintGreaterThanOrEqualToConstant:82.0]
+    ]];
+
+    self.tableView.tableHeaderView = header;
 }
 
 #pragma mark - Draft Storage
@@ -669,6 +789,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     self.hasUserModifiedForm = NO;
     self.isHydratingFormData = NO;
     [self.tableView reloadData];
+    [self pp_refreshFormHero];
     return YES;
 }
 
@@ -719,8 +840,101 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     self.title = self.editingPet ? kLang(@"editAdoptPet") : kLang(@"addPetForAdoption");
 }
 
+- (NSInteger)pp_completedRequiredFieldCount {
+    NSInteger completed = 0;
+    NSString *name = [PPAdoptSafeString(self.draftName) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (name.length > 0) completed++;
+    if (self.draftMainKind) completed++;
+    if (self.draftSubKind) completed++;
+    if (self.draftAgeMonths > 0) completed++;
+    if (self.draftGender.length > 0) completed++;
+    if (self.draftCity) completed++;
+    BOOL hasSelectedMedia = self.imageCollection.imageCount > 0;
+    BOOL hasExistingMedia = self.editingPet.imageURLs.count > 0 || self.editingPet.imageMeta.count > 0;
+    if (hasSelectedMedia || hasExistingMedia) completed++;
+    return completed;
+}
+
+- (void)pp_refreshFormHero {
+    self.formHeroTitleLabel.text = self.editingPet ? kLang(@"adopt_form_edit_title") : kLang(@"adopt_form_create_title");
+    self.formHeroSubtitleLabel.text = self.editingPet ? kLang(@"adopt_form_edit_subtitle") : kLang(@"adopt_form_create_subtitle");
+
+    NSString *format = kLang(@"adopt_form_progress_format");
+    if (format.length == 0) {
+        format = @"%ld/7";
+    }
+    self.formHeroProgressLabel.text = [NSString stringWithFormat:format, (long)[self pp_completedRequiredFieldCount], (long)7];
+}
+
+- (void)pp_prepareFormEntranceStateIfNeeded {
+    if (self.didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.formHeroView.alpha = 0.0;
+    self.formHeroView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 10.0),
+                                CGAffineTransformMakeScale(0.985, 0.985));
+    self.tableView.alpha = 0.0;
+    self.tableView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+}
+
+- (void)pp_runFormEntranceAnimationIfNeeded {
+    if (self.didAnimateEntrance) {
+        return;
+    }
+    self.didAnimateEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.formHeroView.alpha = 1.0;
+        self.formHeroView.transform = CGAffineTransformIdentity;
+        self.tableView.alpha = 1.0;
+        self.tableView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [self.view layoutIfNeeded];
+    [UIView animateWithDuration:0.48
+                          delay:0.02
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.formHeroView.alpha = 1.0;
+        self.formHeroView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.36
+                          delay:0.10
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.tableView.alpha = 1.0;
+        self.tableView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
 - (void)setNavButtons {
-    self.saveButtonView = [PPButtonHelper pp_buttonWithTitle:kLang(@"save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveTapped)];
+    UIButtonConfiguration *saveConfig = [UIButtonConfiguration filledButtonConfiguration];
+    saveConfig.title = kLang(@"save");
+    saveConfig.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    saveConfig.baseBackgroundColor = GM.appPrimaryColor;
+    saveConfig.baseForegroundColor = UIColor.whiteColor;
+    saveConfig.contentInsets = NSDirectionalEdgeInsetsMake(9.0, 16.0, 9.0, 16.0);
+    saveConfig.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+        NSMutableDictionary *attrs = incoming.mutableCopy;
+        attrs[NSFontAttributeName] = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
+        return attrs.copy;
+    };
+    self.saveButtonView = [UIButton buttonWithConfiguration:saveConfig primaryAction:nil];
+    self.saveButtonView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.saveButtonView.layer.cornerRadius = 19.0;
+    self.saveButtonView.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(self.saveButtonView, 19.0);
+    [self.saveButtonView addTarget:self action:@selector(saveTapped) forControlEvents:UIControlEventTouchUpInside];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.saveButtonView.heightAnchor constraintEqualToConstant:38.0],
+        [self.saveButtonView.widthAnchor constraintGreaterThanOrEqualToConstant:88.0]
+    ]];
     self.saveBarButton = [[UIBarButtonItem alloc] initWithCustomView:self.saveButtonView];
 
     UIBarButtonItem *cancelBtn = [[UIBarButtonItem alloc] initWithTitle:kLang(@"cancel")
@@ -792,20 +1006,26 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)setupPrefillLoadingUI {
     self.prefillLoadingView = [[UIView alloc] init];
     self.prefillLoadingView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.prefillLoadingView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.58];
-    self.prefillLoadingView.layer.cornerRadius  = 12;
-    self.prefillLoadingView.layer.masksToBounds = YES;
+    self.prefillLoadingView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.prefillLoadingView.layer.cornerRadius  = 18;
+    self.prefillLoadingView.layer.masksToBounds = NO;
+    self.prefillLoadingView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.prefillLoadingView pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.22]];
+    [self.prefillLoadingView pp_setShadowColor:UIColor.blackColor];
+    self.prefillLoadingView.layer.shadowOpacity = 0.08;
+    self.prefillLoadingView.layer.shadowRadius = 18.0;
+    self.prefillLoadingView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     self.prefillLoadingView.hidden = YES;
 
     self.prefillLoadingSpinner =
         [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.prefillLoadingSpinner.translatesAutoresizingMaskIntoConstraints = NO;
-    self.prefillLoadingSpinner.color = UIColor.whiteColor;
+    self.prefillLoadingSpinner.color = GM.appPrimaryColor;
 
     self.prefillLoadingLabel = [[UILabel alloc] init];
     self.prefillLoadingLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.prefillLoadingLabel.font      = [GM MidFontWithSize:12];
-    self.prefillLoadingLabel.textColor = UIColor.whiteColor;
+    self.prefillLoadingLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.prefillLoadingLabel.text      = kLang(@"loading_images");
 
     [self.prefillLoadingView addSubview:self.prefillLoadingSpinner];
@@ -826,11 +1046,24 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)setPrefillLoadingVisible:(BOOL)visible {
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.prefillLoadingView.hidden = !visible;
         if (visible) {
+            self.prefillLoadingView.hidden = NO;
+            self.prefillLoadingView.alpha = 0.0;
+            self.prefillLoadingView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
             [self.prefillLoadingSpinner startAnimating];
+            [UIView animateWithDuration:0.22 animations:^{
+                self.prefillLoadingView.alpha = 1.0;
+                self.prefillLoadingView.transform = CGAffineTransformIdentity;
+            }];
         } else {
-            [self.prefillLoadingSpinner stopAnimating];
+            [UIView animateWithDuration:0.18 animations:^{
+                self.prefillLoadingView.alpha = 0.0;
+                self.prefillLoadingView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+            } completion:^(__unused BOOL finished) {
+                self.prefillLoadingView.hidden = YES;
+                self.prefillLoadingView.transform = CGAffineTransformIdentity;
+                [self.prefillLoadingSpinner stopAnimating];
+            }];
         }
     });
 }
@@ -850,6 +1083,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     self.draftDetails   = self.editingPet.details;
 
     [self.tableView reloadData];
+    [self pp_refreshFormHero];
 
     NSArray<NSDictionary *> *mediaMetadata = [self.editingPet.imageMeta isKindOfClass:NSArray.class] ? self.editingPet.imageMeta : @[];
     if (mediaMetadata.count > 0 || self.editingPet.imageURLs.count > 0) {
@@ -1230,7 +1464,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         }
         return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
     }];
-    cell.contentView.layer.cornerRadius  = 20.0;
+    cell.contentView.layer.cornerRadius  = 22.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth   = 1.0;
     UIColor *adoptBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
@@ -1241,30 +1475,32 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     }];
     [cell.contentView pp_setBorderColor:[adoptBorderColor resolvedColorWithTraitCollection:self.traitCollection]];
     [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
-    cell.layer.shadowRadius  = 12.0;
-    cell.layer.shadowOffset  = CGSizeMake(0.0, 6.0);
+    cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.015 : 0.04;
+    cell.layer.shadowRadius  = 14.0;
+    cell.layer.shadowOffset  = CGSizeMake(0.0, 7.0);
+    cell.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:cell.bounds cornerRadius:22.0].CGPath;
     cell.layer.masksToBounds = NO;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
-    return 48.0;
+    return 62.0;
 }
 
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(nonnull NSIndexPath *)indexPath{
-    if(indexPath.row == 0)
-        if(indexPath.row == 0 || indexPath.row == 1 || indexPath.row == 2 || indexPath.row == 3 ||indexPath.row == 4 || indexPath.row == 5) return 83;
-    if(indexPath.row == 1)
-        if(indexPath.row == 0 || indexPath.row == 1) return 83;
-    return UITableViewAutomaticDimension;
+    if (indexPath.section == 1 && indexPath.row == 2) {
+        return UITableViewAutomaticDimension;
+    }
+    return 88.0;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
     NSString *title = section == 0 ? kLang(@"petInfo") : kLang(@"additionalInfo");
+    NSString *subtitle = section == 0 ? kLang(@"adopt_form_pet_info_hint") : kLang(@"adopt_form_additional_info_hint");
 
     UIView *header = [[UIView alloc] init];
     header.backgroundColor = UIColor.clearColor;
+    header.semanticContentAttribute = PPAdoptCurrentSemanticAttribute();
 
     UILabel *label = [[UILabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1274,11 +1510,22 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     label.textAlignment = Language.alignmentForCurrentLanguage;
     [header addSubview:label];
 
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = GM.SecondaryTextColor ?: UIColor.secondaryLabelColor;
+    subtitleLabel.text = subtitle;
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [header addSubview:subtitleLabel];
+
     [NSLayoutConstraint activateConstraints:@[
         [label.leadingAnchor  constraintEqualToAnchor:header.leadingAnchor  constant:18.0],
         [label.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-18.0],
-        [label.topAnchor      constraintEqualToAnchor:header.topAnchor      constant:24.0],
-        [label.bottomAnchor   constraintEqualToAnchor:header.bottomAnchor   constant:-8.0]
+        [label.topAnchor      constraintEqualToAnchor:header.topAnchor      constant:18.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:label.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:label.trailingAnchor],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:3.0],
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0]
     ]];
 
     return header;
@@ -1319,30 +1566,25 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
                     row:nil
        presentationStyle:PPSelectOptionPresentationSheet
              completion:^(id _Nullable selectedObject) {
-        
-        
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
-           if (!strongSelf) return;
-           if (![selectedObject isKindOfClass:MainKindsModel.class]) return;
-           strongSelf.draftMainKind = (MainKindsModel *)selectedObject;
-           strongSelf.draftSubKind  = nil;
-           if (!strongSelf.isHydratingFormData) strongSelf.hasUserModifiedForm = YES;
-           CGPoint savedOffset = strongSelf.tableView.contentOffset;
-           [UIView performWithoutAnimation:^{
-               [strongSelf.tableView reloadRowsAtIndexPaths:@[
-                   [NSIndexPath indexPathForRow:1 inSection:0],
-                   [NSIndexPath indexPathForRow:2 inSection:0]
-               ] withRowAnimation:UITableViewRowAnimationNone];
-           }];
-           [strongSelf.tableView layoutIfNeeded];
-           strongSelf.tableView.contentOffset = savedOffset;
+            if (!strongSelf) return;
+            if (![selectedObject isKindOfClass:MainKindsModel.class]) return;
+            strongSelf.draftMainKind = (MainKindsModel *)selectedObject;
+            strongSelf.draftSubKind  = nil;
+            if (!strongSelf.isHydratingFormData) strongSelf.hasUserModifiedForm = YES;
+            CGPoint savedOffset = strongSelf.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [strongSelf.tableView reloadRowsAtIndexPaths:@[
+                    [NSIndexPath indexPathForRow:1 inSection:0],
+                    [NSIndexPath indexPathForRow:2 inSection:0]
+                ] withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [strongSelf.tableView layoutIfNeeded];
+            strongSelf.tableView.contentOffset = savedOffset;
+            [strongSelf pp_refreshFormHero];
         });
-        
-        
-        
-             
-     }];
+    }];
     [self presentViewController:vc animated:YES completion:nil];
 }
 
@@ -1369,6 +1611,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
             }];
             [strongSelf.tableView layoutIfNeeded];
             strongSelf.tableView.contentOffset = savedOffset;
+            [strongSelf pp_refreshFormHero];
         });
     }];
     [self presentViewController:vc animated:YES completion:nil];
@@ -1397,6 +1640,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
             }];
             [strongSelf.tableView layoutIfNeeded];
             strongSelf.tableView.contentOffset = savedOffset;
+            [strongSelf pp_refreshFormHero];
         });
     }];
     [self presentViewController:vc animated:YES completion:nil];
@@ -1425,6 +1669,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
             }];
             [strongSelf.tableView layoutIfNeeded];
             strongSelf.tableView.contentOffset = savedOffset;
+            [strongSelf pp_refreshFormHero];
         });
     }];
     [self presentViewController:vc animated:YES completion:nil];
@@ -1435,11 +1680,13 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)pp_nameFieldChanged:(UITextField *)textField {
     self.draftName = textField.text;
     if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
+    [self pp_refreshFormHero];
 }
 
 - (void)pp_ageFieldChanged:(UITextField *)textField {
     self.draftAgeMonths = [textField.text integerValue];
     if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
+    [self pp_refreshFormHero];
 }
 
 #pragma mark - UITextFieldDelegate
@@ -1454,6 +1701,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)textViewDidChange:(UITextView *)textView {
     self.draftDetails = textView.text;
     if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
+    [self pp_refreshFormHero];
 
     PPAdoptFormTextViewCell *cell = (PPAdoptFormTextViewCell *)[self pp_parentCellForView:textView];
     if ([cell isKindOfClass:PPAdoptFormTextViewCell.class]) {
@@ -1484,6 +1732,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     if (!self.isHydratingFormData && !self.isPrefillInProgress) {
         self.hasUserModifiedForm = YES;
     }
+    [self pp_refreshFormHero];
 }
 
 - (void)imageCollection:(PPImageCollection *)collection

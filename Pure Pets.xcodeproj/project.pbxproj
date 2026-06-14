@@ -6331,7 +6331,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 164;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6424,6 +6424,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
 				WARNING_CFLAGS = "-Wno-deprecated-declarations";
 			};
 			name = Debug;
@@ -6440,7 +6441,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 164;
+				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6536,6 +6537,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
 				WARNING_CFLAGS = "-Wno-deprecated-declarations";
 			};
 			name = Release;

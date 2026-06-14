@@ -48,6 +48,7 @@
 "Button.choose.photoFromCamera" = "Use Photo";
 "Button.choose.photoFromPicker" = "Choose";
 "CageName" = "Cage";
+"subscription_management_title" = "Subscription Management";
 "Camel" = "Camels";
 "Cancel" = "Cancel";
 "preview" = "Preview";
@@ -3066,3 +3067,27 @@
 "verified" = "Verified";
 "premium_seller_on_platform" = "Premium seller on platform";
 "View_Profile" = "Explore all seller products";
+
+/* Premium Adoption */
+"adopt_list_eyebrow" = "Adoption";
+"adopt_list_title" = "Find a gentle match";
+"adopt_list_subtitle" = "Browse pets waiting for a trusted home, then open the listing for details and contact.";
+"adopt_list_count_format" = "%ld available";
+"adopt_list_error_title" = "Could not load adoption pets";
+"adopt_list_error_subtitle" = "Check your connection and try again.";
+"adopt_list_empty_title" = "No pets available yet";
+"adopt_list_empty_subtitle" = "When adoption posts are published, they will appear here.";
+"adopt_list_no_results_title" = "No matching pets";
+"adopt_list_no_results_subtitle" = "Try clearing search or changing the filters.";
+"adopt_list_add_action" = "Add a pet";
+"adopt_detail_story_title" = "About this pet";
+"adopt_detail_no_details" = "No details added yet.";
+"adopt_detail_available_now" = "Available for adoption";
+"adopt_form_eyebrow" = "Adoption post";
+"adopt_form_create_title" = "Create a trusted listing";
+"adopt_form_create_subtitle" = "Add clear details, location, and photos so the right family can decide confidently.";
+"adopt_form_edit_title" = "Refine this listing";
+"adopt_form_edit_subtitle" = "Keep the post accurate with updated details and media.";
+"adopt_form_progress_format" = "%ld/%ld ready";
+"adopt_form_pet_info_hint" = "Name, species, breed, and age.";
+"adopt_form_additional_info_hint" = "Gender, city, and the story adopters need.";

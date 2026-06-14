@@ -197,9 +197,16 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self = [super initWithFrame:frame];
     if (self) {
         self.translatesAutoresizingMaskIntoConstraints = NO;
-        self.backgroundColor = UIColor.secondarySystemGroupedBackgroundColor;
+        self.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithRed:0.15 green:0.15 blue:0.17 alpha:1.0];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.86];
+        }];
         self.layer.cornerRadius = 18.0;
         self.layer.masksToBounds = YES;
+        self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        [self pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.18]];
         if (@available(iOS 13.0, *)) {
             self.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -278,6 +285,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 @property (nonatomic, strong) UserContactView *contactView;
 @property (nonatomic, strong) CAGradientLayer *contactGradientLayer;
 @property (nonatomic, strong) NSArray<NSDictionary<NSString *, NSString *> *> *factItems;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 @end
 
 @implementation AdoptPetDetailsViewController
@@ -309,6 +317,12 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     [self pp_setupTopButtons];
     [self pp_setupContactView];
     [self pp_configureContent];
+    [self pp_prepareEntranceStateIfNeeded];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self pp_runEntranceAnimationIfNeeded];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -323,6 +337,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     if (self.contactGradientLayer) {
         self.contactGradientLayer.frame = self.contactView.bounds;
     }
+    self.contactView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactView.bounds cornerRadius:26.0].CGPath;
 }
 
 #pragma mark - Build Data
@@ -403,7 +418,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.contentStack = [[UIStackView alloc] initWithFrame:CGRectZero];
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentStack.axis = UILayoutConstraintAxisVertical;
-    self.contentStack.spacing = 14.0;
+    self.contentStack.spacing = 16.0;
     self.contentStack.alignment = UIStackViewAlignmentFill;
     self.contentStack.semanticContentAttribute = GM.setSemantic;
     [self.contentView addSubview:self.contentStack];
@@ -420,7 +435,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         [self.contentView.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor],
         [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor],
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
         [self.contentStack.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-24]
@@ -436,9 +451,9 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         self.heroContainer.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.heroContainer pp_setShadowColor:UIColor.blackColor];
-    self.heroContainer.layer.shadowOpacity = 0.12;
-    self.heroContainer.layer.shadowRadius = 24.0;
-    self.heroContainer.layer.shadowOffset = CGSizeMake(0, 14);
+    self.heroContainer.layer.shadowOpacity = 0.09;
+    self.heroContainer.layer.shadowRadius = 22.0;
+    self.heroContainer.layer.shadowOffset = CGSizeMake(0, 12);
     self.heroContainer.layer.masksToBounds = NO;
     [self.contentStack addArrangedSubview:self.heroContainer];
 
@@ -476,8 +491,8 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.heroGradientLayer = [CAGradientLayer layer];
     self.heroGradientLayer.colors = @[
         (__bridge id)[UIColor colorWithWhite:0 alpha:0.0].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.08].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.52].CGColor
+        (__bridge id)[UIColor colorWithWhite:0 alpha:0.10].CGColor,
+        (__bridge id)[UIColor colorWithWhite:0 alpha:0.58].CGColor
     ];
     self.heroGradientLayer.locations = @[@0.0, @0.54, @1.0];
     [self.heroShadeView.layer addSublayer:self.heroGradientLayer];
@@ -500,14 +515,14 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
     self.titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:28];
+    self.titleLabel.font = [GM boldFontWithSize:30];
     self.titleLabel.textColor = UIColor.whiteColor;
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.textAlignment = NSTextAlignmentNatural;
 
     self.subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.subtitleLabel.font = [GM MidFontWithSize:15];
+    self.subtitleLabel.font = [GM MidFontWithSize:15.5];
     self.subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
     self.subtitleLabel.numberOfLines = 2;
     self.subtitleLabel.textAlignment = NSTextAlignmentNatural;
@@ -610,13 +625,13 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
     UILabel *detailsTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     detailsTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    detailsTitleLabel.font = [GM boldFontWithSize:22];
+    detailsTitleLabel.font = [GM boldFontWithSize:21];
     detailsTitleLabel.textColor = GM.PrimaryTextColor;
-    detailsTitleLabel.text = kLang(@"Details");
+    detailsTitleLabel.text = kLang(@"adopt_detail_story_title");
 
     self.detailsBodyLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.detailsBodyLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.detailsBodyLabel.font = [GM MidFontWithSize:16];
+    self.detailsBodyLabel.font = [GM MidFontWithSize:16.2];
     self.detailsBodyLabel.textColor = GM.PrimaryTextColor;
     self.detailsBodyLabel.numberOfLines = 0;
     self.detailsBodyLabel.textAlignment = NSTextAlignmentNatural;
@@ -686,6 +701,15 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactView.alpha = 1.0;
     self.contactView.semanticContentAttribute = GM.setSemantic;
+    self.contactView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.contactView.layer.cornerRadius = 26.0;
+    self.contactView.layer.masksToBounds = NO;
+    self.contactView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.contactView pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.20]];
+    [self.contactView pp_setShadowColor:UIColor.blackColor];
+    self.contactView.layer.shadowOpacity = 0.10;
+    self.contactView.layer.shadowRadius = 20.0;
+    self.contactView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
 
     self.contactGradientLayer = [CAGradientLayer layer];
     self.contactGradientLayer.colors = @[
@@ -701,8 +725,8 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     [NSLayoutConstraint activateConstraints:@[
         [self.contactView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
         [self.contactView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [self.contactView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10],
-        [self.contactView.heightAnchor constraintEqualToConstant:74]
+        [self.contactView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12],
+        [self.contactView.heightAnchor constraintEqualToConstant:78]
     ]];
 
     [self.view bringSubviewToFront:self.contactView];
@@ -746,7 +770,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     if (city.length > 0) {
         [subtitleParts addObject:city];
     }
-    self.subtitleLabel.text = subtitleParts.count > 0 ? [subtitleParts componentsJoinedByString:@"  •  "] : @"Pure Pets";
+    self.subtitleLabel.text = subtitleParts.count > 0 ? [subtitleParts componentsJoinedByString:@"  •  "] : kLang(@"adopt_detail_available_now");
 
     for (UIView *view in self.heroBadgesStack.arrangedSubviews) {
         [self.heroBadgesStack removeArrangedSubview:view];
@@ -756,7 +780,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
     NSString *details = PPAdoptTrimmedString(self.model.details);
     if (details.length == 0) {
-        details = @"No details added yet.";
+        details = kLang(@"adopt_detail_no_details");
     }
     self.detailsBodyLabel.attributedText = [self pp_bodyText:details];
 
@@ -826,6 +850,86 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         card.layer.cornerCurve = kCACornerCurveContinuous;
     }
     return card;
+}
+
+- (void)pp_prepareEntranceStateIfNeeded {
+    if (self.didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.heroContainer.alpha = 0.0;
+    self.heroContainer.transform = CGAffineTransformMakeScale(1.018, 1.018);
+    self.topActionsStack.alpha = 0.0;
+    self.closeButton.alpha = 0.0;
+    self.contactView.alpha = 0.0;
+    self.contactView.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
+
+    for (UIView *view in self.contentStack.arrangedSubviews) {
+        if (view == self.heroContainer) {
+            continue;
+        }
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+    }
+}
+
+- (void)pp_runEntranceAnimationIfNeeded {
+    if (self.didAnimateEntrance) {
+        return;
+    }
+    self.didAnimateEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroContainer.alpha = 1.0;
+        self.heroContainer.transform = CGAffineTransformIdentity;
+        self.topActionsStack.alpha = 1.0;
+        self.closeButton.alpha = 1.0;
+        self.contactView.alpha = 1.0;
+        self.contactView.transform = CGAffineTransformIdentity;
+        for (UIView *view in self.contentStack.arrangedSubviews) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        return;
+    }
+
+    [self.view layoutIfNeeded];
+    [UIView animateWithDuration:0.52
+                          delay:0.02
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.heroContainer.alpha = 1.0;
+        self.heroContainer.transform = CGAffineTransformIdentity;
+        self.closeButton.alpha = 1.0;
+        self.topActionsStack.alpha = 1.0;
+    } completion:nil];
+
+    NSTimeInterval delay = 0.12;
+    for (UIView *view in self.contentStack.arrangedSubviews) {
+        if (view == self.heroContainer) {
+            continue;
+        }
+        [UIView animateWithDuration:0.38
+                              delay:delay
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+        delay += 0.055;
+    }
+
+    [UIView animateWithDuration:0.38
+                          delay:delay
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.20
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.contactView.alpha = 1.0;
+        self.contactView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (NSAttributedString *)pp_bodyText:(NSString *)text {
