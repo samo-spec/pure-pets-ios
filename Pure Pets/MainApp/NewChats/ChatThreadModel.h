@@ -33,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *threadType;
 @property (nonatomic, assign) BOOL supportThread;
 @property (nonatomic, copy) NSString *supportUserID;
+@property (nonatomic, copy) NSString *customerId;
 @property (nonatomic, copy) NSString *supportDisplayName;
 @property (nonatomic, copy) NSString *supportPhotoURLString;
 

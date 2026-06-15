@@ -93,9 +93,9 @@ static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailItemInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(0.0,
-                                       8,
+                                       0,
                                        0.0,
-                                       8);
+                                       16);
 }
 
 static inline NSDirectionalEdgeInsets PPHomeExpandedHorizontalRailHeaderInsets(void)
@@ -196,12 +196,12 @@ static inline CGFloat PPHomeMainKindsHorizontalItemWidth(CGFloat width)
         return 136.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 112.0;
+        return 110.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 112.0;
+        return 110.0;
     }
-    return 112.0;
+    return 110.0;
 }
 
 static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)

@@ -1027,6 +1027,23 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
 
 #pragma mark - Sign Out & Deletion
 
+- (void)clearFCMTokenOnServerForCurrentUser {
+    FIRUser *authUser = [FIRAuth auth].currentUser;
+    if (!authUser || !authUser.uid.length) {
+        return;
+    }
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:authUser.uid];
+    [docRef updateData:@{@"PPUserTokenID": [FIRFieldValue fieldValueForDelete]}
+            completion:^(NSError * _Nullable error) {
+                if (error) {
+                    NSLog(@"[UserManager] Failed to clear FCM token on server: %@", error.localizedDescription);
+                } else {
+                    NSLog(@"[UserManager] FCM token cleared from server on logout");
+                }
+            }];
+}
+
 - (void)signOutCurrentUserWithCompletion:(nullable FUCompletion)completion {
     if (![self pp_beginSignOutIfNeeded]) {
         if (completion) completion(nil);
@@ -1044,6 +1061,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"deviceToken"];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"PPUserTokenID"];
     [[NSUserDefaults standardUserDefaults] synchronize];
+    [self clearFCMTokenOnServerForCurrentUser];
     [[FIRMessaging messaging] deleteTokenWithCompletion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"[UserManager] Warning: Failed to clear FCM token on logout: %@", error.localizedDescription);
@@ -2902,8 +2920,8 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     }
 
     FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *publicProfileRef = [[db collectionWithPath:@"PublicUserProfiles"] documentWithPath:uid];
     FIRDocumentReference *userRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:uid];
+    FIRDocumentReference *publicProfileRef = [[db collectionWithPath:@"PublicUserProfiles"] documentWithPath:uid];
 
     void (^completeFromSnapshot)(FIRDocumentSnapshot * _Nullable, NSError * _Nullable) =
     ^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
@@ -2924,7 +2942,7 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         if (completion) completion(model, nil);
     };
 
-    [publicProfileRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [userRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             if (completion) completion(nil, error);
             return;
@@ -2935,7 +2953,7 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
             return;
         }
 
-        [userRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable fallbackSnapshot, NSError * _Nullable fallbackError) {
+        [publicProfileRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable fallbackSnapshot, NSError * _Nullable fallbackError) {
             completeFromSnapshot(fallbackSnapshot, fallbackError);
         }];
     }];

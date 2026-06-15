@@ -158,10 +158,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.cornerPinView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.cornerPinView];
 
-    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:58.0];
-    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:58.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:68.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:68.0];
+    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:60.0];
+    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:60.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:72.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:72.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],

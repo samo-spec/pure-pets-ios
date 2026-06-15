@@ -378,7 +378,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     [NSLayoutConstraint activateConstraints:@[
         [self.bottomBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:PPIOS26() ? 22 : 10],
+        [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
  
         [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],

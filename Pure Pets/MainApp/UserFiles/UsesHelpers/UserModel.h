@@ -86,11 +86,12 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL canUseStoriesFeature;
 @property (nonatomic, assign) BOOL canUseChatFeature;
 @property (nonatomic, assign) BOOL canAccessPremiumMarketplaceFeature;
+@property (nonatomic, assign) BOOL canAccessProviderMarketplaceFeature;
 
 /// Partner onboarding + workspace access
 @property (nonatomic, assign) BOOL partnerOnboardingVisible;
 @property (nonatomic, copy) NSString *partnerApplicationStatus;   // "not_started" | "in_progress" | "submitted" | "approved" | "rejected"
-@property (nonatomic, copy, nullable) NSString *selectedPartnerType; // "delivery" | "service_provider" | "vet"
+@property (nonatomic, copy, nullable) NSString *selectedPartnerType; // "delivery" | "service_provider" | "vet" | "pharmacy"
 @property (nonatomic, assign) BOOL canAccessPartnerAppPermission;
 @property (nonatomic, assign) BOOL canManageDeliveryPermission;
 @property (nonatomic, assign) BOOL canManageServiceProviderPermission;

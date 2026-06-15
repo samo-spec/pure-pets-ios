@@ -175,7 +175,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     }
     if ([raw isEqualToString:@"delivery"] ||
         [raw isEqualToString:@"service_provider"] ||
-        [raw isEqualToString:@"vet"]) {
+        [raw isEqualToString:@"vet"] ||
+        [raw isEqualToString:@"pharmacy"]) {
         return raw;
     }
     return @"";
@@ -271,6 +272,7 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     self.canUseStoriesFeature = YES;
     self.canUseChatFeature = YES;
     self.canAccessPremiumMarketplaceFeature = NO;
+    self.canAccessProviderMarketplaceFeature = NO;
     self.partnerOnboardingVisible = NO;
     self.partnerApplicationStatus = @"not_started";
     self.selectedPartnerType = nil;
@@ -409,6 +411,7 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
         self.canUseStoriesFeature = PPUserBoolValue(featuresDict[@"canUseStories"]);
         self.canUseChatFeature = PPUserBoolValue(featuresDict[@"canUseChat"]);
         self.canAccessPremiumMarketplaceFeature = PPUserBoolValue(featuresDict[@"canAccessPremiumMarketplace"]);
+        self.canAccessProviderMarketplaceFeature = PPUserBoolValue(featuresDict[@"canAccessProviderMarketplace"]);
     } else {
         // Default all features for users without the features dict yet
         self.canPostPetAdsFeature = YES;
@@ -421,6 +424,7 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
         self.canUseStoriesFeature = YES;
         self.canUseChatFeature = YES;
         self.canAccessPremiumMarketplaceFeature = NO;
+        self.canAccessProviderMarketplaceFeature = NO;
     }
 
     NSDictionary *onboardingDict = PPSafeDict(safeDict[kUserKeyOnboarding]);
@@ -498,7 +502,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
             self.canDeliveryFeature ||
             self.canOfferServicesFeature ||
             self.canVetFeature ||
-            self.canPharmacyFeature;
+            self.canPharmacyFeature ||
+            self.canAccessProviderMarketplaceFeature;
     }
 
     [self pp_normalizeIdentityFields];
@@ -736,6 +741,7 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     [coder encodeBool:self.canUseStoriesFeature forKey:@"canUseStoriesFeature"];
     [coder encodeBool:self.canUseChatFeature forKey:@"canUseChatFeature"];
     [coder encodeBool:self.canAccessPremiumMarketplaceFeature forKey:@"canAccessPremiumMarketplaceFeature"];
+    [coder encodeBool:self.canAccessProviderMarketplaceFeature forKey:@"canAccessProviderMarketplaceFeature"];
     [coder encodeBool:self.partnerOnboardingVisible forKey:@"partnerOnboardingVisible"];
     [coder encodeObject:self.partnerApplicationStatus forKey:@"partnerApplicationStatus"];
     [coder encodeObject:self.selectedPartnerType forKey:@"selectedPartnerType"];
@@ -827,6 +833,7 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     self.canUseStoriesFeature = [coder decodeBoolForKey:@"canUseStoriesFeature"];
     self.canUseChatFeature = [coder decodeBoolForKey:@"canUseChatFeature"];
     self.canAccessPremiumMarketplaceFeature = [coder decodeBoolForKey:@"canAccessPremiumMarketplaceFeature"];
+    self.canAccessProviderMarketplaceFeature = [coder decodeBoolForKey:@"canAccessProviderMarketplaceFeature"];
     self.partnerOnboardingVisible = [coder decodeBoolForKey:@"partnerOnboardingVisible"];
     self.partnerApplicationStatus = [coder decodeObjectOfClass:[NSString class] forKey:@"partnerApplicationStatus"] ?: @"not_started";
     self.selectedPartnerType = [coder decodeObjectOfClass:[NSString class] forKey:@"selectedPartnerType"];
@@ -871,7 +878,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
             self.canDeliveryFeature ||
             self.canOfferServicesFeature ||
             self.canVetFeature ||
-            self.canPharmacyFeature;
+            self.canPharmacyFeature ||
+            self.canAccessProviderMarketplaceFeature;
     }
 
     [self pp_normalizeIdentityFields];

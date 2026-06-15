@@ -281,7 +281,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         // Bottom bar
         [self.bottomBar.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:PPIOS26() ? 22 : 10],
+        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
 
         // Bar background mirrors bottom bar exactly
@@ -294,7 +294,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.scrollView.topAnchor      constraintEqualToAnchor:self.view.topAnchor],
         [self.scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.bottomBar.topAnchor],
 
         // Content view == scrollable content
         [self.contentView.topAnchor      constraintEqualToAnchor:contentGuide.topAnchor],
@@ -1237,8 +1237,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
         [iconShell.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12.0],
         [iconShell.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [iconShell.widthAnchor constraintEqualToConstant:32.0],
-        [iconShell.heightAnchor constraintEqualToConstant:32.0],
+        [iconShell.widthAnchor constraintEqualToConstant:44.0],
+        [iconShell.heightAnchor constraintEqualToConstant:44.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
