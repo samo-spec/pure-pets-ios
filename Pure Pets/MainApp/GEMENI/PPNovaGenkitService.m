@@ -58,7 +58,7 @@ static NSString *PPNovaGenkitErrorSummary(NSError *error) {
     }
 
     NSDictionary *userInfo = [error.userInfo isKindOfClass:NSDictionary.class] ? error.userInfo : nil;
-    id details = userInfo[@"details"];
+    id details = userInfo[@"details"] ?: userInfo[@"FIRFunctionsErrorDetailsKey"];
     if (details) {
         [parts addObject:[NSString stringWithFormat:@"details=%@",
                           PPNovaGenkitTrimmedDescription(details)]];

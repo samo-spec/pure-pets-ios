@@ -2039,6 +2039,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
                                                         object:self
                                                       userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
+    if (self.novaFloatingButton) {
+        self.novaFloatingButton.hidden = !novaVisible;
+    }
+    if (self.novaFloatingHaloView) {
+        self.novaFloatingHaloView.hidden = !novaVisible;
+    }
 
     NSLog(@"[HomeConfig] Applied cached Console section order: %@",
           self.lastAppliedHomeConfigOrderSignature ?: @"");
@@ -4114,6 +4120,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
                                                             object:strongSelf
                                                           userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
+        if (strongSelf.novaFloatingButton) {
+            strongSelf.novaFloatingButton.hidden = !novaVisible;
+        }
+        if (strongSelf.novaFloatingHaloView) {
+            strongSelf.novaFloatingHaloView.hidden = !novaVisible;
+        }
 
         strongSelf.homePremiumCareVisible = premiumCareVisible;
 

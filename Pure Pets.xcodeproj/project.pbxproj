@@ -509,6 +509,7 @@
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
 		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
+		F2911E212FC110D100076E94 /* water-bubble.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F2911E202FC110D100076E94 /* water-bubble.mp3 */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
 		F2916F0C2D54A3E400FF0394 /* Beiruti-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */; };
 		F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */; };
@@ -550,6 +551,8 @@
 		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
 		F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */; };
 		F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD632D031328009F0B62 /* UIView+Shadow.m */; };
+		F2A1F0022FA8000100F0A002 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2A1F0012FA8000100F0A001 /* thinking.json */; };
+		F2A1F0042FA8000100F0A004 /* NovaLoader.json in Resources */ = {isa = PBXBuildFile; fileRef = F2A1F0032FA8000100F0A003 /* NovaLoader.json */; };
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
 		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
@@ -1781,6 +1784,7 @@
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
 		F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyItemsViewControllerr.m; sourceTree = "<group>"; };
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
+		F2911E202FC110D100076E94 /* water-bubble.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "water-bubble.mp3"; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -1858,6 +1862,8 @@
 		F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		F2A1DD7B2D043A79009F0B62 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		F2A1F0012FA8000100F0A001 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
+		F2A1F0032FA8000100F0A003 /* NovaLoader.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NovaLoader.json; sourceTree = "<group>"; };
 		F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInfoPillsView.h; sourceTree = "<group>"; };
 		F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInfoPillsView.m; sourceTree = "<group>"; };
 		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
@@ -5130,8 +5136,11 @@
 			children = (
 				F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
+				F2911E202FC110D100076E94 /* water-bubble.mp3 */,
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
+				F2A1F0012FA8000100F0A001 /* thinking.json */,
+				F2A1F0032FA8000100F0A003 /* NovaLoader.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
 				F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */,
@@ -5278,6 +5287,8 @@
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
+				F2A1F0022FA8000100F0A002 /* thinking.json in Resources */,
+				F2A1F0042FA8000100F0A004 /* NovaLoader.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
 				F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */,
@@ -5296,6 +5307,7 @@
 				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
 				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
 				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
+				F2911E212FC110D100076E94 /* water-bubble.mp3 in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
 				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
 				F299C1722C9D820C00EFA142 /* ZXQRScanViewController.xib in Resources */,

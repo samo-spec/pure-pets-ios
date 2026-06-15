@@ -1411,7 +1411,8 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                                    [UIColor colorWithWhite:1.0 alpha:0.46]);
     UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
                                                      [UIColor.whiteColor colorWithAlphaComponent:0.12]);
-    UIColor *userFill = brand;
+    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.86],
+                                              [brand colorWithAlphaComponent:0.78]);
     UIColor *userText = UIColor.whiteColor;
     UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.76];
     UIColor *userBorder = PPNovaCellDynamicColor([AppPrimaryClrShiner colorWithAlphaComponent:0.88],
@@ -1441,10 +1442,10 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     if (@available(iOS 13.0, *)) {
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    //self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
-    //self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
-    //self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
-    //self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
+    self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
+    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
+    self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
+    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
 
     self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.11],
                                                             [brand colorWithAlphaComponent:0.18]);

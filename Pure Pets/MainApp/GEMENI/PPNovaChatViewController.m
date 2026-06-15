@@ -72,12 +72,6 @@ static const NSInteger PPNovaMaximumRetryAttempts = 1;
 static const NSTimeInterval PPNovaRetryBackoffDelay = 0.6;
 static NSString * const PPNovaThinkingHeaderAnimationName = @"thinking";
 
-/*
- @"novabgnew.json",
- @"novabgnew1.json",
- @"novabgnew2.json"
- */
-
 static NSArray<NSString *> *PPNovaThinkingHeroAnimationNames(void) {
     return @[
     ];

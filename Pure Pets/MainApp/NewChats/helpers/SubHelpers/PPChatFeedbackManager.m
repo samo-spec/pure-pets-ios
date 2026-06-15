@@ -86,6 +86,15 @@
     return canPlay;
 }
 
+- (void)playPremiumImpactWithIntensity:(CGFloat)intensity
+{
+    if (@available(iOS 13.0, *)) {
+        [self.lightImpact impactOccurredWithIntensity:intensity];
+    } else {
+        [self.lightImpact impactOccurred];
+    }
+}
+
 - (BOOL)shouldPlayForEvent:(PPChatFeedbackEvent)event
 {
     UIApplicationState appState = UIApplication.sharedApplication.applicationState;
@@ -149,21 +158,21 @@
 
         switch (event) {
             case PPChatFeedbackEventOutgoingSend: {
-                [self.lightImpact impactOccurredWithIntensity:0.62];
+                [self playPremiumImpactWithIntensity:0.62];
             } break;
 
             case PPChatFeedbackEventIncomingActiveChat: {
-                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self playPremiumImpactWithIntensity:0.45];
                 [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             } break;
 
             case PPChatFeedbackEventIncomingOutsideChat: {
-                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self playPremiumImpactWithIntensity:0.45];
                 [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             } break;
 
             case PPChatFeedbackEventMessageRead: {
-                [self.lightImpact impactOccurredWithIntensity:0.32];
+                [self playPremiumImpactWithIntensity:0.32];
             } break;
         }
     });
