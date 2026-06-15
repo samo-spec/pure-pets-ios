@@ -1248,6 +1248,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
                 decision.eligible = NO;
                 decision.message = kLang(@"order_action_cancel_unavailable_closed");
+            } else if (PPOrderStatusIsPackingLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_cancel_unavailable_preparing");
             } else if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
                 decision.eligible = NO;
                 decision.message = kLang(@"order_action_cancel_unavailable_fulfillment");
@@ -1632,12 +1635,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                       didRetryAuth:(BOOL)didRetryAuth
                                         completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
 {
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceCredentialRefresh completion:^(NSError * _Nullable authError) {
-        if (authError) {
-            if (completion) completion(nil, NO, authError);
-            return;
-        }
-
+    void (^callCreateRequest)(void) = ^{
         [[PPOrderDefaultFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
          callWithObject:payload ?: @{}
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
@@ -1685,6 +1683,23 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
 
             if (completion) completion(request, deduplicated, nil);
         }];
+    };
+
+    if (!forceCredentialRefresh) {
+        callCreateRequest();
+        return;
+    }
+
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES completion:^(NSError * _Nullable authError) {
+        if (authError) {
+            if (completion) {
+                completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:authError
+                                                                     fallbackKey:@"pp_order_support_submit_failed"]);
+            }
+            return;
+        }
+
+        callCreateRequest();
     }];
 }
 

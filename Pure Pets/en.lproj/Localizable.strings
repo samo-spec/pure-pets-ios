@@ -2108,6 +2108,7 @@
 "order_action_existing_request_message" = "You already have an open %@ request for this order.";
 "order_action_track_hint" = "Follow payment, fulfillment, and delivery updates here.";
 "order_action_cancel_unavailable_closed" = "This order is already closed, so cancellation is no longer available.";
+"order_action_cancel_unavailable_preparing" = "This order is already being prepared for shipment, so it can no longer be cancelled from the app. Contact support if you need help.";
 "order_action_cancel_unavailable_fulfillment" = "Cancellation is available only before packing or shipping starts.";
 "order_action_cancel_hint" = "You can still cancel before packing begins.";
 "order_action_return_unavailable_not_delivered" = "Returns open after the order is delivered.";

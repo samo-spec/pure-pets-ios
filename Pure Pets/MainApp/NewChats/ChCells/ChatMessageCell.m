@@ -123,7 +123,6 @@
     self.boundMessageID = messageModel.ID;
     // Max bubble width (same logic as before)
     CGFloat maxBubbleWidth = messageModel.mediaWidth ?: maxWidth * 0.8;
-    NSLog(@"maxBubbleWidth %f",maxBubbleWidth);
     self.bubbleMaxWidthConstraint.active = NO;
     self.bubbleMaxWidthConstraint = [self.bubbleView.widthAnchor constraintLessThanOrEqualToConstant:maxBubbleWidth];
     self.bubbleMaxWidthConstraint.active = YES;

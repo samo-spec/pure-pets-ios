@@ -281,12 +281,12 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 64.0;
+        return 58.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 64.0;
+        return 58.0;
     }
-    return 64.0;
+    return 58.0;
 }
 
 

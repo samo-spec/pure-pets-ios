@@ -75,7 +75,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     }
 
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 32.0;
+    _surfaceView.layer.cornerRadius = 28.0;
     _surfaceView.layer.borderWidth = 0.8;
     _surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {

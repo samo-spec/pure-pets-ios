@@ -2083,6 +2083,7 @@
 "order_action_existing_request_message" = "لديك بالفعل طلب %@ مفتوح لهذا الطلب.";
 "order_action_track_hint" = "تابع تحديثات الدفع والتجهيز والتوصيل من هنا.";
 "order_action_cancel_unavailable_closed" = "هذا الطلب مغلق بالفعل، لذلك لم يعد الإلغاء متاحاً.";
+"order_action_cancel_unavailable_preparing" = "هذا الطلب قيد التجهيز للشحن بالفعل، لذلك لم يعد بالإمكان إلغاؤه من التطبيق. تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.";
 "order_action_cancel_unavailable_fulfillment" = "الإلغاء متاح فقط قبل بدء التجهيز أو الشحن.";
 "order_action_cancel_hint" = "لا يزال بإمكانك الإلغاء قبل بدء التغليف.";
 "order_action_return_unavailable_not_delivered" = "الإرجاع يصبح متاحاً بعد تسليم الطلب.";
@@ -2277,7 +2278,7 @@
 "payment_pending_title" = "الدفع قيد الانتظار";
 "view_order_status" = "عرض الطلب";
 
-"home_quick_action_nearest_vet" = "أقرب بيطري";
+"home_quick_action_nearest_vet" = "بيطري";
 
 /* Firestore Error Notifications (H-10) */
 "firestore_error_generic" = "حدث خطأ ما. يرجى المحاولة مرة أخرى.";

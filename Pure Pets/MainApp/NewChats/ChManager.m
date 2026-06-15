@@ -592,7 +592,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     // ─────────────────────────────
     // 0️⃣ Validation
     // ─────────────────────────────
-    if (!msg || threadID.length == 0 || resolvedSenderID.length == 0) {
+    NSString *resolvedReceiverID = msg.receiverID ?: @"";
+    if (!msg ||
+        threadID.length == 0 ||
+        resolvedSenderID.length == 0 ||
+        resolvedReceiverID.length == 0 ||
+        [resolvedReceiverID isEqualToString:resolvedSenderID]) {
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion([NSError errorWithDomain:@"ChManager"
@@ -656,20 +661,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             return;
         }
 
-        // ─────────────────────────────
-        // 3️⃣ Immediately mark as SENT
-        // (prevents UI waiting for snapshot)
-        // ─────────────────────────────
-        __weak typeof(messageRef) messageRef = messageRef;
-        [messageRef updateData:@{
-            @"status": @(ChatMessageStatusSent),
-            @"sentAt": [FIRFieldValue fieldValueForServerTimestamp]
-        }];
-
         msg.status = ChatMessageStatusSent;
 
         // ─────────────────────────────
-        // 4️⃣ Update parent thread (atomic + safe)
+        // 3️⃣ Update parent thread (atomic + safe)
         // ─────────────────────────────
         NSString *lastMessageText = @"";
 
@@ -699,6 +694,13 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
             @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
             @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1]
+        } completion:^(NSError * _Nullable threadError) {
+            if (threadError) {
+                NSLog(@"⚠️ [SendMessage] Parent thread update failed — thread=%@ code=%ld desc=%@",
+                      threadID,
+                      (long)threadError.code,
+                      threadError.localizedDescription ?: @"unknown");
+            }
         }];
 
         (void)msg;
