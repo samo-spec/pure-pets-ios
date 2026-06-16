@@ -119,7 +119,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imagePlateView.userInteractionEnabled = NO;
-    self.imagePlateView.layer.cornerRadius = 24.0 * PPModerHomeImageSizeScale();
+    self.imagePlateView.layer.cornerRadius = 26.0 * PPModerHomeImageSizeScale();
     self.imagePlateView.layer.masksToBounds = YES;
     self.imagePlateView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -160,8 +160,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
     self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:60.0];
     self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:60.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:72.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:72.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:76.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:76.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -392,10 +392,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
     CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
-    self.imagePlateWidthConstraint.constant = (isAll ? 50.0 : 50.0) * scale;
-    self.imagePlateHeightConstraint.constant = (isAll ? 50.0 : 50.0) * scale;
-    self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
-    self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
+    self.imagePlateWidthConstraint.constant = (isAll ? 52.0 : 52.0) * scale;
+    self.imagePlateHeightConstraint.constant = (isAll ? 52.0 : 52.0) * scale;
+    self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
+    self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
 }
 
 #pragma mark - Layout

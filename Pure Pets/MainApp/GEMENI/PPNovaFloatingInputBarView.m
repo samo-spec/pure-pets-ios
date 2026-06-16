@@ -192,7 +192,7 @@ static UIImage *PPNovaComposerImageNamed(NSString *systemName, CGFloat pointSize
     self.focusRingView.translatesAutoresizingMaskIntoConstraints = NO;
     self.focusRingView.userInteractionEnabled = NO;
     self.focusRingView.backgroundColor = UIColor.clearColor;
-    self.focusRingView.layer.borderWidth = PPNovaComposerFocusRingWidth;
+    self.focusRingView.layer.borderWidth = 0;
     self.focusRingView.layer.cornerRadius = 28.0;
     self.focusRingView.alpha = 0.0;
     if (@available(iOS 13.0, *)) {
@@ -630,7 +630,7 @@ static UIImage *PPNovaComposerImageNamed(NSString *systemName, CGFloat pointSize
 - (void)pp_applyColors {
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
     self.materialView.backgroundColor = PPIOS26() ? UIColor.clearColor : PPNovaComposerSurfaceColor(self.traitCollection);
-    self.focusRingView.layer.borderColor = [brand colorWithAlphaComponent:self.textInputFocused ? 0.42 : 0.18].CGColor;
+    self.focusRingView.layer.borderColor = [brand colorWithAlphaComponent:0].CGColor;
     self.textView.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.textView.tintColor = brand;
     self.textView.keyboardAppearance = (@available(iOS 13.0, *) && self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;

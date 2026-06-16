@@ -249,13 +249,13 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 332.0;
+        return 352.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 332.0;
+        return 352.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 332.0;
+        return 352.0;
     }
     return kCardLarge + 15.0;
 }
@@ -471,7 +471,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 0.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 24.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeightMin,
                                              NO);
@@ -593,7 +593,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 0.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 15.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);

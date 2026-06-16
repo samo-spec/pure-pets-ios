@@ -3182,6 +3182,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                     [[PPUniversalCellViewModel alloc] initWithModel:a
                                                             context:PPCellForMarket];
                 vm.ModelObject = a;
+                vm.cellSection = CellSectionAccessories;
                 item.universalViewModel = vm;
                 [items addObject:item];
             }
@@ -9730,7 +9731,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)setProfileCard
 {
-    UIImage *profileAvatar = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:36];
+    NSString *profileAvatarName = PPSafeString(PPCurrentUser.UserName);
+    if (profileAvatarName.length == 0) {
+        profileAvatarName = @"PurePets";
+    }
+    UIImage *profileAvatar = [PPModernAvatarRenderer avatarImageForName:profileAvatarName size:36];
     NSString *title = [UsrMgr profileNameAndTitleWithMode:ProfileGreetingShorteningModeShotNameOnly] ? : @"";
     NSString *subtitle = Language.isRTL ? CitiesManager.shared.CurrentCountry.arName : CitiesManager.shared.CurrentCountry.enName ? : @"";
     UIButton *profile = (UIButton *)[self pp_profileViewWithImage:profileAvatar
@@ -10158,8 +10163,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [avatar.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:-1.0]
     ]];
 
-    // Placeholder — PPModernAvatarRenderer for personalized initials
-    UIImage *renderedAvatar = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:34];
+    NSString *renderedAvatarName = PPSafeString(PPCurrentUser.UserName);
+    if (renderedAvatarName.length == 0) {
+        renderedAvatarName = @"PurePets";
+    }
+    UIImage *renderedAvatar = [PPModernAvatarRenderer avatarImageForName:renderedAvatarName size:34];
 
     avatar.image = renderedAvatar;
     avatar.tintColor = nil;

@@ -1555,7 +1555,7 @@
 "moved_to_archive"         = "تم النقل إلى الأرشيف";
 "Enter chick ring ID" = "أدخل رقم حلقة الفرخ التعريفية";
 "MainCategories" = "التصنيفات الرئيسية";
-"ShowAll"        = "عرض الكل";
+"ShowAll"        = "مشاهدة الكل";
 "AllCategories" = "كل التصنيفات";
 
 /* =========================
@@ -1605,7 +1605,7 @@
 "home_nav_search_example_fish_compact"     = "أسماك";
 "home_nav_search_example_boarding_compact" = "إيواء";
 "home_nav_search_example_pharmacy_compact" = "أدوية";
-"ShowAll"  = "عرض الكل";
+"ShowAll"  = "مشاهدة الكل";
 "ShowLess" = "عرض أقل";
 "ReadMore" = "اقرأ المزيد";
 "Home_NearbyAds"        = "بالقرب منك";
@@ -2690,7 +2690,7 @@
 "home_premium_care_eyebrow" = "رعاية مميزة";
 "home_premium_care_title" = "مركز العناية البيطري";
 "home_premium_care_subtitle" = "أدوية الحيوانات والرعاية البيطرية في مكان واحد أنيق.";
-"home_premium_care_cta" = "استكشف العيادات";
+"home_premium_care_cta" = "استكشف العيادات والصيدليات";
 "pet_care_title" = "رعاية الحيوانات";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";

@@ -1778,12 +1778,16 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     ]];
 
     if (usr) {
-        imageView.image = [PPModernAvatarRenderer avatarImageForName:usr.UserName size:size - 4];
+        NSString *avatarName = PPSafeString(usr.UserName);
+        if (avatarName.length == 0) {
+            avatarName = @"PurePets";
+        }
+        imageView.image = [PPModernAvatarRenderer avatarImageForName:avatarName size:size - 4];
         [GM setImageFromUrlString:PPSafeString(usr.UserImageUrl.absoluteString)
                         imageView:imageView
                          phImage:@"sysUserIcon"];
     } else {
-        imageView.image = [PPModernAvatarRenderer avatarImageForName:nil size:size - 4];
+        imageView.image = [PPModernAvatarRenderer avatarImageForName:@"PurePets" size:size - 4];
     }
 
     return container;

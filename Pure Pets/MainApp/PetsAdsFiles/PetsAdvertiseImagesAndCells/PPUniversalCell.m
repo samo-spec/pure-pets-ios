@@ -1415,7 +1415,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
     self.subtitleLabel.text = PPUniversalCellSafeString(vm.subtitle);
 
-    BOOL shouldHideTitle = (self.context == PPCellForMarket) && [self pp_isHostedByHomeController];
+    BOOL isAccessorySection = (vm.cellSection == CellSectionAccessories);
+    BOOL shouldHideTitle = (self.context == PPCellForMarket) && [self pp_isHostedByHomeController] && !isAccessorySection;
     if (shouldHideTitle) {
         self.titleLabel.text = @"";
     }
