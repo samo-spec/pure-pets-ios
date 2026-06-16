@@ -2203,21 +2203,31 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         return;
     }
 
-    BOOL didAdd = [cart addItem:item];
-    if (!didAdd) {
-        [PPHUD showError:kLang(@"Out of stock")];
-        [PPFunc triggerWarningHaptic];
-        [self pp_reloadMedicineCellForViewModel:vm];
-        return;
-    }
+    __weak typeof(self) weakSelf = self;
+    [cart addItem:item
+presentingViewController:self
+       completion:^(BOOL didAdd, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) { return; }
+        if (didCancel) {
+            [self pp_reloadMedicineCellForViewModel:vm];
+            return;
+        }
+        if (!didAdd) {
+            [PPHUD showError:kLang(@"Out of stock")];
+            [PPFunc triggerWarningHaptic];
+            [self pp_reloadMedicineCellForViewModel:vm];
+            return;
+        }
 
-    if (safeQuantity == 1) {
-        [PPFunc triggerLightHaptic];
-    } else {
-        [PPFunc triggerMediumHaptic];
-    }
-    [self pp_updateCartBadge];
-    [self pp_reloadMedicineCellForViewModel:vm];
+        if (safeQuantity == 1) {
+            [PPFunc triggerLightHaptic];
+        } else {
+            [PPFunc triggerMediumHaptic];
+        }
+        [self pp_updateCartBadge];
+        [self pp_reloadMedicineCellForViewModel:vm];
+    }];
 }
 
 - (PPUniversalCellViewModel *)pp_universalViewModelForMedicine:(VetMedicineModel *)medicine

@@ -25,6 +25,450 @@ static NSString *PPHubTrimmedString(id value)
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
+static NSString *PPHubScalarString(id value)
+{
+    NSString *stringValue = PPHubTrimmedString(value);
+    if (stringValue.length > 0) return stringValue;
+
+    if ([value isKindOfClass:NSNumber.class]) {
+        NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.minimumFractionDigits = 0;
+        formatter.maximumFractionDigits = 2;
+        return [formatter stringFromNumber:(NSNumber *)value] ?: [(NSNumber *)value stringValue];
+    }
+
+    return @"";
+}
+
+static NSDictionary *PPHubSafeDictionary(id value)
+{
+    return [value isKindOfClass:NSDictionary.class] ? value : @{};
+}
+
+static NSString *PPHubFirstStringForKeys(NSDictionary *source, NSArray<NSString *> *keys)
+{
+    for (NSString *key in keys) {
+        NSString *value = PPHubTrimmedString(source[key]);
+        if (value.length > 0) return value;
+    }
+    return @"";
+}
+
+static NSString *PPHubFirstScalarForKeys(NSDictionary *source, NSArray<NSString *> *keys)
+{
+    for (NSString *key in keys) {
+        NSString *value = PPHubScalarString(source[key]);
+        if (value.length > 0) return value;
+    }
+    return @"";
+}
+
+static NSString *PPHubLocalizedValueFromDictionary(NSDictionary *source, NSArray<NSString *> *arKeys, NSArray<NSString *> *enKeys)
+{
+    NSArray<NSString *> *primaryKeys = Language.isRTL ? arKeys : enKeys;
+    NSArray<NSString *> *fallbackKeys = Language.isRTL ? enKeys : arKeys;
+    NSString *primary = PPHubFirstStringForKeys(source, primaryKeys);
+    if (primary.length > 0) return primary;
+    return PPHubFirstStringForKeys(source, fallbackKeys);
+}
+
+static NSString *PPHubLocalizedNestedValue(id nestedValue)
+{
+    NSDictionary *dictionary = PPHubSafeDictionary(nestedValue);
+    if (dictionary.count == 0) return PPHubTrimmedString(nestedValue);
+    return PPHubLocalizedValueFromDictionary(dictionary,
+                                            @[@"ar", @"arabic", @"titleAr", @"bodyAr", @"valueAr", @"textAr"],
+                                            @[@"en", @"english", @"titleEn", @"bodyEn", @"valueEn", @"textEn"]);
+}
+
+static BOOL PPHubStringEquals(NSString *lhs, NSString *rhs)
+{
+    return [PPHubTrimmedString(lhs) caseInsensitiveCompare:PPHubTrimmedString(rhs)] == NSOrderedSame;
+}
+
+static BOOL PPHubStringHasPrefix(NSString *value, NSString *prefix)
+{
+    return [PPHubTrimmedString(value) rangeOfString:prefix options:NSCaseInsensitiveSearch | NSAnchoredSearch].location != NSNotFound;
+}
+
+static NSString *PPHubOrderReferenceFromTitle(NSString *title)
+{
+    NSString *safeTitle = PPHubTrimmedString(title);
+    NSString *prefix = @"New Order ";
+    if (!PPHubStringHasPrefix(safeTitle, prefix) || safeTitle.length <= prefix.length) {
+        return @"";
+    }
+    return PPHubTrimmedString([safeTitle substringFromIndex:prefix.length]);
+}
+
+static NSString *PPHubOrderReferenceFromBody(NSString *body)
+{
+    NSString *safeBody = PPHubTrimmedString(body);
+    if (safeBody.length == 0) return @"";
+
+    NSError *error = nil;
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^\\s*(#[^\\s]+)\\s+"
+                                                                           options:0
+                                                                             error:&error];
+    if (error) return @"";
+
+    NSTextCheckingResult *match = [regex firstMatchInString:safeBody options:0 range:NSMakeRange(0, safeBody.length)];
+    if (!match || match.numberOfRanges < 2) return @"";
+    return [safeBody substringWithRange:[match rangeAtIndex:1]];
+}
+
+static NSString *PPHubDisplayOrderReference(NSString *reference)
+{
+    NSString *safeReference = PPHubTrimmedString(reference);
+    if (safeReference.length == 0) return @"";
+    if ([safeReference hasPrefix:@"#"]) return safeReference;
+    return [NSString stringWithFormat:@"#%@", safeReference];
+}
+
+static NSString *PPHubOrderReferenceFromPayload(NSDictionary *payload, NSDictionary *meta)
+{
+    NSString *reference = PPHubFirstScalarForKeys(meta, @[@"orderReference", @"orderNumber", @"parentOrderNumber", @"orderId", @"parentOrderId"]);
+    if (reference.length == 0) {
+        reference = PPHubFirstScalarForKeys(payload, @[@"orderReference", @"orderNumber", @"orderId", @"parentOrderNumber", @"parentOrderId"]);
+    }
+    return PPHubDisplayOrderReference(reference);
+}
+
+static BOOL PPHubParseOrderSummaryBody(NSString *body, NSString **itemCount, NSString **amount, NSString **currency)
+{
+    NSString *safeBody = PPHubTrimmedString(body);
+    if (safeBody.length == 0) return NO;
+
+    NSError *error = nil;
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^\\s*(\\d+)\\s+item\\(s\\)\\s*•\\s*([0-9]+(?:\\.[0-9]+)?)\\s*([A-Za-z]+)\\s*$"
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:&error];
+    if (error) return NO;
+
+    NSTextCheckingResult *match = [regex firstMatchInString:safeBody options:0 range:NSMakeRange(0, safeBody.length)];
+    if (!match || match.numberOfRanges < 4) return NO;
+
+    if (itemCount) *itemCount = [safeBody substringWithRange:[match rangeAtIndex:1]];
+    if (amount) *amount = [safeBody substringWithRange:[match rangeAtIndex:2]];
+    if (currency) *currency = [safeBody substringWithRange:[match rangeAtIndex:3]];
+    return YES;
+}
+
+static NSString *PPHubNotificationType(NSDictionary *payload, NSDictionary *meta)
+{
+    NSString *type = PPHubFirstStringForKeys(payload, @[@"notificationType", @"type", @"key", @"eventKey", @"route"]);
+    if (type.length == 0) {
+        type = PPHubFirstStringForKeys(meta, @[@"notificationType", @"type", @"key", @"eventKey", @"route"]);
+    }
+    return [[type lowercaseString] copy];
+}
+
+static NSString *PPHubNotificationStatus(NSDictionary *payload, NSDictionary *meta)
+{
+    NSString *status = PPHubFirstStringForKeys(payload, @[@"status", @"paymentStatus", @"deliveryStatus"]);
+    if (status.length == 0) {
+        status = PPHubFirstStringForKeys(meta, @[@"status", @"paymentStatus", @"deliveryStatus"]);
+    }
+    return [[status lowercaseString] copy];
+}
+
+static NSString *PPHubCustomerDeliveryTitleKey(NSString *type, NSString *rawTitle, NSString *rawBody)
+{
+    if ([type isEqualToString:@"customer_delivery_requested"] ||
+        PPHubStringEquals(rawTitle, @"Your Order Is Ready")) {
+        return @"notifications_inbox_customer_delivery_requested_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_assigned"] ||
+        PPHubStringEquals(rawTitle, @"Delivery Partner Assigned")) {
+        return @"notifications_inbox_customer_delivery_assigned_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_on_the_way"] ||
+        PPHubStringEquals(rawTitle, @"Your Order Is On the Way")) {
+        return @"notifications_inbox_customer_delivery_on_the_way_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_delivered"] ||
+        PPHubStringEquals(rawTitle, @"Order Delivered")) {
+        return @"notifications_inbox_customer_delivery_delivered_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_completed"] ||
+        PPHubStringEquals(rawTitle, @"Order Completed")) {
+        return @"notifications_inbox_customer_delivery_completed_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_cancelled"] ||
+        PPHubStringEquals(rawBody, @"The delivery for your order has been cancelled. Please contact support if you need assistance.")) {
+        return @"notifications_inbox_customer_delivery_update_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_failed"] ||
+        PPHubStringEquals(rawBody, @"We were unable to complete your delivery. Our team will review the order and update you shortly.")) {
+        return @"notifications_inbox_customer_delivery_update_title";
+    }
+    if ([type isEqualToString:@"customer_delivery_delayed"] ||
+        PPHubStringEquals(rawBody, @"Your delivery needs a little more time. Our team is reviewing the order and will update you shortly.")) {
+        return @"notifications_inbox_customer_delivery_update_title";
+    }
+    return @"";
+}
+
+static NSString *PPHubCustomerDeliveryBodyKey(NSString *type, NSString *rawBody)
+{
+    if ([type isEqualToString:@"customer_delivery_requested"] ||
+        PPHubStringEquals(rawBody, @"Your order is packed and ready for shipment. A delivery partner will be assigned shortly.")) {
+        return @"notifications_inbox_customer_delivery_requested_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_assigned"] ||
+        PPHubStringEquals(rawBody, @"A delivery partner has been assigned to your order and will collect it shortly.")) {
+        return @"notifications_inbox_customer_delivery_assigned_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_on_the_way"] ||
+        PPHubStringEquals(rawBody, @"Your order has been collected and is now on its way to you.")) {
+        return @"notifications_inbox_customer_delivery_on_the_way_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_delivered"] ||
+        PPHubStringEquals(rawBody, @"Your order has been delivered successfully. Thank you for choosing Pure Pets.")) {
+        return @"notifications_inbox_customer_delivery_delivered_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_completed"] ||
+        PPHubStringEquals(rawBody, @"Your order has been completed successfully. Thank you for shopping with Pure Pets.")) {
+        return @"notifications_inbox_customer_delivery_completed_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_cancelled"] ||
+        PPHubStringEquals(rawBody, @"The delivery for your order has been cancelled. Please contact support if you need assistance.")) {
+        return @"notifications_inbox_customer_delivery_cancelled_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_failed"] ||
+        PPHubStringEquals(rawBody, @"We were unable to complete your delivery. Our team will review the order and update you shortly.")) {
+        return @"notifications_inbox_customer_delivery_failed_body";
+    }
+    if ([type isEqualToString:@"customer_delivery_delayed"] ||
+        PPHubStringEquals(rawBody, @"Your delivery needs a little more time. Our team is reviewing the order and will update you shortly.")) {
+        return @"notifications_inbox_customer_delivery_delayed_body";
+    }
+    return @"";
+}
+
+static NSString *PPHubOrderStatusTitleKey(NSString *type, NSString *status, NSString *rawTitle)
+{
+    if ([type isEqualToString:@"order_payment_status"] ||
+        PPHubStringEquals(rawTitle, @"Cash Payment Collected | تم تحصيل الدفع")) {
+        return @"notifications_inbox_order_cash_collected_title";
+    }
+
+    BOOL isOrderStatus = [type isEqualToString:@"order_status"] || ([type hasPrefix:@"order"] && ![type isEqualToString:@"order_payment_status"]);
+    if ((isOrderStatus && [status isEqualToString:@"paid"]) ||
+        PPHubStringEquals(rawTitle, @"Payment Confirmed | تم تأكيد الدفع")) {
+        return @"notifications_inbox_order_payment_confirmed_title";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"processing"]) ||
+        PPHubStringEquals(rawTitle, @"Order Processing | جاري تجهيز الطلب")) {
+        return @"notifications_inbox_order_processing_title";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"shipped"]) ||
+        PPHubStringEquals(rawTitle, @"Order Shipped | تم شحن الطلب")) {
+        return @"notifications_inbox_order_shipped_title";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"delivered"]) ||
+        PPHubStringEquals(rawTitle, @"Order Delivered | تم تسليم الطلب")) {
+        return @"notifications_inbox_order_delivered_title";
+    }
+    if ((isOrderStatus && ([status isEqualToString:@"cancelled"] || [status isEqualToString:@"canceled"])) ||
+        PPHubStringEquals(rawTitle, @"Order Cancelled | تم إلغاء الطلب")) {
+        return @"notifications_inbox_order_cancelled_title";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"failed"]) ||
+        PPHubStringEquals(rawTitle, @"Payment Failed | فشل الدفع")) {
+        return @"notifications_inbox_order_failed_title";
+    }
+    return @"";
+}
+
+static NSString *PPHubOrderStatusBodyFormatKey(NSString *type, NSString *status, NSString *rawTitle, NSString *rawBody)
+{
+    if ([type isEqualToString:@"order_payment_status"] ||
+        PPHubStringEquals(rawTitle, @"Cash Payment Collected | تم تحصيل الدفع") ||
+        [rawBody containsString:@"cash payment was collected successfully."]) {
+        return @"notifications_inbox_order_cash_collected_body_format";
+    }
+
+    BOOL isOrderStatus = [type isEqualToString:@"order_status"] || ([type hasPrefix:@"order"] && ![type isEqualToString:@"order_payment_status"]);
+    if ((isOrderStatus && [status isEqualToString:@"paid"]) ||
+        PPHubStringEquals(rawTitle, @"Payment Confirmed | تم تأكيد الدفع") ||
+        [rawBody containsString:@"is confirmed and paid."]) {
+        return @"notifications_inbox_order_payment_confirmed_body_format";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"processing"]) ||
+        PPHubStringEquals(rawTitle, @"Order Processing | جاري تجهيز الطلب") ||
+        [rawBody containsString:@"is now being prepared."]) {
+        return @"notifications_inbox_order_processing_body_format";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"shipped"]) ||
+        PPHubStringEquals(rawTitle, @"Order Shipped | تم شحن الطلب") ||
+        [rawBody containsString:@"is on the way."]) {
+        return @"notifications_inbox_order_shipped_body_format";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"delivered"]) ||
+        PPHubStringEquals(rawTitle, @"Order Delivered | تم تسليم الطلب") ||
+        [rawBody containsString:@"has been delivered."]) {
+        return @"notifications_inbox_order_delivered_body_format";
+    }
+    if ((isOrderStatus && ([status isEqualToString:@"cancelled"] || [status isEqualToString:@"canceled"])) ||
+        PPHubStringEquals(rawTitle, @"Order Cancelled | تم إلغاء الطلب") ||
+        [rawBody containsString:@"was cancelled."]) {
+        return @"notifications_inbox_order_cancelled_body_format";
+    }
+    if ((isOrderStatus && [status isEqualToString:@"failed"]) ||
+        PPHubStringEquals(rawTitle, @"Payment Failed | فشل الدفع") ||
+        [rawBody containsString:@"could not be completed."]) {
+        return @"notifications_inbox_order_failed_body_format";
+    }
+    return @"";
+}
+
+static NSString *PPHubLocalizedNotificationTitle(NSString *rawTitle, NSString *rawBody, NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPHubSafeDictionary(payload);
+    NSDictionary *meta = PPHubSafeDictionary(safePayload[@"meta"]);
+    NSString *type = PPHubNotificationType(safePayload, meta);
+    NSString *status = PPHubNotificationStatus(safePayload, meta);
+
+    NSString *titleKey = PPHubFirstStringForKeys(safePayload, @[@"titleLocalizationKey", @"titleKey", @"titleLocKey"]);
+    if (titleKey.length == 0) titleKey = PPHubFirstStringForKeys(meta, @[@"titleLocalizationKey", @"titleKey", @"titleLocKey"]);
+    if (titleKey.length > 0) return kLang(titleKey);
+
+    NSString *localized = PPHubLocalizedValueFromDictionary(safePayload,
+                                                           @[@"titleAr", @"title_ar", @"arTitle", @"titleArabic", @"title_arabic"],
+                                                           @[@"titleEn", @"title_en", @"enTitle", @"titleEnglish", @"title_english"]);
+    if (localized.length == 0) {
+        localized = PPHubLocalizedValueFromDictionary(meta,
+                                                      @[@"titleAr", @"title_ar", @"arTitle", @"titleArabic", @"title_arabic"],
+                                                      @[@"titleEn", @"title_en", @"enTitle", @"titleEnglish", @"title_english"]);
+    }
+    if (localized.length > 0) return localized;
+
+    for (NSString *key in @[@"localizedTitle", @"titleLocalized", @"titleI18n", @"title_i18n", @"titleMap"]) {
+        localized = PPHubLocalizedNestedValue(safePayload[key]);
+        if (localized.length > 0) return localized;
+        localized = PPHubLocalizedNestedValue(meta[key]);
+        if (localized.length > 0) return localized;
+    }
+
+    NSString *customerDeliveryKey = PPHubCustomerDeliveryTitleKey(type, rawTitle, rawBody);
+    if (customerDeliveryKey.length > 0) return kLang(customerDeliveryKey);
+
+    NSString *orderStatusKey = PPHubOrderStatusTitleKey(type, status, rawTitle);
+    if (orderStatusKey.length > 0) return kLang(orderStatusKey);
+
+    if ([type isEqualToString:@"drivers_delivery_requested"] ||
+        [type isEqualToString:@"delivery_requested"] ||
+        PPHubStringEquals(rawTitle, @"New Delivery Request")) {
+        return kLang(@"notifications_inbox_new_delivery_request_title");
+    }
+
+    if ([type isEqualToString:@"drivers_delivery_request_closed"] ||
+        [type isEqualToString:@"delivery_request_closed"] ||
+        PPHubStringEquals(rawTitle, @"Delivery Request Closed")) {
+        return kLang(@"notifications_inbox_delivery_request_closed_title");
+    }
+
+    if ([type isEqualToString:@"provider_new_fulfillment"] ||
+        [type isEqualToString:@"fulfillment_order"] ||
+        [status isEqualToString:@"new_request"] ||
+        PPHubStringHasPrefix(rawTitle, @"New Order ")) {
+        NSString *orderReference = PPHubFirstScalarForKeys(meta, @[@"orderNumber", @"parentOrderNumber", @"orderReference", @"orderId", @"parentOrderId"]);
+        if (orderReference.length == 0) {
+            orderReference = PPHubFirstScalarForKeys(safePayload, @[@"orderNumber", @"orderReference", @"orderId"]);
+        }
+        if (orderReference.length == 0) orderReference = PPHubOrderReferenceFromTitle(rawTitle);
+        NSString *format = kLang(@"notifications_inbox_new_order_title_format");
+        return orderReference.length > 0 ? [NSString stringWithFormat:format, orderReference] : kLang(@"notifications_inbox_new_order_title");
+    }
+
+    return PPHubTrimmedString(rawTitle);
+}
+
+static NSString *PPHubLocalizedNotificationBody(NSString *rawBody, NSString *rawTitle, NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPHubSafeDictionary(payload);
+    NSDictionary *meta = PPHubSafeDictionary(safePayload[@"meta"]);
+    NSString *type = PPHubNotificationType(safePayload, meta);
+    NSString *status = PPHubNotificationStatus(safePayload, meta);
+
+    NSString *bodyKey = PPHubFirstStringForKeys(safePayload, @[@"bodyLocalizationKey", @"bodyKey", @"bodyLocKey"]);
+    if (bodyKey.length == 0) bodyKey = PPHubFirstStringForKeys(meta, @[@"bodyLocalizationKey", @"bodyKey", @"bodyLocKey"]);
+    if (bodyKey.length > 0) return kLang(bodyKey);
+
+    NSString *localized = PPHubLocalizedValueFromDictionary(safePayload,
+                                                           @[@"bodyAr", @"body_ar", @"arBody", @"bodyArabic", @"body_arabic", @"messageAr", @"message_ar"],
+                                                           @[@"bodyEn", @"body_en", @"enBody", @"bodyEnglish", @"body_english", @"messageEn", @"message_en"]);
+    if (localized.length == 0) {
+        localized = PPHubLocalizedValueFromDictionary(meta,
+                                                      @[@"bodyAr", @"body_ar", @"arBody", @"bodyArabic", @"body_arabic", @"messageAr", @"message_ar"],
+                                                      @[@"bodyEn", @"body_en", @"enBody", @"bodyEnglish", @"body_english", @"messageEn", @"message_en"]);
+    }
+    if (localized.length > 0) return localized;
+
+    for (NSString *key in @[@"localizedBody", @"bodyLocalized", @"bodyI18n", @"body_i18n", @"bodyMap"]) {
+        localized = PPHubLocalizedNestedValue(safePayload[key]);
+        if (localized.length > 0) return localized;
+        localized = PPHubLocalizedNestedValue(meta[key]);
+        if (localized.length > 0) return localized;
+    }
+
+    NSString *customerDeliveryKey = PPHubCustomerDeliveryBodyKey(type, rawBody);
+    if (customerDeliveryKey.length > 0) return kLang(customerDeliveryKey);
+
+    NSString *orderFormatKey = PPHubOrderStatusBodyFormatKey(type, status, rawTitle, rawBody);
+    if (orderFormatKey.length > 0) {
+        NSString *reference = PPHubOrderReferenceFromPayload(safePayload, meta);
+        if (reference.length == 0) reference = PPHubOrderReferenceFromBody(rawBody);
+        if (reference.length == 0) reference = kLang(@"notifications_inbox_order_reference_fallback");
+        return [NSString stringWithFormat:kLang(orderFormatKey), reference];
+    }
+
+    if ([type isEqualToString:@"drivers_delivery_requested"] ||
+        [type isEqualToString:@"delivery_requested"] ||
+        PPHubStringEquals(rawTitle, @"New Delivery Request") ||
+        PPHubStringEquals(rawBody, @"A new order is ready for pickup. Please review the details and accept the delivery request.")) {
+        return kLang(@"notifications_inbox_new_delivery_request_body");
+    }
+
+    if ([type isEqualToString:@"drivers_delivery_request_closed"] ||
+        [type isEqualToString:@"delivery_request_closed"] ||
+        PPHubStringEquals(rawTitle, @"Delivery Request Closed") ||
+        PPHubStringEquals(rawBody, @"This delivery request is no longer available.")) {
+        return kLang(@"notifications_inbox_delivery_request_closed_body");
+    }
+
+    if ([type isEqualToString:@"provider_new_fulfillment"] ||
+        [type isEqualToString:@"fulfillment_order"] ||
+        [status isEqualToString:@"new_request"] ||
+        PPHubStringHasPrefix(rawTitle, @"New Order ")) {
+        NSString *itemCount = PPHubFirstScalarForKeys(meta, @[@"itemCount", @"itemsCount"]);
+        NSString *amount = PPHubFirstScalarForKeys(meta, @[@"subtotal", @"amount", @"total"]);
+        NSString *currency = PPHubFirstScalarForKeys(meta, @[@"currency"]);
+        if (itemCount.length == 0 || amount.length == 0 || currency.length == 0) {
+            itemCount = itemCount.length ? itemCount : PPHubFirstScalarForKeys(safePayload, @[@"itemCount", @"itemsCount"]);
+            amount = amount.length ? amount : PPHubFirstScalarForKeys(safePayload, @[@"subtotal", @"amount", @"total"]);
+            currency = currency.length ? currency : PPHubFirstScalarForKeys(safePayload, @[@"currency"]);
+        }
+        if (itemCount.length == 0 || amount.length == 0 || currency.length == 0) {
+            NSString *parsedCount = nil;
+            NSString *parsedAmount = nil;
+            NSString *parsedCurrency = nil;
+            if (PPHubParseOrderSummaryBody(rawBody, &parsedCount, &parsedAmount, &parsedCurrency)) {
+                if (itemCount.length == 0) itemCount = parsedCount;
+                if (amount.length == 0) amount = parsedAmount;
+                if (currency.length == 0) currency = parsedCurrency;
+            }
+        }
+        if (itemCount.length > 0 && amount.length > 0 && currency.length > 0) {
+            return [NSString stringWithFormat:kLang(@"notifications_inbox_order_items_total_format"), itemCount, amount, currency];
+        }
+    }
+
+    return PPHubTrimmedString(rawBody);
+}
+
 static NSString *PPHubInboxCategoryTitle(NSDictionary *payload)
 {
     NSString *type = [[PPHubTrimmedString(payload[@"type"]) lowercaseString] copy];
@@ -321,7 +765,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.96];
+    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.96];
     _cardView.layer.cornerRadius = 24.0;
     _cardView.layer.masksToBounds = NO;
     [_cardView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
@@ -563,12 +1007,14 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             UNNotificationContent *content = notification.request.content;
             NSDictionary *payload = [content.userInfo isKindOfClass:NSDictionary.class] ? content.userInfo : @{};
 
-            NSString *title = PPHubTrimmedString(content.title);
+            NSString *rawTitle = PPHubTrimmedString(content.title);
+            NSString *title = PPHubLocalizedNotificationTitle(rawTitle, PPHubTrimmedString(content.body), payload);
             if (title.length == 0) {
                 title = PPHubInboxCategoryTitle(payload);
             }
 
-            NSString *subtitle = PPHubTrimmedString(content.body);
+            NSString *rawSubtitle = PPHubTrimmedString(content.body);
+            NSString *subtitle = PPHubLocalizedNotificationBody(rawSubtitle, rawTitle, payload);
             if (subtitle.length == 0) {
                 subtitle = PPHubTrimmedString(payload[@"message"] ?: payload[@"status"]);
             }
@@ -691,7 +1137,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = AppSurfColor;
+    self.view.backgroundColor = AppPageColor();
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];

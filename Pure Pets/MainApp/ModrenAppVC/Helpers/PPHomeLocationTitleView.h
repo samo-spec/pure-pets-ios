@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)playEntranceIfNeeded;
 - (void)startLivingMotion;
 - (void)stopLivingMotion;
-
+- (void)setCorners:(float)radius;
 @end
 
 NS_ASSUME_NONNULL_END

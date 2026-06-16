@@ -448,6 +448,67 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     return otherUserID ?: @"";
 }
 
+- (NSString *)pp_currentOutgoingSenderID
+{
+    NSString *authUID = [FIRAuth auth].currentUser.uid ?: @"";
+    if (authUID.length > 0) {
+        return authUID;
+    }
+    return UserManager.sharedManager.currentUser.ID ?: @"";
+}
+
+- (NSString *)pp_resolvedOutgoingReceiverIDForSenderID:(NSString *)senderID
+{
+    NSString *safeSenderID = senderID ?: @"";
+    NSArray *members = self.chatThread.memberIDs ?: @[];
+    BOOL hasKnownMembers = members.count > 0;
+    BOOL (^candidateIsUsable)(NSString *) = ^BOOL(NSString *candidate) {
+        if (candidate.length == 0 || [candidate isEqualToString:safeSenderID]) {
+            return NO;
+        }
+        return !hasKnownMembers || [members containsObject:candidate];
+    };
+
+    NSString *receiverID = [self resolvedOtherUserID];
+    if (candidateIsUsable(receiverID)) {
+        return receiverID;
+    }
+
+    NSString *supportUserID = self.chatThread.supportUserID ?: @"";
+    if (candidateIsUsable(supportUserID)) {
+        return supportUserID;
+    }
+
+    for (NSString *candidate in members) {
+        if (![candidate isKindOfClass:NSString.class]) continue;
+        if (candidateIsUsable(candidate)) {
+            return candidate;
+        }
+    }
+    return @"";
+}
+
+- (BOOL)pp_applyOutgoingIdentityToMessage:(ChatMessageModel *)msg
+{
+    if (!msg) return NO;
+
+    NSString *senderID = [self pp_currentOutgoingSenderID];
+    NSString *receiverID = [self pp_resolvedOutgoingReceiverIDForSenderID:senderID];
+    if (senderID.length == 0 ||
+        receiverID.length == 0 ||
+        [receiverID isEqualToString:senderID]) {
+        NSLog(@"❌ [Chat] Invalid outgoing identity sender=%@ receiver=%@ thread=%@",
+              senderID ?: @"",
+              receiverID ?: @"",
+              self.chatThread.ID ?: @"");
+        return NO;
+    }
+
+    msg.senderID = senderID;
+    msg.receiverID = receiverID;
+    return YES;
+}
+
 - (NSString *)resolvedOtherUserPresenceID
 {
     return [self resolvedOtherUserID];
@@ -884,6 +945,21 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
         }
     }
     return nil;
+}
+
+- (ChatMessageModel *)pp_messageModelFromSnapshot:(FIRDocumentSnapshot *)document
+{
+    ChatMessageModel *message =
+        [[ChatMessageModel alloc] initWithDictionary:document.data ?: @{}];
+
+    // Firestore document ID is the stable row identity. Some legacy/pro clients
+    // omit the uppercase ID field, which otherwise makes live modified events
+    // look like brand-new messages until the controller is reopened.
+    if (document.documentID.length > 0) {
+        message.ID = document.documentID;
+    }
+
+    return message;
 }
 
 - (void)pp_replyPreviewPartsForMessage:(ChatMessageModel *)message
@@ -1339,8 +1415,10 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     // ✅ 1. Build message model
     ChatMessageModel *msg = [ChatMessageModel new];
     msg.ID = [GM cleanID];
-    msg.senderID = UserManager.sharedManager.currentUser.ID;
-    msg.receiverID = self.threadOtherUser.ID;
+    if (![self pp_applyOutgoingIdentityToMessage:msg]) {
+        self.didFinishRecordingOnce = NO;
+        return;
+    }
     msg.timestamp = [NSDate date];
     msg.status = ChatMessageStatusSending;
     msg.messageType = ChatMessageTypeAudio;
@@ -2196,8 +2274,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [GM cleanID];
-    msg.senderID = UserManager.sharedManager.currentUser.ID;
-    msg.receiverID = self.threadOtherUser.ID;
+    if (![self pp_applyOutgoingIdentityToMessage:msg]) return;
     msg.timestamp = [NSDate date];
     msg.status = ChatMessageStatusSending;
     msg.messageType = ChatMessageTypeImage;
@@ -2361,8 +2438,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 {
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [GM cleanID];
-    msg.senderID = UserManager.sharedManager.currentUser.ID;
-    msg.receiverID = self.threadOtherUser.ID;
+    if (![self pp_applyOutgoingIdentityToMessage:msg]) return nil;
     msg.timestamp = [NSDate date];
     msg.status = ChatMessageStatusSending;
     msg.messageType = ChatMessageTypeVideo;
@@ -2588,6 +2664,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     // 1️⃣ Build message ONCE
     ChatMessageModel *msg =
         [self buildVideoMessageWithURL:videoURL];
+    if (!msg) return;
 
     __weak typeof(self) weakSelf = self;
 
@@ -3057,8 +3134,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [GM cleanID];
     msg.text = text;
-    msg.senderID = UserManager.sharedManager.currentUser.ID;
-    msg.receiverID = self.threadOtherUser.ID;
+    if (![self pp_applyOutgoingIdentityToMessage:msg]) return;
     msg.timestamp = [NSDate date];
     msg.status = ChatMessageStatusSending;
     msg.messageType = ChatMessageTypeText;
@@ -5143,7 +5219,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
                 for (FIRDocumentSnapshot *doc in snapshot.documents) {
                     ChatMessageModel *msg =
-                    [[ChatMessageModel alloc] initWithDictionary:doc.data];
+                    [self pp_messageModelFromSnapshot:doc];
 
                     [self.messages addObject:msg];
                     self.lastKnownStatuses[msg.ID] = @(msg.status);
@@ -5191,7 +5267,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
                     // New message
                     ChatMessageModel *msg =
-                    [[ChatMessageModel alloc] initWithDictionary:change.document.data];
+                    [self pp_messageModelFromSnapshot:change.document];
 
                     BOOL shouldStickToBottom = [self isNearBottom];
                     NSInteger insertIndex =
@@ -5222,7 +5298,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
                     if (index == NSNotFound) {
                         ChatMessageModel *missing =
-                            [[ChatMessageModel alloc] initWithDictionary:change.document.data];
+                            [self pp_messageModelFromSnapshot:change.document];
                         NSInteger insertIndex =
                             MIN((NSInteger)change.newIndex, (NSInteger)self.messages.count);
                         [self.messages insertObject:missing atIndex:insertIndex];

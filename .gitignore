@@ -117,6 +117,4 @@ firebase-debug.*.log
 *.zip
 *.apk
 *.framework
-SDKs/*.log
-node_modules/
-.DS_Store
+SDKs/

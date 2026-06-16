@@ -14,6 +14,8 @@
 #import "UserManager.h"
 #import "AppClasses.h"
 #import "PPIntroViewController.h"
+#import "PPUserMenuViewController.h"
+#import "PPModernAvatarRenderer.h"
 #if __has_include(<Lottie/Lottie.h>)
 #import <Lottie/Lottie.h>
 #elif __has_include("Lottie.h")
@@ -29,6 +31,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
+#import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
 
 // ...
@@ -87,6 +90,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 - (void)pp_novaButtonTapped;
 - (void)pp_handleNovaFloatingVisibilityUpdate:(NSNotification *)notification;
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
+- (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded;
 - (void)pp_premiumControlTouchDown:(UIButton *)sender;
@@ -167,9 +171,13 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     // Settings
     UINavigationController *settingsNav = [self nav:[self pp_makeSettingsRootViewController]   title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))  icon:@"gearshape" selectedImage:@"gearshape.fill"];
 
-    // Cart
-    
-    UINavigationController *cartNav = [self nav:[OrderHistoryViewController new] title:kLang(@"menu_action_orders") icon:@"cart.badge.clock" selectedImage:@"checklist"];
+    // User menu temporarily occupies the former Orders History tab slot.
+    UINavigationController *cartNav = [self nav:[PPUserMenuViewController new]
+                                          title:kLang(@"user_menu_tab_title")
+                                           icon:@"person.crop.circle"
+                                  selectedImage:@"person.crop.circle.fill"];
+    cartNav.tabBarItem.image = [self pp_userMenuTabAvatarImageSelected:NO];
+    cartNav.tabBarItem.selectedImage = [self pp_userMenuTabAvatarImageSelected:YES];
    
     
     UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"Notifications")   icon:@"bell" selectedImage:@"bellLast"];
@@ -230,8 +238,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     notiNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_notifications", @"Notifications tab");
     notiNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_notifications_hint", @"View your chats and notifications");
     addNav.tabBarItem.accessibilityLabel      = NSLocalizedString(@"a11y_tab_add", @"Add new post tab");
-    cartNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_orders", @"Orders tab");
-    cartNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_orders_hint", @"View your order history");
+    cartNav.tabBarItem.accessibilityLabel     = kLang(@"a11y_tab_user_menu");
+    cartNav.tabBarItem.accessibilityHint      = kLang(@"a11y_tab_user_menu_hint");
     settingsNav.tabBarItem.accessibilityLabel = NSLocalizedString(@"a11y_tab_settings", @"Settings tab");
     settingsNav.tabBarItem.accessibilityHint  = NSLocalizedString(@"a11y_tab_settings_hint", @"App settings and account");
 
@@ -1357,8 +1365,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     NSArray<NSNumber *> *visibleTabIndexes = @[
         @(PPRootTabIndexHome),
         @(PPRootTabIndexChats),
-        @(PPRootTabIndexOrders),
-        @(PPRootTabIndexSettings)
+        @(PPRootTabIndexSettings),
+        @(PPRootTabIndexOrders)
     ];
     NSMutableArray<UITabBarItem *> *items = [NSMutableArray arrayWithCapacity:visibleTabIndexes.count];
     for (NSNumber *tabIndexValue in visibleTabIndexes) {
@@ -1707,9 +1715,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             selectedSymbolName = @"bubble.left.and.bubble.right.fill";
             break;
         case PPRootTabIndexOrders:
-            normalSymbolName = @"bag";
-            selectedSymbolName = @"bag.fill";
-            break;
+            return [self pp_userMenuTabAvatarImageSelected:selected];
         case PPRootTabIndexSettings:
             normalSymbolName = @"slider.horizontal.3";
             selectedSymbolName = @"slider.horizontal.3";
@@ -1723,6 +1729,68 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                                                           scale:UIImageSymbolScaleMedium];
     return [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];
+}
+
+- (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected
+{
+    CGFloat canvas = 32.0;
+    CGFloat avatarSize = selected ? 28.0 : 26.0;
+    CGRect avatarRect = CGRectMake((canvas - avatarSize) * 0.5,
+                                   (canvas - avatarSize) * 0.5,
+                                   avatarSize,
+                                   avatarSize);
+
+    UserModel *user = UserManager.sharedManager.currentUser ?: PPCurrentUser;
+    BOOL loggedIn = PPIsUserLoggedIn && user;
+    NSString *displayName = loggedIn ? PPSafeString(user.PPBestDisplayName) : @"PurePets";
+    if (loggedIn && displayName.length == 0) {
+        displayName = PPSafeString(user.UserName);
+    }
+    if (loggedIn && displayName.length == 0) {
+        displayName = kLang(@"Guest");
+    }
+
+    UIImage *avatar = [PPModernAvatarRenderer avatarImageForName:displayName
+                                                            size:avatarSize
+                                                           style:PPModernAvatarStyleGlass];
+    NSString *avatarCacheKey = PPSafeString(user.UserImageUrl.absoluteString);
+    if (avatarCacheKey.length > 0) {
+        UIImage *cachedAvatar = [[SDImageCache sharedImageCache] imageFromMemoryCacheForKey:avatarCacheKey];
+        if (!cachedAvatar) {
+            cachedAvatar = [[SDImageCache sharedImageCache] imageFromDiskCacheForKey:avatarCacheKey];
+        }
+        if (cachedAvatar) {
+            avatar = cachedAvatar;
+        }
+    }
+
+    UIColor *secondaryColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    UIColor *ringColor = selected
+        ? (AppPrimaryClr ?: UIColor.systemBlueColor)
+        : [secondaryColor colorWithAlphaComponent:0.28];
+
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+    format.opaque = NO;
+    format.scale = UIScreen.mainScreen.scale;
+    UIGraphicsImageRenderer *renderer =
+        [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(canvas, canvas) format:format];
+
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
+        CGContextRef ctx = context.CGContext;
+        CGContextSaveGState(ctx);
+        UIBezierPath *clipPath = [UIBezierPath bezierPathWithOvalInRect:avatarRect];
+        [clipPath addClip];
+        [avatar drawInRect:avatarRect];
+        CGContextRestoreGState(ctx);
+
+        CGFloat ringWidth = selected ? 2.0 : 1.0;
+        UIBezierPath *ringPath = [UIBezierPath bezierPathWithOvalInRect:CGRectInset(avatarRect, -ringWidth * 0.45, -ringWidth * 0.45)];
+        ringPath.lineWidth = ringWidth;
+        [ringColor setStroke];
+        [ringPath stroke];
+    }];
+
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
@@ -2036,8 +2104,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
             [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
-            [showAddMenuButton.widthAnchor constraintEqualToConstant:64.0],
-            [showAddMenuButton.heightAnchor constraintEqualToConstant:64.0]
+            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
         ]];
         // Symbol effect (iOS 26+ only)
         __weak UIButton *weakButton = showAddMenuButton;
@@ -2227,10 +2295,6 @@ shouldSelectViewController:(UIViewController *)viewController {
     if (index == PPRootTabIndexChats) { // Chats tab
         if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return NO; }
     }
-    if (index == PPRootTabIndexOrders) {
-        if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return NO; }
-    }
-    
     if (index == PPRootTabIndexAdd) { // Add tab index
         [self presentBottomSheet];
         return NO;

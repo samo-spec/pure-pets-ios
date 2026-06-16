@@ -175,6 +175,25 @@ static void PPFirebaseSessionGetIDTokenWithRepair(FIRUser *user,
     }];
 }
 
+static void PPFirebaseSessionTryForcedRefreshAfterCachedFailure(FIRUser *user,
+                                                                NSString *stage,
+                                                                NSError * _Nullable originalError,
+                                                                void (^completion)(NSError * _Nullable error))
+{
+    FIRUser *currentUser = [FIRAuth auth].currentUser;
+    if (!currentUser.uid.length || ![currentUser.uid isEqualToString:user.uid]) {
+        PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(originalError));
+        return;
+    }
+
+    PPFirebaseSessionGetIDTokenWithRepair(currentUser,
+                                          YES,
+                                          stage ?: @"cached auth token forced refresh fallback",
+                                          ^(__unused NSString * _Nullable token, NSError * _Nullable forceError) {
+        PPFirebaseSessionCompleteOnMain(completion, forceError ? PPFirebaseSessionRefreshError(forceError) : nil);
+    });
+}
+
 static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
                                                  BOOL didReload,
                                                  void (^completion)(NSError * _Nullable error))
@@ -187,7 +206,10 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
                 [user reloadWithCompletion:^(NSError * _Nullable reloadError) {
                     if (reloadError) {
                         PPFirebaseSessionLogFailure(@"auth user reload", reloadError);
-                        PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(reloadError));
+                        PPFirebaseSessionTryForcedRefreshAfterCachedFailure(user,
+                                                                            @"reload failure auth token refresh fallback",
+                                                                            reloadError,
+                                                                            completion);
                         return;
                     }
 
@@ -201,7 +223,10 @@ static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
                 return;
             }
 
-            PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(error));
+            PPFirebaseSessionTryForcedRefreshAfterCachedFailure(user,
+                                                                @"cached auth token refresh fallback",
+                                                                error,
+                                                                completion);
             return;
         }
 

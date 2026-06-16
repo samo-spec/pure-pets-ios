@@ -46,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSDate *createdAt;
 @property (nonatomic, strong, nullable) NSDate *expiryDate;
 @property (nonatomic, strong) NSString *ownerID;
+@property (nonatomic, strong, nullable) NSString *ownerType;
+@property (nonatomic, strong, nullable) NSString *source;
 @property (nonatomic, assign) AccessKindType accessKindType;
 @property (nonatomic, assign) AccessConditions condition;
 @property (nonatomic, assign) NSInteger quantity; // how many in stock

@@ -54,6 +54,9 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 static const CGFloat PPNovaExpandedTableTopInset = 228.0;
 static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
 static const CGFloat PPNovaTableBottomInset = 22.0;
+static const CGFloat PPNovaComposerKeyboardGap = PPSpaceSM;
+static const CGFloat PPNovaComposerHorizontalInset = PPSpaceMD;
+static const CGFloat PPNovaComposerMaxWidth = 760.0;
 
 static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
 static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
@@ -71,6 +74,12 @@ static const NSTimeInterval PPNovaRequestSoftWatchdogDelay = 35.0;
 static const NSInteger PPNovaMaximumRetryAttempts = 1;
 static const NSTimeInterval PPNovaRetryBackoffDelay = 0.6;
 static NSString * const PPNovaThinkingHeaderAnimationName = @"thinking";
+
+/*
+ @"novabgnew.json",
+ @"novabgnew1.json",
+ @"novabgnew2.json"
+ */
 
 static NSArray<NSString *> *PPNovaThinkingHeroAnimationNames(void) {
     return @[
@@ -1046,6 +1055,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (reduceMotion) {
         self.novaHeaderView.alpha = 1.0;
         self.novaHeaderView.transform = CGAffineTransformIdentity;
+        self.inputbar.alpha = 1.0;
+        self.inputbar.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.alpha = 1.0;
         self.novaChatBottomGlowView.alpha = 1.0;
         self.novaChatCenterRightGlowView.alpha = 1.0;
@@ -1058,6 +1069,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                          animations:^{
             self.novaHeaderView.alpha = 1.0;
             self.novaHeaderView.transform = CGAffineTransformIdentity;
+            self.inputbar.alpha = 1.0;
+            self.inputbar.transform = CGAffineTransformIdentity;
         } completion:nil];
 
         [UIView animateWithDuration:0.92
@@ -6606,10 +6619,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.inputbar = [[PPNovaFloatingInputBarView alloc] init];
     self.inputbar.delegate = self;
     self.inputbar.translatesAutoresizingMaskIntoConstraints = NO;
+    self.inputbar.attachmentEnabled = YES;
+    self.inputbar.microphoneEnabled = NO;
+    self.inputbar.thinking = self.novaIsRequestPending;
 
     [self.view addSubview:self.inputbar];
 
-    self.inputBarRestingBottomConstant = -10.0;
+    self.inputBarRestingBottomConstant = -PPSpaceSM;
     self.inputBarSafeAreaBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor
                                                                                        constant:self.inputBarRestingBottomConstant];
     self.inputBarBottomConstraint = self.inputBarSafeAreaBottomConstraint;
@@ -6621,14 +6637,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     } else {
         self.usesKeyboardLayoutGuideForNovaInput = NO;
     }
-    NSLayoutConstraint *compactWidth = [self.inputbar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24.0];
+    NSLayoutConstraint *compactWidth = [self.inputbar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-(PPNovaComposerHorizontalInset * 2.0)];
     compactWidth.priority = 999.0;
-    NSLayoutConstraint *readableWidth = [self.inputbar.widthAnchor constraintEqualToConstant:760.0];
+    NSLayoutConstraint *readableWidth = [self.inputbar.widthAnchor constraintEqualToConstant:PPNovaComposerMaxWidth];
     readableWidth.priority = 998.0;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.inputbar.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
-        [self.inputbar.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16.0],
+        [self.inputbar.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:PPNovaComposerHorizontalInset],
+        [self.inputbar.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPNovaComposerHorizontalInset],
         [self.inputbar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.inputbar.widthAnchor constraintLessThanOrEqualToConstant:760.0],
         compactWidth,
@@ -6690,7 +6706,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.typingLabel.text = nil;
     [content addSubview:self.typingLabel];
 
-    self.typingBottomConstraint = [capsule.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-8];
+    self.typingBottomConstraint = [capsule.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-PPNovaComposerKeyboardGap];
 
     [NSLayoutConstraint activateConstraints:@[
         self.typingBottomConstraint,
@@ -7931,6 +7947,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)hideNovaTyping {
     self.novaIsRequestPending = NO;
+    [self.inputbar setThinking:NO animated:YES];
     self.statusLabel.text = kLang(@"nova_status_online");
 
     [self pp_hideThinkingHeaderLottie];
@@ -8197,7 +8214,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
  
     BOOL keyboardVisible = keyboardOffset > 0.5;
     CGFloat targetBottomConstant = keyboardVisible
-        ? -(keyboardOffset + 8.0)
+        ? -(keyboardOffset + PPNovaComposerKeyboardGap)
         : self.inputBarRestingBottomConstant;
 
     if (shouldCollapseHeader) {
@@ -8744,12 +8761,23 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
+    [self.inputbar setThinking:YES animated:YES];
     [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     [self pp_handleNovaSubmittedText:text];
 }
 
+- (void)novaInputBarDidTapAttachment:(PPNovaFloatingInputBarView *)bar {
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_attachment_unavailable")];
+}
+
+- (void)novaInputBarDidTapMicrophone:(PPNovaFloatingInputBarView *)bar {
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_microphone_unavailable")];
+}
+
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height {
-    CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - 8.0;
+    CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - PPNovaComposerKeyboardGap;
     if (keyboardOffset < 0) keyboardOffset = 0;
 
     BOOL shouldKeepBottomVisible = [self pp_novaIsScrolledNearBottom] || [self pp_hasNovaThinkingMessage];
@@ -8905,37 +8933,49 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product
                             requestID:(NSString *)requestID
                            responseID:(NSString *)responseID {
-    [PPHUD showLoading:@""];
-
     CartItem *item = [[CartItem alloc] initWithAccessory:product quantity:1];
     item.type = product.isPetMedicine ? @"petMedicine" : @"petAccessory";
 
-    BOOL success = [[CartManager sharedManager] addItem:item];
-
-    if (success) {
-        NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
-        [PPAnalytics logAddToCartItemID:product.accessoryID
-                                    name:product.name
-                                category:category
-                                   price:product.finalPrice.doubleValue
-                                quantity:1];
-
-        UINotificationFeedbackGenerator *fb = [[UINotificationFeedbackGenerator alloc] init];
-        [fb prepare];
-        [fb notificationOccurred:UINotificationFeedbackTypeSuccess];
+    CartManager *cart = [CartManager sharedManager];
+    BOOL needsProviderSwitchConfirmation = [cart shouldConfirmProviderSwitchForItem:item];
+    if (!needsProviderSwitchConfirmation) {
+        [PPHUD showLoading:@""];
     }
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-
-        [PPHUD dismiss];
-        if (success) {
-            [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
-            self.pendingCartProduct = nil; // Clear after adding
-            [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
-        } else {
-            [PPHUD showError:kLang(@"nova_add_to_cart_failed")];
+    __weak typeof(self) weakSelf = self;
+    [cart addItem:item
+    presentingViewController:self
+       completion:^(BOOL success, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) { return; }
+        if (needsProviderSwitchConfirmation) {
+            [PPHUD showLoading:@""];
         }
-    });
+        if (success) {
+            NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
+            [PPAnalytics logAddToCartItemID:product.accessoryID
+                                       name:product.name
+                                   category:category
+                                      price:product.finalPrice.doubleValue
+                                   quantity:1];
+            
+            UINotificationFeedbackGenerator *fb = [[UINotificationFeedbackGenerator alloc] init];
+            [fb prepare];
+            [fb notificationOccurred:UINotificationFeedbackTypeSuccess];
+        }
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            
+            [PPHUD dismiss];
+            if (success) {
+                [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
+                self.pendingCartProduct = nil; // Clear after adding
+                [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
+            } else {
+                [PPHUD showError:kLang(@"nova_add_to_cart_failed")];
+            }
+        });
+    }] ;
 }
 
 - (void)pp_sendNovaCartConfirmationFollowUpForProduct:(PetAccessory *)product {
@@ -8978,6 +9018,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_prepareNovaRenderStateForRequestID:requestID cachedProductsBeforeSend:self.lastShownProducts.count];
     self.activeNovaResponseID = responseID;
     self.novaIsRequestPending = YES;
+    [self.inputbar setThinking:YES animated:YES];
     self.novaHasSentFirstMessage = YES;
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{

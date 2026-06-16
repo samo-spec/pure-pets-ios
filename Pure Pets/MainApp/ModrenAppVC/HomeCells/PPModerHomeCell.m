@@ -21,7 +21,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
-    return AppBackgroundClr ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return [AppBackgroundClr colorWithAlphaComponent:0.92] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
 @interface PPModerHomeCell ()
@@ -91,7 +91,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCornerMin + 4;
+    self.surfaceView.layer.cornerRadius = PPNewCornerMin + 0;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -140,7 +140,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.titleLabel.minimumScaleFactor = 0.82;
+    self.titleLabel.minimumScaleFactor = 0.92;
     self.titleLabel.userInteractionEnabled = NO;
     [self.surfaceView addSubview:self.titleLabel];
 
@@ -158,10 +158,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.cornerPinView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.cornerPinView];
 
-    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:54.0];
-    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:54.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:68.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:68.0];
+    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:60.0];
+    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:60.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:72.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:72.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -174,7 +174,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.tapButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.tapButton.bottomAnchor],
 
-        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:10.0],
+        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:11.0],
         [self.imagePlateView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
         self.imagePlateWidthConstraint,
         self.imagePlateHeightConstraint,
@@ -184,9 +184,9 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         self.kindImageWidthConstraint,
         self.kindImageHeightConstraint,
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:8.0],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-8.0],
-        [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor constant:6.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:6.0],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-6.0],
+       // [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor constant:4.0],
         [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-14.0],
 
         [self.selectionIndicatorView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
@@ -201,9 +201,9 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     ]];
 
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.055;
-    self.layer.shadowRadius = 12.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 7.0);
+    self.layer.shadowOpacity = 0.075;
+    self.layer.shadowRadius = 15.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     [self pp_applyBaseTheme];
 }
 
@@ -312,8 +312,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                      [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
     UIColor *borderColor = PPModerHomeDynamicColor([AppForgroundColr colorWithAlphaComponent:0.95],
                                                    [AppForgroundColr colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
-                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
+    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.76],
+                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
     UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.045],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
     UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
@@ -369,9 +369,9 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         self.cornerPinView.backgroundColor = [accent colorWithAlphaComponent:selected ? 0.78 : 0.26];
         [self.surfaceView pp_setBorderColor:selected ? selectedBorder : regularBorder];
         self.imagePlateView.backgroundColor = plateColor;
-        self.layer.shadowOpacity = selected ? 0.095 : 0.055;
-        self.layer.shadowRadius = selected ? 16.0 : 12.0;
-        self.layer.shadowOffset = selected ? CGSizeMake(0.0, 10.0) : CGSizeMake(0.0, 7.0);
+        self.layer.shadowOpacity = selected ? 0.12 : 0.075;
+        self.layer.shadowRadius = selected ? 19.0 : 15.0;
+        self.layer.shadowOffset = selected ? CGSizeMake(0.0, 11.0) : CGSizeMake(0.0, 9.0);
         self.bottomGlowLayer.opacity = glowOpacity;
         self.tapButton.transform = selected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
     };

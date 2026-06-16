@@ -647,13 +647,17 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
     }
 
     CartItem *item = [[CartItem alloc] initWithAccessory:product.accessory quantity:1];
-    BOOL didAdd = [[CartManager sharedManager] addItem:item];
-    if (didAdd) {
-        [PPFunc triggerLightHaptic];
-        [PPHUD showSuccess:kLang(@"ItemAddedToCart") ?: kLang(@"purchased_item_added_to_cart") ?: @"Item added to cart"];
-    } else {
-        [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
-    }
+    [[CartManager sharedManager] addItem:item
+                presentingViewController:self
+                              completion:^(BOOL didAdd, BOOL didCancel) {
+        if (didCancel) { return; }
+        if (didAdd) {
+            [PPFunc triggerLightHaptic];
+            [PPHUD showSuccess:kLang(@"ItemAddedToCart") ?: kLang(@"purchased_item_added_to_cart") ?: @"Item added to cart"];
+        } else {
+            [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
+        }
+    }];
 }
 
 - (void)pp_openProduct:(PPPurchasedProduct *)product

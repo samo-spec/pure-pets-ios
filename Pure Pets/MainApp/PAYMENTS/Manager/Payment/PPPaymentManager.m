@@ -1305,8 +1305,28 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPPaymentSetValueForCandidateKeys(params, @[@"parentViewController", @"viewController"], presenter);
         PPPaymentSetValueForCandidateKeys(params, @[@"delegate"], self);
 
-    NSString *mode = @"LIVE";
-    NSString *sessionCurrency = @"QAR";
+    NSString *mode = PPPaymentSessionValue(resolvedSession, @[
+        @"mode", @"paymentMode", @"environment", @"env"
+    ]);
+    if (mode.length == 0) {
+        mode = @"live";
+    }
+
+    NSString *sessionCurrency = PPPaymentSessionValue(resolvedSession, @[
+        @"currency", @"currencyCode"
+    ]).uppercaseString;
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentTrimmedString(requestedCurrency).uppercaseString;
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentTrimmedString(order.currency).uppercaseString;
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentResolvedCurrencyCode();
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = @"QAR";
+    }
     order.currency = sessionCurrency;
 
     PPORDERLog(@"Launching legacy QIB bootstrap | orderId=%@ | mode=%@ | currency=%@ | requestedCurrency=%@ | qibSessionId=%@",
@@ -1329,7 +1349,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
             ? shipping[@"displayName"]
             : @"";
 
-        NSString *countryISO = @"QA";
+        NSString *countryISO = PPPaymentResolvedCountryISOCode();
 
         NSNumber *amountNumber = @((order.totalAmount > 0 ? order.totalAmount : order.amount));
         PPPaymentSetValueForCandidateKeys(params, @[@"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"], gatewayId);
@@ -1575,13 +1595,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
         : @{};
 
     NSArray<NSString *> *candidates = @[
+        PPCurrentUser.MobileNo ?: @"",
+        [FIRAuth auth].currentUser.phoneNumber ?: @"",
         shipping[@"MobileNo"] ?: @"",
         shipping[@"mobile"] ?: @"",
         shipping[@"phoneNumber"] ?: @"",
         shipping[@"phone"] ?: @"",
-        shipping[@"contactPhone"] ?: @"",
-        PPCurrentUser.MobileNo ?: @"",
-        [FIRAuth auth].currentUser.phoneNumber ?: @""
+        shipping[@"contactPhone"] ?: @""
     ];
 
     for (NSString *rawValue in candidates) {
@@ -1596,6 +1616,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
 - (NSString *)pp_normalizedValidPhoneForQIBFromRaw:(NSString *)rawPhone
 {
     NSString *raw = PPPaymentTrimmedString(rawPhone);
+    raw = [raw stringByApplyingTransform:NSStringTransformToLatin reverse:NO] ?: raw;
     if (raw.length == 0) return nil;
 
     BOOL looksInternational = [raw hasPrefix:@"+"] || [raw hasPrefix:@"00"];
@@ -1612,21 +1633,27 @@ static void PPQIBTryLoadFrameworkBundle(void)
     }
 
     if (!looksInternational) {
-        CountryModel *country = [CountryModel safeUserCountryModel] ?: [CitiesManager.shared CurrentCountry];
-        NSString *countryCode = [country.countryCode isKindOfClass:NSString.class] ? country.countryCode : @"";
-        countryCode = [[countryCode stringByReplacingOccurrencesOfString:@"+" withString:@""]
-            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        if (countryCode.length == 0) {
-            countryCode = @"974";
-        }
+        // Egypt mobile numbers are commonly stored locally as 01XXXXXXXXX.
+        // Do not prefix those with the app's Qatar default.
+        if ([digits hasPrefix:@"01"] && digits.length == 11) {
+            digits = [@"20" stringByAppendingString:[digits substringFromIndex:1]];
+        } else {
+            CountryModel *country = [CountryModel safeUserCountryModel] ?: [CitiesManager.shared CurrentCountry];
+            NSString *countryCode = [country.countryCode isKindOfClass:NSString.class] ? country.countryCode : @"";
+            countryCode = [[countryCode stringByReplacingOccurrencesOfString:@"+" withString:@""]
+                stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if (countryCode.length == 0) {
+                countryCode = @"974";
+            }
 
-        // Local formats often begin with trunk 0; remove it before prefixing.
-        if ([digits hasPrefix:@"0"] && digits.length > 1) {
-            digits = [digits substringFromIndex:1];
-        }
+            // Local formats often begin with trunk 0; remove it before prefixing.
+            if ([digits hasPrefix:@"0"] && digits.length > 1) {
+                digits = [digits substringFromIndex:1];
+            }
 
-        if (![digits hasPrefix:countryCode]) {
-            digits = [countryCode stringByAppendingString:digits];
+            if (![digits hasPrefix:countryCode]) {
+                digits = [countryCode stringByAppendingString:digits];
+            }
         }
     }
 

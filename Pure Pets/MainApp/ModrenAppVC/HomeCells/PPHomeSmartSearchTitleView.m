@@ -9,6 +9,21 @@
 #import "PPHomeSmartSearchTitleView.h"
 #import <QuartzCore/QuartzCore.h>
 
+static UISemanticContentAttribute PPSSB_CurrentSemantic(void)
+{
+    return [Language semanticAttributeForCurrentLanguage];
+}
+
+static NSTextAlignment PPSSB_CurrentTextAlignment(void)
+{
+    return [Language alignmentForCurrentLanguage];
+}
+
+static CGFloat const PPSSBChromeCornerRadius = 22.0;
+static CGFloat const PPSSBCompactWidthThreshold = 280.0;
+static NSString * const PPSSBLeadingFireLottiePrimaryPath = @"LottieAnimations/Fire.json";
+static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
+
 @implementation PPHomeSmartSearchTitleView {
     UIView *_chromeView;
     UIButton *_glassChromeButton;
@@ -16,6 +31,15 @@
     UIView *_chromeTintOverlay;
     UIView *_leadingChipView;
     UIImageView *_leadingIconView;
+#if __has_include(<Lottie/Lottie.h>) || __has_include("Lottie.h") || __has_include(<lottie-ios_Oc/Lottie.h>) || __has_include(<lottie_ios_Oc/Lottie.h>)
+#define PPSSB_HAS_LOTTIE 1
+#else
+#define PPSSB_HAS_LOTTIE 0
+#endif
+#if PPSSB_HAS_LOTTIE
+    LOTAnimationView *_leadingLottieView;
+    NSString *_leadingLottieSignature;
+#endif
     UIStackView *_textStackView;
     UIStackView *_signalRowView;
     UIView *_signalDotView;
@@ -66,7 +90,7 @@
 
 - (CGSize)intrinsicContentSize
 {
-    return CGSizeMake(UIViewNoIntrinsicMetric, 44.0);
+    return CGSizeMake(UIViewNoIntrinsicMetric, 46.0);
 }
 
 - (CGSize)sizeThatFits:(CGSize)size
@@ -75,13 +99,13 @@
     if (width <= 0.0 && isfinite(size.width) && size.width > 0.0) {
         width = size.width;
     }
-    return CGSizeMake(MAX(width, 1.0), 44.0);
+    return CGSizeMake(MAX(width, 1.0), 46.0);
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
-        ? CGRectMake(0.0, 0.0, 240.0, 44.0)
+        ? CGRectMake(0.0, 0.0, 240.0, 46.0)
         : frame;
     self = [super initWithFrame:initialFrame];
     if (!self) {
@@ -89,7 +113,7 @@
     }
 
     self.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = GM.setSemantic;
+    self.semanticContentAttribute = PPSSB_CurrentSemantic();
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.accessibilityLabel =
         kLang(@"home_nav_search_accessibility") ?:
@@ -98,10 +122,10 @@
     self.clipsToBounds = NO;
     _showSmartPillBackground = NO;
 
-    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
+    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:0.7]];
     self.layer.shadowOpacity = 0.0f;
     self.layer.shadowRadius = 0.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
 
     UIView *chromeView = nil;
     if (@available(iOS 26.0, *)) {
@@ -117,14 +141,14 @@
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.backgroundColor = UIColor.clearColor;
     chromeView.userInteractionEnabled = NO;
-    chromeView.layer.cornerRadius = 21.0;
-    chromeView.layer.masksToBounds = YES;
+    chromeView.layer.cornerRadius = PPSSBChromeCornerRadius;
+    chromeView.layer.masksToBounds = !PPIOS26();
     if (@available(iOS 13.0, *)) {
         chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self addSubview:chromeView];
     _chromeView = chromeView;
-    [chromeView.heightAnchor constraintEqualToConstant:44.0].active = YES;
+    [chromeView.heightAnchor constraintEqualToConstant:46.0].active = YES;
 
     if (![self pp_usesSystemGlassChrome]) {
         // Legacy frosted fallback for pre-iOS 26 runtimes.
@@ -159,7 +183,7 @@
     UIView *leadingChipView = [UIView new];
     leadingChipView.translatesAutoresizingMaskIntoConstraints = NO;
     leadingChipView.userInteractionEnabled = NO;
-    leadingChipView.layer.cornerRadius = 14.0;
+    leadingChipView.layer.cornerRadius = 16.0;
     leadingChipView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         leadingChipView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -177,8 +201,30 @@
     leadingIconView.translatesAutoresizingMaskIntoConstraints = NO;
     leadingIconView.contentMode = UIViewContentModeScaleAspectFit;
     leadingIconView.userInteractionEnabled = NO;
+    leadingIconView.alpha = 0.0; // Start hidden - only show as fallback
+    leadingIconView.hidden = YES; // Start hidden - only show as fallback
     [leadingChipView addSubview:leadingIconView];
     _leadingIconView = leadingIconView;
+
+#if PPSSB_HAS_LOTTIE
+    LOTAnimationView *leadingLottieView = [[LOTAnimationView alloc] init];
+    leadingLottieView.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingLottieView.contentMode = UIViewContentModeScaleAspectFit;
+    leadingLottieView.userInteractionEnabled = NO;
+    leadingLottieView.backgroundColor = UIColor.clearColor;
+    leadingLottieView.opaque = NO;
+    leadingLottieView.hidden = YES;
+    leadingLottieView.alpha = 1.0;
+    [leadingChipView addSubview:leadingLottieView];
+    _leadingLottieView = leadingLottieView;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [leadingLottieView.centerXAnchor constraintEqualToAnchor:leadingChipView.centerXAnchor],
+        [leadingLottieView.centerYAnchor constraintEqualToAnchor:leadingChipView.centerYAnchor],
+        [leadingLottieView.widthAnchor constraintEqualToConstant:24.0],
+        [leadingLottieView.heightAnchor constraintEqualToConstant:24.0],
+    ]];
+#endif
 
     UIStackView *textStackView = [[UIStackView alloc] init];
     textStackView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -210,7 +256,7 @@
     UILabel *signalLabel = [UILabel new];
     signalLabel.translatesAutoresizingMaskIntoConstraints = NO;
     signalLabel.font = [GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold];
-    signalLabel.textAlignment = GM.setAligment;
+    signalLabel.textAlignment = PPSSB_CurrentTextAlignment();
     signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     signalLabel.adjustsFontSizeToFitWidth = YES;
     signalLabel.minimumScaleFactor = 0.84;
@@ -223,7 +269,7 @@
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
-    placeholderLabel.textAlignment = GM.setAligment;
+    placeholderLabel.textAlignment = PPSSB_CurrentTextAlignment();
     placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     placeholderLabel.adjustsFontSizeToFitWidth = YES;
     placeholderLabel.allowsDefaultTighteningForTruncation = YES;
@@ -240,25 +286,25 @@
     trailingOrbView.userInteractionEnabled = NO;
     trailingOrbView.layer.cornerRadius = 12.0;
     trailingOrbView.layer.masksToBounds = YES;
+    trailingOrbView.backgroundColor = UIColor.clearColor;
+    trailingOrbView.layer.borderWidth = 0.0f;
     if (@available(iOS 13.0, *)) {
         trailingOrbView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [chromeView addSubview:trailingOrbView];
     _trailingOrbView = trailingOrbView;
 
-        NSString *forwardChevron = Language.isRTL ? @"chevron.left" : @"chevron.right";
     UIImageView *chevronView =
-    [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:forwardChevron
-                                                         pointSize:11
-                                                            weight:UIImageSymbolWeightBold
+    [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"magnifyingglass"
+                                                         pointSize:16.0
+                                                            weight:UIImageSymbolWeightSemibold
                                                              scale:UIImageSymbolScaleMedium
                                                            palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
                                                       makeTemplate:YES]];
     chevronView.translatesAutoresizingMaskIntoConstraints = NO;
     chevronView.contentMode = UIViewContentModeScaleAspectFit;
     chevronView.userInteractionEnabled = NO;
-    //chevronView.
-    chevronView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.0];
+    chevronView.backgroundColor = UIColor.clearColor;
     [trailingOrbView addSubview:chevronView];
     _chevronView = chevronView;
 
@@ -270,8 +316,8 @@
 
         [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
         [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [leadingChipView.widthAnchor constraintEqualToConstant:28.0],
-        [leadingChipView.heightAnchor constraintEqualToConstant:28.0],
+        [leadingChipView.widthAnchor constraintEqualToConstant:32.0],
+        [leadingChipView.heightAnchor constraintEqualToConstant:32.0],
 
         [leadingIconView.centerXAnchor constraintEqualToAnchor:leadingChipView.centerXAnchor],
         [leadingIconView.centerYAnchor constraintEqualToAnchor:leadingChipView.centerYAnchor],
@@ -289,13 +335,13 @@
 
         [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-7.0],
         [trailingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [trailingOrbView.widthAnchor constraintEqualToConstant:24.0],
-        [trailingOrbView.heightAnchor constraintEqualToConstant:24.0],
+        [trailingOrbView.widthAnchor constraintEqualToConstant:26.0],
+        [trailingOrbView.heightAnchor constraintEqualToConstant:26.0],
 
         [chevronView.centerXAnchor constraintEqualToAnchor:trailingOrbView.centerXAnchor],
         [chevronView.centerYAnchor constraintEqualToAnchor:trailingOrbView.centerYAnchor],
-        [chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [chevronView.heightAnchor constraintEqualToConstant:14.0]
+        [chevronView.widthAnchor constraintEqualToConstant:17.0],
+        [chevronView.heightAnchor constraintEqualToConstant:17.0]
     ]];
 
     [_placeholderLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
@@ -307,6 +353,7 @@
 
     [self pp_applyPalette];
     [self pp_updateInteractiveStateAnimated:YES];
+    [self pp_loadLeadingFireLottie];
 
     return self;
 }
@@ -329,8 +376,9 @@
 {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    BOOL compact = width < 280.0;
-    _signalRowView.hidden = compact;
+    BOOL compact = width < PPSSBCompactWidthThreshold;
+    _signalRowView.hidden = NO;
+    _signalRowView.alpha = compact ? 0.92 : 1.0;
     _textStackView.spacing = compact ? 0.0 : 0.5;
     _signalLabel.font = compact
         ? ([GM MidFontWithSize:8.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold])
@@ -338,13 +386,14 @@
     _placeholderLabel.font = compact
         ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
         : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
-    _chromeView.layer.cornerRadius = CGRectGetHeight(self.bounds) * 0.5;
-    _leadingChipView.layer.cornerRadius = CGRectGetHeight(_leadingChipView.bounds) * 0.5;
-    _trailingOrbView.layer.cornerRadius = CGRectGetHeight(_trailingOrbView.bounds) * 0.5;
-    _signalDotView.layer.cornerRadius = CGRectGetHeight(_signalDotView.bounds) * 0.5;
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:CGRectGetHeight(self.bounds) * 0.5].CGPath;
+    if (@available(iOS 26.0, *)) {
+        _chromeView.layer.cornerRadius = 6;
+    } else {
+        _chromeView.layer.cornerRadius = PPSSBChromeCornerRadius;
+    }
+    _leadingChipView.layer.cornerRadius = 16.0;
+    _trailingOrbView.layer.cornerRadius = 13.0;
+    _signalDotView.layer.cornerRadius = 2.75;
 }
 
 - (void)didMoveToWindow
@@ -352,7 +401,7 @@
     [super didMoveToWindow];
 
     if (!self.window) {
-        [_signalDotView.layer removeAnimationForKey:@"pp.home.smartSearch.signalPulse"];
+        [_signalDotView.layer removeAnimationForKey:@"pp.home.premiumSearch.signalPulse"];
         _signalAnimationsConfigured = NO;
         return;
     }
@@ -376,11 +425,13 @@
         [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
 
     CAAnimationGroup *signalPulse = [CAAnimationGroup animation];
-    signalPulse.duration = 1.6;
+    signalPulse.duration = 2.2;
     signalPulse.repeatCount = HUGE_VALF;
     signalPulse.autoreverses = YES;
     signalPulse.animations = @[pulseScale, pulseOpacity];
-    [_signalDotView.layer addAnimation:signalPulse forKey:@"pp.home.smartSearch.signalPulse"];
+    [_signalDotView.layer addAnimation:signalPulse forKey:@"pp.home.premiumSearch.signalPulse"];
+
+    [self pp_updateLeadingFireLottiePlayback];
 }
 
 - (UIColor *)pp_nextPlaceholderColor
@@ -504,7 +555,14 @@
     // Reapplying the steady home-search palette keeps the title view colors locked.
     [self pp_applyPalette];
 }
+/*
+ - (void)setHighlighted:(BOOL)highlighted
+ {
+     [super setHighlighted:highlighted];
+     [self pp_updateInteractiveStateAnimated:YES];
+ }
 
+ */
 - (void)setHighlighted:(BOOL)highlighted
 {
     [super setHighlighted:highlighted];
@@ -541,42 +599,36 @@
     }
 
     _leadingChipView.backgroundColor =
-        [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
-    _leadingChipView.layer.borderWidth = 1.0f;
-    [_leadingChipView pp_setBorderColor:[accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.14]];
-    _leadingIconView.tintColor = accentColor;
+    [AppForgroundColr colorWithAlphaComponent:isDark ? 0.24 : 0.12];
+    _leadingChipView.layer.borderWidth = 0.0f;
+    [_leadingChipView pp_setBorderColor:[AppBackgroundClr colorWithAlphaComponent:isDark ? 0.22 : 1.0]];
+    _leadingIconView.tintColor = AppForgroundColr;
 
-    _signalDotView.backgroundColor = AppPrimaryClrShiner ?: accentColor;
+    _signalDotView.backgroundColor = AppSecondaryTextClr ?: accentColor;
     _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.58];
     // Preserve active cycle color; only fall back to default before the first rotation fires
     _placeholderLabel.textColor = _currentCycleColor
         ?: [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
 
-    _trailingOrbView.backgroundColor =
-        [textColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    _trailingOrbView.layer.borderWidth = 1.0f;
-    [_trailingOrbView pp_setBorderColor:[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06]];
+    _trailingOrbView.backgroundColor = UIColor.clearColor;
+    _trailingOrbView.layer.borderWidth = 0.0f;
     _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
-    self.layer.shadowOpacity = usesSystemGlassChrome
-        ? (isDark ? 0.10f : 0.025f)
-        : (isDark ? 0.16f : 0.04f);
+
 }
 
 - (void)pp_updateInteractiveStateAnimated:(BOOL)animated
 {
     void (^changes)(void) = ^{
         BOOL isPressed = self.highlighted;
-        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
         CGFloat chromeScale = usesSystemGlassChrome ? 0.992 : 0.988;
         self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(chromeScale, chromeScale) : CGAffineTransformIdentity;
         self->_leadingChipView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
-        self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
-        CGFloat idleShadow = usesSystemGlassChrome ? (isDark ? 0.10f : 0.05f) : (isDark ? 0.16f : 0.08f);
-        CGFloat pressedShadow = usesSystemGlassChrome ? (isDark ? 0.14f : 0.08f) : (isDark ? 0.20f : 0.12f);
-        self.layer.shadowOpacity = self->_showSmartPillBackground ? (isPressed ? pressedShadow : idleShadow) : 0.0f;
-        self.layer.shadowRadius = isPressed ? (usesSystemGlassChrome ? 16.0f : 18.0f) : (usesSystemGlassChrome ? 12.0f : 14.0f);
-        self->_chromeView.alpha = self.enabled ? (isPressed ? 0.98 : 1.0) : 0.72;
+        self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
+        self.layer.shadowOpacity = 0.0f;
+        self.layer.shadowRadius = 0.0f;
+        self.layer.shadowPath = nil;
+        self->_chromeView.alpha = isPressed ? 0.96 : 1.0;
     };
 
     if (!animated) {
@@ -584,9 +636,10 @@
         return;
     }
 
-    [UIView animateWithDuration:self.highlighted ? 0.12 : 0.24
+    BOOL isPressed = self.highlighted;
+    [UIView animateWithDuration:isPressed ? 0.12 : 0.24
                           delay:0.0
-         usingSpringWithDamping:self.highlighted ? 1.0 : 0.82
+         usingSpringWithDamping:isPressed ? 1.0 : 0.82
           initialSpringVelocity:0.22
                         options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
                      animations:changes
@@ -614,5 +667,122 @@
     }
 }
 
-@end
+- (void)pp_loadLeadingFireLottie
+{
+#if PPSSB_HAS_LOTTIE
+    if (!_leadingLottieView) {
+        return;
+    }
+    if ([_leadingLottieSignature hasPrefix:@"loaded"]) {
+        _leadingLottieView.hidden = NO;
+        _leadingLottieView.alpha = 1.0;
+        _leadingIconView.alpha = 0.0;
+        _leadingIconView.hidden = YES;
+        [self pp_updateLeadingFireLottiePlayback];
+        return;
+    }
+    if ([_leadingLottieSignature isEqualToString:@"loading"]) {
+        return;
+    }
 
+    _leadingLottieSignature = @"loading";
+    [self pp_fetchLeadingFireLottieAtStoragePath:PPSSBLeadingFireLottiePrimaryPath fallbackToRoot:YES];
+#endif
+}
+
+- (void)pp_fetchLeadingFireLottieAtStoragePath:(NSString *)storagePath fallbackToRoot:(BOOL)fallbackToRoot
+{
+#if PPSSB_HAS_LOTTIE
+    NSString *safeStoragePath = PPSafeString(storagePath);
+    if (safeStoragePath.length == 0) {
+        _leadingLottieSignature = nil;
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [AppClasses fetchLottieJSONFromFirebasePath:safeStoragePath
+                                     completion:^(NSDictionary * _Nonnull jsonDict,
+                                                  NSError * _Nonnull error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                if (fallbackToRoot) {
+                    [self pp_fetchLeadingFireLottieAtStoragePath:PPSSBLeadingFireLottieRootPath fallbackToRoot:NO];
+                    return;
+                }
+                self->_leadingLottieSignature = nil;
+                self->_leadingIconView.alpha = 1.0;
+                self->_leadingIconView.hidden = NO; // Show flame icon as fallback
+                self->_leadingLottieView.hidden = YES; // Hide Lottie view
+                return;
+            }
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                if (fallbackToRoot) {
+                    [self pp_fetchLeadingFireLottieAtStoragePath:PPSSBLeadingFireLottieRootPath fallbackToRoot:NO];
+                    return;
+                }
+                self->_leadingLottieSignature = nil;
+                self->_leadingIconView.alpha = 1.0;
+                self->_leadingIconView.hidden = NO; // Show flame icon as fallback
+                self->_leadingLottieView.hidden = YES; // Hide Lottie view
+                return;
+            }
+
+            self->_leadingLottieSignature = [NSString stringWithFormat:@"loaded:%@", safeStoragePath];
+            [self->_leadingLottieView setSceneModel:composition];
+            self->_leadingLottieView.loopAnimation = YES;
+            self->_leadingLottieView.animationSpeed = 1.05;
+            self->_leadingLottieView.animationProgress = 0.0;
+            self->_leadingLottieView.hidden = NO;
+            self->_leadingLottieView.alpha = 1.0;
+            self->_leadingIconView.alpha = 0.0;
+            self->_leadingIconView.hidden = YES; // Keep flame icon hidden when Lottie loads
+
+            [self pp_updateLeadingFireLottiePlayback];
+        });
+    }];
+#endif
+}
+
+- (void)pp_stopLeadingFireLottie
+{
+#if PPSSB_HAS_LOTTIE
+    [_leadingLottieView stop];
+#endif
+}
+
+- (void)pp_updateLeadingFireLottiePlayback
+{
+#if PPSSB_HAS_LOTTIE
+    if (!_leadingLottieView || _leadingLottieView.hidden || ![_leadingLottieSignature hasPrefix:@"loaded"]) {
+        return;
+    }
+
+    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
+        [_leadingLottieView stop];
+        _leadingLottieView.animationProgress = 0.42;
+        return;
+    }
+
+    if (!_leadingLottieView.isAnimationPlaying) {
+        [_leadingLottieView play];
+    }
+#endif
+}
+
+- (void)configureWithTrendingQuery:(nullable NSString *)query
+{
+    NSString *safeQuery = PPSafeString(query);
+    if (safeQuery.length == 0) {
+        safeQuery = kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
+    }
+    [self setQueryText:safeQuery animated:YES];
+}
+
+
+
+@end

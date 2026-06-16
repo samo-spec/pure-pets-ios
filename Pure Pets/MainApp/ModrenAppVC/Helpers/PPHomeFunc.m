@@ -25,17 +25,19 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Home section spacing uses a local visual rhythm so adjacent compositional
 // sections do not accidentally double the visible gap.
-static const CGFloat PPHomeSpacingSmall   = 8.0;
-static const CGFloat PPHomeSpacingBase    = 16.0;
-static const CGFloat PPInner = 8.0;
-static const CGFloat PPHomeSpacingSection = 16.0;
+
+static const CGFloat PPHomeSpacingSmall   = 12.0;
+static const CGFloat PPHomeEdgeSpacing   = 16.0;
+static const CGFloat PPHomeSpacingBase    = 12.0;
+static const CGFloat PPInner = 12.0;
+static const CGFloat PPHomeSpacingSection = 24.0;
 static const CGFloat kHeaderHeight     = 64.0;
 static const CGFloat kHeaderHeightMin     = 56.0;
 
 
 // Standard card sizes
-static const CGFloat kCardMedium  = 174.0;
-static const CGFloat kCardLarge   = 248.0;
+static const CGFloat kCardMedium  = 164.0;
+static const CGFloat kCardLarge   = 238.0;
 
 static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
 static const CGFloat kCurrentOrdersCollapsedItemHeight = 93.0;
@@ -69,34 +71,31 @@ static inline CGFloat PPHomeSectionEdgeInset(void)
     return PPHomeSpacingBase;
 }
 
-static inline CGFloat PPHomeItemHalfGap(void)
-{
-    return PPHomeSpacingBase  ;
-}
+ 
 
 static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
+                                       PPHomeEdgeSpacing,
                                        PPHomeSpacingBase,
-                                       PPHomeSpacingBase,
-                                       PPHomeSpacingBase);
+                                       PPHomeEdgeSpacing);
 }
  
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
+                                       PPHomeEdgeSpacing,
                                        PPHomeSpacingBase,
-                                       PPHomeSpacingBase,
-                                       PPHomeSpacingBase);
+                                       PPHomeEdgeSpacing);
 }
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailItemInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(0.0,
+                                       0,
                                        0.0,
-                                       0.0,
-                                       PPHomeItemHalfGap());
+                                       16);
 }
 
 static inline NSDirectionalEdgeInsets PPHomeExpandedHorizontalRailHeaderInsets(void)
@@ -194,29 +193,29 @@ static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
 static inline CGFloat PPHomeMainKindsHorizontalItemWidth(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 132.0;
+        return 136.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 108.0;
+        return 110.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 108.0;
+        return 110.0;
     }
-    return 108.0;
+    return 110.0;
 }
 
 static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 146.0;
+        return 150.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 118.0;
+        return 120.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 118.0;
+        return 10.0;
     }
-    return 118.0;
+    return 120.0;
 }
 
 static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
@@ -250,15 +249,15 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 342.0;
+        return 332.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 342.0;
+        return 332.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 342.0;
+        return 332.0;
     }
-    return kCardLarge + 25.0;
+    return kCardLarge + 15.0;
 }
 
 static inline CGFloat PPHomePetProfileHeight(CGFloat width)
@@ -282,27 +281,27 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 64.0;
+        return 58.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 64.0;
+        return 58.0;
     }
-    return 64.0;
+    return 58.0;
 }
 
 
 static inline CGFloat PPHomeCareHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 204.0;
+        return 174.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 162.0;
+        return 146.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 162.0;
+        return 146.0;
     }
-    return 162.0;
+    return 146.0;
 }
 
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)
@@ -376,7 +375,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.interGroupSpacing = 0.0;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(6, PPHomeSpacingBase, 6, PPHomeSpacingBase);
+    section.contentInsets = NSDirectionalEdgeInsetsMake(6, PPHomeEdgeSpacing, 6, PPHomeEdgeSpacing);
 
     return section;
 }
@@ -414,7 +413,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
-     section.contentInsets = NSDirectionalEdgeInsetsMake(4,PPHomeSpacingBase,16,PPHomeSpacingBase);
+     section.contentInsets = NSDirectionalEdgeInsetsMake(4,PPHomeEdgeSpacing,16,PPHomeEdgeSpacing);
 
      return section;
  }
@@ -574,9 +573,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     // 12pt margin on each side
     section.contentInsets =
      NSDirectionalEdgeInsetsMake(8,
-                                        PPHomeSpacingBase,
-                                        PPHomeSpacingBase + 4,
-                                        PPHomeSpacingBase);
+                                 PPHomeEdgeSpacing,
+                                        PPHomeSpacingBase + 8,
+                                 PPHomeEdgeSpacing);
  
     
     return section;
@@ -708,12 +707,12 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
     CGFloat horizontalInset = PPHomeSpacingBase;
     CGFloat contentWidth = MAX(0.0, availableWidth - (2.0 * horizontalInset));
-    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.52));
+    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.68));
     CGFloat itemHeight = PPHomeQuickActionHeight(availableWidth);
 
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension estimatedDimension:itemWidth + PPHomeSpacingSmall]
+     [NSCollectionLayoutDimension estimatedDimension:itemWidth ]
                                      heightDimension:
      [NSCollectionLayoutDimension absoluteDimension:itemHeight - 0]];
 
@@ -736,7 +735,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
     section.interGroupSpacing = PPHomeSpacingSmall;
-    section.contentInsets =  NSDirectionalEdgeInsetsMake(4,PPHomeSpacingBase,16,PPHomeSpacingBase);
+    section.contentInsets =  NSDirectionalEdgeInsetsMake(8,16,16,16);
 
     return section;
  }
@@ -794,7 +793,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 10.0,
+                                             PPHomeAccessoryCardHeight(availableWidth)+30 ,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              YES);

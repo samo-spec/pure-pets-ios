@@ -69,6 +69,7 @@
             firstImage = accessory.imageURLsArray.firstObject ?: @"";
         }
         _imageURL = firstImage;
+        _providerID = accessory.ownerID ?: @"";
 
         NSLog(@"[CartItem] Created | id=%@ | basePrice=%.2f | finalPrice=%.2f | effectivePrice=%.2f | discount=%@ | qty=%ld",
               _itemID, basePrice, finalPrice, _price,
@@ -123,6 +124,7 @@
         }
 
         _imageURL = dict[@"imageURL"] ?: @"";
+        _providerID = [dict[@"providerID"] isKindOfClass:NSString.class] ? dict[@"providerID"] : @"";
     }
     return self;
 }

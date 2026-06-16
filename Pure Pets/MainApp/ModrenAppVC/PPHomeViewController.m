@@ -75,6 +75,7 @@ static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
 static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVisible";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
+static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
@@ -1531,7 +1532,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     }
 
     // Floating Nova orb — prefetch so the button animates the moment Home appears.
-    [storagePaths addObject:@"LottieAnimations/nova.json"];
+    [storagePaths addObject:@"LottieAnimations/NovaHome.json"];
 
     for (NSString *storagePath in storagePaths) {
         [AppClasses fetchLottieJSONFromFirebasePath:storagePath
@@ -2039,12 +2040,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
                                                         object:self
                                                       userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
-    if (self.novaFloatingButton) {
-        self.novaFloatingButton.hidden = !novaVisible;
-    }
-    if (self.novaFloatingHaloView) {
-        self.novaFloatingHaloView.hidden = !novaVisible;
-    }
 
     NSLog(@"[HomeConfig] Applied cached Console section order: %@",
           self.lastAppliedHomeConfigOrderSignature ?: @"");
@@ -2554,7 +2549,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     PPHomeApplySemanticToViewTree(self.navigationItem.titleView, semantic);
     PPHomeApplySemanticToViewTree(self.homeSmartSearchView, semantic);
     PPHomeApplySemanticToViewTree(self.homeLocationTitleView, semantic);
-    PPHomeApplySemanticToViewTree(self.homeProfileItem.customView, semantic);
+    if (!PPHomeTemporarilyHideLeadingProfileItem) {
+        PPHomeApplySemanticToViewTree(self.homeProfileItem.customView, semantic);
+    }
     PPHomeApplySemanticToViewTree(self.homeCartItem.customView, semantic);
     [self pp_refreshHomeLocationTitleViewAnimated:NO];
 
@@ -3705,8 +3702,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [NSLayoutConstraint activateConstraints:@[
         [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
         [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12 ],
-        [button.widthAnchor constraintEqualToConstant:56.0],
-        [button.heightAnchor constraintEqualToConstant:56.0],
+        [button.widthAnchor constraintEqualToConstant:54.0],
+        [button.heightAnchor constraintEqualToConstant:54.0],
 
         [halo.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
@@ -3719,12 +3716,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [lot.heightAnchor constraintEqualToConstant:42.0],
     ]];
 
-    // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
+    // Lottie loads from Firebase Storage path LottieAnimations/NovaHome.json via the project's helper.
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakLot = lot;
-    [AppClasses setAnimationNamed:@"Ncolored"
+    [AppClasses setAnimationNamed:@"NovaHome"
                             ToView:lot
-                         withSpeed:0.6
+                         withSpeed:0.3
                         completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -3799,7 +3796,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         : CGAffineTransformIdentity;
 
     if (!self.novaFloatingLottieView.hidden) {
-        self.novaFloatingLottieView.animationSpeed = 0.6;
+        self.novaFloatingLottieView.animationSpeed = 0.4;
         [self.novaFloatingLottieView play];
     }
     [self pp_startNovaFloatingHaloBreathing];
@@ -4120,12 +4117,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
                                                             object:strongSelf
                                                           userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
-        if (strongSelf.novaFloatingButton) {
-            strongSelf.novaFloatingButton.hidden = !novaVisible;
-        }
-        if (strongSelf.novaFloatingHaloView) {
-            strongSelf.novaFloatingHaloView.hidden = !novaVisible;
-        }
 
         strongSelf.homePremiumCareVisible = premiumCareVisible;
 
@@ -4205,6 +4196,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 }
 
 - (void)pp_refreshNavigationMenusForCurrentUser {
+    if (PPHomeTemporarilyHideLeadingProfileItem) {
+        return;
+    }
+
     UIBarButtonItem *profileItem = self.homeProfileItem
         ?: self.navigationItem.leftBarButtonItems.firstObject
         ?: self.navigationItem.leftBarButtonItem;
@@ -4236,7 +4231,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
     self.homeProfileItem = profileItem;
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
-    self.navigationItem.leftBarButtonItems  = PPHomeBarButtonItems(profileItem);
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.leftBarButtonItems =
+        PPHomeTemporarilyHideLeadingProfileItem ? @[] : PPHomeBarButtonItems(profileItem);
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_refreshNavigationMenusForCurrentUser];
 }
@@ -6333,7 +6330,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     switch (section) {
         case PPHomeSectionSuggestions: {
             cfg.hidden = NO;
-            cfg.title = kLang(@"SuggestedForYou");
+            cfg.title = kLang(@"home_header_picks_for_you") ?: kLang(@"SuggestedForYou");
             //cfg.actionTitle = kLang(@"ShowLess");
             cfg.iconName = arrowImage;
              cfg.subtitle = kLang(@"RecommendedForYouHint");
@@ -6368,7 +6365,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionCurrentOrders: {
             cfg.hidden = !self.isCurrentOrdersExpanded ||
                          !(self.currentOrdersLoading || [self pp_featuredHomeOrder] != nil);
-            cfg.title = kLang(@"Home_LastOrderTitle");
+            cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_LastOrderTitle");
             cfg.subtitle = kLang(@"Home_LastOrderSubtitle");
             cfg.actionTitle = kLang(@"OrderHistory");
             cfg.iconName = arrowImage;
@@ -6378,7 +6375,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionMainKinds:
         {
             cfg.hidden = NO;
-            cfg.title = kLang(@"MainCategories");
+            cfg.title = kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories");
             cfg.actionTitle = self.isMainKindsExpanded
                 ? kLang(@"ShowLess")
                 : kLang(@"ShowAll");
@@ -6393,7 +6390,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionAccessories: {
             cfg.hidden = NO;
-            cfg.title = kLang(@"Accessories");
+            cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Accessories");
            // cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = @"list.bullet";
 
@@ -6411,9 +6408,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionAdsNearBy: {
             cfg.hidden = NO;
             if (self.nearbyShowingRecentlyAdded) {
-                cfg.title = kLang(@"Home_RecentlyAdded") ?: @"Recently Added";
+                cfg.title = kLang(@"home_header_most_popular") ?: kLang(@"Home_RecentlyAdded") ?: @"Recently Added";
             } else {
-                cfg.title = kLang(@"Home_NearbyAds");
+                cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyAds");
             }
            // cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = arrowImage;
@@ -6423,9 +6420,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionNearbyServices: {
             cfg.hidden = (self.nearbyServiceProviders.count == 0 && !self.nearbyServicesLoading);
             if (self.nearbyServicesShowingLatest) {
-                cfg.title = kLang(@"Home_ServiceProviders") ?: @"Service Providers";
+                cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_ServiceProviders") ?: @"Service Providers";
             } else {
-                cfg.title = kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
+                cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
             }
             cfg.subtitle = kLang(@"Home_ServiceProvidersSubtitle") ?: @"Find grooming, training & more";
             cfg.iconName = arrowImage;
@@ -6434,7 +6431,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionLastFood: {
             cfg.hidden = self.lastFoodAccessories.count == 0;
-            cfg.title = kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
+            cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
             cfg.subtitle = kLang(@"Home_LastFoodSubtitle") ?: @"Recently added pet food";
             cfg.iconName = arrowImage;
             break;
@@ -6442,7 +6439,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionBuyAgain: {
             cfg.hidden = self.buyAgainEntries.count == 0;
-            cfg.title = kLang(@"Home_BuyAgainTitle");
+            cfg.title = kLang(@"home_header_picks_for_you") ?: kLang(@"Home_BuyAgainTitle");
             cfg.subtitle = kLang(@"Home_BuyAgainSubtitle");
             cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = arrowImage;
@@ -6866,15 +6863,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [cell configureWithTitle:kLang(@"Adopt a Pet")
                             subtitle:kLang(@"Find your new best friend")
                            seedImage:[UIImage imageNamed:@"icn_cat"]];
-
-            __weak typeof(cell) weakCell = cell;
-            cell.onTap = ^{
-                __strong typeof(weakCell) tappedCell = weakCell;
-                NSIndexPath *path = [collectionView indexPathForCell:tappedCell];
-                if (path) {
-                    [strongSelf collectionView:collectionView didSelectItemAtIndexPath:path];
-                }
-            };
 
             return cell;
         }
@@ -7957,7 +7945,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         ? kLang(@"ShowLess")
         : kLang(@"ShowAll");
 
-    [header configureWithTitle:kLang(@"MainCategories")
+    [header configureWithTitle:(kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories"))
                       subtitle:nil
                    actionTitle:actionTitle
                       iconName:iconName
@@ -8288,6 +8276,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self pp_scheduleNovaFloatingScrollSettle];
 }
 
+- (BOOL)collectionView:(UICollectionView *)collectionView
+shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    if (section == PPHomeSectionAdopt &&
+        (collectionView.tracking || collectionView.dragging || collectionView.decelerating)) {
+        return NO;
+    }
+    return YES;
+}
+
 - (void)collectionView:(UICollectionView *)collectionView
     didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
@@ -8495,7 +8494,8 @@ didHighlightItemAtIndexPath:(NSIndexPath *)indexPath
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionHero ||
         section == PPHomeSectionCurrentOrders ||
-        section == PPHomeSectionCarousel) {
+        section == PPHomeSectionCarousel ||
+        section == PPHomeSectionAdopt) {
         return;
     }
 
@@ -9187,7 +9187,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.homeSmartSearchView) {
         [chromeViews addObject:self.homeSmartSearchView];
     }
-    if (self.homeProfileItem.customView) {
+    if (!PPHomeTemporarilyHideLeadingProfileItem && self.homeProfileItem.customView) {
         [chromeViews addObject:self.homeProfileItem.customView];
     }
     if (self.homeCartItem.customView) {
@@ -9345,7 +9345,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.homeSmartSearchView) {
         [chromeViews addObject:self.homeSmartSearchView];
     }
-    if (self.homeProfileItem.customView) {
+    if (!PPHomeTemporarilyHideLeadingProfileItem && self.homeProfileItem.customView) {
         [chromeViews addObject:self.homeProfileItem.customView];
     }
     if (self.homeCartItem.customView) {
@@ -9949,7 +9949,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeProfileItem = profileItem;
     self.homeCartItem = [self pp_buildCartBarButtonItem];
 
-    self.navigationItem.leftBarButtonItems  = PPHomeBarButtonItems(profileItem);
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.leftBarButtonItems =
+        PPHomeTemporarilyHideLeadingProfileItem ? @[] : PPHomeBarButtonItems(profileItem);
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
@@ -9973,6 +9975,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (UIBarButtonItem *)pp_buildCartBarButtonItem
 {
     self.homeCartButton = [self pp_ButtonWithSystemName:@"cart" action:@selector(cartClick)];
+
     self.homeCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart", @"Shopping cart");
     self.homeCartButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_hint", @"Double-tap to open your cart");
 
@@ -9986,23 +9989,50 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
     [NSLayoutConstraint deactivateConstraints:sizeConstraints];
 
-    CGFloat cartButtonSide = 44.0;
+    CGFloat cartButtonSide = 40.0;
     self.homeCartButton.translatesAutoresizingMaskIntoConstraints = YES;
     self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
-    self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.homeCartButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.homeCartButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
+    //self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-   
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.image = [[UIImage systemImageNamed:@"cart"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        configuration.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
-    if (@available(iOS 15.0, *)) {
+        UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
+        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
+        background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ?: [UIColor colorWithWhite:1.0 alpha:0.72];
+        background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.16];
+        background.strokeWidth = 0.7;
+        background.cornerRadius = cartButtonSide * 0.5;
+        configuration.background = background;
+        self.homeCartButton.configuration = configuration;
+    } else if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.homeCartButton.configuration;
         if (configuration) {
+            configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            configuration.background.backgroundInsets = NSDirectionalEdgeInsetsZero;
             configuration.background.cornerRadius = cartButtonSide * 0.5;
             self.homeCartButton.configuration = configuration;
         }
-    } else {
-        self.homeCartButton.layer.cornerRadius = cartButtonSide * 0.5;
     }
+
+    self.homeCartButton.clipsToBounds = NO;
+    self.homeCartButton.layer.masksToBounds = NO;
+    self.homeCartButton.layer.cornerRadius = cartButtonSide * 0.5;
+    if (@available(iOS 13.0, *)) {
+        self.homeCartButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.homeCartButton pp_setShadowColor:UIColor.clearColor];
+    self.homeCartButton.layer.shadowOpacity = 0.0;
+    self.homeCartButton.layer.shadowRadius = 0.0;
+    self.homeCartButton.layer.shadowOffset = CGSizeZero;
+    self.homeCartButton.layer.shadowPath = nil;
 
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];
 }
@@ -10249,13 +10279,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 160.0;
     }
 
-    UIBarButtonItem *leftItem = self.navigationItem.leftBarButtonItem ?: self.navigationItem.leftBarButtonItems.firstObject;
+    UIBarButtonItem *leftItem = PPHomeTemporarilyHideLeadingProfileItem
+        ? nil
+        : (self.navigationItem.leftBarButtonItem ?: self.navigationItem.leftBarButtonItems.firstObject);
     UIBarButtonItem *rightItem = self.navigationItem.rightBarButtonItem ?: self.navigationItem.rightBarButtonItems.firstObject;
-    CGFloat leftWidth = [self pp_widthForBarButtonItem:leftItem fallback:40.0];
+    CGFloat leftWidth = [self pp_widthForBarButtonItem:leftItem fallback:0.0];
     CGFloat rightWidth = [self pp_widthForBarButtonItem:rightItem fallback:40.0];
     UIEdgeInsets layoutMargins = navigationBar.layoutMargins;
     CGFloat sideMargins = layoutMargins.left + layoutMargins.right;
-    CGFloat breathingRoom = 20.0;
+    CGFloat breathingRoom = PPHomeTemporarilyHideLeadingProfileItem ? 12.0 : 20.0;
 
     CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
     if (availableWidth <= 0.0) {
@@ -10382,7 +10414,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (targetWidth > 0.0) {
         self.homeSmartSearchWidthConstraint.constant = targetWidth;
         CGRect frame = self.homeSmartSearchView.frame;
-        frame.size = CGSizeMake(targetWidth, 42.0);
+        frame.size = CGSizeMake(targetWidth, 46.0);
         self.homeSmartSearchView.frame = frame;
         self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
         [self.homeSmartSearchView invalidateIntrinsicContentSize];
@@ -11178,10 +11210,34 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         if (existing) {
             [cart updateQuantity:safeQuantity forItem:item completion:nil];
         } else {
-            BOOL didAdd = [cart addItem:item];
-            if (!didAdd) {
-                [PPHUD showError:kLang(@"Out of stock")];
-            }
+            __weak typeof(self) weakSelf = self;
+            [cart addItem:item
+presentingViewController:self
+       completion:^(BOOL didAdd, BOOL didCancel) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) { return; }
+                if (didCancel) {
+                    [self updateCartQuantityBadge];
+                    [[NSNotificationCenter defaultCenter]
+                        postNotificationName:kCartUpdatedNotification
+                                      object:nil];
+                    return;
+                }
+                if (!didAdd) {
+                    [PPHUD showError:kLang(@"Out of stock")];
+                    return;
+                }
+                if (safeQuantity == 1) {
+                    [PPFunc triggerLightHaptic];
+                } else {
+                    [PPFunc triggerMediumHaptic];
+                }
+                [self updateCartQuantityBadge];
+                [[NSNotificationCenter defaultCenter]
+                    postNotificationName:kCartUpdatedNotification
+                                  object:nil];
+            }];
+            return;
         }
 
         if (safeQuantity == 1) {

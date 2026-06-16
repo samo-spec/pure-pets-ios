@@ -24,3 +24,4 @@ typedef NS_ENUM(NSInteger, PPOrderDetailsEntryPresentationState) {
 - (instancetype)initWithOrder:(PPOrder *)order;
 
 @end
+

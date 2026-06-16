@@ -73,6 +73,11 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, copy, nullable) NSString *paymentAttemptId;
 @property (nonatomic, copy, nullable) NSString *qibSessionId;
 
+/// Per-owner fulfillment support (Phase 15 — additive, backward-compatible).
+@property (nonatomic, copy, nullable) NSArray<NSString *> *fulfillmentOrderIDs;
+@property (nonatomic, strong, nullable) NSDictionary *fulfillmentSummary;
+- (BOOL)hasFulfillmentOrders;
+
 - (NSDictionary *)firestoreData;
 
 + (instancetype)orderFromSnapshot:(FIRDocumentSnapshot *)snapshot;

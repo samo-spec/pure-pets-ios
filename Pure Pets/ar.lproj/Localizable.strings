@@ -48,6 +48,7 @@
 "Button.choose.photoFromCamera" = "استخدام الصور";
 "Button.choose.photoFromPicker" = "إختيار";
 "CageName" = "القفص";
+"subscription_management_title" = "إدارة الاشتراك";
 "Camel" = "إبل";
 "Cancel" = "إلغاء";
 "preview" = "معاينة";
@@ -789,6 +790,10 @@
 
 "AddedToCart" = "✔︎ تمت الإضافة";
 "ItemAddedToYourCart" = "تمت إضافة العنصر إلى سلة التسوق الخاصة بك.";
+"cart_provider_switch_title" = "السلة تابعة لمزود آخر";
+"cart_provider_switch_message" = "تنتمي هذه السلة حاليًا إلى مزود آخر. ستفرغ إضافة هذا العنصر السلة الحالية وتبدأ سلة جديدة.";
+"cart_provider_switch_confirm" = "تفريغ وإضافة";
+"cart_provider_switch_cancel" = "إلغاء";
 
 
 "tempDesc" = "اجعل طائرك الببغاء سعيدًا ونشيطًا بهذا الطقم الممتع والملوّن من الألعاب. صُممت لتلبية فضول الطيور الطبيعي وغريزة المضغ لديها، مما يساعد على منع الملل وتشجيع السلوك الصحي. مصنوعة من مواد آمنة وغير سامة مناسبة لجميع أنواع الببغاوات — مثالية للتعليق داخل الأقفاص أو أماكن اللعب.";
@@ -1574,7 +1579,7 @@
 "home_search_sort"               = "ترتيب";
 
 "home_search_loading"            = "جاري البحث…";
-"home_nav_search_trending"       = "الرائج";
+"home_nav_search_trending"       = "ماذا يحتاج حيوانك الاليف اليوم ؟";
 "home_nav_search_accessibility"  = "افتح البحث الذكي";
 "home_nav_search_example_cats"   = "قطط للبيع";
 "home_nav_search_example_vets"   = "العيادات البيطرية";
@@ -2078,6 +2083,7 @@
 "order_action_existing_request_message" = "لديك بالفعل طلب %@ مفتوح لهذا الطلب.";
 "order_action_track_hint" = "تابع تحديثات الدفع والتجهيز والتوصيل من هنا.";
 "order_action_cancel_unavailable_closed" = "هذا الطلب مغلق بالفعل، لذلك لم يعد الإلغاء متاحاً.";
+"order_action_cancel_unavailable_preparing" = "هذا الطلب قيد التجهيز للشحن بالفعل، لذلك لم يعد بالإمكان إلغاؤه من التطبيق. تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.";
 "order_action_cancel_unavailable_fulfillment" = "الإلغاء متاح فقط قبل بدء التجهيز أو الشحن.";
 "order_action_cancel_hint" = "لا يزال بإمكانك الإلغاء قبل بدء التغليف.";
 "order_action_return_unavailable_not_delivered" = "الإرجاع يصبح متاحاً بعد تسليم الطلب.";
@@ -2272,7 +2278,7 @@
 "payment_pending_title" = "الدفع قيد الانتظار";
 "view_order_status" = "عرض الطلب";
 
-"home_quick_action_nearest_vet" = "أقرب بيطري";
+"home_quick_action_nearest_vet" = "بيطري";
 
 /* Firestore Error Notifications (H-10) */
 "firestore_error_generic" = "حدث خطأ ما. يرجى المحاولة مرة أخرى.";
@@ -2461,6 +2467,42 @@
 "notifications_inbox_category_chat" = "الدردشات";
 "notifications_inbox_category_orders" = "الطلبات";
 "notifications_inbox_category_updates" = "التحديثات";
+"notifications_inbox_customer_delivery_requested_title" = "طلبك جاهز";
+"notifications_inbox_customer_delivery_requested_body" = "تم تجهيز طلبك للشحن، وسيتم تعيين مندوب توصيل قريبًا.";
+"notifications_inbox_customer_delivery_assigned_title" = "تم تعيين مندوب التوصيل";
+"notifications_inbox_customer_delivery_assigned_body" = "تم تعيين مندوب توصيل لطلبك وسيستلمه قريبًا.";
+"notifications_inbox_customer_delivery_on_the_way_title" = "طلبك في الطريق";
+"notifications_inbox_customer_delivery_on_the_way_body" = "تم استلام طلبك وهو الآن في الطريق إليك.";
+"notifications_inbox_customer_delivery_delivered_title" = "تم تسليم الطلب";
+"notifications_inbox_customer_delivery_delivered_body" = "تم تسليم طلبك بنجاح. شكرًا لاختيارك بيور بتس.";
+"notifications_inbox_customer_delivery_completed_title" = "اكتمل الطلب";
+"notifications_inbox_customer_delivery_completed_body" = "اكتمل طلبك بنجاح. شكرًا لتسوقك من بيور بتس.";
+"notifications_inbox_customer_delivery_update_title" = "تحديث التوصيل";
+"notifications_inbox_customer_delivery_cancelled_body" = "تم إلغاء توصيل طلبك. يرجى التواصل مع الدعم إذا كنت تحتاج إلى مساعدة.";
+"notifications_inbox_customer_delivery_failed_body" = "تعذر إكمال التوصيل. سيراجع فريقنا الطلب ويحدثك قريبًا.";
+"notifications_inbox_customer_delivery_delayed_body" = "يحتاج توصيل طلبك إلى وقت إضافي قليلًا. سيراجع فريقنا الطلب ويحدثك قريبًا.";
+"notifications_inbox_order_reference_fallback" = "طلبك";
+"notifications_inbox_order_payment_confirmed_title" = "تم تأكيد الدفع";
+"notifications_inbox_order_payment_confirmed_body_format" = "تم تأكيد دفع %@.";
+"notifications_inbox_order_processing_title" = "جاري تجهيز الطلب";
+"notifications_inbox_order_processing_body_format" = "يتم تجهيز %@ الآن.";
+"notifications_inbox_order_shipped_title" = "تم شحن الطلب";
+"notifications_inbox_order_shipped_body_format" = "%@ في الطريق إليك.";
+"notifications_inbox_order_delivered_title" = "تم تسليم الطلب";
+"notifications_inbox_order_delivered_body_format" = "تم تسليم %@.";
+"notifications_inbox_order_cancelled_title" = "تم إلغاء الطلب";
+"notifications_inbox_order_cancelled_body_format" = "تم إلغاء %@.";
+"notifications_inbox_order_failed_title" = "فشل الدفع";
+"notifications_inbox_order_failed_body_format" = "تعذر إكمال %@.";
+"notifications_inbox_order_cash_collected_title" = "تم تحصيل الدفع";
+"notifications_inbox_order_cash_collected_body_format" = "تم تحصيل قيمة %@ بنجاح.";
+"notifications_inbox_new_delivery_request_title" = "طلب توصيل جديد";
+"notifications_inbox_new_delivery_request_body" = "يوجد طلب جديد جاهز للاستلام. راجع التفاصيل واقبل طلب التوصيل.";
+"notifications_inbox_delivery_request_closed_title" = "تم إغلاق طلب التوصيل";
+"notifications_inbox_delivery_request_closed_body" = "لم يعد طلب التوصيل هذا متاحًا.";
+"notifications_inbox_new_order_title" = "طلب جديد";
+"notifications_inbox_new_order_title_format" = "طلب جديد %@";
+"notifications_inbox_order_items_total_format" = "%@ عنصر • %@ %@";
 "pet_reminder_add" = "إضافة تذكير";
 "pet_reminder_edit" = "تعديل التذكير";
 "pet_reminder_title" = "عنوان التذكير";
@@ -2614,6 +2656,12 @@
 
 /* ── Nearby Service Providers Section ── */
 "Home_NearbyServiceProviders" = "مزودو الخدمات القريبون";
+"home_header_discover_by_category" = "اكتشف حسب الفئة";
+"home_header_most_requested" = "الأكثر طلباً";
+"home_header_featured_products" = "منتجات مميزة";
+"home_header_picks_for_you" = "مختارات لك";
+"home_header_most_popular" = "الأكثر شعبية";
+"home_header_near_you" = "بالقرب منك";
 "Home_ServiceProviders" = "مزودو الخدمات";
 "Home_ServiceProvidersSubtitle" = "تصفح خدمات العناية والتدريب والمزيد";
 "Home_NoServicesAvailable" = "لا توجد خدمات متاحة حالياً";
@@ -2642,7 +2690,7 @@
 "home_premium_care_eyebrow" = "رعاية مميزة";
 "home_premium_care_title" = "مركز العناية البيطري";
 "home_premium_care_subtitle" = "أدوية الحيوانات والرعاية البيطرية في مكان واحد أنيق.";
-"home_premium_care_cta" = "افتح مركز الرعاية";
+"home_premium_care_cta" = "استكشف العيادات";
 "pet_care_title" = "رعاية الحيوانات";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";
@@ -2820,8 +2868,11 @@
 "nova_typing" = "نوفا تفكر";
 "nova_input_placeholder" = "راسل نوفا...";
 "nova_input_attach_accessibility" = "إضافة مرفق";
+"nova_input_microphone_accessibility" = "تسجيل رسالة صوتية";
 "nova_input_suggestions_accessibility" = "عرض الاقتراحات الذكية";
 "nova_input_send_accessibility" = "إرسال الرسالة";
+"nova_attachment_unavailable" = "المرفقات غير مدعومة في محادثة نوفا حالياً.";
+"nova_microphone_unavailable" = "الرسائل الصوتية غير مدعومة في محادثة نوفا حالياً.";
 "nova_scroll_to_latest_accessibility" = "الانتقال إلى أحدث رسالة";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
@@ -2962,3 +3013,104 @@
 "ImageSearchDetectedSubtitle" = "تم التعرف عليه من صورتك";
 
 "UnableToLoadDetails" = "تعذر تحميل التفاصيل.";
+
+/* طلبات التنفيذ (المرحلة ١٥ — جانب العميل، للقراءة فقط) */
+"fulfillment_section_title" = "حالة تنفيذ الطلب";
+"fulfillment_summary_pending" = "قيد الانتظار";
+"fulfillment_summary_completed" = "مكتمل";
+"fulfillment_owner_platform" = "بيور بيتس";
+"fulfillment_owner_partner" = "شريك";
+"fulfillment_items_count" = "%ld عناصر";
+"fulfillment_no_events" = "لا توجد أحداث مسجلة.";
+"fulfillment_not_available" = "تفاصيل التنفيذ غير متوفرة.";
+"fulfillment_loading" = "جارٍ تحميل التنفيذ…";
+
+/* تصنيفات حالة التنفيذ (المرحلة ١٥) */
+"fulfillment_status_new_request" = "بانتظار مزود الخدمة";
+"fulfillment_status_accepted" = "تم القبول";
+"fulfillment_status_rejected" = "تم الرفض";
+"fulfillment_status_preparing" = "جاري التحضير";
+"fulfillment_status_ready_for_pickup" = "جاهز للاستلام";
+"fulfillment_status_delivery_requested" = "تم طلب التوصيل";
+"fulfillment_status_awaiting_handover" = "بانتظار التسليم";
+"fulfillment_status_handed_over" = "تم التسليم للمندوب";
+"fulfillment_status_completed" = "مكتمل";
+"fulfillment_status_cancelled" = "ملغي";
+"fulfillment_status_failed" = "فشل";
+"fulfillment_status_returned" = "مرتجع";
+"fulfillment_status_unknown" = "قيد التنفيذ";
+
+/* سوق مزود الخدمة (المرحلة 20B) */
+"accessory_view_market_badge" = "السوق";
+"accessory_view_market_provider" = "مزود سوق";
+"accessory_view_sold_by" = "يباع بواسطة";
+"accessory_view_more_from_provider" = "المزيد من هذا المزود";
+"fulfillment_status_delivery_assigned" = "تم تعيين مندوب";
+
+/* Premium Seller Profile */
+"premium_seller" = "بائع متميز";
+"verified_quality" = "جودة موثوقة";
+"premium_seller_description" = "بائع معتمد يوفر منتجات ذات جودة عالية ويتمتع بخدمة عملاء ممتازة.";
+"get_in_touch" = "تواصل مع البائع";
+"seller_items" = "منتجات البائع";
+"seller_profile_empty_items" = "لا توجد منتجات متاحة لهذا البائع حالياً.";
+"message" = "رسالة";
+"call" = "اتصال";
+"verified" = "موثق";
+"premium_seller_on_platform" = "بائع متميز على المنصة";
+"View_Profile" = "استكشف كل منتجات البائع";
+
+/* Premium Adoption */
+"adopt_list_eyebrow" = "التبني";
+"adopt_list_title" = "اعثر على رفيق لطيف";
+"adopt_list_subtitle" = "تصفح حيوانات تنتظر بيتاً موثوقاً، ثم افتح الإعلان لمعرفة التفاصيل والتواصل.";
+"adopt_list_count_format" = "%ld متاح";
+"adopt_list_error_title" = "تعذر تحميل حيوانات التبني";
+"adopt_list_error_subtitle" = "تحقق من الاتصال وحاول مرة أخرى.";
+"adopt_list_empty_title" = "لا توجد حيوانات متاحة حالياً";
+"adopt_list_empty_subtitle" = "عند نشر إعلانات التبني ستظهر هنا.";
+"adopt_list_no_results_title" = "لا توجد نتائج مطابقة";
+"adopt_list_no_results_subtitle" = "جرب مسح البحث أو تغيير الفلاتر.";
+"adopt_list_add_action" = "إضافة حيوان";
+"adopt_detail_story_title" = "عن هذا الحيوان";
+"adopt_detail_no_details" = "لم تتم إضافة تفاصيل بعد.";
+"adopt_detail_available_now" = "متاح للتبني";
+"adopt_form_eyebrow" = "منشور تبني";
+"adopt_form_create_title" = "أنشئ إعلاناً موثوقاً";
+"adopt_form_create_subtitle" = "أضف تفاصيل واضحة والموقع والصور ليسهل على العائلة المناسبة اتخاذ القرار.";
+"adopt_form_edit_title" = "حسّن هذا الإعلان";
+"adopt_form_edit_subtitle" = "حافظ على دقة المنشور بتحديث التفاصيل والوسائط.";
+"adopt_form_progress_format" = "%ld/%ld جاهز";
+"adopt_form_pet_info_hint" = "الاسم، النوع، السلالة، والعمر.";
+"adopt_form_additional_info_hint" = "الجنس، المدينة، والقصة التي يحتاجها المتبني.";
+
+/* Premium User Menu */
+"user_menu_title" = "قائمة المستخدم";
+"user_menu_tab_title" = "القائمة";
+"user_menu_subtitle" = "إدارة ملفك ومشترياتك وطلباتك والدعم من مكان واحد هادئ.";
+"user_menu_guest_subtitle" = "سجّل الدخول لإدارة ملفك ومشترياتك وطلباتك والدعم.";
+"user_menu_signed_in_eyebrow" = "حساب بيور بيتس";
+"user_menu_guest_eyebrow" = "مرحباً";
+"user_menu_account_section" = "الحساب";
+"user_menu_activity_section" = "النشاط";
+"user_menu_tools_section" = "الدعم والإعدادات";
+"user_menu_profile_subtitle" = "عرض وتحديث بيانات حسابك.";
+"user_menu_login_subtitle" = "سجّل الدخول لفتح قائمة حسابك.";
+"user_menu_favorites_subtitle" = "افتح الحيوانات والمنتجات المحفوظة.";
+"user_menu_ads_subtitle" = "إدارة إعلانات الحيوانات الخاصة بك.";
+"user_menu_cart_subtitle" = "راجع العناصر الموجودة في السلة.";
+"user_menu_purchased_subtitle" = "استعرض المنتجات المشتراة واشترِ مرة أخرى.";
+"user_menu_orders_subtitle" = "تابع سجل الطلبات وحالة التنفيذ.";
+"user_menu_production_subtitle" = "افتح مساحة إدارة الإنتاج.";
+"user_menu_settings_subtitle" = "اللغة والمظهر والخصوصية وأدوات الحساب.";
+"user_menu_support_subtitle" = "تواصل مع الدعم الفني في بيور بيتس.";
+"user_menu_logout_subtitle" = "مغادرة هذا الحساب على هذا الجهاز.";
+"a11y_tab_user_menu" = "تبويب قائمة المستخدم";
+"a11y_tab_user_menu_hint" = "فتح الملف الشخصي والطلبات والإعدادات والدعم";
+
+/* Premium Settings Hero */
+"settings_hero_eyebrow" = "الإعدادات";
+"settings_hero_title" = "اضبط بيور بيتس";
+"settings_hero_subtitle" = "تحكم بالمظهر واللغة والخصوصية والتنبيهات والروابط القانونية وأمان الحساب من مكان واحد هادئ.";
+"settings_hero_scope" = "الخصوصية • المظهر • اللغة";
+"settings_hero_accessibility_hint" = "يلخص الإعدادات المتاحة في هذه الشاشة.";

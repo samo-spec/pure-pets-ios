@@ -131,5 +131,23 @@
       buildConfiguration = "Release"
       revealArchiveInOrganizer = "YES"
       allowsArchivingForSimulator = "YES">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Run Script"
+               scriptText = "# Type a script or drag a script file from your workspace to insert its path.&#10;cd &quot;$PROJECT_DIR&quot;&#10;xcrun agvtool next-version -all&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "F2D0C5D42C4BE1B80023CE53"
+                     BuildableName = "Pure Pets.app"
+                     BlueprintName = "Pure Pets"
+                     ReferencedContainer = "container:Pure Pets.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
    </ArchiveAction>
 </Scheme>

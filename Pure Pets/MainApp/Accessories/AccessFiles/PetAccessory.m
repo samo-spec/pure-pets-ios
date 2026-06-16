@@ -338,6 +338,8 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         }
 
         _ownerID = dict[@"ownerID"] ?: @"";
+        _ownerType = [dict[@"ownerType"] isKindOfClass:NSString.class] ? dict[@"ownerType"] : nil;
+        _source = [dict[@"source"] isKindOfClass:NSString.class] ? dict[@"source"] : nil;
         _blurHash = dict[@"blurHash"] ?: @"";
         _accessKindType = ({
             NSInteger rawKind = [dict[@"accessKindType"] integerValue];

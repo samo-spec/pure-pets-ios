@@ -48,6 +48,7 @@
 "Button.choose.photoFromCamera" = "Use Photo";
 "Button.choose.photoFromPicker" = "Choose";
 "CageName" = "Cage";
+"subscription_management_title" = "Subscription Management";
 "Camel" = "Camels";
 "Cancel" = "Cancel";
 "preview" = "Preview";
@@ -764,6 +765,10 @@
 
 "AddedToCart" = "✔︎ Added";
 "ItemAddedToYourCart" = "Item added to your cart.";
+"cart_provider_switch_title" = "Cart belongs to another provider";
+"cart_provider_switch_message" = "This cart currently belongs to another provider. Adding this item will clear the current cart and start a new one.";
+"cart_provider_switch_confirm" = "Clear & Add";
+"cart_provider_switch_cancel" = "Cancel";
 
 
 "tempDesc" = "Keep your parrot happy, active, and mentally stimulated with this fun and colorful toy set. Designed to satisfy your bird’s natural curiosity and chewing instincts, it helps prevent boredom and encourages healthy behavior. Made from safe, non-toxic materials suitable for all parrot breeds — perfect for hanging in cages or play stands.";
@@ -2103,6 +2108,7 @@
 "order_action_existing_request_message" = "You already have an open %@ request for this order.";
 "order_action_track_hint" = "Follow payment, fulfillment, and delivery updates here.";
 "order_action_cancel_unavailable_closed" = "This order is already closed, so cancellation is no longer available.";
+"order_action_cancel_unavailable_preparing" = "This order is already being prepared for shipment, so it can no longer be cancelled from the app. Contact support if you need help.";
 "order_action_cancel_unavailable_fulfillment" = "Cancellation is available only before packing or shipping starts.";
 "order_action_cancel_hint" = "You can still cancel before packing begins.";
 "order_action_return_unavailable_not_delivered" = "Returns open after the order is delivered.";
@@ -2470,6 +2476,42 @@
 "notifications_inbox_category_chat" = "Chats";
 "notifications_inbox_category_orders" = "Orders";
 "notifications_inbox_category_updates" = "Updates";
+"notifications_inbox_customer_delivery_requested_title" = "Your Order Is Ready";
+"notifications_inbox_customer_delivery_requested_body" = "Your order is packed and ready for shipment. A delivery partner will be assigned shortly.";
+"notifications_inbox_customer_delivery_assigned_title" = "Delivery Partner Assigned";
+"notifications_inbox_customer_delivery_assigned_body" = "A delivery partner has been assigned to your order and will collect it shortly.";
+"notifications_inbox_customer_delivery_on_the_way_title" = "Your Order Is On the Way";
+"notifications_inbox_customer_delivery_on_the_way_body" = "Your order has been collected and is now on its way to you.";
+"notifications_inbox_customer_delivery_delivered_title" = "Order Delivered";
+"notifications_inbox_customer_delivery_delivered_body" = "Your order has been delivered successfully. Thank you for choosing Pure Pets.";
+"notifications_inbox_customer_delivery_completed_title" = "Order Completed";
+"notifications_inbox_customer_delivery_completed_body" = "Your order has been completed successfully. Thank you for shopping with Pure Pets.";
+"notifications_inbox_customer_delivery_update_title" = "Delivery Update";
+"notifications_inbox_customer_delivery_cancelled_body" = "The delivery for your order has been cancelled. Please contact support if you need assistance.";
+"notifications_inbox_customer_delivery_failed_body" = "We were unable to complete your delivery. Our team will review the order and update you shortly.";
+"notifications_inbox_customer_delivery_delayed_body" = "Your delivery needs a little more time. Our team is reviewing the order and will update you shortly.";
+"notifications_inbox_order_reference_fallback" = "your order";
+"notifications_inbox_order_payment_confirmed_title" = "Payment Confirmed";
+"notifications_inbox_order_payment_confirmed_body_format" = "Payment for %@ is confirmed.";
+"notifications_inbox_order_processing_title" = "Order Processing";
+"notifications_inbox_order_processing_body_format" = "%@ is now being prepared.";
+"notifications_inbox_order_shipped_title" = "Order Shipped";
+"notifications_inbox_order_shipped_body_format" = "%@ is on the way.";
+"notifications_inbox_order_delivered_title" = "Order Delivered";
+"notifications_inbox_order_delivered_body_format" = "%@ has been delivered.";
+"notifications_inbox_order_cancelled_title" = "Order Cancelled";
+"notifications_inbox_order_cancelled_body_format" = "%@ was cancelled.";
+"notifications_inbox_order_failed_title" = "Payment Failed";
+"notifications_inbox_order_failed_body_format" = "%@ could not be completed.";
+"notifications_inbox_order_cash_collected_title" = "Cash Payment Collected";
+"notifications_inbox_order_cash_collected_body_format" = "Cash payment for %@ was collected successfully.";
+"notifications_inbox_new_delivery_request_title" = "New Delivery Request";
+"notifications_inbox_new_delivery_request_body" = "A new order is ready for pickup. Please review the details and accept the delivery request.";
+"notifications_inbox_delivery_request_closed_title" = "Delivery Request Closed";
+"notifications_inbox_delivery_request_closed_body" = "This delivery request is no longer available.";
+"notifications_inbox_new_order_title" = "New Order";
+"notifications_inbox_new_order_title_format" = "New Order %@";
+"notifications_inbox_order_items_total_format" = "%@ item(s) • %@ %@";
 "pet_reminder_add" = "Add Reminder";
 "pet_reminder_edit" = "Edit Reminder";
 "pet_reminder_title" = "Reminder title";
@@ -2623,6 +2665,12 @@
 
 /* ── Nearby Service Providers Section ── */
 "Home_NearbyServiceProviders" = "Nearby Service Providers";
+"home_header_discover_by_category" = "Discover by category";
+"home_header_most_requested" = "Most requested";
+"home_header_featured_products" = "Featured products";
+"home_header_picks_for_you" = "Picks for you";
+"home_header_most_popular" = "Most popular";
+"home_header_near_you" = "Near you";
 "Home_ServiceProviders" = "Service Providers";
 "Home_ServiceProvidersSubtitle" = "Find grooming, training & more";
 "Home_NoServicesAvailable" = "No services available yet";
@@ -2832,8 +2880,11 @@
 "nova_typing" = "Nova is thinking";
 "nova_input_placeholder" = "Message Nova...";
 "nova_input_attach_accessibility" = "Add attachment";
+"nova_input_microphone_accessibility" = "Record voice message";
 "nova_input_suggestions_accessibility" = "Show smart suggestions";
 "nova_input_send_accessibility" = "Send message";
+"nova_attachment_unavailable" = "Attachments are not supported in Nova chat right now.";
+"nova_microphone_unavailable" = "Voice messages are not supported in Nova chat right now.";
 "nova_scroll_to_latest_accessibility" = "Scroll to latest message";
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
@@ -2974,3 +3025,104 @@
 "ImageSearchDetectedSubtitle" = "AI detected in your photo";
 
 "UnableToLoadDetails" = "Unable to load details.";
+
+/* Fulfillment Orders (Phase 15 — customer-side, read-only) */
+"fulfillment_section_title" = "Fulfillment Progress";
+"fulfillment_summary_pending" = "Pending";
+"fulfillment_summary_completed" = "Completed";
+"fulfillment_owner_platform" = "Pure Pets";
+"fulfillment_owner_partner" = "Partner";
+"fulfillment_items_count" = "%ld items";
+"fulfillment_no_events" = "No events recorded.";
+"fulfillment_not_available" = "Fulfillment details not available.";
+"fulfillment_loading" = "Loading fulfillment…";
+
+/* Fulfillment status labels (Phase 15) */
+"fulfillment_status_new_request" = "Waiting for provider";
+"fulfillment_status_accepted" = "Accepted";
+"fulfillment_status_rejected" = "Declined";
+"fulfillment_status_preparing" = "Preparing";
+"fulfillment_status_ready_for_pickup" = "Ready for pickup";
+"fulfillment_status_delivery_requested" = "Delivery requested";
+"fulfillment_status_awaiting_handover" = "Awaiting handover";
+"fulfillment_status_handed_over" = "Handed over";
+"fulfillment_status_completed" = "Completed";
+"fulfillment_status_cancelled" = "Cancelled";
+"fulfillment_status_failed" = "Failed";
+"fulfillment_status_returned" = "Returned";
+"fulfillment_status_unknown" = "In progress";
+
+/* Provider Marketplace (Phase 20B) */
+"accessory_view_market_badge" = "Marketplace";
+"accessory_view_market_provider" = "Market Provider";
+"accessory_view_sold_by" = "Sold by";
+"accessory_view_more_from_provider" = "More from this provider";
+"fulfillment_status_delivery_assigned" = "Delivery partner assigned";
+
+/* Premium Seller Profile */
+"premium_seller" = "Premium Seller";
+"verified_quality" = "Verified Quality";
+"premium_seller_description" = "A trusted seller offering high-quality products with excellent customer service.";
+"get_in_touch" = "Get in Touch";
+"seller_items" = "Seller's Items";
+"seller_profile_empty_items" = "No available items from this seller right now.";
+"message" = "Message";
+"call" = "Call";
+"verified" = "Verified";
+"premium_seller_on_platform" = "Premium seller on platform";
+"View_Profile" = "Explore all seller products";
+
+/* Premium Adoption */
+"adopt_list_eyebrow" = "Adoption";
+"adopt_list_title" = "Find a gentle match";
+"adopt_list_subtitle" = "Browse pets waiting for a trusted home, then open the listing for details and contact.";
+"adopt_list_count_format" = "%ld available";
+"adopt_list_error_title" = "Could not load adoption pets";
+"adopt_list_error_subtitle" = "Check your connection and try again.";
+"adopt_list_empty_title" = "No pets available yet";
+"adopt_list_empty_subtitle" = "When adoption posts are published, they will appear here.";
+"adopt_list_no_results_title" = "No matching pets";
+"adopt_list_no_results_subtitle" = "Try clearing search or changing the filters.";
+"adopt_list_add_action" = "Add a pet";
+"adopt_detail_story_title" = "About this pet";
+"adopt_detail_no_details" = "No details added yet.";
+"adopt_detail_available_now" = "Available for adoption";
+"adopt_form_eyebrow" = "Adoption post";
+"adopt_form_create_title" = "Create a trusted listing";
+"adopt_form_create_subtitle" = "Add clear details, location, and photos so the right family can decide confidently.";
+"adopt_form_edit_title" = "Refine this listing";
+"adopt_form_edit_subtitle" = "Keep the post accurate with updated details and media.";
+"adopt_form_progress_format" = "%ld/%ld ready";
+"adopt_form_pet_info_hint" = "Name, species, breed, and age.";
+"adopt_form_additional_info_hint" = "Gender, city, and the story adopters need.";
+
+/* Premium User Menu */
+"user_menu_title" = "User Menu";
+"user_menu_tab_title" = "Menu";
+"user_menu_subtitle" = "Manage your profile, purchases, orders, and support from one calm place.";
+"user_menu_guest_subtitle" = "Sign in to manage your profile, purchases, orders, and support.";
+"user_menu_signed_in_eyebrow" = "Pure Pets account";
+"user_menu_guest_eyebrow" = "Welcome";
+"user_menu_account_section" = "Account";
+"user_menu_activity_section" = "Activity";
+"user_menu_tools_section" = "Support & Settings";
+"user_menu_profile_subtitle" = "View and update your account details.";
+"user_menu_login_subtitle" = "Sign in to unlock your account menu.";
+"user_menu_favorites_subtitle" = "Open your saved pets and products.";
+"user_menu_ads_subtitle" = "Manage your active pet ads.";
+"user_menu_cart_subtitle" = "Review items waiting in your cart.";
+"user_menu_purchased_subtitle" = "Revisit purchased products and buy again.";
+"user_menu_orders_subtitle" = "Track order history and fulfillment.";
+"user_menu_production_subtitle" = "Open your production workspace.";
+"user_menu_settings_subtitle" = "Language, appearance, privacy, and account tools.";
+"user_menu_support_subtitle" = "Contact Pure Pets technical support.";
+"user_menu_logout_subtitle" = "Leave this account on this device.";
+"a11y_tab_user_menu" = "User menu tab";
+"a11y_tab_user_menu_hint" = "Open profile, orders, settings, and support";
+
+/* Premium Settings Hero */
+"settings_hero_eyebrow" = "Settings";
+"settings_hero_title" = "Tune Pure Pets";
+"settings_hero_subtitle" = "Control appearance, language, privacy, notifications, legal access, and account safety from one calm place.";
+"settings_hero_scope" = "Privacy • Appearance • Language";
+"settings_hero_accessibility_hint" = "Summarizes the settings available on this screen.";

@@ -378,7 +378,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     [NSLayoutConstraint activateConstraints:@[
         [self.bottomBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:PPIOS26() ? 22 : 10],
+        [self.bottomBar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
  
         [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
@@ -1048,32 +1048,45 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 
     NSInteger safeQuantity = MIN(requestedQuantity, availableToAdd);
     CartItem *item = PPPetCareCartItemForMedicine(self.medicine, safeQuantity);
-    BOOL didAdd = item ? [[CartManager sharedManager] addItem:item] : NO;
-    if (!didAdd) {
+    if (!item) {
         [self.bottomBar performAddToCartFailureAnimation];
         [PPHUD showError:kLang(@"Out of stock")];
         [PPFunc triggerWarningHaptic];
         return;
     }
 
-    NSString *message = safeQuantity < requestedQuantity
-        ? [NSString stringWithFormat:@"%@ %ld %@",
-           kLang(@"Only"),
-           (long)availableToAdd,
-           kLang(@"left in stock")]
-        : kLang(@"ItemAddedToYourCart");
+    __weak typeof(self) weakSelf = self;
+    [[CartManager sharedManager] addItem:item
+                presentingViewController:self
+                              completion:^(BOOL didAdd, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) { return; }
+        if (!didAdd) {
+            [self.bottomBar performAddToCartFailureAnimation];
+            [PPHUD showError:kLang(@"Out of stock")];
+            [PPFunc triggerWarningHaptic];
+            return;
+        }
 
-    [self.bottomBar performAddToCartSuccessAnimation];
-    [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
-    if (safeQuantity == 1) {
-        [PPFunc triggerLightHaptic];
-    } else {
-        [PPFunc triggerMediumHaptic];
-    }
+        NSString *message = safeQuantity < requestedQuantity
+            ? [NSString stringWithFormat:@"%@ %ld %@",
+               kLang(@"Only"),
+               (long)availableToAdd,
+               kLang(@"left in stock")]
+            : kLang(@"ItemAddedToYourCart");
 
-    self.bottomBar.cartItemquantity = 1;
-    [self.bottomBar updateQuantityUI];
-    [self pp_syncBottomBarState];
+        [self.bottomBar performAddToCartSuccessAnimation];
+        [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
+        if (safeQuantity == 1) {
+            [PPFunc triggerLightHaptic];
+        } else {
+            [PPFunc triggerMediumHaptic];
+        }
+
+        self.bottomBar.cartItemquantity = 1;
+        [self.bottomBar updateQuantityUI];
+        [self pp_syncBottomBarState];
+    }];
 }
 
 - (BOOL)pp_ensureSignedInForAction

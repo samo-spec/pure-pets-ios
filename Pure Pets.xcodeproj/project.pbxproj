@@ -287,6 +287,7 @@
 		F253FA662F07182800323CB4 /* PetAdoptView.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA652F07182800323CB4 /* PetAdoptView.m */; };
 		F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */; };
 		F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */; };
+		F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */; };
 		F25971AE2D1BEF3F00708763 /* ArchiveManagerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */; };
 		F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F259DDDC2D29622E005524F8 /* XLFormButtonCell.m */; };
 		F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */; };
@@ -509,7 +510,7 @@
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
 		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
-		F2911E212FC110D100076E94 /* water-bubble.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = F2911E202FC110D100076E94 /* water-bubble.mp3 */; };
+		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
 		F2916F0C2D54A3E400FF0394 /* Beiruti-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */; };
 		F2916F0D2D54A3E400FF0394 /* Beiruti-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */; };
@@ -551,8 +552,6 @@
 		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
 		F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */; };
 		F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD632D031328009F0B62 /* UIView+Shadow.m */; };
-		F2A1F0022FA8000100F0A002 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2A1F0012FA8000100F0A001 /* thinking.json */; };
-		F2A1F0042FA8000100F0A004 /* NovaLoader.json in Resources */ = {isa = PBXBuildFile; fileRef = F2A1F0032FA8000100F0A003 /* NovaLoader.json */; };
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
 		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
@@ -792,6 +791,7 @@
 		F2FFDA192FCDCFC00025B5A9 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA182FCDCFC00025B5A9 /* FirebasePerformance */; };
 		F2FFDA1B2FCDCFC00025B5A9 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA1A2FCDCFC00025B5A9 /* FirebaseRemoteConfig */; };
 		F2FFDA1D2FCDCFC00025B5A9 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA1C2FCDCFC00025B5A9 /* FirebaseStorage */; };
+		F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */; };
 		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
 /* End PBXBuildFile section */
@@ -1349,6 +1349,8 @@
 		F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLayoutManager.m; sourceTree = "<group>"; };
 		F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCategoryCardCell.h; sourceTree = "<group>"; };
 		F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCategoryCardCell.m; sourceTree = "<group>"; };
+		F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserMenuViewController.h; sourceTree = "<group>"; };
+		F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserMenuViewController.m; sourceTree = "<group>"; };
 		F25971AC2D1BEF3F00708763 /* ArchiveManagerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchiveManagerVC.h; sourceTree = "<group>"; };
 		F25971AD2D1BEF3F00708763 /* ArchiveManagerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchiveManagerVC.m; sourceTree = "<group>"; };
 		F259DDDB2D29622E005524F8 /* XLFormButtonCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormButtonCell.h; sourceTree = "<group>"; };
@@ -1784,7 +1786,8 @@
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
 		F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyItemsViewControllerr.m; sourceTree = "<group>"; };
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
-		F2911E202FC110D100076E94 /* water-bubble.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = "water-bubble.mp3"; sourceTree = "<group>"; };
+		F290F54D2FD9E943008EADEE /* SellerProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SellerProfileVC.h; sourceTree = "<group>"; };
+		F290F54E2FD9E943008EADEE /* SellerProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SellerProfileVC.m; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -1862,8 +1865,6 @@
 		F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		F2A1DD7B2D043A79009F0B62 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		F2A1F0012FA8000100F0A001 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
-		F2A1F0032FA8000100F0A003 /* NovaLoader.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NovaLoader.json; sourceTree = "<group>"; };
 		F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInfoPillsView.h; sourceTree = "<group>"; };
 		F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInfoPillsView.m; sourceTree = "<group>"; };
 		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
@@ -2309,6 +2310,8 @@
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
 		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
+		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -3336,6 +3339,8 @@
 		F25373E42E33AFEA00CD93E7 /* UserFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
+				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
 				F20956702F8564C9007C4ABA /* PetsProfiles */,
 				F2D6396E2ECB4E1000FEBCBB /* SignIn Files */,
@@ -3652,6 +3657,8 @@
 			children = (
 				F273146C2F31168400FFA0B8 /* PPOrder.h */,
 				F273146D2F31169000FFA0B8 /* PPOrder.m */,
+				F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */,
+				F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */,
 			);
 			path = Orders;
 			sourceTree = "<group>";
@@ -3954,6 +3961,8 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F290F54D2FD9E943008EADEE /* SellerProfileVC.h */,
+				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
 				F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */,
 				F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */,
 				F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */,
@@ -5136,11 +5145,8 @@
 			children = (
 				F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
-				F2911E202FC110D100076E94 /* water-bubble.mp3 */,
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
-				F2A1F0012FA8000100F0A001 /* thinking.json */,
-				F2A1F0032FA8000100F0A003 /* NovaLoader.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
 				F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */,
@@ -5287,8 +5293,6 @@
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
-				F2A1F0022FA8000100F0A002 /* thinking.json in Resources */,
-				F2A1F0042FA8000100F0A004 /* NovaLoader.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
 				F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */,
@@ -5307,7 +5311,6 @@
 				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
 				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
 				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
-				F2911E212FC110D100076E94 /* water-bubble.mp3 in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
 				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
 				F299C1722C9D820C00EFA142 /* ZXQRScanViewController.xib in Resources */,
@@ -5472,6 +5475,7 @@
 				F2449C4C2D0F169B00DB6BBC /* subKindItemsModel.m in Sources */,
 				F276E5C42DE313B300926D56 /* ViewerVC.m in Sources */,
 				F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */,
+				F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */,
 				F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */,
 				F24F364C2D8A426B0094C6F2 /* BuyerCell.m in Sources */,
 				F27146692CCE6B5300F7F3BA /* NSArray+XLFormAdditions.m in Sources */,
@@ -5493,6 +5497,7 @@
 				F28DD58A2F0193A700FF2671 /* PPHomeServicesCell.m in Sources */,
 				F28A0A0A2EE9C96B00EE5055 /* EllipsePageControl.h in Sources */,
 				F273146E2F31169000FFA0B8 /* PPOrder.m in Sources */,
+				F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */,
 				F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */,
 				F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */,
 				F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */,
@@ -5748,6 +5753,7 @@
 				F2AB48912C72CF3C00D88603 /* JGProgressHUDImageIndicatorView.m in Sources */,
 				F2CDBD252D11526000FE7FA2 /* ChildModel.m in Sources */,
 				F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */,
+				F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
 				F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */,
@@ -6331,7 +6337,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 169;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6384,7 +6390,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6424,6 +6430,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
 				WARNING_CFLAGS = "-Wno-deprecated-declarations";
 			};
 			name = Debug;
@@ -6440,7 +6447,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 169;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6496,7 +6503,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1.0;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6536,6 +6543,7 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
 				WARNING_CFLAGS = "-Wno-deprecated-declarations";
 			};
 			name = Release;
@@ -6545,7 +6553,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 169;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6563,7 +6571,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 169;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6580,7 +6588,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 169;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6597,7 +6605,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 169;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

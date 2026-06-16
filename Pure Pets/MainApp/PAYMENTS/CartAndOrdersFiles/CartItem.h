@@ -31,6 +31,7 @@ typedef NS_ENUM(NSInteger, OrderStatus)
 /// The original (pre-discount) unit price — display/reference only.
 @property (nonatomic, assign) double originalPrice;
 @property (nonatomic, strong) NSString *imageURL;
+@property (nonatomic, strong) NSString *providerID;
 @property (nonatomic, strong) NSString *type;
 
 /// YES when originalPrice > price (a discount is active).

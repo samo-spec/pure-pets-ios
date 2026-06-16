@@ -4,11 +4,11 @@
 
 #import "SettingVC.h"
 #import "PPRootTabBarController.h"
-#import "ProfileVC.h"
-#import "PPImageLoaderManager.h"
-#import "PPModernAvatarRenderer.h"
 #import "PPFirebaseSessionBridge.h"
-#import <SDWebImage/UIImageView+WebCache.h>
+#import "LocationPickerViewController.h"
+#import "PPHomeLocationSheetViewController.h"
+#import "PPHomeLocationTitleView.h"
+#import <CoreLocation/CoreLocation.h>
 #import <SafariServices/SFSafariViewController.h>
 @import FirebaseFunctions;
 @import UserNotifications;
@@ -23,6 +23,61 @@ NSString * const PPThemePreferenceDidChangeNotification = @"PPThemePreferenceDid
 // MARK: Legal URLs — update these to the production website URLs when available.
 static NSString *const kPPPrivacyPolicyURL   = @"https://pure-pets.net/privacy";
 static NSString *const kPPTermsOfServiceURL  = @"https://pure-pets.net";
+static NSString *const PPSettingsNearbySelectedLatitudeKey = @"pp.home.nearby.latitude";
+static NSString *const PPSettingsNearbySelectedLongitudeKey = @"pp.home.nearby.longitude";
+static NSString *const PPSettingsNearbySelectedAreaNameKey = @"pp.home.nearby.areaName";
+static NSString *const PPSettingsNearbyRecentLocationsKey = @"pp.home.nearby.recentLocations";
+static NSInteger const PPSettingsNearbyRecentLocationsLimit = 4;
+static double const PPSettingsNearbyDefaultRadiusKm = 8.0;
+
+static UIColor *PPSettingsHeroSurfaceColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithRed:0.115 green:0.114 blue:0.125 alpha:0.96];
+            }
+            return [UIColor colorWithRed:0.992 green:0.989 blue:0.982 alpha:0.98];
+        }];
+    }
+    return AppForgroundColr ?: UIColor.whiteColor;
+}
+
+static UIColor *PPSettingsHeroSecondarySurfaceColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [[UIColor whiteColor] colorWithAlphaComponent:0.07];
+            }
+            return [[UIColor blackColor] colorWithAlphaComponent:0.035];
+        }];
+    }
+    return [[UIColor blackColor] colorWithAlphaComponent:0.035];
+}
+
+static UIColor *PPSettingsHeroBorderColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [[UIColor whiteColor] colorWithAlphaComponent:0.10];
+            }
+            return [[UIColor blackColor] colorWithAlphaComponent:0.055];
+        }];
+    }
+    return [[UIColor blackColor] colorWithAlphaComponent:0.055];
+}
+
+static UIColor *PPSettingsHeroPrimaryTextColor(void)
+{
+    return AppPrimaryTextClr ?: UIColor.labelColor;
+}
+
+static UIColor *PPSettingsHeroSecondaryTextColor(void)
+{
+    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+}
 
 static NSString *PPSettingsLocalizedString(NSString *key, NSString *fallback)
 {
@@ -167,10 +222,20 @@ static NSString *PPSettingsLogoutFailureMessage(NSError *error)
                                      @"We could not log you out right now. Please try again.");
 }
 
+#pragma mark - Location State
+
+typedef NS_ENUM(NSInteger, PPSettingsLocationState) {
+    PPSettingsLocationStateUnset = 0,
+    PPSettingsLocationStateLoading,
+    PPSettingsLocationStateReady,
+    PPSettingsLocationStateDenied
+};
+
 #pragma mark - PPSettingsRowModel
 
 typedef NS_ENUM(NSInteger, PPSettingsRowType) {
-    PPSettingsRowTypeProfile,
+    PPSettingsRowTypeHero,
+    PPSettingsRowTypeLocation,
     PPSettingsRowTypeToggle,
     PPSettingsRowTypeNavigation,
     PPSettingsRowTypeSegment,
@@ -229,21 +294,438 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 @implementation PPSettingsSectionModel
 @end
 
+#pragma mark - PPSettingsHeroCell
+
+@interface PPSettingsHeroCell : UITableViewCell
+@property (nonatomic, strong) UIView *heroCardView;
+@property (nonatomic, strong) UIView *accentLineView;
+@property (nonatomic, strong) UIView *iconShellView;
+@property (nonatomic, strong) UIImageView *iconImageView;
+@property (nonatomic, strong) UILabel *eyebrowLabel;
+@property (nonatomic, strong) UILabel *nameLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIView *actionPillView;
+@property (nonatomic, strong) UILabel *actionLabel;
+@property (nonatomic, strong) UIImageView *scopeIconImageView;
+- (void)configureWithRow:(PPSettingsRowModel *)row;
+- (void)prepareEntranceState;
+- (void)runEntranceAnimationWithDelay:(NSTimeInterval)delay;
+@end
+
+@implementation PPSettingsHeroCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+        self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        self.clipsToBounds = NO;
+        self.contentView.clipsToBounds = NO;
+
+        UIView *card = [UIView new];
+        card.translatesAutoresizingMaskIntoConstraints = NO;
+        card.backgroundColor = AppForgroundColr;
+        card.layer.borderWidth = 1.0;
+        [card pp_setBorderColor:PPSettingsHeroBorderColor()];
+        card.layer.shadowOpacity = 0.00;
+        card.layer.shadowRadius = 0.0;
+        card.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+        [card pp_setShadowColor:[UIColor blackColor]];
+        PPApplyContinuousCorners(card, 34.0);
+        [self.contentView addSubview:card];
+        self.heroCardView = card;
+
+        UIView *accent = [UIView new];
+        accent.translatesAutoresizingMaskIntoConstraints = NO;
+        accent.backgroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
+        PPApplyContinuousCorners(accent, 2.0);
+        [card addSubview:accent];
+        self.accentLineView = accent;
+
+        UIView *iconShell = [UIView new];
+        iconShell.translatesAutoresizingMaskIntoConstraints = NO;
+        iconShell.backgroundColor = PPSettingsHeroSecondarySurfaceColor();
+        iconShell.layer.borderWidth = 1.0;
+        [iconShell pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
+        PPApplyContinuousCorners(iconShell, 38.0);
+        iconShell.clipsToBounds = NO;
+        [card addSubview:iconShell];
+        self.iconShellView = iconShell;
+
+        UIImageView *icon = [UIImageView new];
+        icon.translatesAutoresizingMaskIntoConstraints = NO;
+        icon.contentMode = UIViewContentModeScaleAspectFit;
+        UIImageSymbolConfiguration *heroIconConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:29.0
+                                                            weight:UIImageSymbolWeightSemibold];
+        icon.image = [[UIImage systemImageNamed:@"gearshape.fill"
+                              withConfiguration:heroIconConfig]
+                      imageWithTintColor:AppPrimaryClr ?: UIColor.systemTealColor
+                      renderingMode:UIImageRenderingModeAlwaysOriginal];
+        [iconShell addSubview:icon];
+        self.iconImageView = icon;
+
+        UILabel *eyebrow = [UILabel new];
+        eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
+        eyebrow.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                        scaledFontForFont:([GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold])];
+        eyebrow.adjustsFontForContentSizeCategory = YES;
+        eyebrow.textColor = PPSettingsHeroSecondaryTextColor();
+        eyebrow.numberOfLines = 1;
+        eyebrow.textAlignment = [Language alignmentForCurrentLanguage];
+        [card addSubview:eyebrow];
+        self.eyebrowLabel = eyebrow;
+
+        UILabel *name = [UILabel new];
+        name.translatesAutoresizingMaskIntoConstraints = NO;
+        name.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                     scaledFontForFont:([GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold])];
+        name.adjustsFontForContentSizeCategory = YES;
+        name.textColor = PPSettingsHeroPrimaryTextColor();
+        name.numberOfLines = 2;
+        name.textAlignment = [Language alignmentForCurrentLanguage];
+        [card addSubview:name];
+        self.nameLabel = name;
+
+        UILabel *subtitle = [UILabel new];
+        subtitle.translatesAutoresizingMaskIntoConstraints = NO;
+        subtitle.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                         scaledFontForFont:([GM fontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightRegular])];
+        subtitle.adjustsFontForContentSizeCategory = YES;
+        subtitle.textColor = PPSettingsHeroSecondaryTextColor();
+        subtitle.numberOfLines = 2;
+        subtitle.textAlignment = [Language alignmentForCurrentLanguage];
+        [card addSubview:subtitle];
+        self.subtitleLabel = subtitle;
+
+        UIView *pill = [UIView new];
+        pill.translatesAutoresizingMaskIntoConstraints = NO;
+        pill.backgroundColor = PPSettingsHeroSecondarySurfaceColor();
+        pill.layer.borderWidth = 1.0;
+        [pill pp_setBorderColor:PPSettingsHeroBorderColor()];
+        PPApplyContinuousCorners(pill, 18.0);
+        [card addSubview:pill];
+        self.actionPillView = pill;
+
+        UILabel *action = [UILabel new];
+        action.translatesAutoresizingMaskIntoConstraints = NO;
+        action.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                       scaledFontForFont:([GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold])];
+        action.adjustsFontForContentSizeCategory = YES;
+        action.textColor = AppPrimaryClr ?: UIColor.systemTealColor;
+        action.numberOfLines = 1;
+        action.textAlignment = NSTextAlignmentNatural;
+        [pill addSubview:action];
+        self.actionLabel = action;
+
+        UIImageView *scopeIcon = [UIImageView new];
+        scopeIcon.translatesAutoresizingMaskIntoConstraints = NO;
+        UIImageSymbolConfiguration *scopeIconConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:12.0
+                                                            weight:UIImageSymbolWeightSemibold];
+        scopeIcon.image = [[UIImage systemImageNamed:@"slider.horizontal.3"
+                                   withConfiguration:scopeIconConfig]
+                           imageWithTintColor:AppPrimaryClr ?: UIColor.systemTealColor
+                           renderingMode:UIImageRenderingModeAlwaysOriginal];
+        scopeIcon.contentMode = UIViewContentModeScaleAspectFit;
+        [pill addSubview:scopeIcon];
+        self.scopeIconImageView = scopeIcon;
+
+        UILayoutGuide *textGuide = [UILayoutGuide new];
+        [card addLayoutGuide:textGuide];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [card.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16.0],
+            [card.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:0.0],
+            [card.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:0.0],
+            [card.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:0.0],
+            [card.heightAnchor constraintGreaterThanOrEqualToConstant:152.0],
+
+            [accent.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:18.0],
+            [accent.topAnchor constraintEqualToAnchor:card.topAnchor constant:22.0],
+            [accent.widthAnchor constraintEqualToConstant:3.0],
+            [accent.heightAnchor constraintEqualToConstant:34.0],
+
+            [iconShell.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:26.0],
+            [iconShell.topAnchor constraintEqualToAnchor:card.topAnchor constant:26.0],
+            [iconShell.widthAnchor constraintEqualToConstant:76.0],
+            [iconShell.heightAnchor constraintEqualToConstant:76.0],
+
+            [icon.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
+            [icon.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
+            [icon.widthAnchor constraintEqualToConstant:42.0],
+            [icon.heightAnchor constraintEqualToConstant:42.0],
+
+            [textGuide.leadingAnchor constraintEqualToAnchor:iconShell.trailingAnchor constant:18.0],
+            [textGuide.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-22.0],
+            [textGuide.topAnchor constraintEqualToAnchor:card.topAnchor constant:22.0],
+            [textGuide.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-20.0],
+
+            [eyebrow.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
+            [eyebrow.trailingAnchor constraintEqualToAnchor:textGuide.trailingAnchor],
+            [eyebrow.topAnchor constraintEqualToAnchor:textGuide.topAnchor],
+
+            [name.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
+            [name.trailingAnchor constraintEqualToAnchor:textGuide.trailingAnchor],
+            [name.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:4.0],
+
+            [subtitle.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
+            [subtitle.trailingAnchor constraintEqualToAnchor:textGuide.trailingAnchor],
+            [subtitle.topAnchor constraintEqualToAnchor:name.bottomAnchor constant:6.0],
+
+            [pill.leadingAnchor constraintEqualToAnchor:textGuide.leadingAnchor],
+            [pill.topAnchor constraintEqualToAnchor:subtitle.bottomAnchor constant:14.0],
+            [pill.bottomAnchor constraintEqualToAnchor:textGuide.bottomAnchor],
+            [pill.heightAnchor constraintGreaterThanOrEqualToConstant:36.0],
+
+            [action.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:14.0],
+            [action.topAnchor constraintEqualToAnchor:pill.topAnchor constant:8.0],
+            [action.bottomAnchor constraintEqualToAnchor:pill.bottomAnchor constant:-8.0],
+
+            [scopeIcon.leadingAnchor constraintEqualToAnchor:action.trailingAnchor constant:8.0],
+            [scopeIcon.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-12.0],
+            [scopeIcon.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
+            [scopeIcon.widthAnchor constraintEqualToConstant:16.0],
+            [scopeIcon.heightAnchor constraintEqualToConstant:16.0],
+        ]];
+    }
+    return self;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.heroCardView.alpha = 1.0;
+    self.heroCardView.transform = CGAffineTransformIdentity;
+    self.iconShellView.transform = CGAffineTransformIdentity;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    self.heroCardView.backgroundColor = PPSettingsHeroSurfaceColor();
+    [self.heroCardView pp_setBorderColor:PPSettingsHeroBorderColor()];
+    self.actionPillView.backgroundColor = PPSettingsHeroSecondarySurfaceColor();
+    [self.actionPillView pp_setBorderColor:PPSettingsHeroBorderColor()];
+    self.eyebrowLabel.textColor = PPSettingsHeroSecondaryTextColor();
+    self.nameLabel.textColor = PPSettingsHeroPrimaryTextColor();
+    self.subtitleLabel.textColor = PPSettingsHeroSecondaryTextColor();
+}
+
+- (void)configureWithRow:(PPSettingsRowModel *)row
+{
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroCardView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.eyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.nameLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+
+    self.eyebrowLabel.text = PPSettingsLocalizedString(@"settings_hero_eyebrow", @"Settings");
+    self.nameLabel.text = row.title.length > 0
+        ? row.title
+        : PPSettingsLocalizedString(@"settings_hero_title", @"Tune Pure Pets");
+    self.subtitleLabel.text = row.subtitle.length > 0
+        ? row.subtitle
+        : PPSettingsLocalizedString(@"settings_hero_subtitle",
+                                    @"Control appearance, language, privacy, notifications, legal access, and account safety from one calm place.");
+    self.actionLabel.text = PPSettingsLocalizedString(@"settings_hero_scope",
+                                                      @"Privacy • Appearance • Language");
+
+    UIImageSymbolConfiguration *scopeIconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:12.0
+                                                        weight:UIImageSymbolWeightSemibold];
+    self.scopeIconImageView.image = [[UIImage systemImageNamed:@"slider.horizontal.3"
+                                             withConfiguration:scopeIconConfig]
+                                     imageWithTintColor:AppPrimaryClr ?: UIColor.systemTealColor
+                                     renderingMode:UIImageRenderingModeAlwaysOriginal];
+
+    NSString *accessibilityHint = PPSettingsLocalizedString(@"settings_hero_accessibility_hint",
+                                                            @"Summarizes the settings available on this screen.");
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitStaticText;
+    self.accessibilityLabel = self.nameLabel.text;
+    self.accessibilityValue = self.subtitleLabel.text;
+    self.accessibilityHint = accessibilityHint;
+}
+
+- (void)prepareEntranceState
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroCardView.alpha = 1.0;
+        self.heroCardView.transform = CGAffineTransformIdentity;
+        self.iconShellView.transform = CGAffineTransformIdentity;
+        return;
+    }
+    self.heroCardView.alpha = 0.0;
+    self.heroCardView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 14.0),
+                                CGAffineTransformMakeScale(0.982, 0.982));
+    self.iconShellView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+}
+
+- (void)runEntranceAnimationWithDelay:(NSTimeInterval)delay
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroCardView.alpha = 1.0;
+        self.heroCardView.transform = CGAffineTransformIdentity;
+        self.iconShellView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.42
+                          delay:delay
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.heroCardView.alpha = 1.0;
+        self.heroCardView.transform = CGAffineTransformIdentity;
+        self.iconShellView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    void (^changes)(void) = ^{
+        self.heroCardView.transform = highlighted
+            ? CGAffineTransformMakeScale(0.985, 0.985)
+            : CGAffineTransformIdentity;
+        self.heroCardView.alpha = highlighted ? 0.92 : 1.0;
+    };
+    if (animated) {
+        [UIView animateWithDuration:highlighted ? 0.10 : 0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
+
+@end
+
+#pragma mark - PPSettingsLocationCell
+
+@interface PPSettingsLocationCell : UITableViewCell
+@property (nonatomic, strong) UIImageView *leadingIconView;
+@property (nonatomic, strong) PPHomeLocationTitleView *locationTitleView;
+@property (nonatomic, copy, nullable) dispatch_block_t onActivate;
+- (void)configureWithTitle:(NSString *)title
+               statusColor:(UIColor *)statusColor
+                   loading:(BOOL)loading
+         accessibilityHint:(nullable NSString *)accessibilityHint
+                  animated:(BOOL)animated;
+@end
+
+@implementation PPSettingsLocationCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = AppForgroundColr;
+        self.contentView.backgroundColor = AppForgroundColr;
+        self.layer.cornerRadius = 16.0;
+        self.layer.masksToBounds = YES;
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+        self.isAccessibilityElement = NO;
+        self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+       
+
+        PPHomeLocationTitleView *titleView =
+            [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 8.0, 220.0, 64.0)];
+        titleView.translatesAutoresizingMaskIntoConstraints = NO;
+        titleView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        [titleView addTarget:self
+                      action:@selector(pp_locationTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+        [self.contentView addSubview:titleView];
+        self.locationTitleView = titleView;
+
+        [NSLayoutConstraint activateConstraints:@[
+            
+            
+            [titleView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+            [titleView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:0.0],
+            [titleView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+            [titleView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
+        ]];
+    }
+    return self;
+}
+
+-(void)layoutSubviews
+{
+    [super layoutSubviews];
+    [self.locationTitleView setCorners:16];
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.onActivate = nil;
+    [self.locationTitleView stopLivingMotion];
+    self.locationTitleView.transform = CGAffineTransformIdentity;
+    self.locationTitleView.alpha = 1.0;
+}
+
+- (void)configureWithTitle:(NSString *)title
+               statusColor:(UIColor *)statusColor
+                   loading:(BOOL)loading
+         accessibilityHint:(NSString *)accessibilityHint
+                  animated:(BOOL)animated
+{
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.locationTitleView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.locationTitleView configureWithTitle:title
+                                   statusColor:statusColor
+                                       loading:loading
+                             accessibilityHint:accessibilityHint
+                                      animated:animated];
+}
+
+- (void)pp_locationTapped
+{
+    if (self.onActivate) {
+        self.onActivate();
+    }
+}
+
+@end
+
 #pragma mark - Cell IDs
 
 static NSString *const kSettingsCellID  = @"PPSettingsCell";
-static NSString *const kProfileCellID   = @"PPProfileCell";
+static NSString *const kHeroCellID      = @"PPSettingsHeroCell";
+static NSString *const kLocationCellID  = @"PPSettingsLocationCell";
 static NSString *const kVersionCellID   = @"PPVersionCell";
 static NSString *const kLanguageCellID  = @"PPLanguageCell";
 static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - SettingVC
 
-@interface SettingVC () <UITableViewDataSource, UITableViewDelegate>
+@interface SettingVC () <UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSArray<PPSettingsSectionModel *> *sections;
 @property (nonatomic, strong) NSUserDefaults *prefs;
 @property (nonatomic, assign) BOOL alertAppear;
+@property (nonatomic, assign) BOOL didAnimateSettingsHeroCell;
+@property (nonatomic, strong) CLLocationManager *settingsLocationManager;
+@property (nonatomic, strong) CLGeocoder *settingsGeocoder;
+@property (nonatomic, assign) CLLocationCoordinate2D settingsSelectedCoordinate;
+@property (nonatomic, assign) BOOL hasSettingsSelectedCoordinate;
+@property (nonatomic, copy) NSString *settingsSelectedAreaName;
+@property (nonatomic, assign) PPSettingsLocationState settingsLocationState;
+@property (nonatomic, assign) BOOL hasRequestedSettingsLocationAuthorization;
+@property (nonatomic, assign) BOOL isUsingManualSettingsLocationSelection;
+@property (nonatomic, assign) BOOL isPresentingSettingsLocationSheet;
 @end
 
 @implementation SettingVC
@@ -259,6 +741,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     self.navigationItem.title = kLang(@"Setting");
 
     [self pp_setupTableView];
+    [self pp_configureSettingsLocationStateMachine];
     [self pp_buildSections];
     [self pp_setupNotificationObservers];
     
@@ -269,6 +752,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_configureSettingsLocationStateMachine];
     [self pp_buildSections];
     [self.tableView reloadData];
     [self pp_refreshNotificationStatusAsync];
@@ -276,6 +760,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (void)dealloc
 {
+    self.settingsLocationManager.delegate = nil;
+    [self.settingsGeocoder cancelGeocode];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -290,10 +776,11 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.separatorInset = UIEdgeInsetsMake(0, 56, 0, 0);
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 56.0;
+    self.tableView.estimatedRowHeight = 64.0;
 
     [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kSettingsCellID];
-    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kProfileCellID];
+    [self.tableView registerClass:PPSettingsHeroCell.class forCellReuseIdentifier:kHeroCellID];
+    [self.tableView registerClass:PPSettingsLocationCell.class forCellReuseIdentifier:kLocationCellID];
     [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kVersionCellID];
 
     [self.view addSubview:self.tableView];
@@ -324,21 +811,26 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     NSMutableArray<PPSettingsSectionModel *> *allSections = [NSMutableArray array];
     __weak typeof(self) weakSelf = self;
 
-    // Section: Profile
-    if (PPIsUserLoggedIn) {
-        PPSettingsSectionModel *profileSection = [PPSettingsSectionModel new];
-        PPSettingsRowModel *profileRow = [PPSettingsRowModel new];
-        profileRow.type = PPSettingsRowTypeProfile;
-        id currentUser = PPCurrentUser ?: UserManager.sharedManager.currentUser;
-        profileRow.title = PPSafeString([currentUser valueForKey:@"PPBestDisplayName"]);
-        if (profileRow.title.length == 0) {
-            profileRow.title = PPSafeString([currentUser valueForKey:@"UserName"]);
-        }
-        profileRow.subtitle = kLang(@"ViewProfile") ?: @"View profile";
-        profileRow.onTap = ^{ [weakSelf pp_openProfile]; };
-        profileSection.rows = @[profileRow];
-        [allSections addObject:profileSection];
-    }
+    // Section: Settings Hero
+    PPSettingsSectionModel *heroSection = [PPSettingsSectionModel new];
+    PPSettingsRowModel *heroRow = [PPSettingsRowModel new];
+    heroRow.type = PPSettingsRowTypeHero;
+    heroRow.title = PPSettingsLocalizedString(@"settings_hero_title", @"Tune Pure Pets");
+    heroRow.subtitle =
+        PPSettingsLocalizedString(@"settings_hero_subtitle",
+                                  @"Control appearance, language, privacy, notifications, legal access, and account safety from one calm place.");
+    heroSection.rows = @[heroRow];
+    [allSections addObject:heroSection];
+
+    // Section: Home Location
+    PPSettingsSectionModel *locationSection = [PPSettingsSectionModel new];
+    PPSettingsRowModel *locationRow = [PPSettingsRowModel new];
+    locationRow.type = PPSettingsRowTypeLocation;
+    locationRow.title = [self pp_settingsLocationTitleText];
+    locationRow.subtitle = [self pp_settingsLocationActionTitle] ?: @"";
+    locationRow.onTap = ^{ [weakSelf pp_presentSettingsLocationOptions]; };
+    locationSection.rows = @[locationRow];
+    [allSections addObject:locationSection];
 
     // Section: Appearance (separate section with 3-button theme picker)
     PPSettingsSectionModel *appearanceSection = [PPSettingsSectionModel new];
@@ -506,6 +998,569 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     self.sections = [allSections copy];
 }
 
+#pragma mark - Home Location Section
+
+- (CLAuthorizationStatus)pp_currentSettingsLocationAuthorizationStatus
+{
+    if (@available(iOS 14.0, *)) {
+        return self.settingsLocationManager.authorizationStatus;
+    }
+    return [CLLocationManager authorizationStatus];
+}
+
+- (void)pp_configureSettingsLocationStateMachine
+{
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    self.settingsSelectedCoordinate = kCLLocationCoordinate2DInvalid;
+    self.hasSettingsSelectedCoordinate = NO;
+    self.settingsSelectedAreaName = @"";
+
+    if ([defaults objectForKey:PPSettingsNearbySelectedLatitudeKey] &&
+        [defaults objectForKey:PPSettingsNearbySelectedLongitudeKey]) {
+        CLLocationCoordinate2D persisted =
+            CLLocationCoordinate2DMake([defaults doubleForKey:PPSettingsNearbySelectedLatitudeKey],
+                                       [defaults doubleForKey:PPSettingsNearbySelectedLongitudeKey]);
+        if (CLLocationCoordinate2DIsValid(persisted) &&
+            !(fabs(persisted.latitude) < DBL_EPSILON && fabs(persisted.longitude) < DBL_EPSILON)) {
+            self.settingsSelectedCoordinate = persisted;
+            self.hasSettingsSelectedCoordinate = YES;
+            self.settingsSelectedAreaName =
+                [defaults stringForKey:PPSettingsNearbySelectedAreaNameKey] ?: @"";
+        }
+    }
+
+    if (!self.settingsLocationManager) {
+        self.settingsLocationManager = [[CLLocationManager alloc] init];
+        self.settingsLocationManager.delegate = self;
+        self.settingsLocationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
+        self.settingsLocationManager.distanceFilter = 75.0;
+    }
+    if (!self.settingsGeocoder) {
+        self.settingsGeocoder = [[CLGeocoder alloc] init];
+    }
+
+    [self pp_updateSettingsLocationStateForAuthorizationStatus:[self pp_currentSettingsLocationAuthorizationStatus]];
+}
+
+- (void)pp_updateSettingsLocationStateForAuthorizationStatus:(CLAuthorizationStatus)status
+{
+    if (status == kCLAuthorizationStatusDenied ||
+        status == kCLAuthorizationStatusRestricted) {
+        self.settingsLocationState = self.hasSettingsSelectedCoordinate
+            ? PPSettingsLocationStateReady
+            : PPSettingsLocationStateDenied;
+        [self pp_refreshSettingsLocationRowAnimated:YES];
+        return;
+    }
+
+    switch (status) {
+        case kCLAuthorizationStatusAuthorizedAlways:
+        case kCLAuthorizationStatusAuthorizedWhenInUse:
+            self.settingsLocationState = (self.hasSettingsSelectedCoordinate ||
+                                          self.isUsingManualSettingsLocationSelection)
+                ? PPSettingsLocationStateReady
+                : PPSettingsLocationStateLoading;
+            if (!self.isUsingManualSettingsLocationSelection) {
+                [self pp_requestSettingsCurrentLocationIfNeeded];
+            }
+            break;
+        case kCLAuthorizationStatusNotDetermined:
+            self.settingsLocationState = self.hasSettingsSelectedCoordinate
+                ? PPSettingsLocationStateReady
+                : PPSettingsLocationStateLoading;
+            if (!self.hasRequestedSettingsLocationAuthorization) {
+                self.hasRequestedSettingsLocationAuthorization = YES;
+                [self.settingsLocationManager requestWhenInUseAuthorization];
+            }
+            break;
+        case kCLAuthorizationStatusDenied:
+        case kCLAuthorizationStatusRestricted:
+            self.settingsLocationState = self.hasSettingsSelectedCoordinate
+                ? PPSettingsLocationStateReady
+                : PPSettingsLocationStateDenied;
+            break;
+    }
+
+    [self pp_refreshSettingsLocationRowAnimated:YES];
+}
+
+- (void)pp_requestSettingsCurrentLocationIfNeeded
+{
+    if (!self.settingsLocationManager || self.isUsingManualSettingsLocationSelection) {
+        return;
+    }
+    [self.settingsLocationManager requestLocation];
+}
+
+- (NSString *)pp_settingsLocationTitleText
+{
+    switch (self.settingsLocationState) {
+        case PPSettingsLocationStateLoading:
+            return kLang(@"Loading...") ?: @"Loading...";
+        case PPSettingsLocationStateDenied:
+            return kLang(@"Location permission denied") ?: @"Location permission denied";
+        case PPSettingsLocationStateReady:
+            if (self.settingsSelectedAreaName.length > 0) {
+                return self.settingsSelectedAreaName;
+            }
+            return kLang(@"Select your location") ?: @"Select your location";
+        case PPSettingsLocationStateUnset:
+        default:
+            return kLang(@"Select your location") ?: @"Select your location";
+    }
+}
+
+- (nullable NSString *)pp_settingsLocationActionTitle
+{
+    switch (self.settingsLocationState) {
+        case PPSettingsLocationStateDenied:
+            return kLang(@"Open Settings") ?: @"Open Settings";
+        case PPSettingsLocationStateReady:
+            return kLang(@"Hero_ChangeArea") ?: @"Change area";
+        case PPSettingsLocationStateUnset:
+            return kLang(@"Hero_LocationCTA") ?: @"Choose area";
+        case PPSettingsLocationStateLoading:
+        default:
+            return nil;
+    }
+}
+
+- (UIColor *)pp_settingsLocationStatusColor
+{
+    switch (self.settingsLocationState) {
+        case PPSettingsLocationStateDenied:
+            return UIColor.systemRedColor;
+        case PPSettingsLocationStateLoading:
+            return UIColor.systemOrangeColor;
+        case PPSettingsLocationStateReady:
+            return AppPrimaryClr ?: UIColor.systemGreenColor;
+        case PPSettingsLocationStateUnset:
+        default:
+            return AppSecondaryTextClr ?: UIColor.systemGrayColor;
+    }
+}
+
+- (BOOL)pp_settingsLocationShowsLoading
+{
+    return self.settingsLocationState == PPSettingsLocationStateLoading;
+}
+
+- (NSString *)pp_settingsLocationAccessibilityHint
+{
+    NSString *actionTitle = [self pp_settingsLocationActionTitle];
+    NSString *safeActionTitle = PPSafeString(actionTitle);
+    if (safeActionTitle.length > 0) {
+        return safeActionTitle;
+    }
+    return kLang(@"Hero_LocationCTA") ?: @"Choose area";
+}
+
+- (NSString *)pp_settingsLocationCurrentSubtitle
+{
+    NSString *currentSubtitleKey = @"home_location_sheet_current_subtitle_unset";
+    if (self.settingsLocationState == PPSettingsLocationStateDenied) {
+        currentSubtitleKey = @"home_location_sheet_current_subtitle_denied";
+    } else if (self.isUsingManualSettingsLocationSelection) {
+        currentSubtitleKey = @"home_location_sheet_current_subtitle_manual";
+    } else if (self.settingsLocationState == PPSettingsLocationStateReady) {
+        currentSubtitleKey = @"home_location_sheet_current_subtitle_auto";
+    }
+    return kLang(currentSubtitleKey) ?: @"";
+}
+
+- (void)pp_presentSettingsLocationOptions
+{
+    if (self.isPresentingSettingsLocationSheet) {
+        return;
+    }
+    if ([self.presentedViewController isKindOfClass:PPHomeLocationSheetViewController.class]) {
+        return;
+    }
+    if (self.presentedViewController || self.isBeingPresented || self.isBeingDismissed) {
+        return;
+    }
+
+    self.isPresentingSettingsLocationSheet = YES;
+    PPHomeLocationSheetViewController *sheet = [[PPHomeLocationSheetViewController alloc] init];
+    sheet.sheetTitleText = kLang(@"home_location_sheet_title") ?: @"Choose your smart location";
+    sheet.sheetSubtitleText = kLang(@"home_location_sheet_subtitle") ?: @"Switch between your live GPS position and recent areas quickly, while keeping nearby discovery smooth.";
+    sheet.currentLocationTitle = [self pp_settingsLocationTitleText];
+    sheet.currentLocationSubtitle = [self pp_settingsLocationCurrentSubtitle];
+    sheet.showsUseCurrentLocationAction = (self.settingsLocationState != PPSettingsLocationStateDenied);
+    sheet.showsOpenSettingsAction = (self.settingsLocationState == PPSettingsLocationStateDenied);
+    sheet.recentLocations = [self pp_recentSettingsLocationRecords];
+
+    __weak typeof(self) weakSelf = self;
+    sheet.onUseCurrentLocation = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_switchSettingsLocationBackToAutomatic];
+    };
+    sheet.onChangeArea = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_openSettingsLocationPicker];
+    };
+    sheet.onOpenSettings = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_openSettingsLocationSettings];
+    };
+    sheet.onSelectRecentLocation = ^(NSDictionary *locationRecord) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_applySettingsNearbyLocationRecord:locationRecord];
+    };
+
+    [self pp_emitSettingsSelectionHaptic];
+    [PPFunc presentFloatingSheetFrom:self sheetVC:sheet detentStyle:PPSheetDetentStyle80 withCompletion:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.isPresentingSettingsLocationSheet = NO;
+    }];
+}
+
+- (void)pp_switchSettingsLocationBackToAutomatic
+{
+    self.isUsingManualSettingsLocationSelection = NO;
+    [self pp_emitSettingsSelectionHaptic];
+    if (!self.settingsLocationManager) {
+        [self pp_configureSettingsLocationStateMachine];
+        return;
+    }
+    [self pp_updateSettingsLocationStateForAuthorizationStatus:[self pp_currentSettingsLocationAuthorizationStatus]];
+}
+
+- (void)pp_openSettingsLocationSettings
+{
+    NSURL *settingsURL = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+    if ([[UIApplication sharedApplication] canOpenURL:settingsURL]) {
+        [[UIApplication sharedApplication] openURL:settingsURL options:@{} completionHandler:nil];
+    }
+}
+
+- (void)pp_openSettingsLocationPicker
+{
+    LocationPickerViewController *picker = [[LocationPickerViewController alloc] init];
+    picker.hidesBottomBarWhenPushed = YES;
+    if (self.hasSettingsSelectedCoordinate &&
+        CLLocationCoordinate2DIsValid(self.settingsSelectedCoordinate)) {
+        picker.initialCoordinate = self.settingsSelectedCoordinate;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    void (^applyPickedCoordinate)(CLLocationCoordinate2D, NSString *) =
+    ^(CLLocationCoordinate2D coordinate, NSString *resolvedTitle) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        if (!CLLocationCoordinate2DIsValid(coordinate) ||
+            (fabs(coordinate.latitude) < DBL_EPSILON && fabs(coordinate.longitude) < DBL_EPSILON)) {
+            return;
+        }
+
+        NSString *resolvedAreaName = PPSafeString(resolvedTitle);
+        if (resolvedAreaName.length == 0) {
+            resolvedAreaName = kLang(@"Select your location") ?: @"Select your location";
+        }
+        self.isUsingManualSettingsLocationSelection = YES;
+        self.settingsSelectedCoordinate = coordinate;
+        self.hasSettingsSelectedCoordinate = YES;
+        self.settingsSelectedAreaName = resolvedAreaName;
+        self.settingsLocationState = PPSettingsLocationStateReady;
+        [self pp_recordRecentSettingsLocationCoordinate:coordinate
+                                                  title:resolvedAreaName
+                                                 source:@"manual"];
+        [self pp_persistSettingsLocationIfNeeded];
+        [self pp_refreshSettingsLocationRowAnimated:YES];
+        [self pp_emitSettingsSelectionHaptic];
+    };
+
+    picker.onLocationConfirmed = ^(GMSAddress *gmsAddress) {
+        if (!gmsAddress) return;
+        NSString *resolvedAreaName = [LocationPickerViewController titleFromAddress:gmsAddress] ?: @"";
+        if (resolvedAreaName.length == 0 && gmsAddress.lines.count > 0) {
+            resolvedAreaName = [gmsAddress.lines componentsJoinedByString:@", "] ?: @"";
+        }
+        if (resolvedAreaName.length == 0) {
+            resolvedAreaName = gmsAddress.country ?: @"";
+        }
+        applyPickedCoordinate(gmsAddress.coordinate, resolvedAreaName);
+    };
+    picker.onCoordinateConfirmed = ^(CLLocationCoordinate2D coordinate, NSString *locationTitle) {
+        applyPickedCoordinate(coordinate, locationTitle);
+    };
+
+    if (self.navigationController) {
+        [self.navigationController pushViewController:picker animated:YES];
+    } else {
+        picker.view.layer.cornerRadius = 42.0;
+        [PPFunc presentFloatingSheetFrom:self sheetVC:picker detentStyle:PPSheetDetentStyle80];
+    }
+}
+
+- (NSArray<NSDictionary *> *)pp_recentSettingsLocationRecords
+{
+    id savedRecords =
+        [NSUserDefaults.standardUserDefaults objectForKey:PPSettingsNearbyRecentLocationsKey];
+    if (![savedRecords isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+
+    NSMutableArray<NSDictionary *> *records = [NSMutableArray array];
+    for (NSDictionary *record in (NSArray *)savedRecords) {
+        if (![record isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+
+        NSNumber *latitude = record[@"latitude"];
+        NSNumber *longitude = record[@"longitude"];
+        NSString *title = PPSafeString(record[@"title"]);
+        CLLocationCoordinate2D coordinate =
+            CLLocationCoordinate2DMake(latitude.doubleValue, longitude.doubleValue);
+        if (!CLLocationCoordinate2DIsValid(coordinate) || title.length == 0) {
+            continue;
+        }
+        [records addObject:record];
+    }
+
+    [records sortUsingComparator:^NSComparisonResult(NSDictionary *obj1, NSDictionary *obj2) {
+        NSNumber *time1 = obj1[@"timestamp"];
+        NSNumber *time2 = obj2[@"timestamp"];
+        return [time2 compare:time1];
+    }];
+
+    if (records.count > PPSettingsNearbyRecentLocationsLimit) {
+        return [records subarrayWithRange:NSMakeRange(0, PPSettingsNearbyRecentLocationsLimit)];
+    }
+    return records.copy;
+}
+
+- (void)pp_recordRecentSettingsLocationCoordinate:(CLLocationCoordinate2D)coordinate
+                                            title:(NSString *)title
+                                           source:(NSString *)source
+{
+    if (!CLLocationCoordinate2DIsValid(coordinate)) {
+        return;
+    }
+
+    NSString *safeTitle = PPSafeString(title);
+    if (safeTitle.length == 0) {
+        return;
+    }
+
+    NSMutableArray<NSDictionary *> *records =
+        [[self pp_recentSettingsLocationRecords] mutableCopy] ?: [NSMutableArray array];
+    NSMutableArray<NSDictionary *> *filtered = [NSMutableArray array];
+
+    for (NSDictionary *record in records) {
+        NSNumber *latitude = record[@"latitude"];
+        NSNumber *longitude = record[@"longitude"];
+        NSString *existingTitle = PPSafeString(record[@"title"]);
+        BOOL sameTitle = [existingTitle isEqualToString:safeTitle];
+        BOOL sameCoordinate =
+            fabs(latitude.doubleValue - coordinate.latitude) < 0.0001 &&
+            fabs(longitude.doubleValue - coordinate.longitude) < 0.0001;
+        if (sameTitle || sameCoordinate) {
+            continue;
+        }
+        [filtered addObject:record];
+    }
+
+    NSDictionary *newRecord = @{
+        @"latitude" : @(coordinate.latitude),
+        @"longitude" : @(coordinate.longitude),
+        @"title" : safeTitle,
+        @"source" : PPSafeString(source),
+        @"timestamp" : @([[NSDate date] timeIntervalSince1970])
+    };
+    [filtered insertObject:newRecord atIndex:0];
+
+    if (filtered.count > PPSettingsNearbyRecentLocationsLimit) {
+        [filtered removeObjectsInRange:NSMakeRange(PPSettingsNearbyRecentLocationsLimit,
+                                                   filtered.count - PPSettingsNearbyRecentLocationsLimit)];
+    }
+
+    [NSUserDefaults.standardUserDefaults setObject:filtered.copy
+                                            forKey:PPSettingsNearbyRecentLocationsKey];
+    [NSUserDefaults.standardUserDefaults synchronize];
+}
+
+- (void)pp_applySettingsNearbyLocationRecord:(NSDictionary *)record
+{
+    if (![record isKindOfClass:NSDictionary.class]) {
+        return;
+    }
+
+    NSNumber *latitude = record[@"latitude"];
+    NSNumber *longitude = record[@"longitude"];
+    NSString *title = PPSafeString(record[@"title"]);
+    CLLocationCoordinate2D coordinate =
+        CLLocationCoordinate2DMake(latitude.doubleValue, longitude.doubleValue);
+    if (!CLLocationCoordinate2DIsValid(coordinate) || title.length == 0) {
+        return;
+    }
+
+    self.isUsingManualSettingsLocationSelection = YES;
+    self.settingsSelectedCoordinate = coordinate;
+    self.hasSettingsSelectedCoordinate = YES;
+    self.settingsSelectedAreaName = title;
+    self.settingsLocationState = PPSettingsLocationStateReady;
+    [self pp_recordRecentSettingsLocationCoordinate:coordinate title:title source:@"recent"];
+    [self pp_persistSettingsLocationIfNeeded];
+    [self pp_refreshSettingsLocationRowAnimated:YES];
+    [self pp_emitSettingsSelectionHaptic];
+}
+
+- (void)pp_persistSettingsLocationIfNeeded
+{
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if (self.hasSettingsSelectedCoordinate &&
+        CLLocationCoordinate2DIsValid(self.settingsSelectedCoordinate) &&
+        isfinite(self.settingsSelectedCoordinate.latitude) &&
+        isfinite(self.settingsSelectedCoordinate.longitude)) {
+        [defaults setDouble:self.settingsSelectedCoordinate.latitude
+                     forKey:PPSettingsNearbySelectedLatitudeKey];
+        [defaults setDouble:self.settingsSelectedCoordinate.longitude
+                     forKey:PPSettingsNearbySelectedLongitudeKey];
+        [defaults setObject:self.settingsSelectedAreaName ?: @""
+                     forKey:PPSettingsNearbySelectedAreaNameKey];
+    } else {
+        [defaults removeObjectForKey:PPSettingsNearbySelectedLatitudeKey];
+        [defaults removeObjectForKey:PPSettingsNearbySelectedLongitudeKey];
+        [defaults removeObjectForKey:PPSettingsNearbySelectedAreaNameKey];
+    }
+    [defaults synchronize];
+}
+
+- (NSIndexPath *)pp_indexPathForRowType:(PPSettingsRowType)rowType
+{
+    for (NSInteger section = 0; section < (NSInteger)self.sections.count; section++) {
+        NSArray<PPSettingsRowModel *> *rows = self.sections[section].rows;
+        for (NSInteger row = 0; row < (NSInteger)rows.count; row++) {
+            if (rows[row].type == rowType) {
+                return [NSIndexPath indexPathForRow:row inSection:section];
+            }
+        }
+    }
+    return nil;
+}
+
+- (void)pp_refreshSettingsLocationRowAnimated:(BOOL)animated
+{
+    NSIndexPath *indexPath = [self pp_indexPathForRowType:PPSettingsRowTypeLocation];
+    if (!indexPath) {
+        return;
+    }
+
+    PPSettingsLocationCell *cell =
+        [self.tableView cellForRowAtIndexPath:indexPath];
+    if ([cell isKindOfClass:PPSettingsLocationCell.class]) {
+        [cell configureWithTitle:[self pp_settingsLocationTitleText]
+                     statusColor:[self pp_settingsLocationStatusColor]
+                         loading:[self pp_settingsLocationShowsLoading]
+               accessibilityHint:[self pp_settingsLocationAccessibilityHint]
+                        animated:animated];
+    }
+}
+
+- (void)pp_emitSettingsSelectionHaptic
+{
+    UISelectionFeedbackGenerator *generator = [[UISelectionFeedbackGenerator alloc] init];
+    [generator prepare];
+    [generator selectionChanged];
+}
+
+- (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager API_AVAILABLE(ios(14.0))
+{
+    if (manager != self.settingsLocationManager) {
+        return;
+    }
+    [self pp_updateSettingsLocationStateForAuthorizationStatus:manager.authorizationStatus];
+}
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
+{
+    if (manager != self.settingsLocationManager) {
+        return;
+    }
+    [self pp_updateSettingsLocationStateForAuthorizationStatus:status];
+}
+#pragma clang diagnostic pop
+
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
+{
+    if (manager != self.settingsLocationManager ||
+        self.isUsingManualSettingsLocationSelection) {
+        return;
+    }
+
+    CLLocation *latest = locations.lastObject;
+    if (!latest) {
+        return;
+    }
+
+    CLLocationCoordinate2D coordinate = latest.coordinate;
+    if (!CLLocationCoordinate2DIsValid(coordinate) ||
+        (fabs(coordinate.latitude) < DBL_EPSILON && fabs(coordinate.longitude) < DBL_EPSILON)) {
+        return;
+    }
+
+    self.settingsSelectedCoordinate = coordinate;
+    self.hasSettingsSelectedCoordinate = YES;
+
+    [self.settingsGeocoder cancelGeocode];
+    __weak typeof(self) weakSelf = self;
+    CLLocation *location =
+        [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
+    [self.settingsGeocoder reverseGeocodeLocation:location completionHandler:^(NSArray<CLPlacemark *> * _Nullable placemarks,
+                                                                               NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            NSString *area = self.settingsSelectedAreaName;
+            CLPlacemark *placemark = placemarks.firstObject;
+            if (!error && placemark) {
+                NSString *locality = placemark.locality ?: placemark.subLocality;
+                NSString *admin = placemark.administrativeArea;
+                if (locality.length > 0 && admin.length > 0 && ![locality isEqualToString:admin]) {
+                    area = [NSString stringWithFormat:@"%@, %@", locality, admin];
+                } else if (locality.length > 0) {
+                    area = locality;
+                } else if (admin.length > 0) {
+                    area = admin;
+                }
+            }
+
+            if (area.length == 0) {
+                area = kLang(@"Select your location") ?: @"Select your location";
+            }
+
+            self.settingsSelectedCoordinate = coordinate;
+            self.settingsSelectedAreaName = area;
+            self.hasSettingsSelectedCoordinate = YES;
+            self.settingsLocationState = PPSettingsLocationStateReady;
+            [self pp_recordRecentSettingsLocationCoordinate:coordinate title:area source:@"gps"];
+            [self pp_persistSettingsLocationIfNeeded];
+            [self pp_refreshSettingsLocationRowAnimated:YES];
+        });
+    }];
+}
+
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error
+{
+    if (manager != self.settingsLocationManager) {
+        return;
+    }
+    NSLog(@"[SettingsLocation] location failed: %@", error.localizedDescription ?: @"Unknown error");
+    if (!self.hasSettingsSelectedCoordinate) {
+        self.settingsLocationState = PPSettingsLocationStateDenied;
+        [self pp_refreshSettingsLocationRowAnimated:YES];
+    }
+}
+
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -522,8 +1577,10 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 {
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
     switch (row.type) {
-        case PPSettingsRowTypeProfile:
-            return [self pp_profileCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeHero:
+            return [self pp_heroCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeLocation:
+            return [self pp_locationCellForRow:row tableView:tableView];
         case PPSettingsRowTypeVersion:
             return [self pp_versionCellForRow:row tableView:tableView];
         case PPSettingsRowTypeToggle:
@@ -543,69 +1600,43 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - Cell Builders
 
-- (UITableViewCell *)pp_profileCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+- (UITableViewCell *)pp_heroCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
 {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:kProfileCellID];
-    cell.textLabel.text = row.title.length > 0 ? row.title : (kLang(@"Guest") ?: @"Guest");
-    cell.textLabel.font = [GM boldFontWithSize:18];
-    cell.textLabel.textColor = AppPrimaryTextClr;
-    cell.detailTextLabel.text = row.subtitle;
-    cell.detailTextLabel.font = [GM fontWithSize:13];
-    cell.detailTextLabel.textColor = AppSecondaryTextClr;
-    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
-    cell.backgroundColor = AppForgroundColr;
-
-    CGFloat avatarSize = 40.0;
-    UIImageView *avatarView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, avatarSize, avatarSize)];
-    avatarView.contentMode = UIViewContentModeScaleAspectFill;
-    avatarView.layer.cornerRadius = avatarSize / 2.0;
-    avatarView.clipsToBounds = YES;
-    avatarView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
-
-    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:40];
-    avatarView.image = placeholder;
-
-    id currentUser = PPCurrentUser ?: UserManager.sharedManager.currentUser;
-    NSURL *avatarURL = [currentUser valueForKey:@"UserImageUrl"];
-    if (avatarURL) {
-        [avatarView sd_setImageWithURL:avatarURL
-                      placeholderImage:placeholder
-                               options:SDWebImageRetryFailed
-                             completed:nil];
-        avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    PPSettingsHeroCell *cell =
+        [tableView dequeueReusableCellWithIdentifier:kHeroCellID];
+    if (![cell isKindOfClass:PPSettingsHeroCell.class]) {
+        cell = [[PPSettingsHeroCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                         reuseIdentifier:kHeroCellID];
     }
-
-    cell.imageView.image = placeholder;
-    // Force layout to get imageView frame, then replace with custom avatar
-    [cell layoutIfNeeded];
-    for (UIView *subview in cell.contentView.subviews) {
-        if (subview == cell.imageView) {
-            avatarView.frame = CGRectMake(0, 0, avatarSize, avatarSize);
-            cell.imageView.image = [self pp_transparentImageOfSize:CGSizeMake(avatarSize, avatarSize)];
-            avatarView.tag = 9999;
-            UIView *existing = [cell.contentView viewWithTag:9999];
-            [existing removeFromSuperview];
-            avatarView.translatesAutoresizingMaskIntoConstraints = NO;
-            [cell.contentView addSubview:avatarView];
-            [NSLayoutConstraint activateConstraints:@[
-                [avatarView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:16.0],
-                [avatarView.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
-                [avatarView.widthAnchor constraintEqualToConstant:avatarSize],
-                [avatarView.heightAnchor constraintEqualToConstant:avatarSize]
-            ]];
-            break;
-        }
-    }
-
+    [cell configureWithRow:row];
     return cell;
 }
 
-- (UIImage *)pp_transparentImageOfSize:(CGSize)size
+- (UITableViewCell *)pp_locationCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
 {
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return img;
+    PPSettingsLocationCell *cell =
+        [tableView dequeueReusableCellWithIdentifier:kLocationCellID];
+    if (![cell isKindOfClass:PPSettingsLocationCell.class]) {
+        cell = [[PPSettingsLocationCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                             reuseIdentifier:kLocationCellID];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    cell.onActivate = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_presentSettingsLocationOptions];
+    };
+    [cell configureWithTitle:[self pp_settingsLocationTitleText]
+                 statusColor:[self pp_settingsLocationStatusColor]
+                     loading:[self pp_settingsLocationShowsLoading]
+           accessibilityHint:[self pp_settingsLocationAccessibilityHint]
+                    animated:NO];
+    
+    // Set the leading icon
+    cell.leadingIconView.image = [self pp_circularIconImageForName:@"location.fill" tint:AppPrimaryClr background:[UIColor systemBackgroundColor]];
+    
+    return cell;
 }
 
 - (UITableViewCell *)pp_toggleCellForRow:(PPSettingsRowModel *)row
@@ -769,8 +1800,17 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 {
     if (section < 0 || section >= (NSInteger)self.sections.count) return nil;
 
-    NSString *title = self.sections[section].headerTitle;
-    if (title.length == 0) return nil;
+    PPSettingsSectionModel *sectionModel = self.sections[section];
+    NSString *title = sectionModel.headerTitle;
+    
+    if (title.length == 0) {
+        if (sectionModel.rows.count > 0 && sectionModel.rows.firstObject.type == PPSettingsRowTypeLocation) {
+            UIView *spacer = [[UIView alloc] initWithFrame:CGRectZero];
+            spacer.backgroundColor = UIColor.clearColor;
+            return spacer;
+        }
+        return nil;
+    }
 
     UIView *container = [[UIView alloc] initWithFrame:CGRectZero];
     container.backgroundColor = UIColor.clearColor;
@@ -800,7 +1840,13 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
     if (section < 0 || section >= (NSInteger)self.sections.count) return CGFLOAT_MIN;
-    return self.sections[section].headerTitle.length > 0 ? 44.0 : CGFLOAT_MIN;
+    PPSettingsSectionModel *sectionModel = self.sections[section];
+    if (sectionModel.headerTitle.length > 0) return 44.0;
+    
+    if (sectionModel.rows.count > 0 && sectionModel.rows.firstObject.type == PPSettingsRowTypeLocation) {
+        return 20.0;
+    }
+    return CGFLOAT_MIN;
 }
 
 - (nullable UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
@@ -882,8 +1928,18 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 - (UIImage *)pp_iconImageForName:(NSString *)name tint:(UIColor *)tint background:(UIColor *)background
 {
+    return [self pp_iconImageForName:name tint:tint background:background isCircle:NO];
+}
+
+- (UIImage *)pp_circularIconImageForName:(NSString *)name tint:(UIColor *)tint background:(UIColor *)background
+{
+    return [self pp_iconImageForName:name tint:tint background:background isCircle:YES];
+}
+
+- (UIImage *)pp_iconImageForName:(NSString *)name tint:(UIColor *)tint background:(UIColor *)background isCircle:(BOOL)isCircle
+{
     CGFloat size = 30.0;
-    CGFloat cornerRadius = 7.0;
+    CGFloat cornerRadius = isCircle ? (size / 2.0) : 7.0;
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), NO, 0);
     UIBezierPath *roundedRect = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, size, size)
                                                           cornerRadius:cornerRadius];
@@ -907,6 +1963,33 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - UITableViewDelegate
 
+- (void)tableView:(UITableView *)tableView
+  willDisplayCell:(UITableViewCell *)cell
+forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section >= (NSInteger)self.sections.count ||
+        indexPath.row >= (NSInteger)self.sections[indexPath.section].rows.count) {
+        return;
+    }
+    PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    if (row.type != PPSettingsRowTypeHero ||
+        ![cell isKindOfClass:PPSettingsHeroCell.class] ||
+        self.didAnimateSettingsHeroCell) {
+        if (row.type == PPSettingsRowTypeLocation &&
+            [cell isKindOfClass:PPSettingsLocationCell.class]) {
+            PPSettingsLocationCell *locationCell = (PPSettingsLocationCell *)cell;
+            [locationCell.locationTitleView playEntranceIfNeeded];
+            [locationCell.locationTitleView startLivingMotion];
+        }
+        return;
+    }
+
+    self.didAnimateSettingsHeroCell = YES;
+    PPSettingsHeroCell *heroCell = (PPSettingsHeroCell *)cell;
+    [heroCell prepareEntranceState];
+    [heroCell runEntranceAnimationWithDelay:0.04];
+}
+
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
@@ -928,11 +2011,22 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
-    if (row.type == PPSettingsRowTypeProfile) return 72.0;
+    if (row.type == PPSettingsRowTypeHero) return UITableViewAutomaticDimension;
+    if (row.type == PPSettingsRowTypeLocation) return 52;
     if (row.type == PPSettingsRowTypeVersion) return 44.0;
     if (row.type == PPSettingsRowTypeLanguage) return 60.0;
     if (row.type == PPSettingsRowTypeThemePicker) return 96.0;
     return 52.0;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    if (row.type == PPSettingsRowTypeHero) return 166.0;
+    if (row.type == PPSettingsRowTypeLocation) return 56.0;
+    if (row.type == PPSettingsRowTypeThemePicker) return 96.0;
+    if (row.type == PPSettingsRowTypeLanguage) return 60.0;
+    return 56.0;
 }
 
 #pragma mark - Control Actions
@@ -967,14 +2061,6 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
             }
         }
     }
-}
-
-#pragma mark - Profile
-
-- (void)pp_openProfile
-{
-    ProfileVC *profileVC = [[ProfileVC alloc] init];
-    [self.navigationController pushViewController:profileVC animated:YES];
 }
 
 #pragma mark - Theme

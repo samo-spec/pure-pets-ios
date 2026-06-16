@@ -19,6 +19,9 @@
 #import "PPAnalytics.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPModernAvatarRenderer.h"
+#import "SellerProfileVC.h"
+
+static NSString * const PPAccessoryOfficialSupportUserID = @"PUIDPOFFICILAL20262214";
 
 // ─────────────────────────────────────────────────────────
 // MARK: - Enterprise Design System Constants
@@ -32,14 +35,14 @@ static const CGFloat kAVSpace24              = 24.0;
 static const CGFloat kAVSpace32              = 32.0;
 
 // Border Radius
-static const CGFloat kAVCardCornerRadius     = 24.0;    // Large section surfaces
+static const CGFloat kAVCardCornerRadius     = 32.0;    // Large section surfaces
 static const CGFloat kAVButtonCornerRadius   = 18.0;    // Rounded action pills
 static const CGFloat kAVBadgeCornerRadius    = 999.0;   // Badges: pill
 static const CGFloat kAVHeroCornerRadius     = 28.0;   // Modern rounded hero corners
 static const CGFloat kAVDetailRowCorner      = 18.0;    // Detail row bg
 
 // Layout
-static const CGFloat kAVSectionInset         = 20.0;    // horizontal screen margin
+static const CGFloat kAVSectionInset         = 16.0;    // horizontal screen margin
 static const CGFloat kAVCardPadding          = 20.0;    // inner section padding
 static const CGFloat kAVActionBarHeight      = 50.0;    // action button height
 static const CGFloat kAVDetailRowMinHeight   = 66.0;    // minimum detail row height
@@ -49,7 +52,7 @@ static const CGFloat kAVSuggestionBottomInset = 32.0;   // breathing room below 
 static const CGFloat kAVSellerAvatarSize     = 64.0;    // seller identity avatar size
 static const CGFloat kAVSellerAvatarRingSize = 74.0;    // premium avatar shell size
 static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button height
-static const CGFloat kAVSellerStatusPillHeight = 28.0;  // seller badge pill height
+static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill height
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -57,7 +60,23 @@ static const CGFloat kAVCardShadowRadius     = 6.0;
 static const CGFloat kAVCardShadowOffsetY    = 3.0;
 static const CGFloat kAVSectionBorderWidth   = 1.0;
 
-@interface AccessViewerVC()<UICollectionViewDataSource,UICollectionViewDelegate,CartQuantityUpdateDelegate,UICollectionViewDelegateFlowLayout>
+static UIColor *AVSellerCardInkColor(void) {
+    return AppPageColor() ?: [UIColor colorWithWhite:0.08 alpha:1.0];
+}
+
+static UIColor *AVSellerCardAccentColor(void) {
+    return [AppPrimaryClrDarker colorWithAlphaComponent:1.0];
+}
+
+static UIColor *AVSellerCardGoldColor(void) {
+    return [UIColor colorWithRed:0.78 green:0.62 blue:0.30 alpha:1.0];
+}
+
+static UIColor *AVSellerCardSurfaceColor(void) {
+    return AppForgroundColr ?: UIColor.whiteColor;
+}
+
+@interface AccessViewerVC()<UICollectionViewDataSource,UICollectionViewDelegate,CartQuantityUpdateDelegate,UICollectionViewDelegateFlowLayout, SellerProfileVCDelegate>
 
 // ── Scaffold ──
 @property (nonatomic, strong) UIScrollView *scrollView;
@@ -83,7 +102,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 // ── Seller Section ──
 @property (nonatomic, strong) UIView *sellerSectionView;
 @property (nonatomic, strong) UIView *sellerInnerSurfaceView;
-@property (nonatomic, strong) CAGradientLayer *sellerBackgroundGradientLayer;
+@property (nonatomic, strong) UIView *sellerAccentGlowView;
 @property (nonatomic, strong) UIView *sellerAvatarRingView;
 @property (nonatomic, strong) UIImageView *sellerAvatarImageView;
 @property (nonatomic, strong) UILabel *sellerEyebrowLabel;
@@ -95,8 +114,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 @property (nonatomic, strong) UIButton *callActionButton;
 @property (nonatomic, strong) UIButton *shareActionButton;
 @property (nonatomic, strong) UIButton *supportActionButton;
+@property (nonatomic, strong) UIButton *profileActionButton;
 @property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToChatConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToIdentityConstraint;
 
 // ── Details Card ──
 @property (nonatomic, strong) UIView *detailsCardView;
@@ -129,6 +148,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
 @property (nonatomic, strong) PPPhotoBrowserBridge *brower;
 @property (nonatomic, assign) BOOL isResolvingOwner;
+@property (nonatomic, assign) BOOL ownerLookupFailed;
 @property (nonatomic, assign) BOOL didAnimateSellerSection;
 @end
 
@@ -223,7 +243,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self.scrollView addSubview:self.contentView];
 
     // ── Ambient glows ──
-    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
+    UIColor *accent = AVSellerCardAccentColor();
     UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
     BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
 
@@ -261,7 +281,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         // Bottom bar
         [self.bottomBar.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:PPIOS26() ? 22 : 10],
+        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
 
         // Bar background mirrors bottom bar exactly
@@ -274,7 +294,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.scrollView.topAnchor      constraintEqualToAnchor:self.view.topAnchor],
         [self.scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.bottomBar.topAnchor],
 
         // Content view == scrollable content
         [self.contentView.topAnchor      constraintEqualToAnchor:contentGuide.topAnchor],
@@ -372,9 +392,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor],
-        [self.heroContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor constant:0],
+        [self.heroContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:0],
+        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-0],
         self.heroHeightConstraint,
 
         [self.imageGallery.topAnchor      constraintEqualToAnchor:self.heroContainerView.topAnchor],
@@ -393,7 +413,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 /// Title / subtitle / price summary — uses reusable PPPetsTitleView (same as ViewerVC)
 - (void)pp_buildSummaryCard {
 
-    
+
     // --- Title Card Container ---
     self.titleCard = [[UIView alloc] init];
     self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
@@ -437,7 +457,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.titleBlurView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
         [self.titleBlurView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
-    
+
     // Tint constraints
     [NSLayoutConstraint activateConstraints:@[
         [tintView.topAnchor constraintEqualToAnchor:self.titleBlurView.contentView.topAnchor],
@@ -446,7 +466,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [tintView.bottomAnchor constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor],
     ]];
 
-    
+
   ;
     [self.contentView addSubview:self.titleCard];
 
@@ -462,19 +482,19 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.titleCard.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
         [self.titleCard.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
 
-        [self.petsTitleView.topAnchor      constraintEqualToAnchor:self.titleCard.topAnchor],
-        [self.petsTitleView.leadingAnchor  constraintEqualToAnchor:self.titleCard.leadingAnchor],
-        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
+        [self.petsTitleView.topAnchor      constraintEqualToAnchor:self.titleCard.topAnchor constant:8],
+        [self.petsTitleView.leadingAnchor  constraintEqualToAnchor:self.titleCard.leadingAnchor constant:8],
+        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-8],
         [self.petsTitleView.bottomAnchor   constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
-    
+
     self.titleCard.hidden = YES;
 }
 
 /// Category / type / condition / stock section
 - (void)pp_buildDetailsCard {
 
-    self.detailsCardView = [self pp_surfaceCardClean];
+    self.detailsCardView = [self pp_surfacepage];
     [self.contentView addSubview:self.detailsCardView];
     UIView *innerDetails = [self pp_innerCardOf:self.detailsCardView];
 
@@ -488,7 +508,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.detailsStackView = [[UIStackView alloc] init];
     self.detailsStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.detailsStackView.axis    = UILayoutConstraintAxisVertical;
-    self.detailsStackView.spacing = 12.0;
+    self.detailsStackView.spacing = 16.0;
     [innerDetails addSubview:self.detailsStackView];
 
     UILabel *categoryValue  = nil;
@@ -499,7 +519,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     // ── 2-column grid with distinct modern tints ──
     UIStackView *topPair = [[UIStackView alloc] init];
     topPair.axis = UILayoutConstraintAxisHorizontal;
-    topPair.spacing = 12.0;
+    topPair.spacing = 16.0;
     topPair.distribution = UIStackViewDistributionFillEqually;
 
     [topPair addArrangedSubview:[self pp_detailRowWithTitle:kLang(@"Category")
@@ -513,7 +533,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     UIStackView *bottomPair = [[UIStackView alloc] init];
     bottomPair.axis = UILayoutConstraintAxisHorizontal;
-    bottomPair.spacing = 12.0;
+    bottomPair.spacing = 16.0;
     bottomPair.distribution = UIStackViewDistributionFillEqually;
 
     [bottomPair addArrangedSubview:[self pp_detailRowWithTitle:kLang(@"Condition")
@@ -539,13 +559,13 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.detailsCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-0],
 
         [detailsTitleLabel.topAnchor      constraintEqualToAnchor:innerDetails.topAnchor      constant:kAVCardPadding],
-        [detailsTitleLabel.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding],
+        [detailsTitleLabel.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding + 8],
         [detailsTitleLabel.trailingAnchor constraintEqualToAnchor:innerDetails.trailingAnchor constant:-kAVCardPadding],
 
         [self.detailsStackView.topAnchor      constraintEqualToAnchor:detailsTitleLabel.bottomAnchor       constant:kAVSpace12],
         [self.detailsStackView.leadingAnchor  constraintEqualToAnchor:innerDetails.leadingAnchor  constant:kAVCardPadding],
         [self.detailsStackView.trailingAnchor constraintEqualToAnchor:innerDetails.trailingAnchor constant:-kAVCardPadding],
-        [self.detailsStackView.bottomAnchor   constraintEqualToAnchor:innerDetails.bottomAnchor   constant:-kAVCardPadding],
+        [self.detailsStackView.bottomAnchor   constraintEqualToAnchor:innerDetails.bottomAnchor   constant:-8],
     ]];
 }
 
@@ -557,9 +577,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self.contentView addSubview:self.descView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.descView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor   constant:kAVSpace8],
-        [self.descView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
-        [self.descView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
+        [self.descView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor   constant:kAVCardPadding],
+        [self.descView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVCardPadding],
+        [self.descView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVCardPadding],
     ]];
 }
 
@@ -583,27 +603,25 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self.contentView addSubview:self.sellerSectionView];
     UIView *innerSeller = [self pp_innerCardOf:self.sellerSectionView];
     self.sellerInnerSurfaceView = innerSeller;
-    innerSeller.backgroundColor = AppForgroundColr;
+    innerSeller.backgroundColor = AVSellerCardSurfaceColor();
 
-    self.sellerBackgroundGradientLayer = [CAGradientLayer layer];
-    self.sellerBackgroundGradientLayer.startPoint = CGPointMake(0.08, 0.0);
-    self.sellerBackgroundGradientLayer.endPoint = CGPointMake(0.96, 1.0);
-    self.sellerBackgroundGradientLayer.locations = @[@0.0, @0.48, @1.0];
-    [innerSeller.layer insertSublayer:self.sellerBackgroundGradientLayer atIndex:0];
-
-    UIView *accentWash = [[UIView alloc] init];
-    accentWash.translatesAutoresizingMaskIntoConstraints = NO;
-    accentWash.userInteractionEnabled = NO;
-    accentWash.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.08];
-    [innerSeller addSubview:accentWash];
+    self.sellerAccentGlowView = [[UIView alloc] init];
+    self.sellerAccentGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sellerAccentGlowView.userInteractionEnabled = NO;
+    self.sellerAccentGlowView.backgroundColor = [AVSellerCardAccentColor() colorWithAlphaComponent:0.105];
+    self.sellerAccentGlowView.layer.shadowColor = AVSellerCardAccentColor().CGColor;
+    self.sellerAccentGlowView.layer.shadowOpacity = 0.18;
+    self.sellerAccentGlowView.layer.shadowRadius = 34.0;
+    self.sellerAccentGlowView.layer.shadowOffset = CGSizeZero;
+    [innerSeller addSubview:self.sellerAccentGlowView];
 
     self.sellerAvatarRingView = [[UIView alloc] init];
     self.sellerAvatarRingView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sellerAvatarRingView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.09];
+    self.sellerAvatarRingView.backgroundColor = [AVSellerCardAccentColor() colorWithAlphaComponent:0.09];
     self.sellerAvatarRingView.layer.cornerRadius = kAVSellerAvatarRingSize / 2.0;
     self.sellerAvatarRingView.layer.masksToBounds = YES;
     self.sellerAvatarRingView.layer.borderWidth = 1.0;
-    [self.sellerAvatarRingView pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.12]];
+    [self.sellerAvatarRingView pp_setBorderColor:[AVSellerCardAccentColor() colorWithAlphaComponent:0.14]];
     [innerSeller addSubview:self.sellerAvatarRingView];
 
     self.sellerAvatarImageView = [[UIImageView alloc] initWithImage:PPSYSImage(@"person.crop.circle.fill")];
@@ -620,7 +638,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.sellerEyebrowLabel = [[UILabel alloc] init];
     self.sellerEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.sellerEyebrowLabel.font = [GM boldFontWithSize:12];
-    self.sellerEyebrowLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.88];
+    self.sellerEyebrowLabel.textColor = [AVSellerCardAccentColor() colorWithAlphaComponent:0.92];
     self.sellerEyebrowLabel.numberOfLines = 1;
 
     self.sellerNameLabel = [[UILabel alloc] init];
@@ -660,11 +678,11 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self.sellerStatusBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [innerSeller addSubview:self.sellerStatusBadgeLabel];
 
-    self.chatActionButton = [self pp_primaryCTAWithTitle:kLang(@"Chat")
-                                              systemName:@"message.fill"
-                                                selector:@selector(chatBTN:)
-                                              emphasized:YES];
-    [innerSeller addSubview:self.chatActionButton];
+    self.profileActionButton = [self pp_primaryCTAWithTitle:kLang(@"View_Profile")
+                                                 systemName:@"person.crop.circle.fill"
+                                                   selector:@selector(viewProfileTapped:)
+                                                 emphasized:YES];
+    [innerSeller addSubview:self.profileActionButton];
 
     self.callActionButton  = [self pp_secondaryActionWithTitle:kLang(@"Call")
                                                     systemName:@"phone.fill"
@@ -675,11 +693,16 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.supportActionButton = [self pp_secondaryActionWithTitle:kLang(@"Support")
                                                       systemName:@"headphones"
                                                         selector:@selector(supportTapped)];
+    self.supportActionButton.hidden = YES;
+
+    self.chatActionButton = [self pp_secondaryActionWithTitle:kLang(@"Chat")
+                                                   systemName:@"message.fill"
+                                                     selector:@selector(chatBTN:)];
 
     self.actionStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.callActionButton,
         self.shareActionButton,
-        self.supportActionButton
+        self.chatActionButton
     ]];
     self.actionStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionStackView.axis         = UILayoutConstraintAxisHorizontal;
@@ -688,22 +711,19 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.actionStackView.alignment    = UIStackViewAlignmentCenter;
     [innerSeller addSubview:self.actionStackView];
 
-    NSLayoutConstraint *chatTopPreferred = [self.chatActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
-    chatTopPreferred.priority = UILayoutPriorityDefaultHigh;
-    NSLayoutConstraint *actionsTopPreferred = [self.actionStackView.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
-    actionsTopPreferred.priority = UILayoutPriorityDefaultHigh;
-    self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.chatActionButton.bottomAnchor constant:kAVSpace12];
-    self.sellerActionsTopToIdentityConstraint = actionsTopPreferred;
+    NSLayoutConstraint *profileTopPreferred = [self.profileActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
+    profileTopPreferred.priority = UILayoutPriorityDefaultHigh;
+    self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.profileActionButton.bottomAnchor constant:kAVSpace12];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor constant:kAVSectionSpacing],
-        [self.sellerSectionView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
-        [self.sellerSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
+        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor constant:kAVCardPadding],
+        [self.sellerSectionView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVCardPadding],
+        [self.sellerSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVCardPadding],
 
-        [accentWash.topAnchor constraintEqualToAnchor:innerSeller.topAnchor],
-        [accentWash.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor],
-        [accentWash.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor],
-        [accentWash.heightAnchor constraintEqualToConstant:106.0],
+        [self.sellerAccentGlowView.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:-54.0],
+        [self.sellerAccentGlowView.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:42.0],
+        [self.sellerAccentGlowView.widthAnchor constraintEqualToConstant:168.0],
+        [self.sellerAccentGlowView.heightAnchor constraintEqualToConstant:168.0],
 
         [self.sellerAvatarRingView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
         [self.sellerAvatarRingView.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:kAVCardPadding],
@@ -724,11 +744,11 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.sellerStatusBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:92.0],
         [self.sellerStatusBadgeLabel.heightAnchor constraintEqualToConstant:kAVSellerStatusPillHeight],
 
-        chatTopPreferred,
-        [self.chatActionButton.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
-        [self.chatActionButton.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
-        [self.chatActionButton.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
-        [self.chatActionButton.heightAnchor constraintEqualToConstant:kAVSellerPrimaryBtnHeight],
+        profileTopPreferred,
+        [self.profileActionButton.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
+        [self.profileActionButton.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
+        [self.profileActionButton.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [self.profileActionButton.heightAnchor constraintEqualToConstant:kAVSellerPrimaryBtnHeight],
 
         [self.actionStackView.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
         [self.actionStackView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
@@ -837,14 +857,39 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 /// Async fetch for suggested accessories
 - (void)pp_fetchSuggestions {
     __weak typeof(self) weakSelf = self;
-    [PetAccessoryManager fetchSuggestedAccessoriesForAccess:self.accessAds
-                                                 completion:^(NSArray<PetAccessory *> *accessories) {
+
+    void (^showCategorySuggestions)(void) = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-        strongSelf.suggestedAccessories = accessories ?: @[];
-        [strongSelf refreshSuggestedAccessoriesUI];
-        [strongSelf.accessoryCollectionView reloadData];
-    }];
+        strongSelf.mayLikeLabel.text = kLang(@"SimilarAaccess");
+        [PetAccessoryManager fetchSuggestedAccessoriesForAccess:strongSelf.accessAds
+                                                    completion:^(NSArray<PetAccessory *> *accessories) {
+            __strong typeof(weakSelf) s = weakSelf;
+            if (!s) return;
+            s.suggestedAccessories = accessories ?: @[];
+            [s refreshSuggestedAccessoriesUI];
+            [s.accessoryCollectionView reloadData];
+        }];
+    };
+
+    if ([self pp_isProviderMarketplaceItem]) {
+        [PetAccessoryManager fetchProviderMarketplaceAccessoriesForOwnerID:self.accessAds.ownerID
+                                                        excludingAccessory:self.accessAds
+                                                               completion:^(NSArray<PetAccessory *> *results) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (results.count >= 2) {
+                strongSelf.suggestedAccessories = results;
+                strongSelf.mayLikeLabel.text = kLang(@"accessory_view_more_from_provider");
+                [strongSelf refreshSuggestedAccessoriesUI];
+                [strongSelf.accessoryCollectionView reloadData];
+            } else {
+                showCategorySuggestions();
+            }
+        }];
+    } else {
+        showCategorySuggestions();
+    }
 }
 
 - (UIView *)pp_surfaceCard {
@@ -882,6 +927,34 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = AppBackgroundClr;
+    card.layer.cornerRadius = 26;
+    card.layer.masksToBounds = YES;
+    card.layer.borderWidth = kAVSectionBorderWidth;
+    [card pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.00]];
+    if (@available(iOS 13.0, *)) {
+        card.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    card.tag = 100;
+
+    [wrapper addSubview:card];
+    [NSLayoutConstraint activateConstraints:@[
+        [card.topAnchor      constraintEqualToAnchor:wrapper.topAnchor],
+        [card.leadingAnchor  constraintEqualToAnchor:wrapper.leadingAnchor],
+        [card.trailingAnchor constraintEqualToAnchor:wrapper.trailingAnchor],
+        [card.bottomAnchor   constraintEqualToAnchor:wrapper.bottomAnchor],
+    ]];
+    return wrapper;
+}
+
+
+- (UIView *)pp_surfacepage {
+    UIView *wrapper = [[UIView alloc] init];
+    wrapper.translatesAutoresizingMaskIntoConstraints = NO;
+    wrapper.backgroundColor = UIColor.clearColor;
+
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = AppPageColor();
     card.layer.cornerRadius = 26;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
@@ -985,7 +1058,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         config.contentInsets = NSDirectionalEdgeInsetsMake(12.0, 16.0, 12.0, 16.0);
         config.title = title;
         config.baseForegroundColor = emphasized ? AppForgroundColr : AppPrimaryTextClr;
-        config.baseBackgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.55 : 0.92];
+        config.baseBackgroundColor = emphasized ? AVSellerCardInkColor() : [AVSellerCardSurfaceColor() colorWithAlphaComponent:PPIOS26() ? 0.55 : 0.92];
         config.background.strokeColor = [AppPrimaryTextClr colorWithAlphaComponent:emphasized ? 0.0 : 0.08];
         config.background.strokeWidth = emphasized ? 0.0 : 1.0;
         config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
@@ -995,7 +1068,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         };
         button.configuration = config;
     } else {
-        button.backgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.9];
+        button.backgroundColor = emphasized ? AVSellerCardInkColor() : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.9];
         button.layer.borderWidth = emphasized ? 0.0 : 1.0;
         [button pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.08]];
         [button setTitleColor:emphasized ? AppForgroundColr : AppPrimaryTextClr forState:UIControlStateNormal];
@@ -1037,7 +1110,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         config.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 24.0, 14.0, 24.0);
         config.title = title;
         config.baseForegroundColor = emphasized ? UIColor.whiteColor : AppPrimaryTextClr;
-        config.baseBackgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.64];
+        config.baseBackgroundColor = emphasized ? AppPrimaryClr : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.64];
         config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];
             attrs[NSFontAttributeName] = [GM boldFontWithSize:15];
@@ -1045,7 +1118,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         };
         button.configuration = config;
     } else {
-        button.backgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.9];
+        button.backgroundColor = emphasized ? AppPrimaryClr : [AVSellerCardSurfaceColor() colorWithAlphaComponent:0.9];
         [button setTitleColor:emphasized ? UIColor.whiteColor : AppPrimaryTextClr forState:UIControlStateNormal];
         [button setTitle:title forState:UIControlStateNormal];
         [button setImage:icon forState:UIControlStateNormal];
@@ -1127,7 +1200,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     UIView *iconShell = [[UIView alloc] init];
     iconShell.translatesAutoresizingMaskIntoConstraints = NO;
     iconShell.backgroundColor = [tintColor colorWithAlphaComponent:0.18];
-    iconShell.layer.cornerRadius = 16.0;
+    iconShell.layer.cornerRadius = 22.0;
     iconShell.layer.masksToBounds = YES;
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:systemName
@@ -1164,8 +1237,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
         [iconShell.leadingAnchor constraintEqualToAnchor:row.leadingAnchor constant:12.0],
         [iconShell.centerYAnchor constraintEqualToAnchor:row.centerYAnchor],
-        [iconShell.widthAnchor constraintEqualToConstant:32.0],
-        [iconShell.heightAnchor constraintEqualToConstant:32.0],
+        [iconShell.widthAnchor constraintEqualToConstant:44.0],
+        [iconShell.heightAnchor constraintEqualToConstant:44.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconShell.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconShell.centerYAnchor],
@@ -1196,8 +1269,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (CGSize)pp_suggestionItemSize {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    CGFloat itemWidth = MIN(MAX(width * 0.56, 210.0), 248.0);
-    return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.14));
+    CGFloat itemWidth = width * 0.45;
+    return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.74));
 }
 
 - (NSString *)pp_categorySummary {
@@ -1250,6 +1323,96 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     return self.accessAds.condition == AccessConditionsUsed;
 }
 
+- (BOOL)pp_hasRealAccessoryOwnerID
+{
+    NSString *ownerID = PPSafeString(self.accessAds.ownerID);
+    return ownerID.length > 0 && ![ownerID isEqualToString:@"unknown"];
+}
+
+- (BOOL)pp_isOfficialSupportOwnerID
+{
+    return [PPSafeString(self.accessAds.ownerID) isEqualToString:PPAccessoryOfficialSupportUserID];
+}
+
+- (UserModel *)pp_officialSupportOwnerModel
+{
+    UserModel *user = [UserModel new];
+    user.ID = PPAccessoryOfficialSupportUserID;
+    user.UserName = kLang(@"accessory_view_store_name");
+    return user;
+}
+
+- (BOOL)pp_isOwnAccessory
+{
+    NSString *ownerID = PPSafeString(self.accessAds.ownerID);
+    NSString *currentUID = [UserManager sharedManager].currentUser.ID ?: PPCurrentFIRAuthUser.uid;
+    return ownerID.length > 0 && currentUID.length > 0 && [ownerID isEqualToString:currentUID];
+}
+
+- (UserModel *)pp_resolvedOwnerModel
+{
+    if (self.ownerModel) return self.ownerModel;
+
+    if ([self pp_isOfficialSupportOwnerID]) {
+        self.ownerModel = [self pp_officialSupportOwnerModel];
+        return self.ownerModel;
+    }
+
+    if (self.ownerLookupFailed) return nil;
+
+    UserModel *currentUser = [UserManager sharedManager].currentUser;
+    if (currentUser && [currentUser.ID isEqualToString:self.accessAds.ownerID]) {
+        return currentUser;
+    }
+
+    return nil;
+}
+
+- (NSString *)pp_ownerDisplayName
+{
+    UserModel *owner = [self pp_resolvedOwnerModel];
+    if (owner) {
+        // Prioritize FirstName and LastName for a more accurate display name
+        NSMutableArray<NSString *> *nameParts = [NSMutableArray array];
+        if (owner.FirstName.length > 0) {
+            [nameParts addObject:owner.FirstName];
+        }
+        if (owner.LastName.length > 0) {
+            [nameParts addObject:owner.LastName];
+        }
+
+        if (nameParts.count > 0) {
+            return [nameParts componentsJoinedByString:@" "];
+        }
+
+        // Fallback to bestDisplayName if available
+        if ([owner respondsToSelector:@selector(bestDisplayName)]) {
+            NSString *name = [owner bestDisplayName];
+            if (name.length > 0) return name;
+        }
+        if ([owner respondsToSelector:@selector(PPBestDisplayName)]) {
+            NSString *name = [owner PPBestDisplayName];
+            if (name.length > 0) return name;
+        }
+
+        // Fallback to UserName
+        if (owner.UserName.length > 0) return owner.UserName;
+    }
+
+    if ([self pp_isOfficialSupportOwnerID]) return kLang(@"accessory_view_store_name");
+    return [self pp_hasRealAccessoryOwnerID] ? kLang(@"accessory_view_seller_title") : kLang(@"accessory_view_store_name");
+}
+
+- (BOOL)pp_isProviderMarketplaceItem
+{
+    if (self.accessAds.ownerID.length == 0) return NO;
+    if ([[UserManager sharedManager].currentUser.ID isEqualToString:self.accessAds.ownerID]) return NO;
+    if ([self pp_isUsedAccessory]) return NO;
+    if ([self.accessAds.ownerType isEqualToString:@"partner"]) return YES;
+    if ([self.accessAds.source isEqualToString:@"provider_marketplace"]) return YES;
+    return self.accessAds.ownerID.length > 0 && ![self pp_isUsedAccessory];
+}
+
 - (BOOL)pp_shouldShowCartBar
 {
     return ![self pp_isUsedAccessory];
@@ -1257,6 +1420,17 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (NSString *)pp_sellerMetaText
 {
+    if ([self pp_isOfficialSupportOwnerID]) {
+        NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithObject:kLang(@"accessory_view_store_badge")];
+        NSString *conditionText = [PetAccessory conditionTextForAccessory:self.accessAds];
+        if (conditionText.length > 0) {
+            [parts addObject:conditionText];
+        }
+        return [parts componentsJoinedByString:@" • "];
+    }
+    if ([self pp_isProviderMarketplaceItem]) {
+        return kLang(@"accessory_view_sold_by");
+    }
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
     NSString *sellerTitle = [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_title") : kLang(@"accessory_view_store_badge");
     NSString *conditionText = [PetAccessory conditionTextForAccessory:self.accessAds];
@@ -1271,18 +1445,35 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (NSString *)pp_sellerEyebrowText
 {
-    return [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_contact") : kLang(@"accessory_view_store_support");
+    if ([self pp_isOfficialSupportOwnerID]) return kLang(@"accessory_view_store_badge");
+    if ([self pp_isProviderMarketplaceItem]) {
+        return kLang(@"accessory_view_sold_by");
+    }
+    if ([self pp_hasRealAccessoryOwnerID]) {
+        return kLang(@"accessory_view_seller_contact");
+    }
+    return kLang(@"accessory_view_store_support");
 }
 
 - (NSString *)pp_sellerStatusBadgeText
 {
+    if ([self pp_isOfficialSupportOwnerID]) return kLang(@"accessory_view_store_badge");
+    if ([self pp_isProviderMarketplaceItem]) return kLang(@"accessory_view_market_badge");
+    if ([self pp_hasRealAccessoryOwnerID]) return kLang(@"accessory_view_private_seller");
     return [self pp_isUsedAccessory] ? kLang(@"accessory_view_private_seller") : kLang(@"accessory_view_store_badge");
 }
 
 - (void)pp_updateSellerStatusBadgeStyle
 {
-    BOOL isUsedAccessory = [self pp_isUsedAccessory];
-    UIColor *accent = isUsedAccessory ? AppPrimaryClr : [UIColor systemGreenColor];
+    UIColor *accent;
+    if ([self pp_isProviderMarketplaceItem]) {
+        accent = AVSellerCardAccentColor();
+    } else if ([self pp_hasRealAccessoryOwnerID]) {
+        accent = AVSellerCardAccentColor();
+    } else {
+        BOOL isUsedAccessory = [self pp_isUsedAccessory];
+        accent = isUsedAccessory ? AVSellerCardAccentColor() : AVSellerCardGoldColor();
+    }
     self.sellerStatusBadgeLabel.text = [self pp_sellerStatusBadgeText];
     self.sellerStatusBadgeLabel.textColor = accent;
     self.sellerStatusBadgeLabel.backgroundColor = [accent colorWithAlphaComponent:0.11];
@@ -1292,42 +1483,53 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)pp_updateSellerAvatar
 {
-    // For new accessories, show first-party store branding.
-    if (![self pp_isUsedAccessory]) {
+    if ([self pp_isOfficialSupportOwnerID]) {
         self.sellerAvatarImageView.image = [UIImage imageNamed:@"PPLogo"];
         self.sellerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
         return;
     }
 
-    UIImage *placeholder = self.ownerModel
-        ? [PPModernAvatarRenderer avatarImageForName:self.ownerModel.UserName size:kAVSellerAvatarSize]
-        : PPSYSImage(@"person.crop.circle.fill");
-    self.sellerAvatarImageView.image = placeholder;
+    UserModel *owner = [self pp_resolvedOwnerModel];
 
-    NSString *imageURL = PPSafeString(self.ownerModel.UserImageUrl.absoluteString);
-    if (imageURL.length == 0) {
+    if ([self pp_hasRealAccessoryOwnerID]) {
+        UIImage *placeholder = owner
+            ? [PPModernAvatarRenderer avatarImageForName:owner.UserName size:kAVSellerAvatarSize]
+            : PPSYSImage(@"person.crop.circle.fill");
+        self.sellerAvatarImageView.image = placeholder;
+        self.sellerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+
+        NSString *imageURL = PPSafeString(owner.UserImageUrl.absoluteString);
+        if (imageURL.length > 0) {
+            [PPImageLoaderManager.shared setImageOnImageView:self.sellerAvatarImageView
+                                                         url:imageURL
+                                                 placeholder:placeholder
+                                                  complation:^(UIImage * _Nonnull image, NSString * _Nullable urlString) {
+            }];
+        }
         return;
     }
 
-    [PPImageLoaderManager.shared setImageOnImageView:self.sellerAvatarImageView
-                                                 url:imageURL
-                                         placeholder:placeholder
-                                          complation:^(UIImage * _Nonnull image, NSString * _Nullable urlString) {
-    }];
+    self.sellerAvatarImageView.image = [UIImage imageNamed:@"PPLogo"];
+    self.sellerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
 }
 
 - (void)pp_updateSellerActions
 {
-    BOOL isUsedAccessory = [self pp_isUsedAccessory];
+    BOOL hasRealOwner = [self pp_hasRealAccessoryOwnerID];
+    BOOL isOwnItem = [self pp_isOwnAccessory];
 
-    self.chatActionButton.hidden = !isUsedAccessory;
+    if (hasRealOwner) {
+        UserModel *owner = [self pp_resolvedOwnerModel];
+        BOOL hasPhone = owner && owner.MobileNo.length > 0;
+        self.chatActionButton.hidden = NO;
+        self.callActionButton.hidden = isOwnItem || !hasPhone;
+        self.shareActionButton.hidden = NO;
+        return;
+    }
 
-    self.callActionButton.hidden = !isUsedAccessory;
+    self.chatActionButton.hidden = NO;
+    self.callActionButton.hidden = YES;
     self.shareActionButton.hidden = NO;
-    self.supportActionButton.hidden = NO;
-
-    self.sellerActionsTopToChatConstraint.active = isUsedAccessory;
-    self.sellerActionsTopToIdentityConstraint.active = !isUsedAccessory;
 }
 
 - (void)pp_applySellerSemanticDirection
@@ -1340,8 +1542,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     NSArray<UIButton *> *buttons = @[
         self.chatActionButton,
         self.callActionButton,
-        self.shareActionButton,
-        self.supportActionButton
+        self.shareActionButton
     ];
     for (UIButton *button in buttons) {
         button.semanticContentAttribute = semantic;
@@ -1357,7 +1558,6 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.chatActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Chat"), sellerName];
     self.callActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Call"), sellerName];
     self.shareActionButton.accessibilityLabel = kLang(@"Share");
-    self.supportActionButton.accessibilityLabel = kLang(@"Support");
 }
 
 - (void)pp_updateBottomBarVisibility
@@ -1392,20 +1592,15 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)applyAccessoryContent {
     self.heroKindBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", [PetAccessory typeTextForAccessory:self.accessAds]];
     self.heroStockBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", [self.accessAds stockStatusText]];
-    
+
     UIColor *stockBadgeColor = [self pp_stockAccentColor];
     self.heroStockBadgeLabel.backgroundColor = [stockBadgeColor colorWithAlphaComponent:0.96];
-    
+
     [self.petsTitleView configureWithTitle:PPSafeString(self.accessAds.name)
                                    location:[self pp_summarySubtitleText]
                                       price:[self pp_priceText]];
-    
-    NSString *ownerName;
-    if (![self pp_isUsedAccessory]) {
-        ownerName = kLang(@"accessory_view_store_name");
-    } else {
-        ownerName = [self.ownerModel respondsToSelector:@selector(PPBestDisplayName)] ? [self.ownerModel PPBestDisplayName] : @"";
-    }
+
+    NSString *ownerName = [self pp_ownerDisplayName];
     self.sellerEyebrowLabel.text = [self pp_sellerEyebrowText];
     self.sellerNameLabel.text = ownerName.length > 0 ? ownerName : kLang(@"accessory_view_seller_pending");
     self.sellerSubtitleLabel.text = [self pp_sellerMetaText];
@@ -1415,7 +1610,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.stockValueLabel.text = [self.accessAds stockStatusText];
     self.stockValueLabel.textColor = stockBadgeColor;
     self.descView.accessory = self.accessAds;
-    
+
     [self pp_updateSellerAvatar];
     [self pp_updateSellerStatusBadgeStyle];
     [self pp_updateSellerActions];
@@ -1430,7 +1625,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.typeValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.conditionValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.stockValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
- 
+
 }
 
 - (void)refreshSuggestedAccessoriesUI {
@@ -1450,10 +1645,10 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 // In AccessViewerVC.m
 - (void)handleShareAction {
     // Get the current accessory being viewed
-    
-    
+
+
     PetAccessory *currentAccessory = self.accessAds;
-    
+
     // Share the accessory
     [PetAccessory sharePetAccessory:currentAccessory
                  fromViewController:self
@@ -1480,7 +1675,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         return;
     }
     NSInteger cartCount = [CartManager sharedManager].cartItems.count;
-    CGFloat targetAlpha = cartCount > 0 ? 1.0 : 0.72;
+    CGFloat targetAlpha = cartCount > 0 ? 1.0 : 0.96;
     CGAffineTransform targetTransform = cartCount > 0 ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.985, 0.985);
     [UIView animateWithDuration:0.20 animations:^{
         self.bottomBar.alpha = targetAlpha;
@@ -1514,7 +1709,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 }
 
 - (void)shakeButton:(UIButton *)button {
-    
+
     CABasicAnimation *shake = [CABasicAnimation animationWithKeyPath:@"transform.rotation"];
     shake.fromValue = @(-0.05);  // small angle in radians
     shake.toValue = @(0.05);
@@ -1522,8 +1717,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     shake.autoreverses = YES;
     shake.repeatCount = HUGE_VALF; // infinite
     [button.layer addAnimation:shake forKey:@"shake"];
-    
-    
+
+
 }
 
 - (void)addToCartButtonTapped:(NSInteger)quantity{
@@ -1564,44 +1759,46 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     NSInteger safeQty = MIN(requestedQty, availableToAdd);
     CartItem *item = [[CartItem alloc] initWithAccessory:self.accessAds quantity:safeQty];
-    BOOL didAdd = [[CartManager sharedManager] addItem:item];
-    if (!didAdd) {
-        [self.bottomBar performAddToCartFailureAnimation];
-        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-        UIAlertController *outOfStockAlert =
-            [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
-                                                message:nil
-                                         preferredStyle:UIAlertControllerStyleAlert];
-        [outOfStockAlert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
-                                                            style:UIAlertActionStyleDefault
-                                                          handler:nil]];
-        [self presentViewController:outOfStockAlert animated:YES completion:nil];
-        return;
-    }
+    __weak typeof(self) weakSelf = self;
+    [[CartManager sharedManager] addItem:item
+                presentingViewController:self
+                              completion:^(BOOL didAdd, BOOL didCancel) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || didCancel) { return; }
+        if (!didAdd) {
+            [self.bottomBar performAddToCartFailureAnimation];
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+            UIAlertController *outOfStockAlert =
+                [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
+                                                    message:nil
+                                             preferredStyle:UIAlertControllerStyleAlert];
+            [outOfStockAlert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:nil]];
+            [self presentViewController:outOfStockAlert animated:YES completion:nil];
+            return;
+        }
 
-    NSString *message = nil;
-    if (safeQty < requestedQty) {
-        message = [NSString stringWithFormat:@"%@ %ld %@",
-                   kLang(@"Only"),
-                   (long)availableToAdd,
-                   kLang(@"left in stock")];
-    } else {
-        message = kLang(@"ItemAddedToYourCart");
-    }
+        NSString *message = safeQty < requestedQty
+            ? [NSString stringWithFormat:@"%@ %ld %@",
+               kLang(@"Only"),
+               (long)availableToAdd,
+               kLang(@"left in stock")]
+            : kLang(@"ItemAddedToYourCart");
 
-    [PPAnalytics logAddToCartItemID:self.accessAds.accessoryID
-                               name:self.accessAds.name
-                           category:[NSString stringWithFormat:@"acc-%ld", (long)self.accessAds.petMainCategoryID]
-                              price:self.accessAds.finalPrice.doubleValue
-                           quantity:safeQty];
+        [PPAnalytics logAddToCartItemID:self.accessAds.accessoryID
+                                   name:self.accessAds.name
+                               category:[NSString stringWithFormat:@"acc-%ld", (long)self.accessAds.petMainCategoryID]
+                                  price:self.accessAds.finalPrice.doubleValue
+                               quantity:safeQty];
 
-    [self.bottomBar performAddToCartSuccessAnimation];
-    [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
-    
-    [self.QtyDelegate updateCartAndReloadCollection];
-    [self loadItemsCountInBadge];
-    [self checkCartAndAnimateIfNeeded];
-    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
+        [self.bottomBar performAddToCartSuccessAnimation];
+        [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
+        [self.QtyDelegate updateCartAndReloadCollection];
+        [self loadItemsCountInBadge];
+        [self checkCartAndAnimateIfNeeded];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
+    }];
 }
 
 -(void)supportTapped
@@ -1625,18 +1822,18 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
               withColor:(UIColor *)color
                   width:(CGFloat)width
            cornerRadius:(CGFloat)cornerRadius {
-    
+
     CAShapeLayer *borderLayer = [CAShapeLayer layer];
     borderLayer.strokeColor = color.CGColor;
     borderLayer.fillColor = UIColor.clearColor.CGColor;
     borderLayer.lineWidth = width;
-    
+
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:view.bounds
                                                     cornerRadius:cornerRadius];
     borderLayer.path = path.CGPath;
     borderLayer.frame = view.bounds;
     borderLayer.name = @"PPStrokeLayer";
-    
+
     // Remove old stroke if exists
     for (CALayer *layer in view.layer.sublayers) {
         if ([layer.name isEqualToString:@"PPStrokeLayer"]) {
@@ -1644,7 +1841,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
             break;
         }
     }
-    
+
     [view.layer addSublayer:borderLayer];
 }
 
@@ -1691,7 +1888,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
-    
+
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:YES];
     if (@available(iOS 26.0, *))
         [self ios26Bar];
@@ -1772,7 +1969,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     titleCard.backgroundColor = AppClearClr;
     [self pp_navBarSetTitleViewCentered:titleCard];
-    
+
     if (PPCurrentUser && PPCurrentFIRAuthUser) {
         [PetAdManager isAdFavorited:self.accessAds.accessoryID
                             forUser:PPCurrentUser.ID
@@ -1782,7 +1979,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
             self.favBarButtonItem.image = favorited ? [UIImage systemImageNamed:@"heart.fill"] : [UIImage systemImageNamed:@"heart"];
             self.favBarButtonItem.tintColor = favorited ? [AppPrimaryClr colorWithAlphaComponent:1.2] : UIColor.labelColor;
 
-          
+
         }];
 	}
 }
@@ -1815,7 +2012,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     if (![self pp_ensureSignedInForAction]) {
         return;
     }
-    
+
     self.isFavorite = !self.isFavorite;
 
     if (self.isFavorite) {
@@ -1829,13 +2026,13 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         NSLog(@"❌ Removed from favorites");
     }
-    
+
     if(self.isFavorite)
         [PetAdManager addFavoriteAdWithID:self.accessAds.accessoryID collection:@"favoritesAccessories" forUserID:[UserManager sharedManager].currentUser.ID];
     else
         [PetAdManager removeFavoriteAdWithID:self.accessAds.accessoryID collection:@"favoritesAccessories" forUserID:[UserManager sharedManager].currentUser.ID];
-    
-    
+
+
 }
 
 
@@ -1857,18 +2054,17 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)pp_updateSellerBackgroundAppearance
 {
-    if (!self.sellerBackgroundGradientLayer || !self.sellerInnerSurfaceView) {
+    if (!self.sellerInnerSurfaceView) {
         return;
     }
 
-    self.sellerBackgroundGradientLayer.frame = self.sellerInnerSurfaceView.bounds;
-    self.sellerBackgroundGradientLayer.cornerRadius = kAVCardCornerRadius;
-    self.sellerBackgroundGradientLayer.colors = @[
-        (__bridge id)UIColor.clearColor.CGColor,
-        (__bridge id)UIColor.clearColor.CGColor
-    ];
-    self.sellerInnerSurfaceView.backgroundColor = AppForgroundColr;
+    self.sellerInnerSurfaceView.backgroundColor = AVSellerCardSurfaceColor();
     [self.sellerInnerSurfaceView pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.055]];
+    if (self.sellerAccentGlowView) {
+        BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        self.sellerAccentGlowView.layer.cornerRadius = CGRectGetWidth(self.sellerAccentGlowView.bounds) / 2.0;
+        self.sellerAccentGlowView.backgroundColor = [AVSellerCardAccentColor() colorWithAlphaComponent:dark ? 0.16 : 0.105];
+    }
 }
 
 - (void)pp_animateSellerCardEntranceIfNeeded
@@ -1921,7 +2117,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 {
     [super traitCollectionDidChange:previousTraitCollection];
     BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
+    UIColor *accent = AVSellerCardAccentColor();
     UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
     self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
     self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
@@ -1950,6 +2146,95 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     }
     [self startChatWith:self.ownerModel];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+}
+
+- (IBAction)viewProfileTapped:(id)sender {
+    if (![self pp_ensureSignedInForAction]) {
+        return;
+    }
+    [self loadOwnerModelIfNeeded];
+    if (!self.ownerModel) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"error")
+                         subtitle:kLang(@"service_view_contact_loading")];
+        return;
+    }
+    
+    // Create and show seller profile VC
+    SellerProfileVC *profileVC = [[SellerProfileVC alloc] init];
+    profileVC.seller = self.ownerModel;
+    profileVC.sellerItems = [self pp_initialSellerProfileItems];
+    profileVC.delegate = self;
+    profileVC.parentVC = self;
+    [self.navigationController pushViewController:profileVC animated:YES];
+}
+
+- (NSArray<PetAccessory *> *)pp_initialSellerProfileItems
+{
+    NSString *ownerID = PPSafeString(self.accessAds.ownerID);
+    if (ownerID.length == 0) return @[];
+
+    NSMutableArray<PetAccessory *> *items = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+
+    void (^appendItem)(PetAccessory *) = ^(PetAccessory *item) {
+        if (![item isKindOfClass:PetAccessory.class]) return;
+        if (item.isBlocked || item.isDeleted || item.isDisabled) return;
+        if (item.ownerID.length > 0 && ![item.ownerID isEqualToString:ownerID]) return;
+        NSString *itemID = PPSafeString(item.accessoryID);
+        if (itemID.length > 0 && [seenIDs containsObject:itemID]) return;
+        if (itemID.length > 0) [seenIDs addObject:itemID];
+        [items addObject:item];
+    };
+
+    appendItem(self.accessAds);
+    for (PetAccessory *item in self.suggestedAccessories) {
+        appendItem(item);
+    }
+    return items.copy;
+}
+
+- (UIViewController *)pp_visibleSellerProfilePresenter
+{
+    return self.navigationController.topViewController ?: self;
+}
+
+- (void)sellerProfileDidTapContact:(UserModel *)seller
+{
+    if (!seller) return;
+    [GM chatWith:seller FromController:[self pp_visibleSellerProfilePresenter]];
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+}
+
+- (void)sellerProfileDidTapCall:(UserModel *)seller
+{
+    if (!seller) return;
+    [self trackAccessoryInteraction:PPItemInteractionTypeCall];
+    if (seller.MobileNo.length == 0) {
+        [PPAlertHelper showInfoIn:[self pp_visibleSellerProfilePresenter]
+                            title:kLang(@"No Number")
+                         subtitle:kLang(@"This user has no phone number")];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        return;
+    }
+    [AppClasses callPhoneNumber:seller.MobileNo fromViewController:[self pp_visibleSellerProfilePresenter]];
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+}
+
+- (void)sellerProfileDidSelectItem:(id)item
+{
+    if (![item isKindOfClass:PetAccessory.class]) return;
+    PetAccessory *accessory = (PetAccessory *)item;
+    if ([PPSafeString(accessory.accessoryID) isEqualToString:PPSafeString(self.accessAds.accessoryID)]) {
+        [self.navigationController popViewControllerAnimated:YES];
+        return;
+    }
+
+    AccessViewerVC *viewer = [[AccessViewerVC alloc] init];
+    viewer.accessAds = accessory;
+    viewer.QtyDelegate = self.QtyDelegate;
+    viewer.ParentVC = self;
+    [self.navigationController pushViewController:viewer animated:YES];
 }
 
 // MARK: - startChatWith SelectUser
@@ -2047,17 +2332,29 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)loadOwnerModelIfNeeded
 {
-    if (self.ownerModel || self.isResolvingOwner || self.accessAds.ownerID.length == 0) {
+    if (self.ownerModel || self.isResolvingOwner || self.ownerLookupFailed || ![self pp_hasRealAccessoryOwnerID]) {
         return;
     }
+
+    if ([self pp_isOfficialSupportOwnerID]) {
+        self.ownerModel = [self pp_officialSupportOwnerModel];
+        [self applyAccessoryContent];
+        return;
+    }
+
     self.isResolvingOwner = YES;
     __weak typeof(self) weakSelf = self;
     [UsrMgr getOtherUserModelFromFirestoreWithUID:self.accessAds.ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
         strongSelf.isResolvingOwner = NO;
         if (error || !user) {
+            strongSelf.ownerLookupFailed = YES;
+            [strongSelf applyAccessoryContent];
             return;
         }
+
         strongSelf.ownerModel = user;
         [strongSelf applyAccessoryContent];
     }];
@@ -2137,7 +2434,7 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
     self.surfaceView.layer.cornerRadius = kAVCardCornerRadius;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = kAVSectionBorderWidth;
-    [self.surfaceView pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.06]];
+    [self.surfaceView pp_setBorderColor:[UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.1]];
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }

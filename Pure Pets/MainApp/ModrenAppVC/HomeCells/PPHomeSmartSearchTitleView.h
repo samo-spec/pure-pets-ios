@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, readonly) UILabel *placeholderLabel;
 @property (nonatomic, assign) BOOL showSmartPillBackground;
 - (void)setQueryText:(NSString *)text animated:(BOOL)animated;
+- (void)configureWithTrendingQuery:(nullable NSString *)query;
 @end
 
 

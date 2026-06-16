@@ -158,6 +158,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     _threadType = PPChatTrimmedString(dict[@"threadType"]);
     _supportThread = PPChatBoolValue(dict[@"supportThread"]);
     _supportUserID = PPChatTrimmedString(dict[@"supportUserId"]);
+    _customerId = PPChatTrimmedString(dict[@"customerId"]);
     _supportDisplayName = PPChatTrimmedString(dict[@"supportDisplayName"]);
     _supportPhotoURLString = PPChatTrimmedString(dict[@"supportPhotoUrl"]);
 
@@ -208,6 +209,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     [coder encodeObject:self.threadType forKey:@"threadType"];
     [coder encodeBool:self.supportThread forKey:@"supportThread"];
     [coder encodeObject:self.supportUserID forKey:@"supportUserId"];
+    [coder encodeObject:self.customerId forKey:@"customerId"];
     [coder encodeObject:self.supportDisplayName forKey:@"supportDisplayName"];
     [coder encodeObject:self.supportPhotoURLString forKey:@"supportPhotoUrl"];
 }
@@ -245,6 +247,7 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     self.threadType = [coder decodeObjectOfClass:NSString.class forKey:@"threadType"] ?: @"";
     self.supportThread = [coder decodeBoolForKey:@"supportThread"];
     self.supportUserID = [coder decodeObjectOfClass:NSString.class forKey:@"supportUserId"] ?: @"";
+    self.customerId = [coder decodeObjectOfClass:NSString.class forKey:@"customerId"] ?: @"";
     self.supportDisplayName = [coder decodeObjectOfClass:NSString.class forKey:@"supportDisplayName"] ?: @"";
     self.supportPhotoURLString = [coder decodeObjectOfClass:NSString.class forKey:@"supportPhotoUrl"] ?: @"";
 
@@ -277,11 +280,13 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     if (![thread isKindOfClass:ChatThreadModel.class]) {
         return NO;
     }
-    return thread.supportThread ||
+    BOOL hasOfficialSupportMember = [thread.memberIDs containsObject:PPPurePetsOfficialSupportUserID];
+    NSString *supportUserID = thread.supportUserID ?: @"";
+    BOOL hasOfficialSupportUser = [supportUserID isEqualToString:PPPurePetsOfficialSupportUserID];
+    BOOL markedSupport = thread.supportThread ||
         [thread.conversationType.lowercaseString isEqualToString:@"support"] ||
-        [thread.threadType.lowercaseString isEqualToString:@"support"] ||
-        thread.supportUserID.length > 0 ||
-        [thread.memberIDs containsObject:PPPurePetsOfficialSupportUserID];
+        [thread.threadType.lowercaseString isEqualToString:@"support"];
+    return hasOfficialSupportMember || (markedSupport && hasOfficialSupportUser);
 }
 
 + (NSString *)purePetsOfficialSupportUserID

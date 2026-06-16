@@ -32,7 +32,7 @@ static CGFloat const PPHomePremiumCareOrbRestingAlpha = 1.00;
    // UIStackView *_pillStackView;
     //UILabel *_medicinePillLabel;
     //UILabel *_vetPillLabel;
-    UIView *_ctaView;
+    UIButton *_ctaView;
     UILabel *_ctaLabel;
     UIImageView *_ctaIconView;
     NSString *_currentCareAnimationName;
@@ -51,7 +51,7 @@ static CGFloat const PPHomePremiumCareOrbRestingAlpha = 1.00;
 
 static UIColor *PremiumSoftCardBorderColor(void)
 {
-    return [UIColor.whiteColor colorWithAlphaComponent:0.92];//[AppLightGrayColor colorWithAlphaComponent:0.84];
+    return [UIColor.whiteColor colorWithAlphaComponent:1];//[AppLightGrayColor colorWithAlphaComponent:0.84];
 }
  
 - (instancetype)initWithFrame:(CGRect)frame
@@ -75,7 +75,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     }
 
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 32.0;
+    _surfaceView.layer.cornerRadius = 28.0;
     _surfaceView.layer.borderWidth = 0.8;
     _surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -117,15 +117,17 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _largeOrbView.hidden = NO;
     [_surfaceView addSubview:_smallOrbView];
 
-    _backgroundDotViews = [NSMutableArray arrayWithCapacity:5];
-    for (NSInteger idx = 0; idx < 5; idx++) {
-        UIView *dotView = [[UIView alloc] init];
-        dotView.translatesAutoresizingMaskIntoConstraints = NO;
-        dotView.userInteractionEnabled = NO;
-        dotView.layer.cornerRadius = (idx % 2 == 0) ? 12 : 8;
-        [_surfaceView addSubview:dotView];
-        [_backgroundDotViews addObject:dotView];
-    }
+    /*
+     _backgroundDotViews = [NSMutableArray arrayWithCapacity:5];
+     for (NSInteger idx = 0; idx < 5; idx++) {
+         UIView *dotView = [[UIView alloc] init];
+         dotView.translatesAutoresizingMaskIntoConstraints = NO;
+         dotView.userInteractionEnabled = NO;
+         dotView.layer.cornerRadius = (idx % 2 == 0) ? 12 : 8;
+         [_surfaceView addSubview:dotView];
+         [_backgroundDotViews addObject:dotView];
+     }
+     */
 
     _iconPlateView = [[UIView alloc] init];
     _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -162,7 +164,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:26.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:23.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
     _titleLabel.minimumScaleFactor = 0.78;
@@ -170,7 +172,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    _subtitleLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisVertical];
@@ -197,18 +199,29 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_pillStackView addArrangedSubview:_medicinePillLabel];
     [_pillStackView addArrangedSubview:_vetPillLabel];
 */
-    _ctaView  = (UIView *)[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
+    _ctaView  = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
     _ctaView.userInteractionEnabled=NO;
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ctaView.layer.cornerRadius = 20.0;
+    _ctaView.layer.cornerRadius = 21.0;
      if (@available(iOS 13.0, *)) {
         _ctaView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *conf = _ctaView.configuration;
+        conf.background.backgroundColor = UIColor.clearColor;
+        conf.baseBackgroundColor = UIColor.clearColor;//[AppPrimaryClrDarker colorWithAlphaComponent:0.00];
+        conf.background.strokeColor = UIColor.clearColor;//[AppPrimaryClr  colorWithAlphaComponent:0.02];
+        _ctaView.configuration = conf;
+   }
+    
+    
     [_surfaceView addSubview:_ctaView];
 
     _ctaLabel = [[UILabel alloc] init];
     _ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _ctaLabel.textColor = AppPrimaryClrDarker;
     [_ctaView addSubview:_ctaLabel];
 
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
@@ -218,18 +231,17 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_ctaView addSubview:_ctaIconView];
 
     _contentStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        _eyebrowLabel,
         _titleLabel,
+        
         _subtitleLabel,
-        _ctaView
+       
     ]];
     _contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _contentStackView.axis = UILayoutConstraintAxisVertical;
     _contentStackView.alignment = UIStackViewAlignmentFill;
     _contentStackView.distribution = UIStackViewDistributionFill;
     _contentStackView.spacing = 5.0;
-    [_contentStackView setCustomSpacing:6.0 afterView:_titleLabel];
-    [_contentStackView setCustomSpacing:13.0 afterView:_subtitleLabel];
+    [_contentStackView setCustomSpacing:10.0 afterView:_titleLabel];
     [_surfaceView addSubview:_contentStackView];
 
     _topBackgroundGlowView.layer.masksToBounds = YES;
@@ -244,7 +256,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _largeOrbView.layer.masksToBounds = YES;
     _largeOrbView.layer.masksToBounds = YES;
     
-    _topBackgroundGlowView.layer.cornerRadius = 246.0/2;
+    _topBackgroundGlowView.layer.cornerRadius = 176.0/2;
     _middleBackgroundGlowView.layer.cornerRadius = 178.0/2;
     _bottomLeadingGlowView.layer.cornerRadius = 226.0/2;
     _largeOrbView.layer.cornerRadius = 120.0/2;
@@ -258,10 +270,10 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:246.0],
-        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:246.0],
-        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
-        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:94.0],
+        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:176.0],
+        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:176.0],
+        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-62.0],
+        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:34.0],
 
         
         [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:178.0],
@@ -285,9 +297,9 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_smallOrbView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:16.0],
 
         [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
-        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:22.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant:68.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:68.0],
+        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant:72.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:72.0],
         
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
@@ -296,20 +308,22 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
         [_careAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor ],
         [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:48.0],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:48.0],
+        [_careAnimationView.widthAnchor constraintEqualToConstant:52.0],
+        [_careAnimationView.heightAnchor constraintEqualToConstant:52.0],
 
         [_contentStackView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
-        [_contentStackView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:20.0],
-        [_contentStackView.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
-        [_contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-
+        [_contentStackView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:16.0],
+        [_contentStackView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-86.0],
+ 
        // [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
        // [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
         //[_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
        // [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
-
-        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
+         
+        [_ctaView.heightAnchor constraintEqualToConstant:44.0],
+        [_ctaView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
+        
+        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-16.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -321,18 +335,20 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_ctaIconView.heightAnchor constraintEqualToConstant:14.0],
     ]];
 
-    NSArray<NSNumber *> *dotX = @[@16.0, @53.0, @95.0, @140.0, @177.0];
-    NSArray<NSNumber *> *dotY = @[@14.0, @61.0, @28.0, @90.0, @48.0];
-    for (NSUInteger idx = 0; idx < _backgroundDotViews.count; idx++) {
-        UIView *dotView = _backgroundDotViews[idx];
-        CGFloat size = (idx % 2 == 0) ? 5.0 : 4.0;
-        [NSLayoutConstraint activateConstraints:@[
-            [dotView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:((NSNumber *)dotX[idx]).doubleValue],
-            [dotView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:((NSNumber *)dotY[idx]).doubleValue],
-            [dotView.widthAnchor constraintEqualToConstant:size],
-            [dotView.heightAnchor constraintEqualToConstant:size],
-        ]];
-    }
+    /*
+     NSArray<NSNumber *> *dotX = @[@16.0, @53.0, @95.0, @140.0, @177.0];
+     NSArray<NSNumber *> *dotY = @[@14.0, @61.0, @28.0, @90.0, @48.0];
+     for (NSUInteger idx = 0; idx < _backgroundDotViews.count; idx++) {
+         UIView *dotView = _backgroundDotViews[idx];
+         CGFloat size = (idx % 2 == 0) ? 5.0 : 4.0;
+         [NSLayoutConstraint activateConstraints:@[
+             [dotView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:((NSNumber *)dotX[idx]).doubleValue],
+             [dotView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:((NSNumber *)dotY[idx]).doubleValue],
+             [dotView.widthAnchor constraintEqualToConstant:size],
+             [dotView.heightAnchor constraintEqualToConstant:size],
+         ]];
+     }
+     */
 
     [self pp_applyTheme];
     return self;
@@ -465,20 +481,21 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];
-    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.08;
-    self.contentView.layer.shadowRadius = 24.0;
+    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.02;
+    self.contentView.layer.shadowRadius = 6.0;
     self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    _gradientLayer.opacity = 1.0;
+    _gradientLayer.opacity = 0.6;
     _gradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor  ,
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.18].CGColor  ,
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.08].CGColor  ,
         (id)[UIColor clearColor].CGColor
     ];
     _gradientLayer.locations = nil;
 
-    _topBackgroundGlowView.backgroundColor = [isDark ? accent : [UIColor colorWithHexString:@"#4a306d"] colorWithAlphaComponent:isDark ? 0.14 : 0.17];
+    _topBackgroundGlowView.backgroundColor = [isDark ? accent : AppPrimaryClrDarker colorWithAlphaComponent:isDark ? 0.14 : 0.07];
     [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
     _topBackgroundGlowView.layer.shadowOpacity = 0.32;
     _topBackgroundGlowView.layer.shadowRadius = 76.0;
@@ -516,6 +533,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [pill pp_setBorderColor:controlBorderColor];
     } */
 
+   /*
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
         dotView.backgroundColor = (idx % 2 == 0) ? [UIColor colorWithHexString:@"#4a306d"] : UIColor.whiteColor;
@@ -524,6 +542,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
             ? CGRectGetWidth(dotView.bounds) * 0.5
             : ((idx % 2 == 0) ? 2.5 : 2.0);
     }];
+    */
 
     if (_shouldDeferDecorativeReveal && !_didRevealDecorativeAtmosphere) {
         [self pp_prepareDecorativeAtmosphereForEntrance];
@@ -572,6 +591,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _largeOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
     _smallOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
 
+   /*
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)idx;
         (void)stop;
@@ -580,6 +600,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
         dotView.alpha = 0.0;
         dotView.transform = CGAffineTransformMakeScale(0.72, 0.72);
     }];
+    */
 
     if (!_didPlayPostLayoutEntrance) {
         [_careAnimationView stop];
@@ -613,12 +634,14 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _smallOrbView.alpha = PPHomePremiumCareOrbRestingAlpha;
     _smallOrbView.transform = CGAffineTransformIdentity;
 
+   /*
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
         dotView.hidden = NO;
         dotView.alpha = [self pp_targetAlphaForBackgroundDotAtIndex:idx];
         dotView.transform = CGAffineTransformIdentity;
     }];
+    */
 }
 
 - (void)pp_revealDecorativeAtmosphereWithDelay:(NSTimeInterval)delay
@@ -654,6 +677,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
         } completion:nil];
     }];
 
+   /*
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
         dotView.hidden = NO;
@@ -665,6 +689,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
             dotView.transform = CGAffineTransformIdentity;
         } completion:nil];
     }];
+    */
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((delay + 0.72) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         if (self->_decorativeEntranceToken == entranceToken &&
@@ -733,36 +758,38 @@ static UIColor *PremiumSoftCardBorderColor(void)
                                            y:-17.0
                                     duration:4.8];
 
-    [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        NSString *animationKey =
-            [NSString stringWithFormat:@"pp.home.premiumCare.backgroundDot.%lu", (unsigned long)idx];
-        if ([dotView.layer animationForKey:animationKey]) {
-            return;
-        }
-        CABasicAnimation *scaleAnimation =
-            [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-        scaleAnimation.fromValue = @0.76;
-        scaleAnimation.toValue = @1.34;
+    /*
+     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
+         (void)stop;
+         NSString *animationKey =
+             [NSString stringWithFormat:@"pp.home.premiumCare.backgroundDot.%lu", (unsigned long)idx];
+         if ([dotView.layer animationForKey:animationKey]) {
+             return;
+         }
+         CABasicAnimation *scaleAnimation =
+             [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+         scaleAnimation.fromValue = @0.76;
+         scaleAnimation.toValue = @1.34;
 
-        CABasicAnimation *opacityAnimation =
-            [CABasicAnimation animationWithKeyPath:@"opacity"];
-        opacityAnimation.fromValue = @(dotView.alpha * 0.45);
-        opacityAnimation.toValue = @(MIN(dotView.alpha + 0.20, 0.42));
+         CABasicAnimation *opacityAnimation =
+             [CABasicAnimation animationWithKeyPath:@"opacity"];
+         opacityAnimation.fromValue = @(dotView.alpha * 0.45);
+         opacityAnimation.toValue = @(MIN(dotView.alpha + 0.20, 0.42));
 
-        CABasicAnimation *floatAnimation =
-            [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        floatAnimation.fromValue = @0.0;
-        floatAnimation.toValue = @(-3.0 - ((double)(idx % 2) * 1.5));
+         CABasicAnimation *floatAnimation =
+             [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+         floatAnimation.fromValue = @0.0;
+         floatAnimation.toValue = @(-3.0 - ((double)(idx % 2) * 1.5));
 
-        CAAnimationGroup *dotAnimation = [CAAnimationGroup animation];
-        dotAnimation.animations = @[scaleAnimation, opacityAnimation, floatAnimation];
-        dotAnimation.duration = 1.9 + ((double)idx * 0.22);
-        dotAnimation.autoreverses = YES;
-        dotAnimation.repeatCount = HUGE_VALF;
-        dotAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [dotView.layer addAnimation:dotAnimation forKey:animationKey];
-    }];
+         CAAnimationGroup *dotAnimation = [CAAnimationGroup animation];
+         dotAnimation.animations = @[scaleAnimation, opacityAnimation, floatAnimation];
+         dotAnimation.duration = 1.9 + ((double)idx * 0.22);
+         dotAnimation.autoreverses = YES;
+         dotAnimation.repeatCount = HUGE_VALF;
+         dotAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+         [dotView.layer addAnimation:dotAnimation forKey:animationKey];
+     }];
+     */
 }
 
 - (void)pp_stopBackgroundMotion
@@ -770,6 +797,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_topBackgroundGlowView.layer removeAnimationForKey:@"pp.home.premiumCare.petCareGlowTop"];
     [_middleBackgroundGlowView.layer removeAnimationForKey:@"pp.home.premiumCare.petCareGlowMiddle"];
     [_bottomLeadingGlowView.layer removeAnimationForKey:@"pp.home.premiumCare.petCareGlowBottom"];
+   /*
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
         NSString *animationKey =
@@ -777,6 +805,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [dotView.layer removeAnimationForKey:animationKey];
         dotView.transform = CGAffineTransformIdentity;
     }];
+    */
 
     if (_shouldDeferDecorativeReveal || !_didRevealDecorativeAtmosphere) {
         [self pp_prepareDecorativeAtmosphereForEntrance];
@@ -804,6 +833,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _ctaLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     _eyebrowLabel.text = kLang(@"home_premium_care_eyebrow") ?: @"Premium care";
+    _eyebrowLabel.hidden = YES;
     _titleLabel.text = kLang(@"home_premium_care_title") ?: @"Medicines and vets";
     _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
     ///_medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";

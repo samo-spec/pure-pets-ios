@@ -106,7 +106,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = 22.0;
+    self.surfaceView.layer.cornerRadius = 18.0;
     self.surfaceView.layer.borderWidth = 0.0;
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -392,11 +392,11 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.surfaceLayer.frame = bounds;
     //self.liquidBorderLayer.frame = bounds;
     self.surfaceLayer.borderWidth =0.4;
-    self.surfaceLayer.cornerRadius = 22;
+    self.surfaceLayer.cornerRadius = 18;
     self.surfaceLayer.opacity = 0.7;
     self.signalMotionLayer.frame = self.signalLineView.bounds;
-    self.signalMotionLayer.cornerRadius = 22;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:22].CGPath;
+    self.signalMotionLayer.cornerRadius = 18;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:18].CGPath;
     [CATransaction commit];
     
  }

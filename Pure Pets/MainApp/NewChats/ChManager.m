@@ -16,6 +16,9 @@ static NSString * const kFieldOnline  = @"online";
 static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
+static NSString * const kPPConversationTypeSupport = @"support";
+static NSString * const kPPConversationTypeProviderChat = @"provider_chat";
+static NSString * const kPPThreadTypeSupport = @"support";
 static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
@@ -310,8 +313,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     NSDictionary *canonicalMetadata = @{
         @"members": members,
-        @"conversationType": @"support",
-        @"threadType": @"support",
+        @"conversationType": kPPConversationTypeSupport,
+        @"threadType": kPPThreadTypeSupport,
         @"supportThread": @(YES),
         @"supportUserId": supportUserID,
         @"customerId": resolvedCustomerID,
@@ -344,8 +347,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     void (^finishWithSnapshot)(FIRDocumentSnapshot * _Nullable) = ^(FIRDocumentSnapshot * _Nullable snapshot) {
         NSDictionary *threadData = snapshot.exists ? (snapshot.data ?: @{}) : @{
             @"members": members,
-            @"conversationType": @"support",
-            @"threadType": @"support",
+            @"conversationType": kPPConversationTypeSupport,
+            @"threadType": kPPThreadTypeSupport,
             @"supportThread": @(YES),
             @"supportUserId": supportUserID,
             @"customerId": resolvedCustomerID,
@@ -589,7 +592,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     // ─────────────────────────────
     // 0️⃣ Validation
     // ─────────────────────────────
-    if (!msg || threadID.length == 0 || resolvedSenderID.length == 0) {
+    NSString *resolvedReceiverID = msg.receiverID ?: @"";
+    if (!msg ||
+        threadID.length == 0 ||
+        resolvedSenderID.length == 0 ||
+        resolvedReceiverID.length == 0 ||
+        [resolvedReceiverID isEqualToString:resolvedSenderID]) {
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion([NSError errorWithDomain:@"ChManager"
@@ -653,20 +661,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             return;
         }
 
-        // ─────────────────────────────
-        // 3️⃣ Immediately mark as SENT
-        // (prevents UI waiting for snapshot)
-        // ─────────────────────────────
-        __weak typeof(messageRef) messageRef = messageRef;
-        [messageRef updateData:@{
-            @"status": @(ChatMessageStatusSent),
-            @"sentAt": [FIRFieldValue fieldValueForServerTimestamp]
-        }];
-
         msg.status = ChatMessageStatusSent;
 
         // ─────────────────────────────
-        // 4️⃣ Update parent thread (atomic + safe)
+        // 3️⃣ Update parent thread (atomic + safe)
         // ─────────────────────────────
         NSString *lastMessageText = @"";
 
@@ -696,27 +694,16 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
             @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
             @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1]
+        } completion:^(NSError * _Nullable threadError) {
+            if (threadError) {
+                NSLog(@"⚠️ [SendMessage] Parent thread update failed — thread=%@ code=%ld desc=%@",
+                      threadID,
+                      (long)threadError.code,
+                      threadError.localizedDescription ?: @"unknown");
+            }
         }];
 
-        // ─────────────────────────────
-        // 5️⃣ Push notification (fire-and-forget)
-        // ─────────────────────────────
-        if (msg.receiverID.length) {
-            [self sendChatPushToUserID:msg.receiverID
-                                 title:kLang(@"New Message")
-                                  body:lastMessageText
-                              threadID:threadID
-                              senderID:resolvedSenderID
-                             messageID:msg.ID
-                            completion:^(BOOL didAcceptPush) {
-                if (!didAcceptPush) return;
-                [self markMessageAsDelivered:msg.ID threadID:threadID];
-            }];
-        }
-
-        // ─────────────────────────────
-        // 6️⃣ Completion (MAIN THREAD)
-        // ─────────────────────────────
+        (void)msg;
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(nil);
@@ -1441,6 +1428,28 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
+    // Check if the other user is a provider (service_provider)
+    BOOL hasProviderAppToken = user.PPProTokenID.length > 0;
+    BOOL hasProviderCapability =
+        user.canOfferServicesFeature ||
+        user.canVetFeature ||
+        user.canPharmacyFeature ||
+        user.canDeliveryFeature ||
+        user.canAccessProviderMarketplaceFeature ||
+        user.canManageServiceProviderPermission ||
+        user.canManageVetPermission ||
+        user.canManageDeliveryPermission;
+    BOOL isProviderChat =
+        hasProviderAppToken ||
+        hasProviderCapability ||
+        [user.selectedPartnerType isEqualToString:@"service_provider"] ||
+        [user.selectedPartnerType isEqualToString:@"vet"] ||
+        [user.selectedPartnerType isEqualToString:@"delivery"] ||
+        [user.selectedPartnerType isEqualToString:@"pharmacy"];
+    if (isProviderChat) {
+        NSLog(@"[ProviderChat] Detected provider chat with providerUID=%@ currentUserID=%@", user.ID, currentUserID);
+    }
+
     // 🔒 Deterministic thread ID (CRITICAL)
     NSString *a = currentUserID;
     NSString *b = user.ID;
@@ -1469,6 +1478,29 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             thread.ID = snapshot.documentID;
             thread.otherUser = user;
 
+            if (isProviderChat) {
+                NSDictionary *providerMetadata = @{
+                    @"conversationType": kPPConversationTypeProviderChat,
+                    @"threadType": kPPConversationTypeProviderChat,
+                    @"supportThread": @(NO),
+                    @"supportUserId": user.ID,
+                    @"providerUserId": user.ID,
+                    @"providerID": user.ID,
+                    @"customerId": currentUserID,
+                    @"supportDisplayName": user.UserName ?: user.FirstName ?: @"",
+                    @"supportPhotoUrl": user.UserImageUrl.absoluteString ?: @"",
+                    @"supportStatus": @"waiting_for_provider"
+                };
+                [threadRef setData:providerMetadata merge:YES completion:^(NSError *mergeError) {
+                    if (mergeError) {
+                        NSLog(@"⚠️ [ProviderChat] Could not canonicalize provider metadata: %@", mergeError.localizedDescription ?: @"unknown error");
+                    }
+                    [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
+                    if (completion) completion(thread, nil);
+                }];
+                return;
+            }
+
             // 🔥 ENSURE LISTENER IS ATTACHED
             [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
             
@@ -1477,7 +1509,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         }
 
         // Thread does NOT exist → create ONCE
-        NSDictionary *data = @{
+        NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:@{
             @"members": @[a, b],
             @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
             @"lastMessage": @"",
@@ -1487,7 +1519,24 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"binnedBy": @[],
             @"reportedBy": @[],
             @"reportCount": @(0)
-        };
+        }];
+
+        if (isProviderChat) {
+            [data addEntriesFromDictionary:@{
+                @"conversationType": kPPConversationTypeProviderChat,
+                @"threadType": kPPConversationTypeProviderChat,
+                @"supportThread": @(NO),
+                @"supportUserId": user.ID,
+                @"customerId": currentUserID,
+                @"sourcePlatform": @"ios",
+                @"supportDisplayName": user.UserName ?: user.FirstName ?: @"",
+                @"supportPhotoUrl": user.UserImageUrl.absoluteString ?: @"",
+                @"supportStatus": @"waiting_for_provider",
+                @"sourceScreen": @"provider_chat",
+                @"sourceType": @"general",
+                @"sourceEntityId": @""
+            }];
+        }
 
         [threadRef setData:data completion:^(NSError *err) {
 
@@ -1501,15 +1550,23 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             thread.memberIDs = @[a, b];
             thread.timestamp = [NSDate date];
             thread.otherUser = user;
+
+            // Set conversation type if it's a provider chat
+            if (isProviderChat) {
+                thread.conversationType = kPPConversationTypeProviderChat;
+                thread.threadType = kPPConversationTypeProviderChat;
+                thread.supportThread = NO;
+                thread.supportUserID = user.ID;
+                thread.customerId = currentUserID;
+            }
+
             // 🔥 ATTACH LISTENER IMMEDIATELY
             [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
-            
-            
+
             [[NSNotificationCenter defaultCenter]
              postNotificationName:@"UnreadCountsUpdated"
              object:nil];
-            
-            
+
             if (completion) completion(thread, nil);
         }];
     }];
