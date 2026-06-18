@@ -38,6 +38,7 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
 @property (nonatomic, assign) PPSelectOptionPresentationStyle presentationStyle; // default .Sheet
 @property (nonatomic, strong) UIView *searchContainer;
 @property (nonatomic, strong, nullable) UIColor *optionCellBackgroundColor;
+@property (nonatomic, assign) BOOL isGenderSelector; // for smaller icon size
 
 /// Callback when a row is picked (returns your original model)
 @property (nonatomic, copy) PPSelectOptionBlock onSelectOption;

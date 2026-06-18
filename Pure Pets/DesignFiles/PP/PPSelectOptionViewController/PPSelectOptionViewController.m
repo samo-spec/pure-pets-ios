@@ -441,6 +441,15 @@
         subtitle = op.subtitle;
         imageNamed = op.systemImageName ?: op.imageName; 
     }
+    else if ([option respondsToSelector:@selector(systemImageName)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        NSString *iconName = [option performSelector:@selector(systemImageName)];
+#pragma clang diagnostic pop
+        if ([iconName isKindOfClass:NSString.class] && iconName.length > 0) {
+            imageNamed = iconName;
+        }
+    }
     
     
     else if ([option isKindOfClass:[CountryCodeModel class]]) {
@@ -515,7 +524,7 @@
     if (imageURLString.length > 0) {
         [cell configureWithTitle:title subtitle:subtitle imageUrl:imageURLString];
     } else if (imageNamed.length > 0) {
-        [cell configureWithTitle:title subtitle:subtitle imageNamed:imageNamed];
+        [cell configureWithTitle:title subtitle:subtitle imageNamed:imageNamed useSmallIcon:self.isGenderSelector];
     } else {
         [cell configureWithTitle:title subtitle:subtitle image:image];
     }

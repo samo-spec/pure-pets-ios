@@ -154,8 +154,10 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @interface PPAdGenderOption : NSObject
 @property (nonatomic, copy, readonly) NSString *storageValue;
 @property (nonatomic, copy, readonly) NSString *localizedTitle;
+@property (nonatomic, copy, readonly) NSString *systemImageName;
 + (instancetype)optionWithStorageValue:(NSString *)storageValue
-                        localizedTitle:(NSString *)localizedTitle;
+                        localizedTitle:(NSString *)localizedTitle
+                        systemImageName:(NSString *)systemImageName;
 - (NSString *)formDisplayText;
 @end
 
@@ -163,10 +165,12 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 + (instancetype)optionWithStorageValue:(NSString *)storageValue
                         localizedTitle:(NSString *)localizedTitle
+                        systemImageName:(NSString *)systemImageName
 {
     PPAdGenderOption *option = [PPAdGenderOption new];
     option->_storageValue = [storageValue ?: @"" copy];
     option->_localizedTitle = [localizedTitle ?: @"" copy];
+    option->_systemImageName = [systemImageName ?: @"" copy];
     return option;
 }
 
@@ -800,7 +804,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 }
 @end
 
-@interface AddNewAd ()<UISheetPresentationControllerDelegate,UITextFieldDelegate,PPImageCollectionDelegate>
+@interface AddNewAd ()<UISheetPresentationControllerDelegate,UIAdaptivePresentationControllerDelegate,UITextFieldDelegate,PPImageCollectionDelegate>
 // form + data
 @property (nonatomic, strong) NSMutableArray<NSMutableArray<PPAdFormField *> *> *formSections;
 @property (nonatomic, strong) FileUploadManager *uploadManager;
@@ -843,6 +847,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderHeight;
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderWidth;
 @property (nonatomic, assign) CGFloat lastAppliedImageCollectionFooterWidth;
+@property (nonatomic, assign) BOOL selectorSheetFocusActive;
 @end
 
 
@@ -2880,11 +2885,14 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     return @[
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
-                                  localizedTitle:kLang(@"Male")],
+                                  localizedTitle:kLang(@"Male")
+                                 systemImageName:@"male_icon1"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
-                                  localizedTitle:kLang(@"Female")],
+                                  localizedTitle:kLang(@"Female")
+                                 systemImageName:@"female_icon"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
-                                  localizedTitle:kLang(@"no_value")]
+                                  localizedTitle:kLang(@"no_value")
+                                 systemImageName:@"question-mark"]
     ];
 }
 
@@ -2942,6 +2950,118 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     }
     field.value = option;
     [self pp_applyGenderSelectionToAdModel:option];
+}
+
+- (void)pp_animateSelectorTouchForField:(PPAdFormField *)field
+{
+    NSIndexPath *indexPath = [self indexPathForFieldTag:field.tag];
+    UITableViewCell *cell = indexPath ? [self.tableView cellForRowAtIndexPath:indexPath] : nil;
+    if (!cell) return;
+
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        UIImpactFeedbackGenerator *feedback =
+            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [feedback prepare];
+        [feedback impactOccurred];
+    }
+
+    UIView *targetView = cell.contentView;
+    [UIView animateWithDuration:0.09
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        targetView.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    } completion:^(BOOL finished) {
+        (void)finished;
+        [UIView animateWithDuration:0.24
+                              delay:0.0
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            targetView.transform = self.selectorSheetFocusActive
+                ? CGAffineTransformMakeScale(0.995, 0.995)
+                : CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (void)pp_setSelectorSheetFocusActive:(BOOL)active
+                              forField:(PPAdFormField *)field
+                              animated:(BOOL)animated
+{
+    if (self.selectorSheetFocusActive == active && active) {
+        return;
+    }
+    self.selectorSheetFocusActive = active;
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    NSIndexPath *selectedIndexPath = field ? [self indexPathForFieldTag:field.tag] : nil;
+    UITableViewCell *selectedCell = selectedIndexPath ? [self.tableView cellForRowAtIndexPath:selectedIndexPath] : nil;
+
+    void (^changes)(void) = ^{
+        self.formHeroCardView.alpha = active ? 0.86 : 1.0;
+        self.formHeroCardView.transform = (active && !reduceMotion)
+            ? CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -5.0),
+                                      CGAffineTransformMakeScale(0.982, 0.982))
+            : CGAffineTransformIdentity;
+
+        self.formHeroTitleLabel.alpha = active ? 0.88 : 1.0;
+        self.formHeroSubtitleLabel.alpha = active ? 0.76 : 1.0;
+        self.formHeroMetaLabel.alpha = active ? 0.86 : 1.0;
+        self.backgroundGlowViewTop.alpha = active ? 0.68 : 1.0;
+        self.backgroundGlowViewBottom.alpha = active ? 0.66 : 1.0;
+
+        for (UITableViewCell *cell in self.tableView.visibleCells) {
+            BOOL selected = (selectedCell && cell == selectedCell);
+            cell.contentView.alpha = active ? (selected ? 1.0 : 0.74) : 1.0;
+            if (reduceMotion) {
+                cell.contentView.transform = CGAffineTransformIdentity;
+            } else if (active) {
+                cell.contentView.transform = selected
+                    ? CGAffineTransformMakeScale(0.995, 0.995)
+                    : CGAffineTransformMakeTranslation(0.0, -3.0);
+            } else {
+                cell.contentView.transform = CGAffineTransformIdentity;
+            }
+        }
+    };
+
+    if (!animated) {
+        changes();
+        return;
+    }
+
+    if (reduceMotion) {
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                         animations:changes
+                         completion:nil];
+        return;
+    }
+
+    NSTimeInterval duration = active ? 0.34 : 0.42;
+    CGFloat damping = active ? 0.90 : 0.84;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:damping
+          initialSpringVelocity:0.22
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:changes
+                     completion:nil];
+}
+
+- (void)pp_prepareSelectorSheetPresentationForField:(PPAdFormField *)field
+{
+    [self.view endEditing:YES];
+    [self pp_animateSelectorTouchForField:field];
+    [self pp_setSelectorSheetFocusActive:YES forField:field animated:YES];
+}
+
+- (void)pp_restoreSelectorSheetPresentationFocusAnimated:(BOOL)animated
+{
+    [self pp_setSelectorSheetFocusActive:NO forField:nil animated:animated];
 }
 
 - (PPAdFormField *)fieldForTag:(NSString *)tag {
@@ -3002,8 +3122,29 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     vc.selectedOption = field.value;
     if ([field.tag isEqualToString:@"isFemale"]) {
         vc.showSearchBar = NO;
+        vc.isGenderSelector = YES;
     }
+    vc.modalPresentationStyle = UIModalPresentationPageSheet;
+    vc.presentationController.delegate = self;
+    if (@available(iOS 15.0, *)) {
+        vc.sheetPresentationController.delegate = self;
+    }
+    [self pp_prepareSelectorSheetPresentationForField:field];
     [self presentViewController:vc animated:YES completion:nil];
+}
+
+#pragma mark - UIAdaptivePresentationControllerDelegate
+
+- (void)presentationControllerWillDismiss:(UIPresentationController *)presentationController
+{
+    (void)presentationController;
+    [self pp_restoreSelectorSheetPresentationFocusAnimated:YES];
+}
+
+- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController
+{
+    (void)presentationController;
+    [self pp_restoreSelectorSheetPresentationFocusAnimated:NO];
 }
 
 - (void)pp_applyText:(NSString *)text toField:(PPAdFormField *)field

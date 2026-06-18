@@ -100,6 +100,10 @@
 
 
 - (void)configureWithTitle:(NSString *)title subtitle:(NSString *)subtitle imageNamed:(NSString *)imageNamed {
+    [self configureWithTitle:title subtitle:subtitle imageNamed:imageNamed useSmallIcon:NO];
+}
+
+- (void)configureWithTitle:(NSString *)title subtitle:(NSString *)subtitle imageNamed:(NSString *)imageNamed useSmallIcon:(BOOL)useSmallIcon {
     self.titleLabel.text = title;
     self.subtitleLabel.text = subtitle;
 
@@ -113,7 +117,25 @@
     
     if(imageNamed.length > 0)
     {
-        [self.circleImageView setImage:[UIImage systemImageNamed:imageNamed] ?: [UIImage imageNamed:imageNamed]];
+        UIImage *iconImage = [UIImage systemImageNamed:imageNamed] ?: [UIImage imageNamed:imageNamed];
+        if (useSmallIcon) {
+            // Scale down icon to 24x24 for gender selector
+            UIGraphicsBeginImageContextWithOptions(CGSizeMake(24, 24), NO, 0.0);
+            [iconImage drawInRect:CGRectMake(0, 0, 24, 24)];
+            UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+            UIGraphicsEndImageContext();
+            self.circleImageView.image = scaledImage;
+            // Adjust circle size for smaller icon
+            [NSLayoutConstraint deactivateConstraints:@[
+                self.circleImageView.widthAnchor constraintEqualToConstant:40],
+                self.circleImageView.heightAnchor constraintEqualToConstant:40
+            ]];
+            self.circleImageView.widthAnchor.constant = 32;
+            self.circleImageView.heightAnchor.constant = 32;
+            self.circleImageView.layer.cornerRadius = 16;
+        } else {
+            self.circleImageView.image = iconImage;
+        }
         self.circleImageView.tintColor = AppButtonMixColorClr;
     }
      // person.crop.circle.fill.badge.plus //person.crop.circle.fill
