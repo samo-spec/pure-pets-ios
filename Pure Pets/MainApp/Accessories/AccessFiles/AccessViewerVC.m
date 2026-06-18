@@ -56,6 +56,7 @@ static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button he
 static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill height
 static const CGFloat kAVNavigationTitleWidth = 242.0;
 static const CGFloat kAVNavigationTitleHeight = 44.0;
+static const CGFloat kAVHeroHorizontalInset  = 12.0;
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -512,13 +513,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @property (nonatomic, strong) UIView *ambientGlowTopView;
 @property (nonatomic, strong) UIView *ambientGlowBottomView;
 @property (nonatomic, strong) BBCartBottomBar *bottomBar;
-@property (nonatomic, strong) UIImageView *barBackgroundImageView;
 @property (nonatomic, strong) NSLayoutConstraint *bottomBarHeightConstraint;
 
 // ── Hero ──
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) PetImageGalleryView *imageGallery;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) UILabel *heroKindBadgeLabel;
 @property (nonatomic, strong) UILabel *heroStockBadgeLabel;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
@@ -639,18 +638,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 /// Scroll view + content view + bottom bar chrome
 - (void)pp_buildScaffold {
 
-    // ── Bottom bar background ──
-    self.barBackgroundImageView = [[UIImageView alloc] init];
-    self.barBackgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.barBackgroundImageView.contentMode = UIViewContentModeScaleToFill;
-    self.barBackgroundImageView.alpha = 0.0;
-    self.barBackgroundImageView.clipsToBounds = YES;
-    self.barBackgroundImageView.userInteractionEnabled = NO;
-    self.barBackgroundImageView.backgroundColor = AppForgroundColr;
-    [self.view addSubview:self.barBackgroundImageView];
-
     // ── Bottom bar ──
     self.bottomBar = [[BBCartBottomBar alloc] init];
+    self.bottomBar.presentationStyle = BBCartBottomBarPresentationStyleAccessoryViewer;
     self.bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.bottomBar];
 
@@ -714,17 +704,13 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
         self.bottomBarHeightConstraint,
 
-        // Bar background mirrors bottom bar exactly
-        [self.barBackgroundImageView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.barBackgroundImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.barBackgroundImageView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
-        [self.barBackgroundImageView.heightAnchor   constraintEqualToAnchor:self.bottomBar.heightAnchor],
-
-        // Scroll view fills space above bottom bar
+        // Scroll content continues beneath the material bar. Its content inset
+        // keeps the last item reachable while allowing the blur to sample real
+        // screen content instead of an opaque backing plate.
         [self.scrollView.topAnchor      constraintEqualToAnchor:self.view.topAnchor],
         [self.scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.bottomBar.topAnchor],
+        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
 
         // Content view == scrollable content
         [self.contentView.topAnchor      constraintEqualToAnchor:contentGuide.topAnchor],
@@ -771,9 +757,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     self.heroContainerView = [[UIView alloc] init];
     self.heroContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroContainerView.backgroundColor = AppForgroundColr;
-    self.heroContainerView.layer.cornerRadius = 0;
-    self.heroContainerView.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
+    self.heroContainerView.backgroundColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    self.heroContainerView.layer.cornerRadius = kAVHeroCornerRadius;
     if (@available(iOS 13.0, *)) {
         self.heroContainerView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -792,28 +777,19 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         self.imageGallery.contentMode = UIViewContentModeScaleAspectFit;
     }
     [self.heroContainerView addSubview:self.imageGallery];
-
-    // ── Gradient overlay ──
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.colors = @[
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.00].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.10].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.36].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0 alpha:0.72].CGColor
-    ];
-    self.heroGradientLayer.locations = @[@0.0, @0.40, @0.72, @1.0];
-    self.heroGradientLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.heroGradientLayer.endPoint   = CGPointMake(0.5, 1.0);
-    [self.heroContainerView.layer addSublayer:self.heroGradientLayer];
-
+    self.imageGallery.layer.cornerRadius = kAVHeroCornerRadius;
+    self.imageGallery.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.imageGallery.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     // ── Badges ──
     self.heroKindBadgeLabel = [self pp_badgeLabelWithFontSize:13.0];
-    self.heroKindBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.90];
+    self.heroKindBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
     self.heroKindBadgeLabel.textColor = AppPrimaryTextClr;
 
     self.heroStockBadgeLabel = [self pp_badgeLabelWithFontSize:13.0];
-    self.heroStockBadgeLabel.backgroundColor = [[AppPrimaryClr colorWithAlphaComponent:0.95] colorWithAlphaComponent:0.95];
-    self.heroStockBadgeLabel.textColor = AppForgroundColr;
+    self.heroStockBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+    self.heroStockBadgeLabel.textColor = UIColor.whiteColor;
 
     [self.heroContainerView addSubview:self.heroKindBadgeLabel];
     [self.heroContainerView addSubview:self.heroStockBadgeLabel];
@@ -822,9 +798,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor constant:0],
-        [self.heroContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:0],
-        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-0],
+        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor constant:kAVSpace8],
+        [self.heroContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:kAVHeroHorizontalInset],
+        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVHeroHorizontalInset],
         self.heroHeightConstraint,
 
         [self.imageGallery.topAnchor      constraintEqualToAnchor:self.heroContainerView.topAnchor],
@@ -984,7 +960,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.stockValueLabel     = stockValue;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.detailsCardView.topAnchor      constraintEqualToAnchor:self.imageGallery.bottomAnchor   constant: -kAVSpace24],
+        [self.detailsCardView.topAnchor      constraintEqualToAnchor:self.imageGallery.bottomAnchor   constant: -0],
         [self.detailsCardView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:0],
         [self.detailsCardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-0],
 
@@ -1694,8 +1670,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    
-    return width * 1.25; //MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0;
+    return MIN(MAX(width * 1.12, 420.0), 540.0);
 }
 
 - (CGSize)pp_suggestionItemSize {
@@ -1996,11 +1971,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     BOOL shouldShowCartBar = [self pp_shouldShowCartBar];
     self.bottomBar.hidden = !shouldShowCartBar;
     self.bottomBar.userInteractionEnabled = shouldShowCartBar;
-    self.barBackgroundImageView.hidden = !shouldShowCartBar;
-    self.barBackgroundImageView.alpha = shouldShowCartBar ? 1.0 : 0.0;
     self.bottomBarHeightConstraint.constant = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
 
-    CGFloat bottomInset = shouldShowCartBar ? ( 0 + self.view.safeAreaInsets.bottom) : 0.0;
+    CGFloat bottomInset = shouldShowCartBar ? self.bottomBarHeightConstraint.constant : 0.0;
     self.scrollView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
     self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
 
@@ -2047,6 +2020,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self pp_updateSellerStatusBadgeStyle];
     [self pp_updateSellerActions];
     [self pp_updateBottomBarVisibility];
+    NSInteger quantityAlreadyInCart = [[CartManager sharedManager] quantityForAccessory:self.accessAds];
+    [self.bottomBar setPurchaseAvailable:(self.accessAds.quantity > quantityAlreadyInCart)];
     [self pp_applySellerSemanticDirection];
     [self pp_updateSellerAccessibility];
 
@@ -2229,6 +2204,10 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.QtyDelegate updateCartAndReloadCollection];
         [self loadItemsCountInBadge];
         [self checkCartAndAnimateIfNeeded];
+        BOOL hasRemainingStock = self.accessAds.quantity > [[CartManager sharedManager] quantityForAccessory:self.accessAds];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self.bottomBar setPurchaseAvailable:hasRemainingStock];
+        });
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
     }];
 }
@@ -2512,8 +2491,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [super viewDidLayoutSubviews];
     [self pp_updateBottomBarVisibility];
     self.heroHeightConstraint.constant = [self pp_heroHeight];
-    self.heroGradientLayer.frame = self.heroContainerView.bounds;
-    [self pp_updateSellerCardShadowPath];
+     [self pp_updateSellerCardShadowPath];
     [self pp_updateSellerBackgroundAppearance];
     [self pp_animateSellerCardEntranceIfNeeded];
 

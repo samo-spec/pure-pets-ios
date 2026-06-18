@@ -273,14 +273,29 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 @property (nonatomic, assign) NSInteger showCartAnimationToken;
 @property (nonatomic, strong) PPInsetLabel *showCartBadgeLabel;
 @property (nonatomic, assign) NSInteger showCartBadgeCount;
+@property (nonatomic, assign, getter=isPurchaseAvailable) BOOL purchaseAvailable;
+- (void)pp_refreshStepperButtonStyle:(UIButton *)button symbolName:(NSString *)symbolName;
 @end
 @implementation BBCartBottomBar
+@synthesize presentationStyle = _presentationStyle;
 
 - (instancetype)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
+        _presentationStyle = BBCartBottomBarPresentationStyleDefault;
+        _purchaseAvailable = YES;
         [self setupUI];
     }
     return self;
+}
+
+- (void)setPresentationStyle:(BBCartBottomBarPresentationStyle)presentationStyle
+{
+    if (_presentationStyle == presentationStyle) {
+        return;
+    }
+    _presentationStyle = presentationStyle;
+    [self pp_refreshChromeColors];
+    [self setNeedsLayout];
 }
 
 -(void)layoutSubviews
@@ -289,9 +304,10 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.clipsToBounds = NO;
     [self pp_setShadowColor:AppShadowClr];
-    self.layer.shadowOpacity = PPIOS26() ? 0.08 : 0.07;
-    self.layer.shadowRadius = 16.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, -6.0);
+    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    self.layer.shadowOpacity = accessoryViewerStyle ? (PPIOS26() ? 0.10 : 0.08) : (PPIOS26() ? 0.08 : 0.07);
+    self.layer.shadowRadius = accessoryViewerStyle ? 22.0 : 16.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, accessoryViewerStyle ? -8.0 : -6.0);
     CGRect shadowFrame = CGRectIsEmpty(self.BackgroundB.frame) ? self.bounds : self.BackgroundB.frame;
     self.layer.shadowPath =
     [UIBezierPath bezierPathWithRect:shadowFrame].CGPath;
@@ -397,31 +413,46 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_refreshChromeColors
 {
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    self.BackgroundB.backgroundColor = PPBBCartSurfaceFillColor();
+    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    UIColor *surface = PPBBCartColor(AppForgroundColr, UIColor.systemBackgroundColor);
+    self.BackgroundB.backgroundColor = accessoryViewerStyle
+        ? [surface colorWithAlphaComponent:PPIOS26() ? 0.04 : 0.08]
+        : PPBBCartSurfaceFillColor();
     [self.BackgroundB pp_setBorderColor:UIColor.clearColor];
     self.BackgroundB.layer.borderWidth = 0.0;
-    self.surfaceTintView.backgroundColor = legacyIPadBar
-        ? [UIColor colorWithWhite:1.0 alpha:0.04]
-        : PPBBCartSurfaceTintColor();
+    self.surfaceTintView.backgroundColor = accessoryViewerStyle
+        ? [surface colorWithAlphaComponent:PPIOS26() ? 0.055 : 0.085]
+        : (legacyIPadBar ? [UIColor colorWithWhite:1.0 alpha:0.04] : PPBBCartSurfaceTintColor());
     self.separator.hidden = YES;
     self.separator.backgroundColor = UIColor.clearColor;
 
-    self.totalContainer.backgroundColor = AppForgroundColr;
+    self.totalContainer.backgroundColor = accessoryViewerStyle ? UIColor.clearColor : AppForgroundColr;
     [self.totalContainer pp_setBorderColor:UIColor.clearColor];
     self.totalContainer.layer.borderWidth = 0.0;
     
     
-    self.qtyContainer.backgroundColor = AppForgroundColr;
+    self.qtyContainer.backgroundColor = accessoryViewerStyle ? UIColor.clearColor : AppForgroundColr;
     [self.qtyContainer pp_setBorderColor:UIColor.clearColor];
     self.qtyContainer.layer.borderWidth = 0.0;
-    [self pp_applyCheckoutControlDepth:self.totalContainer emphasized:YES];
-    [self pp_applyCheckoutControlDepth:self.qtyContainer emphasized:NO];
+    if (accessoryViewerStyle) {
+        self.totalContainer.layer.shadowOpacity = 0.0;
+        self.totalContainer.layer.shadowRadius = 0.0;
+        self.totalContainer.layer.shadowPath = nil;
+        [self pp_applyCheckoutControlDepth:self.qtyContainer emphasized:NO];
+    } else {
+        [self pp_applyCheckoutControlDepth:self.totalContainer emphasized:YES];
+        [self pp_applyCheckoutControlDepth:self.qtyContainer emphasized:NO];
+    }
     [self pp_applyGlassBackgroundChrome];
     [self pp_styleUtilityButton:self.showCartButton];
     [self pp_styleUtilityButton:self.favButton];
+    [self pp_refreshStepperButtonStyle:self.minusButton symbolName:@"minus"];
+    [self pp_refreshStepperButtonStyle:self.plusButton symbolName:@"plus"];
     [self pp_updateShowCartBadgeStyle];
 
-    self.countLabel.textColor = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
+    self.countLabel.textColor = accessoryViewerStyle
+        ? PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor)
+        : PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
     self.amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     self.totalLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     self.currencyLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
@@ -478,13 +509,47 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)pp_applyGlassBackgroundChrome
 {
+    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
     UIBlurEffect *effect = [UIBlurEffect effectWithStyle:PPBBCartUltraThinBlurStyle()];
     self.blurBackground.effect = effect;
     self.totalGlassBackgroundView.effect = effect;
     self.qtyGlassBackgroundView.effect = effect;
-    self.totalGlassBackgroundView.alpha = PPBBCartUsesLegacyIPadBelowIOS18() ? 0.78 : 0.86;
-    self.qtyGlassBackgroundView.alpha = PPBBCartUsesLegacyIPadBelowIOS18() ? 0.74 : 0.82;
+    self.totalGlassBackgroundView.hidden = accessoryViewerStyle;
+    self.totalGlassBackgroundView.alpha = accessoryViewerStyle ? 0.0 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.78 : 0.86);
+    self.qtyGlassBackgroundView.hidden = NO;
+    self.qtyGlassBackgroundView.alpha = accessoryViewerStyle ? 0.72 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.74 : 0.82);
     [self pp_layoutGlassBackgrounds];
+}
+
+- (void)pp_refreshStepperButtonStyle:(UIButton *)button symbolName:(NSString *)symbolName
+{
+    if (!button) {
+        return;
+    }
+    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    UIColor *foreground = accessoryViewerStyle
+        ? PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor)
+        : PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
+    UIColor *fill = [PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor)
+                     colorWithAlphaComponent:accessoryViewerStyle ? (PPIOS26() ? 0.12 : 0.22) : (PPIOS26() ? 0.16 : 0.28)];
+    UIImage *image = PPBBCartSymbol(symbolName,
+                                    PPBBCartUsesLegacyIPadBelowIOS18() ? 14.0 : 15.0,
+                                    UIImageSymbolWeightSemibold,
+                                    foreground);
+    button.backgroundColor = fill;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        configuration.baseForegroundColor = foreground;
+        configuration.baseBackgroundColor = fill;
+        configuration.background.backgroundColor = fill;
+        configuration.background.strokeWidth = 0.0;
+        configuration.background.strokeColor = UIColor.clearColor;
+        configuration.image = image;
+        button.configuration = configuration;
+    } else {
+        [button setImage:image forState:UIControlStateNormal];
+        [button setTitleColor:foreground forState:UIControlStateNormal];
+    }
 }
 
 - (void)pp_layoutGlassBackgrounds
@@ -787,6 +852,10 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_playShowCartLottieAnimation
 {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer) {
+            [self pp_flashShowCartButton];
+            return;
+        }
         if (UIAccessibilityIsReduceMotionEnabled()) {
             [self pp_flashShowCartButton];
             return;
@@ -1194,7 +1263,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)pp_styleUtilityButton:(UIButton *)button {
-    UIColor *fillColor = [PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor) colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.30];
+    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    UIColor *fillColor = [PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor)
+                          colorWithAlphaComponent:accessoryViewerStyle ? (PPIOS26() ? 0.12 : 0.22) : (PPIOS26() ? 0.18 : 0.30)];
     button.backgroundColor = fillColor;
     button.tintColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     PPApplyContinuousCorners(button, PPBBCartUtilityButtonSize() * 0.5);
@@ -1340,7 +1411,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)pp_runConfirmedSheen {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
+    if (UIAccessibilityIsReduceMotionEnabled() ||
+        self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer) {
         return;
     }
 
@@ -1415,17 +1487,21 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)pp_restoreAddToCartButton {
     self.restoringButton = YES;
-    [self pp_setAddToCartTitle:self.idleAddToCartTitle
-                     imageName:@"cart.badge.plus"
+    BOOL available = self.isPurchaseAvailable;
+    [self pp_setAddToCartTitle:available ? self.idleAddToCartTitle : kLang(@"Out of stock")
+                     imageName:available ? @"cart.badge.plus" : @"cart.badge.minus"
                     foreground:UIColor.whiteColor
-                    background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
+                    background:available
+        ? PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)
+        : UIColor.systemGrayColor];
     [UIView transitionWithView:self.addToCartButton
                       duration:0.22
                        options:UIViewAnimationOptionTransitionCrossDissolve
-                    animations:^{
-        self.addToCartButton.alpha = 1.0;
+                     animations:^{
+        self.addToCartButton.alpha = available ? 1.0 : 0.62;
     } completion:^(__unused BOOL finished) {
-        self.addToCartButton.userInteractionEnabled = YES;
+        self.addToCartButton.enabled = available;
+        self.addToCartButton.userInteractionEnabled = available;
         self.restoringButton = NO;
     }];
 }
@@ -1446,6 +1522,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)addToCartTapped {
+    if (!self.isPurchaseAvailable) {
+        return;
+    }
     self.addToCartButton.userInteractionEnabled = NO;
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
 
@@ -1479,9 +1558,35 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.minusButton.enabled = safeQuantity > 1;
     self.minusButton.alpha = safeQuantity > 1 ? 1.0 : 0.36;
+    self.plusButton.enabled = self.isPurchaseAvailable;
+    self.plusButton.alpha = self.isPurchaseAvailable ? 1.0 : 0.36;
     self.countLabel.accessibilityValue = nextText;
 
     if (self.onQuantityChanged) self.onQuantityChanged(self.cartItemquantity);
+}
+
+- (void)setPurchaseAvailable:(BOOL)available
+{
+    _purchaseAvailable = available;
+    self.addToCartButton.enabled = available;
+    self.addToCartButton.userInteractionEnabled = available;
+    self.qtyContainer.userInteractionEnabled = available;
+    self.qtyContainer.alpha = available ? 1.0 : 0.58;
+    self.addToCartButton.alpha = available ? 1.0 : 0.62;
+    self.addToCartButton.accessibilityHint = available
+        ? kLang(@"a11y_btn_add_to_cart_hint")
+        : kLang(@"Out of stock");
+    [self pp_setAddToCartTitle:available ? self.idleAddToCartTitle : kLang(@"Out of stock")
+                    imageName:available ? @"cart.badge.plus" : @"cart.badge.minus"
+                   foreground:UIColor.whiteColor
+                   background:available
+        ? PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)
+        : UIColor.systemGrayColor];
+    BOOL canDecrease = available && self.cartItemquantity > 1;
+    self.minusButton.enabled = canDecrease;
+    self.minusButton.alpha = canDecrease ? 1.0 : 0.36;
+    self.plusButton.enabled = available;
+    self.plusButton.alpha = available ? 1.0 : 0.36;
 }
 
 - (void)setInitItemAmount:(CGFloat)amount {

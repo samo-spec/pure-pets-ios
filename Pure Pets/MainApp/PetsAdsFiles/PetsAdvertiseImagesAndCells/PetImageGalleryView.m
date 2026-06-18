@@ -83,10 +83,12 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 @property (nonatomic, strong) FullScreenImageViewerController *fullScreenViewer;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UIButton *containerB;
+@property (nonatomic, strong) UIVisualEffectView *pageControlMaterialView;
 @property (nonatomic, strong) id currentModel;
 @property (nonatomic,strong) EllipsePageControl *myPageControl1;
 
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
+@property (nonatomic, assign) BOOL pp_didPrepareGalleryEntranceAnimation;
 @property (nonatomic, assign) BOOL pp_didRunGalleryEntranceAnimation;
 @property (nonatomic, assign) NSInteger pp_lastSettledPageIndex;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *pp_swipeFeedbackGenerator;
@@ -108,10 +110,12 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
                          focusRect:(CGRect)focusRect
                             source:(PPImageGallerySmartCropSource)source;
 - (void)pp_runGalleryEntranceAnimationIfNeeded;
+- (void)pp_prepareGalleryEntranceAnimationIfNeeded;
 - (void)pp_applySwipeMotionToVisibleCells;
 - (void)pp_resetMotionForCell:(UICollectionViewCell *)cell;
 - (void)pp_emitSwipeFeedbackIfNeededForPage:(NSInteger)page;
 - (void)pp_configureVideoBadgeInCell:(UICollectionViewCell *)cell visible:(BOOL)visible;
+- (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page;
 
 @end
 
@@ -154,15 +158,50 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     _collectionView.pagingEnabled = YES;
+    _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
     _collectionView.delegate = self;
     _collectionView.dataSource = self;
     _collectionView.showsHorizontalScrollIndicator = NO;
-    _collectionView.backgroundColor = AppBackgroundClr;
+    _collectionView.backgroundColor = _galleryType == PetImageGalleryTypeAccessory
+        ? (AppForgroundColr ?: UIColor.secondarySystemBackgroundColor)
+        : AppBackgroundClr;
     _collectionView.layer.cornerRadius = 0;
     _collectionView.clipsToBounds = YES;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     //_collectionView.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner ;
     [_collectionView registerClass:[UICollectionViewCell class] forCellWithReuseIdentifier:@"ImageCell"];
+
+    UIView *emptyView = [[UIView alloc] init];
+    emptyView.backgroundColor = UIColor.clearColor;
+    UIImageView *emptyIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"]];
+    emptyIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyIcon.contentMode = UIViewContentModeScaleAspectFit;
+    emptyIcon.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.62];
+    emptyIcon.isAccessibilityElement = NO;
+    UILabel *emptyLabel = [[UILabel alloc] init];
+    emptyLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyLabel.font = [GM MidFontWithSize:14.0];
+    emptyLabel.textColor = UIColor.secondaryLabelColor;
+    emptyLabel.textAlignment = NSTextAlignmentCenter;
+    emptyLabel.text = kLang(@"image_gallery_empty");
+    emptyLabel.adjustsFontForContentSizeCategory = YES;
+    emptyLabel.numberOfLines = 0;
+    [emptyView addSubview:emptyIcon];
+    [emptyView addSubview:emptyLabel];
+    [NSLayoutConstraint activateConstraints:@[
+        [emptyIcon.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
+        [emptyIcon.centerYAnchor constraintEqualToAnchor:emptyView.centerYAnchor constant:-14.0],
+        [emptyIcon.widthAnchor constraintEqualToConstant:32.0],
+        [emptyIcon.heightAnchor constraintEqualToConstant:32.0],
+        [emptyLabel.topAnchor constraintEqualToAnchor:emptyIcon.bottomAnchor constant:10.0],
+        [emptyLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:emptyView.leadingAnchor constant:24.0],
+        [emptyLabel.trailingAnchor constraintLessThanOrEqualToAnchor:emptyView.trailingAnchor constant:-24.0],
+        [emptyLabel.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor]
+    ]];
+    emptyView.isAccessibilityElement = YES;
+    emptyView.accessibilityLabel = emptyLabel.text;
+    _collectionView.backgroundView = emptyView;
+    _collectionView.backgroundView.hidden = _imageItems.count > 0;
     [self addSubview:_collectionView];
    
     
@@ -175,8 +214,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         [self.collectionView .heightAnchor constraintEqualToAnchor:self.heightAnchor]
     ]];
     
-    
-    [self setupUI];
+    if (_imageItems.count > 1) {
+        [self setupUI];
+    }
+    [self pp_prepareGalleryEntranceAnimationIfNeeded];
 }
 
 // layoutSubviews no longer manages myPageControl1 constraints
@@ -195,7 +236,17 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    self.myPageControl1.frame = self.containerB.bounds;
     [self pp_applySwipeMotionToVisibleCells];
+}
+
+- (void)setContentMode:(UIViewContentMode)contentMode
+{
+    if (_contentMode == contentMode) {
+        return;
+    }
+    _contentMode = contentMode;
+    [self.collectionView reloadData];
 }
 
 
@@ -223,35 +274,72 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 }
  
 - (void)setupUI {
+    if (self.containerB) {
+        self.containerB.hidden = self.imageItems.count <= 1;
+        self.myPageControl1.numberOfPages = self.imageItems.count;
+        return;
+    }
     
     self.containerB = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationFilled];
     self.containerB.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:self.containerB];
     
    
+    BOOL accessoryStyle = _galleryType == PetImageGalleryTypeAccessory;
     if(PPIOS26())
     {
         UIButtonConfiguration *config = self.containerB.configuration;
-        config.background.cornerRadius = 12;
-        config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
-        config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+        config.background.cornerRadius = 14;
+        config.background.backgroundColor = accessoryStyle ? UIColor.clearColor : [AppForgroundColr colorWithAlphaComponent:0.2];
+        config.baseBackgroundColor = accessoryStyle ? UIColor.clearColor : [AppForgroundColr colorWithAlphaComponent:0.2];
+        config.background.strokeWidth = 0.0;
+        config.background.strokeColor = UIColor.clearColor;
         self.containerB.configuration = config;
     }
     else
     {
-        self.containerB.layer.cornerRadius = 12;
-        self.containerB.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+        self.containerB.layer.cornerRadius = 14;
+        self.containerB.backgroundColor = accessoryStyle ? UIColor.clearColor : [AppForgroundColr colorWithAlphaComponent:0.2];
         self.containerB.clipsToBounds = YES;
 
     }
-    
+    if (accessoryStyle) {
+        self.pageControlMaterialView = [[UIVisualEffectView alloc]
+                                        initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
+        self.pageControlMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.pageControlMaterialView.userInteractionEnabled = NO;
+        self.pageControlMaterialView.layer.cornerRadius = 14.0;
+        self.pageControlMaterialView.layer.masksToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            self.pageControlMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        [self.containerB addSubview:self.pageControlMaterialView];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.pageControlMaterialView.topAnchor constraintEqualToAnchor:self.containerB.topAnchor],
+            [self.pageControlMaterialView.leadingAnchor constraintEqualToAnchor:self.containerB.leadingAnchor],
+            [self.pageControlMaterialView.trailingAnchor constraintEqualToAnchor:self.containerB.trailingAnchor],
+            [self.pageControlMaterialView.bottomAnchor constraintEqualToAnchor:self.containerB.bottomAnchor]
+        ]];
+        self.containerB.layer.shadowColor = UIColor.blackColor.CGColor;
+        self.containerB.layer.shadowOpacity = 0.10;
+        self.containerB.layer.shadowRadius = 12.0;
+        self.containerB.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+        self.containerB.layer.masksToBounds = NO;
+    }
  
     
     self.myPageControl1 = [[EllipsePageControl alloc] initWithFrame:CGRectMake(0, 0, 90, 30)];
    // self.myPageControl1.backgroundColor = UIColor.redColor;
     self.myPageControl1.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.myPageControl1.controlSize = accessoryStyle ? 5 : 6;
+    self.myPageControl1.controlSpacing = accessoryStyle ? 7 : 8;
+    self.myPageControl1.otherColor = [UIColor.labelColor colorWithAlphaComponent:0.22];
+    self.myPageControl1.currentColor = accessoryStyle ? UIColor.labelColor : AppPrimaryClr;
+    self.myPageControl1.isAccessibilityElement = YES;
+    self.myPageControl1.accessibilityTraits = UIAccessibilityTraitStaticText;
     //self.myPageControl1.translatesAutoresizingMaskIntoConstraints = NO;
     [self.containerB addSubview:_myPageControl1];
+    [self.containerB bringSubviewToFront:_myPageControl1];
     // Center myPageControl1 inside containerB and size to containerB
     /*
      [NSLayoutConstraint activateConstraints:@[
@@ -264,7 +352,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     NSLayoutConstraint *bottomBtn;
     if(_galleryType == PetImageGalleryTypeCardsViewer)
     {
-        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10];
+        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12];
     }else if(_galleryType == PetImageGalleryTypePetAd)
     {
         bottomBtn =  [self.containerB .topAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.topAnchor constant:5];
@@ -272,13 +360,14 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     }
     else
     {
-        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-30];
+        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-20];
     }
     
+    CGFloat indicatorWidth = MIN(132.0, MAX(58.0, 24.0 + (self.imageItems.count * 12.0)));
     [NSLayoutConstraint activateConstraints:@[
         bottomBtn,
         [self.containerB .centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-        [self.containerB .widthAnchor constraintEqualToConstant:90],
+        [self.containerB .widthAnchor constraintEqualToConstant:indicatorWidth],
         [self.containerB .heightAnchor constraintEqualToConstant:30]
     ]];
     
@@ -287,9 +376,13 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.myPageControl1.delegate=self;
     
     [self layoutSubviews];
-    self.myPageControl1.frame = CGRectMake(0, 0, 90, 30);
+    self.myPageControl1.frame = CGRectMake(0, 0, indicatorWidth, 30);
     
-    self.containerB.layer.cornerRadius = 0;
+    self.containerB.layer.cornerRadius = 14.0;
+    if (@available(iOS 13.0, *)) {
+        self.containerB.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self pp_updateGalleryAccessibilityForPage:0];
     /*
      LCScaleColorPageStyle,
      LCSquirmPageStyle,
@@ -318,14 +411,38 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     [_collectionView scrollToItemAtIndexPath:indexPath
                             atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                     animated:YES];
+    [self pp_updateGalleryAccessibilityForPage:targetIndex];
+}
+
+- (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page
+{
+    NSInteger count = self.imageItems.count;
+    if (count <= 0) {
+        self.myPageControl1.accessibilityValue = nil;
+        return;
+    }
+    NSInteger safePage = MIN(MAX(page, 0), count - 1);
+    self.myPageControl1.accessibilityLabel = kLang(@"image_gallery_accessibility_label");
+    self.myPageControl1.accessibilityValue = [NSString stringWithFormat:kLang(@"image_gallery_page_format"),
+                                                   (long)(safePage + 1),
+                                                   (long)count];
+    self.myPageControl1.accessibilityHint = kLang(@"image_gallery_swipe_hint");
 }
 
 - (void)setImageItems:(NSArray<PetImageItem *> *)imageItems {
-    _imageItems = imageItems;
+    _imageItems = imageItems ?: @[];
     [self.imageCache removeAllObjects];
+    self.pp_didPrepareGalleryEntranceAnimation = NO;
     self.pp_didRunGalleryEntranceAnimation = NO;
     self.pp_lastSettledPageIndex = NSNotFound;
-    _myPageControl1.numberOfPages = (int)imageItems.count;
+    if (_imageItems.count > 1 && !self.containerB) {
+        [self setupUI];
+    }
+    self.containerB.hidden = _imageItems.count <= 1;
+    self.collectionView.backgroundView.hidden = _imageItems.count > 0;
+    _myPageControl1.numberOfPages = (int)_imageItems.count;
+    [self pp_updateGalleryAccessibilityForPage:0];
+    [self pp_prepareGalleryEntranceAnimationIfNeeded];
     [self.collectionView reloadData];
     [self pp_runGalleryEntranceAnimationIfNeeded];
 }
@@ -343,6 +460,12 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         [collectionView dequeueReusableCellWithReuseIdentifier:@"ImageCell"
                                                   forIndexPath:indexPath];
     [self pp_resetMotionForCell:cell];
+    cell.isAccessibilityElement = YES;
+    cell.accessibilityTraits = UIAccessibilityTraitImage | UIAccessibilityTraitButton;
+    cell.accessibilityLabel = [NSString stringWithFormat:kLang(@"image_gallery_page_format"),
+                               (long)(indexPath.item + 1),
+                               (long)self.imageItems.count];
+    cell.accessibilityHint = kLang(@"image_gallery_open_hint");
 
     UIImageView *imageView = [cell.contentView viewWithTag:100];
 
@@ -351,8 +474,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         imageView.tag = 100; // FIXED TAG — DO NOT CHANGE LATER
         imageView.translatesAutoresizingMaskIntoConstraints = NO;
         imageView.clipsToBounds = YES;
-        imageView.contentMode = UIViewContentModeScaleAspectFill;
-        imageView.layer.contentsGravity = kCAGravityResizeAspectFill;
+        imageView.contentMode = self.contentMode;
+        imageView.layer.contentsGravity = self.contentMode == UIViewContentModeScaleAspectFit
+            ? kCAGravityResizeAspect
+            : kCAGravityResizeAspectFill;
         imageView.layer.contentsRect = CGRectMake(0.0, 0.0, 1.0, 1.0);
 
         [cell.contentView addSubview:imageView];
@@ -377,6 +502,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         [PPBlurHashBridge imageFrom:item.blurHash syncSize:CGSizeMake(40, 40) punch:1.0];
 
     }
+    placeholder = placeholder ?: [UIImage imageNamed:@"placeholder"];
     [self pp_resetImageViewForReuse:imageView placeholder:placeholder itemURL:itemURL];
 
     UIImage *cachedImage = itemURL.length > 0 ? [self.imageCache objectForKey:itemURL] : nil;
@@ -461,8 +587,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     imageView.accessibilityIdentifier = itemURL ?: @"";
     imageView.image = placeholder;
-    imageView.contentMode = UIViewContentModeScaleAspectFill;
-    imageView.layer.contentsGravity = kCAGravityResizeAspectFill;
+    BOOL fitsEntireProduct = self.contentMode == UIViewContentModeScaleAspectFit;
+    imageView.contentMode = fitsEntireProduct ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
+    imageView.layer.contentsGravity = fitsEntireProduct ? kCAGravityResizeAspect : kCAGravityResizeAspectFill;
     imageView.layer.contentsRect = CGRectMake(0.0, 0.0, 1.0, 1.0);
     imageView.layer.contentsScale = UIScreen.mainScreen.scale;
     imageView.layer.masksToBounds = YES;
@@ -477,6 +604,12 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
                                  inBounds:(CGRect)bounds
 {
     if (!image || !imageView) return;
+    if (self.contentMode == UIViewContentModeScaleAspectFit) {
+        imageView.contentMode = UIViewContentModeScaleAspectFit;
+        imageView.layer.contentsGravity = kCAGravityResizeAspect;
+        imageView.layer.contentsRect = CGRectMake(0.0, 0.0, 1.0, 1.0);
+        return;
+    }
 
     CGRect targetBounds = CGRectIsEmpty(bounds) ? imageView.bounds : bounds;
     if (CGRectIsEmpty(targetBounds)) {
@@ -498,6 +631,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
                                  inBounds:(CGRect)bounds
 {
     if (!image || !imageView) return;
+    if (self.contentMode == UIViewContentModeScaleAspectFit) return;
 
     CGRect targetBounds = CGRectIsEmpty(bounds) ? imageView.bounds : bounds;
     if (CGRectIsEmpty(targetBounds)) {
@@ -721,9 +855,29 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     return PPImageGalleryClampUnitRect(CGRectMake(originX, originY, cropWidth, cropHeight));
 }
 
+- (void)pp_prepareGalleryEntranceAnimationIfNeeded
+{
+    if (self.pp_didPrepareGalleryEntranceAnimation || self.pp_didRunGalleryEntranceAnimation) return;
+    self.pp_didPrepareGalleryEntranceAnimation = YES;
+    if (UIAccessibilityIsReduceMotionEnabled() || self.imageItems.count == 0) {
+        self.collectionView.alpha = 1.0;
+        self.collectionView.transform = CGAffineTransformIdentity;
+        self.containerB.alpha = 1.0;
+        self.containerB.transform = CGAffineTransformIdentity;
+        return;
+    }
+    self.collectionView.alpha = 0.0;
+    self.collectionView.transform =
+    CGAffineTransformMakeScale(1.025, 1.025);
+    self.containerB.alpha = 0.0;
+    self.containerB.transform =
+    CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 6.0), 0.94, 0.94);
+}
+
 - (void)pp_runGalleryEntranceAnimationIfNeeded
 {
     if (self.pp_didRunGalleryEntranceAnimation || !self.window || self.imageItems.count == 0) return;
+    [self pp_prepareGalleryEntranceAnimationIfNeeded];
     self.pp_didRunGalleryEntranceAnimation = YES;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
@@ -734,25 +888,18 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         return;
     }
 
-    self.collectionView.alpha = 0.0;
-    self.collectionView.transform =
-    CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 18.0), 0.985, 0.985);
-    self.containerB.alpha = 0.0;
-    self.containerB.transform =
-    CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 8.0), 0.92, 0.92);
-
-    [UIView animateWithDuration:0.52
-                          delay:0.03
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.22
+    [UIView animateWithDuration:0.48
+                          delay:0.0
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.16
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    [UIView animateWithDuration:0.34
-                          delay:0.16
+    [UIView animateWithDuration:0.30
+                          delay:0.12
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.containerB.alpha = 1.0;
@@ -818,6 +965,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     NSInteger page = [self pageIndexForItemIndex:indexPath.item];
     _myPageControl1.currentPage = page;
+    [self pp_updateGalleryAccessibilityForPage:indexPath.item];
     [self pp_applySwipeMotionToVisibleCells];
 }
 
@@ -847,6 +995,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if (scrollView != self.collectionView) return;
     NSInteger page = (NSInteger)llround(scrollView.contentOffset.x / MAX(1.0, CGRectGetWidth(scrollView.bounds)));
     _myPageControl1.currentPage = [self pageIndexForItemIndex:page];
+    [self pp_updateGalleryAccessibilityForPage:page];
     [self pp_emitSwipeFeedbackIfNeededForPage:page];
     [self pp_applySwipeMotionToVisibleCells];
 }

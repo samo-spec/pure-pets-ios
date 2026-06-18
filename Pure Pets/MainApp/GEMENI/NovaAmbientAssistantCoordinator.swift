@@ -246,9 +246,9 @@ public final class NovaAmbientAssistantCoordinator: NSObject {
                 activeConstraints.append(view.topAnchor.constraint(equalTo: guide.topAnchor, constant: 78.0))
             case .bottom:
                 if let bottomAnchorView = bottomNavigationAnchorView(for: presenter, in: hostView) {
-                    activeConstraints.append(view.bottomAnchor.constraint(equalTo: bottomAnchorView.topAnchor, constant: -12.0))
+                    activeConstraints.append(view.bottomAnchor.constraint(equalTo: bottomAnchorView.topAnchor, constant: -24.0))
                 } else {
-                    activeConstraints.append(view.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -14.0))
+                    activeConstraints.append(view.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -24.0))
                 }
             }
 

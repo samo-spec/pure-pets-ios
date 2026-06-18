@@ -45,6 +45,11 @@ typedef NS_ENUM(NSInteger, TabBarState) {
 
 typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 
+typedef NS_ENUM(NSInteger, BBCartBottomBarPresentationStyle) {
+    BBCartBottomBarPresentationStyleDefault = 0,
+    BBCartBottomBarPresentationStyleAccessoryViewer
+};
+
 @interface PPPaymentTabBar : UIView
 @property (nonatomic, copy) PPPaymentTabSelectionBlock onSelect;
 @property (nonatomic, assign, readonly) PPPaymentTab selectedTab;
@@ -60,6 +65,7 @@ typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 
 
 @interface BBCartBottomBar : UIView
+@property (nonatomic, assign) BBCartBottomBarPresentationStyle presentationStyle;
 @property (nonatomic, strong, readonly) UIButton *totalContainer;
 @property (nonatomic, strong, readonly) UIButton *qtyContainer;
 @property (nonatomic, strong, readonly) UIButton *minusButton;
@@ -84,6 +90,9 @@ typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 @property (nonatomic, copy, nullable) void (^onQuantityChanged)(NSInteger quantity);
 
 - (void)setTotalAmount:(CGFloat)totalAmount;
+
+/// Updates the purchase controls without affecting share/cart utility actions.
+- (void)setPurchaseAvailable:(BOOL)available;
 
 /// Plays the confirmed add-to-cart animation after the cart write succeeds.
 - (void)performAddToCartSuccessAnimation;

@@ -2021,6 +2021,11 @@
 "accessory_view_store_support" = "Store support";
 "accessory_view_suggestions_subtitle" = "More picks from related accessories.";
 "accessory_view_empty_suggestions" = "More accessory suggestions will appear here soon.";
+"image_gallery_accessibility_label" = "Images";
+"image_gallery_page_format" = "Image %ld of %ld";
+"image_gallery_swipe_hint" = "Swipe to browse images.";
+"image_gallery_open_hint" = "Double-tap to view full screen.";
+"image_gallery_empty" = "No image available";
 "service_view_contact_loading" = "Contact data is still loading. Please try again.";
 "service_view_description_title" = "Description";
 "service_view_details_title" = "Service Details";

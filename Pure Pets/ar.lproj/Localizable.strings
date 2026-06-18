@@ -1996,6 +1996,11 @@
 "accessory_view_store_support" = "دعم المتجر";
 "accessory_view_suggestions_subtitle" = "اقتراحات إضافية من نفس الفئة.";
 "accessory_view_empty_suggestions" = "ستظهر هنا اقتراحات إكسسوارات إضافية قريبًا.";
+"image_gallery_accessibility_label" = "الصور";
+"image_gallery_page_format" = "الصورة %ld من %ld";
+"image_gallery_swipe_hint" = "اسحب لتصفح الصور.";
+"image_gallery_open_hint" = "اضغط مرتين لعرض الصورة بملء الشاشة.";
+"image_gallery_empty" = "لا تتوفر صورة";
 "service_view_contact_loading" = "بيانات التواصل قيد التحميل. حاول مرة أخرى.";
 "service_view_description_title" = "الوصف";
 "service_view_details_title" = "تفاصيل الخدمة";
