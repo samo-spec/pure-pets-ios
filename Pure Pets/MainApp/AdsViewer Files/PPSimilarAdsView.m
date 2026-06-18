@@ -107,6 +107,13 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         self.collectionHeightConstraint,
     ]];
+    
+    if (@available(iOS 17.4, *)) {
+        self.collectionView.bouncesVertically = NO;
+    } else {
+        // Fallback on earlier versions
+    }
+
 }
 
 - (NSCollectionLayoutSection *)buildSection {

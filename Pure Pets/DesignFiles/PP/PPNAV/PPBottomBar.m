@@ -86,7 +86,7 @@ static CGFloat PPBBCartTotalHeight(void) {
 }
 
 static CGFloat PPBBCartAddButtonHeight(void) {
-    return PPBBCartUsesLegacyIPadBelowIOS18() ? 38.0 : 44.0;
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 38.0 : 46.0;
 }
 
 static UIColor *PPBBCartSurfaceFillColor(void) {
@@ -94,7 +94,7 @@ static UIColor *PPBBCartSurfaceFillColor(void) {
         return PPBBCartAdaptiveColor([UIColor colorWithWhite:0.10 alpha:0.20],
                                      [UIColor colorWithWhite:1.0 alpha:0.24]);
     }
-    UIColor *base = PPBBCartColor(AppForgroundColr,
+    UIColor *base = PPBBCartColor(AppBackgroundClr,
                                   UIColor.secondarySystemBackgroundColor);
     return [base colorWithAlphaComponent:PPIOS26() ? 0.08 : 0.18];
 }

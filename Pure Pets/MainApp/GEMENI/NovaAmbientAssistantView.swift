@@ -216,12 +216,12 @@ public final class NovaAmbientAssistantView: UIControl {
         layer.shadowRadius = 24.0
         layer.shadowOffset = CGSize(width: 0.0, height: 10.0)
 
-        glassBackgroundButton.layer.cornerRadius = 25.0
+        glassBackgroundButton.layer.cornerRadius = 16.0
         if #available(iOS 13.0, *) {
             glassBackgroundButton.layer.cornerCurve = .continuous
         }
 
-        blurView.layer.cornerRadius = 25.0
+        blurView.layer.cornerRadius = 16.0
         if #available(iOS 13.0, *) {
             blurView.layer.cornerCurve = .continuous
         }
@@ -232,7 +232,7 @@ public final class NovaAmbientAssistantView: UIControl {
         }
 
         accentView.layer.cornerRadius = 1.5
-        closeButton.layer.cornerRadius = 18.0
+        closeButton.layer.cornerRadius = 22.0
         if #available(iOS 13.0, *) {
             closeButton.layer.cornerCurve = .continuous
         }

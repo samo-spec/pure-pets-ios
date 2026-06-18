@@ -54,6 +54,8 @@ static const CGFloat kAVSellerAvatarSize     = 64.0;    // seller identity avata
 static const CGFloat kAVSellerAvatarRingSize = 74.0;    // premium avatar shell size
 static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button height
 static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill height
+static const CGFloat kAVNavigationTitleWidth = 242.0;
+static const CGFloat kAVNavigationTitleHeight = 44.0;
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -76,6 +78,431 @@ static UIColor *AVSellerCardGoldColor(void) {
 static UIColor *AVSellerCardSurfaceColor(void) {
     return AppForgroundColr ?: UIColor.whiteColor;
 }
+
+@interface PPAccessoryViewerNavigationTitleView : UIView
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(NSString *)subtitle
+                 priceText:(NSString *)priceText
+                 stockText:(NSString *)stockText
+               accentColor:(UIColor *)accentColor;
+- (void)applyCurrentAppearance;
+- (void)prepareForEntranceIfNeeded;
+- (void)animateEntranceIfNeeded;
+@end
+
+@interface PPAccessoryViewerNavigationTitleView ()
+@property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIView *tintView;
+@property (nonatomic, strong) UIView *borderView;
+@property (nonatomic, strong) UIView *accentView;
+@property (nonatomic, strong) UILabel *productTitleLabel;
+@property (nonatomic, strong) UILabel *metadataLabel;
+@property (nonatomic, strong) UIVisualEffectView *priceBadgeMaterialView;
+@property (nonatomic, strong) UIView *priceBadgeTintView;
+@property (nonatomic, strong) UILabel *priceBadgeLabel;
+@property (nonatomic, strong) UIColor *accentColor;
+@property (nonatomic, strong) CAShapeLayer *chromeLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *chromeLiquidInnerLayer;
+@property (nonatomic, strong) CAShapeLayer *priceLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *priceLiquidInnerLayer;
+@property (nonatomic, strong) CAShapeLayer *accentLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *accentLiquidInnerLayer;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
+@end
+
+@implementation PPAccessoryViewerNavigationTitleView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        self.backgroundColor = UIColor.clearColor;
+        self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        self.isAccessibilityElement = YES;
+        self.accessibilityTraits = UIAccessibilityTraitHeader;
+        self.accentColor = AVSellerCardAccentColor();
+        [self pp_buildHierarchy];
+        [self applyCurrentAppearance];
+    }
+    return self;
+}
+
+- (CGSize)intrinsicContentSize
+{
+    return CGSizeMake(kAVNavigationTitleWidth, kAVNavigationTitleHeight);
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    CGFloat corner = 18.0;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                                       cornerRadius:corner].CGPath;
+    [self pp_updateLiquidChromeGeometry];
+}
+
+- (void)pp_buildHierarchy
+{
+    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.layer.shadowOpacity = 0.10;
+    self.layer.shadowRadius = 14.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+
+    self.materialView = [[UIVisualEffectView alloc] initWithEffect:nil];
+    self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.materialView.layer.cornerRadius = kAVNavigationTitleHeight / 2.0;
+    self.materialView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.materialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:self.materialView];
+
+    self.tintView = [[UIView alloc] init];
+    self.tintView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tintView.userInteractionEnabled = NO;
+    [self.materialView.contentView addSubview:self.tintView];
+
+    self.borderView = [[UIView alloc] init];
+    self.borderView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.borderView.userInteractionEnabled = NO;
+    self.borderView.backgroundColor = UIColor.clearColor;
+    self.borderView.layer.cornerRadius = kAVNavigationTitleHeight / 2.0;
+    self.borderView.layer.borderWidth = 0.0;
+    self.borderView.layer.masksToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        self.borderView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:self.borderView];
+
+    self.accentView = [[UIView alloc] init];
+    self.accentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accentView.userInteractionEnabled = NO;
+    self.accentView.clipsToBounds = YES;
+    self.accentView.layer.masksToBounds = YES;
+    self.accentView.layer.cornerRadius = 2.5;
+    if (@available(iOS 13.0, *)) {
+        self.accentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.materialView.contentView addSubview:self.accentView];
+
+    self.productTitleLabel = [[UILabel alloc] init];
+    self.productTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.productTitleLabel.font = [GM boldFontWithSize:13.5];
+    self.productTitleLabel.textColor = AppPrimaryTextClr;
+    self.productTitleLabel.numberOfLines = 1;
+    self.productTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.productTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.productTitleLabel.minimumScaleFactor = 0.78;
+    self.productTitleLabel.adjustsFontForContentSizeCategory = YES;
+
+    self.metadataLabel = [[UILabel alloc] init];
+    self.metadataLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.metadataLabel.font = [GM MidFontWithSize:11.0];
+    self.metadataLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82];
+    self.metadataLabel.numberOfLines = 1;
+    self.metadataLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.metadataLabel.adjustsFontSizeToFitWidth = YES;
+    self.metadataLabel.minimumScaleFactor = 0.80;
+    self.metadataLabel.adjustsFontForContentSizeCategory = YES;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.productTitleLabel,
+        self.metadataLabel
+    ]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 1.0;
+    textStack.alignment = UIStackViewAlignmentFill;
+    [self.materialView.contentView addSubview:textStack];
+
+    self.priceBadgeMaterialView = [[UIVisualEffectView alloc] initWithEffect:nil];
+    self.priceBadgeMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceBadgeMaterialView.userInteractionEnabled = NO;
+    self.priceBadgeMaterialView.clipsToBounds = YES;
+    self.priceBadgeMaterialView.layer.masksToBounds = YES;
+    self.priceBadgeMaterialView.layer.cornerRadius = 12.0;
+    if (@available(iOS 13.0, *)) {
+        self.priceBadgeMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.materialView.contentView addSubview:self.priceBadgeMaterialView];
+
+    self.priceBadgeTintView = [[UIView alloc] init];
+    self.priceBadgeTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceBadgeTintView.userInteractionEnabled = NO;
+    self.priceBadgeTintView.backgroundColor = UIColor.clearColor;
+    [self.priceBadgeMaterialView.contentView addSubview:self.priceBadgeTintView];
+
+    self.priceBadgeLabel = [[UILabel alloc] init];
+    self.priceBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceBadgeLabel.font = [GM boldFontWithSize:11.0];
+    self.priceBadgeLabel.textColor = AVSellerCardAccentColor();
+    self.priceBadgeLabel.textAlignment = NSTextAlignmentCenter;
+    self.priceBadgeLabel.numberOfLines = 1;
+    self.priceBadgeLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.priceBadgeLabel.adjustsFontSizeToFitWidth = YES;
+    self.priceBadgeLabel.minimumScaleFactor = 0.72;
+    self.priceBadgeLabel.clipsToBounds = YES;
+    self.priceBadgeLabel.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.priceBadgeLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.priceBadgeLabel.adjustsFontForContentSizeCategory = YES;
+    [self.priceBadgeLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.priceBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.priceBadgeMaterialView.contentView addSubview:self.priceBadgeLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.materialView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.materialView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.materialView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.materialView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [self.tintView.topAnchor constraintEqualToAnchor:self.materialView.contentView.topAnchor],
+        [self.tintView.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor],
+        [self.tintView.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor],
+        [self.tintView.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor],
+
+        [self.borderView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.borderView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.borderView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.borderView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [self.accentView.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:10.0],
+        [self.accentView.centerYAnchor constraintEqualToAnchor:self.materialView.contentView.centerYAnchor],
+        [self.accentView.widthAnchor constraintEqualToConstant:5.0],
+        [self.accentView.heightAnchor constraintEqualToConstant:22.0],
+
+        [self.priceBadgeMaterialView.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-10.0],
+        [self.priceBadgeMaterialView.centerYAnchor constraintEqualToAnchor:self.materialView.contentView.centerYAnchor],
+        [self.priceBadgeMaterialView.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
+        [self.priceBadgeMaterialView.widthAnchor constraintGreaterThanOrEqualToConstant:54.0],
+        [self.priceBadgeMaterialView.widthAnchor constraintLessThanOrEqualToConstant:82.0],
+
+        [self.priceBadgeTintView.topAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.topAnchor],
+        [self.priceBadgeTintView.leadingAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.leadingAnchor],
+        [self.priceBadgeTintView.trailingAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.trailingAnchor],
+        [self.priceBadgeTintView.bottomAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.bottomAnchor],
+
+        [self.priceBadgeLabel.topAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.topAnchor],
+        [self.priceBadgeLabel.leadingAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.leadingAnchor constant:8.0],
+        [self.priceBadgeLabel.trailingAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.trailingAnchor constant:-8.0],
+        [self.priceBadgeLabel.bottomAnchor constraintEqualToAnchor:self.priceBadgeMaterialView.contentView.bottomAnchor],
+
+        [textStack.leadingAnchor constraintEqualToAnchor:self.accentView.trailingAnchor constant:9.0],
+        [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceBadgeMaterialView.leadingAnchor constant:-8.0],
+        [textStack.centerYAnchor constraintEqualToAnchor:self.materialView.contentView.centerYAnchor],
+        [textStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.materialView.contentView.topAnchor constant:5.0],
+        [textStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.materialView.contentView.bottomAnchor constant:-5.0],
+    ]];
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(NSString *)subtitle
+                 priceText:(NSString *)priceText
+                 stockText:(NSString *)stockText
+               accentColor:(UIColor *)accentColor
+{
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.productTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.metadataLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.productTitleLabel.text = title.length > 0 ? title : kLang(@"accessory_view_details_title");
+
+    NSMutableArray<NSString *> *metadata = [NSMutableArray array];
+    if (subtitle.length > 0) [metadata addObject:subtitle];
+    if (stockText.length > 0) [metadata addObject:stockText];
+    self.metadataLabel.text = [metadata componentsJoinedByString:@" • "];
+    self.priceBadgeLabel.text = priceText.length > 0 ? priceText : @"";
+    self.priceBadgeLabel.hidden = self.priceBadgeLabel.text.length == 0;
+    self.priceBadgeMaterialView.hidden = self.priceBadgeLabel.hidden;
+    self.accentColor = accentColor ?: AVSellerCardAccentColor();
+    [self applyCurrentAppearance];
+
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
+    if (self.productTitleLabel.text.length > 0) [accessibilityParts addObject:self.productTitleLabel.text];
+    if (self.metadataLabel.text.length > 0) [accessibilityParts addObject:self.metadataLabel.text];
+    if (self.priceBadgeLabel.text.length > 0) [accessibilityParts addObject:self.priceBadgeLabel.text];
+    self.accessibilityLabel = [accessibilityParts componentsJoinedByString:@", "];
+}
+
+- (void)applyCurrentAppearance
+{
+    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    UIBlurEffectStyle blurStyle = dark ? UIBlurEffectStyleSystemUltraThinMaterialDark : UIBlurEffectStyleSystemUltraThinMaterialLight;
+    self.materialView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+    self.priceBadgeMaterialView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+    UIColor *surface = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    self.tintView.backgroundColor = [surface colorWithAlphaComponent:dark ? 0.18 : 0.12];
+    self.borderView.layer.borderColor = UIColor.clearColor.CGColor;
+    self.productTitleLabel.textColor = AppPrimaryTextClr;
+    self.metadataLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:dark ? 0.86 : 0.78];
+    self.accentView.backgroundColor = [self.accentColor colorWithAlphaComponent:dark ? 0.82 : 0.62];
+    self.priceBadgeLabel.textColor = self.accentColor;
+    self.priceBadgeLabel.backgroundColor = UIColor.clearColor;
+    self.priceBadgeTintView.backgroundColor = [self.accentColor colorWithAlphaComponent:dark ? 0.18 : 0.10];
+    [self pp_updateLiquidChromeGeometry];
+}
+
+- (CAShapeLayer *)pp_liquidLayer:(CAShapeLayer *)layer
+                            name:(NSString *)name
+                          inView:(UIView *)view
+{
+    if (!layer) {
+        layer = [CAShapeLayer layer];
+        layer.name = name;
+        layer.fillColor = UIColor.clearColor.CGColor;
+        layer.lineCap = kCALineCapRound;
+        layer.lineJoin = kCALineJoinRound;
+        [view.layer addSublayer:layer];
+    }
+    return layer;
+}
+
+- (void)pp_configureLiquidLayer:(CAShapeLayer *)layer
+                         bounds:(CGRect)bounds
+                         corner:(CGFloat)corner
+                          inset:(CGFloat)inset
+                    strokeColor:(UIColor *)strokeColor
+                      lineWidth:(CGFloat)lineWidth
+                    glowOpacity:(CGFloat)glowOpacity
+{
+    if (CGRectGetWidth(bounds) <= 0.0 || CGRectGetHeight(bounds) <= 0.0) {
+        layer.path = nil;
+        return;
+    }
+
+    CGRect strokeBounds = CGRectInset(bounds, inset, inset);
+    CGFloat radius = MAX(corner - inset, 0.0);
+    layer.frame = bounds;
+    layer.path = [UIBezierPath bezierPathWithRoundedRect:strokeBounds cornerRadius:radius].CGPath;
+    layer.strokeColor = strokeColor.CGColor;
+    layer.lineWidth = lineWidth;
+    layer.opacity = 1.0;
+    layer.shadowColor = strokeColor.CGColor;
+    layer.shadowOpacity = glowOpacity;
+    layer.shadowRadius = glowOpacity > 0.0 ? 6.0 : 0.0;
+    layer.shadowOffset = CGSizeZero;
+}
+
+- (void)pp_updateLiquidChromeGeometry
+{
+    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    UIColor *surface = AppForgroundColr ?: UIColor.whiteColor;
+    UIColor *chromeStroke = [surface colorWithAlphaComponent:dark ? 0.34 : 0.68];
+    UIColor *innerStroke = [UIColor.whiteColor colorWithAlphaComponent:dark ? 0.22 : 0.36];
+
+    CGFloat chromeCorner = CGRectGetHeight(self.bounds) > 0.0 ? CGRectGetHeight(self.bounds) * 0.5 : kAVNavigationTitleHeight * 0.5;
+    self.materialView.layer.cornerRadius = chromeCorner;
+    self.borderView.layer.cornerRadius = chromeCorner;
+    self.chromeLiquidBorderLayer = [self pp_liquidLayer:self.chromeLiquidBorderLayer
+                                                  name:@"PPAccessoryViewerChromeLiquidBorder"
+                                                inView:self.borderView];
+    self.chromeLiquidInnerLayer = [self pp_liquidLayer:self.chromeLiquidInnerLayer
+                                                 name:@"PPAccessoryViewerChromeLiquidInner"
+                                               inView:self.borderView];
+    [self pp_configureLiquidLayer:self.chromeLiquidBorderLayer
+                           bounds:self.borderView.bounds
+                           corner:chromeCorner
+                            inset:0.45
+                      strokeColor:chromeStroke
+                        lineWidth:0.9
+                      glowOpacity:dark ? 0.20 : 0.12];
+    [self pp_configureLiquidLayer:self.chromeLiquidInnerLayer
+                           bounds:self.borderView.bounds
+                           corner:chromeCorner
+                            inset:1.2
+                      strokeColor:innerStroke
+                        lineWidth:0.45
+                      glowOpacity:0.0];
+
+    CGFloat priceCorner = CGRectGetHeight(self.priceBadgeMaterialView.bounds) > 0.0 ? CGRectGetHeight(self.priceBadgeMaterialView.bounds) * 0.5 : 12.0;
+    self.priceBadgeMaterialView.layer.cornerRadius = priceCorner;
+    self.priceBadgeLabel.layer.cornerRadius = priceCorner;
+    self.priceLiquidBorderLayer = [self pp_liquidLayer:self.priceLiquidBorderLayer
+                                                 name:@"PPAccessoryViewerPriceLiquidBorder"
+                                               inView:self.priceBadgeMaterialView];
+    self.priceLiquidInnerLayer = [self pp_liquidLayer:self.priceLiquidInnerLayer
+                                                name:@"PPAccessoryViewerPriceLiquidInner"
+                                              inView:self.priceBadgeMaterialView];
+    UIColor *priceStroke = [self.accentColor colorWithAlphaComponent:dark ? 0.34 : 0.26];
+    [self pp_configureLiquidLayer:self.priceLiquidBorderLayer
+                           bounds:self.priceBadgeMaterialView.bounds
+                           corner:priceCorner
+                            inset:0.35
+                      strokeColor:priceStroke
+                        lineWidth:0.75
+                      glowOpacity:dark ? 0.18 : 0.08];
+    [self pp_configureLiquidLayer:self.priceLiquidInnerLayer
+                           bounds:self.priceBadgeMaterialView.bounds
+                           corner:priceCorner
+                            inset:1.0
+                      strokeColor:innerStroke
+                        lineWidth:0.35
+                      glowOpacity:0.0];
+    [self.priceLiquidBorderLayer removeFromSuperlayer];
+    [self.priceBadgeMaterialView.layer addSublayer:self.priceLiquidBorderLayer];
+    [self.priceLiquidInnerLayer removeFromSuperlayer];
+    [self.priceBadgeMaterialView.layer addSublayer:self.priceLiquidInnerLayer];
+
+    CGFloat accentCorner = CGRectGetWidth(self.accentView.bounds) > 0.0 ? CGRectGetWidth(self.accentView.bounds) * 0.5 : 2.5;
+    self.accentView.layer.cornerRadius = accentCorner;
+    self.accentLiquidBorderLayer = [self pp_liquidLayer:self.accentLiquidBorderLayer
+                                                  name:@"PPAccessoryViewerAccentLiquidBorder"
+                                                inView:self.accentView];
+    self.accentLiquidInnerLayer = [self pp_liquidLayer:self.accentLiquidInnerLayer
+                                                 name:@"PPAccessoryViewerAccentLiquidInner"
+                                               inView:self.accentView];
+    UIColor *accentStroke = [self.accentColor colorWithAlphaComponent:dark ? 0.58 : 0.42];
+    [self pp_configureLiquidLayer:self.accentLiquidBorderLayer
+                           bounds:self.accentView.bounds
+                           corner:accentCorner
+                            inset:0.25
+                      strokeColor:accentStroke
+                        lineWidth:0.55
+                      glowOpacity:dark ? 0.22 : 0.10];
+    [self pp_configureLiquidLayer:self.accentLiquidInnerLayer
+                           bounds:self.accentView.bounds
+                           corner:accentCorner
+                            inset:0.8
+                      strokeColor:innerStroke
+                        lineWidth:0.25
+                      glowOpacity:0.0];
+}
+
+- (void)prepareForEntranceIfNeeded
+{
+    if (self.didAnimateEntrance) return;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.alpha = 1.0;
+        self.transform = CGAffineTransformIdentity;
+        return;
+    }
+    self.alpha = 0.0;
+    self.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -5.0),
+                                             CGAffineTransformMakeScale(0.985, 0.985));
+}
+
+- (void)animateEntranceIfNeeded
+{
+    if (self.didAnimateEntrance) return;
+    self.didAnimateEntrance = YES;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.alpha = 1.0;
+        self.transform = CGAffineTransformIdentity;
+        return;
+    }
+    [UIView animateWithDuration:0.44
+                          delay:0.03
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.35
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.alpha = 1.0;
+        self.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+@end
 
 @interface AccessViewerVC()<UICollectionViewDataSource,UICollectionViewDelegate,CartQuantityUpdateDelegate,UICollectionViewDelegateFlowLayout, SellerProfileVCDelegate>
 
@@ -139,11 +566,13 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @property (nonatomic, strong) NSLayoutConstraint *contentBottomToSuggestionsConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *contentBottomToSellerConstraint;
 @property (nonatomic, strong) UIVisualEffectView *titleBlurView;
+@property (nonatomic, strong) PPAccessoryViewerNavigationTitleView *navigationTitleView;
 // ── State ──
 @property (nonatomic, strong) UserModel *ownerModel;
 @property (nonatomic, strong) NSTimer *cartButtonTimer;
 @property (nonatomic, strong) UIButton *cartButton;
 @property (nonatomic, strong) UIBarButtonItem *favBarButtonItem;
+@property (nonatomic, strong) UIButton *favoriteNavButton;
 @property (nonatomic, strong) UIButton *centerPPBarButton;
 @property (nonatomic, assign) BOOL isFavorite;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
@@ -419,7 +848,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.titleCard = [[UIView alloc] init];
     self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleCard.backgroundColor = UIColor.clearColor;
-    self.titleCard.layer.cornerRadius = 22;
+    self.titleCard.layer.cornerRadius = 0;
     self.titleCard.layer.masksToBounds = NO;
 
     // Soft, modern shadow (Apple-style)
@@ -956,7 +1385,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = AppPageColor();
-    card.layer.cornerRadius = 26;
+    card.layer.cornerRadius = 0;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
     [card pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.00]];
@@ -1265,13 +1694,14 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    return MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0;
+    
+    return width * 1.25; //MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0;
 }
 
 - (CGSize)pp_suggestionItemSize {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    CGFloat itemWidth = width * 0.45;
-    return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.74));
+    CGFloat itemWidth = width * 0.40;
+    return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.64));
 }
 
 - (NSString *)pp_categorySummary {
@@ -1570,7 +2000,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.barBackgroundImageView.alpha = shouldShowCartBar ? 1.0 : 0.0;
     self.bottomBarHeightConstraint.constant = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
 
-    CGFloat bottomInset = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
+    CGFloat bottomInset = shouldShowCartBar ? ( 0 + self.view.safeAreaInsets.bottom) : 0.0;
     self.scrollView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
     self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
 
@@ -1600,6 +2030,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self.petsTitleView configureWithTitle:PPSafeString(self.accessAds.name)
                                    location:[self pp_summarySubtitleText]
                                       price:[self pp_priceText]];
+    [self pp_updatePremiumNavigationTitleView];
 
     NSString *ownerName = [self pp_ownerDisplayName];
     self.sellerEyebrowLabel.text = [self pp_sellerEyebrowText];
@@ -1889,100 +2320,80 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
+    [self pp_configurePremiumNavigationChrome];
+}
 
+- (void)pp_configurePremiumNavigationChrome
+{
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:YES];
     if (@available(iOS 26.0, *))
         [self ios26Bar];
     else
         [self ios15Bar];
 
-    NSString *title = PPSafeString(self.accessAds.name);
-    NSString *subTitle = [self pp_navigationSubtitle];
+    [self pp_installPremiumNavigationTitleViewIfNeeded];
+    [self pp_updatePremiumNavigationTitleView];
+    [self.navigationTitleView prepareForEntranceIfNeeded];
+    [self pp_navBarSetTitleViewCentered:self.navigationTitleView];
+    [self pp_refreshFavoriteNavigationState];
+}
 
-    // ── Modern blur title card (matches ViewerVC pattern) ──
-    UIView *titleCard = [[UIView alloc] init];
-    titleCard.translatesAutoresizingMaskIntoConstraints = NO;
-    titleCard.layer.cornerRadius = 22;
-    titleCard.layer.masksToBounds = NO;
-    [titleCard pp_setShadowColor:UIColor.blackColor];
-    titleCard.layer.shadowOpacity = 0.12;
-    titleCard.layer.shadowRadius  = 22;
-    titleCard.layer.shadowOffset  = CGSizeMake(0, 10);
-
-    UIBlurEffect *blurEffect;
-    if (@available(iOS 17.0, *)) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-    } else {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+- (void)pp_installPremiumNavigationTitleViewIfNeeded
+{
+    if (self.navigationTitleView) {
+        return;
     }
-
-    self.titleBlurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    self.titleBlurView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleBlurView.layer.cornerRadius  = 16;
-    self.titleBlurView.layer.masksToBounds = YES;
-
-    UIView *tintOverlay = [[UIView alloc] init];
-    tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    tintOverlay.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.25];
-    [self.titleBlurView.contentView addSubview:tintOverlay];
-    [titleCard addSubview:self.titleBlurView];
-
-    UILabel *blurTitleLabel = [[UILabel alloc] init];
-    blurTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    blurTitleLabel.text          = title;
-    blurTitleLabel.font          = [GM boldFontWithSize:14];
-    blurTitleLabel.textColor     = AppPrimaryTextClr;
-    blurTitleLabel.textAlignment = NSTextAlignmentCenter;
-    blurTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [self.titleBlurView.contentView addSubview:blurTitleLabel];
-
-    UILabel *blurSubtitleLabel = [[UILabel alloc] init];
-    blurSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    blurSubtitleLabel.text          = subTitle;
-    blurSubtitleLabel.font          = [GM MidFontWithSize:11];
-    blurSubtitleLabel.textColor     = [AppSecondaryTextClr colorWithAlphaComponent:0.8];
-    blurSubtitleLabel.textAlignment = NSTextAlignmentCenter;
-    blurSubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [self.titleBlurView.contentView addSubview:blurSubtitleLabel];
-
+    self.navigationTitleView = [[PPAccessoryViewerNavigationTitleView alloc] initWithFrame:CGRectZero];
+    NSLayoutConstraint *minimumWidth = [self.navigationTitleView.widthAnchor constraintGreaterThanOrEqualToConstant:188.0];
+    minimumWidth.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        // Blur → titleCard
-        [self.titleBlurView.topAnchor      constraintEqualToAnchor:titleCard.topAnchor],
-        [self.titleBlurView.leadingAnchor  constraintEqualToAnchor:titleCard.leadingAnchor],
-        [self.titleBlurView.trailingAnchor constraintEqualToAnchor:titleCard.trailingAnchor],
-        [self.titleBlurView.bottomAnchor   constraintEqualToAnchor:titleCard.bottomAnchor],
-        // Tint → blur contentView
-        [tintOverlay.topAnchor      constraintEqualToAnchor:self.titleBlurView.contentView.topAnchor],
-        [tintOverlay.leadingAnchor  constraintEqualToAnchor:self.titleBlurView.contentView.leadingAnchor],
-        [tintOverlay.trailingAnchor constraintEqualToAnchor:self.titleBlurView.contentView.trailingAnchor],
-        [tintOverlay.bottomAnchor   constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor],
-        // Labels inside blur
-        [blurTitleLabel.topAnchor      constraintEqualToAnchor:self.titleBlurView.contentView.topAnchor      constant:8],
-        [blurTitleLabel.leadingAnchor  constraintEqualToAnchor:self.titleBlurView.contentView.leadingAnchor  constant:16],
-        [blurTitleLabel.trailingAnchor constraintEqualToAnchor:self.titleBlurView.contentView.trailingAnchor constant:-16],
-        [blurSubtitleLabel.topAnchor      constraintEqualToAnchor:blurTitleLabel.bottomAnchor constant:2],
-        [blurSubtitleLabel.leadingAnchor  constraintEqualToAnchor:blurTitleLabel.leadingAnchor],
-        [blurSubtitleLabel.trailingAnchor constraintEqualToAnchor:blurTitleLabel.trailingAnchor],
-        [blurSubtitleLabel.bottomAnchor   constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor constant:-8],
-        // Card size
-        [titleCard.widthAnchor constraintLessThanOrEqualToConstant:220],
+        [self.navigationTitleView.widthAnchor constraintLessThanOrEqualToConstant:kAVNavigationTitleWidth],
+        minimumWidth,
+        [self.navigationTitleView.heightAnchor constraintEqualToConstant:kAVNavigationTitleHeight],
     ]];
+}
 
-    titleCard.backgroundColor = AppClearClr;
-    [self pp_navBarSetTitleViewCentered:titleCard];
+- (void)pp_updatePremiumNavigationTitleView
+{
+    if (!self.navigationTitleView) {
+        return;
+    }
+    NSString *title = PPSafeString(self.accessAds.name);
+    NSString *subtitle = [self pp_navigationSubtitle];
+    NSString *stockText = [self.accessAds stockStatusText];
+    [self.navigationTitleView configureWithTitle:title
+                                        subtitle:subtitle
+                                       priceText:[self pp_priceText]
+                                       stockText:stockText
+                                     accentColor:[self pp_stockAccentColor]];
+}
 
+- (void)pp_refreshFavoriteNavigationState
+{
     if (PPCurrentUser && PPCurrentFIRAuthUser) {
         [PetAdManager isAdFavorited:self.accessAds.accessoryID
                             forUser:PPCurrentUser.ID
                          collection:@"favoritesAccessories"
                          completion:^(BOOL favorited) {
             self.isFavorite = favorited;
-            self.favBarButtonItem.image = favorited ? [UIImage systemImageNamed:@"heart.fill"] : [UIImage systemImageNamed:@"heart"];
-            self.favBarButtonItem.tintColor = favorited ? [AppPrimaryClr colorWithAlphaComponent:1.2] : UIColor.labelColor;
-
-
+            [self pp_updateFavoriteNavigationAppearance];
         }];
 	}
+}
+
+- (void)pp_updateFavoriteNavigationAppearance
+{
+    NSString *symbol = self.isFavorite ? @"heart.fill" : @"heart";
+    UIColor *tint = self.isFavorite ? [AppPrimaryClr colorWithAlphaComponent:1.0] : AppPrimaryTextClr;
+    UIImage *image = [UIImage systemImageNamed:symbol];
+    self.favBarButtonItem.image = image;
+    self.favBarButtonItem.tintColor = tint;
+    [self.favoriteNavButton setImage:image forState:UIControlStateNormal];
+    self.favoriteNavButton.tintColor = tint;
+    NSString *accessibilityLabel = self.isFavorite ? kLang(@"a11y_btn_unfavorite") : kLang(@"a11y_btn_favorite");
+    self.favBarButtonItem.accessibilityLabel = accessibilityLabel;
+    self.favoriteNavButton.accessibilityLabel = accessibilityLabel;
+    self.favoriteNavButton.accessibilityHint = kLang(@"a11y_btn_favorite_hint");
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -2004,8 +2415,10 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 -(void)ios26Bar
 {
+    self.favoriteNavButton = nil;
     _favBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"heart"]  style:UIBarButtonItemStylePlain target:self action:@selector(toggleFavorite)];
     self.navigationItem.rightBarButtonItems = @[_favBarButtonItem];
+    [self pp_updateFavoriteNavigationAppearance];
     // Back button is provided natively by the navigation controller
 }
 
@@ -2018,13 +2431,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.isFavorite = !self.isFavorite;
 
     if (self.isFavorite) {
-        self.favBarButtonItem.image = [UIImage systemImageNamed:@"heart.fill"];
-        self.favBarButtonItem.tintColor = [AppPrimaryClr colorWithAlphaComponent:1.3];
+        [self pp_updateFavoriteNavigationAppearance];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         NSLog(@"✅ Added to favorites");
     } else {
-        self.favBarButtonItem.image = [UIImage systemImageNamed:@"heart"];
-        self.favBarButtonItem.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:1.0];
+        [self pp_updateFavoriteNavigationAppearance];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         NSLog(@"❌ Removed from favorites");
     }
@@ -2041,7 +2452,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 -(void)ios15Bar
 {
     // Back button is provided natively by the navigation controller
-    [self pp_navBarSetRightIcon:@"heart" key:@"favButton" target:self action:@selector(toggleFavorite) tap:nil];
+    self.favBarButtonItem = nil;
+    self.favoriteNavButton = [self pp_navBarSetRightIcon:@"heart" key:@"favButton" target:self action:@selector(toggleFavorite) tap:nil];
+    [self pp_updateFavoriteNavigationAppearance];
 }
 
 - (void)pp_updateSellerCardShadowPath
@@ -2124,6 +2537,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
     self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
     [self pp_updateSellerBackgroundAppearance];
+    [self pp_updatePremiumNavigationTitleView];
 }
 
 - (IBAction)shareAdBTN:(id)sender {
@@ -2294,6 +2708,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    [self.navigationTitleView animateEntranceIfNeeded];
     [self.petsTitleView animatePillsIn];
     [self pp_animateSellerCardEntranceIfNeeded];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
