@@ -94,7 +94,7 @@
     
    
 
-    self.tableView.rowHeight = 72.0;
+    self.tableView.rowHeight = self.isGenderSelector ? 56.0 : 72.0;
     self.tableView.backgroundColor = PPIOS26() ? AppClearClr : [AppBackgroundClr colorWithAlphaComponent:0.8];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     
@@ -534,9 +534,9 @@
     }
     // --- Determine selection state safely ---
     BOOL selected = NO;
-    id currentValue = self.rowDescriptor.value;
+    id currentValue = self.rowDescriptor ? self.rowDescriptor.value : nil;
 
-    if ([currentValue isKindOfClass:[NSString class]]) {
+    if (currentValue && [currentValue isKindOfClass:[NSString class]]) {
         selected = [title isEqualToString:(NSString *)currentValue];
     } else if (currentValue != nil) {
         selected = [currentValue isEqual:option];

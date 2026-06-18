@@ -2886,7 +2886,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     return @[
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
                                   localizedTitle:kLang(@"Male")
-                                 systemImageName:@"male_icon1"],
+                                 systemImageName:@"male_icon"],
         [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
                                   localizedTitle:kLang(@"Female")
                                  systemImageName:@"female_icon"],

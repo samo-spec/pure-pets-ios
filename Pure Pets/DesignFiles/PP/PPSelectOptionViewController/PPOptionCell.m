@@ -5,11 +5,14 @@
 //  Created by Mohammed Ahmed on 24/08/2025.
 //
 
-
 // PPOptionCell.m
 #import "PPOptionCell.h"
 #import "PPImageLoaderManager.h"
 #import "PPModernAvatarRenderer.h"
+@interface PPOptionCell ()
+@property (nonatomic, strong) NSLayoutConstraint *titleTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleCenterConstraint;
+@end
 @implementation PPOptionCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
@@ -48,13 +51,15 @@
 
             [_titleLabel.leadingAnchor constraintEqualToAnchor:_circleImageView.trailingAnchor constant:12],
             [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-            [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:-10],
+            self.titleTopConstraint = [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:22],
+            self.titleCenterConstraint = [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
 
             [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
             [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:2],
 
         ]];
+        self.titleCenterConstraint.active = NO;
     }
     return self;
 }
@@ -65,17 +70,17 @@
 
     if (subtitle.length == 0) {
         // No subtitle → center title
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor].active = YES;
+        self.titleTopConstraint.active = NO;
+        self.titleCenterConstraint.active = YES;
         self.subtitleLabel.hidden = YES;
     } else {
+        self.titleTopConstraint.active = YES;
+        self.titleCenterConstraint.active = NO;
         self.subtitleLabel.hidden = NO;
     }
     
-    
-
     self.circleImageView.image = image ?: [PPModernAvatarRenderer avatarImageForName:title size:40];
 }
-
 
 - (void)configureWithTitle:(NSString *)title subtitle:(NSString *)subtitle imageUrl:(NSString *)imageUrl {
     self.titleLabel.text = title;
@@ -83,21 +88,20 @@
 
     if (subtitle.length == 0) {
         // No subtitle → center title
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor].active = YES;
+        self.titleTopConstraint.active = NO;
+        self.titleCenterConstraint.active = YES;
         self.subtitleLabel.hidden = YES;
     } else {
+        self.titleTopConstraint.active = YES;
+        self.titleCenterConstraint.active = NO;
         self.subtitleLabel.hidden = NO;
     }
     [PPImageLoaderManager.shared setImageOnImageView:self.circleImageView url:imageUrl placeholder:[PPModernAvatarRenderer avatarImageForName:title size:40] complation:^(UIImage * _Nonnull image,
-                                                                                                                                                    NSString * _Nullable urlString) {
+                                                                                                                                                     NSString * _Nullable urlString) {
         
     }];
-   //  [self.circleImageView setImageFromUrl:imageUrl placeholderImage:PPUserPlaceholderImageName]; // person.crop.circle.fill.badge.plus //person.crop.circle.fill
-    
-
     self.circleImageView.tintColor = AppPrimaryClr;
 }
-
 
 - (void)configureWithTitle:(NSString *)title subtitle:(NSString *)subtitle imageNamed:(NSString *)imageNamed {
     [self configureWithTitle:title subtitle:subtitle imageNamed:imageNamed useSmallIcon:NO];
@@ -109,41 +113,33 @@
 
     if (subtitle.length == 0) {
         // No subtitle → center title
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor].active = YES;
+        self.titleTopConstraint.active = NO;
+        self.titleCenterConstraint.active = YES;
         self.subtitleLabel.hidden = YES;
     } else {
+        self.titleTopConstraint.active = YES;
+        self.titleCenterConstraint.active = NO;
         self.subtitleLabel.hidden = NO;
     }
     
     if(imageNamed.length > 0)
     {
         UIImage *iconImage = [UIImage systemImageNamed:imageNamed] ?: [UIImage imageNamed:imageNamed];
-        if (useSmallIcon) {
-            // Scale down icon to 24x24 for gender selector
-            UIGraphicsBeginImageContextWithOptions(CGSizeMake(24, 24), NO, 0.0);
-            [iconImage drawInRect:CGRectMake(0, 0, 24, 24)];
-            UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
-            UIGraphicsEndImageContext();
-            self.circleImageView.image = scaledImage;
-            // Adjust circle size for smaller icon
-            [NSLayoutConstraint deactivateConstraints:@[
-                self.circleImageView.widthAnchor constraintEqualToConstant:40],
-                self.circleImageView.heightAnchor constraintEqualToConstant:40
-            ]];
-            self.circleImageView.widthAnchor.constant = 32;
-            self.circleImageView.heightAnchor.constant = 32;
-            self.circleImageView.layer.cornerRadius = 16;
-        } else {
-            self.circleImageView.image = iconImage;
+        if (iconImage) {
+            if (useSmallIcon) {
+                // Scale down icon to 24x24 for gender selector
+                UIGraphicsBeginImageContextWithOptions(CGSizeMake(24, 24), NO, 0.0);
+                [iconImage drawInRect:CGRectMake(0, 0, 24, 24)];
+                UIImage *scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+                UIGraphicsEndImageContext();
+                self.circleImageView.image = scaledImage;
+                self.circleImageView.contentMode = UIViewContentModeCenter;
+            } else {
+                self.circleImageView.image = iconImage;
+                self.circleImageView.contentMode = UIViewContentModeScaleAspectFit;
+            }
+            self.circleImageView.tintColor = AppButtonMixColorClr;
         }
-        self.circleImageView.tintColor = AppButtonMixColorClr;
     }
-     // person.crop.circle.fill.badge.plus //person.crop.circle.fill
-    
-
-    //self.circleImageView.tintColor = AppPrimaryClr;
 }
 @end
-
-
-
