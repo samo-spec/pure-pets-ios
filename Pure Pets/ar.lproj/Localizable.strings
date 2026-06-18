@@ -1683,6 +1683,9 @@
 "empty_chats_title" = "لا توجد محادثات بعد";
 "empty_chats_subtitle" = "ابدأ الدردشة مع أصحاب الحيوانات والبائعين.";
 "empty_chats_button" = "ابدأ محادثة";
+"chat_empty_thread_title" = "لا توجد رسائل بعد";
+"chat_empty_thread_subtitle" = "أرسل أول رسالة عندما تكون جاهزاً. ستبقى هذه المحادثة هنا بعد أن تبدأ.";
+"chat_empty_thread_action" = "اكتب رسالة";
 
 
 "Recording…" = "جاري التسجيل…";
@@ -3114,3 +3117,13 @@
 "settings_hero_subtitle" = "تحكم بالمظهر واللغة والخصوصية والتنبيهات والروابط القانونية وأمان الحساب من مكان واحد هادئ.";
 "settings_hero_scope" = "الخصوصية • المظهر • اللغة";
 "settings_hero_accessibility_hint" = "يلخص الإعدادات المتاحة في هذه الشاشة.";
+
+/* Ambient Nova */
+"nova_ambient_home_idle" = "هل تحتاج مساعدة في إيجاد ما يناسب حيوانك؟";
+"nova_ambient_search_focus" = "يمكنني مساعدتك في العثور على المنتج المناسب بسرعة.";
+"nova_ambient_browsing" = "هل تريد أن أضيّق النتائج لك؟";
+"nova_ambient_category" = "هل تريد أن أضيّق النتائج لك؟";
+"nova_ambient_empty_state" = "يمكنني مساعدتك في البحث بطريقة أخرى.";
+"nova_ambient_shake" = "نوفا هنا إذا احتجت مساعدة.";
+"nova_ambient_close_accessibility" = "إخفاء نوفا";
+"nova_ambient_accessibility_hint" = "يفتح محادثة نوفا.";

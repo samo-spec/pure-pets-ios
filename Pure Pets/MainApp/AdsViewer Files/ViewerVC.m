@@ -86,6 +86,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 @property (nonatomic, strong) NSLayoutConstraint *contactDockHeightConstraint;
 @property (nonatomic, strong) UIVisualEffectView *contactLockOverlayView;
 @property (nonatomic, strong) UIButton *contactLockButton;
+@property (nonatomic, strong) UIView *contactHaloView;
 @property (nonatomic, assign) BOOL isLoadingOwnerModel;
 @property (nonatomic, strong) UIView *galleryScrimView;
 @property (nonatomic, assign) BOOL didCaptureNavigationBarState;
@@ -569,18 +570,19 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     [self pp_styleSeparator:self.similarAccessoriesSeparator];
 
     self.contactDockView.layer.shadowOpacity = dark ? 0.28 : 0.10;
-    self.contactDockView.layer.shadowRadius = dark ? 28.0 : 24.0;
-    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.contactDockView.layer.shadowRadius = dark ? 30.0 : 26.0;
+    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    self.contactHaloView.backgroundColor = [[self pp_luxuryEmeraldColor] colorWithAlphaComponent:dark ? 0.12 : 0.075];
     self.contactView.backgroundColor = dark
-        ? [surfaceColor colorWithAlphaComponent:0.86]
-        : [surfaceColor colorWithAlphaComponent:0.96];
-    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.08 : 0.05]];
+        ? [surfaceColor colorWithAlphaComponent:0.90]
+        : [surfaceColor colorWithAlphaComponent:0.985];
+    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.10 : 0.055]];
     self.contactGradientLayer.colors = @[
         (__bridge id)[UIColor.clearColor CGColor],
         (__bridge id)[UIColor.clearColor CGColor]
     ];
 
-    self.contactLockOverlayView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.14 : 0.08];
+    self.contactLockOverlayView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.18 : 0.10];
     [self.contactLockOverlayView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18]];
 
     [self pp_styleContactActionButtons];
@@ -761,7 +763,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
                      self.ad.petAgeMonths,
                      self.ad.petAgeMonths .integerValue> 1 ? @"s" : @""];
 
-    NSString *gender = self.ad.isFemale ? kLang(@"female") :  kLang(@"male");
+    NSString *gender = self.ad.genderText;
     NSString *SubKindName = [SubKindModel getSubKindName:self.ad.subcategory subKindsArrayLocal:[MKM getSubKindArray:self.ad.category]];
     NSString *typeText = [NSString stringWithFormat:@"%@: %@", kLang(@"Type"), SubKindName.length > 0 ? SubKindName : @"-"];
     NSString *ageText = [NSString stringWithFormat:@"%@: %@", kLang(@"Age"), ageString.length > 0 ? ageString : @"-"];
@@ -1002,21 +1004,31 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     self.contactDockView = [[UIView alloc] init];
     self.contactDockView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactDockView.backgroundColor = UIColor.clearColor;
-    self.contactDockView.layer.cornerRadius = 30.0;
+    self.contactDockView.layer.cornerRadius = 34.0;
     if (@available(iOS 13.0, *)) {
         self.contactDockView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contactDockView pp_setShadowColor:UIColor.blackColor];
     self.contactDockView.layer.shadowOpacity = 0.10;
-    self.contactDockView.layer.shadowRadius = 24.0;
-    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.contactDockView.layer.shadowRadius = 26.0;
+    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
     [self.contentContainer addSubview:self.contactDockView];
+
+    self.contactHaloView = [[UIView alloc] init];
+    self.contactHaloView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.contactHaloView.userInteractionEnabled = NO;
+    self.contactHaloView.backgroundColor = [[self pp_luxuryEmeraldColor] colorWithAlphaComponent:0.075];
+    self.contactHaloView.layer.cornerRadius = 34.0;
+    if (@available(iOS 13.0, *)) {
+        self.contactHaloView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contactDockView addSubview:self.contactHaloView];
 
     self.contactView = [[UserContactView alloc] initWithFrame:CGRectZero];
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contactDockView addSubview:self.contactView];
 
-    self.contactView.layer.cornerRadius = 26.0;
+    self.contactView.layer.cornerRadius = 30.0;
     if (@available(iOS 13.0, *)) {
         self.contactView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1031,13 +1043,17 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     ];
     self.contactGradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.contactGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.contactGradientLayer.cornerRadius = 26.0;
+    self.contactGradientLayer.cornerRadius = 30.0;
     [self.contactView.layer insertSublayer:self.contactGradientLayer atIndex:0];
 
     self.contactView.backgroundColor = [self pp_luxurySurfaceColor];
     self.contactView.semanticContentAttribute = GM.setSemantic;
-    self.contactViewHeightConstraint = [self.contactView.heightAnchor constraintEqualToConstant:88.0];
-    self.contactDockHeightConstraint = [self.contactDockView.heightAnchor constraintEqualToConstant:88.0];
+    [self.contactView setServiceProviderContactLayoutEnabled:YES];
+    [self.contactView setContactTitleText:kLang(@"Contact Advertiser")];
+
+    CGFloat contactHeight = [self pp_contactCardHeight];
+    self.contactViewHeightConstraint = [self.contactView.heightAnchor constraintEqualToConstant:contactHeight];
+    self.contactDockHeightConstraint = [self.contactDockView.heightAnchor constraintEqualToConstant:contactHeight];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.contactDockView.topAnchor constraintEqualToAnchor:self.infoView.bottomAnchor constant:22.0],
@@ -1045,12 +1061,18 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         [self.contactDockView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20.0],
         self.contactDockHeightConstraint,
 
+        [self.contactHaloView.leadingAnchor constraintEqualToAnchor:self.contactDockView.leadingAnchor constant:-4.0],
+        [self.contactHaloView.trailingAnchor constraintEqualToAnchor:self.contactDockView.trailingAnchor constant:4.0],
+        [self.contactHaloView.topAnchor constraintEqualToAnchor:self.contactDockView.topAnchor constant:8.0],
+        [self.contactHaloView.bottomAnchor constraintEqualToAnchor:self.contactDockView.bottomAnchor constant:10.0],
+
         [self.contactView.leadingAnchor constraintEqualToAnchor:self.contactDockView.leadingAnchor],
         [self.contactView.trailingAnchor constraintEqualToAnchor:self.contactDockView.trailingAnchor],
         [self.contactView.topAnchor constraintEqualToAnchor:self.contactDockView.topAnchor],
         [self.contactView.bottomAnchor constraintEqualToAnchor:self.contactDockView.bottomAnchor],
         self.contactViewHeightConstraint,
     ]];
+    [self pp_refreshViewerContactPresentationForUser:nil loggedIn:UserManager.sharedManager.isUserLoggedIn];
     [self pp_styleContactActionButtons];
 
     [self pp_updateContactAccessStateAnimated:NO];
@@ -1811,7 +1833,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 - (void)pp_updateContactAccessStateAnimated:(BOOL)animated
 {
     BOOL isLoggedIn = UserManager.sharedManager.isUserLoggedIn;
-    CGFloat contactHeight = isLoggedIn ? 88.0 : 108.0;
+    CGFloat contactHeight = [self pp_contactCardHeight];
     self.contactViewHeightConstraint.constant = contactHeight;
     self.contactDockHeightConstraint.constant = contactHeight;
     [self pp_updatePinnedContactInsets];
@@ -1819,6 +1841,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     if (isLoggedIn) {
         self.contactLockOverlayView.hidden = YES;
         self.contactView.accessibilityHint = nil;
+        [self pp_refreshViewerContactPresentationForUser:self.ownerModel loggedIn:YES];
         [self pp_loadOwnerContactIfNeeded];
     } else {
         [self pp_buildGuestContactOverlayIfNeeded];
@@ -1826,13 +1849,8 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         self.ownerModel = nil;
         self.contactView.nameLabel.text = kLang(@"Contact Advertiser");
         self.contactView.avatarImageView.image = PPSYSImage(@"person.crop.circle.fill");
-        self.contactView.callButton.enabled = NO;
-        self.contactView.chatButton.enabled = NO;
-        self.contactView.whatsappButton.enabled = NO;
-        self.contactView.callButton.alpha = 0.35;
-        self.contactView.chatButton.alpha = 0.35;
-        self.contactView.whatsappButton.alpha = 0.35;
         self.contactView.accessibilityHint = kLang(@"AdOwnerInfoGuestSubtitle");
+        [self pp_refreshViewerContactPresentationForUser:nil loggedIn:NO];
     }
 
     [self pp_styleContactActionButtons];
@@ -1938,6 +1956,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         [self.contactLockButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12],
         [self.contactLockButton.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.contactLockButton.heightAnchor constraintEqualToConstant:36],
+        [self.contactLockButton.widthAnchor constraintGreaterThanOrEqualToConstant:92],
 
         [titleLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:12],
         [titleLabel.leadingAnchor constraintEqualToAnchor:iconBadge.trailingAnchor constant:12],
@@ -2012,6 +2031,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
                 [PPAnalytics logContactIntentForAd:self.ad channel:PPContactChannelWhatsapp];
                 [self pp_openWhatsAppForUser:user];
             }];
+            [self pp_refreshViewerContactPresentationForUser:user loggedIn:YES];
             [self pp_styleContactActionButtons];
 
             [UIView animateWithDuration:0.26 animations:^{
@@ -2259,23 +2279,154 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 {
     UIButton *callButton = self.contactView.callButton;
     UIButton *chatButton = self.contactView.chatButton;
-    BOOL compactActions = self.contactView.whatsappButton && !self.contactView.whatsappButton.hidden;
 
     if (callButton) {
-        [callButton setTitle:compactActions ? nil : kLang(@"Call") forState:UIControlStateNormal];
-        callButton.semanticContentAttribute = GM.setSemantic;
+        [callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
+        callButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+        [self pp_applyPremiumContactActionStyleToButton:callButton primary:NO accent:[self pp_contactPhoneAccentColor]];
         [self pp_attachPressFeedbackToButton:callButton];
     }
     if (chatButton) {
-        [chatButton setTitle:compactActions ? nil : kLang(@"Chat") forState:UIControlStateNormal];
-        chatButton.semanticContentAttribute = GM.setSemantic;
+        chatButton.hidden = NO;
+        [chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+        chatButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+        [self pp_applyPremiumContactActionStyleToButton:chatButton primary:YES accent:[self pp_luxuryEmeraldColor]];
         [self pp_attachPressFeedbackToButton:chatButton];
     }
     if (self.contactView.whatsappButton) {
-        [self.contactView.whatsappButton setTitle:compactActions ? nil : kLang(@"WhatsApp") forState:UIControlStateNormal];
-        self.contactView.whatsappButton.semanticContentAttribute = GM.setSemantic;
+        [self.contactView.whatsappButton setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
+        self.contactView.whatsappButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+        [self pp_applyPremiumContactActionStyleToButton:self.contactView.whatsappButton primary:NO accent:[self pp_contactWhatsAppAccentColor]];
         [self pp_attachPressFeedbackToButton:self.contactView.whatsappButton];
     }
+}
+
+- (CGFloat)pp_contactCardHeight
+{
+    CGFloat height = 144.0;
+    if (@available(iOS 11.0, *)) {
+        if (UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory)) {
+            height = 166.0;
+        }
+    }
+    return height;
+}
+
+- (UIColor *)pp_contactPhoneAccentColor
+{
+    if (@available(iOS 13.0, *)) {
+        return UIColor.labelColor;
+    }
+    return [UIColor colorWithHexString:@"#1D1D1F"];
+}
+
+- (UIColor *)pp_contactWhatsAppAccentColor
+{
+    return [UIColor colorWithRed:0.12 green:0.62 blue:0.32 alpha:1.0];
+}
+
+- (UIColor *)pp_contactDisabledTintColor
+{
+    if (@available(iOS 13.0, *)) {
+        return UIColor.tertiaryLabelColor;
+    }
+    return [UIColor colorWithWhite:0.42 alpha:1.0];
+}
+
+- (void)pp_applyPremiumContactActionStyleToButton:(UIButton *)button
+                                          primary:(BOOL)primary
+                                           accent:(UIColor *)accent
+{
+    if (!button) {
+        return;
+    }
+
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    BOOL enabled = button.enabled;
+    UIColor *resolvedAccent = accent ?: [self pp_luxuryEmeraldColor];
+    UIColor *disabledTint = [self pp_contactDisabledTintColor];
+    UIColor *enabledBackground = primary
+        ? resolvedAccent
+        : [resolvedAccent colorWithAlphaComponent:dark ? 0.16 : 0.095];
+    UIColor *disabledBackground = [UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.055 : 0.035];
+    UIColor *enabledTitleColor = primary ? UIColor.whiteColor : resolvedAccent;
+    UIColor *titleColor = enabled ? enabledTitleColor : disabledTint;
+    UIColor *borderColor = enabled
+        ? (primary ? UIColor.clearColor : [resolvedAccent colorWithAlphaComponent:dark ? 0.30 : 0.22])
+        : [disabledTint colorWithAlphaComponent:0.18];
+
+    button.backgroundColor = enabled ? enabledBackground : disabledBackground;
+    button.tintColor = titleColor;
+    [button setTitleColor:titleColor forState:UIControlStateNormal];
+    [button setTitleColor:titleColor forState:UIControlStateDisabled];
+    button.alpha = 1.0;
+    button.layer.cornerRadius = 22.0;
+    button.layer.borderWidth = primary ? 0.0 : (1.0 / UIScreen.mainScreen.scale);
+    [button pp_setBorderColor:borderColor];
+    button.titleLabel.font = [GM boldFontWithSize:12.5];
+    button.titleLabel.numberOfLines = 1;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.76;
+    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 10.0, 0.0, 10.0);
+    CGFloat imageInset = 4.0;
+    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, Language.isRTL ? imageInset : -imageInset, 0.0, Language.isRTL ? -imageInset : imageInset);
+    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, Language.isRTL ? -imageInset : imageInset, 0.0, Language.isRTL ? imageInset : -imageInset);
+}
+
+- (void)pp_refreshViewerContactPresentationForUser:(UserModel *)user loggedIn:(BOOL)isLoggedIn
+{
+    if (!self.contactView) {
+        return;
+    }
+
+    [self.contactView setServiceProviderContactLayoutEnabled:YES];
+    [self.contactView setContactTitleText:kLang(@"Contact Advertiser")];
+
+    BOOL hasResolvedUser = user != nil;
+    NSString *currentUID = [self trackingUserID];
+    NSString *ownerUID = user.ID.length > 0 ? user.ID : self.ad.ownerID;
+    BOOL isOwnProfile = ownerUID.length > 0 && currentUID.length > 0 && [ownerUID isEqualToString:currentUID];
+    BOOL hasPhone = hasResolvedUser && user.MobileNo.length > 0;
+    BOOL canUsePhoneActions = isLoggedIn && hasPhone && !isOwnProfile;
+    BOOL canUseChat = [self pp_canStartInAppChatWithOwnerUser:user loggedIn:isLoggedIn];
+
+    self.contactView.chatButton.hidden = NO;
+    self.contactView.chatButton.enabled = canUseChat;
+    self.contactView.chatButton.alpha = 1.0;
+
+    self.contactView.callButton.hidden = hasResolvedUser ? !canUsePhoneActions : NO;
+    self.contactView.callButton.enabled = hasResolvedUser && canUsePhoneActions;
+    self.contactView.callButton.alpha = self.contactView.callButton.hidden ? 0.0 : 1.0;
+
+    self.contactView.whatsappButton.hidden = !canUsePhoneActions;
+    self.contactView.whatsappButton.enabled = canUsePhoneActions;
+    self.contactView.whatsappButton.alpha = self.contactView.whatsappButton.hidden ? 0.0 : 1.0;
+
+    [self pp_styleContactActionButtons];
+}
+
+- (BOOL)pp_canStartInAppChatWithOwnerUser:(UserModel *)user loggedIn:(BOOL)isLoggedIn
+{
+    if (!isLoggedIn || !user) {
+        return NO;
+    }
+
+    NSString *currentUID = [self trackingUserID];
+    NSString *ownerUID = user.ID.length > 0 ? user.ID : self.ad.ownerID;
+    if (ownerUID.length > 0 && currentUID.length > 0 && [ownerUID isEqualToString:currentUID]) {
+        return NO;
+    }
+
+    if (user.isChatEffectivelyBlocked || !user.canUseChatFeature) {
+        return NO;
+    }
+
+    return YES;
 }
 
 - (void)pp_attachPressFeedbackToButton:(UIButton *)button

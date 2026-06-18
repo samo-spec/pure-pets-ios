@@ -20,6 +20,7 @@
 #import "PPNetworkRetryHelper.h"
 #import "PPModernAvatarRenderer.h"
 #import "SellerProfileVC.h"
+#import <Pure_Pets-Swift.h>
 
 static NSString * const PPAccessoryOfficialSupportUserID = @"PUIDPOFFICILAL20262214";
 
@@ -1986,6 +1987,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
     BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
     if (exiting) {
         [self pp_setPremiumTabDockHidden:NO animated:animated];
@@ -2294,6 +2296,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [super viewDidAppear:animated];
     [self.petsTitleView animatePillsIn];
     [self pp_animateSellerCardEntranceIfNeeded];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
+                                                                                 screen:@"product"];
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
         [self trackAccessoryInteraction:PPItemInteractionTypeView];

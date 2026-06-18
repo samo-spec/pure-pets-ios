@@ -424,7 +424,7 @@ static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
 
     _collectionShellTintView = [[UIView alloc] init];
     _collectionShellTintView.translatesAutoresizingMaskIntoConstraints = NO;
-    _collectionShellTintView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.0];
+    _collectionShellTintView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:1.0];
     _collectionShellTintView.userInteractionEnabled = NO;
     [_collectionShellBlurView.contentView addSubview:_collectionShellTintView];
     
@@ -513,8 +513,8 @@ static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
     self.countPillLabel.text = [NSString stringWithFormat:@"  %ld/%ld  ", (long)currentCount, (long)self.maxImageCount];
     self.collectionShellTintView.backgroundColor =
         currentCount > 0
-        ? [[UIColor whiteColor] colorWithAlphaComponent:0.12]
-        : [[UIColor whiteColor] colorWithAlphaComponent:0.20];
+        ? [[UIColor whiteColor] colorWithAlphaComponent:0.62]
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.80];
 }
 
 - (void)layoutSubviews

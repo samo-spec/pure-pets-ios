@@ -20,6 +20,10 @@ static NSString * const PPAddNewAdDraftDefaultsPrefix = @"pp.add_pet_ad.draft";
 static NSString * const PPAddNewAdDraftFormDataKey = @"formData";
 static NSString * const PPAddNewAdDraftImagePathsKey = @"imagePaths";
 static NSString * const PPAddNewAdDraftMediaMutatedKey = @"didMutateMedia";
+static NSString * const PPAdGenderDraftKey = @"gender";
+static NSString * const PPAdGenderValueMale = @"male";
+static NSString * const PPAdGenderValueFemale = @"female";
+static NSString * const PPAdGenderValueUndefined = @"undefined";
 static CGFloat const PPAddNewAdDraftImageMaxPixelSize = 1800.0;
 
 static NSString * const PPAdTextFieldCellID  = @"PPAdTextFieldCell";
@@ -143,6 +147,52 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self) { _height = 52.0; _required = NO; _disabled = NO; }
     return self;
 }
+@end
+
+#pragma mark - PPAdGenderOption
+
+@interface PPAdGenderOption : NSObject
+@property (nonatomic, copy, readonly) NSString *storageValue;
+@property (nonatomic, copy, readonly) NSString *localizedTitle;
++ (instancetype)optionWithStorageValue:(NSString *)storageValue
+                        localizedTitle:(NSString *)localizedTitle;
+- (NSString *)formDisplayText;
+@end
+
+@implementation PPAdGenderOption
+
++ (instancetype)optionWithStorageValue:(NSString *)storageValue
+                        localizedTitle:(NSString *)localizedTitle
+{
+    PPAdGenderOption *option = [PPAdGenderOption new];
+    option->_storageValue = [storageValue ?: @"" copy];
+    option->_localizedTitle = [localizedTitle ?: @"" copy];
+    return option;
+}
+
+- (NSString *)formDisplayText
+{
+    return self.localizedTitle ?: @"";
+}
+
+- (NSString *)description
+{
+    return self.formDisplayText;
+}
+
+- (BOOL)isEqual:(id)object
+{
+    if (self == object) return YES;
+    if (![object isKindOfClass:PPAdGenderOption.class]) return NO;
+    PPAdGenderOption *other = (PPAdGenderOption *)object;
+    return [self.storageValue isEqualToString:other.storageValue];
+}
+
+- (NSUInteger)hash
+{
+    return self.storageValue.hash;
+}
+
 @end
 
 #pragma mark - PPAdPairedFieldSlotView
@@ -2093,7 +2143,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         snapshot[@"subcategoryID"] = @(subKind.ID);
     }
 
-    snapshot[@"isFemale"] = @(self.adModel.isFemale);
+    PPAdGenderOption *genderOption = [self pp_genderOptionFromValue:[self fieldForTag:@"isFemale"].value];
+    if (genderOption.storageValue.length > 0) {
+        snapshot[PPAdGenderDraftKey] = genderOption.storageValue;
+        if ([genderOption.storageValue isEqualToString:PPAdGenderValueFemale] ||
+            [genderOption.storageValue isEqualToString:PPAdGenderValueMale]) {
+            snapshot[@"isFemale"] = @([genderOption.storageValue isEqualToString:PPAdGenderValueFemale]);
+        }
+    }
 
     if ([[self fieldForTag:kpetAge].value respondsToSelector:@selector(integerValue)]) {
         NSInteger age = [[self fieldForTag:kpetAge].value integerValue];
@@ -2358,8 +2415,18 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         }
     }
 
-    if (storedValues[@"isFemale"] != nil) {
-        [self applyDraftValue:@([storedValues[@"isFemale"] boolValue]) toRowTag:@"isFemale" triggerBlock:YES];
+    PPAdFormField *genderField = [self fieldForTag:@"isFemale"];
+    PPAdGenderOption *storedGenderOption = [self pp_genderOptionForStorageValue:storedValues[PPAdGenderDraftKey]
+                                                                      fromField:genderField];
+    if (storedGenderOption) {
+        [self applyDraftValue:storedGenderOption toRowTag:@"isFemale" triggerBlock:YES];
+    } else if (storedValues[@"isFemale"] != nil) {
+        PPAdGenderOption *legacyGenderOption =
+            [self pp_genderOptionForLegacyFemaleValue:[storedValues[@"isFemale"] boolValue]
+                                            fromField:genderField];
+        if (legacyGenderOption) {
+            [self applyDraftValue:legacyGenderOption toRowTag:@"isFemale" triggerBlock:YES];
+        }
     }
 
     if ([storedValues[@"petAgeMonths"] respondsToSelector:@selector(integerValue)]) {
@@ -2809,6 +2876,74 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Form Field Helpers
 
+- (NSArray<PPAdGenderOption *> *)pp_genderSelectorOptions
+{
+    return @[
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
+                                  localizedTitle:kLang(@"Male")],
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
+                                  localizedTitle:kLang(@"Female")],
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
+                                  localizedTitle:kLang(@"no_value")]
+    ];
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionFromValue:(id)value
+{
+    return [value isKindOfClass:PPAdGenderOption.class] ? (PPAdGenderOption *)value : nil;
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionForStorageValue:(NSString *)storageValue
+                                                    fromField:(PPAdFormField *)field
+{
+    NSString *normalized = [[PPSafeString(storageValue) lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (normalized.length == 0) return nil;
+    for (PPAdGenderOption *option in field.selectorOptions) {
+        if (![option isKindOfClass:PPAdGenderOption.class]) continue;
+        if ([option.storageValue isEqualToString:normalized]) {
+            return option;
+        }
+    }
+    return nil;
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionForLegacyFemaleValue:(BOOL)isFemale
+                                                        fromField:(PPAdFormField *)field
+{
+    return [self pp_genderOptionForStorageValue:(isFemale ? PPAdGenderValueFemale : PPAdGenderValueMale)
+                                      fromField:field];
+}
+
+- (void)pp_applyGenderSelectionToAdModel:(id)value
+{
+    PPAdGenderOption *option = [self pp_genderOptionFromValue:value];
+    if (!option) {
+        self.adModel.gender = nil;
+        return;
+    }
+
+    self.adModel.gender = option.storageValue;
+    if ([option.storageValue isEqualToString:PPAdGenderValueFemale]) {
+        self.adModel.isFemale = YES;
+    } else if ([option.storageValue isEqualToString:PPAdGenderValueMale] ||
+               [option.storageValue isEqualToString:PPAdGenderValueUndefined]) {
+        self.adModel.isFemale = NO;
+    }
+}
+
+- (void)pp_applyAdModelGenderToField:(PPAdFormField *)field
+{
+    if (!field) return;
+    PPAdGenderOption *option = [self pp_genderOptionForStorageValue:self.adModel.gender
+                                                          fromField:field];
+    if (!option && self.mode == AdEditorModeEdit) {
+        option = [self pp_genderOptionForLegacyFemaleValue:self.adModel.isFemale
+                                                 fromField:field];
+    }
+    field.value = option;
+    [self pp_applyGenderSelectionToAdModel:option];
+}
+
 - (PPAdFormField *)fieldForTag:(NSString *)tag {
     for (NSMutableArray<PPAdFormField *> *section in self.formSections) {
         for (PPAdFormField *field in section) {
@@ -2864,6 +2999,10 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             }
         });
     }];
+    vc.selectedOption = field.value;
+    if ([field.tag isEqualToString:@"isFemale"]) {
+        vc.showSearchBar = NO;
+    }
     [self presentViewController:vc animated:YES completion:nil];
 }
 
@@ -3092,12 +3231,16 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
     PPAdFormField *genderField = [PPAdFormField new];
     genderField.tag = @"isFemale";
-    genderField.title = kLang(@"isFemale");
-    genderField.fieldType = PPAdFieldTypeSwitch;
-    genderField.value = @(weakSelf.adModel.isFemale);
+    genderField.title = kLang(@"Gender");
+    genderField.placeholder = kLang(@"selectGender");
+    genderField.selectorTitle = kLang(@"selectGender");
+    genderField.fieldType = PPAdFieldTypeSelector;
+    genderField.selectorOptions = [self pp_genderSelectorOptions];
+    genderField.value = nil;
+    genderField.required = YES;
     genderField.height = rowHeight;
     genderField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.isFemale = [newValue boolValue];
+        [weakSelf pp_applyGenderSelectionToAdModel:newValue];
     };
     ageField.pairedField = genderField;
     [petSection addObject:ageField];
@@ -3202,7 +3345,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self fieldForTag:kprice].value  = self.adModel.price;
     [self fieldForTag:kdesc].value   = self.adModel.adDescription;
     [self fieldForTag:@"adTitle"].value   = self.adModel.adTitle;
-    [self fieldForTag:@"isFemale"].value  = @(self.adModel.isFemale);
+    [self pp_applyAdModelGenderToField:[self fieldForTag:@"isFemale"]];
     NSString *prefillLocation = self.adModel.locationName;
     if (prefillLocation.length == 0 && self.adModel.adLocation > 0) {
         prefillLocation = [CitiesManager.shared cityNameForID:self.adModel.adLocation];
@@ -3449,6 +3592,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     if (![self pp_ensureAuthenticatedSessionForSubmit]) {
         return;
     }
+
+    [self pp_applyGenderSelectionToAdModel:[self fieldForTag:@"isFemale"].value];
     
     // 2️⃣ Prepare the ad model
     if (!isEditing) {

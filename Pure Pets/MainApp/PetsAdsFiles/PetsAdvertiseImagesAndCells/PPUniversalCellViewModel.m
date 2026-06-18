@@ -136,9 +136,7 @@ static NSString *PPUniversalAdSubtitle(PetAd *ad, NSString *locationText)
         }
     }
 
-    NSString *genderText = ad.isFemale
-        ? PPUniversalLocalizedString(@"Female", PPUniversalLocalizedPair(@"Female", @"أنثى"))
-        : PPUniversalLocalizedString(@"Male", PPUniversalLocalizedPair(@"Male", @"ذكر"));
+    NSString *genderText = ad.genderText;
     if (genderText.length > 0) {
         [parts addObject:genderText];
     }

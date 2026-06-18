@@ -9,6 +9,7 @@
 
 #import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
+#import <Pure_Pets-Swift.h>
 
 #import "BBNavigationBar.h"
 #import "AdoptPetModel.h"
@@ -164,6 +165,7 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopCollapsedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *searchBarBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *emptyStateCenterYConstraint;
 @property (nonatomic, assign) BOOL isHeroCollapsed;
 @property (nonatomic, strong) UIButton *heroCollapseToggleButton;
 
@@ -216,6 +218,8 @@ UINavigationControllerDelegate>
     [self.heroCardView layoutIfNeeded];
     [self.view setNeedsLayout];
     [self animateHeroIfNeeded];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
+                                                                                 screen:@"search"];
     [self pp_activatePendingSearchFieldFocusIfPossible];
 }
 
@@ -234,6 +238,7 @@ UINavigationControllerDelegate>
 {
     [super viewWillDisappear:animated];
     [[self pp_searchTextField] resignFirstResponder];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
     [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
     [self pp_stopImageSearchLoadingAnimations];
 
@@ -330,6 +335,11 @@ UINavigationControllerDelegate>
         self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12.0];
         self.searchBarBottomConstraint.active = YES;
     }
+
+    CGRect keyboardScreenFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect keyboardFrame = [self.view convertRect:keyboardScreenFrame fromView:nil];
+    CGFloat emptyOffset = [self pp_emptyStateCenterYOffsetForKeyboardFrame:keyboardFrame];
+    [self pp_applyEmptyStateCenterYOffset:emptyOffset notification:notification];
 }
 
 - (void)pp_keyboardWillHide:(NSNotification *)notification
@@ -338,6 +348,55 @@ UINavigationControllerDelegate>
     self.searchBarBottomConstraint.active = NO;
     self.searchBarBottomConstraint = [self.searchBarContainerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:bottomOffset];
     self.searchBarBottomConstraint.active = YES;
+    [self pp_applyEmptyStateCenterYOffset:-18.0 notification:notification];
+}
+
+- (CGFloat)pp_emptyStateCenterYOffsetForKeyboardFrame:(CGRect)keyboardFrame
+{
+    static CGFloat const kBaseOffset = -18.0;
+    static CGFloat const kKeyboardGap = 24.0;
+
+    if (!self.collectionView || CGRectIsEmpty(self.collectionView.frame)) {
+        return kBaseOffset;
+    }
+
+    CGFloat keyboardTop = CGRectGetMinY(keyboardFrame);
+    CGFloat viewBottom = CGRectGetMaxY(self.view.bounds);
+    if (keyboardTop <= 0.0 || keyboardTop >= viewBottom) {
+        return kBaseOffset;
+    }
+
+    CGFloat visibleTop = CGRectGetMinY(self.collectionView.frame);
+    CGFloat visibleBottom = MAX(visibleTop, keyboardTop - kKeyboardGap);
+    CGFloat targetCenterY = visibleTop + ((visibleBottom - visibleTop) * 0.5);
+    CGFloat collectionCenterY = CGRectGetMidY(self.collectionView.frame);
+    return MIN(kBaseOffset, targetCenterY - collectionCenterY);
+}
+
+- (void)pp_applyEmptyStateCenterYOffset:(CGFloat)offset notification:(NSNotification *)notification
+{
+    if (!self.emptyStateCenterYConstraint) {
+        return;
+    }
+
+    self.emptyStateCenterYConstraint.constant = offset;
+
+    NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    if (duration <= 0.0) {
+        duration = 0.25;
+    }
+
+    UIViewAnimationOptions options = UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction;
+    NSNumber *curveNumber = notification.userInfo[UIKeyboardAnimationCurveUserInfoKey];
+    if (curveNumber) {
+        options |= (UIViewAnimationOptions)(curveNumber.integerValue << 16);
+    } else {
+        options |= UIViewAnimationOptionCurveEaseInOut;
+    }
+
+    [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
+        [self.view layoutIfNeeded];
+    } completion:nil];
 }
 
 - (void)pp_setRootBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
@@ -1420,9 +1479,12 @@ UINavigationControllerDelegate>
     [container addSubview:subtitleLabel];
     [self.view addSubview:container];
 
+    NSLayoutConstraint *centerYConstraint = [container.centerYAnchor constraintEqualToAnchor:self.collectionView.centerYAnchor constant:-18.0];
+    self.emptyStateCenterYConstraint = centerYConstraint;
+
     [NSLayoutConstraint activateConstraints:@[
         [container.centerXAnchor constraintEqualToAnchor:self.collectionView.centerXAnchor],
-        [container.centerYAnchor constraintEqualToAnchor:self.collectionView.centerYAnchor constant:-18.0],
+        centerYConstraint,
         [container.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:36.0],
         [container.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-36.0],
 
@@ -1606,6 +1668,7 @@ UINavigationControllerDelegate>
 
 - (void)searchTextFieldEditingChanged:(UITextField *)textField
 {
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidBeginTyping];
     [self pp_updateSearchPlaceholderVisibility];
     [self handleSearchQueryUpdateWithRawText:textField.text];
 }
@@ -1631,11 +1694,13 @@ UINavigationControllerDelegate>
 {
     (void)textField;
     [self setHeroCollapsed:YES animated:YES];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] searchDidFocus];
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField
 {
     (void)textField;
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] searchDidBlur];
     if (self.lastQuery.length < kPPSearchMinimumQueryLength) {
         [self setHeroCollapsed:NO animated:YES];
     }
@@ -1918,6 +1983,7 @@ UINavigationControllerDelegate>
         self.selectedSearchSegment = segment;
         [self pp_updateSegmentButtonsSelectionAnimated:YES];
         [self applySegmentFilter];
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:[self selectedSegmentTitle]];
     } else {
         [self pp_scrollSegmentButtonIntoView:sender animated:YES];
     }
@@ -2180,6 +2246,9 @@ UINavigationControllerDelegate>
     self.collectionView.hidden = shouldShow;
 
     [self setEmptyStateVisible:shouldShow animated:YES];
+    if (noImageResults || noResults) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] emptyStateDidAppear];
+    }
 }
 
 - (NSString *)searchableTextForObject:(id)obj
@@ -3023,6 +3092,30 @@ UINavigationControllerDelegate>
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     [self updateBackdropForOffset:scrollView.contentOffset.y];
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
+    }
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    if (scrollView == self.collectionView && !decelerate) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
 }
 
 #pragma mark - PPUniversalCellDelegate

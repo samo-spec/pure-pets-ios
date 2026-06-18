@@ -318,12 +318,12 @@ static UIImage *PPNovaComposerImageNamed(NSString *systemName, CGFloat pointSize
         [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.trailingAnchor constant:-PPSpaceMD],
         [self.rowStack.bottomAnchor constraintEqualToAnchor:self.materialView.bottomAnchor constant:-PPSpaceSM],
 
-        [self.attachmentButton.widthAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
-        [self.attachmentButton.heightAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
-        [self.suggestionsButton.widthAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
-        [self.suggestionsButton.heightAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
-        [self.microphoneButton.widthAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
-        [self.microphoneButton.heightAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
+        [self.attachmentButton.widthAnchor constraintEqualToConstant:0],
+        [self.attachmentButton.heightAnchor constraintEqualToConstant:0],
+        [self.suggestionsButton.widthAnchor constraintEqualToConstant:0],
+        [self.suggestionsButton.heightAnchor constraintEqualToConstant:0],
+        [self.microphoneButton.widthAnchor constraintEqualToConstant:0],
+        [self.microphoneButton.heightAnchor constraintEqualToConstant:0],
         [self.sendButton.widthAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
         [self.sendButton.heightAnchor constraintEqualToConstant:PPNovaComposerMinTextHeight],
         self.textViewHeightConstraint,
@@ -602,9 +602,9 @@ static UIImage *PPNovaComposerImageNamed(NSString *systemName, CGFloat pointSize
         self.focusRingView.layer.borderColor = [brand colorWithAlphaComponent:self.textInputFocused ? 0.42 : 0.18].CGColor;
         self.focusRingView.alpha = (hasText || self.textInputFocused) ? 1.0 : 0.0;
 
-        self.attachmentButton.alpha = self.attachmentButton.enabled ? 1.0 : 0.0;
-        self.microphoneButton.alpha = self.microphoneButton.enabled ? 1.0 : 0.0;
-        self.suggestionsButton.alpha = self.suggestionsButton.enabled ? 1.0 : 0.0;
+        self.attachmentButton.alpha = self.attachmentButton.enabled ? 0.0 : 0.0;
+        self.microphoneButton.alpha = self.microphoneButton.enabled ? 0.0 : 0.0;
+        self.suggestionsButton.alpha = self.suggestionsButton.enabled ? 0.0 : 0.0;
     };
 
     if (sendShowsActivity) {

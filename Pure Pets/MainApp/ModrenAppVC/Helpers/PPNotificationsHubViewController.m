@@ -1305,7 +1305,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_setupTopChrome
 {
-    CGFloat initialWidth = floor(CGRectGetWidth(self.view.bounds) * 0.80);
+    CGFloat initialWidth = floor(CGRectGetWidth(self.view.bounds) * 0.95);
     self.topChromeContainerView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, initialWidth, kPPHubTopBarHeight)];
     self.topChromeContainerView.backgroundColor = UIColor.clearColor;
 

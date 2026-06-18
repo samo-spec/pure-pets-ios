@@ -10,6 +10,10 @@
 @property (nonatomic, copy) NSString *searchTitle;
 @end
 
+static NSString * const PPPetAdGenderMale = @"male";
+static NSString * const PPPetAdGenderFemale = @"female";
+static NSString * const PPPetAdGenderUndefined = @"undefined";
+
 static inline BOOL PPIsFiniteCoordinate(double value) {
     return isfinite(value);
 }
@@ -49,6 +53,18 @@ static NSString *PPPetAdStringValue(id value)
         return [(NSNumber *)value stringValue];
     }
     return @"";
+}
+
+static NSString *PPPetAdNormalizedGender(id value)
+{
+    NSString *raw = PPPetAdStringValue(value);
+    NSString *normalized = [[raw lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if ([normalized isEqualToString:PPPetAdGenderMale] ||
+        [normalized isEqualToString:PPPetAdGenderFemale] ||
+        [normalized isEqualToString:PPPetAdGenderUndefined]) {
+        return normalized;
+    }
+    return nil;
 }
 
 static NSArray<NSDictionary *> *PPPetAdMediaItemsFromLegacyFields(id rawURLs, id rawMeta)
@@ -359,7 +375,7 @@ fromViewController:(UIViewController *)vc
     }
     
     // Gender
-    NSString *genderString = petAd.isFemale ? kLang(@"Female") : kLang(@"Male");
+    NSString *genderString = petAd.genderText;
     [message appendFormat:@"%@: %@\n", kLang(@"Gender"), genderString];
     
     // Location (if you have location names)
@@ -642,6 +658,7 @@ fromViewController:(UIViewController *)vc
     [coder encodeDouble:self.longitude       forKey:@"longitude"];
     [coder encodeObject:self.geohash         forKey:@"geohash"];
     [coder encodeObject:self.locationName    forKey:@"locationName"];
+    [coder encodeObject:self.gender          forKey:@"gender"];
     [coder encodeBool:self.isFemale         forKey:@"isFemale"];
     [coder encodeBool:self.isSold           forKey:@"isSold"];
     [coder encodeBool:self.isApproved       forKey:@"isApproved"];
@@ -706,7 +723,13 @@ fromViewController:(UIViewController *)vc
         _longitude    = [coder decodeDoubleForKey:@"longitude"];
         _geohash      = [coder decodeObjectOfClass:NSString.class forKey:@"geohash"];
         _locationName = [coder decodeObjectOfClass:NSString.class forKey:@"locationName"];
+        _gender       = PPPetAdNormalizedGender([coder decodeObjectOfClass:NSString.class forKey:@"gender"]);
         _isFemale     = [coder decodeBoolForKey:@"isFemale"];
+        if ([_gender isEqualToString:PPPetAdGenderFemale]) {
+            _isFemale = YES;
+        } else if ([_gender isEqualToString:PPPetAdGenderMale]) {
+            _isFemale = NO;
+        }
         _isSold       = [coder decodeBoolForKey:@"isSold"];
         _isApproved   = [coder containsValueForKey:@"isApproved"]
             ? [coder decodeBoolForKey:@"isApproved"]
@@ -771,7 +794,13 @@ fromViewController:(UIViewController *)vc
         _price           = dict[@"price"];
         _discountPercent = dict[@"discountPercent"];
         _petAgeMonths    = dict[@"petAge"];
+        _gender          = PPPetAdNormalizedGender(dict[@"gender"]);
         _isFemale        = [dict[@"isFemale"] boolValue];
+        if ([_gender isEqualToString:PPPetAdGenderFemale]) {
+            _isFemale = YES;
+        } else if ([_gender isEqualToString:PPPetAdGenderMale]) {
+            _isFemale = NO;
+        }
  
 
         id meta = dict[@"imageItems"];
@@ -848,6 +877,10 @@ fromViewController:(UIViewController *)vc
     d[@"discountPercent"] = _discountPercent ?: @0;
     d[@"petAge"]       = _petAgeMonths ?: @0;
 
+    NSString *normalizedGender = PPPetAdNormalizedGender(_gender);
+    if (normalizedGender.length > 0) {
+        d[@"gender"] = normalizedGender;
+    }
     d[@"isFemale"]     = @(_isFemale);
     d[@"isSold"]       = @(_isSold);
     d[@"isApproved"]   = @(_isApproved);
@@ -973,6 +1006,21 @@ fromViewController:(UIViewController *)vc
 - (BOOL)hasValidGeoLocation
 {
     return PPIsValidCoordinatePair(self.latitude, self.longitude);
+}
+
+- (NSString *)genderText
+{
+    NSString *normalizedGender = PPPetAdNormalizedGender(self.gender);
+    if ([normalizedGender isEqualToString:PPPetAdGenderFemale]) {
+        return kLang(@"Female");
+    }
+    if ([normalizedGender isEqualToString:PPPetAdGenderMale]) {
+        return kLang(@"Male");
+    }
+    if ([normalizedGender isEqualToString:PPPetAdGenderUndefined]) {
+        return kLang(@"no_value");
+    }
+    return self.isFemale ? kLang(@"Female") : kLang(@"Male");
 }
 
 - (BOOL)hasImages { return self.imageItems.count > 0; }

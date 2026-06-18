@@ -89,6 +89,7 @@ typedef NS_ENUM(NSInteger, PetCategory) {
 @property (nonatomic, strong, nullable) NSNumber *price;              ///< In Rials
 @property (nonatomic, strong, nullable) NSNumber *discountPercent;    ///< 0–100%
 @property (nonatomic, strong, nullable) NSNumber *petAgeMonths;       ///< Age in months
+@property (nonatomic, copy, nullable) NSString *gender;               ///< male / female / undefined, keeps isFemale backward compatible
 @property (nonatomic, assign) BOOL isFemale;
 
  @property (nonatomic, strong) NSArray<NSDictionary *> *imageItemsRaw;

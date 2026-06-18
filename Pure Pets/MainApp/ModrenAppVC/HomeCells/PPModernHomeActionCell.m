@@ -253,7 +253,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    self.surfaceLayer.borderColor = [[self pp_signalColorForQuickActionType:quickAction.type] colorWithAlphaComponent:0.5].CGColor;
+    self.surfaceLayer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.26].CGColor;
 
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);
@@ -320,11 +320,10 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
         (__bridge id)bottom.CGColor
     ];
     self.surfaceView.backgroundColor = bottom;
-    [self.surfaceView pp_setBorderColor:UIColor.grayColor];
-
-    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(surfaceBase,
-                                                                       signal,
-                                                                       isDark ? 0.18 : 0.25).CGColor;
+ 
+    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(AppForgroundColr,
+                                                                       AppForgroundColr,
+                                                                       isDark ? 0.18 : 0.35).CGColor;
     self.signalMotionLayer.colors = @[
         (__bridge id)[signal colorWithAlphaComponent:0.24].CGColor,
         (__bridge id)[signal colorWithAlphaComponent:1.0].CGColor,

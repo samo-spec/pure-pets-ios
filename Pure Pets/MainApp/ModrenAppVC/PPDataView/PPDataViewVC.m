@@ -2,6 +2,7 @@
 #import "PPDataViewInput.h"
 #import "PPDataViewVM.h"
 #import "PPFilterModels.h"
+#import <Pure_Pets-Swift.h>
 
 #import "PPUniversalCell.h"
 #import "PPCollectionLayoutManager.h"
@@ -314,6 +315,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
 
     UIGestureRecognizer *pop = self.navigationController.interactivePopGestureRecognizer;
     if (pop.delegate == self) {
@@ -326,6 +328,8 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [self pp_restoreNavigationOwnership];
     [self.view bringSubviewToFront:self.sectionsSegmentedControl];
     [self.view bringSubviewToFront:self.filterChipContainer];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
+                                                                                 screen:@"category"];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -1132,6 +1136,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [PPEmptyStateHelper updateEmptyStateForListView:self.collectionView
                                           dataCount:self.presentedItems.count
                                              config:self.emptyStateConfig];
+    if (self.presentedItems.count == 0) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] emptyStateDidAppear];
+    }
  }
 
 - (void)setupCollectionView
@@ -1616,6 +1623,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) { return; }
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
     if (self.isRestoringScrollOffset) { return; }
     if (self.layoutManager.items.count == 0) { return; }
     if (!scrollView.isTracking && !scrollView.isDragging && !scrollView.isDecelerating) { return; }
@@ -1623,6 +1631,27 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     if (ABS(y - self.lastContentOffsetY) < 6.0) { return; }
     self.lastContentOffsetY = y;
     [self saveCurrentSectionScrollOffset];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    if (scrollView == self.collectionView && !decelerate) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    }
 }
 
 - (void)pp_handleCartUpdated:(NSNotification *)note
@@ -2457,6 +2486,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }
 
         [self.viewModel switchToMainKind:model];
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:model.KindName ?: model.KindNameEn];
         [self prefetchSubKindIcons];
         [self updateNavMainKindTitle];
 
@@ -2547,6 +2577,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }
 
         [self.viewModel switchToMainKind:model];
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:model.KindName ?: model.KindNameEn];
         [self prefetchSubKindIcons];
         [self updateNavMainKindTitle];
 
@@ -3555,6 +3586,7 @@ presentingViewController:self
             [self updateSubKindsButtonTitle:subKind.SubKindName
                                     subKind:subKind
                                    animated:YES];
+            [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:subKind.SubKindName];
              self.subKindsButton.menu = [self subKindsMenu];
         }];
 
@@ -3625,6 +3657,7 @@ presentingViewController:self
 
         // Update button title back to MainKind name
         [self updateSubKindsButtonTitle:self.input.mainKind.KindName animated:YES];
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:self.input.mainKind.KindName];
 
         // Refresh menu states
         self.subKindsButton.menu = [self subKindsMenu];

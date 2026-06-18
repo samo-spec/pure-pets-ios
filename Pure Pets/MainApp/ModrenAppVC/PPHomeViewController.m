@@ -48,6 +48,7 @@
 #import <CoreLocation/CoreLocation.h>
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <FirebaseFirestore/FirebaseFirestore.h>
+#import <Pure_Pets-Swift.h>
 #import <SafariServices/SafariServices.h>
 #import <TargetConditionals.h>
 #import <math.h>
@@ -78,6 +79,7 @@ static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
 static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
+static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -1308,6 +1310,11 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
                novaFloatingVisible:(BOOL)novaFloatingVisible
                      novaUseGenkit:(BOOL)novaUseGenkit;
 - (BOOL)pp_applyCachedHomeConfigIfAvailable;
+- (BOOL)pp_cachedNovaFloatingVisibility;
+- (void)pp_publishNovaFloatingVisibility:(BOOL)visible;
+- (void)pp_applyNovaFloatingHomeConfigVisibilityAnimated:(BOOL)animated;
+- (void)pp_startNovaFloatingAmbientMotionIfNeeded;
+- (void)pp_stopNovaFloatingMotion;
 - (NSString *)pp_homeConfigOrderSignatureForSectionIdentifiers:(NSArray<NSNumber *> *)sectionIdentifiers;
 - (void)pp_fetchHomeConfigFromServerOnceWithDocumentReference:(FIRDocumentReference *)docRef;
 - (void)pp_applyHomeConfigSnapshot:(FIRDocumentSnapshot *)snapshot source:(NSString *)source;
@@ -1360,6 +1367,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @property (nonatomic, strong) UIButton *novaFloatingButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *novaFloatingLottieView;
 @property (nonatomic, strong, nullable) UIView *novaFloatingHaloView;
+@property (nonatomic, assign) BOOL novaFloatingVisibleByHomeConfig;
 @property (nonatomic, assign) BOOL novaFloatingButtonScrollCompressed;
 @property (nonatomic, assign) NSUInteger novaFloatingScrollMotionGeneration;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
@@ -1992,6 +2000,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
+    [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
+                                            forKey:PPNovaFloatingVisibleDefaultsKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     
     // We also set it individually so other view controllers can read it easily
@@ -2037,9 +2047,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.lastAppliedHomeConfigOrderSignature =
         [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
 
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
-                                                        object:self
-                                                      userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
+    [self pp_publishNovaFloatingVisibility:novaVisible];
 
     NSLog(@"[HomeConfig] Applied cached Console section order: %@",
           self.lastAppliedHomeConfigOrderSignature ?: @"");
@@ -3511,6 +3519,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.animatedHomeItemIdentifiers = [NSMutableSet set];
     self.animatedHomeHeaderSections = [NSMutableSet set];
     self.animatedHomeHorizontalUniversalIdentifiers = [NSMutableSet set];
+    self.novaFloatingVisibleByHomeConfig = [self pp_cachedNovaFloatingVisibility];
     [self configureLocationStateMachine];
 
 
@@ -3561,6 +3570,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         self.didReceiveHomeConfig = YES;
         self.lastAppliedHomeConfigOrderSignature =
             [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
+        [self pp_publishNovaFloatingVisibility:YES];
         [self applyBaseSnapshot];
     });
 
@@ -3629,8 +3639,78 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
               object:nil];
 }
 
+- (BOOL)pp_cachedNovaFloatingVisibility
+{
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if ([defaults objectForKey:PPNovaFloatingVisibleDefaultsKey] != nil) {
+        return [defaults boolForKey:PPNovaFloatingVisibleDefaultsKey];
+    }
+
+    NSDictionary *payload = [defaults dictionaryForKey:PPHomeConfigCacheKey];
+    id cachedNovaVisible = payload[PPHomeConfigCacheNovaFloatingVisibleKey];
+    if ([cachedNovaVisible respondsToSelector:@selector(boolValue)]) {
+        return [cachedNovaVisible boolValue];
+    }
+    return YES;
+}
+
+- (void)pp_publishNovaFloatingVisibility:(BOOL)visible
+{
+    self.novaFloatingVisibleByHomeConfig = visible;
+    [NSUserDefaults.standardUserDefaults setBool:visible
+                                          forKey:PPNovaFloatingVisibleDefaultsKey];
+    [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{ PPNovaFloatingVisibilityValueKey : @(visible) }];
+    [self pp_applyNovaFloatingHomeConfigVisibilityAnimated:YES];
+}
+
+- (void)pp_applyNovaFloatingHomeConfigVisibilityAnimated:(BOOL)animated
+{
+    UIButton *button = self.novaFloatingButton;
+    UIView *halo = self.novaFloatingHaloView;
+    if (!button && !halo) {
+        return;
+    }
+
+    BOOL visible = self.novaFloatingVisibleByHomeConfig;
+    if (!visible) {
+        [self pp_stopNovaFloatingMotion];
+    } else {
+        button.hidden = NO;
+        halo.hidden = NO;
+    }
+
+    button.userInteractionEnabled = visible;
+    void (^changes)(void) = ^{
+        button.alpha = visible ? 1.0 : 0.0;
+        self.novaFloatingLottieView.alpha = visible ? 1.0 : 0.0;
+        halo.alpha = visible ? 0.65 : 0.0;
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        button.hidden = !visible;
+        halo.hidden = !visible;
+        if (visible) {
+            [self pp_startNovaFloatingAmbientMotionIfNeeded];
+        }
+    };
+
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+
+    [UIView animateWithDuration:PPAnimDurationFast
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:completion];
+}
+
 - (void)setupNovaFloatingButton
 {
+    self.novaFloatingVisibleByHomeConfig = [self pp_cachedNovaFloatingVisibility];
     UIColor *brand = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
 
     // Soft brand halo behind the orb. Breathes when motion is allowed.
@@ -3747,7 +3827,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         });
     }];
 
-    [self pp_startNovaFloatingHaloBreathing];
+    [self pp_applyNovaFloatingHomeConfigVisibilityAnimated:NO];
 }
 
 - (void)pp_startNovaFloatingHaloBreathing
@@ -3756,6 +3836,11 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     if (!halo) { return; }
 
     [halo.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+
+    if (!self.novaFloatingVisibleByHomeConfig) {
+        halo.alpha = 0.0;
+        return;
+    }
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         halo.alpha = 0.55;
@@ -3777,6 +3862,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (void)pp_startNovaFloatingAmbientMotionIfNeeded
 {
     if (!self.novaFloatingButton) {
+        return;
+    }
+    if (!self.novaFloatingVisibleByHomeConfig) {
+        [self pp_applyNovaFloatingHomeConfigVisibilityAnimated:NO];
         return;
     }
 
@@ -3838,7 +3927,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (void)pp_setNovaFloatingButtonScrollCompressed:(BOOL)compressed velocityY:(CGFloat)velocityY
 {
     UIButton *button = self.novaFloatingButton;
-    if (!button || button.hidden) {
+    if (!self.novaFloatingVisibleByHomeConfig || !button || button.hidden) {
         return;
     }
 
@@ -3906,6 +3995,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (void)pp_updateNovaFloatingButtonForScrollView:(UIScrollView *)scrollView
 {
+    if (!self.novaFloatingVisibleByHomeConfig) {
+        [self pp_applyNovaFloatingHomeConfigVisibilityAnimated:NO];
+        return;
+    }
     if (scrollView != self.collectionView) {
         return;
     }
@@ -3920,6 +4013,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (void)novaFloatingButtonTapped
 {
+    if (!self.novaFloatingVisibleByHomeConfig || self.novaFloatingButton.hidden) {
+        return;
+    }
     [self pp_setNovaFloatingButtonScrollCompressed:NO velocityY:0.0];
     PPTapFeedbackDown(self.novaFloatingButton);
 
@@ -4115,9 +4211,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:strongSelf.dataSource.snapshot.sectionIdentifiers];
         }
 
-        [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
-                                                            object:strongSelf
-                                                          userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
+        [strongSelf pp_publishNovaFloatingVisibility:novaVisible];
 
         strongSelf.homePremiumCareVisible = premiumCareVisible;
 
@@ -6284,7 +6378,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                                    object:nil];
     }
 
-    [self pp_startNovaFloatingAmbientMotionIfNeeded];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
+                                                                                 screen:@"home"];
 }
 
 - (void)handleTimeChange
@@ -8239,7 +8334,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    [self pp_updateNovaFloatingButtonForScrollView:scrollView];
+    if (scrollView == self.collectionView) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
+    }
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
@@ -8247,8 +8344,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (scrollView != self.collectionView) {
         return;
     }
-    CGFloat velocityY = [scrollView.panGestureRecognizer velocityInView:self.view].y;
-    [self pp_setNovaFloatingButtonScrollCompressed:YES velocityY:velocityY];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
@@ -8257,7 +8353,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
     if (!decelerate) {
-        [self pp_scheduleNovaFloatingScrollSettle];
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
 
@@ -8266,7 +8362,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (scrollView != self.collectionView) {
         return;
     }
-    [self pp_scheduleNovaFloatingScrollSettle];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
@@ -8274,7 +8370,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (scrollView != self.collectionView) {
         return;
     }
-    [self pp_scheduleNovaFloatingScrollSettle];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView
@@ -9809,6 +9905,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
     [self pp_detachHomeLocationTitleViewIfNeeded];
     [self pp_stopNovaFloatingMotion];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
 }
 
 // Show bottom card with haptic feedback
@@ -10489,6 +10586,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_openSmartSearch
 {
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
+
     UINavigationController *nav = self.navigationController;
     PPSearchViewController *searchVC = nil;
 

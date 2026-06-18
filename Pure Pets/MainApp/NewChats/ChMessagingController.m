@@ -167,6 +167,26 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     }];
 }
 
+static UIColor *PPChatEmptyStateSurfaceColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:0.08 alpha:0.70]
+            : [UIColor colorWithWhite:1.0 alpha:0.74];
+    }];
+}
+
+static UIColor *PPChatEmptyStateIconSurfaceColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithWhite:0.0 alpha:0.045];
+    }];
+}
+
 
 @interface ChMessagingController () <UITableViewDelegate, UITableViewDataSource,
                                      UITextFieldDelegate,
@@ -206,6 +226,14 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *cachedHeights;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> userStatusListener;
 @property (nonatomic, strong) UIActivityIndicatorView *initialLoadIndicator;
+@property (nonatomic, strong) UIView *chatEmptyStateView;
+@property (nonatomic, strong) UIVisualEffectView *chatEmptyStateBlurView;
+@property (nonatomic, strong) UIView *chatEmptyStateIconContainerView;
+@property (nonatomic, strong) UIImageView *chatEmptyStateIconView;
+@property (nonatomic, strong) UILabel *chatEmptyStateTitleLabel;
+@property (nonatomic, strong) UILabel *chatEmptyStateSubtitleLabel;
+@property (nonatomic, strong) UIButton *chatEmptyStateActionButton;
+@property (nonatomic, assign) BOOL isChatEmptyStateVisible;
 @property (nonatomic, assign) BOOL isPresentingFailureAlert;
 @property (nonatomic, assign) BOOL isSchedulingMessageResubscribe;
 @property (nonatomic, assign) NSUInteger initialLoadVisibilityToken;
@@ -311,6 +339,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     self.view.backgroundColor = AppBageColor();
     [self setupInputView];
     [self setupTableView];
+    [self pp_setupPremiumEmptyStateIfNeeded];
     [self setupInitialLoadIndicator];
     CGFloat initialWidth = self.view.bounds.size.width > 0
         ? self.view.bounds.size.width
@@ -370,6 +399,324 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     [self.initialLoadIndicator startAnimating];
 }
 
+- (void)pp_setupPremiumEmptyStateIfNeeded
+{
+    if (self.chatEmptyStateView) return;
+
+    UIView *container = [UIView new];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    container.hidden = YES;
+    container.alpha = 0.0;
+    container.transform = [self pp_preparedEmptyStateTransform];
+    container.accessibilityViewIsModal = NO;
+
+    UIBlurEffect *blurEffect;
+    if (@available(iOS 13.0, *)) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    } else {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleExtraLight];
+    }
+
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.clipsToBounds = YES;
+    blurView.userInteractionEnabled = NO;
+
+    UIView *contentView = [UIView new];
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    contentView.userInteractionEnabled = YES;
+
+    UIView *iconContainer = [UIView new];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.clipsToBounds = YES;
+    iconContainer.isAccessibilityElement = NO;
+
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:26.0
+                                                        weight:UIImageSymbolWeightSemibold];
+    UIImageView *iconView =
+        [[UIImageView alloc] initWithImage:[PPSYSImage(@"bubble.left.and.bubble.right.fill")
+                                             imageWithConfiguration:iconConfig]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.isAccessibilityElement = NO;
+
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.text = kLang(@"chat_empty_thread_title");
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3]
+                       scaledFontForFont:([GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold])];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
+    titleLabel.numberOfLines = 2;
+
+    UILabel *subtitleLabel = [UILabel new];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.text = kLang(@"chat_empty_thread_subtitle");
+    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                          scaledFontForFont:([GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium])];
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    subtitleLabel.numberOfLines = 4;
+
+    UIButton *actionButton =
+        [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule
+                                                         configType:PPButtonConfigrationGlass];
+    actionButton.translatesAutoresizingMaskIntoConstraints = NO;
+    actionButton.accessibilityLabel = kLang(@"chat_empty_thread_action");
+    actionButton.titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    [actionButton addTarget:self action:@selector(pp_chatEmptyStateActionTapped) forControlEvents:UIControlEventTouchUpInside];
+    [actionButton addTarget:self action:@selector(pp_chatEmptyStateActionTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [actionButton addTarget:self action:@selector(pp_chatEmptyStateActionRelease:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+
+    UIButtonConfiguration *buttonConfig = actionButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+    NSMutableDictionary<NSAttributedStringKey, id> *titleAttributes = [NSMutableDictionary dictionary];
+    titleAttributes[NSFontAttributeName] = actionButton.titleLabel.font;
+    titleAttributes[NSForegroundColorAttributeName] = AppPrimaryTextClr ?: UIColor.labelColor;
+    buttonConfig.attributedTitle =
+        [[NSAttributedString alloc] initWithString:kLang(@"chat_empty_thread_action")
+                                        attributes:titleAttributes];
+    buttonConfig.image = PPSYSImage(@"square.and.pencil");
+    buttonConfig.imagePlacement = NSDirectionalRectEdgeLeading;
+    buttonConfig.imagePadding = 8.0;
+    buttonConfig.contentInsets = NSDirectionalEdgeInsetsMake(12.0, 16.0, 12.0, 16.0);
+    buttonConfig.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    buttonConfig.background.backgroundColor = UIColor.clearColor;
+    buttonConfig.baseBackgroundColor = UIColor.clearColor;
+    actionButton.configuration = buttonConfig;
+
+    UIStackView *stackView = [[UIStackView alloc] initWithArrangedSubviews:@[
+        iconContainer,
+        titleLabel,
+        subtitleLabel,
+        actionButton
+    ]];
+    stackView.translatesAutoresizingMaskIntoConstraints = NO;
+    stackView.axis = UILayoutConstraintAxisVertical;
+    stackView.alignment = UIStackViewAlignmentCenter;
+    stackView.spacing = 12.0;
+    stackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [stackView setCustomSpacing:16.0 afterView:iconContainer];
+    [stackView setCustomSpacing:8.0 afterView:titleLabel];
+    [stackView setCustomSpacing:20.0 afterView:subtitleLabel];
+
+    [self.view addSubview:container];
+    [container addSubview:blurView];
+    [container addSubview:contentView];
+    [contentView addSubview:stackView];
+    [iconContainer addSubview:iconView];
+
+    NSLayoutConstraint *maxWidth = [container.widthAnchor constraintLessThanOrEqualToConstant:390.0];
+    maxWidth.priority = UILayoutPriorityRequired;
+
+    NSLayoutConstraint *leadingLimit = [container.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:24.0];
+    NSLayoutConstraint *trailingLimit = [container.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-24.0];
+    NSLayoutConstraint *topLimit = [container.topAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:96.0];
+    NSLayoutConstraint *bottomLimit = [container.bottomAnchor constraintLessThanOrEqualToAnchor:self.inputbar.topAnchor constant:-24.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [container.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [container.centerYAnchor constraintEqualToAnchor:self.tableView.centerYAnchor constant:-12.0],
+        maxWidth,
+        leadingLimit,
+        trailingLimit,
+        topLimit,
+        bottomLimit,
+
+        [blurView.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+
+        [contentView.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [contentView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [contentView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [contentView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+
+        [stackView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:26.0],
+        [stackView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:24.0],
+        [stackView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-24.0],
+        [stackView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-24.0],
+
+        [iconContainer.widthAnchor constraintEqualToConstant:64.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:64.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:32.0],
+        [iconView.heightAnchor constraintEqualToConstant:32.0],
+
+        [titleLabel.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:stackView.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:stackView.trailingAnchor],
+        [actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:48.0]
+    ]];
+
+    self.chatEmptyStateView = container;
+    self.chatEmptyStateBlurView = blurView;
+    self.chatEmptyStateIconContainerView = iconContainer;
+    self.chatEmptyStateIconView = iconView;
+    self.chatEmptyStateTitleLabel = titleLabel;
+    self.chatEmptyStateSubtitleLabel = subtitleLabel;
+    self.chatEmptyStateActionButton = actionButton;
+
+    self.chatEmptyStateView.accessibilityElements = @[titleLabel, subtitleLabel, actionButton];
+    [self pp_applyPremiumEmptyStateTheme];
+}
+
+- (CGAffineTransform)pp_preparedEmptyStateTransform
+{
+    return CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 12.0), 0.985, 0.985);
+}
+
+- (void)pp_applyPremiumEmptyStateTheme
+{
+    if (!self.chatEmptyStateView) return;
+
+    self.chatEmptyStateView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.chatEmptyStateBlurView.backgroundColor = PPChatEmptyStateSurfaceColor();
+    self.chatEmptyStateBlurView.layer.cornerRadius = 28.0;
+    self.chatEmptyStateBlurView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.chatEmptyStateBlurView.layer.borderColor = PPChatPremiumHeaderBorderColor().CGColor;
+    if (@available(iOS 13.0, *)) {
+        self.chatEmptyStateBlurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.chatEmptyStateIconContainerView.backgroundColor = PPChatEmptyStateIconSurfaceColor();
+    self.chatEmptyStateIconContainerView.layer.cornerRadius = 22.0;
+    self.chatEmptyStateIconContainerView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.chatEmptyStateIconContainerView.layer.borderColor = PPChatPremiumHeaderBorderColor().CGColor;
+    if (@available(iOS 13.0, *)) {
+        self.chatEmptyStateIconContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.chatEmptyStateIconView.tintColor = accent;
+    self.chatEmptyStateTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.chatEmptyStateSubtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    self.chatEmptyStateActionButton.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+}
+
+- (void)pp_updateChatEmptyStateAnimated:(BOOL)animated
+{
+    BOOL shouldShow =
+        self.didFinishInitialLoad &&
+        self.messages.count == 0 &&
+        !self.initialLoadIndicator.isAnimating;
+    [self pp_setChatEmptyStateVisible:shouldShow animated:animated];
+}
+
+- (void)pp_setChatEmptyStateVisible:(BOOL)visible animated:(BOOL)animated
+{
+    if (!self.chatEmptyStateView) return;
+
+    if (visible) {
+        [self pp_applyPremiumEmptyStateTheme];
+        self.chatEmptyStateView.hidden = NO;
+        [self.view bringSubviewToFront:self.chatEmptyStateView];
+        [self.view bringSubviewToFront:self.typingIndicatorView];
+        [self.view bringSubviewToFront:self.inputbar];
+        [self pp_bringChatHeaderToFront];
+    }
+
+    if (self.isChatEmptyStateVisible == visible &&
+        self.chatEmptyStateView.hidden == !visible) {
+        return;
+    }
+
+    self.isChatEmptyStateVisible = visible;
+
+    void (^changes)(void) = ^{
+        self.chatEmptyStateView.alpha = visible ? 1.0 : 0.0;
+        self.chatEmptyStateView.transform = visible ? CGAffineTransformIdentity : [self pp_preparedEmptyStateTransform];
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        self.chatEmptyStateView.hidden = !visible;
+        return;
+    }
+
+    if (visible) {
+        self.chatEmptyStateView.alpha = 0.0;
+        self.chatEmptyStateView.transform = [self pp_preparedEmptyStateTransform];
+        [UIView animateWithDuration:0.42
+                              delay:0.04
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.35
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:changes
+                         completion:nil];
+    } else {
+        [UIView animateWithDuration:0.20
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+                         animations:changes
+                         completion:^(__unused BOOL finished) {
+            if (!self.isChatEmptyStateVisible) {
+                self.chatEmptyStateView.hidden = YES;
+            }
+        }];
+    }
+}
+
+- (void)pp_chatEmptyStateActionTapped
+{
+    [self pp_focusChatComposer];
+}
+
+- (void)pp_chatEmptyStateActionTouchDown:(UIButton *)sender
+{
+    [UIView animateWithDuration:0.09
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.965, 0.965);
+    } completion:nil];
+}
+
+- (void)pp_chatEmptyStateActionRelease:(UIButton *)sender
+{
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.45
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_focusChatComposer
+{
+    if (![self pp_focusFirstTextInputInView:self.inputbar]) {
+        [self.inputbar becomeFirstResponder];
+    }
+}
+
+- (BOOL)pp_focusFirstTextInputInView:(UIView *)view
+{
+    if (!view) return NO;
+
+    if ([view conformsToProtocol:@protocol(UITextInput)] &&
+        [view canBecomeFirstResponder]) {
+        [view becomeFirstResponder];
+        return YES;
+    }
+
+    for (UIView *subview in view.subviews) {
+        if ([self pp_focusFirstTextInputInView:subview]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
 
 
 
@@ -382,6 +729,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
         if (visible && (self.didFinishInitialLoad || self.messages.count > 0)) {
             self.didFinishInitialLoad = YES;
             [self.initialLoadIndicator stopAnimating];
+            [self pp_updateChatEmptyStateAnimated:YES];
             return;
         }
         if (visible) {
@@ -389,6 +737,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
             NSUInteger token = self.initialLoadVisibilityToken;
             [self.initialLoadIndicator startAnimating];
             [self.view bringSubviewToFront:self.initialLoadIndicator];
+            [self pp_setChatEmptyStateVisible:NO animated:YES];
 
             // Fail-safe: do not keep blocking loader forever if listener state gets stale.
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(12.0 * NSEC_PER_SEC)),
@@ -400,6 +749,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
         } else {
             self.initialLoadVisibilityToken += 1;
             [self.initialLoadIndicator stopAnimating];
+            [self pp_updateChatEmptyStateAnimated:YES];
         }
     });
 }
@@ -2753,6 +3103,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     NSInteger index = self.messages.count;
     [self.messages addObject:msg];
     self.lastKnownStatuses[msg.ID] = @(msg.status);
+    [self pp_updateChatEmptyStateAnimated:YES];
 
     NSIndexPath *ip =
         [NSIndexPath indexPathForRow:index inSection:0];
@@ -4573,6 +4924,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     
     [self.view bringSubviewToFront:self.typingIndicatorView];
     [self.view bringSubviewToFront:self.inputbar];
+    [self pp_updateChatEmptyStateAnimated:NO];
      
     
     [self setupNavBottomBlur];
@@ -4716,6 +5068,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     [self pp_updatePremiumModalChatHeaderShadowPath];
     [self pp_updatePremiumModalChatHeaderInsets];
+    [self pp_updateChatEmptyStateAnimated:NO];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
     [self pp_bringChatHeaderToFront];
 }
@@ -4724,6 +5077,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [super traitCollectionDidChange:previousTraitCollection];
     [self pp_applyPremiumModalChatHeaderTheme];
+    [self pp_applyPremiumEmptyStateTheme];
 }
 
 - (NSInteger)resolvedChatBackgroundIndex
@@ -5233,6 +5587,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                     [self scrollToBottomAnimated:NO];
                 });
                 [self setInitialLoadingVisible:NO];
+                [self pp_updateChatEmptyStateAnimated:YES];
                 [self activateRealtimeAfterInitialLoadIfNeeded];
 
                 NSLog(@"✅ [Chat] Initial load complete (%lu)",
@@ -5360,6 +5715,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                                           withRowAnimation:UITableViewRowAnimationFade];
                 }
             }
+            [self pp_updateChatEmptyStateAnimated:YES];
         });
     }];
 }

@@ -107,6 +107,9 @@
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
+		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
+		6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */; };
+		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
 		F21843B12E8BB13300D8BF46 /* ImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843B02E8BB11900D8BF46 /* ImageViewerController.m */; };
@@ -293,7 +296,6 @@
 		F25B387E2E173CB60066D504 /* OrderDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */; };
 		F25B38802E173DDB0066D504 /* OrderModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387F2E173DDB0066D504 /* OrderModel.m */; };
 		F25B38842E1740620066D504 /* OrderCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B38832E1740620066D504 /* OrderCell.m */; };
-		F25CDBE12ED8F2CB00231D9B /* ShowTime in Frameworks */ = {isa = PBXBuildFile; productRef = F25CDBE02ED8F2CB00231D9B /* ShowTime */; };
 		F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F25D68BD2F82761700700694 /* PrivacyInfo.xcprivacy */; };
 		F25D68C72F82773300700694 /* PPImageUploadValidator.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68BF2F82773200700694 /* PPImageUploadValidator.h */; };
 		F25D68C82F82773300700694 /* PPFirestoreErrorNotifier.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C12F82773200700694 /* PPFirestoreErrorNotifier.h */; };
@@ -1059,6 +1061,10 @@
 		F229DCBF2D3B0D070015B67D /* FileUploadManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileUploadManager.m; sourceTree = "<group>"; };
 		F229DCC32D3B0D6A0015B67D /* FileUploadManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileUploadManager.h; sourceTree = "<group>"; };
 		F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNovaStreamingService.swift; sourceTree = "<group>"; };
+		4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantView.swift; sourceTree = "<group>"; };
+		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
+		3A2C289EF0CE4CDCA2D23C9C /* PPNovaAmbientAssistantChatBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaAmbientAssistantChatBridge.h; sourceTree = "<group>"; };
+		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
 		F22C06D42EF66C2F00C00EAC /* NSArray+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+YYAdd.h"; sourceTree = "<group>"; };
 		F22C06D52EF66C2F00C00EAC /* NSArray+YYAdd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+YYAdd.m"; sourceTree = "<group>"; };
 		F22C06D62EF66C2F00C00EAC /* NSBundle+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+YYAdd.h"; sourceTree = "<group>"; };
@@ -2324,7 +2330,6 @@
 				F25100852F73C2D8008F6AFE /* FirebaseCore in Frameworks */,
 				F25100912F73C2D8008F6AFE /* FirebaseMessaging in Frameworks */,
 				F2FFDA052FCDCFC00025B5A9 /* FirebaseAILogic in Frameworks */,
-				F25CDBE12ED8F2CB00231D9B /* ShowTime in Frameworks */,
 				F25100892F73C2D8008F6AFE /* FirebaseFirestore in Frameworks */,
 				F2FFDA072FCDCFC00025B5A9 /* FirebaseAnalytics in Frameworks */,
 				F2FFDA0B2FCDCFC00025B5A9 /* FirebaseAuth in Frameworks */,
@@ -3449,6 +3454,10 @@
 			isa = PBXGroup;
 			children = (
 				F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */,
+				4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */,
+				116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */,
+				3A2C289EF0CE4CDCA2D23C9C /* PPNovaAmbientAssistantChatBridge.h */,
+				ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */,
 				F2F25BCA2FC1398C0006BDF7 /* PPNovaGenkitService.h */,
 				F2F25BCB2FC1398C0006BDF7 /* PPNovaGenkitService.m */,
 				F24D2AB52FAC4EB50015EC83 /* PPNovaLocalChatMemory.h */,
@@ -5252,7 +5261,6 @@
 			);
 			mainGroup = F2D0C5CC2C4BE1B80023CE53;
 			packageReferences = (
-				F25CDBDF2ED8F2CB00231D9B /* XCRemoteSwiftPackageReference "ShowTime" */,
 				F20CB1402EF50E1500CDD5AD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
@@ -5848,6 +5856,9 @@
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
+				BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */,
+				6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */,
+				9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */,
 				F22C078D2EF66C2F00C00EAC /* _YYWebImageSetter.m in Sources */,
 				F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */,
 				F22C078E2EF66C2F00C00EAC /* NSAttributedString+YYText.m in Sources */,
@@ -6337,7 +6348,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6447,7 +6458,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6553,7 +6564,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6571,7 +6582,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6588,7 +6599,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6605,7 +6616,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 170;
+				CURRENT_PROJECT_VERSION = 172;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6674,14 +6685,6 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.11.0;
-			};
-		};
-		F25CDBDF2ED8F2CB00231D9B /* XCRemoteSwiftPackageReference "ShowTime" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/KaneCheshire/ShowTime";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.3;
 			};
 		};
 		F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -6764,11 +6767,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
-		};
-		F25CDBE02ED8F2CB00231D9B /* ShowTime */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F25CDBDF2ED8F2CB00231D9B /* XCRemoteSwiftPackageReference "ShowTime" */;
-			productName = ShowTime;
 		};
 		F2FFDA022FCDCFC00025B5A9 /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;

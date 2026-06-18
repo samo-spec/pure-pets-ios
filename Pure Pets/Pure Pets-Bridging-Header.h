@@ -4,3 +4,4 @@
 
 #import <Foundation/Foundation.h>
 #import "CartItem.h"
+#import "PPNovaAmbientAssistantChatBridge.h"

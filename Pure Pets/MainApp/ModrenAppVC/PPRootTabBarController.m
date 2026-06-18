@@ -31,6 +31,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
+#import <Pure_Pets-Swift.h>
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
 
@@ -47,6 +48,9 @@ static NSInteger const PPRootTabIndexOrders = 3;
 static NSInteger const PPRootTabIndexSettings = 4;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
+static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
+static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
+static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 
 @class PPPremiumDockBarDelegate;
 
@@ -89,6 +93,8 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 - (void)pp_setupPremiumNovaButton;
 - (void)pp_novaButtonTapped;
 - (void)pp_handleNovaFloatingVisibilityUpdate:(NSNotification *)notification;
+- (BOOL)pp_cachedNovaFloatingVisibility;
+- (void)pp_updatePremiumNovaButtonVisibility;
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
@@ -316,6 +322,20 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
     [self pp_assertPremiumTabBarState];
     [self pp_showIntroIfNeeded];
+    [self becomeFirstResponder];
+}
+
+- (BOOL)canBecomeFirstResponder
+{
+    return YES;
+}
+
+- (void)motionEnded:(UIEventSubtype)motion withEvent:(UIEvent *)event
+{
+    if (motion == UIEventSubtypeMotionShake) {
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidShakeDevice];
+    }
+    [super motionEnded:motion withEvent:event];
 }
 
 #pragma mark - Centralized Tab Bar State
@@ -1616,7 +1636,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [button addTarget:self action:@selector(pp_premiumControlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
     [self.view addSubview:button];
     self.premiumNovaButton = button;
-    self.premiumNovaVisibleByConfiguration = YES;
+    self.premiumNovaVisibleByConfiguration = [self pp_cachedNovaFloatingVisibility];
 
     LOTAnimationView *animationView = [[LOTAnimationView alloc] init];
     animationView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1643,6 +1663,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         [animationView.heightAnchor constraintEqualToConstant:38.0]
     ]];
     [NSLayoutConstraint activateConstraints:novaConstraints];
+    [self pp_updatePremiumNovaButtonVisibility];
 
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakAnimationView = animationView;
@@ -1680,8 +1701,38 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }];
 }
 
+- (BOOL)pp_cachedNovaFloatingVisibility
+{
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    if ([defaults objectForKey:PPNovaFloatingVisibleDefaultsKey] != nil) {
+        return [defaults boolForKey:PPNovaFloatingVisibleDefaultsKey];
+    }
+
+    NSDictionary *homeConfig = [defaults dictionaryForKey:PPHomeConfigCacheKey];
+    id cachedNovaVisible = homeConfig[PPHomeConfigCacheNovaFloatingVisibleKey];
+    if ([cachedNovaVisible respondsToSelector:@selector(boolValue)]) {
+        return [cachedNovaVisible boolValue];
+    }
+    return YES;
+}
+
+- (void)pp_updatePremiumNovaButtonVisibility
+{
+    BOOL visible = self.premiumNovaVisibleByConfiguration && !self.premiumBottomNavigationHidden;
+    self.premiumNovaButton.hidden = !visible;
+    self.premiumNovaButton.userInteractionEnabled = visible;
+    if (!visible) {
+        self.premiumNovaButton.alpha = 0.0;
+    } else if (self.premiumNavigationDidAnimateIn || UIAccessibilityIsReduceMotionEnabled()) {
+        self.premiumNovaButton.alpha = 1.0;
+    }
+}
+
 - (void)pp_novaButtonTapped
 {
+    if (!self.premiumNovaVisibleByConfiguration || self.premiumBottomNavigationHidden) {
+        return;
+    }
     if (@available(iOS 10.0, *)) {
         UIImpactFeedbackGenerator *feedback =
             [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
@@ -1697,8 +1748,9 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         return;
     }
     self.premiumNovaVisibleByConfiguration = [visibleValue boolValue];
-    self.premiumNovaButton.hidden =
-        !self.premiumNovaVisibleByConfiguration || self.premiumBottomNavigationHidden;
+    [NSUserDefaults.standardUserDefaults setBool:self.premiumNovaVisibleByConfiguration
+                                          forKey:PPNovaFloatingVisibleDefaultsKey];
+    [self pp_updatePremiumNovaButtonVisibility];
 }
 
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected
@@ -1862,8 +1914,9 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         self.premiumTabbarView.transform = CGAffineTransformIdentity;
         self.leadingTabButton.alpha = 1.0;
         self.leadingTabButton.transform = CGAffineTransformIdentity;
-        self.premiumNovaButton.alpha = 1.0;
+        self.premiumNovaButton.alpha = self.premiumNovaVisibleByConfiguration ? 1.0 : 0.0;
         self.premiumNovaButton.transform = CGAffineTransformIdentity;
+        [self pp_updatePremiumNovaButtonVisibility];
         return;
     }
 
@@ -1890,9 +1943,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
           initialSpringVelocity:0.18
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.premiumNovaButton.alpha = 1.0;
+        self.premiumNovaButton.alpha = self.premiumNovaVisibleByConfiguration ? 1.0 : 0.0;
         self.premiumNovaButton.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    } completion:^(__unused BOOL finished) {
+        [self pp_updatePremiumNovaButtonVisibility];
+    }];
 }
 
 - (void)pp_premiumControlTouchDown:(UIButton *)sender
@@ -1974,9 +2029,10 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         for (UIView *view in navigationViews) {
             view.hidden = NO;
         }
-        self.premiumNovaButton.hidden = !self.premiumNovaVisibleByConfiguration;
+        [self pp_updatePremiumNovaButtonVisibility];
     }
     void (^changes)(void) = ^{
+        BOOL showNova = self.premiumNovaVisibleByConfiguration && !hidden;
         if (PPIOS26()) {
             self.tabBar.alpha = 0.0;
             self.premiumTabbarView.alpha = hidden ? 0.0 : 1.0;
@@ -1987,7 +2043,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             self.premiumBottomFadeView.alpha = 0.0;
         }
         self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
-        self.premiumNovaButton.alpha = hidden ? 0.0 : 1.0;
+        self.premiumNovaButton.alpha = showNova ? 1.0 : 0.0;
         if (!UIAccessibilityIsReduceMotionEnabled()) {
             self.premiumTabbarView.transform =
                 hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
@@ -2008,6 +2064,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         for (UIView *view in navigationViews) {
             view.hidden = hidden;
         }
+        [self pp_updatePremiumNovaButtonVisibility];
         if (PPIOS26()) {
             self.tabBar.hidden = YES;
             self.tabBar.alpha = 0.0;
@@ -2038,6 +2095,22 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 - (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated
 {
     [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
+}
+
+- (UIView *)pp_novaAmbientBottomNavigationAnchorView
+{
+    if (PPIOS26() &&
+        self.premiumTabbarView &&
+        !self.premiumTabbarView.hidden &&
+        self.premiumTabbarView.alpha > 0.01) {
+        return self.premiumTabbarView;
+    }
+
+    if (!self.tabBar.hidden && self.tabBar.alpha > 0.01) {
+        return self.tabBar;
+    }
+
+    return nil;
 }
 
 - (void)setpremiumTabbarViewHidden:(BOOL)hidden animation:(BOOL)animated

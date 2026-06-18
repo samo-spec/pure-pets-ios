@@ -1711,6 +1711,9 @@
 "empty_chats_title" = "No conversations yet";
 "empty_chats_subtitle" = "Start chatting with pet owners and sellers.";
 "empty_chats_button" = "Start a chat";
+"chat_empty_thread_title" = "No messages yet";
+"chat_empty_thread_subtitle" = "Send the first message when you are ready. This conversation will stay here once it begins.";
+"chat_empty_thread_action" = "Write a message";
 
 
 "Recording…" = "Recording…";
@@ -3126,3 +3129,13 @@
 "settings_hero_subtitle" = "Control appearance, language, privacy, notifications, legal access, and account safety from one calm place.";
 "settings_hero_scope" = "Privacy • Appearance • Language";
 "settings_hero_accessibility_hint" = "Summarizes the settings available on this screen.";
+
+/* Ambient Nova */
+"nova_ambient_home_idle" = "Need help finding something for your pet?";
+"nova_ambient_search_focus" = "I can help you find the right product faster.";
+"nova_ambient_browsing" = "Want me to narrow this down for you?";
+"nova_ambient_category" = "Want me to narrow this down for you?";
+"nova_ambient_empty_state" = "I can help you search another way.";
+"nova_ambient_shake" = "Nova is here if you need help.";
+"nova_ambient_close_accessibility" = "Dismiss Nova";
+"nova_ambient_accessibility_hint" = "Opens Nova assistant chat.";

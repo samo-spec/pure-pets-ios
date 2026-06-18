@@ -9,6 +9,7 @@
 #import "ChNotificationRouter.h"
 #import "PPOrder.h"
 #import "OrderDetailsViewController.h"
+#import <Pure_Pets-Swift.h>
 
 
 @interface SceneDelegate ()<UNUserNotificationCenterDelegate>
@@ -174,7 +175,7 @@ willConnectToSession:(UISceneSession *)session
     
     if (![scene isKindOfClass:[UIWindowScene class]]) return;
     UIWindowScene *windowScene = (UIWindowScene *)scene;
-    self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    self.window = [[PPNovaMotionWindow alloc] initWithWindowScene:windowScene];
     UIColor *launchBackgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
     self.window.backgroundColor = launchBackgroundColor;
     [self applySavedInterfaceStyleToWindow:self.window];
