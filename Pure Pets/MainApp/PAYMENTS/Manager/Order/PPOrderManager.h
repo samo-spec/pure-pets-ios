@@ -113,6 +113,9 @@ typedef NS_ENUM(NSInteger, PPOrderCustomerActionType) {
 + (NSString *)displayTitleForRequestType:(NSString *)requestType;
 + (NSString *)displayTitleForRequestStatus:(NSString *)status;
 
++ (BOOL)canUserCancelOrder:(PPOrder *)order;
++ (nullable NSString *)cancellationBlockedReasonForOrder:(PPOrder *)order;
+
 - (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
                               amount:(double)amount
                             address:(PPAddressModel * _Nullable)address

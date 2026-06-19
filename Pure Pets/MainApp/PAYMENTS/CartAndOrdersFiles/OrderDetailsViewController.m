@@ -98,6 +98,7 @@ static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
 static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"pending"]) return kLang(@"order_placed_title");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
     if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
     if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
@@ -111,6 +112,7 @@ static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
 static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"pending"]) return kLang(@"order_delivery_hint_waiting_acceptance");
     if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
     if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"order_delivery_hint_assigned");
     if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"order_delivery_hint_on_the_way");
@@ -4560,10 +4562,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     BOOL failure = [self isFailureStatusKey:statusKey];
     NSMutableArray<NSString *> *stepKeys = [NSMutableArray array];
     if (failure) {
-        [stepKeys addObject:@"preparing_for_shipment"];
+        [stepKeys addObject:@"pending"];
         [stepKeys addObject:statusKey.length > 0 ? statusKey : @"delivery_delayed"];
     } else {
         [stepKeys addObjectsFromArray:@[
+            @"pending",
             @"preparing_for_shipment",
             @"ready_for_delivery",
             @"delivery_partner_assigned",
@@ -4598,11 +4601,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
 - (NSInteger)progressTimelineIndexForStatusKey:(NSString *)statusKey
 {
-    if ([statusKey isEqualToString:@"completed"]) return 5;
-    if ([statusKey isEqualToString:@"delivered"]) return 4;
-    if ([statusKey isEqualToString:@"on_the_way"]) return 3;
-    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) return 2;
-    if ([statusKey isEqualToString:@"ready_for_delivery"]) return 1;
+    if ([statusKey isEqualToString:@"completed"]) return 6;
+    if ([statusKey isEqualToString:@"delivered"]) return 5;
+    if ([statusKey isEqualToString:@"on_the_way"]) return 4;
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) return 3;
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) return 2;
+    if ([statusKey isEqualToString:@"preparing_for_shipment"]) return 1;
     return 0;
 }
 
@@ -4620,6 +4624,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     }
 
     NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"pending"]) {
+        return order.createdAt;
+    }
     if ([normalized isEqualToString:@"preparing_for_shipment"]) {
         return order.processedAt ?: order.createdAt;
     }
@@ -5925,7 +5932,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)applyActionButton:(UIButton *)button visible:(BOOL)visible eligible:(BOOL)eligible
 {
     button.hidden = !visible;
-    button.enabled = visible;
+    button.enabled = visible && eligible;
     button.alpha = (!visible || eligible) ? 1.0 : 0.72;
 }
 

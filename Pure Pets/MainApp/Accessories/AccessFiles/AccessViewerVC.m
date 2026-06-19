@@ -860,7 +860,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
     tintView.backgroundColor =
-        [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.25];
+        [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.0];
 
     [self.titleBlurView.contentView addSubview:tintView];
     [self.titleCard addSubview:self.titleBlurView];
@@ -1679,7 +1679,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    return MIN(MAX(width * 1.0, 420.0), 540.0);
+    return width;//MIN(MAX(width * 1.0, 420.0), 540.0);
 }
 
 - (CGSize)pp_suggestionItemSize {
@@ -2183,7 +2183,11 @@ static UIColor *AVSellerCardSurfaceColor(void) {
                 presentingViewController:self
                               completion:^(BOOL didAdd, BOOL didCancel) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || didCancel) { return; }
+        if (!self) { return; }
+        if (didCancel) {
+            [self.bottomBar cancelAddToCartPendingState];
+            return;
+        }
         if (!didAdd) {
             [self.bottomBar performAddToCartFailureAnimation];
             [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
@@ -3033,7 +3037,11 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
 - (void)pp_setTextViewHeight:(CGFloat)targetHeight animated:(BOOL)animated {
     UIScrollView *scrollView = self.hostScrollView;
     CGFloat anchorScreenY = 0.0;
-    BOOL shouldAnchorScroll = scrollView != nil;
+    // Preserve the reader's position only for an explicit Read More / Show Less
+    // interaction. Initial binding and width measurement happen while the outer
+    // scroll view is still resolving its content size; anchoring during that
+    // phase can clamp the viewer to its top content offset.
+    BOOL shouldAnchorScroll = animated && scrollView != nil && scrollView.window != nil;
 
     if (shouldAnchorScroll) {
         CGRect anchorFrame = [self.moreButton convertRect:self.moreButton.bounds toView:scrollView];

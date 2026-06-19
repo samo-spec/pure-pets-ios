@@ -536,6 +536,10 @@ static BOOL PPOrderStatusIsCancelledLike(NSString *statusKey) {
     return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"cancelled", @"canceled"]);
 }
 
+static BOOL PPOrderStatusIsPendingLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"pending", @"placed", @"new", @"waiting"]);
+}
+
 static BOOL PPOrderStatusIsDeliveredLike(NSString *statusKey) {
     return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"delivered", @"completed", @"fulfilled"]);
 }
@@ -1194,10 +1198,40 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     });
 }
 
++ (BOOL)canUserCancelOrder:(PPOrder *)order
+{
+    return [self cancellationBlockedReasonForOrder:order] == nil;
+}
+
++ (nullable NSString *)cancellationBlockedReasonForOrder:(PPOrder *)order
+{
+    if (!order) return kLang(@"order_support_unavailable_no_order");
+
+    NSString *statusKey = PPOrderNormalizedStatusString(order.rawStatus.length > 0 ? order.rawStatus : @"pending");
+
+    if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
+        return kLang(@"order_action_cancel_unavailable_closed");
+    }
+
+    if (PPOrderStatusIsPackingLike(statusKey)) {
+        return kLang(@"order_action_cancel_unavailable_preparing");
+    }
+
+    if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
+        return kLang(@"order_action_cancel_unavailable_fulfillment");
+    }
+
+    if (![order isCashOnDelivery] && ![order hasCapturedPayment]) {
+        return kLang(@"order_action_cancel_unavailable_payment_pending");
+    }
+
+    return nil;
+}
+
 - (PPOrderEligibilityDecision *)eligibilityForAction:(PPOrderCustomerActionType)actionType
-                                               order:(PPOrder *)order
-                                            requests:(NSArray<PPOrderSupportRequest *> *)requests
-                                       referenceDate:(NSDate *)referenceDate
+                                                order:(PPOrder *)order
+                                             requests:(NSArray<PPOrderSupportRequest *> *)requests
+                                        referenceDate:(NSDate *)referenceDate
 {
     PPOrderEligibilityDecision *decision = [PPOrderEligibilityDecision new];
     decision.actionType = actionType;
@@ -1244,21 +1278,17 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             decision.message = kLang(@"order_action_track_hint");
             break;
 
-        case PPOrderCustomerActionTypeCancel:
-            if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
+        case PPOrderCustomerActionTypeCancel: {
+            NSString *blockedReason = [[self class] cancellationBlockedReasonForOrder:order];
+            if (blockedReason) {
                 decision.eligible = NO;
-                decision.message = kLang(@"order_action_cancel_unavailable_closed");
-            } else if ([statusKey isEqualToString:@"pending"] || PPOrderStatusIsPackingLike(statusKey)) {
-                decision.eligible = NO;
-                decision.message = kLang(@"order_action_cancel_unavailable_preparing");
-            } else if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
-                decision.eligible = NO;
-                decision.message = kLang(@"order_action_cancel_unavailable_fulfillment");
+                decision.message = blockedReason;
             } else {
                 decision.eligible = YES;
                 decision.message = kLang(@"order_action_cancel_hint");
             }
             break;
+        }
 
         case PPOrderCustomerActionTypeReturn:
             if (!PPOrderStatusIsDeliveredLike(statusKey)) {
@@ -1728,13 +1758,47 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[]
     };
 
+    // Race safety: for cancel requests, verify current order status before submitting
+    if (draft.actionType == PPOrderCustomerActionTypeCancel) {
+        __weak typeof(self) weakSelf = self;
+        FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:order.orderId];
+        [orderRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *fetchError) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            if (fetchError) {
+                if (completion) completion(nil, NO, fetchError);
+                return;
+            }
+
+            PPOrder *freshOrder = [PPOrder orderFromSnapshot:snapshot];
+            NSString *blockedReason = [PPOrderManager cancellationBlockedReasonForOrder:freshOrder ?: order];
+            if (blockedReason) {
+                NSError *stateError = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                         code:409
+                                                     userInfo:@{NSLocalizedDescriptionKey: blockedReason}];
+                if (completion) completion(nil, NO, stateError);
+                return;
+            }
+
+            [strongSelf pp_callCreateOrderSupportRequestWithPayload:payload
+                                                             draft:draft
+                                                             order:order
+                                                       requestType:requestType
+                                            forceCredentialRefresh:NO
+                                                      didRetryAuth:NO
+                                                        completion:completion];
+        }];
+        return;
+    }
+
     [self pp_callCreateOrderSupportRequestWithPayload:payload
-                                               draft:draft
-                                               order:order
-                                         requestType:requestType
-                              forceCredentialRefresh:NO
-                                        didRetryAuth:NO
-                                          completion:completion];
+                                                draft:draft
+                                                order:order
+                                          requestType:requestType
+                               forceCredentialRefresh:NO
+                                         didRetryAuth:NO
+                                           completion:completion];
 }
 
 - (void)uploadEvidenceImages:(NSArray<UIImage *> *)images

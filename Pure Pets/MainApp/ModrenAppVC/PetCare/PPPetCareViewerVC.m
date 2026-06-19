@@ -1060,7 +1060,11 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
                 presentingViewController:self
                               completion:^(BOOL didAdd, BOOL didCancel) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || didCancel) { return; }
+        if (!self) { return; }
+        if (didCancel) {
+            [self.bottomBar cancelAddToCartPendingState];
+            return;
+        }
         if (!didAdd) {
             [self.bottomBar performAddToCartFailureAnimation];
             [PPHUD showError:kLang(@"Out of stock")];

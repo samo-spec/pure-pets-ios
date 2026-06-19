@@ -1686,6 +1686,7 @@
 "Home_CurrentOrdersExpectedPrefix" = "Expected";
 "Home_CurrentOrdersUpdatedPrefix" = "Updated";
 
+"order_delivery_hint_waiting_acceptance" = "Waiting for a provider to accept your order.";
 "order_delivery_hint_preparing" = "Your order is being prepared for shipment.";
 "order_delivery_hint_ready" = "Your order is ready and waiting for a delivery partner.";
 "order_delivery_hint_assigned" = "A delivery partner has been assigned and will collect your order shortly.";
@@ -2119,6 +2120,7 @@
 "order_action_cancel_unavailable_preparing" = "This order is already being prepared for shipment, so it can no longer be cancelled from the app. Contact support if you need help.";
 "order_action_cancel_unavailable_fulfillment" = "Cancellation is available only before packing or shipping starts.";
 "order_action_cancel_hint" = "You can still cancel before packing begins.";
+"order_action_cancel_unavailable_payment_pending" = "Payment for this order is still being processed. Cancellation will be available once payment is complete.";
 "order_action_return_unavailable_not_delivered" = "Returns open after the order is delivered.";
 "order_action_return_unavailable_window" = "Returns are available for %ld days after delivery.";
 "order_action_return_hint" = "Eligible for return for %ld days after delivery.";

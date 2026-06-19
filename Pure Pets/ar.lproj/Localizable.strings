@@ -1653,6 +1653,7 @@
 "Home_CurrentOrdersExpectedPrefix" = "المتوقع";
 "Home_CurrentOrdersUpdatedPrefix" = "آخر تحديث";
 
+"order_delivery_hint_waiting_acceptance" = "بانتظار قبول مقدم الخدمة لطلبك.";
 "order_delivery_hint_preparing" = "يجري تجهيز طلبك للشحن الآن.";
 "order_delivery_hint_ready" = "طلبك جاهز وينتظر تعيين مندوب توصيل.";
 "order_delivery_hint_assigned" = "تم تعيين مندوب توصيل وسيستلم طلبك قريباً.";
@@ -2094,6 +2095,7 @@
 "order_action_cancel_unavailable_preparing" = "هذا الطلب قيد التجهيز للشحن بالفعل، لذلك لم يعد بالإمكان إلغاؤه من التطبيق. تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.";
 "order_action_cancel_unavailable_fulfillment" = "الإلغاء متاح فقط قبل بدء التجهيز أو الشحن.";
 "order_action_cancel_hint" = "لا يزال بإمكانك الإلغاء قبل بدء التغليف.";
+"order_action_cancel_unavailable_payment_pending" = "الدفع لهذا الطلب لا يزال قيد المعالجة. سيكون الإلغاء متاحاً بمجرد اكتمال الدفع.";
 "order_action_return_unavailable_not_delivered" = "الإرجاع يصبح متاحاً بعد تسليم الطلب.";
 "order_action_return_unavailable_window" = "الإرجاع متاح لمدة %ld أيام بعد التسليم.";
 "order_action_return_hint" = "يمكنك طلب الإرجاع خلال %ld أيام بعد التسليم.";

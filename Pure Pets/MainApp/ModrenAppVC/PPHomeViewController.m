@@ -11677,14 +11677,14 @@ presentingViewController:self
                       middleAlpha:(isDark ? 0.095 : 0.070) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:supportingColor
-                        peakAlpha:(isDark ? 0.19 : 0.14) * accessibilityScale
-                      middleAlpha:(isDark ? 0.068 : 0.048) * accessibilityScale];
+                            color:AppForgroundColr// supportingColor
+                        peakAlpha:(isDark ? 0.11 : 0.075) * accessibilityScale
+                      middleAlpha:(isDark ? 0.038 : 0.026) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
                             color:signatureColor
-                        peakAlpha:(isDark ? 0.16 : 0.11) * accessibilityScale
-                      middleAlpha:(isDark ? 0.056 : 0.038) * accessibilityScale];
+                        peakAlpha:(isDark ? 0.22 : 0.16) * accessibilityScale
+                      middleAlpha:(isDark ? 0.078 : 0.054) * accessibilityScale];
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews

@@ -100,6 +100,9 @@ typedef NS_ENUM(NSInteger, BBCartBottomBarPresentationStyle) {
 /// Plays a restrained failure animation and restores the button.
 - (void)performAddToCartFailureAnimation;
 
+/// Quietly restores the purchase controls when an add-to-cart flow is cancelled.
+- (void)cancelAddToCartPendingState;
+
 - (void)updateQuantityUI;
 
 -(void)setFavForCollection:(NSString *)collection andID:(NSString *)ID andButton:(FavoriteFixedSizeButton *)favButton;
