@@ -70,6 +70,9 @@ static NSString *PPOrderNormalizedDeliveryStatusString(id value)
     if ([normalized isEqualToString:@"picked_up"]) {
         return @"picked_up";
     }
+    if ([normalized isEqualToString:@"handed_over"]) {
+        return @"picked_up";
+    }
     if ([normalized isEqualToString:@"in_transit"] ||
         [normalized isEqualToString:@"out_for_delivery"] ||
         PPOrderStatusContainsToken(normalized, @"shipped") ||
@@ -295,6 +298,7 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     order.estimatedDeliveryAt = [self parseDateFromValue:data[@"estimatedDeliveryAt"]];
 
     order.deliveryStatus = PPOrderTrimmedString(data[@"deliveryStatus"]);
+    order.deliveryUserId = PPOrderTrimmedString(data[@"deliveryUserId"] ?: data[@"deliveryUid"]);
 
     // Per-owner fulfillment fields (Phase 15 — additive, backward-compatible)
     if ([data[@"fulfillmentOrderIDs"] isKindOfClass:NSArray.class]) {
@@ -430,7 +434,9 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         return self.inTransitAt ? @"in_transit" : @"picked_up";
     }
     if (PPOrderStatusContainsToken(raw, @"ready")) {
-        return (self.deliveryAcceptedAt || self.deliveryRequestedAt) ? @"awaiting_handover" : @"delivery_requested";
+        return (self.deliveryUserId.length > 0 || self.deliveryAcceptedAt != nil)
+            ? @"awaiting_handover"
+            : @"delivery_requested";
     }
     if (PPOrderStatusContainsToken(raw, @"processing") ||
         PPOrderStatusContainsToken(raw, @"preparing") ||

@@ -11667,7 +11667,7 @@ presentingViewController:self
     BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
-    UIColor *signatureColor = AppSurfColor ?: UIColor.systemPurpleColor;
+    UIColor *signatureColor = UIColor.systemPurpleColor; //AppSurfColor ?: 
     UIColor *supportingColor = [UIColor colorNamed:@"AppSecColor"] ?: signatureColor;
     UIColor *topAtmosphereColor = [UIColor colorNamed:@"HomeAmbientTopGlowColor"] ?: UIColor.systemBlueColor;
 
