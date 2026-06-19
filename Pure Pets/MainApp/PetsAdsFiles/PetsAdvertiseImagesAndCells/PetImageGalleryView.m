@@ -90,6 +90,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
 @property (nonatomic, assign) BOOL pp_didPrepareGalleryEntranceAnimation;
 @property (nonatomic, assign) BOOL pp_didRunGalleryEntranceAnimation;
+@property (nonatomic, assign) BOOL pp_didNormalizeInitialLayout;
+@property (nonatomic, assign) CGSize pp_lastLaidOutCollectionSize;
 @property (nonatomic, assign) NSInteger pp_lastSettledPageIndex;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *pp_swipeFeedbackGenerator;
 
@@ -116,6 +118,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)pp_emitSwipeFeedbackIfNeededForPage:(NSInteger)page;
 - (void)pp_configureVideoBadgeInCell:(UICollectionViewCell *)cell visible:(BOOL)visible;
 - (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page;
+- (void)pp_synchronizeCollectionLayoutIfNeeded;
 
 @end
 
@@ -159,6 +162,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     _collectionView.pagingEnabled = YES;
     _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
+    _collectionView.contentInset = UIEdgeInsetsZero;
+    _collectionView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    if (@available(iOS 11.0, *)) {
+        _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     _collectionView.delegate = self;
     _collectionView.dataSource = self;
     _collectionView.showsHorizontalScrollIndicator = NO;
@@ -227,6 +235,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     [super didMoveToWindow];
     if (self.window) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            [self setNeedsLayout];
+            [self layoutIfNeeded];
+            [self pp_synchronizeCollectionLayoutIfNeeded];
             [self pp_runGalleryEntranceAnimationIfNeeded];
             [self pp_applySwipeMotionToVisibleCells];
         });
@@ -236,8 +247,54 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    [self pp_synchronizeCollectionLayoutIfNeeded];
     self.myPageControl1.frame = self.containerB.bounds;
     [self pp_applySwipeMotionToVisibleCells];
+}
+
+- (void)pp_synchronizeCollectionLayoutIfNeeded
+{
+    CGSize pageSize = self.collectionView.bounds.size;
+    if (pageSize.width <= 0.0 || pageSize.height <= 0.0) {
+        return;
+    }
+
+    BOOL sizeChanged = !CGSizeEqualToSize(pageSize, self.pp_lastLaidOutCollectionSize);
+    if (self.pp_didNormalizeInitialLayout && !sizeChanged) {
+        return;
+    }
+
+    NSInteger targetIndex = 0;
+    if (self.pp_didNormalizeInitialLayout && self.imageItems.count > 0) {
+        CGPoint visibleCenter = CGPointMake(self.collectionView.contentOffset.x + CGRectGetMidX(self.collectionView.bounds),
+                                            self.collectionView.contentOffset.y + CGRectGetMidY(self.collectionView.bounds));
+        NSIndexPath *visibleIndexPath = [self.collectionView indexPathForItemAtPoint:visibleCenter];
+        if (visibleIndexPath) {
+            targetIndex = visibleIndexPath.item;
+        }
+    }
+
+    UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
+    flowLayout.itemSize = pageSize;
+    flowLayout.minimumLineSpacing = 0.0;
+    flowLayout.minimumInteritemSpacing = 0.0;
+    [flowLayout invalidateLayout];
+    [self.collectionView layoutIfNeeded];
+
+    if (self.imageItems.count > 0) {
+        targetIndex = MIN(MAX(targetIndex, 0), (NSInteger)self.imageItems.count - 1);
+        NSIndexPath *targetPath = [NSIndexPath indexPathForItem:targetIndex inSection:0];
+        [UIView performWithoutAnimation:^{
+            [self.collectionView scrollToItemAtIndexPath:targetPath
+                                        atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                                animated:NO];
+        }];
+    } else {
+        self.collectionView.contentOffset = CGPointZero;
+    }
+
+    self.pp_lastLaidOutCollectionSize = pageSize;
+    self.pp_didNormalizeInitialLayout = YES;
 }
 
 - (void)setContentMode:(UIViewContentMode)contentMode
@@ -262,15 +319,15 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 -(CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSValue *storedSize = self.imageSizes[indexPath];
-        if (storedSize) {
-            CGSize size = storedSize.CGSizeValue;
-            return size; // dynamic height based on image ratio
-        }
-
-        // fallback default (e.g. placeholder height)
-    return CGSizeMake(collectionView.bounds.size.width,
-                      collectionView.bounds.size.height);
+    CGSize pageSize = collectionView.bounds.size;
+    if (pageSize.width <= 0.0 || pageSize.height <= 0.0) {
+        pageSize = self.bounds.size;
+    }
+    if (pageSize.width <= 0.0 || pageSize.height <= 0.0) {
+        pageSize = CGSizeMake(MAX(UIScreen.mainScreen.bounds.size.width, 1.0),
+                              MAX(self.itemHeight, 1.0));
+    }
+    return pageSize;
 }
  
 - (void)setupUI {
@@ -434,6 +491,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     [self.imageCache removeAllObjects];
     self.pp_didPrepareGalleryEntranceAnimation = NO;
     self.pp_didRunGalleryEntranceAnimation = NO;
+    self.pp_didNormalizeInitialLayout = NO;
+    self.pp_lastLaidOutCollectionSize = CGSizeZero;
     self.pp_lastSettledPageIndex = NSNotFound;
     if (_imageItems.count > 1 && !self.containerB) {
         [self setupUI];
@@ -444,6 +503,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     [self pp_updateGalleryAccessibilityForPage:0];
     [self pp_prepareGalleryEntranceAnimationIfNeeded];
     [self.collectionView reloadData];
+    [self setNeedsLayout];
     [self pp_runGalleryEntranceAnimationIfNeeded];
 }
 

@@ -115,8 +115,8 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     [self.tapButton addSubview:self.surfaceView];
 
     self.surfaceLayer = [CAGradientLayer layer];
-    self.surfaceLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.surfaceLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.surfaceLayer.endPoint = CGPointMake(0.5, 1.0);
     [self.surfaceView.layer insertSublayer:self.surfaceLayer atIndex:0];
 
   
@@ -230,13 +230,13 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ]];
 
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.0;
-    self.layer.shadowRadius = 0.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
+    //self.layer.shadowOpacity = 0.0;
+    //self.layer.shadowRadius = 0.0;
+    //self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
     
-    //self.layer.shadowOpacity = 0.05;
-    //self.layer.shadowRadius = 12.0;
-    //self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.layer.shadowOpacity = 0.05;
+    self.layer.shadowRadius = 12.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self pp_applyTheme];
 }
 
@@ -253,7 +253,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    self.surfaceLayer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.26].CGColor;
+    self.surfaceLayer.borderColor = [AppForgroundColr colorWithAlphaComponent:1].CGColor;
 
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);
@@ -321,13 +321,13 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ];
     self.surfaceView.backgroundColor = bottom;
  
-    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(AppForgroundColr,
-                                                                       AppForgroundColr,
+    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(AppPrimaryClr,
+                                                                       AppPrimaryClr,
                                                                        isDark ? 0.18 : 0.35).CGColor;
     self.signalMotionLayer.colors = @[
-        (__bridge id)[signal colorWithAlphaComponent:0.24].CGColor,
+        (__bridge id)[signal colorWithAlphaComponent:0.84].CGColor,
         (__bridge id)[signal colorWithAlphaComponent:1.0].CGColor,
-        (__bridge id)[signal colorWithAlphaComponent:0.34].CGColor
+        (__bridge id)[signal colorWithAlphaComponent:0.94].CGColor
     ];
 
     self.iconPlateView.backgroundColor = AppClearClr;

@@ -145,7 +145,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.surfaceView.userInteractionEnabled = NO;
     self.surfaceView.layer.cornerRadius = corners;
     self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 0.0;
+    self.surfaceView.layer.borderWidth = 0.6;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -548,7 +548,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
     UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);
     UIColor *lowerSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.05);
-    UIColor *borderColor = [PPQuickActionElevatedColor(AppForgroundColr, 0.18) colorWithAlphaComponent:0.58];
+    UIColor *borderColor = [resolvedAccent colorWithAlphaComponent:0.58];
     UIColor *orbSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.10);
 
     self.actionButton.backgroundColor = surfaceBaseDynamic;
@@ -560,9 +560,9 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
     [self.surfaceView pp_setBorderColor:borderColor];
     self.surfaceGradientLayer.colors = @[
-        (__bridge id)[upperSurface colorWithAlphaComponent:00.0].CGColor,
-        (__bridge id)[surfaceBase colorWithAlphaComponent:0.0].CGColor,
-        (__bridge id)[lowerSurface colorWithAlphaComponent:0.0].CGColor
+        (__bridge id)[upperSurface colorWithAlphaComponent:00.5].CGColor,
+        (__bridge id)[surfaceBase colorWithAlphaComponent:0.3].CGColor,
+        (__bridge id)[lowerSurface colorWithAlphaComponent:0.6].CGColor
     ];
     self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
 

@@ -1084,6 +1084,69 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     PPHomeProfileMenuActionLogout
 };
 
+@interface PPHomeAmbientGlowView : UIView
+@property (nonatomic, strong) CAGradientLayer *radialLayer;
+- (void)applyColor:(UIColor *)color
+         peakAlpha:(CGFloat)peakAlpha
+       middleAlpha:(CGFloat)middleAlpha;
+@end
+
+@implementation PPHomeAmbientGlowView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+
+    self.userInteractionEnabled = NO;
+    self.isAccessibilityElement = NO;
+    self.accessibilityElementsHidden = YES;
+    self.backgroundColor = UIColor.clearColor;
+    self.opaque = NO;
+
+    _radialLayer = [CAGradientLayer layer];
+    if (@available(iOS 12.0, *)) {
+        _radialLayer.type = kCAGradientLayerRadial;
+        _radialLayer.startPoint = CGPointMake(0.5, 0.5);
+        _radialLayer.endPoint = CGPointMake(1.0, 1.0);
+    } else {
+        _radialLayer.startPoint = CGPointMake(0.0, 0.5);
+        _radialLayer.endPoint = CGPointMake(1.0, 0.5);
+    }
+    _radialLayer.locations = @[@0.0, @0.46, @1.0];
+    _radialLayer.drawsAsynchronously = YES;
+    [self.layer addSublayer:_radialLayer];
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.radialLayer.frame = self.bounds;
+    [CATransaction commit];
+}
+
+- (void)applyColor:(UIColor *)color
+         peakAlpha:(CGFloat)peakAlpha
+       middleAlpha:(CGFloat)middleAlpha
+{
+    UIColor *safeColor = color ?: UIColor.clearColor;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.radialLayer.colors = @[
+        (id)[safeColor colorWithAlphaComponent:peakAlpha].CGColor,
+        (id)[safeColor colorWithAlphaComponent:middleAlpha].CGColor,
+        (id)[safeColor colorWithAlphaComponent:0.0].CGColor
+    ];
+    [CATransaction commit];
+}
+
+@end
+
+static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.background.mid.position";
+
 
 @interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate>
 - (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action;
@@ -1134,9 +1197,10 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @property (nonatomic, strong) NSTimer *nearbyRefreshTimer;
 @property (nonatomic, assign) BOOL isUsingManualNearbySelection;
 @property (nonatomic, assign) BOOL nearbyShowingRecentlyAdded;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
+@property (nonatomic, strong) UIView *pp_premiumBackgroundCanvasView;
+@property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewTop;
+@property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewMid;
+@property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeHorizontalUniversalIdentifiers;
@@ -1161,6 +1225,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @property (nonatomic, assign) BOOL didRunPremiumHomeEntranceAnimation;
 @property (nonatomic, assign) BOOL isPremiumHomeEntranceAnimating;
 @property (nonatomic, assign) BOOL didStartPremiumBackgroundGlowMotion;
+@property (nonatomic, assign) CGSize premiumBackgroundGlowMotionCanvasSize;
 @property (nonatomic, assign) CGSize lastPreparedHomeEntranceBoundsSize;
 @property (nonatomic, assign) NSUInteger lastPreparedHomeEntranceItemCount;
 @property (nonatomic, assign) NSUInteger lastPreparedHomeEntranceSectionCount;
@@ -1224,7 +1289,9 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 - (void)pp_preparePremiumHomeEntranceStateIfNeeded;
 - (void)pp_prepareVisibleHomeEntranceContentIfNeeded;
 - (void)pp_beginPremiumHomeEntranceIfNeeded;
+- (void)pp_addRandomizedMiddleBackgroundGlowPositionMotion;
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded;
+- (void)pp_stopPremiumBackgroundGlowMotion;
 - (void)pp_animateVisibleHomeEntranceContentIfNeeded;
 - (void)pp_configureHomeEntranceInitialStateForCell:(UICollectionViewCell *)cell
                                         atIndexPath:(NSIndexPath *)indexPath
@@ -1405,10 +1472,11 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 - (nullable MainBannerModel *)pp_homeTopCarouselBannerGroup;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_homePromoFallbackCards;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_promoCardsFromLegacyBannerGroup:(MainBannerModel *)group;
-- (void)pp_applyOrderDetailsBackgroundAppearance;
+- (void)pp_applyPremiumHomeBackgroundAppearance;
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
 - (void)pp_layoutPremiumBackgroundGlowViews;
 - (void)pp_updatePremiumBackgroundGlowAppearance;
+- (void)handleHomeAccessibilityAppearanceDidChange:(NSNotification *)notification;
 - (CGFloat)preferredNavigationCenterViewWidth;
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (CGFloat)pp_preferredNavigationSearchWidth;
@@ -2754,7 +2822,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return;
     }
 
-    [self pp_applyOrderDetailsBackgroundAppearance];
+    [self pp_applyPremiumHomeBackgroundAppearance];
     if ([self pp_canOwnHomeNavigationChrome]) {
         [self configureNavigationBar];
     } else {
@@ -2787,7 +2855,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return;
     }
 
-    [self pp_applyOrderDetailsBackgroundAppearance];
+    [self pp_applyPremiumHomeBackgroundAppearance];
     if ([self pp_canOwnHomeNavigationChrome]) {
         [self configureNavigationBar];
     } else {
@@ -3480,7 +3548,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.nearbyServicesShowingLatest = NO;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    [self pp_applyOrderDetailsBackgroundAppearance];
+    [self pp_applyPremiumHomeBackgroundAppearance];
 
     self.mainKinds = PPMainKindsArray;
     self.selectedCategory = nil; // nil == "All"
@@ -3525,7 +3593,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 
     [self setupCollectionView];
-    [self pp_applyOrderDetailsBackgroundAppearance];
+    [self pp_applyPremiumHomeBackgroundAppearance];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
     [self configureDataSource];
     [self pp_applyCachedHomeConfigIfAvailable];
@@ -3601,6 +3669,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     [[NSNotificationCenter defaultCenter]
         addObserver:self
+           selector:@selector(handleAppDidEnterBackground)
+               name:UIApplicationDidEnterBackgroundNotification
+             object:nil];
+
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
            selector:@selector(handleAdUploadCompletedNotification:)
                name:PPAdDidFinishUploadNotification
              object:nil];
@@ -3636,6 +3710,18 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         addObserver:self
            selector:@selector(handleThemePreferenceDidChange:)
                name:PPThemePreferenceDidChangeNotification
+              object:nil];
+
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(handleHomeAccessibilityAppearanceDidChange:)
+               name:UIAccessibilityReduceMotionStatusDidChangeNotification
+              object:nil];
+
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(handleHomeAccessibilityAppearanceDidChange:)
+               name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
               object:nil];
 }
 
@@ -6289,6 +6375,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self pp_refreshPetProfilesSection];
     [self refreshNearbyAdsForce:YES reason:@"foreground"];
     [self pp_refreshThemeSensitiveHomeContent];
+    if (self.isHomeScreenVisible) {
+        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+    }
+}
+
+- (void)handleAppDidEnterBackground
+{
+    [self pp_stopPremiumBackgroundGlowMotion];
 }
 
 - (void)handleThemePreferenceDidChange:(NSNotification *)notification
@@ -6299,11 +6393,27 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self pp_forceHomeCollectionLayoutRefresh];
 }
 
+- (void)handleHomeAccessibilityAppearanceDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    [self pp_updatePremiumBackgroundGlowAppearance];
+    if ([self pp_shouldReduceHomeMotion]) {
+        [self pp_stopPremiumBackgroundGlowMotion];
+    } else if (self.isHomeScreenVisible) {
+        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+    }
+}
+
 - (void)handleLanguageDidChange:(NSNotification *)notification
 {
     (void)notification;
     self.needsVisibleHomeLanguageRefresh = YES;
     [self pp_refreshLanguageSensitiveHomeContent];
+    [self pp_stopPremiumBackgroundGlowMotion];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_layoutPremiumBackgroundGlowViews];
+        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+    });
 }
 
 - (void)handleAdUploadCompletedNotification:(NSNotification *)notification
@@ -6315,6 +6425,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
+    [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
     [self pp_startHomeSmartSearchTimerIfNeeded];
     [self pp_advancePremiumCareAnimationForAppearance];
     [self pp_beginPremiumHomeEntranceIfNeeded];
@@ -8178,6 +8289,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
     [self.homeLocationTitleView stopLivingMotion];
+    [self pp_stopPremiumBackgroundGlowMotion];
     self.collectionView.prefetchDataSource = nil;
     [[PPImageLoaderManager shared] cancelAllPrefetching];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -9266,19 +9378,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.didPreparePremiumHomeEntrance || self.didRunPremiumHomeEntranceAnimation) {
         return;
     }
-    // Don't fade chrome while the snapshot is still empty — the user would
-    // stare at faded glow + faded nav chrome until HomeConfig finally lands.
-    // Wait until we actually have sections to reveal.
+    // Don't fade navigation chrome while the snapshot is still empty. The
+    // ambient background runs independently of HomeConfig/content entrance.
     if (self.dataSource && self.dataSource.snapshot.numberOfItems == 0) {
         return;
     }
     self.didPreparePremiumHomeEntrance = YES;
-
-    NSArray<UIView *> *glowViews = @[
-        self.pp_premiumBackgroundGlowViewTop ?: [UIView new],
-        self.pp_premiumBackgroundGlowViewMid ?: [UIView new],
-        self.pp_premiumBackgroundGlowViewBottom ?: [UIView new]
-    ];
 
     NSMutableArray<UIView *> *chromeViews = [NSMutableArray array];
     if (self.homeSmartSearchView) {
@@ -9294,10 +9399,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if ([self pp_shouldReduceHomeMotion]) {
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
-        for (UIView *glowView in glowViews) {
-            glowView.alpha = 1.0;
-            glowView.transform = CGAffineTransformIdentity;
-        }
         for (UIView *chromeView in chromeViews) {
             chromeView.alpha = 1.0;
             chromeView.transform = CGAffineTransformIdentity;
@@ -9307,11 +9408,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.collectionView.alpha = 1.0;
     self.collectionView.transform = CGAffineTransformIdentity;
-
-    for (UIView *glowView in glowViews) {
-        glowView.alpha = 0.09;
-        glowView.transform = CGAffineTransformMakeScale(0.96, 0.96);
-    }
 
     for (UIView *chromeView in chromeViews) {
         chromeView.alpha = 0.22;
@@ -9376,36 +9472,67 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }];
 }
 
+- (void)pp_addRandomizedMiddleBackgroundGlowPositionMotion
+{
+    PPHomeAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
+    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+        [glowView.layer animationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey]) {
+        return;
+    }
+
+    CGFloat canvasWidth = CGRectGetWidth(self.pp_premiumBackgroundCanvasView.bounds);
+    CGFloat canvasHeight = CGRectGetHeight(self.pp_premiumBackgroundCanvasView.bounds);
+    CGFloat maximumXOffset = MIN(92.0, MAX(64.0, canvasWidth * 0.22));
+    CGFloat maximumYOffset = MIN(116.0, MAX(78.0, canvasHeight * 0.115));
+    CGPoint restingPosition = glowView.layer.position;
+
+    NSMutableArray<NSValue *> *positions = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:restingPosition]];
+    NSMutableArray<NSNumber *> *keyTimes = [NSMutableArray arrayWithObject:@0.0];
+    static NSInteger const waypointCount = 7;
+    for (NSInteger index = 1; index <= waypointCount; index++) {
+        CGFloat randomXUnit = ((CGFloat)arc4random_uniform(2001) / 1000.0) - 1.0;
+        CGFloat randomYUnit = ((CGFloat)arc4random_uniform(2001) / 1000.0) - 1.0;
+        CGPoint waypoint = CGPointMake(restingPosition.x + (randomXUnit * maximumXOffset),
+                                       restingPosition.y + (randomYUnit * maximumYOffset));
+        [positions addObject:[NSValue valueWithCGPoint:waypoint]];
+        [keyTimes addObject:@((CGFloat)index / (CGFloat)(waypointCount + 1))];
+    }
+    [positions addObject:[NSValue valueWithCGPoint:restingPosition]];
+    [keyTimes addObject:@1.0];
+
+    CFTimeInterval duration = 13.0 + ((CGFloat)arc4random_uniform(3501) / 1000.0);
+    CAKeyframeAnimation *positionAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
+    positionAnimation.values = positions;
+    positionAnimation.keyTimes = keyTimes;
+    positionAnimation.calculationMode = kCAAnimationCubic;
+    positionAnimation.duration = duration;
+    positionAnimation.repeatCount = HUGE_VALF;
+    positionAnimation.removedOnCompletion = YES;
+    positionAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    CFTimeInterval localNow = [glowView.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+    CGFloat randomPhase = ((CGFloat)arc4random_uniform(10001) / 10000.0) * duration;
+    positionAnimation.beginTime = localNow - randomPhase;
+
+    [glowView.layer addAnimation:positionAnimation forKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
+}
+
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded
 {
-    if (self.didStartPremiumBackgroundGlowMotion || [self pp_shouldReduceHomeMotion]) {
+    if (self.didStartPremiumBackgroundGlowMotion ||
+        [self pp_shouldReduceHomeMotion] ||
+        !self.isHomeScreenVisible ||
+        self.view.window == nil ||
+        CGRectIsEmpty(self.pp_premiumBackgroundGlowViewMid.bounds)) {
         return;
     }
     self.didStartPremiumBackgroundGlowMotion = YES;
+    [self pp_addRandomizedMiddleBackgroundGlowPositionMotion];
+}
 
-    [UIView animateWithDuration:8.6
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(-14.0, 16.0);
-        self.pp_premiumBackgroundGlowViewTop.transform = CGAffineTransformScale(transform, 1.05, 1.05);
-    } completion:nil];
-
-    [UIView animateWithDuration:10.2
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(16.0, -10.0);
-        self.pp_premiumBackgroundGlowViewMid.transform = CGAffineTransformScale(transform, 1.03, 1.03);
-    } completion:nil];
-
-    [UIView animateWithDuration:9.4
-                          delay:0.0
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(-12.0, -18.0);
-        self.pp_premiumBackgroundGlowViewBottom.transform = CGAffineTransformScale(transform, 1.04, 1.04);
-    } completion:nil];
+- (void)pp_stopPremiumBackgroundGlowMotion
+{
+    self.didStartPremiumBackgroundGlowMotion = NO;
+    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
 }
 
 - (void)pp_beginPremiumHomeEntranceIfNeeded
@@ -9432,12 +9559,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSArray<UIView *> *glowViews = @[
-        self.pp_premiumBackgroundGlowViewTop ?: [UIView new],
-        self.pp_premiumBackgroundGlowViewMid ?: [UIView new],
-        self.pp_premiumBackgroundGlowViewBottom ?: [UIView new]
-    ];
-
     NSMutableArray<UIView *> *chromeViews = [NSMutableArray array];
     if (self.homeSmartSearchView) {
         [chromeViews addObject:self.homeSmartSearchView];
@@ -9454,10 +9575,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.isPremiumHomeEntranceAnimating = NO;
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
-        for (UIView *glowView in glowViews) {
-            glowView.alpha = 1.0;
-            glowView.transform = CGAffineTransformIdentity;
-        }
         for (UIView *chromeView in chromeViews) {
             chromeView.alpha = 1.0;
             chromeView.transform = CGAffineTransformIdentity;
@@ -9468,17 +9585,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.didRunPremiumHomeEntranceAnimation = YES;
     self.isPremiumHomeEntranceAnimating = YES;
-
-    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull glowView, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:0.68
-                              delay:0.04 * idx
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            glowView.alpha = 1.0;
-            glowView.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
 
     [chromeViews enumerateObjectsUsingBlock:^(UIView * _Nonnull chromeView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
@@ -9499,15 +9605,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
         [self pp_animateVisibleHomeEntranceContentIfNeeded];
-    });
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.80 * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || !self.isViewLoaded) {
-            return;
-        }
-        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
     });
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.86 * NSEC_PER_SEC)),
@@ -9904,6 +10001,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_stopHomeSmartSearchTimer];
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
     [self pp_detachHomeLocationTitleViewIfNeeded];
+    [self pp_stopPremiumBackgroundGlowMotion];
     [self pp_stopNovaFloatingMotion];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
 }
@@ -11481,46 +11579,43 @@ presentingViewController:self
 
 #pragma mark - Background
 
-- (void)pp_applyOrderDetailsBackgroundAppearance
+- (void)pp_applyPremiumHomeBackgroundAppearance
 {
-    UIColor *premiumBackground = [UIColor colorWithHexString:@"#E8EDF2"];
-    UIColor *novaBackground = [UIColor colorWithRed:1.0 green:0.97 blue:0.98 alpha:1.0];
-    UIColor *backgroundColor = AppBageColor();// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    UIColor *backgroundColor = AppBageColor() ?: AppBackgroundClr ?: UIColor.whiteColor;
     self.view.backgroundColor = backgroundColor;
-    self.navigationController.view.backgroundColor = backgroundColor;
-    self.tabBarController.view.backgroundColor = backgroundColor;
-    self.view.window.backgroundColor = backgroundColor;
-    self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
+    self.pp_premiumBackgroundCanvasView.backgroundColor = backgroundColor;
+    self.collectionView.backgroundColor = UIColor.clearColor;
     [self pp_updatePremiumBackgroundGlowAppearance];
 }
 
-- (UIView *)pp_makePremiumBackgroundGlowView
+- (PPHomeAmbientGlowView *)pp_makePremiumBackgroundGlowView
 {
-    UIView *glowView = [[UIView alloc] initWithFrame:CGRectZero];
-    glowView.userInteractionEnabled = NO;
-    glowView.backgroundColor = UIColor.clearColor;
-    glowView.clipsToBounds = NO;
-    glowView.layer.masksToBounds = NO;
-    glowView.layer.shadowOffset = CGSizeZero;
-    return glowView;
-}
-
-- (void)pp_insertPremiumBackgroundGlowView:(UIView *)glowView
-{
-    if (!glowView || glowView.superview == self.view) {
-        return;
-    }
-
-    if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:glowView belowSubview:self.collectionView];
-    } else {
-        [self.view addSubview:glowView];
-    }
+    return [[PPHomeAmbientGlowView alloc] initWithFrame:CGRectZero];
 }
 
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded
 {
+    if (!self.pp_premiumBackgroundCanvasView) {
+        UIView *canvasView = [[UIView alloc] initWithFrame:CGRectZero];
+        canvasView.translatesAutoresizingMaskIntoConstraints = NO;
+        canvasView.userInteractionEnabled = NO;
+        canvasView.isAccessibilityElement = NO;
+        canvasView.accessibilityElementsHidden = YES;
+        canvasView.clipsToBounds = YES;
+        canvasView.opaque = YES;
+        self.pp_premiumBackgroundCanvasView = canvasView;
+        [self.view insertSubview:canvasView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [canvasView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [canvasView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [canvasView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [canvasView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    } else if (self.pp_premiumBackgroundCanvasView.superview != self.view) {
+        [self.view insertSubview:self.pp_premiumBackgroundCanvasView atIndex:0];
+    }
+
     if (!self.pp_premiumBackgroundGlowViewTop) {
         self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
     }
@@ -11531,32 +11626,34 @@ presentingViewController:self
         self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
     }
 
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewTop];
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewMid];
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewBottom];
-
-    if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
+    for (PPHomeAmbientGlowView *glowView in @[
+        self.pp_premiumBackgroundGlowViewBottom,
+        self.pp_premiumBackgroundGlowViewMid,
+        self.pp_premiumBackgroundGlowViewTop
+    ]) {
+        if (glowView.superview != self.pp_premiumBackgroundCanvasView) {
+            [self.pp_premiumBackgroundCanvasView addSubview:glowView];
+        }
     }
+
+    [self.view sendSubviewToBack:self.pp_premiumBackgroundCanvasView];
 }
 
-- (void)pp_applyPremiumGlowView:(UIView *)glowView
+- (void)pp_applyPremiumGlowView:(PPHomeAmbientGlowView *)glowView
                           color:(UIColor *)color
-                   surfaceAlpha:(CGFloat)surfaceAlpha
-                  shadowOpacity:(CGFloat)shadowOpacity
-                   shadowRadius:(CGFloat)shadowRadius
+                      peakAlpha:(CGFloat)peakAlpha
+                    middleAlpha:(CGFloat)middleAlpha
 {
     if (!glowView || !color) {
         return;
     }
 
     glowView.alpha = 1.0;
-    glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
-    glowView.layer.shadowColor = AppClearClr.CGColor;
-    glowView.layer.shadowOpacity = 0;
-    glowView.layer.shadowRadius = 0;
+    UIColor *resolvedColor = color;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [color resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    [glowView applyColor:resolvedColor peakAlpha:peakAlpha middleAlpha:middleAlpha];
 }
 
 - (void)pp_updatePremiumBackgroundGlowAppearance
@@ -11566,29 +11663,27 @@ presentingViewController:self
         isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     }
 
-    UIColor *primaryColor = NewBgColor ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *secondaryColor = AppPrimaryClr ?: [primaryColor colorWithAlphaComponent:1.0];
-    UIColor *bottomFadeColor = isDark
-        ? UIColor.blackColor
-        : [UIColor colorWithRed:0.98 green:0.66 blue:0.46 alpha:1.0];
+    BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
+    BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
+    CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
+
+    UIColor *signatureColor = AppSurfColor ?: UIColor.systemPurpleColor;
+    UIColor *supportingColor = [UIColor colorNamed:@"AppSecColor"] ?: signatureColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:AppSurfColor
-                     surfaceAlpha:isDark ? 0.13 : 0.075
-                    shadowOpacity:isDark ? 0.16f : 0.10f
-                     shadowRadius:isDark ? 82.0 : 74.0];
+                            color:signatureColor
+                        peakAlpha:(isDark ? 0.26 : 0.20) * accessibilityScale
+                      middleAlpha:(isDark ? 0.095 : 0.070) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:secondaryColor
-                     surfaceAlpha:isDark ? 0.10 : 0.055
-                    shadowOpacity:isDark ? 0.12f : 0.075f
-                     shadowRadius:isDark ? 72.0 : 64.0];
+                            color:supportingColor
+                        peakAlpha:(isDark ? 0.19 : 0.14) * accessibilityScale
+                      middleAlpha:(isDark ? 0.068 : 0.048) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:bottomFadeColor
-                     surfaceAlpha:isDark ? 0.030 : 0.050
-                    shadowOpacity:isDark ? 0.08f : 0.045f
-                     shadowRadius:isDark ? 62.0 : 54.0];
+                            color:signatureColor
+                        peakAlpha:(isDark ? 0.16 : 0.11) * accessibilityScale
+                      middleAlpha:(isDark ? 0.056 : 0.038) * accessibilityScale];
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews
@@ -11601,52 +11696,54 @@ presentingViewController:self
     CGFloat width = CGRectGetWidth(bounds);
     CGFloat height = CGRectGetHeight(bounds);
     CGFloat safeTop = self.view.safeAreaInsets.top;
-
-    CGFloat topSize = MIN(360.0, MAX(248.0, width * 0.74));
-    CGFloat midSize = MIN(300.0, MAX(210.0, width * 0.58));
-    CGFloat bottomSize = MIN(340.0, MAX(220.0, width * 0.66));
-
-    self.pp_premiumBackgroundGlowViewTop.frame =
-        CGRectMake(width - (topSize * 0.62),
-                   safeTop - (topSize * 0.72),
-                   topSize,
-                   topSize);
-
-    self.pp_premiumBackgroundGlowViewMid.frame =
-        CGRectMake(-(midSize * 0.44),
-                   MAX(112.0, height * 0.28),
-                   midSize,
-                   midSize);
-
-    self.pp_premiumBackgroundGlowViewBottom.frame =
-        CGRectMake(width - (bottomSize * 0.56),
-                   height - (bottomSize * 0.62),
-                   bottomSize,
-                   bottomSize);
-
-    NSArray<UIView *> *glowViews = @[
-        self.pp_premiumBackgroundGlowViewTop,
-        self.pp_premiumBackgroundGlowViewMid,
-        self.pp_premiumBackgroundGlowViewBottom
-    ];
-
-    for (UIView *glowView in glowViews) {
-        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
-        glowView.layer.cornerRadius = radius;
-        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
+    CGSize canvasSize = bounds.size;
+    BOOL motionLayoutChanged = (fabs(canvasSize.width - self.premiumBackgroundGlowMotionCanvasSize.width) > 0.5 ||
+                                fabs(canvasSize.height - self.premiumBackgroundGlowMotionCanvasSize.height) > 0.5);
+    if (motionLayoutChanged && self.didStartPremiumBackgroundGlowMotion) {
+        [self pp_stopPremiumBackgroundGlowMotion];
     }
-    _pp_premiumBackgroundGlowViewMid.alpha = 0.5;
-    if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
+    self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
+
+    CGFloat topSize = MIN(520.0, MAX(340.0, width * 1.04));
+    CGFloat midSize = MIN(440.0, MAX(300.0, width * 0.86));
+    CGFloat bottomSize = MIN(560.0, MAX(380.0, width * 1.12));
+    BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    self.pp_premiumBackgroundGlowViewTop.bounds = CGRectMake(0.0, 0.0, topSize, topSize);
+    self.pp_premiumBackgroundGlowViewTop.center = CGPointMake(
+        isRTL ? topSize * 0.36 : width - (topSize * 0.36),
+        safeTop - (topSize * 0.18)
+    );
+
+    self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
+    self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
+        CGRectGetMidX(bounds),
+        MAX(180.0, height * 0.46)
+    );
+
+    self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
+    self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
+        isRTL ? bottomSize * 0.34 : width - (bottomSize * 0.34),
+        height - (bottomSize * 0.12)
+    );
+
+    [CATransaction commit];
+
+    [self.pp_premiumBackgroundGlowViewTop setNeedsLayout];
+    [self.pp_premiumBackgroundGlowViewMid setNeedsLayout];
+    [self.pp_premiumBackgroundGlowViewBottom setNeedsLayout];
+
+    if (motionLayoutChanged && self.isHomeScreenVisible) {
+        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
     }
 }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [self pp_applyOrderDetailsBackgroundAppearance];
     [self pp_layoutPremiumBackgroundGlowViews];
 
     [self pp_updateHomeSmartSearchTitleViewWidth];

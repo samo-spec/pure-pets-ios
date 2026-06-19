@@ -263,8 +263,8 @@
     }
    
     
-    UIColor *baseColor = AppBackgroundClr ?: UIColor.secondarySystemGroupedBackgroundColor;
-    return [baseColor colorWithAlphaComponent:1.0];
+    UIColor *baseColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    return [baseColor colorWithAlphaComponent:0.85];
 }
 
 - (UIColor *)pp_surfaceBorderColor

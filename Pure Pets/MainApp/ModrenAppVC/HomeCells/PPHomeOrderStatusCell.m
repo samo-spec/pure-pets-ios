@@ -229,6 +229,9 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.chipView.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
     self.chipView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.chipView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.surfaceView addSubview:self.chipView];
 
     self.chipIconView = [[UIImageView alloc] init];
@@ -283,12 +286,18 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.progressTrackView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.16 : 0.38)];
     self.progressTrackView.layer.cornerRadius = 4.0;
     self.progressTrackView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.progressTrackView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.surfaceView addSubview:self.progressTrackView];
 
     self.progressFillView = [[UIView alloc] init];
     self.progressFillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.progressFillView.layer.cornerRadius = 4.0;
     self.progressFillView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.progressFillView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.progressTrackView addSubview:self.progressFillView];
 
     self.footerLabel = [[UILabel alloc] init];
@@ -302,7 +311,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.actionRailView = [[UIView alloc] init];
     self.actionRailView.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionRailView.layer.cornerRadius = PPCornerMedium;
-    self.actionRailView.layer.borderWidth = 1.0;
+    self.actionRailView.layer.borderWidth = 1.5;
     self.actionRailView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.actionRailView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -417,6 +426,9 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedStatusPillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collapsedStatusPillView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
     self.collapsedStatusPillView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.collapsedStatusPillView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.collapsedContentView addSubview:self.collapsedStatusPillView];
 
     self.collapsedStatusPillLabel = [[UILabel alloc] init];
@@ -603,8 +615,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 - (void)pp_applyThemeColors
 {
     [self.shadowView pp_setShadowColor:UIColor.blackColor];
-    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)]];
-    self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
+     self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
     [self pp_applyStatusColor:self.currentStatusColor];
 }
 
@@ -1178,24 +1189,24 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 {
     self.currentStatusColor = statusColor ?: UIColor.systemBlueColor;
     UIColor *resolved = self.currentStatusColor;
-    UIColor *chipBackground = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.24 : 0.15);
+    UIColor *chipBackground = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.14 : 0.15);
     UIColor *softOverlay = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
 
     self.chipView.backgroundColor = chipBackground;
-    self.chipView.layer.borderWidth = 0.8;
-    [self.chipView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20)];
+    self.chipView.layer.borderWidth = 1.1;
+    [self.chipView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.08)];
     self.chipLabel.textColor = resolved;
     self.chipIconView.tintColor = resolved;
     self.progressFillView.backgroundColor = resolved;
-    [self.surfaceView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.22 : 0.16)];
+    [self.surfaceView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.08 : 0.16)];
     self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
-    [self.actionRailView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20)];
+    [self.actionRailView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.50)];
     self.collapsedIconBadgeView.backgroundColor = chipBackground;
     [self pp_applyCollapsedPreviewChromeForHasPreviewImages:(self.previewImageURLs.count > 0)];
     self.collapsedIconView.tintColor = resolved;
-    self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.18 : 0.14);
+    self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.08 : 0.14);
     self.collapsedStatusPillLabel.textColor = resolved;
-    [self.collapsedChevronContainerView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14)];
+    [self.collapsedChevronContainerView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.09)];
     self.collapsedChevronTintView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
     self.collapsedChevronView.tintColor = resolved;
 
@@ -1203,7 +1214,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     [CATransaction setDisableActions:YES];
     self.overlayGradientLayer.colors = @[
         (id)softOverlay.CGColor,
-        (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.03) CGColor],
+        (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.09) CGColor],
         (id)[UIColor clearColor].CGColor
     ];
     [self.overlayGradientLayer setNeedsDisplay];

@@ -712,7 +712,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension estimatedDimension:itemWidth ]
+     [NSCollectionLayoutDimension estimatedDimension:itemWidth +30]
                                      heightDimension:
      [NSCollectionLayoutDimension absoluteDimension:itemHeight - 0]];
 

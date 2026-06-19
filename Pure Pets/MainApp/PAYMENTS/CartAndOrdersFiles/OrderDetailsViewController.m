@@ -1234,6 +1234,9 @@ static NSString * const PPOrderSummaryStatusHaloOpacityKey = @"pp_summary_status
 static NSString * const PPOrderSummaryStatusIconMotionKey = @"pp_summary_status_icon_float";
 static NSString * const PPOrderSummaryProgressChipMotionKey = @"pp_summary_progress_chip_breath";
 static NSString * const PPOrderSummaryTimelineCounterMotionKey = @"pp_summary_timeline_counter_breath";
+static NSString * const PPOrderSummaryAmbientDot1MotionKey = @"pp_summary_ambient_dot_1_orbit";
+static NSString * const PPOrderSummaryAmbientDot2MotionKey = @"pp_summary_ambient_dot_2_orbit";
+static NSString * const PPOrderSummaryAmbientDot3MotionKey = @"pp_summary_ambient_dot_3_orbit";
 
 @implementation PPOrderStatusStepperView
 
@@ -2281,9 +2284,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
 @property (nonatomic, strong) UIView *statusSummaryCard;
+@property (nonatomic, strong) UIView *ambientDotsContainerView;
 @property (nonatomic, strong) UIView *ambientDot1;
 @property (nonatomic, strong) UIView *ambientDot2;
 @property (nonatomic, strong) UIView *ambientDot3;
+@property (nonatomic, assign) CGSize ambientDotsLayoutSize;
+@property (nonatomic, assign) BOOL ambientDotsLayoutRTL;
 @property (nonatomic, strong) UILabel *statusSummarySubtitleLabel;
 @property (nonatomic, strong) UIView *statusProgressChip;
 @property (nonatomic, strong) UIImageView *statusProgressChipIconView;
@@ -2375,6 +2381,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                                        key:(NSString *)key;
 - (void)pp_startHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_stopHeaderHeroLiquidBorder;
+- (void)pp_layoutAmbientHeroDotsForSize:(CGSize)size isRTL:(BOOL)isRTL;
+- (void)pp_startAmbientHeroDotsMotionIfNeeded;
+- (void)pp_stopAmbientHeroDotsMotion;
 - (void)pp_refreshCurrentStatusSummaryMotionColors;
 - (void)pp_startCurrentStatusSummaryMotionIfNeeded;
 - (void)pp_stopCurrentStatusSummaryMotion;
@@ -2826,17 +2835,28 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.statusSummaryCard.layer.masksToBounds = YES;
     [self.headerCard addSubview:self.statusSummaryCard];
 
+    self.ambientDotsContainerView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.ambientDotsContainerView.backgroundColor = UIColor.clearColor;
+    self.ambientDotsContainerView.userInteractionEnabled = NO;
+    self.ambientDotsContainerView.isAccessibilityElement = NO;
+    self.ambientDotsContainerView.accessibilityElementsHidden = YES;
+    self.ambientDotsContainerView.clipsToBounds = YES;
+    [self.statusSummaryCard addSubview:self.ambientDotsContainerView];
+
     self.ambientDot1 = [[UIView alloc] initWithFrame:CGRectZero];
     self.ambientDot1.userInteractionEnabled = NO;
-    [self.statusSummaryCard addSubview:self.ambientDot1];
+    self.ambientDot1.isAccessibilityElement = NO;
+    [self.ambientDotsContainerView addSubview:self.ambientDot1];
 
     self.ambientDot2 = [[UIView alloc] initWithFrame:CGRectZero];
     self.ambientDot2.userInteractionEnabled = NO;
-    [self.statusSummaryCard addSubview:self.ambientDot2];
+    self.ambientDot2.isAccessibilityElement = NO;
+    [self.ambientDotsContainerView addSubview:self.ambientDot2];
 
     self.ambientDot3 = [[UIView alloc] initWithFrame:CGRectZero];
     self.ambientDot3.userInteractionEnabled = NO;
-    [self.statusSummaryCard addSubview:self.ambientDot3];
+    self.ambientDot3.isAccessibilityElement = NO;
+    [self.ambientDotsContainerView addSubview:self.ambientDot3];
 
     self.statusBadgeHaloView = [[UIView alloc] initWithFrame:CGRectZero];
     self.statusBadgeHaloView.userInteractionEnabled = NO;
@@ -3304,13 +3324,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat statusSummaryBottom = MAX(CGRectGetMaxY(self.statusProgressChip.frame), CGRectGetMaxY(self.statusEtaChip.frame));
     CGFloat statusSummaryHeight = statusSummaryBottom + statusCardInset;
     self.statusSummaryCard.frame = CGRectMake(padding, statusCardY, separatorWidth, statusSummaryHeight);
-
-    self.ambientDot1.frame = CGRectMake(-18, -18, 56, 56);
-    self.ambientDot1.layer.cornerRadius = 28.0;
-    self.ambientDot2.frame = CGRectMake(separatorWidth - 36, statusSummaryHeight - 24, 72, 72);
-    self.ambientDot2.layer.cornerRadius = 36.0;
-    self.ambientDot3.frame = CGRectMake(separatorWidth * 0.4, statusSummaryHeight - 12, 32, 32);
-    self.ambientDot3.layer.cornerRadius = 16.0;
+    [self pp_layoutAmbientHeroDotsForSize:self.statusSummaryCard.bounds.size isRTL:isRTL];
 
     CGFloat toggleButtonSize = 36.0;
     CGFloat timelineHeaderY = CGRectGetMaxY(self.statusSummaryCard.frame) + 18.0;
@@ -3693,6 +3707,136 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
             !UIAccessibilityIsReduceMotionEnabled());
 }
 
+- (void)pp_layoutAmbientHeroDotsForSize:(CGSize)size isRTL:(BOOL)isRTL
+{
+    if (!self.ambientDotsContainerView || size.width <= 0.0 || size.height <= 0.0) return;
+
+    BOOL layoutChanged = (fabs(size.width - self.ambientDotsLayoutSize.width) > 0.5 ||
+                          fabs(size.height - self.ambientDotsLayoutSize.height) > 0.5 ||
+                          self.ambientDotsLayoutRTL != isRTL);
+    if (layoutChanged) {
+        [self pp_stopAmbientHeroDotsMotion];
+    }
+
+    self.ambientDotsLayoutSize = size;
+    self.ambientDotsLayoutRTL = isRTL;
+    self.ambientDotsContainerView.frame = (CGRect){CGPointZero, size};
+
+    CGFloat compactScale = size.width < 330.0 ? 0.88 : 1.0;
+    NSArray<UIView *> *dots = @[self.ambientDot1, self.ambientDot2, self.ambientDot3];
+    NSArray<NSNumber *> *diameters = @[@(11.0 * compactScale), @(7.0 * compactScale), @(5.0 * compactScale)];
+    NSArray<NSValue *> *normalizedCenters = @[
+        [NSValue valueWithCGPoint:CGPointMake(0.88, 0.18)],
+        [NSValue valueWithCGPoint:CGPointMake(0.08, 0.72)],
+        [NSValue valueWithCGPoint:CGPointMake(0.72, 0.88)]
+    ];
+
+    for (NSInteger index = 0; index < dots.count; index++) {
+        UIView *dot = dots[index];
+        CGFloat diameter = diameters[index].doubleValue;
+        CGPoint normalizedCenter = normalizedCenters[index].CGPointValue;
+        if (isRTL) {
+            normalizedCenter.x = 1.0 - normalizedCenter.x;
+        }
+        dot.bounds = CGRectMake(0.0, 0.0, diameter, diameter);
+        dot.center = CGPointMake(round(size.width * normalizedCenter.x),
+                                 round(size.height * normalizedCenter.y));
+        dot.layer.cornerRadius = diameter * 0.5;
+        dot.layer.shadowOffset = CGSizeZero;
+        dot.layer.shadowRadius = MAX(3.0, diameter * 0.7);
+        dot.layer.shadowOpacity = 0.34;
+    }
+
+    if (layoutChanged && [self pp_shouldRunCurrentStatusSummaryMotion]) {
+        [self pp_startAmbientHeroDotsMotionIfNeeded];
+    }
+}
+
+- (void)pp_addAmbientHeroDotMotionToView:(UIView *)dot
+                                     key:(NSString *)key
+                                  offset:(CGVector)offset
+                                minScale:(CGFloat)minScale
+                                maxScale:(CGFloat)maxScale
+                              minOpacity:(CGFloat)minOpacity
+                              maxOpacity:(CGFloat)maxOpacity
+                                duration:(CFTimeInterval)duration
+                                   phase:(CFTimeInterval)phase
+{
+    if (!dot || key.length == 0 || [dot.layer animationForKey:key]) return;
+
+    CGPoint origin = dot.layer.position;
+    CAKeyframeAnimation *drift = [CAKeyframeAnimation animationWithKeyPath:@"position"];
+    drift.values = @[
+        [NSValue valueWithCGPoint:origin],
+        [NSValue valueWithCGPoint:CGPointMake(origin.x + (offset.dx * 0.48), origin.y - offset.dy)],
+        [NSValue valueWithCGPoint:CGPointMake(origin.x + offset.dx, origin.y + (offset.dy * 0.18))],
+        [NSValue valueWithCGPoint:CGPointMake(origin.x - (offset.dx * 0.42), origin.y + (offset.dy * 0.72))],
+        [NSValue valueWithCGPoint:origin]
+    ];
+    drift.keyTimes = @[@0.0, @0.24, @0.52, @0.78, @1.0];
+
+    CAKeyframeAnimation *breathe = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    breathe.values = @[@(minScale), @(1.0), @(maxScale), @(0.98), @(minScale)];
+    breathe.keyTimes = drift.keyTimes;
+
+    CAKeyframeAnimation *luminance = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    luminance.values = @[@(minOpacity), @(maxOpacity * 0.78), @(maxOpacity), @(minOpacity * 1.16), @(minOpacity)];
+    luminance.keyTimes = drift.keyTimes;
+
+    CAAnimationGroup *motion = [CAAnimationGroup animation];
+    motion.animations = @[drift, breathe, luminance];
+    motion.duration = duration;
+    motion.repeatCount = HUGE_VALF;
+    motion.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    CFTimeInterval localNow = [dot.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+    motion.beginTime = localNow - fmod(MAX(0.0, phase), duration);
+    [dot.layer addAnimation:motion forKey:key];
+}
+
+- (void)pp_startAmbientHeroDotsMotionIfNeeded
+{
+    if (![self pp_shouldRunCurrentStatusSummaryMotion] || CGRectIsEmpty(self.ambientDotsContainerView.bounds)) {
+        [self pp_stopAmbientHeroDotsMotion];
+        return;
+    }
+
+    CGFloat direction = self.ambientDotsLayoutRTL ? -1.0 : 1.0;
+    [self pp_addAmbientHeroDotMotionToView:self.ambientDot1
+                                      key:PPOrderSummaryAmbientDot1MotionKey
+                                   offset:CGVectorMake(5.0 * direction, 4.0)
+                                 minScale:0.92
+                                 maxScale:1.16
+                               minOpacity:0.18
+                               maxOpacity:0.44
+                                 duration:4.8
+                                    phase:0.9];
+    [self pp_addAmbientHeroDotMotionToView:self.ambientDot2
+                                      key:PPOrderSummaryAmbientDot2MotionKey
+                                   offset:CGVectorMake(4.0 * direction, 5.0)
+                                 minScale:0.90
+                                 maxScale:1.22
+                               minOpacity:0.14
+                               maxOpacity:0.36
+                                 duration:5.6
+                                    phase:2.1];
+    [self pp_addAmbientHeroDotMotionToView:self.ambientDot3
+                                      key:PPOrderSummaryAmbientDot3MotionKey
+                                   offset:CGVectorMake(6.0 * direction, 3.0)
+                                 minScale:0.94
+                                 maxScale:1.28
+                               minOpacity:0.20
+                               maxOpacity:0.52
+                                 duration:4.2
+                                    phase:1.4];
+}
+
+- (void)pp_stopAmbientHeroDotsMotion
+{
+    [self.ambientDot1.layer removeAnimationForKey:PPOrderSummaryAmbientDot1MotionKey];
+    [self.ambientDot2.layer removeAnimationForKey:PPOrderSummaryAmbientDot2MotionKey];
+    [self.ambientDot3.layer removeAnimationForKey:PPOrderSummaryAmbientDot3MotionKey];
+}
+
 - (void)pp_addSummaryScalePulseToLayer:(CALayer *)layer
                                    key:(NSString *)key
                              fromScale:(CGFloat)fromScale
@@ -3817,54 +3961,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                   duration:2.15
                                 beginDelay:0.22];
 
-    [self pp_addSummaryScalePulseToLayer:self.ambientDot1.layer
-                                     key:@"PPAmbientDot1ScaleKey"
-                               fromScale:1.0
-                                 toScale:1.24
-                                duration:3.4
-                              beginDelay:0.0];
-    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot1.layer
-                                       key:@"PPAmbientDot1OpacityKey"
-                                      from:0.06
-                                        to:0.18
-                                  duration:3.4
-                                beginDelay:0.0];
-                                
-    [self pp_addSummaryScalePulseToLayer:self.ambientDot2.layer
-                                     key:@"PPAmbientDot2ScaleKey"
-                               fromScale:1.0
-                                 toScale:1.15
-                                duration:4.1
-                              beginDelay:0.8];
-    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot2.layer
-                                       key:@"PPAmbientDot2OpacityKey"
-                                      from:0.04
-                                        to:0.14
-                                  duration:4.1
-                                beginDelay:0.8];
-                                
-    [self pp_addSummaryScalePulseToLayer:self.ambientDot3.layer
-                                     key:@"PPAmbientDot3ScaleKey"
-                               fromScale:1.0
-                                 toScale:1.32
-                                duration:2.8
-                              beginDelay:1.2];
-    [self pp_addSummaryOpacityPulseToLayer:self.ambientDot3.layer
-                                       key:@"PPAmbientDot3OpacityKey"
-                                      from:0.08
-                                        to:0.24
-                                  duration:2.8
-                                beginDelay:1.2];
+    [self pp_startAmbientHeroDotsMotionIfNeeded];
 }
 
 - (void)pp_stopCurrentStatusSummaryMotion
 {
-    [self.ambientDot1.layer removeAnimationForKey:@"PPAmbientDot1ScaleKey"];
-    [self.ambientDot1.layer removeAnimationForKey:@"PPAmbientDot1OpacityKey"];
-    [self.ambientDot2.layer removeAnimationForKey:@"PPAmbientDot2ScaleKey"];
-    [self.ambientDot2.layer removeAnimationForKey:@"PPAmbientDot2OpacityKey"];
-    [self.ambientDot3.layer removeAnimationForKey:@"PPAmbientDot3ScaleKey"];
-    [self.ambientDot3.layer removeAnimationForKey:@"PPAmbientDot3OpacityKey"];
+    [self pp_stopAmbientHeroDotsMotion];
 
     [self.statusBadge.layer removeAnimationForKey:PPOrderSummaryStatusBadgeMotionKey];
     [self.statusBadgeHaloView.layer removeAnimationForKey:PPOrderSummaryStatusHaloScaleKey];
@@ -4095,14 +4197,20 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
     self.statusSummaryCard.backgroundColor = AppForgroundColr;
     
-    self.ambientDot1.backgroundColor = [accent colorWithAlphaComponent:0.06];
-    self.ambientDot2.backgroundColor = [accent colorWithAlphaComponent:0.04];
-    self.ambientDot3.backgroundColor = [accent colorWithAlphaComponent:0.08];
+    self.ambientDot1.backgroundColor = accent;
+    self.ambientDot2.backgroundColor = accent;
+    self.ambientDot3.backgroundColor = accent;
+    self.ambientDot1.layer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.18 : 0.24;
+    self.ambientDot2.layer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.14 : 0.20;
+    self.ambientDot3.layer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.20 : 0.28;
+    self.ambientDot1.layer.shadowColor = accent.CGColor;
+    self.ambientDot2.layer.shadowColor = accent.CGColor;
+    self.ambientDot3.layer.shadowColor = accent.CGColor;
     
     self.statusSummaryCard.layer.borderWidth = 1.0;
     [self.statusSummaryCard pp_setBorderColor:[accent colorWithAlphaComponent:0.12]];
     
-    self.summaryPanel.backgroundColor = UIColor.clearColor;
+    self.summaryPanel.backgroundColor = AppForgroundColr;
     self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.14];
     self.statusProgressChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
     self.statusEtaChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
@@ -5891,6 +5999,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                                   object:nil];
     [self pp_stopLiveBackgroundGlows];
     [self pp_stopHeaderHeroLiquidBorder];
+    [self pp_stopCurrentStatusSummaryMotion];
     [self pp_stopCheckoutSuccessConfetti];
     [self stopRealtimeObservers];
 }

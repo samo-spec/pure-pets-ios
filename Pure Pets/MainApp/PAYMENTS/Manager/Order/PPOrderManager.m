@@ -1248,7 +1248,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
                 decision.eligible = NO;
                 decision.message = kLang(@"order_action_cancel_unavailable_closed");
-            } else if (PPOrderStatusIsPackingLike(statusKey)) {
+            } else if ([statusKey isEqualToString:@"pending"] || PPOrderStatusIsPackingLike(statusKey)) {
                 decision.eligible = NO;
                 decision.message = kLang(@"order_action_cancel_unavailable_preparing");
             } else if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
@@ -1651,7 +1651,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                     return;
                 }
                 if (completion) {
-                    completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:error fallbackKey:@"pp_order_support_submit_failed"]);
+                    completion(nil, NO, PPOrderWrappedCallableError(error) ?: error);
                 }
                 return;
             }

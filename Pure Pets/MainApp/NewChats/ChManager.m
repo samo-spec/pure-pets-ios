@@ -1484,17 +1484,26 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                     @"threadType": kPPConversationTypeProviderChat,
                     @"supportThread": @(NO),
                     @"supportUserId": user.ID,
-                    @"providerUserId": user.ID,
-                    @"providerID": user.ID,
                     @"customerId": currentUserID,
                     @"supportDisplayName": user.UserName ?: user.FirstName ?: @"",
                     @"supportPhotoUrl": user.UserImageUrl.absoluteString ?: @"",
-                    @"supportStatus": @"waiting_for_provider"
+                    @"supportStatus": @"waiting_for_provider",
+                    @"sourcePlatform": @"ios",
+                    @"sourceScreen": @"provider_chat",
+                    @"sourceType": @"general",
+                    @"sourceEntityId": @""
                 };
                 [threadRef setData:providerMetadata merge:YES completion:^(NSError *mergeError) {
                     if (mergeError) {
                         NSLog(@"⚠️ [ProviderChat] Could not canonicalize provider metadata: %@", mergeError.localizedDescription ?: @"unknown error");
+                        if (completion) completion(nil, mergeError);
+                        return;
                     }
+                    thread.conversationType = kPPConversationTypeProviderChat;
+                    thread.threadType = kPPConversationTypeProviderChat;
+                    thread.supportThread = NO;
+                    thread.supportUserID = user.ID;
+                    thread.customerId = currentUserID;
                     [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
                     if (completion) completion(thread, nil);
                 }];

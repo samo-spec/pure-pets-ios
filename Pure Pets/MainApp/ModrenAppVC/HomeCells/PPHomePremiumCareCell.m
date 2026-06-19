@@ -419,6 +419,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 - (void)prepareForReuse
 {
     [super prepareForReuse];
+    [self pp_stopBreathingBorderAnimation];
     [self pp_stopBackgroundMotion];
     _careAnimationLoadToken += 1;
     [_careAnimationView stop];
@@ -459,6 +460,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_stopBreathingBorderAnimation];
             [self pp_applyTheme];
         }
     }
@@ -475,7 +477,9 @@ static UIColor *PremiumSoftCardBorderColor(void)
     UIColor *surfaceColor = PPPetCareSurfaceColor();
     UIColor *titleColor = PPPetCareTextColor();
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
-    UIColor *borderColor = PPPetCareBorderColor();
+    UIColor *borderColor = isDark
+        ? [accent colorWithAlphaComponent:0.34]
+        : PPPetCareBorderColor();
     UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.10];
     
 
@@ -543,6 +547,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
             : ((idx % 2 == 0) ? 2.5 : 2.0);
     }];
     */
+
+    [self pp_startBreathingBorderAnimation];
 
     if (_shouldDeferDecorativeReveal && !_didRevealDecorativeAtmosphere) {
         [self pp_prepareDecorativeAtmosphereForEntrance];
@@ -790,6 +796,43 @@ static UIColor *PremiumSoftCardBorderColor(void)
          [dotView.layer addAnimation:dotAnimation forKey:animationKey];
      }];
      */
+}
+
+- (void)pp_startBreathingBorderAnimation
+{
+    if ([_surfaceView.layer animationForKey:@"pp.premiumCare.breathingBorder"]) {
+        return;
+    }
+
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *resolvedAccent = PPPetCareAccentColor();
+    if (@available(iOS 13.0, *)) {
+        resolvedAccent = [resolvedAccent resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    UIColor *dimBorder = isDark
+        ? [resolvedAccent colorWithAlphaComponent:0.24]
+        : [UIColor.whiteColor colorWithAlphaComponent:0.6];
+    UIColor *brightBorder = isDark
+        ? [resolvedAccent colorWithAlphaComponent:0.58]
+        : UIColor.whiteColor;
+
+    CABasicAnimation *breathing = [CABasicAnimation animationWithKeyPath:@"borderColor"];
+    breathing.fromValue = (id)dimBorder.CGColor;
+    breathing.toValue = (id)brightBorder.CGColor;
+    breathing.duration = 2.4;
+    breathing.autoreverses = YES;
+    breathing.repeatCount = HUGE_VALF;
+    breathing.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [_surfaceView.layer addAnimation:breathing forKey:@"pp.premiumCare.breathingBorder"];
+}
+
+- (void)pp_stopBreathingBorderAnimation
+{
+    [_surfaceView.layer removeAnimationForKey:@"pp.premiumCare.breathingBorder"];
 }
 
 - (void)pp_stopBackgroundMotion

@@ -607,6 +607,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [super viewDidLoad];
     self.isFavorite = NO;
     self.view.backgroundColor = AppBageColor();
+    self.view.clipsToBounds = YES;
     [self initData];
     [self initForms];
     [self designViews];
@@ -638,6 +639,34 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 /// Scroll view + content view + bottom bar chrome
 - (void)pp_buildScaffold {
 
+    // ── Controller-owned atmospheric background ──
+    // The color and glows stay fixed while content scrolls above them.
+    UIColor *accent = AVSellerCardAccentColor();
+    UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
+    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+
+    self.ambientGlowTopView = [[UIView alloc] init];
+    self.ambientGlowTopView.userInteractionEnabled = NO;
+    self.ambientGlowTopView.isAccessibilityElement = NO;
+    self.ambientGlowTopView.layer.cornerRadius = 140.0;
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.095];
+    self.ambientGlowTopView.layer.shadowColor = accent.CGColor;
+    self.ambientGlowTopView.layer.shadowOpacity = dark ? 0.18 : 0.12;
+    self.ambientGlowTopView.layer.shadowRadius = 52.0;
+    self.ambientGlowTopView.layer.shadowOffset = CGSizeZero;
+    [self.view addSubview:self.ambientGlowTopView];
+
+    self.ambientGlowBottomView = [[UIView alloc] init];
+    self.ambientGlowBottomView.userInteractionEnabled = NO;
+    self.ambientGlowBottomView.isAccessibilityElement = NO;
+    self.ambientGlowBottomView.layer.cornerRadius = 168.0;
+    self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
+    self.ambientGlowBottomView.layer.shadowColor = gold.CGColor;
+    self.ambientGlowBottomView.layer.shadowOpacity = dark ? 0.16 : 0.11;
+    self.ambientGlowBottomView.layer.shadowRadius = 58.0;
+    self.ambientGlowBottomView.layer.shadowOffset = CGSizeZero;
+    [self.view addSubview:self.ambientGlowBottomView];
+
     // ── Bottom bar ──
     self.bottomBar = [[BBCartBottomBar alloc] init];
     self.bottomBar.presentationStyle = BBCartBottomBarPresentationStyleAccessoryViewer;
@@ -647,7 +676,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     // ── Scroll view ──
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.scrollView.backgroundColor = [AppBageColor() colorWithAlphaComponent:0.5];
+    self.scrollView.backgroundColor = UIColor.clearColor;
+    self.scrollView.opaque = NO;
     self.scrollView.alwaysBounceVertical = YES;
     self.scrollView.showsVerticalScrollIndicator = YES;
     self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
@@ -660,29 +690,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.contentView = [[UIView alloc] init];
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.contentView.opaque = NO;
     [self.scrollView addSubview:self.contentView];
-
-    // ── Ambient glows ──
-    UIColor *accent = AVSellerCardAccentColor();
-    UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
-    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-
-    self.ambientGlowTopView = [[UIView alloc] init];
-    self.ambientGlowTopView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.ambientGlowTopView.userInteractionEnabled = NO;
-    self.ambientGlowTopView.layer.cornerRadius = 140.0;
-    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
-    [self.contentView addSubview:self.ambientGlowTopView];
-
-    self.ambientGlowBottomView = [[UIView alloc] init];
-    self.ambientGlowBottomView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.ambientGlowBottomView.userInteractionEnabled = NO;
-    self.ambientGlowBottomView.layer.cornerRadius = 168.0;
-    self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
-    [self.contentView addSubview:self.ambientGlowBottomView];
-
-    [self.contentView sendSubviewToBack:self.ambientGlowBottomView];
-    [self.contentView sendSubviewToBack:self.ambientGlowTopView];
 
     UILayoutGuide *contentGuide;
     UILayoutGuide *frameGuide;
@@ -1670,7 +1679,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    return MIN(MAX(width * 1.12, 420.0), 540.0);
+    return MIN(MAX(width * 1.0, 420.0), 540.0);
 }
 
 - (CGSize)pp_suggestionItemSize {
@@ -1974,7 +1983,10 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.bottomBarHeightConstraint.constant = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
 
     CGFloat bottomInset = shouldShowCartBar ? self.bottomBarHeightConstraint.constant : 0.0;
-    self.scrollView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+    self.scrollView.contentInset = UIEdgeInsetsMake(PPNavBarHeightFull,
+                                                    0.0,
+                                                    bottomInset,
+                                                    0.0);
     self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
 
     if (!shouldShowCartBar) {
@@ -2495,9 +2507,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self pp_updateSellerBackgroundAppearance];
     [self pp_animateSellerCardEntranceIfNeeded];
 
-    // Position ambient glows off-screen like ViewerVC
-    CGFloat width = CGRectGetWidth(self.contentView.bounds);
-    CGFloat bottomY = MAX(100.0, CGRectGetHeight(self.contentView.bounds) - 336.0 + 110.0);
+    // Fixed controller-level atmosphere; it no longer scrolls with content.
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    CGFloat bottomY = MAX(100.0, CGRectGetHeight(self.view.bounds) - 336.0 + 110.0);
     self.ambientGlowTopView.frame = CGRectMake(-132.0, -92.0, 280.0, 280.0);
     self.ambientGlowBottomView.frame = CGRectMake(width - 336.0 + 138.0, bottomY, 336.0, 336.0);
 
@@ -2512,8 +2524,14 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     UIColor *accent = AVSellerCardAccentColor();
     UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
+    self.view.backgroundColor = AppBageColor();
+    self.scrollView.backgroundColor = UIColor.clearColor;
     self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
     self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
+    self.ambientGlowTopView.layer.shadowColor = accent.CGColor;
+    self.ambientGlowTopView.layer.shadowOpacity = dark ? 0.18 : 0.12;
+    self.ambientGlowBottomView.layer.shadowColor = gold.CGColor;
+    self.ambientGlowBottomView.layer.shadowOpacity = dark ? 0.16 : 0.11;
     [self pp_updateSellerBackgroundAppearance];
     [self pp_updatePremiumNavigationTitleView];
 }
