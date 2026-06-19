@@ -11669,9 +11669,10 @@ presentingViewController:self
 
     UIColor *signatureColor = AppSurfColor ?: UIColor.systemPurpleColor;
     UIColor *supportingColor = [UIColor colorNamed:@"AppSecColor"] ?: signatureColor;
+    UIColor *topAtmosphereColor = [UIColor colorNamed:@"HomeAmbientTopGlowColor"] ?: UIColor.systemBlueColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:signatureColor
+                            color:topAtmosphereColor
                         peakAlpha:(isDark ? 0.26 : 0.20) * accessibilityScale
                       middleAlpha:(isDark ? 0.095 : 0.070) * accessibilityScale];
 
