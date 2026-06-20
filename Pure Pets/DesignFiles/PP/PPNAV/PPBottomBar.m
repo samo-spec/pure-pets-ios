@@ -18,7 +18,7 @@
 static BOOL PPBBCartUsesLegacyIPadBelowIOS18(void);
 
 static CGFloat PPBBCartBadgeCartButtonSize(void) {
-    return 44.0;
+    return 46.0;
 }
 
 static UIColor *PPBBCartColor(UIColor *color, UIColor *fallback) {
@@ -45,8 +45,8 @@ static UIColor *PPBBCartControlFillColor(void) {
         return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.070],
                                      [UIColor colorWithWhite:1.0 alpha:0.30]);
     }
-    UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
-    return [base colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.26];
+    UIColor *base = UIColor.secondarySystemBackgroundColor;
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.58 : 0.26];
 }
 
 static CGFloat PPBBCartSurfaceBottomInset(void) {
@@ -58,11 +58,11 @@ static CGFloat PPBBCartSurfaceHorizontalInset(void) {
 }
 
 static CGFloat PPBBCartContentInset(void) {
-    return 6.0;
+    return 10.0;
 }
 
 static CGFloat PPBBCartRowSpacing(void) {
-    return 6.0;
+    return 10.0;
 }
 
 static CGFloat PPBBCartUtilityButtonSize(void) {
@@ -90,7 +90,7 @@ static CGFloat PPBBCartAddButtonHeight(void) {
 }
 
 static CGFloat PPBBCartSurfaceRadius(void) {
-    return PPBBCartUsesLegacyIPadBelowIOS18() ? PPCornerCard : 28.0;
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? PPCornerCard : 32.0;
 }
 
 static UIFont *PPBBCartScaledFont(UIFont *font,
@@ -130,8 +130,9 @@ static UIColor *PPBBCartBadgeFillColor(void) {
         return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.02],
                                      [UIColor colorWithWhite:1.0 alpha:0.32]);
     }
-    UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
-    return [base colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.30];
+    UIColor *base = PPBBCartColor(UIColor.secondarySystemBackgroundColor,
+                                  UIColor.secondarySystemBackgroundColor);
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.70 : 0.46];
 }
 
 static UIBlurEffectStyle PPBBCartUltraThinBlurStyle(void) {
@@ -283,6 +284,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 @property (nonatomic, strong) UIView *separator;
 @property (nonatomic, strong) UIVisualEffectView *blurBackground;
 @property (nonatomic, strong) UIButton *BackgroundB;
+@property (nonatomic, strong) CAGradientLayer *backgroundFadeLayer;
 @property (nonatomic, strong) UIView *surfaceTintView;
 @property (nonatomic, strong) CAGradientLayer *surfaceLightLayer;
 @property (nonatomic, strong) UIStackView *contentStack;
@@ -297,6 +299,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 @property (nonatomic, strong) UIVisualEffectView *shareGlassBackgroundView;
 @property (nonatomic, strong) CAGradientLayer *totalLiquidBorderLayer;
 @property (nonatomic, strong) CAGradientLayer *qtyLiquidBorderLayer;
+@property (nonatomic, strong) CAGradientLayer *containerLiquidBorderLayer;
 @property (nonatomic, copy) NSString *idleAddToCartTitle;
 @property (nonatomic, strong) UIImage *idleAddToCartImage;
 @property (nonatomic, assign) BOOL didPrepareEntranceAnimation;
@@ -324,6 +327,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_layoutLiquidBorders;
 - (void)pp_refreshLiquidBorderAppearance;
 - (void)pp_refreshLiquidBorderMotion;
+- (BOOL)pp_usesViewerChrome;
 @end
 @implementation BBCartBottomBar
 @synthesize presentationStyle = _presentationStyle;
@@ -354,15 +358,16 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.clipsToBounds = NO;
     [self pp_setShadowColor:AppShadowClr];
-    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
-    self.layer.shadowOpacity = accessoryViewerStyle ? (PPIOS26() ? 0.12 : 0.10) : (PPIOS26() ? 0.10 : 0.08);
-    self.layer.shadowRadius = accessoryViewerStyle ? 26.0 : 20.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, accessoryViewerStyle ? -9.0 : -7.0);
+    BOOL viewerChrome = [self pp_usesViewerChrome];
+    self.layer.shadowOpacity = viewerChrome ? (PPIOS26() ? 0.12 : 0.10) : (PPIOS26() ? 0.10 : 0.08);
+    self.layer.shadowRadius = viewerChrome ? 26.0 : 20.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, viewerChrome ? -9.0 : -7.0);
     CGRect shadowFrame = CGRectIsEmpty(self.BackgroundB.frame) ? self.bounds : self.BackgroundB.frame;
     self.layer.shadowPath =
     [UIBezierPath bezierPathWithRoundedRect:shadowFrame
                                cornerRadius:PPBBCartSurfaceRadius()].CGPath;
 
+    self.backgroundFadeLayer.frame = self.bounds;
     CGFloat surfaceRadius = PPBBCartSurfaceRadius();
     self.BackgroundB.layer.cornerRadius = surfaceRadius;
     self.blurBackground.layer.cornerRadius = surfaceRadius;
@@ -459,8 +464,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
                           delay:0.035
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        topRow.alpha = 1.0;
-        topRow.transform = CGAffineTransformIdentity;
+        self->topRow.alpha = 1.0;
+        self->topRow.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.40
@@ -469,8 +474,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
           initialSpringVelocity:0.34
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        bottomRow.alpha = 1.0;
-        bottomRow.transform = CGAffineTransformIdentity;
+        self->bottomRow.alpha = 1.0;
+        self->bottomRow.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -496,33 +501,40 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_refreshChromeColors
 {
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    BOOL viewerChrome = [self pp_usesViewerChrome];
     UIColor *surface = PPBBCartColor(AppForgroundColr, UIColor.systemBackgroundColor);
-    self.BackgroundB.backgroundColor = accessoryViewerStyle
+    self.BackgroundB.backgroundColor = viewerChrome
         ? [surface colorWithAlphaComponent:PPIOS26() ? 0.32 : 0.08]
         : PPBBCartSurfaceFillColor();
     [self.BackgroundB pp_setBorderColor:UIColor.clearColor];
     self.BackgroundB.layer.borderWidth = 0.0;
-    self.surfaceTintView.backgroundColor = accessoryViewerStyle
+    self.surfaceTintView.backgroundColor = viewerChrome
         ? [surface colorWithAlphaComponent:PPIOS26() ? 0.095 : 0.085]
         : (legacyIPadBar ? [UIColor colorWithWhite:1.0 alpha:0.04] : PPBBCartSurfaceTintColor());
     self.separator.hidden = YES;
     self.separator.backgroundColor = UIColor.clearColor;
 
-    self.totalContainer.backgroundColor = UIColor.clearColor;
+   // self.totalContainer.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.94];
     [self.totalContainer pp_setBorderColor:UIColor.clearColor];
     self.totalContainer.layer.borderWidth = 0.0;
     
     
-    self.qtyContainer.backgroundColor = UIColor.clearColor;
+    //self.qtyContainer.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.94];
     [self.qtyContainer pp_setBorderColor:UIColor.clearColor];
     self.qtyContainer.layer.borderWidth = 0.0;
     [self pp_applyCheckoutControlDepth:self.totalContainer emphasized:YES];
     [self pp_applyCheckoutControlDepth:self.qtyContainer emphasized:NO];
 
     UIColor *primary = PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor);
-    self.priceMarkerView.backgroundColor = [primary colorWithAlphaComponent:accessoryViewerStyle ? 0.82 : 0.90];
+    self.priceMarkerView.backgroundColor = [primary colorWithAlphaComponent:viewerChrome ? 0.82 : 0.90];
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    self.backgroundFadeLayer.colors = @[
+        (id)[surface colorWithAlphaComponent:0.0].CGColor,
+        (id)[surface colorWithAlphaComponent:dark ? 0.18 : 0.22].CGColor,
+        (id)[surface colorWithAlphaComponent:dark ? 0.72 : 0.78].CGColor,
+        (id)[surface colorWithAlphaComponent:dark ? 0.96 : 0.98].CGColor
+    ];
+    self.backgroundFadeLayer.locations = @[@0.0, @0.38, @0.74, @1.0];
     UIColor *lightStart = [UIColor colorWithWhite:1.0 alpha:dark ? 0.055 : 0.15];
     UIColor *lightMiddle = [UIColor colorWithWhite:1.0 alpha:dark ? 0.018 : 0.04];
     UIColor *signatureEnd = [primary colorWithAlphaComponent:dark ? 0.018 : 0.025];
@@ -540,7 +552,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [self pp_refreshStepperButtonStyle:self.plusButton symbolName:@"plus"];
     [self pp_updateShowCartBadgeStyle];
 
-    self.countLabel.textColor = accessoryViewerStyle
+    self.countLabel.textColor = viewerChrome
         ? PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor)
         : PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
     self.amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
@@ -583,7 +595,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     blurView.translatesAutoresizingMaskIntoConstraints = NO;
     blurView.userInteractionEnabled = NO;
     blurView.clipsToBounds = YES;
-    blurView.backgroundColor = UIColor.clearColor;
+    blurView.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.82];
     return blurView;
 }
 
@@ -602,7 +614,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
 - (void)pp_applyGlassBackgroundChrome
 {
-    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
+    BOOL viewerChrome = [self pp_usesViewerChrome];
     BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
     UIBlurEffect *effect = reduceTransparency ? nil : [UIBlurEffect effectWithStyle:PPBBCartUltraThinBlurStyle()];
     self.blurBackground.effect = effect;
@@ -611,11 +623,11 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.showCartGlassBackgroundView.effect = effect;
     self.shareGlassBackgroundView.effect = effect;
     self.totalGlassBackgroundView.hidden = NO;
-    self.totalGlassBackgroundView.alpha = accessoryViewerStyle ? 0.76 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.78 : 0.86);
+    self.totalGlassBackgroundView.alpha = viewerChrome ? 0.76 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.78 : 0.86);
     self.qtyGlassBackgroundView.hidden = NO;
-    self.qtyGlassBackgroundView.alpha = accessoryViewerStyle ? 0.74 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.74 : 0.82);
-    self.showCartGlassBackgroundView.alpha = accessoryViewerStyle ? 0.78 : 0.84;
-    self.shareGlassBackgroundView.alpha = accessoryViewerStyle ? 0.78 : 0.84;
+    self.qtyGlassBackgroundView.alpha = viewerChrome ? 0.74 : (PPBBCartUsesLegacyIPadBelowIOS18() ? 0.74 : 0.82);
+    self.showCartGlassBackgroundView.alpha = viewerChrome ? 0.78 : 0.84;
+    self.shareGlassBackgroundView.alpha = viewerChrome ? 0.78 : 0.84;
     [self pp_layoutGlassBackgrounds];
 }
 
@@ -649,12 +661,12 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     if (!button) {
         return;
     }
-    BOOL accessoryViewerStyle = self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer;
-    UIColor *foreground = accessoryViewerStyle
+    BOOL viewerChrome = [self pp_usesViewerChrome];
+    UIColor *foreground = viewerChrome
         ? PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor)
         : PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
     UIColor *fill = [PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor)
-                     colorWithAlphaComponent:accessoryViewerStyle ? (PPIOS26() ? 0.08 : 0.16) : (PPIOS26() ? 0.10 : 0.20)];
+                     colorWithAlphaComponent:viewerChrome ? (PPIOS26() ? 0.08 : 0.16) : (PPIOS26() ? 0.10 : 0.20)];
     UIImage *image = PPBBCartSymbol(symbolName,
                                     PPBBCartUsesLegacyIPadBelowIOS18() ? 14.0 : 15.0,
                                     UIImageSymbolWeightSemibold,
@@ -763,22 +775,50 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
                  self.totalLiquidBorderLayer);
     layoutBorder(self.qtyContainer,
                  self.qtyLiquidBorderLayer);
+    
+    
+    CAShapeLayer *maskLayer = [self.containerLiquidBorderLayer.mask isKindOfClass:CAShapeLayer.class]? (CAShapeLayer *)self.containerLiquidBorderLayer.mask : nil;
+    maskLayer.frame = self.BackgroundB.bounds;
+    
+    CGRect strokeBounds = CGRectInset(self.BackgroundB.bounds, 0.5, 0.5);
+    maskLayer.path = [UIBezierPath bezierPathWithRoundedRect:strokeBounds cornerRadius:MAX(PPBBCartSurfaceRadius() - 0.5, 0.0)].CGPath;
+    
+     self.containerLiquidBorderLayer.frame = self.BackgroundB.bounds;
+    self.containerLiquidBorderLayer.cornerRadius = PPBBCartSurfaceRadius();
 }
 
 - (void)pp_refreshLiquidBorderAppearance
 {
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    CGFloat brightAlpha = dark ? 0.52 : 0.66;
-    CGFloat calmAlpha = dark ? 0.12 : 0.18;
-    NSArray *colors = @[
-        (id)[UIColor.whiteColor colorWithAlphaComponent:calmAlpha].CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:brightAlpha].CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:0.24].CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:brightAlpha * 0.78].CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:calmAlpha].CGColor
-    ];
+    BOOL medicineViewerStyle =
+        self.presentationStyle == BBCartBottomBarPresentationStyleMedicineViewer;
+    NSArray *colors;
+    if (medicineViewerStyle) {
+        UIColor *edge = [UIColor.labelColor colorWithAlphaComponent:dark ? 0.16 : 0.12];
+        UIColor *highlight = [UIColor.whiteColor colorWithAlphaComponent:dark ? 0.62 : 0.82];
+        UIColor *accent = [PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)
+                           colorWithAlphaComponent:dark ? 0.22 : 0.18];
+        colors = @[
+            (id)edge.CGColor,
+            (id)highlight.CGColor,
+            (id)accent.CGColor,
+            (id)[highlight colorWithAlphaComponent:dark ? 0.46 : 0.62].CGColor,
+            (id)edge.CGColor
+        ];
+    } else {
+        CGFloat brightAlpha = dark ? 0.52 : 0.66;
+        CGFloat calmAlpha = dark ? 0.12 : 0.18;
+        colors = @[
+            (id)[UIColor.whiteColor colorWithAlphaComponent:calmAlpha].CGColor,
+            (id)[UIColor.whiteColor colorWithAlphaComponent:brightAlpha].CGColor,
+            (id)[UIColor.whiteColor colorWithAlphaComponent:0.24].CGColor,
+            (id)[UIColor.whiteColor colorWithAlphaComponent:brightAlpha * 0.78].CGColor,
+            (id)[UIColor.whiteColor colorWithAlphaComponent:calmAlpha].CGColor
+        ];
+    }
     self.totalLiquidBorderLayer.colors = colors;
     self.qtyLiquidBorderLayer.colors = colors;
+    self.containerLiquidBorderLayer.colors = colors;
 }
 
 - (void)pp_refreshLiquidBorderMotion
@@ -791,6 +831,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     if (self.qtyLiquidBorderLayer) {
         [layers addObject:self.qtyLiquidBorderLayer];
     }
+    if (self.containerLiquidBorderLayer) {
+        [layers addObject:self.containerLiquidBorderLayer];
+    }
     for (CAGradientLayer *layer in layers) {
         [layer removeAnimationForKey:motionKey];
         if (UIAccessibilityIsReduceMotionEnabled() || !self.window) {
@@ -800,7 +843,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         CABasicAnimation *flow = [CABasicAnimation animationWithKeyPath:@"locations"];
         flow.fromValue = @[@0.0, @0.24, @0.52, @0.76, @1.0];
         flow.toValue = @[@0.0, @0.34, @0.62, @0.86, @1.0];
-        flow.duration = 3.8;
+        flow.duration = 2.8;
         flow.autoreverses = YES;
         flow.repeatCount = HUGE_VALF;
         flow.timingFunction =
@@ -809,6 +852,11 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     }
 }
 
+- (BOOL)pp_usesViewerChrome
+{
+    return self.presentationStyle == BBCartBottomBarPresentationStyleAccessoryViewer ||
+           self.presentationStyle == BBCartBottomBarPresentationStyleMedicineViewer;
+}
 
 - (void)setupUI {
     self.backgroundColor = UIColor.clearColor;
@@ -885,7 +933,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     _totalContainer.userInteractionEnabled = YES;
     _totalContainer.isAccessibilityElement = YES;
     _totalContainer.accessibilityTraits = UIAccessibilityTraitStaticText;
-    _totalContainer.backgroundColor = PPBBCartBadgeFillColor();
+    _totalContainer.backgroundColor = AppBackgroundClr;
     PPApplyContinuousCorners(_totalContainer, 22.0);
     [_totalContainer pp_setBorderColor:UIColor.clearColor];
     _totalContainer.layer.borderWidth = 0.0;
@@ -970,7 +1018,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.totalLiquidBorderLayer = [self pp_installLiquidBorderOnView:self.totalContainer];
     self.qtyLiquidBorderLayer = [self pp_installLiquidBorderOnView:self.qtyContainer];
-
+    self.containerLiquidBorderLayer = [self pp_installLiquidBorderOnView:self.BackgroundB];
+    
+    
     [_favButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
     [_favButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
 
@@ -1466,7 +1516,16 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 }
 
 - (void)pp_buildSurface {
-    self.BackgroundB = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.backgroundFadeLayer = [CAGradientLayer layer];
+    self.backgroundFadeLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.backgroundFadeLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.backgroundFadeLayer.drawsAsynchronously = YES;
+    [self.layer insertSublayer:self.backgroundFadeLayer atIndex:0];
+
+     
+    
+    
+    self.BackgroundB = PPMakeGlassBackgroundButton();
     self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
     self.BackgroundB.userInteractionEnabled = YES;
     self.BackgroundB.isAccessibilityElement = NO;
@@ -1490,7 +1549,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         self.blurBackground.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.BackgroundB addSubview:self.blurBackground];
-
+    self.blurBackground.alpha = PPIOS26() ? 0.4 : 1;
+    //self.blurBackground.hidden = PPIOS26();
     self.surfaceTintView = [[UIView alloc] init];
     self.surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceTintView.userInteractionEnabled = NO;
@@ -1514,7 +1574,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [self.BackgroundB addSubview:self.separator];
 
     CGFloat horizontalInset = PPBBCartSurfaceHorizontalInset();
-    CGFloat bottomInset = PPBBCartSurfaceBottomInset();
+    CGFloat bottomInset = 4.0;//PPBBCartSurfaceBottomInset();
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
     if (self.blurBackground) {
         [constraints addObjectsFromArray:@[
@@ -1529,7 +1589,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         [self.BackgroundB.topAnchor constraintEqualToAnchor:self.topAnchor constant:0.0],
         [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:horizontalInset],
         [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-horizontalInset],
-        [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-bottomInset],
+        [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:bottomInset],
 
         [self.surfaceTintView.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
         [self.surfaceTintView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor],
@@ -1624,7 +1684,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [self.BackgroundB addSubview:self.contentStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:contentInset],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:12],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceMD],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceMD],
         [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.BackgroundB.bottomAnchor constant:-contentInset]
@@ -2181,8 +2241,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.backgroundColor = UIColor.clearColor;
-    CGFloat pad = 12.0;
-
+ 
     // Empty card (background glass)
     self.emptyCard = [self createCategoriesBackground];
     self.emptyCard.translatesAutoresizingMaskIntoConstraints = NO;

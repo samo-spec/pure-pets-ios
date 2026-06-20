@@ -16,9 +16,9 @@
 #import "PPFunc.h"
 #import "PPRootTabBarController.h"
 
-static CGFloat const PPPetCareViewerSideInset = 20.0;
+static CGFloat const PPPetCareViewerSideInset = 16.0;
 static CGFloat const PPPetCareViewerSectionSpacing = 16.0;
-static CGFloat const PPPetCareViewerSurfaceRadius = 30.0;
+static CGFloat const PPPetCareViewerSurfaceRadius = 32.0;
 static CGFloat const PPPetCareViewerArtworkCornerRadius = 28.0;
 static CGFloat const PPPetCareViewerBottomBarBase = 106.0;
 static CGFloat const PPPetCareViewerEntranceCardOffset = 26.0;
@@ -342,6 +342,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 {
 
     self.bottomBar = [[BBCartBottomBar alloc] init];
+    self.bottomBar.presentationStyle = BBCartBottomBarPresentationStyleMedicineViewer;
     self.bottomBar.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.bottomBar];
 
@@ -497,7 +498,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     [self.heroChipsStackView addArrangedSubview:self.categoryChipLabel];
     [self.heroChipsStackView addArrangedSubview:self.petKindChipLabel];
     [self.heroChipsStackView addArrangedSubview:self.statusLabel];
-    self.priceLabel = [self pp_labelWithFont:[GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold]
+    self.priceLabel = [self pp_labelWithFont:[GM BlackFontWithSize:26.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold]
                                        color:PPPetCareViewerAccentColor()
                                        lines:1];
     [self.heroView addSubview:self.priceLabel];

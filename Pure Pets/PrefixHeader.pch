@@ -706,6 +706,51 @@ static inline CGFloat PPScreenCornerRadius(void) {
 static NSString * const kCategoryCellId = @"PPCategoryCell";
 
 
+static UIButton *PPMakeGlassBackgroundButton(void) {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.clipsToBounds = YES;
+    button.layer.cornerCurve = kCACornerCurveContinuous;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = nil;
+
+        if (@available(iOS 26.0, *)) {
+            SEL selector = NSSelectorFromString(@"glassButtonConfiguration");
+
+            if ([UIButtonConfiguration respondsToSelector:selector]) {
+                UIButtonConfiguration *(*msgSend)(id, SEL) =
+                (UIButtonConfiguration *(*)(id, SEL))objc_msgSend;
+
+                config = msgSend(UIButtonConfiguration.class, selector);
+            }
+        }
+
+        if (!config) {
+            config = [UIButtonConfiguration borderedTintedButtonConfiguration];
+            config.baseBackgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.18];
+            config.baseForegroundColor = UIColor.labelColor;
+        }
+
+        config.title = nil;
+        config.image = nil;
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.cornerRadius = 32;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
+
+        button.configuration = config;
+    } else {
+        button.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.18];
+    }
+
+    button.layer.borderWidth = PPIOS18() ? 0.0 : 1.0 / UIScreen.mainScreen.scale;
+    button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:PPIOS18() ? 0.0 : 0.22].CGColor;
+
+    return button;
+}
+
+
+
 
 #define PPChatBubblePad                   2.0
 

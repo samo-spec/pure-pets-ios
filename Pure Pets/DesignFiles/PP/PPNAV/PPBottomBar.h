@@ -47,7 +47,8 @@ typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 
 typedef NS_ENUM(NSInteger, BBCartBottomBarPresentationStyle) {
     BBCartBottomBarPresentationStyleDefault = 0,
-    BBCartBottomBarPresentationStyleAccessoryViewer
+    BBCartBottomBarPresentationStyleAccessoryViewer,
+    BBCartBottomBarPresentationStyleMedicineViewer
 };
 
 @interface PPPaymentTabBar : UIView

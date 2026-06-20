@@ -11668,7 +11668,7 @@ presentingViewController:self
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
     UIColor *signatureColor = UIColor.systemPurpleColor; //AppSurfColor ?: 
-    UIColor *supportingColor = [UIColor colorNamed:@"AppSecColor"] ?: signatureColor;
+    UIColor *supportingColor = AppForgroundColr/*[UIColor colorNamed:@"AppSecColor"]*/ ?: signatureColor;
     UIColor *topAtmosphereColor = [UIColor colorNamed:@"HomeAmbientTopGlowColor"] ?: UIColor.systemBlueColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
@@ -11677,7 +11677,7 @@ presentingViewController:self
                       middleAlpha:(isDark ? 0.095 : 0.070) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:AppForgroundColr// supportingColor
+                            color: supportingColor
                         peakAlpha:(isDark ? 0.11 : 0.075) * accessibilityScale
                       middleAlpha:(isDark ? 0.038 : 0.026) * accessibilityScale];
 
