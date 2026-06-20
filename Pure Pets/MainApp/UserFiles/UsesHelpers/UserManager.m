@@ -9,6 +9,7 @@
 #import "PPPetReminder.h"
 #import "PPPetProfileManager.h"
 #import "UserPaymentInstrumentManager.h"
+#import "InstallationManager.h"
 
 
 @import FirebaseAuth;
@@ -168,6 +169,9 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     BOOL hasPlus = [trimmed hasPrefix:@"+"];
     return hasPlus ? [NSString stringWithFormat:@"+%@", digits] : digits;
 }
+
+static NSString * const PPUserNotificationV2DeactivateReasonLogout = @"logout";
+static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
 
 // MARK: - Singleton
 #pragma mark - ═══ Singleton & Init ═══
@@ -1044,6 +1048,68 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
             }];
 }
 
+- (void)pp_deactivateNotificationDeviceV2ForLogoutWithCompletion:(dispatch_block_t)completion
+{
+    dispatch_block_t finish = ^{
+        if (completion) {
+            completion();
+        }
+    };
+
+    FIRUser *authUser = [FIRAuth auth].currentUser;
+    NSString *uid = PPUserManagerTrimmedString(authUser.uid);
+    if (uid.length == 0) {
+        NSLog(@"[NotificationsV2] Logout deactivation skipped. hasUID=no");
+        finish();
+        return;
+    }
+
+    [[InstallationManager shared] getInstallationIDWithCompletion:^(NSString * _Nullable installationID, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *safeInstallationId = PPUserManagerTrimmedString(installationID);
+            if (safeInstallationId.length == 0) {
+                NSLog(@"[NotificationsV2] Logout deactivation skipped. hasUID=yes hasInstallation=no error=%@",
+                      error.localizedDescription ?: @"unknown");
+                finish();
+                return;
+            }
+
+            NSDictionary *payload = @{
+                @"installationId": safeInstallationId,
+                @"reason": PPUserNotificationV2DeactivateReasonLogout
+            };
+            FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:@"deactivateNotificationDeviceV2"];
+            callable.timeoutInterval = 10.0;
+
+            NSLog(@"[NotificationsV2] Logout deactivation start. reason=%@ hasUID=yes hasInstallation=yes",
+                  PPUserNotificationV2DeactivateReasonLogout);
+
+            [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable callableError) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (callableError) {
+                        NSLog(@"[NotificationsV2] Logout deactivation failed. reason=%@ error=%@",
+                              PPUserNotificationV2DeactivateReasonLogout,
+                              callableError.localizedDescription ?: @"unknown");
+                        finish();
+                        return;
+                    }
+
+                    NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
+                    BOOL ok = [response[@"ok"] respondsToSelector:@selector(boolValue)] ? [response[@"ok"] boolValue] : NO;
+                    BOOL missing = [response[@"missing"] respondsToSelector:@selector(boolValue)] ? [response[@"missing"] boolValue] : NO;
+                    BOOL isActive = [response[@"isActive"] respondsToSelector:@selector(boolValue)] ? [response[@"isActive"] boolValue] : YES;
+                    NSLog(@"[NotificationsV2] Logout deactivation success. reason=%@ ok=%@ missing=%@ isActive=%@",
+                          PPUserNotificationV2DeactivateReasonLogout,
+                          ok ? @"yes" : @"no",
+                          missing ? @"yes" : @"no",
+                          isActive ? @"yes" : @"no");
+                    finish();
+                });
+            }];
+        });
+    }];
+}
+
 - (void)signOutCurrentUserWithCompletion:(nullable FUCompletion)completion {
     if (![self pp_beginSignOutIfNeeded]) {
         if (completion) completion(nil);
@@ -1058,33 +1124,56 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [self pp_stopTokenRefreshTimer];
     self.currentToken = nil;
     [[UserPaymentInstrumentManager sharedManager] resetForSignOut];
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"deviceToken"];
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"PPUserTokenID"];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    [self clearFCMTokenOnServerForCurrentUser];
-    [[FIRMessaging messaging] deleteTokenWithCompletion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"[UserManager] Warning: Failed to clear FCM token on logout: %@", error.localizedDescription);
+
+    __block BOOL didContinueLogout = NO;
+    __weak typeof(self) weakSelf = self;
+    void (^continueLogout)(void) = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || didContinueLogout) {
+            return;
         }
+        didContinueLogout = YES;
+
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"deviceToken"];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"PPUserTokenID"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        [strongSelf clearFCMTokenOnServerForCurrentUser];
+        [[FIRMessaging messaging] deleteTokenWithCompletion:^(NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"[UserManager] Warning: Failed to clear FCM token on logout: %@", error.localizedDescription);
+            }
+        }];
+
+        NSError *signOutError = nil;
+        BOOL status = [[FIRAuth auth] signOut:&signOutError];
+        if (!status) {
+            NSLog(@"[UserManager] Error signing out: %@", signOutError.localizedDescription);
+            finishSignOut(signOutError);
+            return;
+        }
+
+        // Auth listener handles the canonical local cleanup/notification path.
+        // Fallback to direct cleanup only if listener is not active.
+        if (!strongSelf.authStateListenerHandle) {
+            [strongSelf logoutAndClearAll];
+            [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidSignOutNotification object:strongSelf];
+        }
+        [strongSelf pp_resetFirestorePersistenceAfterLogout];
+        NSLog(@"[UserManager] User signed out successfully.");
+        finishSignOut(nil);
+    };
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPUserNotificationV2DeactivateTimeout * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        if (!didContinueLogout) {
+            NSLog(@"[NotificationsV2] Logout deactivation timed out. Continuing logout.");
+            continueLogout();
+        }
+    });
+
+    [self pp_deactivateNotificationDeviceV2ForLogoutWithCompletion:^{
+        continueLogout();
     }];
-
-    NSError *signOutError = nil;
-    BOOL status = [[FIRAuth auth] signOut:&signOutError];
-    if (!status) {
-        NSLog(@"[UserManager] Error signing out: %@", signOutError.localizedDescription);
-        finishSignOut(signOutError);
-        return;
-    }
-
-    // Auth listener handles the canonical local cleanup/notification path.
-    // Fallback to direct cleanup only if listener is not active.
-    if (!self.authStateListenerHandle) {
-        [self logoutAndClearAll];
-        [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidSignOutNotification object:self];
-    }
-    [self pp_resetFirestorePersistenceAfterLogout];
-    NSLog(@"[UserManager] User signed out successfully.");
-    finishSignOut(nil);
 }
 
 - (void)deleteCurrentUserAccountWithCompletion:(FUCompletion)completion {

@@ -2,9 +2,11 @@
 #import "PPImageLoaderManager.h"
 #import "XLFormRowFullWidthTextFieldCell.h"
 #import <TargetConditionals.h>
+#import <sys/utsname.h>
 #import "PPPaymentManager.h"
 #import "PPFirestoreErrorNotifier.h"
 #import "PPOfflineBannerView.h"
+#import "InstallationManager.h"
 #if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
 @import FirebaseAppCheck;
 #define PP_HAS_FIREBASE_APPCHECK 1
@@ -15,13 +17,45 @@
 @import FirebaseAnalytics;
 @import FirebaseAuth;
 @import FirebaseCrashlytics;
+@import FirebaseFunctions;
 @import GoogleSignIn;
 @interface AppDelegate ()
+@property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle notificationV2AuthHandle;
+@property (nonatomic, copy) NSString *pp_apnsTokenHexString;
 
 @end
 
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
+static NSString * const kPPNotificationV2UserAppID = @"user_ios";
+static NSString * const kPPNotificationV2Platform = @"ios";
+static NSString * const kPPNotificationV2ReasonAPNS = @"apns_registration";
+static NSString * const kPPNotificationV2ReasonAuthChange = @"auth_change";
+static NSString * const kPPNotificationV2ReasonFCMRefresh = @"fcm_refresh";
+static NSString * const kPPNotificationV2ReasonLegacySync = @"legacy_sync";
+
+static NSString *PPAppDelegateNotificationEnvironment(void) {
+#if DEBUG
+    return @"sandbox";
+#else
+    return @"production";
+#endif
+}
+
+static NSString *PPAppDelegateTrimmedString(id value) {
+    if (![value isKindOfClass:NSString.class]) {
+        return @"";
+    }
+    return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *PPAppDelegateCurrentDeviceModel(void) {
+    struct utsname systemInfo;
+    if (uname(&systemInfo) != 0) {
+        return PPAppDelegateTrimmedString(UIDevice.currentDevice.model);
+    }
+    return [NSString stringWithCString:systemInfo.machine encoding:NSUTF8StringEncoding] ?: @"";
+}
 
 static BOOL PPAppDelegateChatAlertsAllowed(void) {
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
@@ -371,6 +405,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     }];
 
     [self pp_syncMessagingTokenIfAvailable];
+    [self pp_registerForNotificationV2AuthChanges];
     
     // ✅ Crashlytics
     NSString *userID = UserManager.sharedManager.currentUser.ID;
@@ -541,6 +576,153 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     [prefs synchronize];
 }
 
+- (void)pp_resolveCurrentFCMTokenWithCompletion:(void (^)(NSString * _Nullable token))completion
+{
+    NSString *cached = PPAppDelegateTrimmedString([[NSUserDefaults standardUserDefaults] stringForKey:@"deviceToken"]);
+    if (cached.length == 0) {
+        cached = PPAppDelegateTrimmedString([FIRMessaging messaging].FCMToken);
+    }
+    if (cached.length > 0) {
+        [self pp_storeFCMTokenLocally:cached];
+        if (completion) completion(cached);
+        return;
+    }
+
+    [[FIRMessaging messaging] tokenWithCompletion:^(NSString * _Nullable fcmToken, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            NSString *trimmed = PPAppDelegateTrimmedString(fcmToken);
+            if (trimmed.length > 0) {
+                [self pp_storeFCMTokenLocally:trimmed];
+            } else if (error) {
+                NSLog(@"[NotificationsV2] Registration skipped. hasFCM=no error=%@", error.localizedDescription ?: @"unknown");
+            }
+            if (completion) completion(trimmed.length > 0 ? trimmed : nil);
+        });
+    }];
+}
+
+- (void)pp_registerForNotificationV2AuthChanges
+{
+    if (self.notificationV2AuthHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.notificationV2AuthHandle];
+        self.notificationV2AuthHandle = 0;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    self.notificationV2AuthHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(FIRAuth * _Nonnull auth, FIRUser * _Nullable user) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || user.uid.length == 0) {
+            return;
+        }
+        [strongSelf pp_syncMessagingTokenIfAvailable];
+        [strongSelf pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonAuthChange];
+    }];
+}
+
+- (void)pp_attemptNotificationV2RegistrationForReason:(NSString *)reason
+{
+    NSString *safeReason = PPAppDelegateTrimmedString(reason);
+    NSString *uid = PPAppDelegateTrimmedString([FIRAuth auth].currentUser.uid);
+    if (uid.length == 0) {
+        NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=no",
+              safeReason.length > 0 ? safeReason : @"unknown");
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [self pp_resolveCurrentFCMTokenWithCompletion:^(NSString * _Nullable token) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        NSString *safeToken = PPAppDelegateTrimmedString(token);
+        if (safeToken.length == 0) {
+            NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=yes hasFCM=no",
+                  safeReason.length > 0 ? safeReason : @"unknown");
+            return;
+        }
+
+        [[InstallationManager shared] getInstallationIDWithCompletion:^(NSString * _Nullable installationID, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                NSString *safeInstallationId = PPAppDelegateTrimmedString(installationID);
+                if (safeInstallationId.length == 0) {
+                    NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=yes hasFCM=yes hasInstallation=no error=%@",
+                          safeReason.length > 0 ? safeReason : @"unknown",
+                          error.localizedDescription ?: @"unknown");
+                    return;
+                }
+
+                NSString *bundleId = PPAppDelegateTrimmedString(NSBundle.mainBundle.bundleIdentifier);
+                NSString *locale = PPAppDelegateTrimmedString([Language currentLanguageCode]);
+                NSString *timezone = PPAppDelegateTrimmedString(NSTimeZone.localTimeZone.name);
+                NSString *appVersion = PPAppDelegateTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]);
+                NSString *osVersion = PPAppDelegateTrimmedString(UIDevice.currentDevice.systemVersion);
+                NSString *deviceModel = PPAppDelegateCurrentDeviceModel();
+                NSString *apnsTokenHex = PPAppDelegateTrimmedString(strongSelf.pp_apnsTokenHexString);
+                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat", @"customer.general"];
+                NSDictionary *capabilities = @{
+                    @"customer": @YES,
+                    @"provider": @NO,
+                    @"staff": @NO
+                };
+
+                NSMutableDictionary *payload = [@{
+                    @"installationId": safeInstallationId,
+                    @"platform": kPPNotificationV2Platform,
+                    @"appId": kPPNotificationV2UserAppID,
+                    @"bundleId": bundleId,
+                    @"environment": PPAppDelegateNotificationEnvironment(),
+                    @"fcmToken": safeToken,
+                    @"notificationScopes": notificationScopes,
+                    @"providerIds": @[],
+                    @"capabilities": capabilities,
+                    @"locale": locale,
+                    @"timezone": timezone,
+                    @"appVersion": appVersion,
+                    @"osVersion": osVersion,
+                    @"deviceModel": deviceModel
+                } mutableCopy];
+
+                if (apnsTokenHex.length > 0) {
+                    payload[@"apnsTokenHash"] = apnsTokenHex;
+                }
+
+                FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:@"registerNotificationDeviceV2"];
+                callable.timeoutInterval = 30.0;
+
+                NSLog(@"[NotificationsV2] Registration start. reason=%@ hasUID=yes appId=%@ scopes=%lu providerIds=%lu hasAPNS=%@",
+                      safeReason.length > 0 ? safeReason : @"unknown",
+                      kPPNotificationV2UserAppID,
+                      (unsigned long)notificationScopes.count,
+                      (unsigned long)0,
+                      apnsTokenHex.length > 0 ? @"yes" : @"no");
+
+                [callable callWithObject:[payload copy] completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        if (error) {
+                            NSLog(@"[NotificationsV2] Registration failed. reason=%@ appId=%@ scopes=%lu error=%@",
+                                  safeReason.length > 0 ? safeReason : @"unknown",
+                                  kPPNotificationV2UserAppID,
+                                  (unsigned long)notificationScopes.count,
+                                  error.localizedDescription ?: @"unknown");
+                            return;
+                        }
+
+                        NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
+                        BOOL ok = [response[@"ok"] respondsToSelector:@selector(boolValue)] ? [response[@"ok"] boolValue] : NO;
+                        NSArray *scopes = [response[@"scopes"] isKindOfClass:NSArray.class] ? response[@"scopes"] : notificationScopes;
+                        NSLog(@"[NotificationsV2] Registration success. reason=%@ ok=%@ appId=%@ scopes=%lu isActive=%@",
+                              safeReason.length > 0 ? safeReason : @"unknown",
+                              ok ? @"yes" : @"no",
+                              PPAppDelegateTrimmedString(response[@"appId"]).length > 0 ? PPAppDelegateTrimmedString(response[@"appId"]) : kPPNotificationV2UserAppID,
+                              (unsigned long)scopes.count,
+                              [response[@"isActive"] respondsToSelector:@selector(boolValue)] && [response[@"isActive"] boolValue] ? @"yes" : @"no");
+                    });
+                }];
+            });
+        }];
+    }];
+}
+
 - (void)pp_syncMessagingTokenIfAvailable
 {
     [[FIRMessaging messaging] tokenWithCompletion:^(NSString * _Nullable fcmToken, NSError * _Nullable error) {
@@ -562,6 +744,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         if (UserManager.sharedManager.currentUser.ID.length) {
             [UserManager.sharedManager updateCurrentUserWithPPUserTokenID:trimmed];
             NSLog(@"[FIRMessaging] Synced FCM token to Firestore for current user");
+            [self pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonLegacySync];
         } else {
             NSLog(@"[FIRMessaging] Stored FCM token locally (user not logged in yet)");
         }
@@ -803,8 +986,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     NSString *token = [[deviceToken description] stringByTrimmingCharactersInSet:
                        [NSCharacterSet characterSetWithCharactersInString:@"<>"]];
     token = [token stringByReplacingOccurrencesOfString:@" " withString:@""];
+    self.pp_apnsTokenHexString = token ?: @"";
     NSLog(@"[FIRMessaging] didRegisterForRemoteNotifications (APNs token %@)", [self pp_redactedTokenPreview:token]);
     [self pp_syncMessagingTokenIfAvailable];
+    [self pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonAPNS];
 }
 
 // Failed to register for remote notifications
@@ -821,6 +1006,7 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
         [UserManager.sharedManager updateCurrentUserWithPPUserTokenID:fcmToken];
         NSLog(@"[FIRMessaging] Updated user with new FCM token");
     }
+    [self pp_attemptNotificationV2RegistrationForReason:kPPNotificationV2ReasonFCMRefresh];
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application
@@ -831,6 +1017,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 // Clean up any observers
 - (void)dealloc {
     NSLog(@"[AppDelegate] dealloc: removing observers");
+    if (self.notificationV2AuthHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.notificationV2AuthHandle];
+        self.notificationV2AuthHandle = 0;
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
