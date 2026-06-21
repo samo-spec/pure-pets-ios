@@ -19,6 +19,7 @@
 #import "PPPetProfile.h"
 #import "PPPetProfileEditorViewController.h"
 #import "PPHomePremiumCareCell.h"
+#import "PPHomeUltraPremuimPetCareCell.h"
 #import "PPPetProfilesViewController.h"
 #import "PetCare/PPPetCareViewController.h"
 #import "PPVetLocator.h"
@@ -1561,18 +1562,24 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 
     NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
     UICollectionViewCell *rawCell = [self.collectionView cellForItemAtIndexPath:indexPath];
-    if (![rawCell isKindOfClass:PPHomePremiumCareCell.class]) {
+    if (PPULTRA_CARE_IS_ACTIVATED &&
+        [rawCell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
+        [(PPHomeUltraPremuimPetCareCell *)rawCell
+            configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
+    } else if (!PPULTRA_CARE_IS_ACTIVATED &&
+               [rawCell isKindOfClass:PPHomePremiumCareCell.class]) {
+        [(PPHomePremiumCareCell *)rawCell
+            configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
+    } else {
         return;
     }
 
-    PPHomePremiumCareCell *cell = (PPHomePremiumCareCell *)rawCell;
-    [cell configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    [cell setNeedsLayout];
-    [cell.contentView setNeedsLayout];
-    [cell.contentView layoutIfNeeded];
-    [cell layoutIfNeeded];
+    [rawCell setNeedsLayout];
+    [rawCell.contentView setNeedsLayout];
+    [rawCell.contentView layoutIfNeeded];
+    [rawCell layoutIfNeeded];
     [CATransaction commit];
 }
 
@@ -6737,8 +6744,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomePremiumCareCell.class
-            forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
+    if (PPULTRA_CARE_IS_ACTIVATED) {
+        [self.collectionView registerClass:PPHomeUltraPremuimPetCareCell.class
+                forCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier];
+    } else {
+        [self.collectionView registerClass:PPHomePremiumCareCell.class
+                forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
+    }
     [self.collectionView registerClass:PPHomePremiumSearchCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
     
@@ -6957,11 +6969,19 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             }
 
         if ( section == PPHomeSectionPremiumCare) {
-            PPHomePremiumCareCell *cell =
+            if (PPULTRA_CARE_IS_ACTIVATED) {
+                PPHomeUltraPremuimPetCareCell *cell =
+                    [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier
+                                                              forIndexPath:indexPath];
+                [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
+                return cell;
+            }
+
+            PPHomePremiumCareCell *legacyCell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
-            [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
-            return cell;
+            [legacyCell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
+            return legacyCell;
         }
 
         if (section == PPHomeSectionCarousel) {
@@ -9715,8 +9735,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         cell.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    if (section == PPHomeSectionPremiumCare && [cell isKindOfClass:PPHomePremiumCareCell.class]) {
-        [(PPHomePremiumCareCell *)cell pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
+    if (section == PPHomeSectionPremiumCare) {
+        if (PPULTRA_CARE_IS_ACTIVATED &&
+            [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
+            [(PPHomeUltraPremuimPetCareCell *)cell
+                pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
+        } else if (!PPULTRA_CARE_IS_ACTIVATED &&
+                   [cell isKindOfClass:PPHomePremiumCareCell.class]) {
+            [(PPHomePremiumCareCell *)cell
+                pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
+        }
     }
 }
 
@@ -9894,8 +9922,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     cell.alpha = initialAlpha;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
     cell.transform = CGAffineTransformScale(transform, scale, scale);
-    if (section == PPHomeSectionPremiumCare && [cell isKindOfClass:PPHomePremiumCareCell.class] && !isLateAppearance) {
-        [(PPHomePremiumCareCell *)cell pp_preparePostLayoutEntranceState];
+    if (section == PPHomeSectionPremiumCare && !isLateAppearance) {
+        if (PPULTRA_CARE_IS_ACTIVATED &&
+            [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
+            [(PPHomeUltraPremuimPetCareCell *)cell pp_preparePostLayoutEntranceState];
+        } else if (!PPULTRA_CARE_IS_ACTIVATED &&
+                   [cell isKindOfClass:PPHomePremiumCareCell.class]) {
+            [(PPHomePremiumCareCell *)cell pp_preparePostLayoutEntranceState];
+        }
     }
     [CATransaction commit];
 }

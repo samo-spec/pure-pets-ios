@@ -766,8 +766,12 @@ static inline void PPDispatchMain(void (^block)(void)) {
     config.imagePlacement = NSDirectionalRectEdgeLeading;
     config.imagePadding = 12;
     config.title = title;
-    config.baseForegroundColor = isPrimary ? UIColor.whiteColor : AppPrimaryTextClr;
-    config.background.backgroundColor = isPrimary ? UIColor.blackColor : UIColor.whiteColor;
+    config.baseForegroundColor = isPrimary ? UIColor.whiteColor : [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return trait.userInterfaceStyle == UIUserInterfaceStyleDark ? UIColor.whiteColor : AppPrimaryTextClr;
+    }];
+    config.background.backgroundColor = isPrimary ? UIColor.blackColor : [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return trait.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:0.20 alpha:1.0] : UIColor.whiteColor;
+    }];
     config.background.cornerRadius = 20;
     config.contentInsets = NSDirectionalEdgeInsetsMake(16, 16, 16, 16);
     config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {

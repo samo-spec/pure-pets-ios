@@ -469,6 +469,7 @@
 		F2844F002EB76ED200D9A49C /* PPSelectPaymentVC+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */; };
 		F2844F032EB7BA2000D9A49C /* PPPaymentFormViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */; };
 		F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */; };
+		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
 		F2856C432E96BA65004B0344 /* PPBirdSummaryCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */; };
 		F286536A2D7E6B8E006EDEDE /* UIActivityIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28653692D7E6B8E006EDEDE /* UIActivityIndicator.m */; };
 		F286BA8A2F207A4D0069CD5C /* PPFullscreenVideoController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */; };
@@ -1708,6 +1709,8 @@
 		F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPaymentFormViewController.m; sourceTree = "<group>"; };
 		F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumCareCell.h; sourceTree = "<group>"; };
 		F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumCareCell.m; sourceTree = "<group>"; };
+		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
+		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
 		F2856C412E96BA41004B0344 /* PPBirdSummaryCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdSummaryCollectionCell.h; sourceTree = "<group>"; };
 		F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBirdSummaryCollectionCell.m; sourceTree = "<group>"; };
 		F28653682D7E6B8E006EDEDE /* UIActivityIndicator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIActivityIndicator.h; sourceTree = "<group>"; };
@@ -2430,6 +2433,8 @@
 				F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */,
 				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
 				F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */,
+				A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */,
+				A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
@@ -5838,6 +5843,7 @@
 				F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */,
 				F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */,
 				F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */,
+				A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */,
 				F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */,
 				F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */,
 				F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */,

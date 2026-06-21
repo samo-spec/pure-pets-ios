@@ -68,6 +68,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 @property (nonatomic, strong) UIButton *premiumNovaButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
 @property (nonatomic, strong, nullable) LOTAnimationView *guestProfileLottieView;
+@property (nonatomic, strong, nullable) LOTColorValueCallback *guestProfileLottieColorCallback;
 @property (nonatomic, assign) BOOL guestProfileLottieLoading;
 @property (nonatomic, assign) BOOL guestProfileLottieReady;
 @property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
@@ -102,9 +103,11 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 - (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected;
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
 - (void)pp_prepareGuestProfileAnimationIfNeeded;
+- (void)pp_applyGuestProfileAnimationTint;
 - (void)pp_refreshProfileTabPresentation;
 - (void)pp_layoutGuestProfileAnimation;
 - (void)pp_updateGuestProfileAnimationPlayback;
+- (void)pp_refreshGuestProfileAnimationAfterSelection;
 - (void)pp_handleProfileAuthenticationChange:(NSNotification *)notification;
 - (void)pp_handleReduceMotionStatusChange:(NSNotification *)notification;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
@@ -162,7 +165,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
-    [self pp_layoutGuestProfileAnimation];
+    [self pp_refreshGuestProfileAnimationAfterSelection];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
 
@@ -588,6 +591,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_updatePremiumBottomFadeAppearance];
+            [self pp_applyGuestProfileAnimationTint];
         }
     }
 }
@@ -1317,9 +1321,9 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }
 
     CGSize itemSize = CGSizeMake(itemWidth, tabBarSize.height);
-    CGSize indicatorSize = CGSizeMake(MIN(60.0, MAX(44.0, itemWidth - 18.0)), 34.0);
-    UIColor *fillColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.10)];
-    UIColor *strokeColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
+    CGSize indicatorSize = CGSizeMake(MIN(60.0, MAX(46.0, itemWidth - 18.0)), 34.0);
+    UIColor *fillColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.10)];
+    UIColor *strokeColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
     dockTabBar.selectionIndicatorImage =
         [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
                                             indicatorSize:indicatorSize
@@ -1953,9 +1957,33 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
             [animationView setSceneModel:composition];
             strongSelf.guestProfileLottieReady = YES;
+            [strongSelf pp_applyGuestProfileAnimationTint];
             [strongSelf pp_refreshProfileTabPresentation];
         });
     }];
+}
+
+- (void)pp_applyGuestProfileAnimationTint
+{
+    LOTAnimationView *animationView = self.guestProfileLottieView;
+    if (!animationView || !self.guestProfileLottieReady) {
+        return;
+    }
+
+    UIColor *primaryColor = AppSecondaryTextClr ?: UIColor.systemPinkColor;
+    if (@available(iOS 13.0, *)) {
+        primaryColor = [primaryColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    LOTColorValueCallback *colorCallback =
+        [LOTColorValueCallback withCGColor:primaryColor.CGColor];
+    self.guestProfileLottieColorCallback = colorCallback;
+    animationView.tintColor = primaryColor;
+
+    // The bundled animation names its paint nodes "F" and "S", so target the
+    // shared Color property instead of relying on exported Fill/Stroke names.
+    [animationView setValueDelegate:colorCallback
+                         forKeypath:[LOTKeypath keypathWithString:@"**.Color"]];
 }
 
 - (UITabBarItem *)pp_guestProfileAnimationTabItem
@@ -2070,25 +2098,44 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }
     [itemView layoutIfNeeded];
 
-    if (animationView.superview != itemView) {
+    UITabBar *displayedTabBar = PPIOS26() ? self.premiumTabbarView : self.tabBar;
+    UIView *animationHostView = displayedTabBar.superview ?: self.view;
+    if (!displayedTabBar || !animationHostView) {
+        return;
+    }
+
+    // Keep custom content outside UIKit's private UITabBarButton hierarchy.
+    // UIKit changes that hierarchy's alpha/visibility during selection, which
+    // caused the guest animation to disappear until the item was deselected.
+    if (animationView.superview != animationHostView) {
         [animationView removeFromSuperview];
-        [itemView addSubview:animationView];
+        [animationHostView addSubview:animationView];
+    }
+    if (displayedTabBar.superview == animationHostView) {
+        [animationHostView insertSubview:animationView aboveSubview:displayedTabBar];
+    } else {
+        [animationHostView bringSubviewToFront:animationView];
     }
 
     UIImageView *iconImageView = [self pp_bestTabIconImageViewInView:itemView];
-    CGPoint iconCenter = CGPointMake(CGRectGetMidX(itemView.bounds),
-                                     MIN(24.0, CGRectGetMidY(itemView.bounds)));
+    CGPoint iconCenterInItem = CGPointMake(CGRectGetMidX(itemView.bounds),
+                                           MIN(24.0, CGRectGetMidY(itemView.bounds)));
+    CGPoint iconCenter = [animationHostView convertPoint:iconCenterInItem fromView:itemView];
     if (iconImageView && !CGRectIsEmpty(iconImageView.bounds)) {
-        CGRect iconRect = [itemView convertRect:iconImageView.bounds fromView:iconImageView];
+        CGRect iconRect =
+            [animationHostView convertRect:iconImageView.bounds fromView:iconImageView];
         iconCenter = CGPointMake(CGRectGetMidX(iconRect), CGRectGetMidY(iconRect));
     }
 
     BOOL selected = self.selectedIndex == PPRootTabIndexOrders;
-    CGFloat animationSize = selected ? 28.0 : 26.0;
+    CGFloat animationSize = selected ? 34.0 : 32.0;
     animationView.bounds = CGRectMake(0.0, 0.0, animationSize, animationSize);
     animationView.center = iconCenter;
     animationView.layer.cornerRadius = animationSize * 0.5;
-    [itemView bringSubviewToFront:animationView];
+    animationView.layer.zPosition = 0.0;
+    animationView.alpha = 1.0;
+    animationView.layer.opacity = 1.0;
+    animationView.transform = CGAffineTransformIdentity;
 }
 
 - (void)pp_updateGuestProfileAnimationPlayback
@@ -2114,6 +2161,20 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     } else if (!animationView.isAnimationPlaying) {
         [animationView play];
     }
+}
+
+- (void)pp_refreshGuestProfileAnimationAfterSelection
+{
+    [self pp_layoutGuestProfileAnimation];
+    [self pp_updateGuestProfileAnimationPlayback];
+
+    // UIKit may finish updating the selected tab item on the next run loop.
+    // Reattach after that update so the custom Lottie never remains in an old
+    // item view or underneath the selected icon presentation.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_layoutGuestProfileAnimation];
+        [self pp_updateGuestProfileAnimationPlayback];
+    });
 }
 
 - (void)pp_handleProfileAuthenticationChange:(__unused NSNotification *)notification
@@ -2155,7 +2216,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [super setSelectedIndex:(NSUInteger)index];
     [self tabBarController:self didSelectViewController:viewController];
     [self pp_applyPremiumTabSelectionAnimated:YES];
-    [self pp_layoutGuestProfileAnimation];
+    [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated
@@ -2182,9 +2243,12 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                                    UIViewAnimationOptionBeginFromCurrentState |
                                    UIViewAnimationOptionAllowUserInteraction
                         animations:updates
-                        completion:nil];
+                        completion:^(__unused BOOL finished) {
+            [self pp_refreshGuestProfileAnimationAfterSelection];
+        }];
     } else {
         updates();
+        [self pp_refreshGuestProfileAnimationAfterSelection];
     }
 }
 
@@ -2674,7 +2738,7 @@ shouldSelectViewController:(UIViewController *)viewController {
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventRootTabSelected];
     }
     self.pp_lastSelectedIndex = (NSInteger)index;
-    [self pp_layoutGuestProfileAnimation];
+    [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 
 
