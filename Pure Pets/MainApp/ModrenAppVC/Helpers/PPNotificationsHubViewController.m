@@ -92,6 +92,21 @@ static BOOL PPHubStringHasPrefix(NSString *value, NSString *prefix)
     return [PPHubTrimmedString(value) rangeOfString:prefix options:NSCaseInsensitiveSearch | NSAnchoredSearch].location != NSNotFound;
 }
 
+static BOOL PPHubIsProviderOnlyNotificationPayload(NSDictionary *payload)
+{
+    NSDictionary *safePayload = PPHubSafeDictionary(payload);
+    NSString *type = [[PPHubFirstStringForKeys(safePayload, @[@"notificationType", @"type"]) lowercaseString] copy];
+    NSString *route = [[PPHubTrimmedString(safePayload[@"route"]) lowercaseString] copy];
+    NSString *targetAppId = [[PPHubFirstStringForKeys(safePayload, @[@"targetAppId", @"appId"]) lowercaseString] copy];
+    NSString *audience = [[PPHubTrimmedString(safePayload[@"audience"]) lowercaseString] copy];
+
+    return [targetAppId isEqualToString:@"pro_ios"] ||
+           [audience isEqualToString:@"delivery_providers"] ||
+           [type hasPrefix:@"drivers_delivery_"] ||
+           [type isEqualToString:@"provider_new_fulfillment"] ||
+           [route isEqualToString:@"fulfillment_order"];
+}
+
 static NSString *PPHubOrderReferenceFromTitle(NSString *title)
 {
     NSString *safeTitle = PPHubTrimmedString(title);
@@ -1003,9 +1018,15 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     __weak typeof(self) weakSelf = self;
     [[UNUserNotificationCenter currentNotificationCenter] getDeliveredNotificationsWithCompletionHandler:^(NSArray<UNNotification *> * _Nonnull notifications) {
         NSMutableArray<PPNotificationInboxItem *> *items = [NSMutableArray array];
+        NSMutableArray<NSString *> *providerOnlyIdentifiers = [NSMutableArray array];
         for (UNNotification *notification in notifications ?: @[]) {
             UNNotificationContent *content = notification.request.content;
             NSDictionary *payload = [content.userInfo isKindOfClass:NSDictionary.class] ? content.userInfo : @{};
+            if (PPHubIsProviderOnlyNotificationPayload(payload)) {
+                NSString *identifier = PPHubTrimmedString(notification.request.identifier);
+                if (identifier.length > 0) [providerOnlyIdentifiers addObject:identifier];
+                continue;
+            }
 
             NSString *rawTitle = PPHubTrimmedString(content.title);
             NSString *title = PPHubLocalizedNotificationTitle(rawTitle, PPHubTrimmedString(content.body), payload);
@@ -1029,6 +1050,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             item.timestamp = notification.date;
             item.payload = payload;
             [items addObject:item];
+        }
+
+        if (providerOnlyIdentifiers.count > 0) {
+            [[UNUserNotificationCenter currentNotificationCenter] removeDeliveredNotificationsWithIdentifiers:providerOnlyIdentifiers];
         }
 
         [items sortUsingComparator:^NSComparisonResult(PPNotificationInboxItem *a, PPNotificationInboxItem *b) {

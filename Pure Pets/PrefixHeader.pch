@@ -706,7 +706,7 @@ static inline CGFloat PPScreenCornerRadius(void) {
 static NSString * const kCategoryCellId = @"PPCategoryCell";
 
 
-static UIButton *PPMakeGlassBackgroundButton(void) {
+static UIButton *PPMakeGlassBackgroundButton(CGFloat corners) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.clipsToBounds = YES;
@@ -735,12 +735,13 @@ static UIButton *PPMakeGlassBackgroundButton(void) {
         config.title = nil;
         config.image = nil;
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        config.background.cornerRadius = 32;
+        config.background.cornerRadius = corners;
         config.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
 
         button.configuration = config;
     } else {
         button.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.18];
+        button.layer.cornerRadius = corners;
     }
 
     button.layer.borderWidth = PPIOS18() ? 0.0 : 1.0 / UIScreen.mainScreen.scale;

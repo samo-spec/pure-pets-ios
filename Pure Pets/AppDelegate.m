@@ -81,6 +81,21 @@ static BOOL PPAppDelegateIsChatNotificationPayload(NSDictionary *userInfo) {
     return [type isEqualToString:@"chat"] || threadID.length > 0;
 }
 
+static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInfo) {
+    if (![userInfo isKindOfClass:NSDictionary.class]) return NO;
+
+    NSString *type = [PPAppDelegateTrimmedString(userInfo[@"notificationType"] ?: userInfo[@"type"]) lowercaseString];
+    NSString *route = [PPAppDelegateTrimmedString(userInfo[@"route"]) lowercaseString];
+    NSString *targetAppId = [PPAppDelegateTrimmedString(userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
+    NSString *audience = [PPAppDelegateTrimmedString(userInfo[@"audience"]) lowercaseString];
+
+    return [targetAppId isEqualToString:@"pro_ios"] ||
+           [audience isEqualToString:@"delivery_providers"] ||
+           [type hasPrefix:@"drivers_delivery_"] ||
+           [type isEqualToString:@"provider_new_fulfillment"] ||
+           [route isEqualToString:@"fulfillment_order"];
+}
+
 #if PP_HAS_FIREBASE_APPCHECK
 static void PPFetchAppCheckTokenFromProvider(id<FIRAppCheckProvider> provider,
                                              BOOL limitedUse,
@@ -658,7 +673,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                 NSString *osVersion = PPAppDelegateTrimmedString(UIDevice.currentDevice.systemVersion);
                 NSString *deviceModel = PPAppDelegateCurrentDeviceModel();
                 NSString *apnsTokenHex = PPAppDelegateTrimmedString(strongSelf.pp_apnsTokenHexString);
-                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat", @"customer.general"];
+                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat"];
                 NSDictionary *capabilities = @{
                     @"customer": @YES,
                     @"provider": @NO,
@@ -848,6 +863,11 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 didReceiveRemoteNotification:(NSDictionary *)userInfo
 fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
+    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+        completionHandler(UIBackgroundFetchResultNoData);
+        return;
+    }
+
     NSString *type = userInfo[@"type"];
     NSString *threadID = userInfo[@"threadID"] ?: userInfo[@"threadId"];
     NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
@@ -899,6 +919,11 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
     (void)center;
     NSDictionary *userInfo = notification.request.content.userInfo ?: @{};
+    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+        if (completionHandler) completionHandler(0);
+        return;
+    }
+
     NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
     NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
@@ -934,6 +959,11 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 {
     (void)center;
     NSDictionary *userInfo = response.notification.request.content.userInfo ?: @{};
+    if (PPAppDelegateIsProviderOnlyNotificationPayload(userInfo)) {
+        if (completionHandler) completionHandler();
+        return;
+    }
+
     NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
     NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";

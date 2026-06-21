@@ -928,7 +928,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     _priceStack.translatesAutoresizingMaskIntoConstraints = NO;
     _priceStack.semanticContentAttribute = GM.setSemantic;
 
-    _totalContainer = [UIButton buttonWithType:UIButtonTypeCustom];
+    _totalContainer = PPMakeGlassBackgroundButton(22);
     _totalContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _totalContainer.userInteractionEnabled = YES;
     _totalContainer.isAccessibilityElement = YES;
@@ -1521,11 +1521,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.backgroundFadeLayer.endPoint = CGPointMake(0.5, 1.0);
     self.backgroundFadeLayer.drawsAsynchronously = YES;
     [self.layer insertSublayer:self.backgroundFadeLayer atIndex:0];
-
-     
     
-    
-    self.BackgroundB = PPMakeGlassBackgroundButton();
+    self.BackgroundB = PPMakeGlassBackgroundButton(32);
     self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
     self.BackgroundB.userInteractionEnabled = YES;
     self.BackgroundB.isAccessibilityElement = NO;

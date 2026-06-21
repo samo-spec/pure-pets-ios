@@ -67,6 +67,9 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 @property (nonatomic, strong) NSArray<UITabBarItem *> *premiumTabItems;
 @property (nonatomic, strong) UIButton *premiumNovaButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
+@property (nonatomic, strong, nullable) LOTAnimationView *guestProfileLottieView;
+@property (nonatomic, assign) BOOL guestProfileLottieLoading;
+@property (nonatomic, assign) BOOL guestProfileLottieReady;
 @property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
 @property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
 @property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
@@ -96,7 +99,14 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 - (BOOL)pp_cachedNovaFloatingVisibility;
 - (void)pp_updatePremiumNovaButtonVisibility;
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
+- (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected;
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
+- (void)pp_prepareGuestProfileAnimationIfNeeded;
+- (void)pp_refreshProfileTabPresentation;
+- (void)pp_layoutGuestProfileAnimation;
+- (void)pp_updateGuestProfileAnimationPlayback;
+- (void)pp_handleProfileAuthenticationChange:(NSNotification *)notification;
+- (void)pp_handleReduceMotionStatusChange:(NSNotification *)notification;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded;
 - (void)pp_premiumControlTouchDown:(UIButton *)sender;
@@ -152,6 +162,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
+    [self pp_layoutGuestProfileAnimation];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
 
@@ -182,8 +193,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                                           title:kLang(@"user_menu_tab_title")
                                            icon:@"person.crop.circle"
                                   selectedImage:@"person.crop.circle.fill"];
-    cartNav.tabBarItem.image = [self pp_userMenuTabAvatarImageSelected:NO];
-    cartNav.tabBarItem.selectedImage = [self pp_userMenuTabAvatarImageSelected:YES];
+    cartNav.tabBarItem.image = [self pp_profileTabItemImageSelected:NO];
+    cartNav.tabBarItem.selectedImage = [self pp_profileTabItemImageSelected:YES];
    
     
     UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"Notifications")   icon:@"bell" selectedImage:@"bellLast"];
@@ -254,6 +265,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self configureAppearance];
 
     [self pp_setupPremiumBottomNavigation];
+    [self pp_refreshProfileTabPresentation];
 
     // ── KVO guard against UIKit tabBar flashes ──
     // UITabBarController internally sets self.tabBar.hidden = NO during pop
@@ -305,6 +317,21 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
            selector:@selector(pp_handleNovaFloatingVisibilityUpdate:)
                name:PPNovaFloatingVisibilityDidChangeNotification
              object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleProfileAuthenticationChange:)
+               name:PPUserManagerDidSyncCurrentUserNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleProfileAuthenticationChange:)
+               name:PPUserManagerDidSignOutNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleReduceMotionStatusChange:)
+               name:UIAccessibilityReduceMotionStatusDidChangeNotification
+             object:nil];
     //[self configureTabBarIndicatorColor];
 
 }
@@ -315,14 +342,22 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_updatePremiumBottomFadeAppearance];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
+    [self pp_refreshProfileTabPresentation];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
     [self pp_assertPremiumTabBarState];
+    [self pp_layoutGuestProfileAnimation];
+    [self pp_updateGuestProfileAnimationPlayback];
     [self pp_showIntroIfNeeded];
     [self becomeFirstResponder];
+}
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    [self.guestProfileLottieView stop];
 }
 
 - (BOOL)canBecomeFirstResponder
@@ -541,6 +576,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
     [self pp_applyPremiumTabSelectionAnimated:NO];
+    [self pp_layoutGuestProfileAnimation];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
     [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     
@@ -1767,7 +1803,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             selectedSymbolName = @"bubble.left.and.bubble.right.fill";
             break;
         case PPRootTabIndexOrders:
-            return [self pp_userMenuTabAvatarImageSelected:selected];
+            return [self pp_profileTabItemImageSelected:selected];
         case PPRootTabIndexSettings:
             normalSymbolName = @"slider.horizontal.3";
             selectedSymbolName = @"slider.horizontal.3";
@@ -1781,6 +1817,30 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                                                           scale:UIImageSymbolScaleMedium];
     return [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];
+}
+
+- (BOOL)pp_isGuestProfileTabState
+{
+    return !PPIsUserLoggedIn;
+}
+
+- (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected
+{
+    if ([self pp_isGuestProfileTabState] && self.guestProfileLottieReady) {
+        static UIImage *transparentProfileImage = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+            format.opaque = NO;
+            format.scale = UIScreen.mainScreen.scale;
+            UIGraphicsImageRenderer *renderer =
+                [[UIGraphicsImageRenderer alloc] initWithSize:CGSizeMake(32.0, 32.0) format:format];
+            transparentProfileImage = [[renderer imageWithActions:^(__unused UIGraphicsImageRendererContext *context) {
+            }] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        });
+        return transparentProfileImage;
+    }
+    return [self pp_userMenuTabAvatarImageSelected:selected];
 }
 
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected
@@ -1845,6 +1905,229 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 }
 
+- (void)pp_prepareGuestProfileAnimationIfNeeded
+{
+    if (![self pp_isGuestProfileTabState] ||
+        self.guestProfileLottieReady ||
+        self.guestProfileLottieLoading) {
+        return;
+    }
+
+    self.guestProfileLottieLoading = YES;
+    __weak typeof(self) weakSelf = self;
+    [AppClasses fetchLottieJSONFromFirebasePath:@"Profile.lottie"
+                                     completion:^(NSDictionary *jsonDict, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
+
+            strongSelf.guestProfileLottieLoading = NO;
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                NSLog(@"[PPRootTabBarController] Profile.lottie failed to load: %@",
+                      error.localizedDescription ?: @"Invalid animation data");
+                return;
+            }
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                NSLog(@"[PPRootTabBarController] Profile.lottie could not create a composition.");
+                return;
+            }
+
+            LOTAnimationView *animationView = strongSelf.guestProfileLottieView;
+            if (!animationView) {
+                animationView = [[LOTAnimationView alloc] init];
+                animationView.userInteractionEnabled = NO;
+                animationView.isAccessibilityElement = NO;
+                animationView.accessibilityElementsHidden = YES;
+                animationView.backgroundColor = UIColor.clearColor;
+                animationView.contentMode = UIViewContentModeScaleAspectFill;
+                animationView.clipsToBounds = YES;
+                animationView.loopAnimation = YES;
+                animationView.animationSpeed = 0.85;
+                animationView.hidden = YES;
+                strongSelf.guestProfileLottieView = animationView;
+            }
+
+            [animationView setSceneModel:composition];
+            strongSelf.guestProfileLottieReady = YES;
+            [strongSelf pp_refreshProfileTabPresentation];
+        });
+    }];
+}
+
+- (UITabBarItem *)pp_guestProfileAnimationTabItem
+{
+    if (PPIOS26()) {
+        for (UITabBarItem *item in self.premiumTabItems) {
+            if (item.tag == PPRootTabIndexOrders) {
+                return item;
+            }
+        }
+        return nil;
+    }
+
+    if (self.viewControllers.count <= PPRootTabIndexOrders) {
+        return nil;
+    }
+    return self.viewControllers[PPRootTabIndexOrders].tabBarItem;
+}
+
+- (UIView *)pp_viewForTabBarItem:(UITabBarItem *)item
+{
+    if (!item) {
+        return nil;
+    }
+
+    @try {
+        UIView *itemView = [item valueForKey:@"view"];
+        return [itemView isKindOfClass:UIView.class] ? itemView : nil;
+    } @catch (__unused NSException *exception) {
+        return nil;
+    }
+}
+
+- (UIImageView *)pp_bestTabIconImageViewInView:(UIView *)view
+{
+    UIImageView *bestImageView = nil;
+    CGFloat bestArea = 0.0;
+    for (UIView *subview in view.subviews) {
+        if ([subview isKindOfClass:UIImageView.class]) {
+            CGFloat width = CGRectGetWidth(subview.bounds);
+            CGFloat height = CGRectGetHeight(subview.bounds);
+            CGFloat area = width * height;
+            if (width >= 10.0 && height >= 10.0 &&
+                width <= 48.0 && height <= 48.0 &&
+                area > bestArea) {
+                bestImageView = (UIImageView *)subview;
+                bestArea = area;
+            }
+        }
+
+        UIImageView *nestedImageView = [self pp_bestTabIconImageViewInView:subview];
+        if (nestedImageView) {
+            CGFloat nestedArea =
+                CGRectGetWidth(nestedImageView.bounds) * CGRectGetHeight(nestedImageView.bounds);
+            if (nestedArea > bestArea) {
+                bestImageView = nestedImageView;
+                bestArea = nestedArea;
+            }
+        }
+    }
+    return bestImageView;
+}
+
+- (void)pp_refreshProfileTabPresentation
+{
+    BOOL isGuest = [self pp_isGuestProfileTabState];
+    if (isGuest) {
+        [self pp_prepareGuestProfileAnimationIfNeeded];
+    }
+
+    UIImage *normalImage = [self pp_profileTabItemImageSelected:NO];
+    UIImage *selectedImage = [self pp_profileTabItemImageSelected:YES];
+
+    if (self.viewControllers.count > PPRootTabIndexOrders) {
+        UITabBarItem *sourceItem = self.viewControllers[PPRootTabIndexOrders].tabBarItem;
+        sourceItem.image = normalImage;
+        sourceItem.selectedImage = selectedImage;
+    }
+    for (UITabBarItem *item in self.premiumTabItems) {
+        if (item.tag == PPRootTabIndexOrders) {
+            item.image = normalImage;
+            item.selectedImage = selectedImage;
+            break;
+        }
+    }
+
+    if (!isGuest || !self.guestProfileLottieReady) {
+        [self.guestProfileLottieView stop];
+        self.guestProfileLottieView.hidden = YES;
+        [self.guestProfileLottieView removeFromSuperview];
+    }
+
+    [self.tabBar setNeedsLayout];
+    [self.premiumTabbarView setNeedsLayout];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_layoutGuestProfileAnimation];
+        [self pp_updateGuestProfileAnimationPlayback];
+    });
+}
+
+- (void)pp_layoutGuestProfileAnimation
+{
+    LOTAnimationView *animationView = self.guestProfileLottieView;
+    if (![self pp_isGuestProfileTabState] || !self.guestProfileLottieReady || !animationView) {
+        return;
+    }
+
+    UITabBarItem *item = [self pp_guestProfileAnimationTabItem];
+    UIView *itemView = [self pp_viewForTabBarItem:item];
+    if (!itemView || CGRectIsEmpty(itemView.bounds)) {
+        return;
+    }
+    [itemView layoutIfNeeded];
+
+    if (animationView.superview != itemView) {
+        [animationView removeFromSuperview];
+        [itemView addSubview:animationView];
+    }
+
+    UIImageView *iconImageView = [self pp_bestTabIconImageViewInView:itemView];
+    CGPoint iconCenter = CGPointMake(CGRectGetMidX(itemView.bounds),
+                                     MIN(24.0, CGRectGetMidY(itemView.bounds)));
+    if (iconImageView && !CGRectIsEmpty(iconImageView.bounds)) {
+        CGRect iconRect = [itemView convertRect:iconImageView.bounds fromView:iconImageView];
+        iconCenter = CGPointMake(CGRectGetMidX(iconRect), CGRectGetMidY(iconRect));
+    }
+
+    BOOL selected = self.selectedIndex == PPRootTabIndexOrders;
+    CGFloat animationSize = selected ? 28.0 : 26.0;
+    animationView.bounds = CGRectMake(0.0, 0.0, animationSize, animationSize);
+    animationView.center = iconCenter;
+    animationView.layer.cornerRadius = animationSize * 0.5;
+    [itemView bringSubviewToFront:animationView];
+}
+
+- (void)pp_updateGuestProfileAnimationPlayback
+{
+    LOTAnimationView *animationView = self.guestProfileLottieView;
+    BOOL shouldShow =
+        [self pp_isGuestProfileTabState] &&
+        self.guestProfileLottieReady &&
+        animationView.superview &&
+        self.view.window &&
+        !self.premiumBottomNavigationHidden;
+
+    if (!shouldShow) {
+        [animationView stop];
+        animationView.hidden = YES;
+        return;
+    }
+
+    animationView.hidden = NO;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [animationView stop];
+        animationView.animationProgress = 0.42;
+    } else if (!animationView.isAnimationPlaying) {
+        [animationView play];
+    }
+}
+
+- (void)pp_handleProfileAuthenticationChange:(__unused NSNotification *)notification
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_refreshProfileTabPresentation];
+    });
+}
+
+- (void)pp_handleReduceMotionStatusChange:(__unused NSNotification *)notification
+{
+    [self pp_updateGuestProfileAnimationPlayback];
+}
+
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
 {
     NSInteger index = item.tag;
@@ -1872,6 +2155,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [super setSelectedIndex:(NSUInteger)index];
     [self tabBarController:self didSelectViewController:viewController];
     [self pp_applyPremiumTabSelectionAnimated:YES];
+    [self pp_layoutGuestProfileAnimation];
 }
 
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated
@@ -2011,6 +2295,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         self.tabBar.userInteractionEnabled = !hidden;
     }
     self.premiumBottomNavigationHidden = hidden;
+    [self pp_updateGuestProfileAnimationPlayback];
     NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:4];
     if (PPIOS26() && self.premiumTabbarView) {
         [navigationViews addObject:self.premiumTabbarView];
@@ -2079,6 +2364,8 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             self.tabBar.userInteractionEnabled = !hidden;
         }
         [self pp_applyBottomNavigationClearanceToVisibleLists];
+        [self pp_layoutGuestProfileAnimation];
+        [self pp_updateGuestProfileAnimationPlayback];
     };
     if (!animated) {
         changes();
@@ -2387,6 +2674,7 @@ shouldSelectViewController:(UIViewController *)viewController {
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventRootTabSelected];
     }
     self.pp_lastSelectedIndex = (NSInteger)index;
+    [self pp_layoutGuestProfileAnimation];
 }
 
 
