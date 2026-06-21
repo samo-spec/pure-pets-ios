@@ -142,6 +142,81 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 }
 @end
 
+@interface PPPremiumDockTabBar : UITabBar
+@property (nonatomic, strong) UIFont *pp_titleFont;
+@end
+
+@implementation PPPremiumDockTabBar
+
+- (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title
+{
+    if ([view isKindOfClass:UILabel.class]) {
+        UILabel *label = (UILabel *)view;
+        if ([label.text isEqualToString:title]) {
+            return label;
+        }
+    }
+    for (UIView *subview in view.subviews) {
+        UILabel *matchingLabel = [self pp_titleLabelInView:subview matchingTitle:title];
+        if (matchingLabel) {
+            return matchingLabel;
+        }
+    }
+    return nil;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    for (UITabBarItem *item in self.items) {
+        if (item.title.length == 0) {
+            continue;
+        }
+
+        UIView *itemView = nil;
+        @try {
+            id candidate = [item valueForKey:@"view"];
+            itemView = [candidate isKindOfClass:UIView.class] ? candidate : nil;
+        } @catch (__unused NSException *exception) {
+            itemView = nil;
+        }
+        if (!itemView || CGRectGetWidth(itemView.bounds) <= 0.0) {
+            continue;
+        }
+
+        UILabel *titleLabel = [self pp_titleLabelInView:itemView matchingTitle:item.title];
+        if (!titleLabel) {
+            continue;
+        }
+
+        titleLabel.font = self.pp_titleFont ?: titleLabel.font;
+        titleLabel.numberOfLines = 1;
+        titleLabel.textAlignment = NSTextAlignmentCenter;
+        titleLabel.adjustsFontSizeToFitWidth = YES;
+        titleLabel.minimumScaleFactor = 0.82;
+        titleLabel.allowsDefaultTighteningForTruncation = YES;
+
+        // UIKit can preserve a launch-time label width calculated before the
+        // dock's constraints settle. Expand only the title's horizontal frame
+        // inside its own item while preserving UIKit's vertical placement.
+        CGFloat availableWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - 8.0);
+        CGRect labelFrameInItem = [itemView convertRect:titleLabel.frame
+                                               fromView:titleLabel.superview];
+        labelFrameInItem.origin.x = (CGRectGetWidth(itemView.bounds) - availableWidth) * 0.5;
+        labelFrameInItem.size.width = availableWidth;
+        CGRect resolvedFrame = [titleLabel.superview convertRect:labelFrameInItem
+                                                         fromView:itemView];
+        titleLabel.frame = CGRectMake(CGRectGetMinX(resolvedFrame),
+                                      CGRectGetMinY(titleLabel.frame),
+                                      CGRectGetWidth(resolvedFrame),
+                                      CGRectGetHeight(titleLabel.frame));
+        titleLabel.preferredMaxLayoutWidth = availableWidth;
+    }
+}
+
+@end
+
 static char PPListBaseContentInsetKey;
 static char PPListBaseIndicatorInsetKey;
 static char PPListAppliedBottomClearanceKey;
@@ -1376,7 +1451,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     self.tabBar.alpha = 0.0;
     self.tabBar.userInteractionEnabled = NO;
 
-    UITabBar *dockView = [[UITabBar alloc] init];
+    PPPremiumDockTabBar *dockView = [[PPPremiumDockTabBar alloc] init];
     dockView.translatesAutoresizingMaskIntoConstraints = NO;
     self.premiumDockDelegate = [[PPPremiumDockBarDelegate alloc] init];
     self.premiumDockDelegate.controller = self;
@@ -1399,6 +1474,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
     UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
     UIFont *titleFont = [GM boldFontWithSize:10] ?: [UIFont systemFontOfSize:10 weight:UIFontWeightSemibold];
+    dockView.pp_titleFont = titleFont;
     NSDictionary<NSAttributedStringKey, id> *normalTitleAttributes =
         @{ NSFontAttributeName: titleFont, NSForegroundColorAttributeName: normalIconColor };
     NSDictionary<NSAttributedStringKey, id> *selectedTitleAttributes =
@@ -1454,9 +1530,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
-    
-   
 
+    // Resolve the real dock width before assigning its initial selected item.
+    // Otherwise UIKit can build and retain title labels using a transitional
+    // launch-time width, intermittently producing Arabic ellipses.
+    [self.view layoutIfNeeded];
     [self pp_applyPremiumTabSelectionAnimated:NO];
     if (!UIAccessibilityIsReduceMotionEnabled()) {
         dockView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);

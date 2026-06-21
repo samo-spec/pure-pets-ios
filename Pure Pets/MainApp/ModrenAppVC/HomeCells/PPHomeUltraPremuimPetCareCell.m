@@ -461,7 +461,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_heroPortalView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.13]];
 
     UIColor *innerFill =
-        PPUltraCareDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.86],
+        PPUltraCareDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.36],
                                 [accent colorWithAlphaComponent:0.10]);
     _heroInnerView.backgroundColor = innerFill;
     [_heroInnerView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.08 : 0.82]];
