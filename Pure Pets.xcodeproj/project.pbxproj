@@ -16,16 +16,21 @@
 		58D87A909DD749A582377602 /* PPAgentResponseParser.m in Sources */ = {isa = PBXBuildFile; fileRef = C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */; };
 		59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 425167313B2C23734EA30648 /* PPPermissionHelper.m */; };
 		681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */; };
+		6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */; };
 		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
 		7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */ = {isa = PBXBuildFile; fileRef = A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */; };
 		8285DB81AC0E45CAAD4045C8 /* PPAgentClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 54CF9E88F5084302B07E92AD /* PPAgentClient.m */; };
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 6027D32F8BFF42DE85792BE5 /* PPInAppChatNotificationPresenter.m */; };
+		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
+		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
+		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
+		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
@@ -107,9 +112,6 @@
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
-		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
-		6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */; };
-		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
 		F21843B12E8BB13300D8BF46 /* ImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843B02E8BB11900D8BF46 /* ImageViewerController.m */; };
@@ -469,7 +471,6 @@
 		F2844F002EB76ED200D9A49C /* PPSelectPaymentVC+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */; };
 		F2844F032EB7BA2000D9A49C /* PPPaymentFormViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */; };
 		F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */; };
-		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
 		F2856C432E96BA65004B0344 /* PPBirdSummaryCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */; };
 		F286536A2D7E6B8E006EDEDE /* UIActivityIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28653692D7E6B8E006EDEDE /* UIActivityIndicator.m */; };
 		F286BA8A2F207A4D0069CD5C /* PPFullscreenVideoController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */; };
@@ -749,7 +750,6 @@
 		F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */; };
 		F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */; };
 		F2EE91DC2FD2687B00940729 /* SearchingLottile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */; };
-		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
 		F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */; };
 		F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */; };
 		F2EF8EE52F8775CA00A797B3 /* PPProfileTextViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE42F8775CA00A797B3 /* PPProfileTextViewCell.m */; };
@@ -846,14 +846,17 @@
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
+		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
 		2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOfflineBannerView.m; sourceTree = "<group>"; };
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
 		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
 		38C7E48EFD674EB395BE62DA /* PPAgentClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentClient.h; sourceTree = "<group>"; };
+		3A2C289EF0CE4CDCA2D23C9C /* PPNovaAmbientAssistantChatBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaAmbientAssistantChatBridge.h; sourceTree = "<group>"; };
 		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
+		4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantView.swift; sourceTree = "<group>"; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
 		471B98E18FD0A42C1B1F054F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		47BCF0A8B4C22E6EED3D854F /* PPUserPermissionsManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserPermissionsManager.h; sourceTree = "<group>"; };
@@ -869,6 +872,9 @@
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
+		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
+		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
+		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -883,6 +889,7 @@
 		D76BD429E474434CAD5D3B7E /* PPInAppChatNotificationPresenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInAppChatNotificationPresenter.h; sourceTree = "<group>"; };
 		DFCBF41EFDF6EF662DE3A38B /* PPPetProfilesUIStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfilesUIStyle.h; sourceTree = "<group>"; };
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
+		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
 		F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCell.h; sourceTree = "<group>"; };
 		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
@@ -1063,10 +1070,6 @@
 		F229DCBF2D3B0D070015B67D /* FileUploadManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileUploadManager.m; sourceTree = "<group>"; };
 		F229DCC32D3B0D6A0015B67D /* FileUploadManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileUploadManager.h; sourceTree = "<group>"; };
 		F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNovaStreamingService.swift; sourceTree = "<group>"; };
-		4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantView.swift; sourceTree = "<group>"; };
-		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
-		3A2C289EF0CE4CDCA2D23C9C /* PPNovaAmbientAssistantChatBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaAmbientAssistantChatBridge.h; sourceTree = "<group>"; };
-		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
 		F22C06D42EF66C2F00C00EAC /* NSArray+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+YYAdd.h"; sourceTree = "<group>"; };
 		F22C06D52EF66C2F00C00EAC /* NSArray+YYAdd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+YYAdd.m"; sourceTree = "<group>"; };
 		F22C06D62EF66C2F00C00EAC /* NSBundle+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+YYAdd.h"; sourceTree = "<group>"; };
@@ -1709,8 +1712,6 @@
 		F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPaymentFormViewController.m; sourceTree = "<group>"; };
 		F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumCareCell.h; sourceTree = "<group>"; };
 		F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumCareCell.m; sourceTree = "<group>"; };
-		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
-		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
 		F2856C412E96BA41004B0344 /* PPBirdSummaryCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdSummaryCollectionCell.h; sourceTree = "<group>"; };
 		F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBirdSummaryCollectionCell.m; sourceTree = "<group>"; };
 		F28653682D7E6B8E006EDEDE /* UIActivityIndicator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIActivityIndicator.h; sourceTree = "<group>"; };
@@ -2262,7 +2263,6 @@
 		F2EDCB252D6ED9DC00C83328 /* ArchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchCell.m; sourceTree = "<group>"; };
 		F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = ArchCell.xib; sourceTree = "<group>"; };
 		F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = SearchingLottile.lottie; sourceTree = "<group>"; };
-		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
 		F2EF8EDD2F87752400A797B3 /* PPProfileTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileTextFieldCell.h; sourceTree = "<group>"; };
 		F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileTextFieldCell.m; sourceTree = "<group>"; };
 		F2EF8EE02F87757A00A797B3 /* PPProfilePhoneCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfilePhoneCell.h; sourceTree = "<group>"; };
@@ -6358,7 +6358,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6411,7 +6411,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.1.1;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6468,7 +6468,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6524,7 +6524,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.1.1;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -6574,7 +6574,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6592,7 +6592,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6609,7 +6609,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6626,7 +6626,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 176;
+				CURRENT_PROJECT_VERSION = 177;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
