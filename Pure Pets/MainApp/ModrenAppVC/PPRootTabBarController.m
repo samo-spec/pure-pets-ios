@@ -46,6 +46,7 @@ static NSInteger const PPRootTabIndexChats = 1;
 static NSInteger const PPRootTabIndexAdd = 2;
 static NSInteger const PPRootTabIndexOrders = 3;
 static NSInteger const PPRootTabIndexSettings = 4;
+static NSInteger const PPRootTabIndexFavorites = 5;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
@@ -56,6 +57,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 
 @interface PPRootTabBarController () <UINavigationControllerDelegate>
 @property (nonatomic, strong) UIButton *leadingTabButton;
+@property (nonatomic, strong) UIButton *trailingTabButton;
 @property (nonatomic, strong) UIButton *emptyCard;
 
 @property (nonatomic, strong) UITabBar *premiumTabbarView;
@@ -76,6 +78,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 @property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
 @property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
+@property (nonatomic, assign) CGFloat premiumDockAppliedItemWidth;
 @property (nonatomic, strong, nullable) UIControl *blockedOverlayView;
 @property (nonatomic, strong, nullable) UIView *blockedOverlayCardView;
 @property (nonatomic, strong, nullable) LOTAnimationView *blockedHeaderAnimationView;
@@ -165,6 +168,16 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
     return nil;
 }
 
+- (nullable UIView *)pp_itemViewForItem:(UITabBarItem *)item
+{
+    @try {
+        id candidate = [item valueForKey:@"view"];
+        return [candidate isKindOfClass:UIView.class] ? candidate : nil;
+    } @catch (__unused NSException *exception) {
+        return nil;
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
@@ -174,13 +187,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
             continue;
         }
 
-        UIView *itemView = nil;
-        @try {
-            id candidate = [item valueForKey:@"view"];
-            itemView = [candidate isKindOfClass:UIView.class] ? candidate : nil;
-        } @catch (__unused NSException *exception) {
-            itemView = nil;
-        }
+        UIView *itemView = [self pp_itemViewForItem:item];
         if (!itemView || CGRectGetWidth(itemView.bounds) <= 0.0) {
             continue;
         }
@@ -279,22 +286,14 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
-    /*
-     
-     
-     UINavigationController *cartNav =
-     [self nav:[[MyItemsViewController alloc]initWithMode:MyItemsModeFavorites]
-          title:kLang(@"showfav")
-          icon:@"suit.heart" selectedImage:@"pawlove"];
-     
-     
-     
-     UINavigationController *cartNav =
-     [self nav:[MyItemsViewController new]
-          title:kLang(@"showfav")
-          icon:@"suit.heart" selectedImage:@"pawlove"];
-     
-     */
+
+    UINavigationController *favoritesNav =
+        [self nav:[[MyItemsViewController alloc] initWithMode:MyItemsModeFavorites]
+            title:kLang(@"myitems_dock_title")
+             icon:@"heart"
+    selectedImage:@"heart.fill"];
+    favoritesNav.tabBarItem.accessibilityLabel = kLang(@"myitems_dock_title");
+    favoritesNav.tabBarItem.accessibilityHint = kLang(@"a11y_tab_favorites_hint");
    /*
     UINavigationController *searchNav =
     [self nav:[OrderHistoryViewController new]
@@ -309,13 +308,17 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     
     */
 
-    self.viewControllers = @[
+    NSMutableArray<UIViewController *> *rootControllers = [@[
         homeNav,
         notiNav,
         addNav,
         cartNav,
         settingsNav
-    ];
+    ] mutableCopy];
+    if (PPIOS26()) {
+        [rootControllers addObject:favoritesNav];
+    }
+    self.viewControllers = rootControllers.copy;
 
     // ── Centralized tab bar state management ──
     // Set self as delegate for every tab's navigation controller so
@@ -665,8 +668,10 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            self.premiumDockAppliedItemWidth = 0.0;
             [self pp_updatePremiumBottomFadeAppearance];
             [self pp_applyGuestProfileAnimationTint];
+            [self pp_updateTabBarSelectionIndicatorIfNeeded];
         }
     }
 }
@@ -1390,20 +1395,49 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         return;
     }
 
-    CGFloat itemWidth = floor(tabBarSize.width / MAX(1.0, (CGFloat)dockTabBar.items.count));
+    CGFloat itemWidth =
+        floor(tabBarSize.width / MAX(1.0, (CGFloat)dockTabBar.items.count));
     if (itemWidth <= 0.0) {
         return;
     }
 
     CGSize itemSize = CGSizeMake(itemWidth, tabBarSize.height);
-    CGSize indicatorSize = CGSizeMake(MIN(60.0, MAX(46.0, itemWidth - 18.0)), 34.0);
+    CGSize indicatorSize =
+        CGSizeMake(itemWidth,
+                   MIN(58.0, MAX(44.0, tabBarSize.height - 22.0)));
     UIColor *fillColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.10)];
     UIColor *strokeColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
-    dockTabBar.selectionIndicatorImage =
+    UIImage *indicatorImage =
         [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
                                             indicatorSize:indicatorSize
                                                 fillColor:fillColor
                                               strokeColor:strokeColor];
+
+    if (@available(iOS 26.0, *)) {
+        BOOL geometryAlreadyApplied =
+            fabs(self.premiumDockAppliedItemWidth - itemWidth) < 0.5 &&
+            dockTabBar.standardAppearance.selectionIndicatorImage != nil;
+        if (geometryAlreadyApplied) {
+            return;
+        }
+
+        UITabBarAppearance *appearance = [dockTabBar.standardAppearance copy];
+        appearance.stackedItemPositioning = UITabBarItemPositioningCentered;
+        appearance.stackedItemWidth = itemWidth;
+        appearance.stackedItemSpacing = 0.0;
+        appearance.selectionIndicatorImage =
+            [indicatorImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+
+        dockTabBar.itemPositioning = UITabBarItemPositioningCentered;
+        dockTabBar.itemWidth = itemWidth;
+        dockTabBar.itemSpacing = 0.0;
+        dockTabBar.standardAppearance = appearance;
+        dockTabBar.scrollEdgeAppearance = [appearance copy];
+        self.premiumDockAppliedItemWidth = itemWidth;
+        return;
+    }
+
+    dockTabBar.selectionIndicatorImage = indicatorImage;
 }
 
 - (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
@@ -1423,7 +1457,10 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                                           (itemSize.height - indicatorSize.height) * 0.5,
                                           indicatorSize.width,
                                           indicatorSize.height);
-        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:indicatorRect cornerRadius:17.0];
+        CGFloat cornerRadius = MIN(indicatorSize.width, indicatorSize.height) * 0.5;
+        UIBezierPath *path =
+            [UIBezierPath bezierPathWithRoundedRect:indicatorRect
+                                      cornerRadius:cornerRadius];
         [fillColor setFill];
         [path fill];
         [strokeColor setStroke];
@@ -1436,6 +1473,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 {
     [self pp_setupPremiumBottomFade];
     [self addPlusTabBarButton];
+    //[self addNovaTabBarButton];
     [self pp_setupPremiumNovaButton];
 
     if (!PPIOS26()) {
@@ -1470,6 +1508,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     appearance.backgroundEffect = nil;
     appearance.backgroundColor = UIColor.redColor;
     appearance.shadowColor = UIColor.clearColor;
+    if (@available(iOS 26.0, *)) {
+        appearance.stackedItemPositioning = UITabBarItemPositioningFill;
+        appearance.stackedItemWidth = 0.0;
+        appearance.stackedItemSpacing = 0.0;
+    }
 
     UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
     UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
@@ -1500,8 +1543,9 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     NSArray<NSNumber *> *visibleTabIndexes = @[
         @(PPRootTabIndexHome),
+        @(PPRootTabIndexFavorites),
         @(PPRootTabIndexChats),
-        @(PPRootTabIndexSettings),
+       // @(PPRootTabIndexSettings),
         @(PPRootTabIndexOrders)
     ];
     NSMutableArray<UITabBarItem *> *items = [NSMutableArray arrayWithCapacity:visibleTabIndexes.count];
@@ -1524,13 +1568,28 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     if (@available(iOS 26.0, *)) {
         dockHeight = 86.0;
     }
-    [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? -0 : 4],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:PPIOS26() ? 12 : -4],
+    NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
-
+    if (PPIOS26()) {
+     
+        
+        [dockConstraints addObject:
+            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-8.0]];
+        
+            [dockConstraints addObject:
+             [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:12.0]];
+            
+        
+    } else {
+        [dockConstraints addObject:
+            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
+        [dockConstraints addObject:
+            [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
+    }
+    [NSLayoutConstraint activateConstraints:dockConstraints];
+    dockView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.1];
     // Resolve the real dock width before assigning its initial selected item.
     // Otherwise UIKit can build and retain title labels using a transitional
     // launch-time width, intermittently producing Arabic ellipses.
@@ -1883,6 +1942,10 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         case PPRootTabIndexChats:
             normalSymbolName = @"bubble.left.and.bubble.right";
             selectedSymbolName = @"bubble.left.and.bubble.right.fill";
+            break;
+        case PPRootTabIndexFavorites:
+            normalSymbolName = @"heart";
+            selectedSymbolName = @"heart.fill";
             break;
         case PPRootTabIndexOrders:
             return [self pp_profileTabItemImageSelected:selected];
@@ -2604,7 +2667,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
-            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
+            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
             [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
@@ -2626,6 +2689,82 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }
 }
 
+
+
+- (void)addNovaTabBarButton {
+
+    
+
+    UIButton *NovaButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    NovaButton.translatesAutoresizingMaskIntoConstraints = NO;
+    NovaButton.adjustsImageWhenHighlighted = NO;
+ 
+
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIImage *icon = [UIImage imageNamed:@"letter-n"]  ;
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration =
+            [UIButtonConfiguration glassButtonConfiguration];
+        configuration.image = icon;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.baseForegroundColor = accentColor;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
+        configuration.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
+        configuration.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
+        NovaButton.configuration = configuration;
+        NovaButton.tintColor = accentColor;
+    } else {
+        [NovaButton setImage:icon forState:UIControlStateNormal];
+        NovaButton.backgroundColor =
+            [UIColor.systemBackgroundColor colorWithAlphaComponent:0.92];
+        NovaButton.tintColor = accentColor;
+        NovaButton.layer.borderWidth = 0.5;
+        [NovaButton pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.10]];
+    }
+    NovaButton.layer.cornerRadius = 28.0;
+    PPApplyContinuousCorners(NovaButton, 28.0);
+    [NovaButton pp_setShadowColor:UIColor.blackColor];
+    NovaButton.layer.shadowOpacity = 0.06;
+    NovaButton.layer.shadowRadius = 16.0;
+    NovaButton.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    NovaButton.layer.masksToBounds = NO;
+
+    [NovaButton addTarget:self action:@selector(presentBottomSheet) forControlEvents:UIControlEventTouchUpInside];
+    [NovaButton addTarget:self action:@selector(pp_premiumControlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [NovaButton addTarget:self action:@selector(pp_premiumControlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+
+    // ── Accessibility: Add new post button ──
+    NovaButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_new", @"show ai assistant");
+    NovaButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_add_new_hint", @"show ai assistant");
+    NovaButton.accessibilityTraits = UIAccessibilityTraitButton;
+
+    [self.view addSubview:NovaButton];
+    self.trailingTabButton = NovaButton;
+
+    if (@available(iOS 26.0, *)) {
+        [NSLayoutConstraint activateConstraints:@[
+            [NovaButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
+            [NovaButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
+            [NovaButton.widthAnchor constraintEqualToConstant:58.0],
+            [NovaButton.heightAnchor constraintEqualToConstant:58.0]
+        ]];
+        // Symbol effect (iOS 26+ only)
+        __weak UIButton *weakButton = NovaButton;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakButton.imageView addSymbolEffect:[[NSSymbolWiggleEffect wiggleForwardEffect] effectWithByLayer]
+                                         options:[NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
+        });
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [NovaButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+            [NovaButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
+            [NovaButton.widthAnchor constraintEqualToConstant:58.0],
+            [NovaButton.heightAnchor constraintEqualToConstant:58.0]
+        ]];
+        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
+    }
+}
+
 - (void)pp_raiseBelowIOS26AddButtonAboveSystemTabBar
 {
     if (PPIOS26() || !self.leadingTabButton) {
@@ -2636,6 +2775,12 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     self.leadingTabButton.layer.zPosition = 1000.0;
     self.leadingTabButton.layer.masksToBounds = NO;
     [self.view bringSubviewToFront:self.leadingTabButton];
+    
+     self.trailingTabButton.layer.zPosition = 1001.0;
+    self.trailingTabButton.layer.masksToBounds = NO;
+    [self.view bringSubviewToFront:self.trailingTabButton];
+    
+    
 }
 
 - (void)leadingTabTapped {

@@ -2644,6 +2644,23 @@
 "myitems_hero_subtitle_ads" = "إدارة جميع إعلاناتك ومنتجاتك";
 "myitems_hero_subtitle_fav" = "كل ما قمت بحفظه";
 "myitems_hero_items" = "عنصر";
+"myitems_loading" = "جارٍ تحديث مجموعتك";
+"myitems_dock_title" = "المفضلة";
+"myitems_count_single" = "عنصر واحد";
+"myitems_count_format" = "%ld عنصر";
+"myitems_status_unavailable" = "تعذر عرض المجموعة";
+"myitems_status_signin" = "يتطلب تسجيل الدخول";
+"myitems_empty_ads_title" = "لم تنشر شيئًا هنا بعد";
+"myitems_empty_ads_subtitle" = "ستظهر إعلاناتك في هذه الفئة هنا.";
+"myitems_empty_favorites_title" = "لا توجد عناصر محفوظة هنا";
+"myitems_empty_favorites_subtitle" = "ستبقى العناصر التي تحفظها في هذه الفئة قريبة منك.";
+"myitems_error_title" = "تعذر تحميل هذه المجموعة";
+"myitems_error_subtitle" = "تحقق من اتصالك ثم حاول مرة أخرى.";
+"myitems_signin_title" = "سجل الدخول لعرض مجموعتك";
+"myitems_signin_subtitle" = "ترتبط إعلاناتك ومفضلاتك بحسابك بشكل آمن.";
+"myitems_segment_accessibility" = "فئة العناصر";
+"myitems_refresh_accessibility" = "تحديث المجموعة";
+"a11y_tab_favorites_hint" = "افتح جميع الحيوانات والمنتجات المحفوظة";
 
 /* ── MyServicesVC ── */
 "service_delete_title" = "حذف الخدمة";

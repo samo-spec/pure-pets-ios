@@ -2653,6 +2653,23 @@
 "myitems_hero_subtitle_ads" = "Manage all your ads and products";
 "myitems_hero_subtitle_fav" = "Everything you've saved";
 "myitems_hero_items" = "items";
+"myitems_loading" = "Updating your collection";
+"myitems_dock_title" = "Favorites";
+"myitems_count_single" = "1 item";
+"myitems_count_format" = "%ld items";
+"myitems_status_unavailable" = "Collection unavailable";
+"myitems_status_signin" = "Sign in required";
+"myitems_empty_ads_title" = "Nothing published here yet";
+"myitems_empty_ads_subtitle" = "Your listings in this category will appear here.";
+"myitems_empty_favorites_title" = "No saved items here";
+"myitems_empty_favorites_subtitle" = "Items you save in this category will stay within easy reach.";
+"myitems_error_title" = "Couldn't load this collection";
+"myitems_error_subtitle" = "Check your connection and try again.";
+"myitems_signin_title" = "Sign in to view your collection";
+"myitems_signin_subtitle" = "Your listings and favorites are securely linked to your account.";
+"myitems_segment_accessibility" = "Item category";
+"myitems_refresh_accessibility" = "Refresh collection";
+"a11y_tab_favorites_hint" = "Open all your saved pets and products";
 
 /* ── MyServicesVC ── */
 "service_delete_title" = "Delete Service";
