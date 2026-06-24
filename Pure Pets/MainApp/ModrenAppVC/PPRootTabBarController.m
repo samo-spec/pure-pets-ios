@@ -46,7 +46,7 @@ static NSInteger const PPRootTabIndexChats = 1;
 static NSInteger const PPRootTabIndexAdd = 2;
 static NSInteger const PPRootTabIndexOrders = 3;
 static NSInteger const PPRootTabIndexSettings = 4;
-static NSInteger const PPRootTabIndexFavorites = 5;
+static NSInteger const PPRootTabIndexMyAds = 5;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
@@ -287,13 +287,13 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
 
-    UINavigationController *favoritesNav =
-        [self nav:[[MyItemsViewController alloc] initWithMode:MyItemsModeFavorites]
-            title:kLang(@"myitems_dock_title")
-             icon:@"heart"
-    selectedImage:@"heart.fill"];
-    favoritesNav.tabBarItem.accessibilityLabel = kLang(@"myitems_dock_title");
-    favoritesNav.tabBarItem.accessibilityHint = kLang(@"a11y_tab_favorites_hint");
+    UINavigationController *myAdsNav =
+        [self nav:[[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds]
+            title:kLang(@"showMyAds")
+             icon:@"square.stack.3d.up"
+    selectedImage:@"square.stack.3d.up.fill"];
+    myAdsNav.tabBarItem.accessibilityLabel = kLang(@"showMyAds");
+    myAdsNav.tabBarItem.accessibilityHint = kLang(@"myitems_hero_subtitle_ads");
    /*
     UINavigationController *searchNav =
     [self nav:[OrderHistoryViewController new]
@@ -316,7 +316,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         settingsNav
     ] mutableCopy];
     if (PPIOS26()) {
-        [rootControllers addObject:favoritesNav];
+        [rootControllers addObject:myAdsNav];
     }
     self.viewControllers = rootControllers.copy;
 
@@ -1543,7 +1543,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     NSArray<NSNumber *> *visibleTabIndexes = @[
         @(PPRootTabIndexHome),
-        @(PPRootTabIndexFavorites),
+        @(PPRootTabIndexMyAds),
         @(PPRootTabIndexChats),
        // @(PPRootTabIndexSettings),
         @(PPRootTabIndexOrders)
@@ -1943,9 +1943,9 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             normalSymbolName = @"bubble.left.and.bubble.right";
             selectedSymbolName = @"bubble.left.and.bubble.right.fill";
             break;
-        case PPRootTabIndexFavorites:
-            normalSymbolName = @"heart";
-            selectedSymbolName = @"heart.fill";
+        case PPRootTabIndexMyAds:
+            normalSymbolName = @"square.stack.3d.up";
+            selectedSymbolName = @"square.stack.3d.up.fill";
             break;
         case PPRootTabIndexOrders:
             return [self pp_profileTabItemImageSelected:selected];

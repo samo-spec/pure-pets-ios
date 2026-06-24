@@ -24,9 +24,13 @@
 #import "PPAdSharingHelper.h"
 #import "AddNewAd.h"
 #import "AddNewAccessory.h"
+#import "AccessViewerVC.h"
+#import "AdoptPetDetailsViewController.h"
 
 static CGFloat const PPMyItemsColumnHeight = 332.0;
 static CGFloat const PPMyItemsGridInteritemSpacing = 10.0;
+static CGFloat const PPMyItemsGridVerticalSpacing = 12.0;
+static CGFloat const PPMyItemsMyAdsHorizontalInset = 12.0;
 static NSInteger const PPMyItemsSkeletonCount = 6;
 
 typedef NS_ENUM(NSUInteger, PPMyItemsContentState) {
@@ -503,9 +507,17 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 }
 
+- (CGFloat)pp_horizontalContentInset
+{
+    return self.mode == MyItemsModeMyAds
+        ? PPMyItemsMyAdsHorizontalInset
+        : PPScreenMargin;
+}
+
 - (void)setupHeader
 {
     NSTextAlignment alignment = [Language alignmentForCurrentLanguage];
+    CGFloat horizontalInset = [self pp_horizontalContentInset];
 
     UIView *header = [UIView new];
     header.translatesAutoresizingMaskIntoConstraints = NO;
@@ -662,8 +674,8 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
-        [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
-        [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
+        [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:horizontalInset],
+        [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-horizontalInset],
 
         [surface.topAnchor constraintEqualToAnchor:header.topAnchor],
         [surface.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
@@ -802,12 +814,15 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         __strong typeof(weakSelf) strongSelf = weakSelf;
         CGFloat interItemSpacing = PPMyItemsGridInteritemSpacing;
         CGFloat itemHeight = PPMyItemsColumnHeight;
+        CGFloat horizontalInset = strongSelf
+            ? [strongSelf pp_horizontalContentInset]
+            : PPScreenMargin;
         CGFloat containerWidth = layoutEnvironment.container.contentSize.width;
         if (containerWidth <= 0.0) {
             containerWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
         }
         CGFloat availableWidth =
-            MAX(1.0, containerWidth - (PPScreenMargin * 2.0) - interItemSpacing);
+            MAX(1.0, containerWidth - (horizontalInset * 2.0) - interItemSpacing);
         CGFloat itemWidth = floor(availableWidth / 2.0);
 
         NSCollectionLayoutSize *itemSize =
@@ -842,11 +857,8 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         NSCollectionLayoutSection *section =
             [NSCollectionLayoutSection sectionWithGroup:group];
         section.contentInsets =
-            NSDirectionalEdgeInsetsMake(8.0, PPScreenMargin, PPSpaceXL, PPScreenMargin);
-        section.interGroupSpacing = 12.0;
-        if (strongSelf.contentState == PPMyItemsContentStateLoading) {
-            section.interGroupSpacing = 10.0;
-        }
+            NSDirectionalEdgeInsetsMake(8.0, horizontalInset, PPSpaceXL, horizontalInset);
+        section.interGroupSpacing = PPMyItemsGridVerticalSpacing;
         return section;
     }];
 }
@@ -1469,7 +1481,61 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     }
 }
 
+- (void)collectionView:(UICollectionView *)collectionView
+didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (self.contentState != PPMyItemsContentStateContent ||
+        indexPath.item >= (NSInteger)self.rawItems.count) {
+        return;
+    }
+
+    [self pp_openDetailsForObject:self.rawItems[indexPath.item]];
+}
+
+- (void)pp_openDetailsForObject:(id)object
+{
+    if (!object) {
+        return;
+    }
+
+    if ([object isKindOfClass:PetAd.class] ||
+        [object isKindOfClass:PetAccessory.class]) {
+        [PPOverlayCoordinator pp_openDetailForObject:object
+                                             fromVC:self
+                                         routingNav:nil];
+        return;
+    }
+
+    if ([object isKindOfClass:AdoptPetModel.class]) {
+        AdoptPetModel *model = (AdoptPetModel *)object;
+        NSString *currentUserID = [UserManager sharedManager].currentUser.ID ?: @"";
+        BOOL isOwner =
+            self.mode == MyItemsModeMyAds ||
+            (model.ownerID.length > 0 && [model.ownerID isEqualToString:currentUserID]);
+        AdoptPetDetailsViewController *viewController =
+            [[AdoptPetDetailsViewController alloc] initWithModel:model
+                                                         isOwner:isOwner];
+        viewController.modalPresentationStyle = UIModalPresentationPageSheet;
+        if (@available(iOS 15.0, *)) {
+            UISheetPresentationController *sheet =
+                viewController.sheetPresentationController;
+            sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
+            sheet.prefersGrabberVisible = NO;
+            sheet.preferredCornerRadius = 30.0;
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = YES;
+            sheet.prefersEdgeAttachedInCompactHeight = YES;
+            sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = NO;
+        }
+        [self presentViewController:viewController animated:YES completion:nil];
+    }
+}
+
 #pragma mark - PPUniversalCellDelegate
+
+- (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel
+{
+    [self pp_openDetailsForObject:universalModel.ModelObject];
+}
 
 - (void)PPUniversalCell_tapEdit:(PPUniversalCellViewModel *)universalModel
 {

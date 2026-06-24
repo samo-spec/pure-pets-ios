@@ -12,7 +12,7 @@ static NSString * const PPUltraCareGlowBottomAnimationKey = @"pp.home.ultraCare.
 static NSString * const PPUltraCareOrbitAnimationKey = @"pp.home.ultraCare.orbit";
 static NSString * const PPUltraCarePulseAnimationKey = @"pp.home.ultraCare.pulse";
 static BOOL const PPUltraCareGlowsFaded = YES;
-static CGFloat const PPUltraCareSurfaceCornerRadius = 26.0;
+static CGFloat const PPUltraCareSurfaceCornerRadius = 28.0;
 
 static UIColor *PPUltraCareDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
@@ -300,16 +300,16 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
         [_bottomAmbientGlowView.widthAnchor constraintEqualToConstant:312.0],
         [_bottomAmbientGlowView.heightAnchor constraintEqualToConstant:312.0],
-        [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-134.0],
-        [_bottomAmbientGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:142.0],
+        [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-104.0],
+        [_bottomAmbientGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:112.0],
 
         [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:PPSpaceLG],
         [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:10.0],
         [_topAccentLineView.widthAnchor constraintEqualToConstant:42.0],
         [_topAccentLineView.heightAnchor constraintEqualToConstant:3.0],
 
-        [_heroPortalView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
-        [_heroPortalView.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor],
+        [_heroPortalView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-16.0],
+        [_heroPortalView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18],
         [_heroPortalView.widthAnchor constraintEqualToConstant:96.0],
         [_heroPortalView.heightAnchor constraintEqualToConstant:96.0],
 
@@ -560,7 +560,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [self pp_applyAmbientGlowColor:bottomGlowColor
                              view:_bottomAmbientGlowView
                     gradientLayer:_bottomAmbientGlowLayer
-                        peakAlpha:ambientGlowPeakAlpha];
+                        peakAlpha:dark ? 0.14 : 0.15];
 
     UIColor *portalFill =
         PPUltraCareDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
