@@ -76,6 +76,7 @@ static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
 static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
 static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVisible";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
+static NSString * const PPHomeConfigCacheBackgroundGlowsFadedKey = @"backgroundGlowsFaded";
 static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
 static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
@@ -210,21 +211,28 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 - (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
                        petCount:(NSInteger)petCount
                       isLoading:(BOOL)isLoading
-                       expanded:(BOOL)expanded;
+                       expanded:(BOOL)expanded
+             backgroundGlowsFaded:(BOOL)glowsFaded;
 @end
 
 @implementation PPHomePetProfileCardCell {
     UIView *_cardView;
-    UIView *_largeOrbView;
-    UIView *_smallOrbView;
+    UIView *_accentRailView;
     UIView *_avatarShellView;
     UIImageView *_avatarImageView;
+    UIActivityIndicatorView *_loadingIndicator;
     PPInsetLabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
     UILabel *_collapsedSummaryLabel;
+    UIView *_detailsView;
+    UIView *_detailsDividerView;
     UIStackView *_metaStackView;
+    UIView *_metaPrimaryView;
+    UIImageView *_metaPrimaryIconView;
     PPHomeInsetLabel *_metaPrimaryLabel;
+    UIView *_metaSecondaryView;
+    UIImageView *_metaSecondaryIconView;
     PPHomeInsetLabel *_metaSecondaryLabel;
     UIView *_ctaView;
     UILabel *_ctaLabel;
@@ -232,7 +240,11 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIButton *_expandButton;
     UIImageView *_expandImageView;
     CAGradientLayer *_gradientLayer;
+    CAGradientLayer *_circleGlowLayer;
+    CAGradientLayer *_sheenLayer;
+    NSLayoutConstraint *_detailsHeightConstraint;
     BOOL _expanded;
+    BOOL _backgroundGlowsFaded;
 }
 
 + (NSString *)reuseIdentifier
@@ -252,16 +264,16 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.contentView.isAccessibilityElement = NO;
+    _backgroundGlowsFaded = backgroundGlowsFaded;
 
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    cardView.layer.cornerRadius = 30.0;
-    cardView.layer.borderWidth = 0.7;
-    [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
-    [cardView pp_setShadowColor:UIColor.blackColor];
-    cardView.layer.shadowOpacity = 0.06f;
-    cardView.layer.shadowRadius = 14.0f;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    cardView.layer.cornerRadius = 24.0;
+    cardView.layer.borderWidth = 1.0;
+    cardView.clipsToBounds = YES;
+    [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.12]];
+    [cardView pp_setShadowColor:UIColor.clearColor];
+    cardView.layer.shadowOpacity = 0.0f;
     if (@available(iOS 13.0, *)) {
         cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -269,36 +281,49 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     _cardView = cardView;
 
     CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-    gradientLayer.startPoint = CGPointMake(0.0, 0.18);
+    gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    gradientLayer.cornerRadius = 30.0;
+    gradientLayer.locations = @[@0.0, @0.68, @1.0];
+    gradientLayer.cornerRadius = 24.0;
     [cardView.layer insertSublayer:gradientLayer atIndex:0];
     _gradientLayer = gradientLayer;
 
-    UIView *largeOrbView = [[UIView alloc] init];
-    largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    largeOrbView.userInteractionEnabled = NO;
-    largeOrbView.layer.cornerRadius = 54.0;
-    [cardView addSubview:largeOrbView];
-    _largeOrbView = largeOrbView;
+    CAGradientLayer *circleGlowLayer = [CAGradientLayer layer];
+    circleGlowLayer.startPoint = CGPointMake(0.5, 0.5);
+    circleGlowLayer.endPoint = CGPointMake(1.0, 1.0);
+    circleGlowLayer.locations = @[@0.0, @0.52, @1.0];
+    circleGlowLayer.drawsAsynchronously = YES;
+    if (@available(iOS 12.0, *)) {
+        circleGlowLayer.type = kCAGradientLayerRadial;
+    }
+    [cardView.layer insertSublayer:circleGlowLayer above:gradientLayer];
+    _circleGlowLayer = circleGlowLayer;
 
-    UIView *smallOrbView = [[UIView alloc] init];
-    smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    smallOrbView.userInteractionEnabled = NO;
-    smallOrbView.layer.cornerRadius = 18.0;
-    [cardView addSubview:smallOrbView];
-    _smallOrbView = smallOrbView;
+    CAGradientLayer *sheenLayer = [CAGradientLayer layer];
+    sheenLayer.startPoint = CGPointMake(0.0, 0.0);
+    sheenLayer.endPoint = CGPointMake(1.0, 0.0);
+    sheenLayer.locations = @[@0.0, @0.46, @1.0];
+    sheenLayer.cornerRadius = 24.0;
+    sheenLayer.opacity = 0.58;
+    [cardView.layer insertSublayer:sheenLayer above:gradientLayer];
+    _sheenLayer = sheenLayer;
+
+    UIView *accentRailView = [[UIView alloc] init];
+    accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    accentRailView.userInteractionEnabled = NO;
+    accentRailView.layer.cornerRadius = 1.5;
+    accentRailView.layer.masksToBounds = YES;
+    [cardView addSubview:accentRailView];
+    _accentRailView = accentRailView;
 
     UIView *avatarShellView = [[UIView alloc] init];
     avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    avatarShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
-    avatarShellView.layer.cornerRadius = 41.0;
+    avatarShellView.backgroundColor = UIColor.clearColor;
+    avatarShellView.layer.cornerRadius = 39.0;
     avatarShellView.layer.borderWidth = 1.0;
-    [avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
-    [avatarShellView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    avatarShellView.layer.shadowOpacity = 0.10f;
-    avatarShellView.layer.shadowRadius = 20.0f;
-    avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.28]];
+    [avatarShellView pp_setShadowColor:UIColor.clearColor];
+    avatarShellView.layer.shadowOpacity = 0.0f;
     if (@available(iOS 13.0, *)) {
         avatarShellView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -309,9 +334,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
     avatarImageView.clipsToBounds = YES;
-    avatarImageView.layer.cornerRadius = 34.0;
-    avatarImageView.layer.borderWidth = 1.5;
-    [avatarImageView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.35]];
+    avatarImageView.layer.cornerRadius = 33.0;
+    avatarImageView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         avatarImageView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -319,27 +343,31 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [avatarShellView addSubview:avatarImageView];
     _avatarImageView = avatarImageView;
 
+    UIActivityIndicatorView *loadingIndicator = [[UIActivityIndicatorView alloc]
+        initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    loadingIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    loadingIndicator.hidesWhenStopped = YES;
+    [avatarShellView addSubview:loadingIndicator];
+    _loadingIndicator = loadingIndicator;
+
     PPInsetLabel *eyebrowLabel = [[PPInsetLabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.72];
-    eyebrowLabel.textColor = [UIColor colorWithRed:0.29 green:0.18 blue:0.10 alpha:1.0];
-    eyebrowLabel.layer.cornerRadius = 14.0;
+    eyebrowLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
+    eyebrowLabel.layer.cornerRadius = 11.0;
     eyebrowLabel.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         eyebrowLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
     eyebrowLabel.numberOfLines = 1;
     eyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(4.0, 14.0, 4.0, 14.0);
+    eyebrowLabel.textInsets = UIEdgeInsetsMake(3.0, 10.0, 3.0, 10.0);
     eyebrowLabel.textAlignment = PPHomeCurrentTextAlignment();
     [cardView addSubview:eyebrowLabel];
     _eyebrowLabel = eyebrowLabel;
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
-    titleLabel.textColor = [UIColor colorWithRed:0.23 green:0.13 blue:0.10 alpha:1.0];
+    titleLabel.font = [GM boldFontWithSize:23.0] ?: [UIFont systemFontOfSize:23.0 weight:UIFontWeightBold];
     titleLabel.numberOfLines = 1;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -351,8 +379,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.82];
+    subtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
     subtitleLabel.numberOfLines = 2;
     subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
@@ -361,73 +388,102 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UILabel *collapsedSummaryLabel = [[UILabel alloc] init];
     collapsedSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    collapsedSummaryLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    collapsedSummaryLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.78];
-    collapsedSummaryLabel.numberOfLines = 2;
+    collapsedSummaryLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+    collapsedSummaryLabel.numberOfLines = 1;
     collapsedSummaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     collapsedSummaryLabel.textAlignment = PPHomeCurrentTextAlignment();
     collapsedSummaryLabel.alpha = 0.0;
     [cardView addSubview:collapsedSummaryLabel];
     _collapsedSummaryLabel = collapsedSummaryLabel;
 
+    UIView *detailsView = [[UIView alloc] init];
+    detailsView.translatesAutoresizingMaskIntoConstraints = NO;
+    detailsView.clipsToBounds = YES;
+    detailsView.userInteractionEnabled = NO;
+    [cardView addSubview:detailsView];
+    _detailsView = detailsView;
+
+    UIView *detailsDividerView = [[UIView alloc] init];
+    detailsDividerView.translatesAutoresizingMaskIntoConstraints = NO;
+    detailsDividerView.userInteractionEnabled = NO;
+    [detailsView addSubview:detailsDividerView];
+    _detailsDividerView = detailsDividerView;
+
     UIStackView *metaStackView = [[UIStackView alloc] init];
     metaStackView.translatesAutoresizingMaskIntoConstraints = NO;
     metaStackView.axis = UILayoutConstraintAxisHorizontal;
-    metaStackView.alignment = UIStackViewAlignmentLeading;
-    metaStackView.spacing = 8.0;
-    metaStackView.distribution = UIStackViewDistributionFillProportionally;
-    [cardView addSubview:metaStackView];
+    metaStackView.alignment = UIStackViewAlignmentFill;
+    metaStackView.spacing = 12.0;
+    metaStackView.distribution = UIStackViewDistributionFillEqually;
+    [detailsView addSubview:metaStackView];
     _metaStackView = metaStackView;
+
+    UIView *metaPrimaryView = [[UIView alloc] init];
+    metaPrimaryView.translatesAutoresizingMaskIntoConstraints = NO;
+    [metaStackView addArrangedSubview:metaPrimaryView];
+    _metaPrimaryView = metaPrimaryView;
+
+    UIImageView *metaPrimaryIconView = [[UIImageView alloc] init];
+    metaPrimaryIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    metaPrimaryIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [metaPrimaryView addSubview:metaPrimaryIconView];
+    _metaPrimaryIconView = metaPrimaryIconView;
 
     PPHomeInsetLabel *metaPrimaryLabel = [[PPHomeInsetLabel alloc] init];
     metaPrimaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    metaPrimaryLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    metaPrimaryLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
-    metaPrimaryLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.54];
-    metaPrimaryLabel.layer.cornerRadius = 13.0;
-    metaPrimaryLabel.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        metaPrimaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    metaPrimaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    metaPrimaryLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
+    metaPrimaryLabel.backgroundColor = UIColor.clearColor;
+    metaPrimaryLabel.contentInsets = UIEdgeInsetsZero;
     metaPrimaryLabel.textAlignment = PPHomeCurrentTextAlignment();
-    [metaPrimaryLabel.heightAnchor constraintEqualToConstant:28.0].active = YES;
-    [metaStackView addArrangedSubview:metaPrimaryLabel];
+    metaPrimaryLabel.numberOfLines = 1;
+    metaPrimaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    metaPrimaryLabel.adjustsFontSizeToFitWidth = YES;
+    metaPrimaryLabel.minimumScaleFactor = 0.82;
+    [metaPrimaryView addSubview:metaPrimaryLabel];
     _metaPrimaryLabel = metaPrimaryLabel;
+
+    UIView *metaSecondaryView = [[UIView alloc] init];
+    metaSecondaryView.translatesAutoresizingMaskIntoConstraints = NO;
+    [metaStackView addArrangedSubview:metaSecondaryView];
+    _metaSecondaryView = metaSecondaryView;
+
+    UIImageView *metaSecondaryIconView = [[UIImageView alloc] init];
+    metaSecondaryIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    metaSecondaryIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [metaSecondaryView addSubview:metaSecondaryIconView];
+    _metaSecondaryIconView = metaSecondaryIconView;
 
     PPHomeInsetLabel *metaSecondaryLabel = [[PPHomeInsetLabel alloc] init];
     metaSecondaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    metaSecondaryLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    metaSecondaryLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
-    metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.46];
-    metaSecondaryLabel.layer.cornerRadius = 13.0;
-    metaSecondaryLabel.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        metaSecondaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    metaSecondaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    metaSecondaryLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
+    metaSecondaryLabel.backgroundColor = UIColor.clearColor;
+    metaSecondaryLabel.contentInsets = UIEdgeInsetsZero;
     metaSecondaryLabel.textAlignment = PPHomeCurrentTextAlignment();
-    [metaSecondaryLabel.heightAnchor constraintEqualToConstant:28.0].active = YES;
-    [metaStackView addArrangedSubview:metaSecondaryLabel];
+    metaSecondaryLabel.numberOfLines = 1;
+    metaSecondaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    metaSecondaryLabel.adjustsFontSizeToFitWidth = YES;
+    metaSecondaryLabel.minimumScaleFactor = 0.82;
+    [metaSecondaryView addSubview:metaSecondaryLabel];
     _metaSecondaryLabel = metaSecondaryLabel;
 
     UIView *ctaView = [[UIView alloc] init];
     ctaView.translatesAutoresizingMaskIntoConstraints = NO;
-    ctaView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.26];
-    ctaView.layer.cornerRadius = 18.0;
-    ctaView.layer.borderWidth = 1.0;
-    [ctaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
+    ctaView.layer.cornerRadius = 16.0;
+    ctaView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         ctaView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [cardView addSubview:ctaView];
+    [detailsView addSubview:ctaView];
     _ctaView = ctaView;
 
     UILabel *ctaLabel = [[UILabel alloc] init];
     ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    ctaLabel.textColor = [UIColor colorWithRed:0.22 green:0.13 blue:0.09 alpha:1.0];
+    ctaLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
     ctaLabel.textAlignment = PPHomeCurrentTextAlignment();
+    ctaLabel.numberOfLines = 1;
+    ctaLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    ctaLabel.adjustsFontSizeToFitWidth = YES;
+    ctaLabel.minimumScaleFactor = 0.82;
     [ctaView addSubview:ctaLabel];
     _ctaLabel = ctaLabel;
 
@@ -439,15 +495,19 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UIButton *expandButton = [UIButton buttonWithType:UIButtonTypeCustom];
     expandButton.translatesAutoresizingMaskIntoConstraints = NO;
-    expandButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.26];
-    expandButton.layer.cornerRadius = 18.0;
+    expandButton.layer.cornerRadius = 22.0;
     expandButton.layer.borderWidth = 1.0;
-    [expandButton pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
+    [expandButton pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.16]];
     expandButton.accessibilityTraits = UIAccessibilityTraitButton;
+    expandButton.isAccessibilityElement = NO;
     if (@available(iOS 13.0, *)) {
         expandButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [expandButton addTarget:self action:@selector(pp_handleExpandButtonTap) forControlEvents:UIControlEventTouchUpInside];
+    [expandButton addTarget:self action:@selector(pp_handleExpandButtonTouchDown) forControlEvents:UIControlEventTouchDown];
+    [expandButton addTarget:self action:@selector(pp_handleExpandButtonTouchUp) forControlEvents:UIControlEventTouchUpInside];
+    [expandButton addTarget:self action:@selector(pp_handleExpandButtonTouchUp) forControlEvents:UIControlEventTouchUpOutside];
+    [expandButton addTarget:self action:@selector(pp_handleExpandButtonTouchUp) forControlEvents:UIControlEventTouchCancel];
     [cardView addSubview:expandButton];
     _expandButton = expandButton;
 
@@ -473,63 +533,86 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [largeOrbView.widthAnchor constraintEqualToConstant:108.0],
-        [largeOrbView.heightAnchor constraintEqualToConstant:108.0],
-        [largeOrbView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:28.0],
-        [largeOrbView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-26.0],
-
-        [smallOrbView.widthAnchor constraintEqualToConstant:36.0],
-        [smallOrbView.heightAnchor constraintEqualToConstant:36.0],
-        [smallOrbView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [smallOrbView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [accentRailView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:20.0],
+        [accentRailView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
+        [accentRailView.widthAnchor constraintEqualToConstant:44.0],
+        [accentRailView.heightAnchor constraintEqualToConstant:3.0],
 
         [avatarShellView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
         [avatarShellView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
-        [avatarShellView.widthAnchor constraintEqualToConstant:82.0],
-        [avatarShellView.heightAnchor constraintEqualToConstant:82.0],
+        [avatarShellView.widthAnchor constraintEqualToConstant:78.0],
+        [avatarShellView.heightAnchor constraintEqualToConstant:78.0],
 
         [avatarImageView.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
         [avatarImageView.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
-        [avatarImageView.widthAnchor constraintEqualToConstant:68.0],
-        [avatarImageView.heightAnchor constraintEqualToConstant:68.0],
+        [avatarImageView.widthAnchor constraintEqualToConstant:66.0],
+        [avatarImageView.heightAnchor constraintEqualToConstant:66.0],
+
+        [loadingIndicator.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
+        [loadingIndicator.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
 
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
         [eyebrowLabel.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
-        [eyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+        [eyebrowLabel.heightAnchor constraintEqualToConstant:22.0],
         [eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
 
-        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:12.0],
-        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:6.0],
-        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:30.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:7.0],
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
 
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:5.0],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
 
-        [collapsedSummaryLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [collapsedSummaryLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
-        [collapsedSummaryLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+        [collapsedSummaryLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [collapsedSummaryLabel.trailingAnchor constraintLessThanOrEqualToAnchor:expandButton.leadingAnchor constant:-12.0],
+        [collapsedSummaryLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-20.0],
 
-        [expandButton.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+        [expandButton.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
         [expandButton.topAnchor constraintEqualToAnchor:avatarShellView.bottomAnchor constant:8.0],
-        [expandButton.widthAnchor constraintEqualToConstant:36.0],
-        [expandButton.heightAnchor constraintEqualToConstant:36.0],
+        [expandButton.widthAnchor constraintEqualToConstant:44.0],
+        [expandButton.heightAnchor constraintEqualToConstant:44.0],
 
         [expandImageView.centerXAnchor constraintEqualToAnchor:expandButton.centerXAnchor],
         [expandImageView.centerYAnchor constraintEqualToAnchor:expandButton.centerYAnchor],
         [expandImageView.widthAnchor constraintEqualToConstant:15.0],
         [expandImageView.heightAnchor constraintEqualToConstant:15.0],
 
-        [metaStackView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metaStackView.topAnchor constraintGreaterThanOrEqualToAnchor:subtitleLabel.bottomAnchor constant:12.0],
-        [metaStackView.trailingAnchor constraintLessThanOrEqualToAnchor:expandButton.leadingAnchor constant:-10.0],
+        [detailsView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [detailsView.trailingAnchor constraintEqualToAnchor:expandButton.leadingAnchor constant:-12.0],
+        [detailsView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
 
-        [ctaView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [ctaView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
-        [ctaView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
+        [detailsDividerView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
+        [detailsDividerView.trailingAnchor constraintEqualToAnchor:detailsView.trailingAnchor],
+        [detailsDividerView.topAnchor constraintEqualToAnchor:detailsView.topAnchor],
+        [detailsDividerView.heightAnchor constraintEqualToConstant:1.0],
+
+        [metaStackView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
+        [metaStackView.trailingAnchor constraintEqualToAnchor:detailsView.trailingAnchor],
+        [metaStackView.topAnchor constraintEqualToAnchor:detailsDividerView.bottomAnchor constant:12.0],
+        [metaStackView.heightAnchor constraintEqualToConstant:26.0],
+
+        [metaPrimaryIconView.leadingAnchor constraintEqualToAnchor:metaPrimaryView.leadingAnchor],
+        [metaPrimaryIconView.centerYAnchor constraintEqualToAnchor:metaPrimaryView.centerYAnchor],
+        [metaPrimaryIconView.widthAnchor constraintEqualToConstant:16.0],
+        [metaPrimaryIconView.heightAnchor constraintEqualToConstant:16.0],
+        [metaPrimaryLabel.leadingAnchor constraintEqualToAnchor:metaPrimaryIconView.trailingAnchor constant:7.0],
+        [metaPrimaryLabel.trailingAnchor constraintEqualToAnchor:metaPrimaryView.trailingAnchor],
+        [metaPrimaryLabel.centerYAnchor constraintEqualToAnchor:metaPrimaryView.centerYAnchor],
+
+        [metaSecondaryIconView.leadingAnchor constraintEqualToAnchor:metaSecondaryView.leadingAnchor],
+        [metaSecondaryIconView.centerYAnchor constraintEqualToAnchor:metaSecondaryView.centerYAnchor],
+        [metaSecondaryIconView.widthAnchor constraintEqualToConstant:16.0],
+        [metaSecondaryIconView.heightAnchor constraintEqualToConstant:16.0],
+        [metaSecondaryLabel.leadingAnchor constraintEqualToAnchor:metaSecondaryIconView.trailingAnchor constant:7.0],
+        [metaSecondaryLabel.trailingAnchor constraintEqualToAnchor:metaSecondaryView.trailingAnchor],
+        [metaSecondaryLabel.centerYAnchor constraintEqualToAnchor:metaSecondaryView.centerYAnchor],
+
+        [ctaView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
+        [ctaView.trailingAnchor constraintEqualToAnchor:detailsView.trailingAnchor],
+        [ctaView.bottomAnchor constraintEqualToAnchor:detailsView.bottomAnchor],
         [ctaView.heightAnchor constraintEqualToConstant:44.0],
-        [ctaView.topAnchor constraintEqualToAnchor:metaStackView.bottomAnchor constant:12.0],
 
         [ctaLabel.leadingAnchor constraintEqualToAnchor:ctaView.leadingAnchor constant:14.0],
         [ctaLabel.centerYAnchor constraintEqualToAnchor:ctaView.centerYAnchor],
@@ -540,6 +623,9 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [ctaImageView.widthAnchor constraintEqualToConstant:13.0],
         [ctaImageView.heightAnchor constraintEqualToConstant:13.0],
     ]];
+
+    _detailsHeightConstraint = [detailsView.heightAnchor constraintEqualToConstant:96.0];
+    _detailsHeightConstraint.active = YES;
 
     return self;
 }
@@ -554,8 +640,11 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _gradientLayer.colors = nil;
+    _circleGlowLayer.colors = nil;
+    _sheenLayer.colors = nil;
     [CATransaction commit];
 
+    [_loadingIndicator stopAnimating];
     _eyebrowLabel.text = nil;
     _titleLabel.text = nil;
     _subtitleLabel.text = nil;
@@ -563,6 +652,17 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     _metaSecondaryLabel.text = nil;
     _ctaLabel.text = nil;
     _collapsedSummaryLabel.text = nil;
+    _detailsView.hidden = NO;
+    _detailsView.alpha = 1.0;
+    _detailsView.transform = CGAffineTransformIdentity;
+    _collapsedSummaryLabel.alpha = 0.0;
+    _collapsedSummaryLabel.transform = CGAffineTransformIdentity;
+    _expandImageView.transform = CGAffineTransformIdentity;
+    _avatarShellView.transform = CGAffineTransformIdentity;
+    _detailsHeightConstraint.constant = 96.0;
+    [_avatarShellView.layer removeAllAnimations];
+    [_circleGlowLayer removeAllAnimations];
+    [_sheenLayer removeAllAnimations];
     self.onToggleExpanded = nil;
 }
 
@@ -578,11 +678,24 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [CATransaction setDisableActions:YES];
     _gradientLayer.frame = cardBounds;
     _gradientLayer.cornerRadius = _cardView.layer.cornerRadius;
+
+    CGFloat circleSize = MIN(220.0, MAX(164.0, CGRectGetWidth(cardBounds) * 0.54));
+    BOOL isRTL = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+    CGFloat circleX = isRTL
+        ? -circleSize * 0.30
+        : CGRectGetWidth(cardBounds) - (circleSize * 0.70);
+    _circleGlowLayer.frame = CGRectMake(circleX,
+                                        -circleSize * 0.34,
+                                        circleSize,
+                                        circleSize);
+    _circleGlowLayer.cornerRadius = circleSize * 0.5;
+    _circleGlowLayer.masksToBounds = !_backgroundGlowsFaded;
+
+    _sheenLayer.frame = cardBounds;
+    _sheenLayer.cornerRadius = _cardView.layer.cornerRadius;
     [CATransaction commit];
 
     _eyebrowLabel.layer.cornerRadius = CGRectGetHeight(_eyebrowLabel.bounds) * 0.5;
-    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:cardBounds
-                                                            cornerRadius:_cardView.layer.cornerRadius].CGPath;
 }
 
 - (void)layoutSubviews
@@ -623,19 +736,27 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    [_cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
-    _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
-    [_avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.10 : 0.24)]];
-    [_avatarImageView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.35]];
-    [_ctaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.12 : 0.24)]];
-    [_expandButton pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.12 : 0.24)]];
+    UIColor *borderColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.10]
+        : [UIColor colorWithWhite:0.0 alpha:0.07];
+    [_cardView pp_setBorderColor:borderColor];
+    _cardView.layer.shadowOpacity = 0.0f;
+    [_avatarShellView pp_setBorderColor:isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.16]
+        : [UIColor colorWithWhite:0.0 alpha:0.08]];
+    [_avatarImageView pp_setBorderColor:UIColor.clearColor];
+    [_ctaView pp_setBorderColor:UIColor.clearColor];
+    [_expandButton pp_setBorderColor:borderColor];
+    _detailsDividerView.backgroundColor = borderColor;
 }
 
 - (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
                        petCount:(NSInteger)petCount
                       isLoading:(BOOL)isLoading
                        expanded:(BOOL)expanded
+             backgroundGlowsFaded:(BOOL)glowsFaded
 {
+    _backgroundGlowsFaded = glowsFaded;
     [self pp_refreshThemeColors];
 
     self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
@@ -658,25 +779,33 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     UIColor *textColor = isDark
-        ? [UIColor colorWithRed:0.95 green:0.90 blue:0.86 alpha:1.0]
-        : [UIColor colorWithRed:0.23 green:0.13 blue:0.10 alpha:1.0];
+        ? UIColor.whiteColor
+        : UIColor.labelColor;
+    UIColor *secondaryTextColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.68]
+        : [UIColor colorWithWhite:0.0 alpha:0.58];
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *baseSurfaceColor = isDark
+        ? [UIColor colorWithRed:0.075 green:0.080 blue:0.095 alpha:1.0]
+        : UIColor.systemBackgroundColor;
+    UIColor *secondarySurfaceColor = isDark
+        ? [UIColor colorWithRed:0.105 green:0.115 blue:0.135 alpha:1.0]
+        : UIColor.secondarySystemBackgroundColor;
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
-    NSArray<UIColor *> *gradientColors = nil;
-    UIColor *orbColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.24];
     UIImage *avatarPlaceholder = nil;
+    NSString *primaryIconName = @"cross.case.fill";
+    NSString *secondaryIconName = @"pawprint.fill";
 
     if (isLoading) {
+        accentColor = AppSecondaryTextClr ?: UIColor.systemGrayColor;
         _eyebrowLabel.text = kLang(@"please_wait") ?: @"Loading";
         _titleLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _subtitleLabel.text = kLang(@"pet_profiles_loading_home_subtitle") ?: @"Syncing your companion card and care details for the home feed.";
         _metaPrimaryLabel.text = kLang(@"home_pet_profile_meta_syncing") ?: @"Live sync";
         _metaSecondaryLabel.text = kLang(@"home_pet_profile_meta_health") ?: @"Health details";
         _ctaLabel.text = kLang(@"please_wait") ?: @"Please wait";
-        gradientColors = isDark
-            ? @[[UIColor colorWithRed:0.14 green:0.10 blue:0.08 alpha:1.0],
-                [UIColor colorWithRed:0.18 green:0.13 blue:0.10 alpha:1.0]]
-            : @[[UIColor colorWithRed:0.98 green:0.92 blue:0.82 alpha:1.0],
-                [UIColor colorWithRed:0.94 green:0.83 blue:0.71 alpha:1.0]];
+        primaryIconName = @"arrow.triangle.2.circlepath";
+        secondaryIconName = @"heart.text.square.fill";
         avatarPlaceholder = [[UIImage systemImageNamed:@"hourglass.circle.fill"
                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:30.0
                                                                                                     weight:UIImageSymbolWeightSemibold]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
@@ -692,7 +821,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         }
 
         _eyebrowLabel.text = defaultPet.isDefaultPet
-            ? (kLang(@"pet_default_action") ?: @"Default pet")
+            ? (kLang(@"Default") ?: @"Default")
             : (kLang(@"pet_profiles_title") ?: @"Pet Profiles");
         _titleLabel.text = defaultPet.name.length > 0
             ? defaultPet.name
@@ -701,13 +830,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         NSString *headline = summaryParts.count > 0
             ? [summaryParts componentsJoinedByString:@" · "]
             : (kLang(@"pet_profiles_home_ready") ?: @"Care details ready on home");
-        NSString *detailLine = defaultPet.vaccinations.count > 0
-            ? [NSString stringWithFormat:@"%ld %@ ready for  access",
-               (long)defaultPet.vaccinations.count,
-               (kLang(@"pet_vaccines_short") ?: @"vaccines")]
-            : (kLang(@"home_pet_profile_vaccine_prompt") ?: @"Open the profile to update vaccines, notes, and reminders.");
-        _subtitleLabel.text = [NSString stringWithFormat:@"%@\n%@", headline, detailLine];
-        _metaPrimaryLabel.text = [NSString stringWithFormat:@"💉 %ld %@",
+        _subtitleLabel.text = headline;
+        _metaPrimaryLabel.text = [NSString stringWithFormat:@"%ld %@",
                                   (long)defaultPet.vaccinations.count,
                                   (kLang(@"pet_vaccines_short") ?: @"vaccines")];
         _metaSecondaryLabel.text = [NSString stringWithFormat:@"%ld %@",
@@ -716,11 +840,6 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
                                      ? (kLang(@"pet_profile_single") ?: @"saved profile")
                                      : (kLang(@"pet_profiles_title") ?: @"saved profiles"))];
         _ctaLabel.text = kLang(@"home_pet_profile_open_cta") ?: @"Open pet profile";
-        gradientColors = isDark
-            ? @[[UIColor colorWithRed:0.16 green:0.10 blue:0.06 alpha:1.0],
-                [UIColor colorWithRed:0.22 green:0.12 blue:0.06 alpha:1.0]]
-            : @[[UIColor colorWithRed:0.99 green:0.88 blue:0.76 alpha:1.0],
-                [UIColor colorWithRed:0.96 green:0.65 blue:0.43 alpha:1.0]];
         avatarPlaceholder = defaultPet.imageURL.length > 0
             ? [[UIImage systemImageNamed:@"pawprint.circle.fill"
                        withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:28.0
@@ -729,6 +848,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
             : [PPModernAvatarRenderer avatarImageForName:(defaultPet.name ?: @"") size:84.0];
         _avatarImageView.tintColor = UIColor.whiteColor;
     } else if (hasProfiles) {
+        accentColor = UIColor.systemIndigoColor;
         _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _titleLabel.text = kLang(@"home_pet_profile_choose_default_title") ?: @"Choose your default pet";
         _subtitleLabel.text = kLang(@"home_pet_profile_choose_default_subtitle") ?: @"Pin one companion here for quick home access to care details, vaccines, and reminders.";
@@ -739,34 +859,23 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
                                    : (kLang(@"pet_profiles_title") ?: @"saved profiles"))];
         _metaSecondaryLabel.text = kLang(@"home_pet_profile_set_default_meta") ?: @"Tap to set default";
         _ctaLabel.text = kLang(@"home_pet_profile_open_editor_cta") ?: @"Open pet editor";
-        gradientColors = isDark
-            ? @[[UIColor colorWithRed:0.15 green:0.10 blue:0.07 alpha:1.0],
-                [UIColor colorWithRed:0.20 green:0.12 blue:0.08 alpha:1.0]]
-            : @[[UIColor colorWithRed:0.99 green:0.91 blue:0.82 alpha:1.0],
-                [UIColor colorWithRed:0.96 green:0.75 blue:0.58 alpha:1.0]];
-        orbColor = isDark
-            ? [[UIColor colorWithRed:0.95 green:0.52 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.12]
-            : [[UIColor colorWithRed:0.95 green:0.52 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
+        primaryIconName = @"pawprint.fill";
+        secondaryIconName = @"pin.fill";
         avatarPlaceholder = [[UIImage systemImageNamed:@"pawprint.circle.fill"
                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:30.0
                                                                                                     weight:UIImageSymbolWeightSemibold]]
                               imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.88];
     } else {
+        accentColor = UIColor.systemTealColor;
         _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _titleLabel.text = kLang(@"home_pet_profile_empty_title") ?: @"Create your pet profile";
         _subtitleLabel.text = kLang(@"home_pet_profile_empty_subtitle") ?: @"Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
         _metaPrimaryLabel.text = kLang(@"home_pet_profile_meta_vaccines") ?: @"Vaccines";
         _metaSecondaryLabel.text = kLang(@"home_pet_profile_meta_reminders") ?: @"Reminders";
         _ctaLabel.text = kLang(@"pet_profiles_add_first") ?: @"Add your first pet";
-        gradientColors = isDark
-            ? @[[UIColor colorWithRed:0.13 green:0.10 blue:0.07 alpha:1.0],
-                [UIColor colorWithRed:0.18 green:0.13 blue:0.09 alpha:1.0]]
-            : @[[UIColor colorWithRed:0.98 green:0.93 blue:0.86 alpha:1.0],
-                [UIColor colorWithRed:0.95 green:0.80 blue:0.63 alpha:1.0]];
-        orbColor = isDark
-            ? [[UIColor colorWithRed:0.93 green:0.58 blue:0.32 alpha:1.0] colorWithAlphaComponent:0.10]
-            : [[UIColor colorWithRed:0.93 green:0.58 blue:0.32 alpha:1.0] colorWithAlphaComponent:0.18];
+        primaryIconName = @"plus.circle.fill";
+        secondaryIconName = @"bell.badge.fill";
         avatarPlaceholder = [[UIImage systemImageNamed:@"sparkles"
                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:28.0
                                                                                                     weight:UIImageSymbolWeightSemibold]]
@@ -774,40 +883,77 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.84];
     }
 
-    _gradientLayer.colors = @[(id)gradientColors.firstObject.CGColor,
-                              (id)gradientColors.lastObject.CGColor];
-    _largeOrbView.backgroundColor = orbColor;
-    _smallOrbView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.18 : 0.28)];
-    _titleLabel.textColor = textColor;
-    _ctaLabel.textColor = textColor;
-    _ctaImageView.tintColor = textColor;
+    _cardView.backgroundColor = baseSurfaceColor;
+    _gradientLayer.colors = @[
+        (id)baseSurfaceColor.CGColor,
+        (id)secondarySurfaceColor.CGColor,
+        (id)secondarySurfaceColor.CGColor
+    ];
 
-    UIColor *subtleText = isDark
-        ? [UIColor colorWithRed:0.85 green:0.78 blue:0.72 alpha:0.90]
-        : [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.82];
-    UIColor *tagText = isDark
-        ? [UIColor colorWithRed:0.88 green:0.82 blue:0.76 alpha:0.94]
-        : [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
-    CGFloat pillAlpha = isDark ? 0.16 : 0.54;
-    _eyebrowLabel.textColor = isDark
-        ? [UIColor colorWithRed:0.90 green:0.82 blue:0.74 alpha:1.0]
-        : [UIColor colorWithRed:0.29 green:0.18 blue:0.10 alpha:1.0];
-    _eyebrowLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.24 : 0.72)];
-    _subtitleLabel.textColor = subtleText;
-    _collapsedSummaryLabel.textColor = subtleText;
-    _metaPrimaryLabel.textColor = tagText;
-    _metaPrimaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:pillAlpha];
-    _metaSecondaryLabel.textColor = tagText;
-    _metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.14 : 0.46)];
-    _ctaView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.16 : 0.26)];
-    _expandButton.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.16 : 0.26)];
-    _avatarShellView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.12 : 0.18)];
-    _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
+    CGFloat circlePeakAlpha = isDark ? 0.20 : 0.14;
+    if (_backgroundGlowsFaded) {
+        _circleGlowLayer.locations = @[@0.0, @0.52, @1.0];
+        _circleGlowLayer.colors = @[
+            (id)[accentColor colorWithAlphaComponent:circlePeakAlpha].CGColor,
+            (id)[accentColor colorWithAlphaComponent:(circlePeakAlpha * 0.34)].CGColor,
+            (id)[accentColor colorWithAlphaComponent:0.0].CGColor
+        ];
+    } else {
+        UIColor *solidCircleColor = [accentColor colorWithAlphaComponent:circlePeakAlpha];
+        _circleGlowLayer.locations = @[@0.0, @1.0];
+        _circleGlowLayer.colors = @[
+            (id)solidCircleColor.CGColor,
+            (id)solidCircleColor.CGColor
+        ];
+    }
+
+    _sheenLayer.colors = @[
+        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.025 : 0.24)].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.018 : 0.07)].CGColor
+    ];
+    _accentRailView.backgroundColor = accentColor;
+    _titleLabel.textColor = textColor;
+    _subtitleLabel.textColor = secondaryTextColor;
+    _collapsedSummaryLabel.textColor = secondaryTextColor;
+    _metaPrimaryLabel.textColor = secondaryTextColor;
+    _metaSecondaryLabel.textColor = secondaryTextColor;
+    _eyebrowLabel.textColor = accentColor;
+    _eyebrowLabel.backgroundColor = [accentColor colorWithAlphaComponent:(isDark ? 0.16 : 0.10)];
+    _avatarShellView.backgroundColor = [accentColor colorWithAlphaComponent:(isDark ? 0.12 : 0.07)];
+    [_avatarShellView pp_setBorderColor:[accentColor colorWithAlphaComponent:(isDark ? 0.28 : 0.18)]];
+    _expandButton.backgroundColor = [accentColor colorWithAlphaComponent:(isDark ? 0.14 : 0.08)];
+    [_expandButton pp_setBorderColor:[accentColor colorWithAlphaComponent:(isDark ? 0.28 : 0.18)]];
+    _expandImageView.tintColor = accentColor;
+    _ctaView.backgroundColor = accentColor;
+    _ctaLabel.textColor = UIColor.whiteColor;
+    _ctaImageView.tintColor = UIColor.whiteColor;
+    _loadingIndicator.color = accentColor;
+    _detailsDividerView.backgroundColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.10]
+        : [UIColor colorWithWhite:0.0 alpha:0.07];
+    _cardView.layer.shadowOpacity = 0.0f;
+
+    UIImageSymbolConfiguration *metaSymbolConfiguration =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    _metaPrimaryIconView.image =
+        [[[UIImage systemImageNamed:primaryIconName] imageByApplyingSymbolConfiguration:metaSymbolConfiguration]
+         imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    _metaSecondaryIconView.image =
+        [[[UIImage systemImageNamed:secondaryIconName] imageByApplyingSymbolConfiguration:metaSymbolConfiguration]
+         imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    _metaPrimaryIconView.tintColor = accentColor;
+    _metaSecondaryIconView.tintColor = accentColor;
     _ctaImageView.image = [UIImage systemImageNamed:forwardSymbol
                                   withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
                                                                                                  weight:UIImageSymbolWeightBold]];
-    _expandImageView.tintColor = textColor;
     _avatarImageView.image = avatarPlaceholder;
+    _avatarImageView.alpha = isLoading ? 0.34 : 1.0;
+    if (isLoading) {
+        [_loadingIndicator startAnimating];
+    } else {
+        [_loadingIndicator stopAnimating];
+    }
 
     if (defaultPet.imageURL.length > 0) {
         [[PPImageLoaderManager shared] setImageOnImageView:_avatarImageView
@@ -824,12 +970,17 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     } else {
         _collapsedSummaryLabel.text = primaryMeta.length > 0 ? primaryMeta : secondaryMeta;
     }
-    [self pp_applyExpanded:expanded animated:NO];
-    [self pp_updateAliveMotionIfNeeded];
+    BOOL resolvedExpanded = expanded && !isLoading;
+    [self pp_applyExpanded:resolvedExpanded animated:NO];
+    _expandButton.userInteractionEnabled = !isLoading;
+    _expandButton.alpha = isLoading ? 0.52 : 1.0;
 
     NSString *accessibilityTitle = _titleLabel.text ?: @"";
     NSString *accessibilitySubtitle = _subtitleLabel.text ?: @"";
     self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@", accessibilityTitle, accessibilitySubtitle];
+    self.accessibilityValue = resolvedExpanded
+        ? (kLang(@"home_pet_profile_collapse") ?: @"Expanded")
+        : (kLang(@"home_pet_profile_expand") ?: @"Collapsed");
     self.accessibilityHint = (defaultPet || hasProfiles)
         ? (kLang(@"home_pet_profile_open_hint") ?: @"Opens the pet profile editor")
         : (kLang(@"home_pet_profile_create_hint") ?: @"Opens pet profiles so you can add your first pet");
@@ -841,22 +992,46 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [self layoutIfNeeded];
         [self pp_refreshCardGeometry];
     }
-    
-    _expandButton.alpha=0;
-}
-
-- (void)didMoveToWindow
-{
-    [super didMoveToWindow];
-    [self pp_updateAliveMotionIfNeeded];
 }
 
 - (void)pp_handleExpandButtonTap
 {
+    if (!_expandButton.userInteractionEnabled) {
+        return;
+    }
+
+    UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+    [feedback selectionChanged];
     [self pp_applyExpanded:!_expanded animated:YES];
     if (self.onToggleExpanded) {
         self.onToggleExpanded(_expanded);
     }
+}
+
+- (void)pp_handleExpandButtonTouchDown
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self->_expandButton.transform = CGAffineTransformMakeScale(0.90, 0.90);
+    } completion:nil];
+}
+
+- (void)pp_handleExpandButtonTouchUp
+{
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.72
+          initialSpringVelocity:0.30
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self->_expandButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (BOOL)pp_handleExpandAccessibilityAction:(UIAccessibilityCustomAction *)action
@@ -870,14 +1045,16 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 {
     _expanded = expanded;
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    NSTimeInterval duration = (animated && !reduceMotion) ? 0.42 : 0.0;
+    NSTimeInterval duration = (animated && !reduceMotion) ? 0.40 : 0.0;
     CGFloat detailsAlpha = expanded ? 1.0 : 0.0;
     CGFloat compactAlpha = expanded ? 0.0 : 1.0;
-    CGAffineTransform detailsTransform = expanded ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, -8.0);
-    CGAffineTransform compactTransform = expanded ? CGAffineTransformMakeTranslation(0.0, 6.0) : CGAffineTransformIdentity;
-    CGAffineTransform avatarTransform = expanded ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.94, 0.94);
-    NSString *symbolName = expanded ? @"chevron.up" : @"chevron.down";
-    _expandImageView.image = [UIImage systemImageNamed:symbolName
+    CGAffineTransform detailsTransform = expanded
+        ? CGAffineTransformIdentity
+        : CGAffineTransformMakeTranslation(0.0, -6.0);
+    CGAffineTransform compactTransform = expanded
+        ? CGAffineTransformMakeTranslation(0.0, 5.0)
+        : CGAffineTransformIdentity;
+    _expandImageView.image = [UIImage systemImageNamed:@"chevron.down"
                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14.0
                                                                                                    weight:UIImageSymbolWeightBold]];
     _expandButton.accessibilityLabel = expanded
@@ -894,74 +1071,43 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
                                                    target:self
                                                  selector:@selector(pp_handleExpandAccessibilityAction:)]
     ];
+    self.accessibilityValue = expanded
+        ? (kLang(@"home_pet_profile_collapse") ?: @"Expanded")
+        : (kLang(@"home_pet_profile_expand") ?: @"Collapsed");
+
+    if (expanded) {
+        _detailsView.hidden = NO;
+    }
+    _detailsHeightConstraint.constant = expanded ? 96.0 : 0.0;
 
     void (^changes)(void) = ^{
-        self->_subtitleLabel.alpha = detailsAlpha;
-        self->_metaStackView.alpha = detailsAlpha;
-        self->_ctaView.alpha = detailsAlpha;
+        self->_detailsView.alpha = detailsAlpha;
         self->_collapsedSummaryLabel.alpha = compactAlpha;
-        self->_subtitleLabel.transform = detailsTransform;
-        self->_metaStackView.transform = detailsTransform;
-        self->_ctaView.transform = detailsTransform;
+        self->_detailsView.transform = detailsTransform;
         self->_collapsedSummaryLabel.transform = compactTransform;
-        self->_avatarShellView.transform = avatarTransform;
-        self->_expandButton.transform = expanded ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.96, 0.96);
+        self->_expandButton.transform = CGAffineTransformIdentity;
+        self->_expandImageView.transform = expanded
+            ? CGAffineTransformMakeRotation((CGFloat)M_PI)
+            : CGAffineTransformIdentity;
+        [self.contentView layoutIfNeeded];
     };
 
     if (duration <= 0.0) {
         changes();
+        _detailsView.hidden = !expanded;
         return;
     }
 
+    [self.contentView layoutIfNeeded];
     [UIView animateWithDuration:duration
                           delay:0.0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.26
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:changes
-                     completion:nil];
-}
-
-- (void)pp_updateAliveMotionIfNeeded
-{
-    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
-        [_largeOrbView.layer removeAnimationForKey:@"pp.petProfile.orb.breathe"];
-        [_smallOrbView.layer removeAnimationForKey:@"pp.petProfile.spark.float"];
-        [_avatarShellView.layer removeAnimationForKey:@"pp.petProfile.avatar.float"];
-        return;
-    }
-
-    if (![_largeOrbView.layer animationForKey:@"pp.petProfile.orb.breathe"]) {
-        CABasicAnimation *orbAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-        orbAnimation.fromValue = @0.96;
-        orbAnimation.toValue = @1.04;
-        orbAnimation.duration = 3.8;
-        orbAnimation.autoreverses = YES;
-        orbAnimation.repeatCount = HUGE_VALF;
-        orbAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [_largeOrbView.layer addAnimation:orbAnimation forKey:@"pp.petProfile.orb.breathe"];
-    }
-
-    if (![_smallOrbView.layer animationForKey:@"pp.petProfile.spark.float"]) {
-        CABasicAnimation *sparkAnimation = [CABasicAnimation animationWithKeyPath:@"position.y"];
-        sparkAnimation.byValue = @-5.0;
-        sparkAnimation.duration = 3.1;
-        sparkAnimation.autoreverses = YES;
-        sparkAnimation.repeatCount = HUGE_VALF;
-        sparkAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [_smallOrbView.layer addAnimation:sparkAnimation forKey:@"pp.petProfile.spark.float"];
-    }
-
-    if (![_avatarShellView.layer animationForKey:@"pp.petProfile.avatar.float"]) {
-        CABasicAnimation *avatarAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        avatarAnimation.fromValue = @0.0;
-        avatarAnimation.toValue = @-3.0;
-        avatarAnimation.duration = 4.2;
-        avatarAnimation.autoreverses = YES;
-        avatarAnimation.repeatCount = HUGE_VALF;
-        avatarAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [_avatarShellView.layer addAnimation:avatarAnimation forKey:@"pp.petProfile.avatar.float"];
-    }
+                     completion:^(__unused BOOL finished) {
+        self->_detailsView.hidden = !expanded;
+    }];
 }
 
 @end
@@ -1087,6 +1233,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 
 @interface PPHomeAmbientGlowView : UIView
 @property (nonatomic, strong) CAGradientLayer *radialLayer;
+@property (nonatomic, assign, getter=isFaded) BOOL faded;
 - (void)applyColor:(UIColor *)color
          peakAlpha:(CGFloat)peakAlpha
        middleAlpha:(CGFloat)middleAlpha;
@@ -1104,6 +1251,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     self.accessibilityElementsHidden = YES;
     self.backgroundColor = UIColor.clearColor;
     self.opaque = NO;
+    self.faded = backgroundGlowsFaded;
 
     _radialLayer = [CAGradientLayer layer];
     if (@available(iOS 12.0, *)) {
@@ -1125,6 +1273,8 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     [super layoutSubviews];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
+    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.masksToBounds = !self.isFaded;
     self.radialLayer.frame = self.bounds;
     [CATransaction commit];
 }
@@ -1136,11 +1286,21 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     UIColor *safeColor = color ?: UIColor.clearColor;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.radialLayer.colors = @[
-        (id)[safeColor colorWithAlphaComponent:peakAlpha].CGColor,
-        (id)[safeColor colorWithAlphaComponent:middleAlpha].CGColor,
-        (id)[safeColor colorWithAlphaComponent:0.0].CGColor
-    ];
+    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.masksToBounds = !self.isFaded;
+    if (self.isFaded) {
+        self.backgroundColor = UIColor.clearColor;
+        self.radialLayer.hidden = NO;
+        self.radialLayer.locations = @[@0.0, @0.46, @1.0];
+        self.radialLayer.colors = @[
+            (id)[safeColor colorWithAlphaComponent:peakAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:middleAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:0.0].CGColor
+        ];
+    } else {
+        self.radialLayer.hidden = YES;
+        self.backgroundColor = [safeColor colorWithAlphaComponent:peakAlpha];
+    }
     [CATransaction commit];
 }
 
@@ -1211,6 +1371,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 @property (nonatomic, assign) BOOL petProfilesLoaded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
 @property (nonatomic, assign) BOOL isPetProfileCardExpanded;
+@property (nonatomic, assign) BOOL backgroundGlowsFadedByHomeConfig;
 @property (nonatomic, assign) NSInteger currentOrdersRequestToken;
 @property (nonatomic, assign) NSInteger buyAgainRequestToken;
 @property (nonatomic, assign) NSInteger petProfilesRequestToken;
@@ -1359,6 +1520,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 - (NSString *)pp_completedLastHomeOrderSeenOrderIDDefaultsKey;
 - (NSString *)pp_completedLastHomeOrderSeenSessionDefaultsKey;
 - (void)pp_setCurrentOrdersExpanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)pp_setPetProfileCardExpanded:(BOOL)expanded animated:(BOOL)animated;
 - (void)pp_scrollCurrentOrdersSectionIntoViewAnimated:(BOOL)animated;
 - (NSString *)pp_homeRelativeDateString:(NSDate *)date;
 - (NSString *)pp_homeShortDateString:(NSDate *)date;
@@ -1376,6 +1538,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
                      titleViewMode:(NSString *)titleViewMode
                 premiumCareVisible:(BOOL)premiumCareVisible
                novaFloatingVisible:(BOOL)novaFloatingVisible
+             backgroundGlowsFaded:(BOOL)glowsFaded
                      novaUseGenkit:(BOOL)novaUseGenkit;
 - (BOOL)pp_applyCachedHomeConfigIfAvailable;
 - (BOOL)pp_cachedNovaFloatingVisibility;
@@ -2061,6 +2224,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                      titleViewMode:(NSString *)titleViewMode
                 premiumCareVisible:(BOOL)premiumCareVisible
                novaFloatingVisible:(BOOL)novaFloatingVisible
+             backgroundGlowsFaded:(BOOL)glowsFaded
                      novaUseGenkit:(BOOL)novaUseGenkit
 {
     if (sections.count == 0) {
@@ -2072,6 +2236,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheTitleModeKey : titleViewMode ?: @"location",
         PPHomeConfigCachePremiumCareVisibleKey : @(premiumCareVisible),
         PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
+        PPHomeConfigCacheBackgroundGlowsFadedKey : @(glowsFaded),
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
@@ -2107,6 +2272,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         novaVisible = [cachedNovaVisible boolValue];
     }
 
+    BOOL glowsFaded = backgroundGlowsFaded;
+    id cachedGlowsFaded = payload[PPHomeConfigCacheBackgroundGlowsFadedKey];
+    if ([cachedGlowsFaded respondsToSelector:@selector(boolValue)]) {
+        glowsFaded = [cachedGlowsFaded boolValue];
+    }
+
     NSString *cachedMode = payload[PPHomeConfigCacheTitleModeKey];
     NSString *resolvedTitleViewMode = @"location";
     if ([cachedMode isKindOfClass:NSString.class] &&
@@ -2115,6 +2286,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
 
     self.homePremiumCareVisible = premiumCareVisible;
+    self.backgroundGlowsFadedByHomeConfig = glowsFaded;
     self.homeTitleViewMode = resolvedTitleViewMode;
     self.homeConfigSections = [self pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
                                                                legacyPremiumCareVisible:premiumCareVisible];
@@ -2123,6 +2295,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
 
     [self pp_publishNovaFloatingVisibility:novaVisible];
+    [self pp_updatePremiumBackgroundGlowAppearance];
 
     NSLog(@"[HomeConfig] Applied cached Console section order: %@",
           self.lastAppliedHomeConfigOrderSignature ?: @"");
@@ -3595,6 +3768,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.animatedHomeHeaderSections = [NSMutableSet set];
     self.animatedHomeHorizontalUniversalIdentifiers = [NSMutableSet set];
     self.novaFloatingVisibleByHomeConfig = [self pp_cachedNovaFloatingVisibility];
+    self.backgroundGlowsFadedByHomeConfig = backgroundGlowsFaded;
     [self configureLocationStateMachine];
 
 
@@ -4279,6 +4453,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         novaVisible = [remoteNova boolValue];
     }
 
+    BOOL glowsFaded = backgroundGlowsFaded;
+    id remoteGlowsFaded = data[@"backgroundGlowsFaded"];
+    if ([remoteGlowsFaded respondsToSelector:@selector(boolValue)]) {
+        glowsFaded = [remoteGlowsFaded boolValue];
+    }
+
     BOOL novaUseGenkit = NO;
     id remoteNovaGenkit = data[@"novaUseGenkit"];
     if ([remoteNovaGenkit respondsToSelector:@selector(boolValue)]) {
@@ -4307,6 +4487,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [strongSelf pp_publishNovaFloatingVisibility:novaVisible];
 
         strongSelf.homePremiumCareVisible = premiumCareVisible;
+        BOOL glowModeChanged =
+            strongSelf.backgroundGlowsFadedByHomeConfig != glowsFaded;
+        strongSelf.backgroundGlowsFadedByHomeConfig = glowsFaded;
+        [strongSelf pp_updatePremiumBackgroundGlowAppearance];
 
         NSArray<NSDictionary *> *merged =
             [strongSelf pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
@@ -4316,6 +4500,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                                  titleViewMode:resolvedTitleViewMode
                             premiumCareVisible:premiumCareVisible
                            novaFloatingVisible:novaVisible
+                         backgroundGlowsFaded:glowsFaded
                                  novaUseGenkit:novaUseGenkit];
 
         NSArray<NSNumber *> *nextIdentifiers = [strongSelf pp_orderedHomeSectionIdentifiers];
@@ -4344,6 +4529,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         strongSelf.homeTitleViewMode = resolvedTitleViewMode;
 
         [strongSelf applyBaseSnapshot];
+        if (glowModeChanged) {
+            [strongSelf reloadSection:PPHomeSectionPetProfile];
+        }
 
         // HomeConfig can add/remove the carousel section; keep its payload current.
         [strongSelf fillCarouselBanner];
@@ -6678,6 +6866,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     self.layoutManager =
         [[PPHomeLayoutManager alloc] initWithMainKindsExpanded:self.isMainKindsExpanded];
     self.layoutManager.isCurrentOrdersExpanded = self.isCurrentOrdersExpanded;
+    self.layoutManager.isPetProfileExpanded = self.isPetProfileCardExpanded;
 
     __weak typeof(self) weakSelf = self;
     self.layoutManager.sectionIdentifierProvider = ^PPHomeSection(NSInteger sectionIndex) {
@@ -6943,10 +7132,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [cell configureWithDefaultPet:strongSelf.defaultPetProfile
                                  petCount:strongSelf.petProfiles.count
                                 isLoading:strongSelf.petProfilesLoading
-                                 expanded:YES ];//strongSelf.isPetProfileCardExpanded];
+                                 expanded:strongSelf.isPetProfileCardExpanded
+                       backgroundGlowsFaded:strongSelf.backgroundGlowsFadedByHomeConfig];
+            __weak typeof(strongSelf) weakHome = strongSelf;
             cell.onToggleExpanded = ^(BOOL expanded) {
-                strongSelf.isPetProfileCardExpanded = expanded;
-                [[NSUserDefaults standardUserDefaults] setBool:expanded forKey:PPHomePetProfileCardExpandedKey];
+                __strong typeof(weakHome) home = weakHome;
+                if (!home) return;
+                [home pp_setPetProfileCardExpanded:expanded animated:YES];
             };
             return cell;
         }
@@ -8143,6 +8335,40 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                     atScrollPosition:UICollectionViewScrollPositionTop
                                             animated:animated];
     });
+}
+
+- (void)pp_setPetProfileCardExpanded:(BOOL)expanded animated:(BOOL)animated
+{
+    if (self.isPetProfileCardExpanded == expanded &&
+        (!self.layoutManager || self.layoutManager.isPetProfileExpanded == expanded)) {
+        return;
+    }
+
+    self.isPetProfileCardExpanded = expanded;
+    [[NSUserDefaults standardUserDefaults] setBool:expanded forKey:PPHomePetProfileCardExpandedKey];
+
+    if (!self.collectionView || !self.layoutManager) {
+        return;
+    }
+
+    self.layoutManager.isPetProfileExpanded = expanded;
+    void (^layoutChanges)(void) = ^{
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView layoutIfNeeded];
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        layoutChanges();
+        return;
+    }
+
+    [UIView animateWithDuration:0.40
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:layoutChanges
+                     completion:nil];
 }
 
 
@@ -10327,7 +10553,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (UIBarButtonItem *)pp_buildProfileBarButtonItem
 {
-    static const CGFloat kSize = 36.0;
+    static const CGFloat kSize = 40.0;
     static const CGFloat kBadgeOverflow = 0.0;
     static const CGFloat kContainerSize = kSize + kBadgeOverflow;
 
@@ -10396,7 +10622,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (renderedAvatarName.length == 0) {
         renderedAvatarName = @"PurePets";
     }
-    UIImage *renderedAvatar = [PPModernAvatarRenderer avatarImageForName:renderedAvatarName size:34];
+    UIImage *renderedAvatar = [PPModernAvatarRenderer avatarImageForName:renderedAvatarName size:38.0];
 
     avatar.image = renderedAvatar;
     avatar.tintColor = nil;
@@ -11416,6 +11642,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 }
 
 
+- (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel {
+    id model = universalModel.ModelObject;
+    if (!model) return;
+    [self pp_openOverlayForObject:model];
+}
+
 -(void)PPUniversalCell_changeQuantity:(PPUniversalCellViewModel *)universalModel quantity:(NSInteger)quantity
 {
 
@@ -11687,6 +11919,8 @@ presentingViewController:self
     if (@available(iOS 13.0, *)) {
         resolvedColor = [color resolvedColorWithTraitCollection:self.traitCollection];
     }
+    glowView.faded = self.backgroundGlowsFadedByHomeConfig;
+    [glowView setNeedsLayout];
     [glowView applyColor:resolvedColor peakAlpha:peakAlpha middleAlpha:middleAlpha];
 }
 
@@ -11701,24 +11935,24 @@ presentingViewController:self
     BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
-    UIColor *signatureColor = UIColor.systemPurpleColor; //AppSurfColor ?: 
-    UIColor *supportingColor = AppForgroundColr/*[UIColor colorNamed:@"AppSecColor"]*/ ?: signatureColor;
+    UIColor *signatureColor = AppPrimaryClr ?: UIColor.systemPurpleColor;
+    UIColor *supportingColor = AppPrimaryClrShiner ?: AppForgroundColr ?: signatureColor;
     UIColor *topAtmosphereColor = [UIColor colorNamed:@"HomeAmbientTopGlowColor"] ?: UIColor.systemBlueColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:topAtmosphereColor
-                        peakAlpha:(isDark ? 0.26 : 0.20) * accessibilityScale
-                      middleAlpha:(isDark ? 0.095 : 0.070) * accessibilityScale];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color: supportingColor
-                        peakAlpha:(isDark ? 0.11 : 0.075) * accessibilityScale
-                      middleAlpha:(isDark ? 0.038 : 0.026) * accessibilityScale];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:signatureColor
+                            color:[UIColor colorNamed:@"AppBageGlows"]//topAtmosphereColor
                         peakAlpha:(isDark ? 0.22 : 0.16) * accessibilityScale
                       middleAlpha:(isDark ? 0.078 : 0.054) * accessibilityScale];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                            color:[UIColor colorNamed:@"AppBageGlows"]//supportingColor
+                        peakAlpha:(isDark ? 0.075 : 0.050) * accessibilityScale
+                      middleAlpha:(isDark ? 0.026 : 0.018) * accessibilityScale];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+                            color:[UIColor colorNamed:@"AppBageGlows"]//signatureColor
+                        peakAlpha:(isDark ? 0.27 : 0.21) * accessibilityScale
+                      middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews
@@ -11739,9 +11973,9 @@ presentingViewController:self
     }
     self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
 
-    CGFloat topSize = MIN(520.0, MAX(340.0, width * 1.04));
-    CGFloat midSize = MIN(440.0, MAX(300.0, width * 0.86));
-    CGFloat bottomSize = MIN(560.0, MAX(380.0, width * 1.12));
+    CGFloat topSize = MIN(320.0, MAX(160.0, width * 1.04));
+    CGFloat midSize = MIN(340.0, MAX(150.0, width * 0.86));
+    CGFloat bottomSize = MIN(260.0, MAX(280.0, width * 1.12));
     BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 
     [CATransaction begin];
@@ -11756,13 +11990,13 @@ presentingViewController:self
     self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
     self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
         CGRectGetMidX(bounds),
-        MAX(180.0, height * 0.46)
+        MAX(180.0, height * 0.52)
     );
 
     self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
     self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
         isRTL ? bottomSize * 0.34 : width - (bottomSize * 0.34),
-        height - (bottomSize * 0.12)
+        height - (bottomSize * 0.07)
     );
 
     [CATransaction commit];

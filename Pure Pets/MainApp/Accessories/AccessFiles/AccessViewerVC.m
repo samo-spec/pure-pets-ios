@@ -505,7 +505,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 @end
 
-@interface AccessViewerVC()<UICollectionViewDataSource,UICollectionViewDelegate,CartQuantityUpdateDelegate,UICollectionViewDelegateFlowLayout, SellerProfileVCDelegate>
+@interface AccessViewerVC()<UICollectionViewDataSource,UICollectionViewDelegate,CartQuantityUpdateDelegate,UICollectionViewDelegateFlowLayout, SellerProfileVCDelegate, PPUniversalCellDelegate>
 
 // ── Scaffold ──
 @property (nonatomic, strong) UIScrollView *scrollView;
@@ -2679,6 +2679,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     PetAccessory *accessory = self.suggestedAccessories[indexPath.item];
     PPCellContext context = accessory.accessKindType == AccessTypeFood ? PPCellForFood : PPCellForMarket;
     PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:accessory context:context];
+    cell.delegate = self;
     cell.showsSubtitle = YES;
     cell.hideTopBadge = NO;
     [cell applyViewModel:vm
@@ -3165,6 +3166,45 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
 
 - (void)handleShareAction {
     // Implemented by the hosting AccessViewerVC; this stub satisfies the protocol.
+}
+
+#pragma mark - PPUniversalCellDelegate
+
+- (void)PPUniversalCell_changeQuantity:(PPUniversalCellViewModel *)universalModel quantity:(NSInteger)quantity {
+    if (![universalModel.ModelObject isKindOfClass:[PetAccessory class]]) return;
+    PetAccessory *accessory = (PetAccessory *)universalModel.ModelObject;
+    NSInteger maxStock = MAX(accessory.quantity, 0);
+    NSInteger safeQuantity = MAX(0, quantity);
+
+    if (maxStock <= 0 && safeQuantity > 0) {
+        [PPHUD showError:kLang(@"Out of stock")];
+        safeQuantity = 0;
+    } else if (safeQuantity > maxStock) {
+        safeQuantity = maxStock;
+        [PPHUD showInfo:[NSString stringWithFormat:@"%@ %ld %@",
+                         kLang(@"Only"), (long)maxStock, kLang(@"left in stock")]];
+    }
+
+    if (safeQuantity == 0) {
+        [PPFunc triggerWarningHaptic];
+        [[CartManager sharedManager] removeItemForAccessory:accessory];
+    } else {
+        CartManager *cart = [CartManager sharedManager];
+        CartItem *existing = [cart getCartItemForItemID:accessory.accessoryID];
+        CartItem *item = [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
+        if (existing) {
+            [cart updateQuantity:safeQuantity forItem:item completion:nil];
+        } else {
+            [cart addItem:item presentingViewController:self completion:^(BOOL didAdd, BOOL didCancel) {
+                if (didCancel || !didAdd) return;
+                [PPFunc triggerLightHaptic];
+            }];
+            return;
+        }
+        [PPFunc triggerLightHaptic];
+    }
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
 }
 
 @end

@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
+@property (nonatomic, assign) BOOL isPetProfileExpanded;
 
 /// Resolves the section type for a given index.
 /// This allows the layout to stay in sync with the data source's snapshot.

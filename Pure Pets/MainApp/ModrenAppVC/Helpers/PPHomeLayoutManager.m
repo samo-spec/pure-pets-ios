@@ -116,7 +116,8 @@
                 return [PPHomeFunc accessoriesSectionForWidth:availableWidth];
 
             case PPHomeSectionPetProfile:
-                return [PPHomeFunc petProfileSectionForWidth:availableWidth];
+                return [PPHomeFunc petProfileSectionExpanded:self.isPetProfileExpanded
+                                                    forWidth:availableWidth];
 
             case PPHomeSectionPremiumCare:
                 return [PPHomeFunc premiumCareSectionForWidth:availableWidth];

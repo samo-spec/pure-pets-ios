@@ -373,6 +373,10 @@
 /// Home Pet Care presentation switch.
 /// YES uses PPHomeUltraPremuimPetCareCell; NO preserves PPHomePremiumCareCell.
 static BOOL const PPULTRA_CARE_IS_ACTIVATED = YES;
+
+/// Centralized rendering style for Home-owned background and profile-card glows.
+/// YES keeps soft radial fades; NO renders the same light fields as solid circles.
+static BOOL const backgroundGlowsFaded = YES;
  
 
 #define UsrMgr [UserManager sharedManager]

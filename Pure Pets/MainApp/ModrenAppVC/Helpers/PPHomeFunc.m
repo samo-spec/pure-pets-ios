@@ -152,15 +152,15 @@ static NSCollectionLayoutSection *PPHomeBuildHorizontalRailSection(CGFloat cardW
 static inline CGFloat PPHomeHeroHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 170.0;
+        return 190.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 160.0;
+        return 180.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 140.0;
+        return 164.0;
     }
-    return (PPIOS26() ? 160.0 : 160.0);
+    return 176.0;
 }
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
@@ -260,18 +260,31 @@ static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
     return kCardLarge + 15.0;
 }
 
-static inline CGFloat PPHomePetProfileHeight(CGFloat width)
+static inline CGFloat PPHomePetProfileHeight(BOOL expanded, CGFloat width)
 {
+    if (!expanded) {
+        if (PPHomeWidthIsTablet(width)) {
+            return 178.0;
+        }
+        if (PPHomeWidthIsWidePhone(width)) {
+            return 170.0;
+        }
+        if (PPHomeWidthIsCompactPhone(width)) {
+            return 158.0;
+        }
+        return 164.0;
+    }
+
     if (PPHomeWidthIsTablet(width)) {
-        return 264.0;
+        return 276.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 252.0;
+        return 264.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 228.0;
+        return 246.0;
     }
-    return 240.0;
+    return 254.0;
 }
 
 
@@ -499,11 +512,17 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)petProfileSectionForWidth:(CGFloat)availableWidth
  {
+     return [self petProfileSectionExpanded:YES forWidth:availableWidth];
+ }
+
+ + (NSCollectionLayoutSection *)petProfileSectionExpanded:(BOOL)expanded
+                                                 forWidth:(CGFloat)availableWidth
+ {
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:PPHomePetProfileHeight(availableWidth)]];
+      [NSCollectionLayoutDimension absoluteDimension:PPHomePetProfileHeight(expanded, availableWidth)]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];

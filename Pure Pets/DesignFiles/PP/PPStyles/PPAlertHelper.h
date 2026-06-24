@@ -98,6 +98,48 @@ typedef void (^PPAlertSimpleActionBlock)(void);
              title:(NSString *)title
           subtitle:(NSString * _Nullable)subtitle
         completion:(void (^ _Nullable)(void))completion;
+
+#pragma mark - Backward-compatible (old AlertHelper API)
+
++ (void)showConfirmationIn:(UIViewController *)vc
+                     title:(NSString *)title
+                  subtitle:(NSString *)subtitle
+               placeholder:(NSString * _Nullable)placeholder
+             confirmButton:(NSString *)confirmTitle
+              cancelButton:(NSString * _Nullable)cancelTitle
+              confirmBlock:(void(^_Nullable)(void))confirmBlock
+               cancelBlock:(void(^_Nullable)(void))cancelBlock;
+
++ (void)showConfirmationIn:(UIViewController *)vc
+                     title:(NSString *)title
+                  subtitle:(NSString *)subtitle
+               placeholder:(NSString * _Nullable)placeholder
+             confirmButton:(NSString *)confirmTitle
+              cancelButton:(NSString * _Nullable)cancelTitle
+                      icon:(UIImage * _Nullable)icon
+              confirmBlock:(void(^_Nullable)(void))confirmBlock
+               cancelBlock:(void(^_Nullable)(void))cancelBlock;
+
++ (void)showTextPromptIn:(UIViewController *)vc
+                   title:(NSString *)title
+                subtitle:(NSString * _Nullable)subtitle
+             placeholder:(NSString * _Nullable)placeholder
+             initialText:(NSString * _Nullable)initialText
+             confirmText:(NSString * _Nullable)confirmText
+              cancelText:(NSString * _Nullable)cancelText
+              completion:(void(^)(NSString * _Nullable text))completion;
+
++ (void)showTextPromptIn:(UIViewController *)vc
+                   title:(NSString *)title
+                subtitle:(NSString * _Nullable)subtitle
+             placeholder:(NSString * _Nullable)placeholder
+             initialText:(NSString * _Nullable)initialText
+             confirmText:(NSString * _Nullable)confirmText
+              cancelText:(NSString * _Nullable)cancelText
+             secureEntry:(BOOL)secureEntry
+            keyboardType:(UIKeyboardType)keyboardType
+              completion:(void(^)(NSString * _Nullable text))completion;
+
 @end
 
 

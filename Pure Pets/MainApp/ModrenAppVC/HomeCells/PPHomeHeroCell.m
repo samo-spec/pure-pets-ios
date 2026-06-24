@@ -366,9 +366,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroShadowView.backgroundColor = UIColor.clearColor;
     [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
-    self.heroShadowView.layer.shadowOpacity = 0.12;
-    self.heroShadowView.layer.shadowRadius = 18.0;
-    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroShadowView.layer.shadowOpacity = 0.10;
+    self.heroShadowView.layer.shadowRadius = 24.0;
+    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     if (@available(iOS 13.0, *)) {
         self.heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -377,7 +377,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroSurfaceView = [[UIView alloc] init];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSurfaceView.backgroundColor = [UIColor hx_colorWithHexStr:@"#17171E" alpha:1.0];
-    self.heroSurfaceView.layer.cornerRadius = PPCornerCard+6;
+    self.heroSurfaceView.layer.cornerRadius = PPCornerCard + 8.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -397,7 +397,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         (id)[UIColor colorWithWhite:1.0 alpha:0.14].CGColor,
         (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
     ];
-    self.ambientGlowLayer.hidden = YES; // hidden = yes — ambient glow (design system: reduce visual noise)
+    self.ambientGlowLayer.opacity = 0.72;
+    self.ambientGlowLayer.hidden = NO;
     [self.heroSurfaceView.layer addSublayer:self.ambientGlowLayer];
 
     self.bottomShadeLayer = [CAGradientLayer layer];
@@ -425,13 +426,13 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.brandLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.brandLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.heroSurfaceView addSubview:self.brandLabel];
-    self.brandLabel.hidden = YES;
+    self.brandLabel.hidden = NO;
     self.statusPillView = [[UIView alloc] init];
     self.statusPillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusPillView.layer.cornerRadius = 15.0;
     self.statusPillView.layer.masksToBounds = YES;
     self.statusPillView.hidden = NO;
-    self.brandLabel.alpha = 0.0;
+    self.brandLabel.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.statusPillView];
 
     self.statusIconView = [[UIImageView alloc] init];
@@ -618,6 +619,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.lottieHeaderView.contentMode = UIViewContentModeScaleAspectFill;
     self.lottieHeaderView.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.lottieHeaderView];
+    [self.heroSurfaceView bringSubviewToFront:self.statusPillView];
+    [self.heroSurfaceView bringSubviewToFront:self.headlineLabel];
+    [self.heroSurfaceView bringSubviewToFront:self.supportLabel];
 
     // ── Order Peek Strip (one-line banner below hero card) ──
     [self pp_buildOrderPeekStrip];
@@ -655,11 +659,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.orbViewB.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:48.0],
 
         [self.brandLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
         [self.brandLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-140.0],
 
         [self.statusPillView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
-        [self.statusPillView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:20.0],
+        [self.statusPillView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:16.0],
         [self.statusPillView.heightAnchor constraintEqualToConstant:28.0],
 
         [self.statusIconView.leadingAnchor constraintEqualToAnchor:self.statusPillView.leadingAnchor constant:11.0],
@@ -672,11 +676,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.statusLabel.centerYAnchor constraintEqualToAnchor:self.statusPillView.centerYAnchor],
 
         [self.headlineLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
+        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:44.0],
         self.headlineTrailingConstraint,
 
         [self.supportLabel.leadingAnchor constraintEqualToAnchor:self.headlineLabel.leadingAnchor],
-        [self.supportLabel.topAnchor constraintEqualToAnchor:self.headlineLabel.bottomAnchor constant:10.0],
+        [self.supportLabel.topAnchor constraintEqualToAnchor:self.headlineLabel.bottomAnchor constant:8.0],
         self.supportMaxWidthConstraint,
         self.supportTrailingConstraint,
 
@@ -725,7 +729,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
         self.lottieWidthConstraint,
         self.lottieHeightConstraint,
-        [self.lottieHeaderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-8.0],
+        [self.lottieHeaderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-10.0],
      ]];
 
     // Peek strip constraints — sits below hero surface, overlapping ~14pt behind it
@@ -749,34 +753,27 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.actionButton.hidden = NO;
 
     [self pp_applyPaletteForCurrentTime];
-     [self pp_startAmbientAnimationsIfNeeded];
+    [self pp_startAmbientAnimationsIfNeeded];
      
-    
     self.locationControl.hidden = YES;
 
     return self;
 }
 
-- (UIBezierPath *)pp_pathForRect:(CGRect)rect
-                         topLeft:(CGFloat)tl topRight:(CGFloat)tr
-                      bottomLeft:(CGFloat)bl bottomRight:(CGFloat)br
+- (void)didMoveToWindow
 {
-    UIBezierPath *p = [UIBezierPath bezierPath];
-    [p moveToPoint:CGPointMake(tl, 0)];
-    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect) - tr, 0)];
-    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - tr, tr)
-                 radius:tr startAngle:-M_PI_2 endAngle:0 clockwise:YES];
-    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect), CGRectGetHeight(rect) - br)];
-    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - br, CGRectGetHeight(rect) - br)
-                 radius:br startAngle:0 endAngle:M_PI_2 clockwise:YES];
-    [p addLineToPoint:CGPointMake(bl, CGRectGetHeight(rect))];
-    [p addArcWithCenter:CGPointMake(bl, CGRectGetHeight(rect) - bl)
-                 radius:bl startAngle:M_PI_2 endAngle:M_PI clockwise:YES];
-    [p addLineToPoint:CGPointMake(0, tl)];
-    [p addArcWithCenter:CGPointMake(tl, tl)
-                 radius:tl startAngle:M_PI endAngle:-M_PI_2 clockwise:YES];
-    [p closePath];
-    return p;
+    [super didMoveToWindow];
+
+    if (self.window) {
+        [self pp_startAmbientAnimationsIfNeeded];
+        [self pp_updateLocationPulseForState:self.currentLocationState];
+        return;
+    }
+
+    [self.orbViewA.layer removeAnimationForKey:@"pp.hero.breatheA"];
+    [self.orbViewB.layer removeAnimationForKey:@"pp.hero.breatheB"];
+    [self.ambientGlowLayer removeAnimationForKey:@"pp.hero.glow"];
+    [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
 }
 
 - (void)pp_updateAdaptiveLayoutMetrics
@@ -862,12 +859,6 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.orbViewA.layer.cornerRadius = CGRectGetWidth(self.orbViewA.bounds) * 0.5;
     self.orbViewB.layer.cornerRadius = CGRectGetWidth(self.orbViewB.bounds) * 0.5;
-    
-    
-    CGRect orderPeekStripbounds = self.orderPeekStrip.bounds;
-    UIBezierPath *path = [self pp_pathForRect:orderPeekStripbounds topLeft:0 topRight:0 bottomLeft:12 bottomRight:12];
-    CAShapeLayer *mask = [CAShapeLayer layer];
-    mask.path = path.CGPath;
     self.orderPeekStrip.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
     
     self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -917,6 +908,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.actionButton.transform = CGAffineTransformIdentity;
     self.locationStatusDotView.transform = CGAffineTransformIdentity;
     [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
+    self.brandLabel.alpha = 1.0;
+    self.brandLabel.transform = CGAffineTransformIdentity;
+    self.statusPillView.alpha = 1.0;
+    self.statusPillView.transform = CGAffineTransformIdentity;
+    self.lottieHeaderView.transform = CGAffineTransformIdentity;
 
     self.lottieLoopToken += 1;
     [self.lottieHeaderView stop];
@@ -1135,7 +1131,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     dispatch_once(&onceToken, ^{
         iconNames = @[@"pawprint1", @"pawprint2", @"pawprint3", @"pawprint4", @"pawprint5",  ];
     });
-    NSString *chosenName = iconNames[arc4random_uniform((uint32_t)iconNames.count)];
+    NSString *iconSeed = self.currentUserNameText.length > 0
+        ? self.currentUserNameText
+        : self.currentGreetingText;
+    NSUInteger iconIndex = iconNames.count > 0 ? (iconSeed.hash % iconNames.count) : 0;
+    NSString *chosenName = iconNames[iconIndex];
 
     NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
     CGFloat iconSize = font.pointSize * 0.82;
@@ -1248,7 +1248,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         case PPHomeHeroLocationStateDenied:
             return kLang(@"Hero_LocationChipDenied") ?: @"Allow access";
         case PPHomeHeroLocationStateReady:
-            return Language.isRTL ? @"غيرك موقعك" : (kLang(@"Hero_LocationChipReady") ?: @"Change your location");
+            return kLang(@"Hero_LocationChipReady") ?: @"Change your location";
         case PPHomeHeroLocationStateUnset:
         default:
             return kLang(@"Hero_LocationChipUnset") ?: @"Choose area";
@@ -1311,9 +1311,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:(isDark ? 0.56 : 0.34)]];
-    self.heroShadowView.layer.shadowOpacity = isDark ? 0.18 : 0.12;
-    self.heroShadowView.layer.shadowRadius = 26.0;
-    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroShadowView.layer.shadowOpacity = isDark ? 0.14 : 0.09;
+    self.heroShadowView.layer.shadowRadius = 24.0;
+    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 }
 
 #pragma mark - State Styling
@@ -1527,7 +1527,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.gradientLayer.locations = @[@0.0, @0.16, @0.42, @0.74, @1.0];
     self.ambientGlowLayer.colors = @[
         (id)glowPrimary.CGColor,
-        (id)[glowSecondary colorWithAlphaComponent:0.08].CGColor,
+        (id)[glowSecondary colorWithAlphaComponent:0.12].CGColor,
         (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
     ];
     self.bottomShadeLayer.colors = @[
@@ -1537,8 +1537,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     ];
     [CATransaction commit];
 
-    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.24];
-    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.26];
+    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.20];
+    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.22];
     self.statusPillView.backgroundColor = statusPillFill;
     self.brandLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.80];
 }
@@ -1547,7 +1547,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
 - (void)pp_startAmbientAnimationsIfNeeded
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
+    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
         return;
     }
     if ([self.orbViewA.layer animationForKey:@"pp.hero.breatheA"]) {
@@ -1573,9 +1573,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.orbViewB.layer addAnimation:breatheB forKey:@"pp.hero.breatheB"];
 
     CABasicAnimation *glow = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    glow.fromValue = @(0.72);
-    glow.toValue = @(0.90);
-    glow.duration = 6.2;
+    glow.fromValue = @(0.58);
+    glow.toValue = @(0.82);
+    glow.duration = 7.4;
     glow.autoreverses = YES;
     glow.repeatCount = HUGE_VALF;
     [self.ambientGlowLayer addAnimation:glow forKey:@"pp.hero.glow"];
@@ -1622,10 +1622,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     NSArray<UIView *> *animatedViews = @[
         self.brandLabel,
+        self.statusPillView,
         self.headlineLabel,
         self.supportLabel,
-        self.locationControl,
-        self.actionButton
+        self.locationControl
     ];
 
     for (UIView *view in animatedViews) {
@@ -1640,6 +1640,16 @@ static inline NSString *PPTrimHeroLine(NSString *line)
                      animations:^{
         self.brandLabel.alpha = 1.0;
         self.brandLabel.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.44
+                          delay:0.04
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.10
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.statusPillView.alpha = 1.0;
+        self.statusPillView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.62

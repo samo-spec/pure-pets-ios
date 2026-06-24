@@ -2600,6 +2600,12 @@
 "home_pet_profile_collapse" = "طي";
 "home_pet_profile_expand_hint" = "يعرض تفاصيل ملف الحيوان";
 "home_pet_profile_collapse_hint" = "يعرض تفاصيل أقل لملف الحيوان";
+"alert_eyebrow_success" = "تم بنجاح";
+"alert_eyebrow_error" = "يتطلب إجراء";
+"alert_eyebrow_warning" = "يرجى المراجعة";
+"alert_eyebrow_info" = "التفاصيل";
+"alert_eyebrow_confirmation" = "تأكيد";
+"alert_eyebrow_input" = "إدخال";
 "ipad_promo_title" = "لماذا ملفات الحيوانات؟";
 "ipad_promo_body" = "🐾 احفظ كل تفاصيل حيوانك في مكان واحد\n💉 تتبع التطعيمات ومواعيد الجرعات القادمة\n⏰ ضع تذكيرات للطعام والزيارات البيطرية والعناية\n📋 وصول سريع للسلالة والعمر والملاحظات الصحية";
 "pet_breed_unknown" = "سلالة غير معروفة";
