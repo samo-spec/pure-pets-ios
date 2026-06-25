@@ -460,10 +460,13 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         self.mode == MyItemsModeMyAds ? kLang(@"myadsTitle") : kLang(@"myfavTitle");
     BOOL isNavigationRoot =
         self.navigationController.viewControllers.firstObject == self;
+    BOOL shouldHideBackButton =
+        isNavigationRoot || self.hidesBackButtonWhenOpenedFromHomeDeck;
+    self.navigationItem.hidesBackButton = shouldHideBackButton;
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
                      button:nil
                       title:title
-                   showBack:!isNavigationRoot];
+                   showBack:!shouldHideBackButton];
 
     if (self.hasLoadedOnce && self.contentState != PPMyItemsContentStateLoading) {
         [self fetchDataForCurrentSegment];

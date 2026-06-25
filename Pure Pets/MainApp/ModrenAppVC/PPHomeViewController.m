@@ -11548,6 +11548,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         case PPHomeProfileMenuActionMyAds: {
             if (![PPFunc PPUserCheck]) return;
             MyItemsViewController *vc = [[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds];
+            vc.hidesBackButtonWhenOpenedFromHomeDeck = YES;
             [self.navigationController pushViewController:vc animated:YES];
             break;
         }

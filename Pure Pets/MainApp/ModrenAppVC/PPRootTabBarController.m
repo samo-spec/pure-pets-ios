@@ -287,8 +287,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
 
+    MyItemsViewController *ItemsViewController = [[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds];
+    ItemsViewController.hidesBackButtonWhenOpenedFromHomeDeck = YES;
+    
     UINavigationController *myAdsNav =
-        [self nav:[[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds]
+        [self nav:ItemsViewController
             title:kLang(@"showMyAds")
              icon:@"square.stack.3d.up"
     selectedImage:@"square.stack.3d.up.fill"];

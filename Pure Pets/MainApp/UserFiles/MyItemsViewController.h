@@ -24,6 +24,7 @@ typedef NS_ENUM(NSUInteger, ViewType) {
 - (instancetype)initWithMode:(MyItemsMode)mode;
 @property (nonatomic, strong) UISegmentedControl *segmentedControl;
 @property (nonatomic, assign) ViewType viewType;
+@property (nonatomic, assign) BOOL hidesBackButtonWhenOpenedFromHomeDeck;
 - (void)fetchDataForCurrentSegment;
 - (instancetype)initWithMode:(MyItemsMode)mode viewType:(ViewType)viewType;
 
