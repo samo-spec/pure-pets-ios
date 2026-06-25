@@ -76,7 +76,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 
     [PPHUD dismiss];
     
-        if ([[NSBundle mainBundle] pathForResource:@"AddUserIconAnimation" ofType:@"json"].length > 0) {
+    if ([[NSBundle mainBundle] pathForResource:@"AddUserIconAnimation" ofType:@"json"].length > 0)
+    {
         self.logoAnimationView = [LOTAnimationView animationNamed:@"AddUserIconAnimation"];
         self.logoAnimationView.frame = CGRectMake(0, 0, 240, 240);
         self.logoAnimationView.center = self.view.center;

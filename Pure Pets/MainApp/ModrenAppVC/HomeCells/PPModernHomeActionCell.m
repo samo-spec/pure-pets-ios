@@ -1,5 +1,17 @@
 #import "PPModernHomeActionCell.h"
 
+static CGFloat const PPModernHomeActionCornerRadius = 24.0;
+static CGFloat const PPModernHomeActionMinimumHeight = 52.0;
+static CGFloat const PPModernHomeActionSignalLeading = 7.0;
+static CGFloat const PPModernHomeActionSignalWidth = 4.0;
+static CGFloat const PPModernHomeActionSignalHeight = 18.0;
+static CGFloat const PPModernHomeActionIconPlateSize = 28.0;
+static CGFloat const PPModernHomeActionIconGlyphSize = 15.5;
+static CGFloat const PPModernHomeActionTitleSpacing = 8.0;
+static CGFloat const PPModernHomeActionChevronSpacing = 8.0;
+static CGFloat const PPModernHomeActionChevronWidth = 10.0;
+static CGFloat const PPModernHomeActionTrailingPadding = 16.0;
+
 static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
     if (@available(iOS 13.0, *)) {
@@ -53,7 +65,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 @property (nonatomic, strong) UIView *pinView;
 @property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, strong) CAGradientLayer *surfaceLayer;
-  @property (nonatomic, strong) CAGradientLayer *signalMotionLayer;
+@property (nonatomic, strong) CAGradientLayer *signalMotionLayer;
 @property (nonatomic, copy) NSString *currentTitle;
 @property (nonatomic, copy) NSString *currentIconName;
 @property (nonatomic, strong) UIColor *currentSignalColor;
@@ -106,7 +118,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = 18.0;
+    self.surfaceView.layer.cornerRadius = PPModernHomeActionCornerRadius;
     self.surfaceView.layer.borderWidth = 0.0;
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -125,7 +137,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.signalLineView = [[UIView alloc] init];
     self.signalLineView.translatesAutoresizingMaskIntoConstraints = NO;
     self.signalLineView.userInteractionEnabled = NO;
-    self.signalLineView.layer.cornerRadius = 1.5;
+    self.signalLineView.layer.cornerRadius = PPModernHomeActionSignalWidth * 0.5;
     self.signalLineView.layer.masksToBounds = NO;
     [self.surfaceView addSubview:self.signalLineView];
 
@@ -138,7 +150,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.iconPlateView = [[UIView alloc] init];
     self.iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconPlateView.userInteractionEnabled = NO;
-    self.iconPlateView.layer.cornerRadius = 0.0;
+    self.iconPlateView.layer.cornerRadius = PPModernHomeActionIconPlateSize * 0.5;
     self.iconPlateView.layer.borderWidth = 0.0;
     self.iconPlateView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -154,11 +166,20 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    UIFont *titleFont = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    if (@available(iOS 11.0, *)) {
+        self.titleLabel.font =
+            [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:titleFont
+                                                                             maximumPointSize:17.5];
+        self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    } else {
+        self.titleLabel.font = titleFont;
+    }
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.titleLabel.numberOfLines = 1;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.titleLabel.adjustsFontSizeToFitWidth = NO;
+    self.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.titleLabel.minimumScaleFactor = 0.88;
     self.titleLabel.userInteractionEnabled = NO;
     [self.surfaceView addSubview:self.titleLabel];
 
@@ -183,9 +204,9 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
                                                         forAxis:UILayoutConstraintAxisHorizontal];
     [self.chevronView setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                       forAxis:UILayoutConstraintAxisHorizontal];
-    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                      forAxis:UILayoutConstraintAxisHorizontal];
-    [self.titleLabel setContentHuggingPriority:UILayoutPriorityRequired
+    [self.titleLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
                                        forAxis:UILayoutConstraintAxisHorizontal];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -193,40 +214,41 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
         [self.tapButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.tapButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.tapButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        [self.tapButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPModernHomeActionMinimumHeight],
 
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.tapButton.topAnchor],
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.tapButton.leadingAnchor],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.tapButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.tapButton.bottomAnchor],
 
-        [self.signalLineView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:10.0],
+        [self.signalLineView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPModernHomeActionSignalLeading],
         [self.signalLineView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.signalLineView.widthAnchor constraintEqualToConstant:3.0],
-        [self.signalLineView.heightAnchor constraintEqualToConstant:28.0],
+        [self.signalLineView.widthAnchor constraintEqualToConstant:PPModernHomeActionSignalWidth],
+        [self.signalLineView.heightAnchor constraintEqualToConstant:PPModernHomeActionSignalHeight],
 
-        [self.iconPlateView.leadingAnchor constraintEqualToAnchor:self.signalLineView.trailingAnchor constant:9.0],
+        [self.iconPlateView.leadingAnchor constraintEqualToAnchor:self.signalLineView.trailingAnchor constant:10.0],
         [self.iconPlateView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.iconPlateView.widthAnchor constraintEqualToConstant:18.0],
-        [self.iconPlateView.heightAnchor constraintEqualToConstant:18.0],
+        [self.iconPlateView.widthAnchor constraintEqualToConstant:PPModernHomeActionIconPlateSize],
+        [self.iconPlateView.heightAnchor constraintEqualToConstant:PPModernHomeActionIconPlateSize],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconPlateView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconPlateView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:20.0],
-        [self.iconView.heightAnchor constraintEqualToConstant:18.0],
+        [self.iconView.widthAnchor constraintEqualToConstant:PPModernHomeActionIconGlyphSize],
+        [self.iconView.heightAnchor constraintEqualToConstant:PPModernHomeActionIconGlyphSize],
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconPlateView.trailingAnchor constant:9.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconPlateView.trailingAnchor constant:PPModernHomeActionTitleSpacing],
         [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
 
-        [self.chevronView.leadingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor constant:8.0],
-        [self.chevronView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-12.0],
+        [self.chevronView.leadingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor constant:PPModernHomeActionChevronSpacing],
+        [self.chevronView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPModernHomeActionTrailingPadding],
         [self.chevronView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.chevronView.widthAnchor constraintEqualToConstant:11.0],
-        [self.chevronView.heightAnchor constraintEqualToConstant:13.0],
+        [self.chevronView.widthAnchor constraintEqualToConstant:PPModernHomeActionChevronWidth],
+        [self.chevronView.heightAnchor constraintEqualToConstant:12.0],
 
-        [self.pinView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:9.0],
-        [self.pinView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-11.0],
-        [self.pinView.widthAnchor constraintEqualToConstant:5.0],
-        [self.pinView.heightAnchor constraintEqualToConstant:5.0],
+        [self.pinView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:8.0],
+        [self.pinView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
+        [self.pinView.widthAnchor constraintEqualToConstant:4.5],
+        [self.pinView.heightAnchor constraintEqualToConstant:4.5],
     ]];
 
     [self pp_setShadowColor:UIColor.blackColor];
@@ -234,9 +256,9 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     //self.layer.shadowRadius = 0.0;
     //self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
     
-    self.layer.shadowOpacity = 0.05;
-    self.layer.shadowRadius = 12.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.layer.shadowOpacity = 0.07;
+    self.layer.shadowRadius = 13.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     [self pp_applyTheme];
 }
 
@@ -273,19 +295,27 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
     UIImage *icon = nil;
     if (@available(iOS 13.0, *)) {
-        icon = [UIImage systemImageNamed:(self.currentIconName.length > 0 ? self.currentIconName : @"sparkles")];
+        UIImageSymbolConfiguration *configuration =
+            [UIImageSymbolConfiguration configurationWithPointSize:14.5
+                                                            weight:UIImageSymbolWeightSemibold];
+        icon = [UIImage systemImageNamed:(self.currentIconName.length > 0 ? self.currentIconName : @"sparkles")
+                       withConfiguration:configuration];
+        if (!icon) {
+            icon = [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
+        }
     }
     if (!icon && self.currentIconName.length > 0) {
         icon = [UIImage imageNamed:self.currentIconName];
-    }
-    if (@available(iOS 13.0, *)) {
-        icon = icon ?: [UIImage systemImageNamed:@"sparkles"];
     }
     self.iconView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 
     UIImage *chevronImage = nil;
     if (@available(iOS 13.0, *)) {
-        chevronImage = [UIImage systemImageNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")];
+        UIImageSymbolConfiguration *configuration =
+            [UIImageSymbolConfiguration configurationWithPointSize:11.0
+                                                            weight:UIImageSymbolWeightSemibold];
+        chevronImage = [UIImage systemImageNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
+                               withConfiguration:configuration];
     }
     self.chevronView.image = [chevronImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 
@@ -330,7 +360,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
         (__bridge id)[signal colorWithAlphaComponent:0.94].CGColor
     ];
 
-    self.iconPlateView.backgroundColor = AppClearClr;
+    self.iconPlateView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.30 : 0.14];
     [self.iconPlateView pp_setBorderColor:[signal colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
     self.titleLabel.textColor = titleColor;
     self.iconView.tintColor = signal;
@@ -344,6 +374,8 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.chevronView.tintColor = [signal colorWithAlphaComponent:isDark ? 0.76 : 0.58];
     [self pp_setShadowColor:signal];
     self.layer.shadowOpacity = isDark ? 0.12f : 0.07f;
+    self.layer.shadowRadius = isDark ? 15.0f : 13.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 7.0);
 }
 
 - (UIColor *)pp_neutralSignalColor
@@ -387,15 +419,15 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     [super layoutSubviews];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    CGRect bounds = self.contentView.bounds;
-    self.surfaceLayer.frame = bounds;
+    self.surfaceLayer.frame = self.surfaceView.bounds;
     //self.liquidBorderLayer.frame = bounds;
     self.surfaceLayer.borderWidth =0.4;
-    self.surfaceLayer.cornerRadius = 18;
+    self.surfaceLayer.cornerRadius = PPModernHomeActionCornerRadius;
     self.surfaceLayer.opacity = 0.7;
     self.signalMotionLayer.frame = self.signalLineView.bounds;
-    self.signalMotionLayer.cornerRadius = 18;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:18].CGPath;
+    self.signalMotionLayer.cornerRadius = PPModernHomeActionSignalWidth * 0.5;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                                       cornerRadius:PPModernHomeActionCornerRadius].CGPath;
     [CATransaction commit];
     
  }
@@ -405,7 +437,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     UICollectionViewLayoutAttributes *attributes = [layoutAttributes copy];
     CGRect frame = attributes.frame;
     frame.size.width = [self pp_preferredWidth];
-    frame.size.height = layoutAttributes.frame.size.height;
+    frame.size.height = MAX(layoutAttributes.frame.size.height, PPModernHomeActionMinimumHeight);
     attributes.frame = frame;
     return attributes;
 }
@@ -414,7 +446,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 {
     CGFloat titleWidth = 0.0;
     if (self.currentTitle.length > 0) {
-        NSDictionary *attributes = @{ NSFontAttributeName: self.titleLabel.font ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold] };
+        NSDictionary *attributes = @{ NSFontAttributeName: self.titleLabel.font ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold] };
         CGRect titleRect = [self.currentTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
                                                            options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
                                                         attributes:attributes
@@ -422,9 +454,17 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
         titleWidth = ceil(CGRectGetWidth(titleRect));
     }
 
-    CGFloat fixedWidth = 10.0 + 3.0 + 9.0 + 18.0 + 9.0 + 8.0 + 11.0 + 12.0;
-    CGFloat naturalWidth = fixedWidth + MAX(22.0, titleWidth);
-    return ceil(MIN(MAX(96.0, naturalWidth), 310.0));
+    CGFloat fixedWidth =
+        PPModernHomeActionSignalLeading +
+        PPModernHomeActionSignalWidth +
+        10.0 +
+        PPModernHomeActionIconPlateSize +
+        PPModernHomeActionTitleSpacing +
+        PPModernHomeActionChevronSpacing +
+        PPModernHomeActionChevronWidth +
+        PPModernHomeActionTrailingPadding;
+    CGFloat naturalWidth = fixedWidth + MAX(32.0, titleWidth);
+    return ceil(MIN(MAX(104.0, naturalWidth), 260.0));
 }
 
 #pragma mark - Motion
@@ -517,8 +557,8 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
                           delay:0.0
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.tapButton.transform = CGAffineTransformMakeScale(0.976, 0.976);
-        self.iconPlateView.transform = CGAffineTransformMakeScale(0.93, 0.93);
+        self.surfaceView.transform = CGAffineTransformMakeScale(0.965, 0.965);
+        self.iconPlateView.transform = CGAffineTransformMakeScale(0.965, 0.965);
         self.signalLineView.alpha = 1.0;
     } completion:nil];
 }
@@ -526,7 +566,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 - (void)pp_handleTouchUp
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.tapButton.transform = CGAffineTransformIdentity;
+        self.surfaceView.transform = CGAffineTransformIdentity;
         self.iconPlateView.transform = CGAffineTransformIdentity;
         self.signalLineView.alpha = 0.94;
         return;
@@ -538,7 +578,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
           initialSpringVelocity:0.28
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.tapButton.transform = CGAffineTransformIdentity;
+        self.surfaceView.transform = CGAffineTransformIdentity;
         self.iconPlateView.transform = CGAffineTransformIdentity;
         self.signalLineView.alpha = 0.94;
     } completion:nil];
@@ -568,6 +608,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.alpha = 1.0;
     self.contentView.transform = CGAffineTransformIdentity;
     self.tapButton.transform = CGAffineTransformIdentity;
+    self.surfaceView.transform = CGAffineTransformIdentity;
     self.iconPlateView.transform = CGAffineTransformIdentity;
     self.signalLineView.alpha = 0.94;
     [self pp_applyTheme];

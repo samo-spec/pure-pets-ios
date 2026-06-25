@@ -62,26 +62,21 @@ static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
 - (void)pp_configureSystemGlassChromeIfNeeded
 {
     if (!_glassChromeButton) {
-        return;
+        //return;
     }
 
     if (@available(iOS 26.0, *)) {
-        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        UIColor *liquidBorderColor = AppForgroundColr ?: UIColor.whiteColor;
         UIButtonConfiguration *configuration =
             [UIButtonConfiguration glassButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         configuration.baseForegroundColor = UIColor.clearColor;
+        configuration.baseBackgroundColor = UIColor.clearColor;
 
         UIBackgroundConfiguration *background =
             configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
         background.backgroundInsets = NSDirectionalEdgeInsetsZero;
         background.backgroundColor = UIColor.clearColor;
-        background.strokeColor = [liquidBorderColor colorWithAlphaComponent:isDark ? 0.34 : 0.68];
-        background.strokeWidth = 0.9;
-        background.visualEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
-        background.cornerRadius = CGRectGetHeight(self.bounds) > 0.0 ? CGRectGetHeight(self.bounds) * 0.5 : 21.0;
         configuration.background = background;
 
         _glassChromeButton.configuration = configuration;
@@ -387,7 +382,9 @@ static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
         ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
         : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
     if (@available(iOS 26.0, *)) {
-        _chromeView.layer.cornerRadius = 6;
+        CGFloat chromeHeight = CGRectGetHeight(_chromeView.bounds);
+        _chromeView.layer.cornerRadius = chromeHeight > 0.0 ? chromeHeight * 0.5 : PPSSBChromeCornerRadius;
+        [self pp_configureSystemGlassChromeIfNeeded];
     } else {
         _chromeView.layer.cornerRadius = PPSSBChromeCornerRadius;
     }

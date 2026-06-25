@@ -6,13 +6,18 @@
 #import "PPHomeUltraPremuimPetCareCell.h"
 #import "AppClasses.h"
 
-static NSString * const PPUltraCareDefaultAnimationName = @"Health1";
+static NSString * const PPUltraCareDefaultAnimationName = @"ecg3";
 static NSString * const PPUltraCareGlowTopAnimationKey = @"pp.home.ultraCare.glow.top";
 static NSString * const PPUltraCareGlowBottomAnimationKey = @"pp.home.ultraCare.glow.bottom";
 static NSString * const PPUltraCareOrbitAnimationKey = @"pp.home.ultraCare.orbit";
 static NSString * const PPUltraCarePulseAnimationKey = @"pp.home.ultraCare.pulse";
 static BOOL const PPUltraCareGlowsFaded = YES;
 static CGFloat const PPUltraCareSurfaceCornerRadius = 28.0;
+static CGFloat const PPUltraCareHeroPortalSize = 84.0;
+static CGFloat const PPUltraCareOrbitCarrierSize = 72.0;
+static CGFloat const PPUltraCareHeroInnerSize = 62.0;
+static CGFloat const PPUltraCareFallbackIconSize = 28.0;
+static CGFloat const PPUltraCareAnimationSize = 58.0;
 
 static UIColor *PPUltraCareDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
@@ -61,10 +66,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     LOTAnimationView *_careAnimationView;
     UIImageView *_fallbackIconView;
 
-    UIStackView *_eyebrowStackView;
-    UIView *_eyebrowAccentView;
-    UIView *_eyebrowBadgeView;
-    UILabel *_eyebrowLabel;
+    PPInsetLabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
 
@@ -154,15 +156,15 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _topAccentLineView = [[UIView alloc] init];
     _topAccentLineView.translatesAutoresizingMaskIntoConstraints = NO;
     _topAccentLineView.userInteractionEnabled = NO;
-    _topAccentLineView.layer.cornerRadius = 1.5;
-    PPApplyContinuousCorners(_topAccentLineView, 1.5);
+    _topAccentLineView.layer.cornerRadius = 2.0;
+    PPApplyContinuousCorners(_topAccentLineView, 2.0);
     [_surfaceView addSubview:_topAccentLineView];
 
     _heroPortalView = [[UIView alloc] init];
     _heroPortalView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroPortalView.userInteractionEnabled = NO;
     _heroPortalView.layer.borderWidth = 0.99;
-    PPApplyContinuousCorners(_heroPortalView, 26.0);
+    PPApplyContinuousCorners(_heroPortalView, 22.0);
     [_surfaceView addSubview:_heroPortalView];
 
     _orbitCarrierView = [[UIView alloc] init];
@@ -192,7 +194,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _heroInnerView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroInnerView.userInteractionEnabled = NO;
     _heroInnerView.layer.borderWidth = 0.7;
-    PPApplyContinuousCorners(_heroInnerView, 26.0);
+    PPApplyContinuousCorners(_heroInnerView, 22.0);
     [_heroPortalView addSubview:_heroInnerView];
 
     _fallbackIconView = [[UIImageView alloc] init];
@@ -220,38 +222,19 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _careAnimationView.hidden = YES;
     [_heroInnerView addSubview:_careAnimationView];
 
-    _eyebrowLabel = [[UILabel alloc] init];
+    _eyebrowLabel = [[PPInsetLabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _eyebrowLabel.numberOfLines = 1;
     _eyebrowLabel.adjustsFontSizeToFitWidth = YES;
     _eyebrowLabel.minimumScaleFactor = 0.86;
-    _eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-
-    _eyebrowAccentView = [[UIView alloc] init];
-    _eyebrowAccentView.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowAccentView.userInteractionEnabled = NO;
-    _eyebrowAccentView.layer.cornerRadius = 1.0;
-    PPApplyContinuousCorners(_eyebrowAccentView, 1.0);
-
-    _eyebrowBadgeView = [[UIView alloc] init];
-    _eyebrowBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowBadgeView.userInteractionEnabled = NO;
-    _eyebrowBadgeView.layer.cornerRadius = 12.0;
-    _eyebrowBadgeView.layer.borderWidth = 0.7;
-    _eyebrowBadgeView.layer.masksToBounds = YES;
-    [_eyebrowBadgeView addSubview:_eyebrowLabel];
-    [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_eyebrowBadgeView.leadingAnchor constant:10.0].active = YES;
-    [_eyebrowLabel.trailingAnchor constraintEqualToAnchor:_eyebrowBadgeView.trailingAnchor constant:-10.0].active = YES;
-    [_eyebrowLabel.topAnchor constraintEqualToAnchor:_eyebrowBadgeView.topAnchor constant:4.0].active = YES;
-    [_eyebrowLabel.bottomAnchor constraintEqualToAnchor:_eyebrowBadgeView.bottomAnchor constant:-4.0].active = YES;
-
-    _eyebrowStackView =
-        [[UIStackView alloc] initWithArrangedSubviews:@[ _eyebrowBadgeView]];
-    _eyebrowStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowStackView.axis = UILayoutConstraintAxisHorizontal;
-    _eyebrowStackView.alignment = UIStackViewAlignmentCenter;
-    _eyebrowStackView.spacing = PPSpaceSM;
-    [_surfaceView addSubview:_eyebrowStackView];
+    _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _eyebrowLabel.layer.borderWidth = 0.2;
+    _eyebrowLabel.layer.masksToBounds = YES;
+    _eyebrowLabel.textInsets = UIEdgeInsetsMake(1, 4, 1, 4);
+    if (@available(iOS 13.0, *)) {
+        _eyebrowLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [_surfaceView addSubview:_eyebrowLabel];
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -271,7 +254,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _ctaView = [[UIView alloc] init];
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaView.userInteractionEnabled = NO;
-    _ctaView.layer.borderWidth = 0.7;
+    _ctaView.layer.borderWidth = 0.1;
     PPApplyContinuousCorners(_ctaView, 16.0);
     [_surfaceView addSubview:_ctaView];
 
@@ -303,20 +286,20 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-104.0],
         [_bottomAmbientGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:112.0],
 
-        [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:PPSpaceLG],
-        [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:10.0],
-        [_topAccentLineView.widthAnchor constraintEqualToConstant:42.0],
-        [_topAccentLineView.heightAnchor constraintEqualToConstant:3.0],
+        [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:22.0],
+        [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
+        [_topAccentLineView.widthAnchor constraintEqualToConstant:44.0],
+        [_topAccentLineView.heightAnchor constraintEqualToConstant:4.0],
 
-        [_heroPortalView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-16.0],
+        [_heroPortalView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
         [_heroPortalView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18],
-        [_heroPortalView.widthAnchor constraintEqualToConstant:96.0],
-        [_heroPortalView.heightAnchor constraintEqualToConstant:96.0],
+        [_heroPortalView.widthAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
+        [_heroPortalView.heightAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
 
         [_orbitCarrierView.centerXAnchor constraintEqualToAnchor:_heroPortalView.centerXAnchor],
         [_orbitCarrierView.centerYAnchor constraintEqualToAnchor:_heroPortalView.centerYAnchor],
-        [_orbitCarrierView.widthAnchor constraintEqualToConstant:88.0],
-        [_orbitCarrierView.heightAnchor constraintEqualToConstant:88.0],
+        [_orbitCarrierView.widthAnchor constraintEqualToConstant:PPUltraCareOrbitCarrierSize],
+        [_orbitCarrierView.heightAnchor constraintEqualToConstant:PPUltraCareOrbitCarrierSize],
 
         [_orbitNodeView.centerXAnchor constraintEqualToAnchor:_orbitCarrierView.centerXAnchor],
         [_orbitNodeView.topAnchor constraintEqualToAnchor:_orbitCarrierView.topAnchor constant:1.0],
@@ -325,29 +308,26 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
         [_heroInnerView.centerXAnchor constraintEqualToAnchor:_heroPortalView.centerXAnchor],
         [_heroInnerView.centerYAnchor constraintEqualToAnchor:_heroPortalView.centerYAnchor],
-        [_heroInnerView.widthAnchor constraintEqualToConstant:72.0],
-        [_heroInnerView.heightAnchor constraintEqualToConstant:72.0],
+        [_heroInnerView.widthAnchor constraintEqualToConstant:PPUltraCareHeroInnerSize],
+        [_heroInnerView.heightAnchor constraintEqualToConstant:PPUltraCareHeroInnerSize],
 
         [_fallbackIconView.centerXAnchor constraintEqualToAnchor:_heroInnerView.centerXAnchor],
         [_fallbackIconView.centerYAnchor constraintEqualToAnchor:_heroInnerView.centerYAnchor],
-        [_fallbackIconView.widthAnchor constraintEqualToConstant:30.0],
-        [_fallbackIconView.heightAnchor constraintEqualToConstant:30.0],
+        [_fallbackIconView.widthAnchor constraintEqualToConstant:PPUltraCareFallbackIconSize],
+        [_fallbackIconView.heightAnchor constraintEqualToConstant:PPUltraCareFallbackIconSize],
 
         [_careAnimationView.centerXAnchor constraintEqualToAnchor:_heroInnerView.centerXAnchor],
         [_careAnimationView.centerYAnchor constraintEqualToAnchor:_heroInnerView.centerYAnchor],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:62.0],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:62.0],
+        [_careAnimationView.widthAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
+        [_careAnimationView.heightAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
 
-        [_eyebrowAccentView.widthAnchor constraintEqualToConstant:18.0],
-        [_eyebrowAccentView.heightAnchor constraintEqualToConstant:2.0],
-        [_eyebrowBadgeView.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
-        [_eyebrowBadgeView.widthAnchor constraintGreaterThanOrEqualToConstant:56.0],
-        [_eyebrowStackView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:PPSpaceLG],
-        [_eyebrowStackView.topAnchor constraintEqualToAnchor:_topAccentLineView.bottomAnchor constant:PPSpaceSM],
-        [_eyebrowStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
+        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:18.0],
+        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
+        [_eyebrowLabel.heightAnchor constraintEqualToConstant:22.0],
+        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_heroPortalView.leadingAnchor constant:-14.0],
 
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowStackView.leadingAnchor],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowStackView.bottomAnchor constant:PPSpaceSM],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
         [_titleLabel.trailingAnchor constraintEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
@@ -357,8 +337,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
         [_ctaView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:PPSpaceBase],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-14.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:34.0],
-        [_ctaView.trailingAnchor constraintEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
+        [_ctaView.heightAnchor constraintEqualToConstant:32.0],
+        //[_ctaView.trailingAnchor constraintEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:PPSpaceMD],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -447,7 +427,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
     _heroPortalView.layer.cornerRadius = CGRectGetHeight(_heroPortalView.bounds) * 0.5;
     _heroInnerView.layer.cornerRadius = CGRectGetHeight(_heroInnerView.bounds) * 0.5;
-    _eyebrowBadgeView.layer.cornerRadius = CGRectGetHeight(_eyebrowBadgeView.bounds) * 0.5;
+    _eyebrowLabel.layer.cornerRadius = CGRectGetHeight(_eyebrowLabel.bounds) * 0.5;
 
     CGRect orbitBounds = _orbitCarrierView.bounds;
     _orbitRingLayer.frame = orbitBounds;
@@ -471,7 +451,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
     [_surfaceView bringSubviewToFront:_topAccentLineView];
     [_surfaceView bringSubviewToFront:_heroPortalView];
-    [_surfaceView bringSubviewToFront:_eyebrowStackView];
+    [_surfaceView bringSubviewToFront:_eyebrowLabel];
     [_surfaceView bringSubviewToFront:_titleLabel];
     [_surfaceView bringSubviewToFront:_subtitleLabel];
     [_surfaceView bringSubviewToFront:_ctaView];
@@ -588,9 +568,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _fallbackIconView.tintColor = accent;
 
     _topAccentLineView.backgroundColor = [AppPrimaryClrDarker colorWithAlphaComponent:dark ? 0.88 : 0.82];
-    _eyebrowAccentView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.82 : 0.76];
-    _eyebrowBadgeView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.10];
-    [_eyebrowBadgeView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.14]];
+    _eyebrowLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.10];
+    [_eyebrowLabel pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.14]];
     _eyebrowLabel.textColor = accent;
     _titleLabel.textColor = textColor;
     _subtitleLabel.textColor = secondaryTextColor;
@@ -628,8 +607,6 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _surfaceView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    _eyebrowStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-
     NSTextAlignment alignment = Language.alignmentForCurrentLanguage;
     _eyebrowLabel.textAlignment = alignment;
     _titleLabel.textAlignment = alignment;
@@ -694,7 +671,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     __weak typeof(self) weakSelf = self;
     [AppClasses setAnimationNamed:safeName
                             ToView:_careAnimationView
-                         withSpeed:0.78
+                         withSpeed:0.48
                         completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -785,7 +762,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
 - (NSArray<UIView *> *)pp_copyViews
 {
-    return @[_topAccentLineView, _eyebrowStackView, _titleLabel, _subtitleLabel, _ctaView];
+    return @[_topAccentLineView, _eyebrowLabel, _titleLabel, _subtitleLabel, _ctaView];
 }
 
 - (void)pp_preparePostLayoutEntranceState

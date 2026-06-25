@@ -14,11 +14,12 @@
 #import "UserManager.h"
 #import "UserModel.h"
 
-static const CGFloat PPStoryRingHostSize   = 78.0;
-static const CGFloat PPStoryAvatarSize     = 64.0;
+static const CGFloat PPStoryCardCornerRadius = 24.0;
+static const CGFloat PPStoryRingHostSize   = 82.0;
+static const CGFloat PPStoryAvatarSize     = 68.0;
 static const CGFloat PPStoryRingLineWidth  = 3.0;
 static const CGFloat PPStoryTrackLineWidth = 2.0;
-static const CGFloat PPStoryGlowRadius     = 10.0;
+static const CGFloat PPStoryGlowRadius     = 12.0;
 static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 @interface PPStoryCollectionViewCell ()
@@ -27,6 +28,9 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 @property (nonatomic, strong) CAShapeLayer *dashedRingLayer;
 @property (nonatomic, assign) BOOL isConfiguredUnseen;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
+@property (nonatomic, strong) UIVisualEffectView *cardBackdropView;
+@property (nonatomic, strong) UIView *cardTintView;
+@property (nonatomic, strong) UIView *topHighlightView;
 @end
 
 @implementation PPStoryCollectionViewCell
@@ -39,6 +43,31 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.contentView.backgroundColor = UIColor.clearColor;
         self.contentView.clipsToBounds = NO;
         self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        UIBlurEffect *cardBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        _cardBackdropView = [[UIVisualEffectView alloc] initWithEffect:cardBlur];
+        _cardBackdropView.translatesAutoresizingMaskIntoConstraints = NO;
+        _cardBackdropView.layer.cornerRadius = PPStoryCardCornerRadius;
+        _cardBackdropView.layer.masksToBounds = YES;
+        _cardBackdropView.clipsToBounds = YES;
+        _cardBackdropView.layer.borderWidth = 1.0;
+        [_cardBackdropView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.16]];
+        [_cardBackdropView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.10]];
+        _cardBackdropView.layer.shadowOpacity = 1.0;
+        _cardBackdropView.layer.shadowRadius = 18.0;
+        _cardBackdropView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+        [self.contentView addSubview:_cardBackdropView];
+
+        _cardTintView = [[UIView alloc] initWithFrame:CGRectZero];
+        _cardTintView.translatesAutoresizingMaskIntoConstraints = NO;
+        _cardTintView.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.24];
+        [_cardBackdropView.contentView addSubview:_cardTintView];
+
+        _topHighlightView = [[UIView alloc] initWithFrame:CGRectZero];
+        _topHighlightView.translatesAutoresizingMaskIntoConstraints = NO;
+        _topHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.12];
+        _topHighlightView.layer.cornerRadius = 1.5;
+        [_cardBackdropView.contentView addSubview:_topHighlightView];
 
         _glowView = [[UIView alloc] initWithFrame:CGRectZero];
         _glowView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -70,7 +99,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _nameLabel.font = [GM MidFontWithSize:11.0];
         _nameLabel.textColor = UIColor.labelColor;
-        _nameLabel.numberOfLines = 1;
+        _nameLabel.numberOfLines = 2;
         _nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         _nameLabel.textAlignment = NSTextAlignmentCenter;
         _nameLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -137,12 +166,27 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         [self.contentView addSubview:_addBadgeButton];
 
         [NSLayoutConstraint activateConstraints:@[
+            [_cardBackdropView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4.0],
+            [_cardBackdropView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:2.0],
+            [_cardBackdropView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-2.0],
+            [_cardBackdropView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-2.0],
+
+            [_cardTintView.topAnchor constraintEqualToAnchor:_cardBackdropView.contentView.topAnchor],
+            [_cardTintView.leadingAnchor constraintEqualToAnchor:_cardBackdropView.contentView.leadingAnchor],
+            [_cardTintView.trailingAnchor constraintEqualToAnchor:_cardBackdropView.contentView.trailingAnchor],
+            [_cardTintView.bottomAnchor constraintEqualToAnchor:_cardBackdropView.contentView.bottomAnchor],
+
+            [_topHighlightView.topAnchor constraintEqualToAnchor:_cardBackdropView.contentView.topAnchor constant:10.0],
+            [_topHighlightView.leadingAnchor constraintEqualToAnchor:_cardBackdropView.contentView.leadingAnchor constant:18.0],
+            [_topHighlightView.trailingAnchor constraintEqualToAnchor:_cardBackdropView.contentView.trailingAnchor constant:-18.0],
+            [_topHighlightView.heightAnchor constraintEqualToConstant:3.0],
+
             [_glowView.centerXAnchor constraintEqualToAnchor:_ringHostView.centerXAnchor],
             [_glowView.centerYAnchor constraintEqualToAnchor:_ringHostView.centerYAnchor],
             [_glowView.widthAnchor constraintEqualToConstant:PPStoryRingHostSize + PPStoryGlowRadius * 2.0],
             [_glowView.heightAnchor constraintEqualToConstant:PPStoryRingHostSize + PPStoryGlowRadius * 2.0],
 
-            [_ringHostView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPStoryGlowRadius * 0.5],
+            [_ringHostView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16.0],
             [_ringHostView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
             [_ringHostView.widthAnchor constraintEqualToConstant:PPStoryRingHostSize],
             [_ringHostView.heightAnchor constraintEqualToConstant:PPStoryRingHostSize],
@@ -152,10 +196,11 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
             [_imageView.widthAnchor constraintEqualToConstant:PPStoryAvatarSize],
             [_imageView.heightAnchor constraintEqualToConstant:PPStoryAvatarSize],
 
-            [_nameLabel.topAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:6.0],
-            [_nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:2.0],
-            [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-2.0],
-            [_nameLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-2.0],
+            [_nameLabel.topAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:10.0],
+            [_nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:8.0],
+            [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0],
+            [_nameLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+            [_nameLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-12.0],
 
             [_addBadgeButton.widthAnchor constraintEqualToConstant:26.0],
             [_addBadgeButton.heightAnchor constraintEqualToConstant:26.0],
@@ -178,6 +223,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    self.cardBackdropView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardBackdropView.bounds
+                                                                        cornerRadius:PPStoryCardCornerRadius].CGPath;
     [self pp_updateRingPath];
 }
 
@@ -208,6 +255,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
     self.contentView.transform = CGAffineTransformIdentity;
     self.contentView.alpha = 1.0;
+    self.cardBackdropView.transform = CGAffineTransformIdentity;
 }
 
 #pragma mark - Configure
@@ -227,7 +275,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     }
     self.nameLabel.text = name;
     self.nameLabel.textAlignment = NSTextAlignmentCenter;
-    self.nameLabel.font = isCurrentUserEntry ? [GM MidFontWithSize:11.5] : [GM MidFontWithSize:11.0];
+    self.nameLabel.font = isCurrentUserEntry ? [GM MidFontWithSize:11.75] : [GM MidFontWithSize:11.25];
+    self.nameLabel.textColor = UIColor.labelColor;
     self.addBadgeButton.hidden = !showAddBadge;
 
     // Show verified badge if this user is verified (lookup from cache)
@@ -254,6 +303,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.ringGradientLayer.hidden = YES;
         self.dashedRingLayer.strokeColor = [UIColor colorWithWhite:0.55 alpha:0.40].CGColor;
         self.glowView.alpha = 0.0;
+        self.cardTintView.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.18];
+        self.topHighlightView.alpha = 0.38;
         self.isConfiguredUnseen = NO;
     } else if (story.isSeen) {
         // Seen — subtle muted ring
@@ -264,6 +315,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.ringGradientMaskLayer.lineWidth = 2.4;
         self.ringGradientLayer.hidden = YES;
         self.glowView.alpha = 0.0;
+        self.cardTintView.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.22];
+        self.topHighlightView.alpha = 0.32;
         self.isConfiguredUnseen = NO;
     } else {
         // Unseen — vivid conic gradient ring + glow
@@ -288,6 +341,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.glowView.layer.shadowRadius = PPStoryGlowRadius;
         self.glowView.layer.shadowOffset = CGSizeZero;
         self.glowView.alpha = 1.0;
+        self.cardTintView.backgroundColor = [primaryColor colorWithAlphaComponent:0.08];
+        self.topHighlightView.alpha = 0.76;
         self.isConfiguredUnseen = YES;
     }
     [CATransaction commit];
@@ -358,8 +413,9 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 #pragma mark - Entrance Animation
 
 - (void)playEntranceAnimationWithDelay:(NSTimeInterval)delay {
-    self.contentView.transform = CGAffineTransformMakeScale(0.0, 0.0);
+    self.contentView.transform = CGAffineTransformMakeScale(0.88, 0.88);
     self.contentView.alpha = 0.0;
+    self.cardBackdropView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
 
     [UIView animateWithDuration:0.40
                           delay:delay
@@ -369,6 +425,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
                      animations:^{
         self.contentView.transform = CGAffineTransformIdentity;
         self.contentView.alpha = 1.0;
+        self.cardBackdropView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -380,7 +437,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
          usingSpringWithDamping:0.94 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.contentView.transform = CGAffineTransformMakeScale(0.95, 0.95);
+        self.contentView.transform = CGAffineTransformMakeScale(0.965, 0.965);
     } completion:nil];
 }
 

@@ -90,6 +90,18 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
                                     excludingAccessory:(PetAccessory *)exclude
                                            completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
++ (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
+                                    excludingAccessory:(nullable PetAccessory *)exclude
+                                   completionWithError:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                 NSError * _Nullable error))completion;
++ (void)fetchProviderPharmacyAccessoriesForOwnerID:(NSString *)ownerID
+                                 excludingAccessory:(nullable PetAccessory *)exclude
+                                completionWithError:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                              NSError * _Nullable error))completion;
++ (void)fetchPublicMarketplaceAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                 NSError * _Nullable error))completion;
++ (void)fetchPublicPharmacyAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                              NSError * _Nullable error))completion;
 @property (nonatomic, strong) UIViewController *ParentVC;
 
 /// Start listener, optionally filtering by condition (pass 0 to skip)
@@ -121,7 +133,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 NS_ASSUME_NONNULL_END
-
 
 
 

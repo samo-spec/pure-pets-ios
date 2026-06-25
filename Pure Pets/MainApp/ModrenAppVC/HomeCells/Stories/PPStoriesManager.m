@@ -294,6 +294,67 @@ static void PPStoriesCompleteUpdate(PPStoriesUpdateCompletion completion,
     patchStory(nil);
 }
 
+- (void)deleteStoryItemForCurrentUserWithStoryID:(NSString *)storyID
+                                       itemIndex:(NSInteger)itemIndex
+                                      completion:(PPStoriesWriteCompletion _Nullable)completion
+{
+    NSString *authUID = PPStoriesTrimmedString([FIRAuth auth].currentUser.uid);
+    NSString *trimmedStoryID = PPStoriesTrimmedString(storyID);
+    if (authUID.length == 0) {
+        if (completion) {
+            completion(PPStoriesError(1013, @"Current user is not authenticated."));
+        }
+        return;
+    }
+    if (trimmedStoryID.length == 0 || ![trimmedStoryID isEqualToString:authUID]) {
+        if (completion) {
+            completion(PPStoriesError(1014, @"You can delete only your own stories."));
+        }
+        return;
+    }
+    if (itemIndex < 0) {
+        if (completion) {
+            completion(PPStoriesError(1015, @"Story item is invalid."));
+        }
+        return;
+    }
+
+    FIRDocumentReference *docRef = [[self.db collectionWithPath:@"stories"] documentWithPath:trimmedStoryID];
+    [self.db runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction, NSError * _Nullable __autoreleasing * _Nonnull errorPointer) {
+        FIRDocumentSnapshot *snapshot = [transaction getDocument:docRef error:errorPointer];
+        if (!snapshot || !snapshot.exists || *errorPointer) {
+            return nil;
+        }
+
+        NSDictionary *data = [snapshot.data isKindOfClass:NSDictionary.class] ? snapshot.data : @{};
+        NSArray *rawItems = [data[@"items"] isKindOfClass:NSArray.class] ? data[@"items"] : @[];
+        if (itemIndex >= (NSInteger)rawItems.count) {
+            if (errorPointer) {
+                *errorPointer = PPStoriesError(1016, @"Story item was not found.");
+            }
+            return nil;
+        }
+
+        NSMutableArray *mutableItems = [rawItems mutableCopy] ?: [NSMutableArray array];
+        [mutableItems removeObjectAtIndex:(NSUInteger)itemIndex];
+
+        if (mutableItems.count == 0) {
+            [transaction deleteDocument:docRef];
+        } else {
+            [transaction updateData:@{
+                @"items": mutableItems,
+                @"updatedAt": [FIRTimestamp timestampWithDate:[NSDate date]]
+            } forDocument:docRef];
+        }
+        return nil;
+    } completion:^(id  _Nullable result, NSError * _Nullable error) {
+        (void)result;
+        if (completion) {
+            completion(error);
+        }
+    }];
+}
+
 - (void)pp_patchStoryWithStoryID:(NSString *)storyID
                         itemIndex:(NSInteger)itemIndex
                           caption:(NSString * _Nullable)caption

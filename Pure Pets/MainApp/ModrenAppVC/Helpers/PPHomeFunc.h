@@ -19,6 +19,7 @@
 + (NSCollectionLayoutSection *)currentOrdersSection;
 + (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded;
 + (NSCollectionLayoutSection *)quickActionsSection;
++ (NSCollectionLayoutSection *)providerCategoryNavigationSection;
 + (NSCollectionLayoutSection *)emptyFallbackSection;
 + (NSCollectionLayoutSection *)accessoriesSection;
 + (NSCollectionLayoutSection *)buyAgainSection;
@@ -40,6 +41,7 @@
 + (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
                                                   forWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth;
++ (NSCollectionLayoutSection *)providerCategoryNavigationSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)accessoriesSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth;

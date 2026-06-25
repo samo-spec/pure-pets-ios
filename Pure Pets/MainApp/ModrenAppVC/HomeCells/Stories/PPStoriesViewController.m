@@ -18,14 +18,14 @@
 #import "PPHUD.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
-static const CGFloat PPStoriesSidePadding      = 12.0;
-static const CGFloat PPStoriesTopPadding        = 8.0;
-static const CGFloat PPStoriesBottomPadding     = 10.0;
-static const CGFloat PPStoriesItemSpacing       = 10.0;
-static const CGFloat PPStoriesItemWidth         = 88.0;
-static const CGFloat PPStoriesItemHeight        = 108.0;
-static const CGFloat PPStoriesTitleTopPadding   = 10.0;
-static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
+static const CGFloat PPStoriesSidePadding        = 14.0;
+static const CGFloat PPStoriesTopPadding         = 14.0;
+static const CGFloat PPStoriesBottomPadding      = 14.0;
+static const CGFloat PPStoriesItemSpacing        = 12.0;
+static const CGFloat PPStoriesItemWidth          = 92.0;
+static const CGFloat PPStoriesItemHeight         = 126.0;
+static const CGFloat PPStoriesTitleTopPadding    = 16.0;
+static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 
 @interface PPStoriesViewController ()
 @property (nonatomic, strong) UILabel *sectionTitleLabel;
@@ -37,6 +37,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
 @property (nonatomic, assign) BOOL isUploadingStory;
 @property (nonatomic, assign) BOOL hasPlayedEntrance;
 @property (nonatomic, strong) UIVisualEffectView *glassBackdrop;
+@property (nonatomic, strong) UIView *ambientGlowView;
+@property (nonatomic, strong) UIView *bottomAccentView;
 @end
 
 @implementation PPStoriesViewController
@@ -45,37 +47,75 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
 
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    UIColor *storiesAccentColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *storiesSurfaceColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor;
     _glassBackdrop = [[UIVisualEffectView alloc] initWithEffect:blur];
     _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
-    _glassBackdrop.layer.cornerRadius = 24.0;
+    _glassBackdrop.layer.cornerRadius = 28.0;
     _glassBackdrop.layer.masksToBounds = YES;
     _glassBackdrop.clipsToBounds = YES;
     _glassBackdrop.layer.borderWidth = 1.0;
-    [_glassBackdrop pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.18]];
-    [_glassBackdrop pp_setShadowColor:[AppForgroundColr colorWithAlphaComponent:0.10]];
+    [_glassBackdrop pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.68]];
+    [_glassBackdrop pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.10]];
+    _glassBackdrop.layer.shadowOpacity = 1.0;
+    _glassBackdrop.layer.shadowRadius = 22.0;
+    _glassBackdrop.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     [self.view addSubview:_glassBackdrop];
+
+    UIView *ambientGlow = [UIView new];
+    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientGlow.backgroundColor = [storiesAccentColor colorWithAlphaComponent:0.20];
+    ambientGlow.userInteractionEnabled = NO;
+    ambientGlow.layer.cornerRadius = 76.0;
+    [ambientGlow pp_setShadowColor:storiesAccentColor];
+    ambientGlow.layer.shadowOpacity = 0.28;
+    ambientGlow.layer.shadowRadius = 46.0;
+    ambientGlow.layer.shadowOffset = CGSizeZero;
+    [_glassBackdrop.contentView addSubview:ambientGlow];
+    self.ambientGlowView = ambientGlow;
 
     UIView *tintOverlay = [UIView new];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    tintOverlay.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.06];
+    tintOverlay.backgroundColor = [storiesSurfaceColor colorWithAlphaComponent:0.94];
     tintOverlay.userInteractionEnabled = NO;
-    tintOverlay.layer.cornerRadius = 24.0;
+    tintOverlay.layer.cornerRadius = 28.0;
     tintOverlay.clipsToBounds = YES;
     [_glassBackdrop.contentView addSubview:tintOverlay];
+
+    UIView *bottomAccent = [UIView new];
+    bottomAccent.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomAccent.userInteractionEnabled = NO;
+    bottomAccent.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.12];
+    bottomAccent.layer.cornerRadius = 1.5;
+    bottomAccent.hidden = YES;
+    [_glassBackdrop.contentView addSubview:bottomAccent];
+    self.bottomAccentView = bottomAccent;
+
     [NSLayoutConstraint activateConstraints:@[
+        [ambientGlow.widthAnchor constraintEqualToConstant:152.0],
+        [ambientGlow.heightAnchor constraintEqualToConstant:152.0],
+        [ambientGlow.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor constant:-56.0],
+        [ambientGlow.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor constant:42.0],
+
         [tintOverlay.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor],
         [tintOverlay.leadingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.leadingAnchor],
         [tintOverlay.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor],
         [tintOverlay.bottomAnchor constraintEqualToAnchor:_glassBackdrop.contentView.bottomAnchor],
+
+        [bottomAccent.leadingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.leadingAnchor constant:22.0],
+        [bottomAccent.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor constant:-22.0],
+        [bottomAccent.bottomAnchor constraintEqualToAnchor:_glassBackdrop.contentView.bottomAnchor constant:-10.0],
+        [bottomAccent.heightAnchor constraintEqualToConstant:3.0],
     ]];
 
     _sectionTitleLabel = [UILabel new];
     _sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _sectionTitleLabel.font = [GM boldFontWithSize:15.0];
+    _sectionTitleLabel.font = [GM boldFontWithSize:15.5];
     _sectionTitleLabel.textColor = UIColor.labelColor;
     _sectionTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     _sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    _sectionTitleLabel.numberOfLines = 1;
     _sectionTitleLabel.hidden = YES;
     [self.view addSubview:_sectionTitleLabel];
 
@@ -91,6 +131,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _collectionView.showsHorizontalScrollIndicator = NO;
     _collectionView.backgroundColor = UIColor.clearColor;
+    _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
     _collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_collectionView registerClass:[PPStoryCollectionViewCell class]
         forCellWithReuseIdentifier:@"StoryCell"];
@@ -122,7 +163,9 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [Styling addLiquidGlassBorderToView:_glassBackdrop cornerRadius:24.0];
+    self.glassBackdrop.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.glassBackdrop.bounds
+                                                                     cornerRadius:28.0].CGPath;
+    [Styling addLiquidGlassBorderToView:_glassBackdrop cornerRadius:28.0];
 }
 
 #pragma mark - Public

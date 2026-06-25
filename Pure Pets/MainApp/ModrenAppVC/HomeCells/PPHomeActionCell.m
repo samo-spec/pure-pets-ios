@@ -2,64 +2,70 @@
 //  PPHomeActionCell.m
 //  Pure Pets
 //
-//  Created by Mohammed Ahmed on 26/12/2025.
+//  Minimal premium Home action card.
 //
 
 #import "PPHomeActionCell.h"
-#import "PPHomeModels.h"
 
-static inline UIColor *PPQuickActionDynamicColor(UIColor *lightColor, UIColor *darkColor)
+static CGFloat const PPHomeActionCellCornerRadius = 22.0;
+static CGFloat const PPHomeActionCellMinimumHeight = 64.0;
+static CGFloat const PPHomeActionCellTrailingPadding = 12.0;
+static CGFloat const PPHomeActionCellIconPlateSize = 36.0;
+static CGFloat const PPHomeActionCellAccessoryPlateSize = 28.0;
+static CGFloat const PPHomeActionCellAccentWidth = 3.0;
+static CGFloat const PPHomeActionCellAccentHeight = 28.0;
+
+static UIColor *PPHomeActionDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
     if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
+            return traits.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
         }];
     }
     return lightColor;
 }
 
-static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat t)
+static UIColor *PPHomeActionResolvedColor(UIColor *color, UITraitCollection *traitCollection)
 {
-    if (!a) return b;
-    if (!b) return a;
-
-    t = MAX(0.0, MIN(1.0, t));
-
-    CGFloat ar = 0.0, ag = 0.0, ab = 0.0, aa = 0.0;
-    CGFloat br = 0.0, bg = 0.0, bb = 0.0, ba = 0.0;
-    [a getRed:&ar green:&ag blue:&ab alpha:&aa];
-    [b getRed:&br green:&bg blue:&bb alpha:&ba];
-
-    return [UIColor colorWithRed:(ar + (br - ar) * t)
-                           green:(ag + (bg - ag) * t)
-                            blue:(ab + (bb - ab) * t)
-                           alpha:(aa + (ba - aa) * t)];
+    if (!color) {
+        return UIColor.clearColor;
+    }
+    if (@available(iOS 13.0, *)) {
+        return [color resolvedColorWithTraitCollection:traitCollection];
+    }
+    return color;
 }
 
-static inline UIColor *PPQuickActionElevatedColor(UIColor *baseColor, CGFloat amount)
+static UIColor *PPHomeActionBlend(UIColor *baseColor, UIColor *overlayColor, CGFloat amount)
 {
-    return PPQuickActionBlendColors(baseColor, UIColor.whiteColor, amount);
-}
+    if (!baseColor) return overlayColor ?: UIColor.clearColor;
+    if (!overlayColor) return baseColor;
 
-static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat amount)
-{
-    return PPQuickActionBlendColors(baseColor, UIColor.blackColor, amount);
+    CGFloat baseRed = 0.0, baseGreen = 0.0, baseBlue = 0.0, baseAlpha = 0.0;
+    CGFloat overlayRed = 0.0, overlayGreen = 0.0, overlayBlue = 0.0, overlayAlpha = 0.0;
+    if (![baseColor getRed:&baseRed green:&baseGreen blue:&baseBlue alpha:&baseAlpha] ||
+        ![overlayColor getRed:&overlayRed green:&overlayGreen blue:&overlayBlue alpha:&overlayAlpha]) {
+        return baseColor;
+    }
+
+    CGFloat t = MIN(MAX(amount, 0.0), 1.0);
+    return [UIColor colorWithRed:(baseRed * (1.0 - t)) + (overlayRed * t)
+                           green:(baseGreen * (1.0 - t)) + (overlayGreen * t)
+                            blue:(baseBlue * (1.0 - t)) + (overlayBlue * t)
+                           alpha:(baseAlpha * (1.0 - t)) + (overlayAlpha * t)];
 }
 
 @interface PPHomeActionCell ()
 
 @property (nonatomic, strong) UIView *surfaceView;
-
-@property (nonatomic, strong) CAGradientLayer *surfaceSheenLayer;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
-@property (nonatomic, strong) UIView *accentBarView;
-@property (nonatomic, strong) UIView *accentWashView;
-@property (nonatomic, strong) CAGradientLayer *accentWashLayer;
-@property (nonatomic, strong) UIView *iconOrbView;
+@property (nonatomic, strong) CAGradientLayer *surfaceHighlightLayer;
+@property (nonatomic, strong) UIView *accentLineView;
+@property (nonatomic, strong) UIView *iconPlateView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UIView *chevronOrbView;
-@property (nonatomic, strong) UIImageView *chevronView;
+@property (nonatomic, strong) UIView *accessoryPlateView;
+@property (nonatomic, strong) UIImageView *accessoryIconView;
 @property (nonatomic, copy) NSString *currentTitle;
 @property (nonatomic, copy) NSString *currentIconName;
 @property (nonatomic, strong) UIColor *currentAccentColor;
@@ -68,232 +74,188 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
 @implementation PPHomeActionCell
 
-+ (NSString *)reuseIdentifier {
++ (NSString *)reuseIdentifier
+{
     return @"PPHomeActionCell";
 }
 
-- (instancetype)initWithFrame:(CGRect)frame {
-    if (self = [super initWithFrame:frame]) {
-        [self setupUI];
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) {
+        return nil;
     }
+
+    [self pp_buildUI];
+    [self pp_applyTypography];
+    [self pp_applyTheme];
+    [self pp_resetInteractiveState];
     return self;
 }
 
 #pragma mark - UI
 
-- (void)setupUI
+- (void)pp_buildUI
 {
+    self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
-    float corners = 24;
-    if(PPIOS26())
-    {
-        
-        //[self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.26]];
-        //self.layer.shadowOpacity =  0.28f;
-        //self.layer.shadowRadius =   10.0f;
-        //self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-    }
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.isAccessibilityElement = NO;
 
-    self.actionButton = [UIButton new];
-
-    UIColor *dynamicSurface = PPQuickActionDynamicColor(UIColor.whiteColor,
-                                                         [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
-
-    if (@available(iOS 26.0, *))
-    {
-        UIButtonConfiguration *glass;
-        glass = [UIButtonConfiguration glassButtonConfiguration];
-        glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        glass.background.cornerRadius  = corners;
-        glass.background.backgroundColor = dynamicSurface;
-        glass.baseBackgroundColor = dynamicSurface;
-
-        self.actionButton.configuration = glass;
- 
-        self.actionButton.clipsToBounds = NO;
-        self.actionButton.layer.masksToBounds = NO;
-
-    }
-    else
-    {
-        [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.68]];
-        self.actionButton.layer.shadowOpacity =  0.045f;
-        self.actionButton.layer.shadowRadius =   10.0f;
-        self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
-    }
+    self.actionButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionButton.backgroundColor = dynamicSurface;
+    self.actionButton.backgroundColor = UIColor.clearColor;
     self.actionButton.adjustsImageWhenHighlighted = NO;
     self.actionButton.showsMenuAsPrimaryAction = NO;
-    self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    [self.actionButton addTarget:self action:@selector(handleTap) forControlEvents:UIControlEventTouchUpInside];
-    [self.actionButton addTarget:self action:@selector(handleTouchDown) forControlEvents:UIControlEventTouchDown];
-    [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchUpInside];
-    [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchUpOutside];
-    [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchCancel];
-
-    if (@available(iOS 13.0, *)) {
-        self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    self.actionButton.clipsToBounds = NO;
+    self.actionButton.layer.masksToBounds = NO;
+    self.actionButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.actionButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [self.actionButton addTarget:self action:@selector(pp_handleTap) forControlEvents:UIControlEventTouchUpInside];
+    [self.actionButton addTarget:self action:@selector(pp_handleTouchDown) forControlEvents:UIControlEventTouchDown];
+    [self.actionButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchUpInside];
+    [self.actionButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchUpOutside];
+    [self.actionButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchCancel];
     [self.contentView addSubview:self.actionButton];
 
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = corners;
+    self.surfaceView.layer.cornerRadius = PPHomeActionCellCornerRadius;
     self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 0.6;
+    self.surfaceView.layer.borderWidth = 0.85;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.actionButton addSubview:self.surfaceView];
 
-    
-    self.surfaceSheenLayer = [CAGradientLayer layer];
-    self.surfaceSheenLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.surfaceSheenLayer.endPoint = CGPointMake(1.0, 0.5);
-    [self.surfaceView.layer addSublayer:self.surfaceSheenLayer];
-    
-    
     self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    [self.surfaceView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
 
-    self.accentWashView = [[UIView alloc] init];
-    self.accentWashView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.accentWashView.userInteractionEnabled = NO;
-    self.accentWashView.hidden = NO;
-    self.accentWashView.layer.cornerRadius = 26.0;
-    self.accentWashView.layer.masksToBounds = YES;
+    self.surfaceHighlightLayer = [CAGradientLayer layer];
+    self.surfaceHighlightLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceHighlightLayer.endPoint = CGPointMake(1.0, 0.0);
+    [self.surfaceView.layer addSublayer:self.surfaceHighlightLayer];
+
+    self.accentLineView = [[UIView alloc] init];
+    self.accentLineView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accentLineView.userInteractionEnabled = NO;
+    self.accentLineView.layer.cornerRadius = PPHomeActionCellAccentWidth * 0.5;
+    self.accentLineView.layer.masksToBounds = YES;
+    [self.surfaceView addSubview:self.accentLineView];
+
+    self.iconPlateView = [[UIView alloc] init];
+    self.iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.iconPlateView.userInteractionEnabled = NO;
+    self.iconPlateView.layer.cornerRadius = PPHomeActionCellIconPlateSize * 0.5;
+    self.iconPlateView.layer.masksToBounds = YES;
+    self.iconPlateView.layer.borderWidth = 0.8;
     if (@available(iOS 13.0, *)) {
-        self.accentWashView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self.surfaceView addSubview:self.accentWashView];
-
-    self.accentWashLayer = [CAGradientLayer layer];
-    [self.accentWashView.layer insertSublayer:self.accentWashLayer atIndex:0];
-
-    self.accentBarView = [[UIView alloc] init];
-    self.accentBarView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.accentBarView.userInteractionEnabled = NO;
-    self.accentBarView.hidden = NO;
-    self.accentBarView.layer.cornerRadius = 1.5;
-    self.accentBarView.layer.masksToBounds = YES;
-    [self.surfaceView addSubview:self.accentBarView];
-
-    self.iconOrbView = [[UIView alloc] init];
-    self.iconOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.iconOrbView.userInteractionEnabled = NO;
-    self.iconOrbView.hidden = NO;
-    self.iconOrbView.layer.cornerRadius = 20.0;
-    self.iconOrbView.layer.masksToBounds = YES;
-    self.iconOrbView.layer.borderWidth = 0.0;
-    if (@available(iOS 13.0, *)) {
-        self.iconOrbView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.iconOrbView];
+    [self.surfaceView addSubview:self.iconPlateView];
 
     self.iconView = [[UIImageView alloc] init];
     self.iconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.iconView.hidden = NO;
-    [self.iconOrbView addSubview:self.iconView];
+    self.iconView.userInteractionEnabled = NO;
+    [self.iconPlateView addSubview:self.iconView];
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.hidden = NO;
-    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.titleLabel.font = [GM boldFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
     self.titleLabel.numberOfLines = 1;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
     self.titleLabel.minimumScaleFactor = 0.84;
+    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.titleLabel.userInteractionEnabled = NO;
     [self.surfaceView addSubview:self.titleLabel];
 
-    UIImage *chevronImage =
-        [UIImage pp_symbolNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
-                      pointSize:16
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleMedium
-                        palette:@[[AppPrimaryTextClr colorWithAlphaComponent:0.7] ?: UIColor.secondaryLabelColor]
-                   makeTemplate:YES];
-
-    self.chevronOrbView = [[UIView alloc] init];
-    self.chevronOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chevronOrbView.userInteractionEnabled = NO;
-    self.chevronOrbView.hidden = NO;
-    self.chevronOrbView.layer.cornerRadius = 16.0;
-    self.chevronOrbView.layer.masksToBounds = YES;
-    self.chevronOrbView.layer.borderWidth = 1.0;
+    self.accessoryPlateView = [[UIView alloc] init];
+    self.accessoryPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accessoryPlateView.userInteractionEnabled = NO;
+    self.accessoryPlateView.layer.cornerRadius = PPHomeActionCellAccessoryPlateSize * 0.5;
+    self.accessoryPlateView.layer.masksToBounds = YES;
+    self.accessoryPlateView.layer.borderWidth = 0.8;
     if (@available(iOS 13.0, *)) {
-        self.chevronOrbView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.accessoryPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self.surfaceView addSubview:self.chevronOrbView];
+    [self.surfaceView addSubview:self.accessoryPlateView];
 
-    self.chevronView = [[UIImageView alloc] initWithImage:chevronImage];
-    self.chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    self.chevronView.hidden = NO;
-    [self.chevronOrbView addSubview:self.chevronView];
+    self.accessoryIconView = [[UIImageView alloc] init];
+    self.accessoryIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.accessoryIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.accessoryIconView.userInteractionEnabled = NO;
+    [self.accessoryPlateView addSubview:self.accessoryIconView];
 
+    [self.iconPlateView setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                        forAxis:UILayoutConstraintAxisHorizontal];
+    [self.accessoryPlateView setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                             forAxis:UILayoutConstraintAxisHorizontal];
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                      forAxis:UILayoutConstraintAxisHorizontal];
-    [self.iconOrbView setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                      forAxis:UILayoutConstraintAxisHorizontal];
-    [self.chevronOrbView setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                         forAxis:UILayoutConstraintAxisHorizontal];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.actionButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.actionButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.actionButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:64.0],
+        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPHomeActionCellMinimumHeight],
 
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.actionButton.topAnchor],
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.actionButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.actionButton.bottomAnchor],
 
-        [self.accentWashView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPIsRL ? 6.0 : 6.0],
-        [self.accentWashView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.accentWashView.widthAnchor constraintEqualToConstant:126.0],
-        [self.accentWashView.heightAnchor constraintEqualToConstant:52.0],
+        [self.accentLineView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:10.0],
+        [self.accentLineView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.accentLineView.widthAnchor constraintEqualToConstant:PPHomeActionCellAccentWidth],
+        [self.accentLineView.heightAnchor constraintEqualToConstant:PPHomeActionCellAccentHeight],
 
-        [self.accentBarView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:12.0],
-        [self.accentBarView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.accentBarView.widthAnchor constraintEqualToConstant:0.0],
-        [self.accentBarView.heightAnchor constraintEqualToConstant:28.0],
+        [self.iconPlateView.leadingAnchor constraintEqualToAnchor:self.accentLineView.trailingAnchor constant:10.0],
+        [self.iconPlateView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.iconPlateView.widthAnchor constraintEqualToConstant:PPHomeActionCellIconPlateSize],
+        [self.iconPlateView.heightAnchor constraintEqualToConstant:PPHomeActionCellIconPlateSize],
 
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:14.0],
-        [self.iconOrbView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.iconOrbView.widthAnchor constraintEqualToConstant:40.0],
-        [self.iconOrbView.heightAnchor constraintEqualToConstant:40.0],
+        [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconPlateView.centerXAnchor],
+        [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconPlateView.centerYAnchor],
+        [self.iconView.widthAnchor constraintEqualToConstant:18.0],
+        [self.iconView.heightAnchor constraintEqualToConstant:18.0],
 
-        [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
-        [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:19.0],
-        [self.iconView.heightAnchor constraintEqualToConstant:19.0],
+        [self.accessoryPlateView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPHomeActionCellTrailingPadding],
+        [self.accessoryPlateView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.accessoryPlateView.widthAnchor constraintEqualToConstant:PPHomeActionCellAccessoryPlateSize],
+        [self.accessoryPlateView.heightAnchor constraintEqualToConstant:PPHomeActionCellAccessoryPlateSize],
 
-        [self.chevronOrbView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
-        [self.chevronOrbView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.chevronOrbView.widthAnchor constraintEqualToConstant:32.0],
-        [self.chevronOrbView.heightAnchor constraintEqualToConstant:32.0],
+        [self.accessoryIconView.centerXAnchor constraintEqualToAnchor:self.accessoryPlateView.centerXAnchor],
+        [self.accessoryIconView.centerYAnchor constraintEqualToAnchor:self.accessoryPlateView.centerYAnchor],
+        [self.accessoryIconView.widthAnchor constraintEqualToConstant:12.0],
+        [self.accessoryIconView.heightAnchor constraintEqualToConstant:12.0],
 
-        [self.chevronView.centerXAnchor constraintEqualToAnchor:self.chevronOrbView.centerXAnchor],
-        [self.chevronView.centerYAnchor constraintEqualToAnchor:self.chevronOrbView.centerYAnchor],
-        [self.chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [self.chevronView.heightAnchor constraintEqualToConstant:14.0],
-
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:8.0],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.chevronOrbView.leadingAnchor constant:-6.0],
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor]
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconPlateView.trailingAnchor constant:10.0],
+        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.accessoryPlateView.leadingAnchor constant:-8.0],
+        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
     ]];
+}
 
-    //[self pp_hideQuickActionChrome];
+- (void)pp_applyTypography
+{
+    UIFont *titleBase = [GM boldFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
+    if (@available(iOS 11.0, *)) {
+        self.titleLabel.font =
+            [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                scaledFontForFont:titleBase
+                  maximumPointSize:19.0];
+        self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    } else {
+        self.titleLabel.font = titleBase;
+    }
 }
 
 #pragma mark - Configure
@@ -301,68 +263,301 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 - (void)configureWithTitle:(NSString *)title
                 systemIcon:(NSString *)systemIconName
 {
-    [self pp_applyQuickActionTitle:title
-                          iconName:systemIconName
-                            accent:[self pp_quickActionAccentColor]];
-    self.actionButton.accessibilityLabel = PPSafeString(title);
+    self.currentTitle = PPSafeString(title);
+    self.currentIconName = PPSafeString(systemIconName);
+    self.currentAccentColor = [self pp_signalColorForIconName:self.currentIconName];
+    [self pp_applyContent];
 }
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    [self pp_applyQuickActionTitle:PPSafeString(quickAction.title)
-                          iconName:PPSafeString(quickAction.iconName)
-                            accent:[self pp_quickActionAccentColor]];
-    self.actionButton.accessibilityLabel = PPSafeString(quickAction.title);
+    self.currentTitle = PPSafeString(quickAction.title);
+    self.currentIconName = PPSafeString(quickAction.iconName);
+    self.currentAccentColor = [self pp_signalColorForQuickActionType:quickAction.type];
+    [self pp_applyContent];
 }
 
-- (void)handleTap
+- (void)pp_applyContent
+{
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.actionButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.titleLabel.text = self.currentTitle;
+
+    UIImage *icon = nil;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration =
+            [UIImageSymbolConfiguration configurationWithPointSize:17.0
+                                                           weight:UIImageSymbolWeightSemibold
+                                                            scale:UIImageSymbolScaleMedium];
+        NSString *symbolName = self.currentIconName.length > 0 ? self.currentIconName : @"sparkles";
+        icon = [UIImage systemImageNamed:symbolName withConfiguration:configuration];
+        if (!icon) {
+            icon = [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
+        }
+    }
+    if (!icon && self.currentIconName.length > 0) {
+        icon = [UIImage imageNamed:self.currentIconName];
+    }
+    self.iconView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+
+    [self pp_updateAccessibility];
+    [self pp_updateAccessoryState];
+    [self pp_applyTheme];
+    [self setNeedsLayout];
+}
+
+#pragma mark - Theme
+
+- (void)pp_applyTheme
+{
+    BOOL darkMode = NO;
+    if (@available(iOS 13.0, *)) {
+        darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *accent = PPHomeActionResolvedColor(self.currentAccentColor ?: [self pp_defaultAccentColor],
+                                                self.traitCollection);
+    UIColor *baseSurface = darkMode
+        ? [UIColor colorWithRed:0.090 green:0.096 blue:0.116 alpha:1.0]
+        : [UIColor colorWithRed:0.995 green:0.992 blue:0.986 alpha:1.0];
+    UIColor *liftedSurface = PPHomeActionBlend(baseSurface, UIColor.whiteColor, darkMode ? 0.02 : 0.42);
+    UIColor *settledSurface = PPHomeActionBlend(baseSurface, accent, darkMode ? 0.12 : 0.045);
+    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    UIColor *secondaryColor = [titleColor colorWithAlphaComponent:darkMode ? 0.74 : 0.58];
+    UIColor *strokeColor = PPHomeActionBlend(baseSurface, accent, darkMode ? 0.28 : 0.18);
+    UIColor *plateFill = PPHomeActionBlend(baseSurface, accent, darkMode ? 0.22 : 0.10);
+    UIColor *plateStroke = [accent colorWithAlphaComponent:darkMode ? 0.26 : 0.16];
+
+    self.surfaceView.backgroundColor = baseSurface;
+    [self.surfaceView pp_setBorderColor:[strokeColor colorWithAlphaComponent:darkMode ? 0.92 : 0.84]];
+    self.surfaceGradientLayer.colors = @[
+        (__bridge id)liftedSurface.CGColor,
+        (__bridge id)settledSurface.CGColor
+    ];
+    self.surfaceGradientLayer.locations = @[@0.0, @1.0];
+
+    self.surfaceHighlightLayer.colors = @[
+        (__bridge id)[UIColor colorWithWhite:1.0 alpha:(darkMode ? 0.12 : 0.24)].CGColor,
+        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
+    ];
+    self.surfaceHighlightLayer.locations = @[@0.0, @0.42];
+
+    self.accentLineView.backgroundColor = accent;
+    self.iconPlateView.backgroundColor = plateFill;
+    [self.iconPlateView pp_setBorderColor:plateStroke];
+    self.iconView.tintColor = accent;
+
+    self.titleLabel.textColor = titleColor;
+
+    self.accessoryPlateView.backgroundColor = [baseSurface colorWithAlphaComponent:darkMode ? 0.62 : 0.86];
+    [self.accessoryPlateView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(darkMode ? 0.10 : 0.46)]];
+    self.accessoryIconView.tintColor = secondaryColor;
+
+    [self.actionButton pp_setShadowColor:[accent colorWithAlphaComponent:darkMode ? 0.30 : 0.18]];
+    self.actionButton.layer.shadowOpacity = darkMode ? 0.14f : 0.07f;
+    self.actionButton.layer.shadowRadius = darkMode ? 16.0f : 12.0f;
+    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 8.0 : 6.0);
+}
+
+- (UIColor *)pp_defaultAccentColor
+{
+    return AppPrimaryClr ?: PPHomeActionDynamicColor([UIColor colorWithRed:0.94 green:0.53 blue:0.31 alpha:1.0],
+                                                     [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0]);
+}
+
+- (UIColor *)pp_signalColorForQuickActionType:(PPHomeQuickActionType)type
+{
+    switch (type) {
+        case PPHomeQuickActionTypeNearestVet:
+            return PPHomeActionDynamicColor([UIColor colorWithRed:0.23 green:0.62 blue:0.86 alpha:1.0],
+                                            [UIColor colorWithRed:0.47 green:0.76 blue:0.98 alpha:1.0]);
+        case PPHomeQuickActionTypeSellPet:
+            return PPHomeActionDynamicColor([UIColor colorWithRed:0.93 green:0.49 blue:0.26 alpha:1.0],
+                                            [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0]);
+        case PPHomeQuickActionTypeAdopt:
+            return PPHomeActionDynamicColor([UIColor colorWithRed:0.88 green:0.35 blue:0.48 alpha:1.0],
+                                            [UIColor colorWithRed:0.96 green:0.60 blue:0.72 alpha:1.0]);
+        case PPHomeQuickActionTypeAddAd:
+            return PPHomeActionDynamicColor([UIColor colorWithRed:0.32 green:0.57 blue:0.92 alpha:1.0],
+                                            [UIColor colorWithRed:0.56 green:0.75 blue:0.98 alpha:1.0]);
+        case PPHomeQuickActionTypeRequestService:
+            return PPHomeActionDynamicColor([UIColor colorWithRed:0.31 green:0.69 blue:0.54 alpha:1.0],
+                                            [UIColor colorWithRed:0.56 green:0.86 blue:0.72 alpha:1.0]);
+    }
+}
+
+- (UIColor *)pp_signalColorForIconName:(NSString *)iconName
+{
+    NSString *safeIconName = PPSafeString(iconName);
+    if ([safeIconName containsString:@"hourglass"]) {
+        return PPHomeActionDynamicColor([UIColor colorWithRed:0.73 green:0.60 blue:0.31 alpha:1.0],
+                                        [UIColor colorWithRed:0.92 green:0.76 blue:0.45 alpha:1.0]);
+    }
+    if ([safeIconName containsString:@"slash"] || [safeIconName containsString:@"wrench"]) {
+        return PPHomeActionDynamicColor([UIColor colorWithRed:0.41 green:0.56 blue:0.84 alpha:1.0],
+                                        [UIColor colorWithRed:0.63 green:0.78 blue:0.98 alpha:1.0]);
+    }
+    return [self pp_defaultAccentColor];
+}
+
+#pragma mark - Interaction
+
+- (void)pp_handleTap
 {
     if (self.onTap) {
         self.onTap();
     }
 }
 
-- (void)handleTouchDown
+- (void)pp_handleTouchDown
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.actionButton.alpha = 0.96;
         return;
     }
 
-    [UIView animateWithDuration:0.14
+    [UIView animateWithDuration:0.10
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         self.actionButton.transform = CGAffineTransformMakeScale(0.988, 0.988);
-        self.actionButton.alpha = 0.985;
-        self.iconOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
-        self.chevronOrbView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+        self.actionButton.alpha = 0.97;
         self.surfaceView.transform = CGAffineTransformMakeTranslation(0.0, 1.0);
+        self.iconPlateView.transform = CGAffineTransformMakeScale(0.96, 0.96);
+        self.accessoryPlateView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     } completion:nil];
 }
 
-- (void)handleTouchUp
+- (void)pp_handleTouchUp
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.actionButton.transform = CGAffineTransformIdentity;
-        self.actionButton.alpha = 1.0;
-        self.iconOrbView.transform = CGAffineTransformIdentity;
-        self.chevronOrbView.transform = CGAffineTransformIdentity;
-        self.surfaceView.transform = CGAffineTransformIdentity;
+        [self pp_resetInteractiveState];
         return;
     }
 
-    [UIView animateWithDuration:0.2
+    [UIView animateWithDuration:0.18
                           delay:0.0
-         usingSpringWithDamping:0.9
-          initialSpringVelocity:0.16
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
                         options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.actionButton.transform = CGAffineTransformIdentity;
-        self.actionButton.alpha = 1.0;
-        self.iconOrbView.transform = CGAffineTransformIdentity;
-        self.chevronOrbView.transform = CGAffineTransformIdentity;
-        self.surfaceView.transform = CGAffineTransformIdentity;
+        [self pp_resetInteractiveState];
     } completion:nil];
+}
+
+- (void)pp_resetInteractiveState
+{
+    self.actionButton.transform = CGAffineTransformIdentity;
+    self.actionButton.alpha = 1.0;
+    self.surfaceView.transform = CGAffineTransformIdentity;
+    self.iconPlateView.transform = CGAffineTransformIdentity;
+    self.accessoryPlateView.transform = CGAffineTransformIdentity;
+}
+
+- (void)pp_updateAccessoryState
+{
+    BOOL interactive = (self.onTap != nil);
+    self.actionButton.enabled = interactive;
+    self.accessoryPlateView.hidden = !interactive;
+    self.accessoryIconView.hidden = !interactive;
+
+    if (!interactive) {
+        return;
+    }
+
+    UIImage *accessoryImage = nil;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration =
+            [UIImageSymbolConfiguration configurationWithPointSize:11.5
+                                                           weight:UIImageSymbolWeightSemibold
+                                                            scale:UIImageSymbolScaleSmall];
+        accessoryImage =
+            [UIImage systemImageNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
+                     withConfiguration:configuration];
+    }
+    self.accessoryIconView.image = [accessoryImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
+#pragma mark - Accessibility
+
+- (void)pp_updateAccessibility
+{
+    NSString *title = PPSafeString(self.currentTitle);
+    self.actionButton.accessibilityLabel = title;
+    self.actionButton.accessibilityHint = self.onTap ? nil : @"";
+    self.actionButton.accessibilityTraits = self.onTap
+        ? UIAccessibilityTraitButton
+        : UIAccessibilityTraitStaticText;
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    self.surfaceGradientLayer.frame = self.surfaceView.bounds;
+    self.surfaceHighlightLayer.frame = self.surfaceView.bounds;
+    self.actionButton.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.actionButton.bounds
+                                   cornerRadius:PPHomeActionCellCornerRadius].CGPath;
+}
+
+- (CGFloat)pp_preferredWidth
+{
+    NSString *safeTitle = PPSafeString(self.currentTitle);
+    if (safeTitle.length == 0) {
+        return 132.0;
+    }
+
+    UIFont *font = self.titleLabel.font ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
+    CGRect titleBounds =
+        [safeTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
+                                options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                             attributes:@{ NSFontAttributeName: font }
+                                context:nil];
+
+    CGFloat fixedWidth =
+        10.0 + PPHomeActionCellAccentWidth + 10.0 +
+        PPHomeActionCellIconPlateSize + 10.0 +
+        8.0 + PPHomeActionCellAccessoryPlateSize + PPHomeActionCellTrailingPadding;
+    return ceil(MAX(132.0, fixedWidth + CGRectGetWidth(titleBounds)));
+}
+
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    UICollectionViewLayoutAttributes *attributes = [layoutAttributes copy];
+    CGRect frame = attributes.frame;
+    frame.size.width = [self pp_preferredWidth];
+    frame.size.height = MAX(frame.size.height, PPHomeActionCellMinimumHeight);
+    attributes.frame = frame;
+    return attributes;
+}
+
+#pragma mark - Reuse
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.onTap = nil;
+    self.currentTitle = nil;
+    self.currentIconName = nil;
+    self.currentAccentColor = nil;
+    self.titleLabel.text = nil;
+    self.iconView.image = nil;
+    self.accessoryIconView.image = nil;
+    self.actionButton.accessibilityLabel = nil;
+    [self pp_resetInteractiveState];
+    [self pp_applyTheme];
+}
+
+- (void)setOnTap:(void (^)(void))onTap
+{
+    _onTap = [onTap copy];
+    [self pp_updateAccessoryState];
+    [self pp_updateAccessibility];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -370,261 +565,9 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_refreshThemeColors];
+            [self pp_applyTheme];
         }
     }
-}
-
-- (void)pp_refreshThemeColors
-{
-    if (self.currentTitle.length == 0) {
-        return;
-    }
-
-    [self pp_applyQuickActionTitle:self.currentTitle
-                          iconName:self.currentIconName
-                            accent:self.currentAccentColor ?: [self pp_quickActionAccentColor]];
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    [self pp_updateLayerFrames];
-    
-     [Styling applyCornerMaskToView:self.surfaceView tl:12 tr:20 bl:12 br:20];
-}
-
-- (void)didMoveToWindow
-{
-    [super didMoveToWindow];
-    if (self.window) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [self pp_updateLayerFrames];
-        });
-    }
-}
-
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
-{
-    [super applyLayoutAttributes:layoutAttributes];
-    [self setNeedsLayout];
-    [self.contentView setNeedsLayout];
-    [self layoutIfNeeded];
-}
-
-- (void)setBounds:(CGRect)bounds
-{
-    [super setBounds:bounds];
-    [self pp_updateLayerFrames];
-}
-
-- (void)pp_updateLayerFrames
-{
-    CGRect surfaceBounds = self.surfaceView.bounds;
-    if (CGRectIsEmpty(surfaceBounds)) {
-        [self.contentView layoutIfNeeded];
-        surfaceBounds = self.surfaceView.bounds;
-        if (CGRectIsEmpty(surfaceBounds)) {
-            return;
-        }
-    }
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.actionButton.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.actionButton.bounds cornerRadius:PPNewCorner + 2].CGPath;
-    self.surfaceGradientLayer.frame = surfaceBounds;
-    self.surfaceSheenLayer.frame = surfaceBounds;
-    self.accentWashLayer.frame = self.accentWashView.bounds;
-    [CATransaction commit];
-}
-
-- (CGFloat)pp_preferredQuickActionWidth
-{
-    NSAttributedString *attributedTitle = self.titleLabel.attributedText;
-    CGFloat titleWidth = 0.0;
-    if (attributedTitle.length > 0) {
-        CGRect titleBounds =
-            [attributedTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
-                                          options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                          context:nil];
-        titleWidth = ceil(CGRectGetWidth(titleBounds));
-    } else if (self.currentTitle.length > 0) {
-        UIFont *font = self.titleLabel.font ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
-        CGRect titleBounds =
-            [self.currentTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
-                                           options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                        attributes:@{ NSFontAttributeName: font }
-                                           context:nil];
-        titleWidth = ceil(CGRectGetWidth(titleBounds));
-    }
-
-    CGFloat fixedChromeWidth = 14.0 + 40.0 + 8.0 + 6.0 + 32.0 + 10.0;
-    CGFloat minimumTitleWidth = self.currentTitle.length > 0 ? 18.0 : 0.0;
-    return ceil(MAX(128.0, fixedChromeWidth + MAX(minimumTitleWidth, titleWidth)));
-}
-
-- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
-{
-    UICollectionViewLayoutAttributes *attributes = [layoutAttributes copy];
-    [self setNeedsLayout];
-    [self layoutIfNeeded];
-
-    CGRect frame = attributes.frame;
-    frame.size.width = [self pp_preferredQuickActionWidth];
-    frame.size.height = layoutAttributes.frame.size.height;
-    attributes.frame = frame;
-
-    return attributes;
-}
-
-- (void)prepareForReuse
-{
-    [super prepareForReuse];
-    self.onTap = nil;
-    [self handleTouchUp];
-    //[self pp_hideQuickActionChrome];
-    self.actionButton.accessibilityLabel = nil;
-}
-
-- (void)setOnTap:(void (^)(void))onTap
-{
-    _onTap = [onTap copy];
-}
-
-- (void)pp_hideQuickActionChrome
-{
-    self.currentTitle = nil;
-    self.currentIconName = nil;
-    self.currentAccentColor = nil;
-
-    self.accentWashView.hidden = YES;
-    self.accentBarView.hidden = YES;
-    self.iconOrbView.hidden = YES;
-    self.iconView.hidden = YES;
-    self.titleLabel.hidden = YES;
-    self.chevronOrbView.hidden = YES;
-    self.chevronView.hidden = YES;
-
-    self.titleLabel.text = nil;
-    self.titleLabel.attributedText = nil;
-    self.iconView.image = nil;
-    self.actionButton.alpha = 1.0;
-    self.actionButton.transform = CGAffineTransformIdentity;
-    self.iconOrbView.transform = CGAffineTransformIdentity;
-    self.chevronOrbView.transform = CGAffineTransformIdentity;
-    self.surfaceView.transform = CGAffineTransformIdentity;
-}
-
-- (UIColor *)pp_quickActionAccentColor
-{
-    return AppPrimaryClr ?: [UIColor colorWithRed:0.93 green:0.39 blue:0.55 alpha:1.0];
-}
-
-- (void)pp_applyQuickActionTitle:(NSString *)title
-                        iconName:(NSString *)iconName
-                          accent:(UIColor *)accent
-{
-    self.currentTitle = PPSafeString(title);
-    self.currentIconName = PPSafeString(iconName);
-    self.currentAccentColor = accent;
-
-     self.accentWashView.hidden = NO;
-    self.accentBarView.hidden = NO;
-    self.iconOrbView.hidden = NO;
-    self.iconView.hidden = NO;
-    self.titleLabel.hidden = NO;
-    self.chevronOrbView.hidden = NO;
-    self.chevronView.hidden = NO;
-
-    UIColor *resolvedAccent = accent ?: [self pp_quickActionAccentColor];
-    UIColor *surfaceBaseDynamic = PPQuickActionDynamicColor(UIColor.whiteColor,
-                                                             [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
-    UIColor *surfaceBase = surfaceBaseDynamic;
-    if (@available(iOS 13.0, *)) {
-        surfaceBase = [surfaceBaseDynamic resolvedColorWithTraitCollection:self.traitCollection];
-    }
-    UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
-    UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);
-    UIColor *lowerSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.05);
-    UIColor *borderColor = [resolvedAccent colorWithAlphaComponent:0.58];
-    UIColor *orbSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.10);
-
-    self.actionButton.backgroundColor = surfaceBaseDynamic;
-   
-    [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.24)];
-    self.actionButton.layer.shadowOpacity = 0.055f;
-    self.actionButton.layer.shadowRadius = 12.0f;
-    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
-
-    [self.surfaceView pp_setBorderColor:borderColor];
-    self.surfaceGradientLayer.colors = @[
-        (__bridge id)[upperSurface colorWithAlphaComponent:00.5].CGColor,
-        (__bridge id)[surfaceBase colorWithAlphaComponent:0.3].CGColor,
-        (__bridge id)[lowerSurface colorWithAlphaComponent:0.6].CGColor
-    ];
-    self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
-
-    self.surfaceSheenLayer.colors = @[
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.18].CGColor,
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.04].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    self.surfaceSheenLayer.locations = @[@0.0, @0.12, @0.38];
-
-    self.accentWashLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
-    self.accentWashLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
-    /*self.accentWashLayer.colors = @[
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.98].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.40].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.22].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.12].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.04].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.03].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.02].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.00].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.00].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];*/
-    
-    self.accentWashLayer.colors = @[
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.74].CGColor,
-        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.30].CGColor,
-         (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.05].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    
-    self.accentWashLayer.locations = @[@0.0, @0.25, @0.75, @1.0];
-
-    self.accentBarView.backgroundColor = [accent colorWithAlphaComponent:0.90];
-    self.iconOrbView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:1.0];
-    [self.iconOrbView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.96]];
-    self.chevronOrbView.backgroundColor = [orbSurface colorWithAlphaComponent:0.0];
-    [self.chevronOrbView pp_setBorderColor:AppClearClr];
-
-    NSDictionary *attributes = @{
-        NSFontAttributeName: self.titleLabel.font,
-        NSKernAttributeName: @0.18,
-        NSForegroundColorAttributeName: primaryText
-    };
-    self.titleLabel.attributedText = [[NSAttributedString alloc] initWithString:self.currentTitle attributes:attributes];
-    self.titleLabel.textColor = primaryText;
-
-    self.chevronView.tintColor = secondaryText;
-    self.iconView.tintColor = AppPrimaryTextClr;
-    self.iconView.image =
-        [UIImage pp_symbolNamed:(self.currentIconName.length > 0 ? self.currentIconName : @"sparkles")
-                      pointSize:19
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleMedium
-                        palette:@[AppPrimaryTextClr, AppPrimaryTextClr]
-                   makeTemplate:YES];
-
-    [self setNeedsUpdateConstraints];
-    [self setNeedsLayout];
-    [self.contentView setNeedsLayout];
-    [self layoutIfNeeded];
 }
 
 @end

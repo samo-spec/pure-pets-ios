@@ -32,6 +32,9 @@ typedef void (^PPStoriesUpdateCompletion)(PPStoryItem * _Nullable updatedItem,
                                          caption:(NSString * _Nullable)caption
                                         newImage:(UIImage * _Nullable)newImage
                                       completion:(PPStoriesUpdateCompletion _Nullable)completion;
+- (void)deleteStoryItemForCurrentUserWithStoryID:(NSString *)storyID
+                                       itemIndex:(NSInteger)itemIndex
+                                      completion:(PPStoriesWriteCompletion _Nullable)completion;
 @end
 
 NS_ASSUME_NONNULL_END

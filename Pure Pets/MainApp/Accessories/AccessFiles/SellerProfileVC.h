@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong) UserModel *seller;
 @property (nonatomic, strong) NSArray<PetAccessory *> *sellerItems;
+@property (nonatomic, copy, nullable) NSString *providerCategoryIdentifier;
 @property (nonatomic, weak) id<SellerProfileVCDelegate> delegate;
 @property (nonatomic, weak) UIViewController *parentVC;
 

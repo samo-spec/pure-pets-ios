@@ -7,7 +7,7 @@
 
 #import "PPHomePremiumCareCell.h"
 
-static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
+static NSString * const PPHomePremiumCareMedicineAnimationName = @"ecg3";
 static CGFloat const PPHomePremiumCareTopGlowRestingAlpha = 0.60;
 static CGFloat const PPHomePremiumCareMiddleGlowRestingAlpha = 1.00;
 static CGFloat const PPHomePremiumCareBottomGlowRestingAlpha = 0.00;

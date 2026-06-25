@@ -590,7 +590,7 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 
             LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
             if (composition) {
-                lot.animationSpeed = animationSpeed;
+                lot.animationSpeed = 0.3;
                 [lot setSceneModel:composition];
                 //[lot play];
                 if (completion) completion(YES);
@@ -613,7 +613,7 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
     dispatch_once(&onceToken, ^{
         cache = [[YYCache alloc] initWithName:@"LottieJSONCache"];
     });
-
+    //[cache removeAllObjects];
     // Use storage path as the cache key (works for .json and .lottie)
     NSString *cacheKey = [NSString stringWithFormat:@"lottie_%@", storagePath];
 

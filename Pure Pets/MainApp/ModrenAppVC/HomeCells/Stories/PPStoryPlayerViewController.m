@@ -40,6 +40,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 @interface PPStoryEditViewController : UIViewController <UITextViewDelegate, TOCropViewControllerDelegate, UIAdaptivePresentationControllerDelegate>
 @property (nonatomic, copy) void (^onSave)(NSString *caption, UIImage * _Nullable newImage, PPStoryEditViewController *editor);
 @property (nonatomic, copy) void (^onCancel)(void);
+@property (nonatomic, copy) void (^onDelete)(PPStoryEditViewController *editor);
 - (instancetype)initWithStoryItem:(PPStoryItem *)item;
 - (void)pp_setSaving:(BOOL)saving;
 - (void)pp_showError:(NSString *)message;
@@ -48,16 +49,30 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 
 @interface PPStoryEditViewController ()
 @property (nonatomic, strong) PPStoryItem *item;
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, strong) UIView *backgroundGlowViewTop;
+@property (nonatomic, strong) UIView *backgroundGlowViewBottom;
+@property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) UILabel *headerTitleLabel;
+@property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) UIView *previewCardView;
 @property (nonatomic, strong) UIImageView *previewImageView;
+@property (nonatomic, strong) UIVisualEffectView *previewFooterView;
+@property (nonatomic, strong) UILabel *previewStatusLabel;
 @property (nonatomic, strong) UITextView *captionTextView;
+@property (nonatomic, strong) UIView *captionCardView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
 @property (nonatomic, strong) UILabel *errorLabel;
+@property (nonatomic, strong) UILabel *characterCountLabel;
 @property (nonatomic, strong) UIButton *saveButton;
 @property (nonatomic, strong) UIButton *changeMediaButton;
+@property (nonatomic, strong) UIButton *deleteButton;
 @property (nonatomic, strong) ImagePicker *imagePicker;
 @property (nonatomic, strong, nullable) UIImage *selectedImage;
 @property (nonatomic, assign) BOOL isSaving;
 @property (nonatomic, assign) BOOL didFinish;
+@property (nonatomic, assign) BOOL didPlayEntrance;
 @end
 
 @implementation PPStoryEditViewController
@@ -74,8 +89,11 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    UIColor *editorBackgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    UIColor *editorAccentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.view.backgroundColor = editorBackgroundColor;
     self.title = kLang(@"story_edit_title");
+    [self pp_applyNavigationAppearance];
     self.navigationItem.leftBarButtonItem =
         [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"xmark"]
                                          style:UIBarButtonItemStylePlain
@@ -84,31 +102,74 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     self.navigationItem.leftBarButtonItem.tintColor = UIColor.labelColor;
 
     UIButton *saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    saveButton.frame = CGRectMake(0, 0, 92.0, 36.0);
-    saveButton.layer.cornerRadius = 18.0;
-    saveButton.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    saveButton.frame = CGRectMake(0, 0, 102.0, 38.0);
+    saveButton.layer.cornerRadius = 19.0;
+    saveButton.backgroundColor = editorAccentColor;
     saveButton.titleLabel.font = [GM boldFontWithSize:14.0];
     [saveButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [saveButton setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+    [saveButton pp_setShadowColor:[editorAccentColor colorWithAlphaComponent:0.55]];
+    saveButton.layer.shadowOpacity = 1.0;
+    saveButton.layer.shadowRadius = 14.0;
+    saveButton.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [saveButton addTarget:self action:@selector(pp_saveTapped) forControlEvents:UIControlEventTouchUpInside];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
     self.saveButton = saveButton;
+    [self pp_updateSaveButtonTitle];
+
+    [self pp_buildPremiumBackground];
 
     UIScrollView *scrollView = [[UIScrollView alloc] init];
     scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    scrollView.alwaysBounceVertical = YES;
+    scrollView.showsVerticalScrollIndicator = NO;
     [self.view addSubview:scrollView];
+    self.scrollView = scrollView;
 
     UIView *contentView = [[UIView alloc] init];
     contentView.translatesAutoresizingMaskIntoConstraints = NO;
     [scrollView addSubview:contentView];
+    self.contentView = contentView;
+
+    UIView *headerCard = [[UIView alloc] init];
+    headerCard.translatesAutoresizingMaskIntoConstraints = NO;
+    [self pp_applyPremiumMaterialCardStyle:headerCard alpha:0.90];
+    [contentView addSubview:headerCard];
+    self.headerCardView = headerCard;
+
+    UILabel *headerTitleLabel = [[UILabel alloc] init];
+    headerTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    headerTitleLabel.font = [GM boldFontWithSize:24.0];
+    headerTitleLabel.textColor = UIColor.labelColor;
+    headerTitleLabel.text = kLang(@"story_edit_title");
+    headerTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    headerTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [headerCard addSubview:headerTitleLabel];
+    self.headerTitleLabel = headerTitleLabel;
+
+    UILabel *headerSubtitleLabel = [[UILabel alloc] init];
+    headerSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    headerSubtitleLabel.font = [GM MidFontWithSize:14.0];
+    headerSubtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
+    headerSubtitleLabel.text = kLang(@"story_edit_caption_placeholder");
+    headerSubtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    headerSubtitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [headerCard addSubview:headerSubtitleLabel];
+    self.headerSubtitleLabel = headerSubtitleLabel;
 
     UIView *previewCard = [[UIView alloc] init];
     previewCard.translatesAutoresizingMaskIntoConstraints = NO;
     previewCard.backgroundColor = UIColor.blackColor;
-    previewCard.layer.cornerRadius = 22.0;
+    previewCard.layer.cornerRadius = 28.0;
     previewCard.clipsToBounds = YES;
+    previewCard.layer.borderWidth = 1.0;
+    previewCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
+    [previewCard pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.20]];
+    previewCard.layer.shadowOpacity = 1.0;
+    previewCard.layer.shadowRadius = 26.0;
+    previewCard.layer.shadowOffset = CGSizeMake(0.0, 16.0);
     [contentView addSubview:previewCard];
+    self.previewCardView = previewCard;
 
     UIImageView *preview = [[UIImageView alloc] init];
     preview.translatesAutoresizingMaskIntoConstraints = NO;
@@ -118,10 +179,42 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     [previewCard addSubview:preview];
     self.previewImageView = preview;
 
+    CAGradientLayer *previewGradient = [CAGradientLayer layer];
+    previewGradient.colors = @[
+        (__bridge id)[UIColor colorWithWhite:0.0 alpha:0.00].CGColor,
+        (__bridge id)[UIColor colorWithWhite:0.0 alpha:0.10].CGColor,
+        (__bridge id)[UIColor colorWithWhite:0.0 alpha:0.48].CGColor
+    ];
+    previewGradient.locations = @[@0.0, @0.56, @1.0];
+    previewGradient.startPoint = CGPointMake(0.5, 0.0);
+    previewGradient.endPoint = CGPointMake(0.5, 1.0);
+    previewGradient.frame = CGRectZero;
+    [preview.layer addSublayer:previewGradient];
+    preview.layer.name = @"pp.story.edit.preview";
+
+    UIVisualEffectView *previewFooter = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark]];
+    previewFooter.translatesAutoresizingMaskIntoConstraints = NO;
+    previewFooter.layer.cornerRadius = 20.0;
+    previewFooter.layer.masksToBounds = YES;
+    previewFooter.layer.borderWidth = 1.0;
+    previewFooter.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
+    [previewCard addSubview:previewFooter];
+    self.previewFooterView = previewFooter;
+
+    UILabel *previewStatusLabel = [[UILabel alloc] init];
+    previewStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    previewStatusLabel.font = [GM boldFontWithSize:13.0];
+    previewStatusLabel.textColor = UIColor.whiteColor;
+    previewStatusLabel.text = kLang(@"story_edit_change_media");
+    previewStatusLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    previewStatusLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [previewFooter.contentView addSubview:previewStatusLabel];
+    self.previewStatusLabel = previewStatusLabel;
+
     UIButton *changeButton = [UIButton buttonWithType:UIButtonTypeSystem];
     changeButton.translatesAutoresizingMaskIntoConstraints = NO;
-    changeButton.layer.cornerRadius = 18.0;
-    changeButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.55];
+    changeButton.layer.cornerRadius = 19.0;
+    changeButton.backgroundColor = [editorAccentColor colorWithAlphaComponent:0.92];
     changeButton.tintColor = UIColor.whiteColor;
     changeButton.titleLabel.font = [GM MidFontWithSize:13.0];
     [changeButton setImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"] forState:UIControlStateNormal];
@@ -134,19 +227,17 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 
     UIView *captionCard = [[UIView alloc] init];
     captionCard.translatesAutoresizingMaskIntoConstraints = NO;
-    captionCard.backgroundColor = [UIColor secondarySystemBackgroundColor];
-    captionCard.layer.cornerRadius = 18.0;
-    captionCard.layer.borderWidth = 1.0;
-    captionCard.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.35].CGColor;
+    [self pp_applyPremiumMaterialCardStyle:captionCard alpha:0.92];
     [contentView addSubview:captionCard];
+    self.captionCardView = captionCard;
 
     UITextView *captionTextView = [[UITextView alloc] init];
     captionTextView.translatesAutoresizingMaskIntoConstraints = NO;
     captionTextView.backgroundColor = UIColor.clearColor;
     captionTextView.textColor = UIColor.labelColor;
-    captionTextView.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    captionTextView.font = [GM MidFontWithSize:15.0];
-    captionTextView.textContainerInset = UIEdgeInsetsMake(14, 12, 14, 12);
+    captionTextView.tintColor = editorAccentColor;
+    captionTextView.font = [GM MidFontWithSize:16.0];
+    captionTextView.textContainerInset = UIEdgeInsetsMake(26.0, 16.0, 22.0, 16.0);
     captionTextView.delegate = self;
     captionTextView.textAlignment = [Language alignmentForCurrentLanguage];
     captionTextView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -156,13 +247,22 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 
     UILabel *placeholder = [[UILabel alloc] init];
     placeholder.translatesAutoresizingMaskIntoConstraints = NO;
-    placeholder.font = [GM MidFontWithSize:15.0];
+    placeholder.font = [GM MidFontWithSize:16.0];
     placeholder.textColor = UIColor.placeholderTextColor;
     placeholder.text = kLang(@"story_edit_caption_placeholder");
     placeholder.textAlignment = [Language alignmentForCurrentLanguage];
     placeholder.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [captionCard addSubview:placeholder];
     self.placeholderLabel = placeholder;
+
+    UILabel *characterCountLabel = [[UILabel alloc] init];
+    characterCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    characterCountLabel.font = [GM MidFontWithSize:12.0];
+    characterCountLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
+    characterCountLabel.textAlignment = NSTextAlignmentNatural;
+    characterCountLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [contentView addSubview:characterCountLabel];
+    self.characterCountLabel = characterCountLabel;
 
     UILabel *errorLabel = [[UILabel alloc] init];
     errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -174,6 +274,23 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     errorLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [contentView addSubview:errorLabel];
     self.errorLabel = errorLabel;
+
+    UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    deleteButton.translatesAutoresizingMaskIntoConstraints = NO;
+    deleteButton.layer.cornerRadius = 18.0;
+    deleteButton.layer.cornerCurve = kCACornerCurveContinuous;
+    deleteButton.backgroundColor = [[UIColor systemRedColor] colorWithAlphaComponent:0.10];
+    deleteButton.layer.borderWidth = 1.0;
+    deleteButton.layer.borderColor = [[UIColor systemRedColor] colorWithAlphaComponent:0.18].CGColor;
+    deleteButton.titleLabel.font = [GM boldFontWithSize:14.0];
+    deleteButton.tintColor = UIColor.systemRedColor;
+    [deleteButton setTitle:kLang(@"deleteStore") forState:UIControlStateNormal];
+    [deleteButton setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
+    deleteButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    deleteButton.imageEdgeInsets = UIEdgeInsetsMake(0, -6, 0, 6);
+    [deleteButton addTarget:self action:@selector(pp_deleteTapped) forControlEvents:UIControlEventTouchUpInside];
+    [contentView addSubview:deleteButton];
+    self.deleteButton = deleteButton;
 
     [NSLayoutConstraint activateConstraints:@[
         [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -187,49 +304,98 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
         [contentView.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0],
         [contentView.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor],
 
+        [headerCard.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
+        [headerCard.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
+        [headerCard.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:16.0],
+
+        [headerTitleLabel.topAnchor constraintEqualToAnchor:headerCard.topAnchor constant:18.0],
+        [headerTitleLabel.leadingAnchor constraintEqualToAnchor:headerCard.leadingAnchor constant:18.0],
+        [headerTitleLabel.trailingAnchor constraintEqualToAnchor:headerCard.trailingAnchor constant:-18.0],
+
+        [headerSubtitleLabel.topAnchor constraintEqualToAnchor:headerTitleLabel.bottomAnchor constant:6.0],
+        [headerSubtitleLabel.leadingAnchor constraintEqualToAnchor:headerCard.leadingAnchor constant:18.0],
+        [headerSubtitleLabel.trailingAnchor constraintEqualToAnchor:headerCard.trailingAnchor constant:-18.0],
+        [headerSubtitleLabel.bottomAnchor constraintEqualToAnchor:headerCard.bottomAnchor constant:-18.0],
+
         [previewCard.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
         [previewCard.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
-        [previewCard.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:18.0],
-        [previewCard.heightAnchor constraintEqualToAnchor:previewCard.widthAnchor multiplier:1.16],
+        [previewCard.topAnchor constraintEqualToAnchor:headerCard.bottomAnchor constant:18.0],
+        [previewCard.heightAnchor constraintEqualToAnchor:previewCard.widthAnchor multiplier:1.22],
 
         [preview.leadingAnchor constraintEqualToAnchor:previewCard.leadingAnchor],
         [preview.trailingAnchor constraintEqualToAnchor:previewCard.trailingAnchor],
         [preview.topAnchor constraintEqualToAnchor:previewCard.topAnchor],
         [preview.bottomAnchor constraintEqualToAnchor:previewCard.bottomAnchor],
 
+        [previewFooter.leadingAnchor constraintEqualToAnchor:previewCard.leadingAnchor constant:16.0],
+        [previewFooter.trailingAnchor constraintLessThanOrEqualToAnchor:changeButton.leadingAnchor constant:-12.0],
+        [previewFooter.bottomAnchor constraintEqualToAnchor:previewCard.bottomAnchor constant:-14.0],
+        [previewFooter.heightAnchor constraintEqualToConstant:40.0],
+
+        [previewStatusLabel.leadingAnchor constraintEqualToAnchor:previewFooter.contentView.leadingAnchor constant:14.0],
+        [previewStatusLabel.trailingAnchor constraintEqualToAnchor:previewFooter.contentView.trailingAnchor constant:-14.0],
+        [previewStatusLabel.centerYAnchor constraintEqualToAnchor:previewFooter.contentView.centerYAnchor],
+
         [changeButton.trailingAnchor constraintEqualToAnchor:previewCard.trailingAnchor constant:-14.0],
         [changeButton.bottomAnchor constraintEqualToAnchor:previewCard.bottomAnchor constant:-14.0],
-        [changeButton.heightAnchor constraintEqualToConstant:36.0],
-        [changeButton.widthAnchor constraintGreaterThanOrEqualToConstant:146.0],
+        [changeButton.heightAnchor constraintEqualToConstant:40.0],
+        [changeButton.widthAnchor constraintGreaterThanOrEqualToConstant:158.0],
 
         [captionCard.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
         [captionCard.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
         [captionCard.topAnchor constraintEqualToAnchor:previewCard.bottomAnchor constant:18.0],
-        [captionCard.heightAnchor constraintEqualToConstant:128.0],
+        [captionCard.heightAnchor constraintEqualToConstant:176.0],
 
         [captionTextView.leadingAnchor constraintEqualToAnchor:captionCard.leadingAnchor],
         [captionTextView.trailingAnchor constraintEqualToAnchor:captionCard.trailingAnchor],
         [captionTextView.topAnchor constraintEqualToAnchor:captionCard.topAnchor],
         [captionTextView.bottomAnchor constraintEqualToAnchor:captionCard.bottomAnchor],
 
-        [placeholder.leadingAnchor constraintEqualToAnchor:captionCard.leadingAnchor constant:17.0],
-        [placeholder.trailingAnchor constraintEqualToAnchor:captionCard.trailingAnchor constant:-17.0],
-        [placeholder.topAnchor constraintEqualToAnchor:captionCard.topAnchor constant:21.0],
+        [placeholder.leadingAnchor constraintEqualToAnchor:captionCard.leadingAnchor constant:20.0],
+        [placeholder.trailingAnchor constraintEqualToAnchor:captionCard.trailingAnchor constant:-20.0],
+        [placeholder.topAnchor constraintEqualToAnchor:captionCard.topAnchor constant:30.0],
+
+        [characterCountLabel.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:24.0],
+        [characterCountLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-24.0],
+        [characterCountLabel.topAnchor constraintEqualToAnchor:captionCard.bottomAnchor constant:12.0],
 
         [errorLabel.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:24.0],
         [errorLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-24.0],
-        [errorLabel.topAnchor constraintEqualToAnchor:captionCard.bottomAnchor constant:10.0],
-        [errorLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor]
+        [errorLabel.topAnchor constraintEqualToAnchor:characterCountLabel.bottomAnchor constant:10.0],
+
+        [deleteButton.topAnchor constraintEqualToAnchor:errorLabel.bottomAnchor constant:18.0],
+        [deleteButton.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
+        [deleteButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
+        [deleteButton.heightAnchor constraintEqualToConstant:52.0],
+        [deleteButton.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor],
+
+        [errorLabel.bottomAnchor constraintLessThanOrEqualToAnchor:deleteButton.topAnchor constant:-18.0]
     ]];
 
     [self pp_loadInitialPreview];
     [self pp_updatePlaceholderVisibility];
+    [self pp_updateCharacterCount];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     self.navigationController.presentationController.delegate = self;
+    [self pp_playPremiumEntranceIfNeeded];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [Styling addLiquidGlassBorderToView:self.headerCardView cornerRadius:24.0];
+    [Styling addLiquidGlassBorderToView:self.captionCardView cornerRadius:24.0];
+    [Styling addLiquidGlassBorderToView:self.previewCardView cornerRadius:28.0];
+
+    for (CALayer *sublayer in self.previewImageView.layer.sublayers) {
+        if ([sublayer isKindOfClass:CAGradientLayer.class]) {
+            sublayer.frame = self.previewImageView.bounds;
+        }
+    }
 }
 
 - (void)pp_loadInitialPreview
@@ -265,6 +431,30 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     }
     self.errorLabel.hidden = YES;
     self.onSave(self.captionTextView.text ?: @"", self.selectedImage, self);
+}
+
+- (void)pp_deleteTapped
+{
+    if (self.isSaving || !self.onDelete) {
+        return;
+    }
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"deleteStore")
+                                                                   message:kLang(@"Are you sure you want to delete this item?")
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"delete")
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.errorLabel.hidden = YES;
+        self.onDelete(self);
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)pp_changeMediaTapped
@@ -327,12 +517,15 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 - (void)pp_setSaving:(BOOL)saving
 {
     self.isSaving = saving;
+    self.modalInPresentation = saving;
     self.captionTextView.editable = !saving;
     self.changeMediaButton.enabled = !saving;
     self.saveButton.enabled = !saving;
+    self.deleteButton.enabled = !saving;
     self.saveButton.alpha = saving ? 0.72 : 1.0;
-    [self.saveButton setTitle:kLang(saving ? @"story_edit_saving" : @"story_edit_save")
-                     forState:UIControlStateNormal];
+    self.deleteButton.alpha = saving ? 0.60 : 1.0;
+    [self pp_updateSaveButtonTitle];
+    self.previewStatusLabel.alpha = saving ? 0.66 : 1.0;
 }
 
 - (void)pp_showError:(NSString *)message
@@ -363,6 +556,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
 - (void)textViewDidChange:(UITextView *)textView
 {
     [self pp_updatePlaceholderVisibility];
+    [self pp_updateCharacterCount];
 }
 
 - (BOOL)textView:(UITextView *)textView
@@ -379,6 +573,128 @@ shouldChangeTextInRange:(NSRange)range
     NSString *caption = [self.captionTextView.text stringByTrimmingCharactersInSet:
                          NSCharacterSet.whitespaceAndNewlineCharacterSet];
     self.placeholderLabel.hidden = caption.length > 0;
+}
+
+- (void)pp_updateCharacterCount
+{
+    NSUInteger count = self.captionTextView.text.length;
+    self.characterCountLabel.text = [NSString stringWithFormat:@"%lu/500", (unsigned long)count];
+    self.characterCountLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.characterCountLabel.textColor = (count > 430)
+        ? [accent colorWithAlphaComponent:0.92]
+        : [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
+}
+
+- (void)pp_updateSaveButtonTitle
+{
+    [self.saveButton setTitle:kLang(self.isSaving ? @"story_edit_saving" : @"story_edit_save")
+                     forState:UIControlStateNormal];
+}
+
+- (void)pp_applyNavigationAppearance
+{
+    if (@available(iOS 15.0, *)) {
+        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+        [appearance configureWithTransparentBackground];
+        appearance.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.82];
+        appearance.titleTextAttributes = @{
+            NSForegroundColorAttributeName: UIColor.labelColor,
+            NSFontAttributeName: [GM boldFontWithSize:17.0]
+        };
+        appearance.shadowColor = UIColor.clearColor;
+        self.navigationItem.standardAppearance = appearance;
+        self.navigationItem.scrollEdgeAppearance = appearance;
+        self.navigationItem.compactAppearance = appearance;
+    }
+}
+
+- (void)pp_buildPremiumBackground
+{
+    UIColor *accentColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *secondaryGlowColor = AppForgroundColr ?: UIColor.systemGrayColor;
+
+    UIView *topGlow = [[UIView alloc] init];
+    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlow.backgroundColor = [accentColor colorWithAlphaComponent:0.16];
+    topGlow.layer.cornerRadius = 110.0;
+    [topGlow pp_setShadowColor:accentColor];
+    topGlow.layer.shadowOpacity = 0.28;
+    topGlow.layer.shadowRadius = 56.0;
+    topGlow.layer.shadowOffset = CGSizeZero;
+    [self.view addSubview:topGlow];
+    self.backgroundGlowViewTop = topGlow;
+
+    UIView *bottomGlow = [[UIView alloc] init];
+    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlow.backgroundColor = [secondaryGlowColor colorWithAlphaComponent:0.10];
+    bottomGlow.layer.cornerRadius = 90.0;
+    [bottomGlow pp_setShadowColor:secondaryGlowColor];
+    bottomGlow.layer.shadowOpacity = 0.18;
+    bottomGlow.layer.shadowRadius = 44.0;
+    bottomGlow.layer.shadowOffset = CGSizeZero;
+    [self.view addSubview:bottomGlow];
+    self.backgroundGlowViewBottom = bottomGlow;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [topGlow.widthAnchor constraintEqualToConstant:220.0],
+        [topGlow.heightAnchor constraintEqualToConstant:220.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-84.0],
+        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:56.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:180.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:180.0],
+        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-48.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:36.0],
+    ]];
+}
+
+- (void)pp_applyPremiumMaterialCardStyle:(UIView *)view alpha:(CGFloat)alpha
+{
+    if (![view isKindOfClass:UIView.class]) {
+        return;
+    }
+    UIColor *surfaceColor = AppForgroundColr ?: [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:1.0];
+    view.backgroundColor = [surfaceColor colorWithAlphaComponent:alpha];
+    view.layer.cornerRadius = 24.0;
+    view.layer.cornerCurve = kCACornerCurveContinuous;
+    view.layer.borderWidth = 1.0;
+    view.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.52].CGColor;
+    [view pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.08]];
+    view.layer.shadowOpacity = 1.0;
+    view.layer.shadowRadius = 18.0;
+    view.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+}
+
+- (void)pp_playPremiumEntranceIfNeeded
+{
+    if (self.didPlayEntrance) {
+        return;
+    }
+    self.didPlayEntrance = YES;
+
+    NSArray<UIView *> *animatedViews = @[
+        self.headerCardView ?: UIView.new,
+        self.previewCardView ?: UIView.new,
+        self.captionCardView ?: UIView.new,
+        self.characterCountLabel ?: UIView.new,
+        self.errorLabel ?: UIView.new
+    ];
+
+    [animatedViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+        [UIView animateWithDuration:0.54
+                              delay:0.04 + (idx * 0.05)
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
 }
 
 @end
@@ -414,6 +730,7 @@ shouldChangeTextInRange:(NSRange)range
 - (BOOL)pp_canEditCurrentStory;
 - (void)pp_replaceCurrentItemWithItem:(PPStoryItem *)updatedItem;
 - (void)pp_commitStoryEditWithCaption:(NSString *)caption newImage:(UIImage * _Nullable)newImage editor:(id)editor;
+- (void)pp_commitStoryDeleteWithEditor:(id)editor;
 
 @property (nonatomic, strong) NSArray<PPStory *> *stories;
 @property (nonatomic, assign) NSInteger currentStoryIndex;
@@ -447,6 +764,8 @@ shouldChangeTextInRange:(NSRange)range
 @property (nonatomic, strong) UIImageView *userAvatarView;
 @property (nonatomic, strong) UILabel *userNameHeaderLabel;
 @property (nonatomic, strong) UILabel *storyTimeLabel;
+@property (nonatomic, strong) UIVisualEffectView *topChromeView;
+@property (nonatomic, strong) UIVisualEffectView *bottomCaptionChromeView;
 @property (nonatomic, assign) NSTimeInterval pausedImageElapsed;
 @property (nonatomic, assign) BOOL isCommittingStoryEdit;
 @end
@@ -482,15 +801,28 @@ shouldChangeTextInRange:(NSRange)range
     _playerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
     [self.view.layer addSublayer:_playerLayer];
 
+    UIBlurEffect *chromeBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+
+    _topChromeView = [[UIVisualEffectView alloc] initWithEffect:chromeBlur];
+    _topChromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    _topChromeView.layer.cornerRadius = 26.0;
+    _topChromeView.layer.masksToBounds = YES;
+    _topChromeView.alpha = 0.96;
+    [self.view addSubview:_topChromeView];
+
     _progressContainer = [[UIView alloc] init];
     _progressContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _progressContainer.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.view addSubview:_progressContainer];
+    [self.topChromeView.contentView addSubview:_progressContainer];
     [NSLayoutConstraint activateConstraints:@[
-        [_progressContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
-        [_progressContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
-        [_progressContainer.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
-        [_progressContainer.heightAnchor constraintEqualToConstant:4.0]
+        [_topChromeView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
+        [_topChromeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
+        [_topChromeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
+
+        [_progressContainer.leadingAnchor constraintEqualToAnchor:self.topChromeView.contentView.leadingAnchor constant:12.0],
+        [_progressContainer.trailingAnchor constraintEqualToAnchor:self.topChromeView.contentView.trailingAnchor constant:-12.0],
+        [_progressContainer.topAnchor constraintEqualToAnchor:self.topChromeView.contentView.topAnchor constant:12.0],
+        [_progressContainer.heightAnchor constraintEqualToConstant:5.0]
     ]];
 
     [self pp_setupControls];
@@ -501,6 +833,10 @@ shouldChangeTextInRange:(NSRange)range
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     self.playerLayer.frame = self.view.bounds;
+    self.topChromeView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.topChromeView.bounds
+                                                                     cornerRadius:26.0].CGPath;
+    self.bottomCaptionChromeView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bottomCaptionChromeView.bounds
+                                                                                cornerRadius:24.0].CGPath;
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -533,113 +869,136 @@ shouldChangeTextInRange:(NSRange)range
     avatar.translatesAutoresizingMaskIntoConstraints = NO;
     avatar.contentMode = UIViewContentModeScaleAspectFill;
     avatar.clipsToBounds = YES;
-    avatar.layer.cornerRadius = 16.0;
+    avatar.layer.cornerRadius = 18.0;
     avatar.layer.borderWidth = 1.5;
-    [avatar pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.85]];
+    [avatar pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.72]];
     avatar.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
     avatar.tintColor = [UIColor colorWithWhite:1.0 alpha:0.7];
-    [self.view addSubview:avatar];
+    [self.topChromeView.contentView addSubview:avatar];
     self.userAvatarView = avatar;
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    nameLabel.font = [UIFont systemFontOfSize:14.5 weight:UIFontWeightSemibold];
     nameLabel.textColor = UIColor.whiteColor;
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     nameLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.view addSubview:nameLabel];
+    [self.topChromeView.contentView addSubview:nameLabel];
     self.userNameHeaderLabel = nameLabel;
 
     UILabel *timeLabel = [[UILabel alloc] init];
     timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    timeLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
-    timeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.65];
+    timeLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    timeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.62];
     timeLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.view addSubview:timeLabel];
+    [self.topChromeView.contentView addSubview:timeLabel];
     self.storyTimeLabel = timeLabel;
 
-    UIButton *dismissButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    dismissButton.translatesAutoresizingMaskIntoConstraints = NO;
-    dismissButton.tintColor = UIColor.whiteColor;
-    dismissButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.42];
-    dismissButton.layer.cornerRadius = 18.0;
-    [dismissButton setImage:[UIImage systemImageNamed:@"xmark"] forState:UIControlStateNormal];
+    UIButton *dismissButton = [self pp_storyControlButtonWithSymbol:@"xmark"];
     [dismissButton addTarget:self action:@selector(pp_dismissButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.view addSubview:dismissButton];
+    [self.topChromeView.contentView addSubview:dismissButton];
     self.dismissButton = dismissButton;
 
-    UIButton *muteButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    muteButton.translatesAutoresizingMaskIntoConstraints = NO;
-    muteButton.tintColor = UIColor.whiteColor;
-    muteButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.42];
-    muteButton.layer.cornerRadius = 18.0;
+    UIButton *muteButton = [self pp_storyControlButtonWithSymbol:@"speaker.slash.fill"];
     [muteButton addTarget:self action:@selector(pp_muteButtonTapped) forControlEvents:UIControlEventTouchUpInside];
     muteButton.hidden = YES;
-    [self.view addSubview:muteButton];
+    [self.topChromeView.contentView addSubview:muteButton];
     self.muteButton = muteButton;
     [self pp_updateMuteButtonAppearance];
 
-    UIButton *editButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    editButton.translatesAutoresizingMaskIntoConstraints = NO;
-    editButton.tintColor = UIColor.whiteColor;
-    editButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.42];
-    editButton.layer.cornerRadius = 18.0;
-    [editButton setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
+    UIButton *editButton = [self pp_storyControlButtonWithSymbol:@"pencil"];
     [editButton addTarget:self action:@selector(pp_editButtonTapped) forControlEvents:UIControlEventTouchUpInside];
     editButton.hidden = YES;
-    [self.view addSubview:editButton];
+    [self.topChromeView.contentView addSubview:editButton];
     self.editButton = editButton;
+
+    UIBlurEffect *captionBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
+    UIVisualEffectView *captionChrome = [[UIVisualEffectView alloc] initWithEffect:captionBlur];
+    captionChrome.translatesAutoresizingMaskIntoConstraints = NO;
+    captionChrome.layer.cornerRadius = 24.0;
+    captionChrome.layer.masksToBounds = YES;
+    captionChrome.hidden = YES;
+    [captionChrome pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.24]];
+    captionChrome.layer.shadowOpacity = 1.0;
+    captionChrome.layer.shadowRadius = 24.0;
+    captionChrome.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    [self.view addSubview:captionChrome];
+    self.bottomCaptionChromeView = captionChrome;
 
     UILabel *captionLabel = [[UILabel alloc] init];
     captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    captionLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    captionLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
     captionLabel.textColor = UIColor.whiteColor;
-    captionLabel.numberOfLines = 3;
-    captionLabel.textAlignment = NSTextAlignmentCenter;
-    captionLabel.shadowColor = [[UIColor blackColor] colorWithAlphaComponent:0.55];
-    captionLabel.shadowOffset = CGSizeMake(0.0, 1.0);
+    captionLabel.numberOfLines = 4;
+    captionLabel.textAlignment = NSTextAlignmentNatural;
     captionLabel.hidden = YES;
     captionLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.view addSubview:captionLabel];
+    [captionChrome.contentView addSubview:captionLabel];
     self.captionLabel = captionLabel;
 
     [NSLayoutConstraint activateConstraints:@[
-        [avatar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
-        [avatar.topAnchor constraintEqualToAnchor:self.progressContainer.bottomAnchor constant:10.0],
-        [avatar.widthAnchor constraintEqualToConstant:32.0],
-        [avatar.heightAnchor constraintEqualToConstant:32.0],
+        [avatar.leadingAnchor constraintEqualToAnchor:self.topChromeView.contentView.leadingAnchor constant:12.0],
+        [avatar.topAnchor constraintEqualToAnchor:self.progressContainer.bottomAnchor constant:12.0],
+        [avatar.widthAnchor constraintEqualToConstant:36.0],
+        [avatar.heightAnchor constraintEqualToConstant:36.0],
 
         [nameLabel.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:8.0],
-        [nameLabel.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
-        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:muteButton.leadingAnchor constant:-8.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:avatar.topAnchor constant:1.0],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:muteButton.leadingAnchor constant:-10.0],
 
         [timeLabel.leadingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor constant:6.0],
-        [timeLabel.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+        [timeLabel.firstBaselineAnchor constraintEqualToAnchor:nameLabel.firstBaselineAnchor],
+        [timeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:muteButton.leadingAnchor constant:-8.0],
+        [timeLabel.topAnchor constraintGreaterThanOrEqualToAnchor:nameLabel.topAnchor],
 
-        [dismissButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
+        [self.topChromeView.bottomAnchor constraintEqualToAnchor:avatar.bottomAnchor constant:12.0],
+
+        [dismissButton.trailingAnchor constraintEqualToAnchor:self.topChromeView.contentView.trailingAnchor constant:-12.0],
         [dismissButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
-        [dismissButton.widthAnchor constraintEqualToConstant:36.0],
-        [dismissButton.heightAnchor constraintEqualToConstant:36.0],
+        [dismissButton.widthAnchor constraintEqualToConstant:40.0],
+        [dismissButton.heightAnchor constraintEqualToConstant:40.0],
 
         [editButton.trailingAnchor constraintEqualToAnchor:dismissButton.leadingAnchor constant:-8.0],
         [editButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
-        [editButton.widthAnchor constraintEqualToConstant:36.0],
-        [editButton.heightAnchor constraintEqualToConstant:36.0],
+        [editButton.widthAnchor constraintEqualToConstant:40.0],
+        [editButton.heightAnchor constraintEqualToConstant:40.0],
 
         [muteButton.trailingAnchor constraintEqualToAnchor:editButton.leadingAnchor constant:-8.0],
         [muteButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
-        [muteButton.widthAnchor constraintEqualToConstant:36.0],
-        [muteButton.heightAnchor constraintEqualToConstant:36.0],
+        [muteButton.widthAnchor constraintEqualToConstant:40.0],
+        [muteButton.heightAnchor constraintEqualToConstant:40.0],
 
-        [captionLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28.0],
-        [captionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-28.0],
-        [captionLabel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-26.0]
+        [captionChrome.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [captionChrome.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+        [captionChrome.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-18.0],
+
+        [captionLabel.leadingAnchor constraintEqualToAnchor:captionChrome.contentView.leadingAnchor constant:16.0],
+        [captionLabel.trailingAnchor constraintEqualToAnchor:captionChrome.contentView.trailingAnchor constant:-16.0],
+        [captionLabel.topAnchor constraintEqualToAnchor:captionChrome.contentView.topAnchor constant:14.0],
+        [captionLabel.bottomAnchor constraintEqualToAnchor:captionChrome.contentView.bottomAnchor constant:-16.0]
     ]];
 
     [nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                               forAxis:UILayoutConstraintAxisHorizontal];
     [timeLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh
                                 forAxis:UILayoutConstraintAxisHorizontal];
+}
+
+- (UIButton *)pp_storyControlButtonWithSymbol:(NSString *)symbolName
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.tintColor = UIColor.whiteColor;
+    button.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.36];
+    button.layer.cornerRadius = 20.0;
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [button pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
+    button.layer.shadowOpacity = 1.0;
+    button.layer.shadowRadius = 12.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    [button setImage:[UIImage systemImageNamed:symbolName] forState:UIControlStateNormal];
+    return button;
 }
 
 - (void)pp_setupGestures
@@ -701,10 +1060,10 @@ shouldChangeTextInRange:(NSRange)range
     for (NSInteger i = 0; i < count; i++) {
         UIProgressView *pv = [[UIProgressView alloc] initWithProgressViewStyle:UIProgressViewStyleDefault];
         pv.progressTintColor = UIColor.whiteColor;
-        pv.trackTintColor = [UIColor colorWithWhite:1.0 alpha:0.24];
+        pv.trackTintColor = [UIColor colorWithWhite:1.0 alpha:0.16];
         pv.translatesAutoresizingMaskIntoConstraints = NO;
         pv.progress = 0.0;
-        pv.layer.cornerRadius = 2.0;
+        pv.layer.cornerRadius = 2.5;
         pv.clipsToBounds = YES;
         [self.progressContainer addSubview:pv];
         [NSLayoutConstraint activateConstraints:@[
@@ -1149,6 +1508,11 @@ shouldChangeTextInRange:(NSRange)range
         if (!self) return;
         [self pp_commitStoryEditWithCaption:caption newImage:newImage editor:editorVC];
     };
+    editor.onDelete = ^(PPStoryEditViewController *editorVC) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_commitStoryDeleteWithEditor:editorVC];
+    };
 
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:editor];
     nav.modalPresentationStyle = UIModalPresentationPageSheet;
@@ -1158,6 +1522,8 @@ shouldChangeTextInRange:(NSRange)range
             [UISheetPresentationControllerDetent largeDetent]
         ];
         nav.sheetPresentationController.prefersGrabberVisible = YES;
+        nav.sheetPresentationController.preferredCornerRadius = 28.0;
+        nav.sheetPresentationController.prefersScrollingExpandsWhenScrolledToEdge = NO;
     }
     [self presentViewController:nav animated:YES completion:nil];
 }
@@ -1220,6 +1586,59 @@ shouldChangeTextInRange:(NSRange)range
         [editor pp_markFinished];
         [editor dismissViewControllerAnimated:YES completion:^{
             [self showItem];
+        }];
+    }];
+}
+
+- (void)pp_commitStoryDeleteWithEditor:(PPStoryEditViewController *)editor
+{
+    PPStory *story = [self pp_currentStory];
+    PPStoryItem *item = [self pp_currentStoryItem];
+    if (!story || !item || ![self pp_canEditCurrentStory]) {
+        [editor pp_showError:kLang(@"story_edit_not_allowed")];
+        return;
+    }
+
+    self.isCommittingStoryEdit = YES;
+    [editor pp_setSaving:YES];
+
+    NSInteger deletingIndex = self.currentItemIndex;
+    __weak typeof(self) weakSelf = self;
+    [[PPStoriesManager shared] deleteStoryItemForCurrentUserWithStoryID:story.userID
+                                                              itemIndex:deletingIndex
+                                                             completion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        self.isCommittingStoryEdit = NO;
+        [editor pp_setSaving:NO];
+
+        if (error) {
+            [editor pp_showError:error.localizedDescription ?: kLang(@"story_edit_failed")];
+            return;
+        }
+
+        NSMutableArray<PPStoryItem *> *items = [story.items mutableCopy] ?: [NSMutableArray array];
+        if (deletingIndex >= 0 && deletingIndex < (NSInteger)items.count) {
+            [items removeObjectAtIndex:(NSUInteger)deletingIndex];
+        }
+        story.items = items.copy;
+
+        if (self.currentItemIndex >= (NSInteger)story.items.count) {
+            self.currentItemIndex = MAX(0, (NSInteger)story.items.count - 1);
+        }
+
+        if (self.onStoryUpdated) {
+            self.onStoryUpdated(story);
+        }
+
+        [editor pp_markFinished];
+        [editor dismissViewControllerAnimated:YES completion:^{
+            if (story.items.count == 0) {
+                [self pp_dismissViewerAnimated:YES];
+            } else {
+                [self showItem];
+            }
         }];
     }];
 }
@@ -1406,10 +1825,13 @@ shouldChangeTextInRange:(NSRange)range
         self.captionLabel.textAlignment = [Language alignmentForCurrentLanguage];
         self.captionLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
         self.captionLabel.hidden = NO;
+        self.bottomCaptionChromeView.hidden = NO;
 
         [self.captionLabel.layer removeAnimationForKey:PPStoryCaptionEntranceAnimationKey];
         self.captionLabel.alpha = 0.0;
         self.captionLabel.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+        self.bottomCaptionChromeView.alpha = 0.0;
+        self.bottomCaptionChromeView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
 
         [UIView animateWithDuration:0.42
                               delay:0.12
@@ -1419,10 +1841,14 @@ shouldChangeTextInRange:(NSRange)range
                          animations:^{
             self.captionLabel.alpha = 1.0;
             self.captionLabel.transform = CGAffineTransformIdentity;
+            self.bottomCaptionChromeView.alpha = 1.0;
+            self.bottomCaptionChromeView.transform = CGAffineTransformIdentity;
         } completion:nil];
     } else {
         self.captionLabel.alpha = 0.0;
         self.captionLabel.hidden = YES;
+        self.bottomCaptionChromeView.alpha = 0.0;
+        self.bottomCaptionChromeView.hidden = YES;
     }
 }
 
@@ -1477,7 +1903,11 @@ shouldChangeTextInRange:(NSRange)range
         name = kLang(@"Unknown");
     }
     self.userNameHeaderLabel.text = name;
+    self.userNameHeaderLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.userNameHeaderLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.storyTimeLabel.text = [self pp_timeAgoFromDate:story.updatedAt];
+    self.storyTimeLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.storyTimeLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     if (story.userImageURL) {
         [PPImageLoaderManager.shared setImageOnImageView:self.userAvatarView

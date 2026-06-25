@@ -41,8 +41,9 @@
         } else {
             // Fallback mirrors Console `HomeControlPanel` / `pp_defaultHomeSectionCatalogOrder`.
             NSArray<NSNumber *> *renderOrder = @[
-                @(PPHomeSectionHero),
                 @(PPHomeSectionPremiumSearch),
+                @(PPHomeSectionProviderCategoryNav),
+                @(PPHomeSectionHero),
                 @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionQuickActions),
                 @(PPHomeSectionMainKinds),
@@ -87,6 +88,9 @@
 
             case PPHomeSectionPremiumSearch:
                 return [PPHomeFunc premiumSearchSectionForWidth:availableWidth];
+
+            case PPHomeSectionProviderCategoryNav:
+                return [PPHomeFunc providerCategoryNavigationSectionForWidth:availableWidth];
 
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];

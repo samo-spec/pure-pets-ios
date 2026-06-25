@@ -111,7 +111,10 @@
 		F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302212F0C6629006E71AB /* BBNavigationBar.m */; };
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
+		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
+		F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */; };
+		F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
 		F21843B12E8BB13300D8BF46 /* ImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843B02E8BB11900D8BF46 /* ImageViewerController.m */; };
@@ -1028,6 +1031,8 @@
 		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavBarTitleView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
 		F21302262F0C8FDB006E71AB /* PPFloatingSearchAccessoryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFloatingSearchAccessoryView.h; sourceTree = "<group>"; };
 		F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFloatingSearchAccessoryView.m; sourceTree = "<group>"; };
+		F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderCategoryPillCell.h; sourceTree = "<group>"; };
+		F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
 		F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+PressAnimation.m"; sourceTree = "<group>"; };
 		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPMenuHelper.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
@@ -1799,6 +1804,10 @@
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
 		F290F54D2FD9E943008EADEE /* SellerProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SellerProfileVC.h; sourceTree = "<group>"; };
 		F290F54E2FD9E943008EADEE /* SellerProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SellerProfileVC.m; sourceTree = "<group>"; };
+		F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderCompaniesListVC.h; sourceTree = "<group>"; };
+		F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderCompaniesListVC.m; sourceTree = "<group>"; };
+		F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderStorefrontProductsVC.h; sourceTree = "<group>"; };
+		F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderStorefrontProductsVC.m; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -2429,6 +2438,8 @@
 		F202A0722EFF15B30048D4C2 /* HomeCells */ = {
 			isa = PBXGroup;
 			children = (
+				F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */,
+				F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */,
 				F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */,
 				F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */,
 				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
@@ -3977,6 +3988,10 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */,
+				F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */,
+				F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */,
+				F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */,
 				F290F54D2FD9E943008EADEE /* SellerProfileVC.h */,
 				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
 				F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */,
@@ -5771,6 +5786,8 @@
 				F2CDBD252D11526000FE7FA2 /* ChildModel.m in Sources */,
 				F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */,
 				F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */,
+				F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */,
+				F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */,
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
 				F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */,
@@ -5785,6 +5802,7 @@
 				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
 				F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */,
 				F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */,
+				F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
 				F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */,
@@ -6358,7 +6376,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6468,7 +6486,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6574,7 +6592,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6592,7 +6610,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6609,7 +6627,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6626,7 +6644,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 178;
+				CURRENT_PROJECT_VERSION = 180;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

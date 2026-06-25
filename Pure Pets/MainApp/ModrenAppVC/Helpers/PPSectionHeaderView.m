@@ -189,9 +189,9 @@
     cfg.baseForegroundColor = [self pp_accentColor];
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = 12.0;
-    background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.18];
+    background.cornerRadius = 8.0;
+    //background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
+    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.0];
     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
     cfg.background = background;
 
@@ -264,7 +264,7 @@
    
     
     UIColor *baseColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.85];
+    return [baseColor colorWithAlphaComponent:0.65];
 }
 
 - (UIColor *)pp_surfaceBorderColor

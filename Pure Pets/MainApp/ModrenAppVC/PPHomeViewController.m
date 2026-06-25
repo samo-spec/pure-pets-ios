@@ -62,6 +62,9 @@
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
+#import "PPHomeProviderCategoryPillCell.h"
+#import "ProviderCompaniesListVC.h"
+
 
 // Forward declaration so PPHomePrepareProfileMenuButton can call pp_buildProfileMenuElements
 @class PPHomeViewController;
@@ -220,6 +223,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIView *_accentRailView;
     UIView *_avatarShellView;
     UIImageView *_avatarImageView;
+    LOTAnimationView *_avatarAnimationView;
     UIActivityIndicatorView *_loadingIndicator;
     PPInsetLabel *_eyebrowLabel;
     UILabel *_titleLabel;
@@ -245,6 +249,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     NSLayoutConstraint *_detailsHeightConstraint;
     BOOL _expanded;
     BOOL _backgroundGlowsFaded;
+    BOOL _avatarAnimationLoaded;
 }
 
 + (NSString *)reuseIdentifier
@@ -342,6 +347,20 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     avatarImageView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     [avatarShellView addSubview:avatarImageView];
     _avatarImageView = avatarImageView;
+
+    LOTAnimationView *avatarAnimationView = [[LOTAnimationView alloc] init];
+    avatarAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarAnimationView.userInteractionEnabled = NO;
+    avatarAnimationView.isAccessibilityElement = NO;
+    avatarAnimationView.accessibilityElementsHidden = YES;
+    avatarAnimationView.contentMode = UIViewContentModeScaleAspectFit;
+    avatarAnimationView.backgroundColor = UIColor.clearColor;
+    avatarAnimationView.loopAnimation = YES;
+    avatarAnimationView.animationSpeed = 0.7;
+    avatarAnimationView.hidden = YES;
+    avatarAnimationView.alpha = 0.0;
+    [avatarShellView addSubview:avatarAnimationView];
+    _avatarAnimationView = avatarAnimationView;
 
     UIActivityIndicatorView *loadingIndicator = [[UIActivityIndicatorView alloc]
         initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
@@ -548,6 +567,11 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [avatarImageView.widthAnchor constraintEqualToConstant:66.0],
         [avatarImageView.heightAnchor constraintEqualToConstant:66.0],
 
+        [avatarAnimationView.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
+        [avatarAnimationView.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
+        [avatarAnimationView.widthAnchor constraintEqualToConstant:66.0],
+        [avatarAnimationView.heightAnchor constraintEqualToConstant:66.0],
+
         [loadingIndicator.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
         [loadingIndicator.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
 
@@ -635,6 +659,9 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [super prepareForReuse];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:_avatarImageView];
     _avatarImageView.image = nil;
+    [_avatarAnimationView stop];
+    _avatarAnimationView.hidden = YES;
+    _avatarAnimationView.alpha = 0.0;
 
     // Reset visual state to prevent stale gradient/text on cell reuse
     [CATransaction begin];
@@ -702,6 +729,47 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 {
     [super layoutSubviews];
     [self pp_refreshCardGeometry];
+}
+
+- (void)pp_loadAvatarEmptyAnimationIfNeeded
+{
+    if (_avatarAnimationLoaded) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [AppClasses setAnimationNamed:@"petprofile"
+                           ToView:_avatarAnimationView
+                        withSpeed:0.7
+                       completion:^(BOOL success) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !success) {
+            return;
+        }
+        self->_avatarAnimationLoaded = YES;
+        if (!self->_avatarAnimationView.hidden && !self->_avatarAnimationView.isAnimationPlaying) {
+            [self->_avatarAnimationView play];
+        }
+    }];
+}
+
+- (void)pp_setAvatarEmptyAnimationVisible:(BOOL)visible
+{
+    if (visible) {
+        [self pp_loadAvatarEmptyAnimationIfNeeded];
+        _avatarAnimationView.hidden = NO;
+        _avatarAnimationView.alpha = 1.0;
+        _avatarImageView.hidden = YES;
+        if (_avatarAnimationLoaded && !_avatarAnimationView.isAnimationPlaying) {
+            [_avatarAnimationView play];
+        }
+        return;
+    }
+
+    [_avatarAnimationView stop];
+    _avatarAnimationView.hidden = YES;
+    _avatarAnimationView.alpha = 0.0;
+    _avatarImageView.hidden = NO;
 }
 
 - (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
@@ -795,6 +863,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIImage *avatarPlaceholder = nil;
     NSString *primaryIconName = @"cross.case.fill";
     NSString *secondaryIconName = @"pawprint.fill";
+    BOOL showsEmptyProfileAnimation = NO;
 
     if (isLoading) {
         accentColor = AppSecondaryTextClr ?: UIColor.systemGrayColor;
@@ -876,11 +945,12 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         _ctaLabel.text = kLang(@"pet_profiles_add_first") ?: @"Add your first pet";
         primaryIconName = @"plus.circle.fill";
         secondaryIconName = @"bell.badge.fill";
-        avatarPlaceholder = [[UIImage systemImageNamed:@"sparkles"
-                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:28.0
-                                                                                                    weight:UIImageSymbolWeightSemibold]]
+        avatarPlaceholder = [[UIImage systemImageNamed:@"pawprint.circle.fill"
+                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:22.0
+                                                                                                    weight:UIImageSymbolWeightRegular]]
                               imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.84];
+        showsEmptyProfileAnimation = YES;
     }
 
     _cardView.backgroundColor = baseSurfaceColor;
@@ -949,6 +1019,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
                                                                                                  weight:UIImageSymbolWeightBold]];
     _avatarImageView.image = avatarPlaceholder;
     _avatarImageView.alpha = isLoading ? 0.34 : 1.0;
+    [self pp_setAvatarEmptyAnimationVisible:showsEmptyProfileAnimation && !isLoading];
     if (isLoading) {
         [_loadingIndicator startAnimating];
     } else {
@@ -1178,6 +1249,10 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 @implementation PPHomeUnavailableBuyAgainButton
 @end
 
+
+
+
+
  
 static NSString * const PPNearbySelectedLatitudeKey = @"pp.home.nearby.latitude";
 static NSString * const PPNearbySelectedLongitudeKey = @"pp.home.nearby.longitude";
@@ -1307,6 +1382,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @end
 
 static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.background.mid.position";
+static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.background.mid.peek";
 
 
 @interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate>
@@ -1333,6 +1409,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 @property (nonatomic, strong) NSArray<ServiceModel *> *services;
 @property (nonatomic, strong) NSArray<MainKindsModel *> *mainKinds;
 @property (nonatomic, strong) NSArray<PPCategoryItem *> *categories;
+@property (nonatomic, copy, nullable) NSString *selectedProviderCategoryIdentifier;
 @property (nonatomic, strong) NSArray<PetAccessory *> *accessories;
 @property (nonatomic, strong) NSArray *buyAgainEntries;
 @property (nonatomic, strong) NSArray<PetAccessory *> *lastFoodAccessories;
@@ -1428,6 +1505,9 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 - (BOOL)pp_canUseSimulatedNearbyLocation;
 - (void)pp_applySimulatedNearbyLocationAndRefreshWithReason:(NSString *)reason;
 - (NSArray<PPHomeQuickActionModel *> *)pp_homeQuickActions;
+- (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderCategoryItems;
+- (void)pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item;
+- (void)pp_refreshProviderCategoryNavigationSection;
 - (void)handleQuickActionSelection:(PPHomeQuickActionModel *)quickAction;
 - (void)pp_openAddNewAdComposer;
 - (void)pp_openAdoptFlow;
@@ -1680,7 +1760,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
     static NSArray<NSString *> *names = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        names = @[@"Health1"]; // @"pet-care2", @"pet-care3", @"pet-care4", @"pet-care5"
+        names = @[@"ecg3"]; // @"pet-care2", @"pet-care3", @"pet-care4", @"pet-care5"
     });
     return names;
 }
@@ -1688,14 +1768,14 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 - (NSString *)pp_currentPremiumCareAnimationName
 {
     NSString *name = PPSafeString(self.currentPremiumCareAnimationName);
-    return name.length > 0 ? name : @"Health1";
+    return name.length > 0 ? name : @"ecg3";
 }
 
 - (void)pp_advancePremiumCareAnimationForAppearance
 {
     NSArray<NSString *> *names = [self pp_premiumCareAnimationNames];
     if (names.count == 0) {
-        self.currentPremiumCareAnimationName = @"Health1";
+        self.currentPremiumCareAnimationName = @"ecg3";
         return;
     }
 
@@ -2047,8 +2127,9 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 /// Canonical fallback order — mirrors Console `HomeControlPanel` / `IOS_SECTION_CATALOG`.
 - (NSArray<NSNumber *> *)pp_defaultHomeSectionCatalogOrder {
     return @[
-        @(PPHomeSectionHero),
         @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionProviderCategoryNav),
+        @(PPHomeSectionHero),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionQuickActions),
         @(PPHomeSectionMainKinds),
@@ -2100,6 +2181,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 @"PPHomeSectionAdopt" : @(PPHomeSectionAdopt),
                 @"PPHomeSectionBuyAgain" : @(PPHomeSectionBuyAgain),
                 @"PPHomeSectionPremiumSearch" : @(PPHomeSectionPremiumSearch),
+                @"PPHomeSectionProviderCategoryNav" : @(PPHomeSectionProviderCategoryNav),
             };
         });
         NSNumber *mapped = typeNameMap[raw];
@@ -2169,6 +2251,29 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
 
     NSMutableArray<NSDictionary *> *merged = [stored mutableCopy];
+    NSNumber *providerCategoryNavID = @(PPHomeSectionProviderCategoryNav);
+    if (![presentIDs containsObject:providerCategoryNavID]) {
+        NSDictionary *providerCategoryNavRow = @{
+            @"id" : providerCategoryNavID,
+            @"visible" : @([self pp_defaultVisibilityForHomeSection:PPHomeSectionProviderCategoryNav]),
+            @"type" : @""
+        };
+        NSUInteger premiumSearchIndex =
+            [merged indexOfObjectPassingTest:^BOOL(NSDictionary *row, NSUInteger idx, BOOL *stop) {
+                (void)idx;
+                (void)stop;
+                return PPHomeSectionIDFromConfigValue(row[@"id"]) == PPHomeSectionPremiumSearch ||
+                       PPHomeSectionIDFromConfigValue(row[@"type"]) == PPHomeSectionPremiumSearch;
+            }];
+        if (premiumSearchIndex != NSNotFound) {
+            [merged insertObject:providerCategoryNavRow
+                          atIndex:MIN(premiumSearchIndex + 1, merged.count)];
+        } else {
+            [merged insertObject:providerCategoryNavRow atIndex:0];
+        }
+        [presentIDs addObject:providerCategoryNavID];
+    }
+
     for (NSNumber *sectionID in catalogOrder) {
         if ([presentIDs containsObject:sectionID]) {
             continue;
@@ -2450,6 +2555,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     // ✅ Premium Search
     PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-card"];
     safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
+
+    // ✅ Provider Marketplace Navigation
+    safeAppend([self pp_buildItemsForSection:PPHomeSectionProviderCategoryNav],
+               @(PPHomeSectionProviderCategoryNav));
 
     // ✅ Quick Actions
     NSMutableArray<PPHomeItem *> *quickActions = [NSMutableArray array];
@@ -3283,6 +3392,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return [parts componentsJoinedByString:@"|"];
     }
 
+    if ([payload isKindOfClass:PPHomeProviderCategoryItem.class]) {
+        PPHomeProviderCategoryItem *category = (PPHomeProviderCategoryItem *)payload;
+        [parts addObject:[NSString stringWithFormat:@"provider-category:%@",
+                          PPSafeString(category.identifier)]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
     if ([payload isKindOfClass:PPOrder.class]) {
         PPOrder *order = (PPOrder *)payload;
         NSString *orderID = PPSafeString(order.orderId);
@@ -3407,6 +3523,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
 
     switch (section) {
+        case PPHomeSectionProviderCategoryNav:
+            for (PPHomeProviderCategoryItem *category in [self pp_homeProviderCategoryItems]) {
+                PPHomeItem *item = [[PPHomeItem alloc] initWithType:PPHomeItemTypeProviderCategoryNav
+                                                            payload:category];
+                [items addObject:item];
+            }
+            break;
+
         case PPHomeSectionQuickActions:
             for (PPHomeQuickActionModel *qa in [self pp_homeQuickActions]) {
                 PPHomeItem *item = [PPHomeItem new];
@@ -4325,7 +4449,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<NSDictionary *> *sanitized =
         [NSMutableArray arrayWithCapacity:sectionsArray.count];
     NSMutableSet<NSNumber *> *seenIDs = [NSMutableSet set];
-    NSInteger maxKnownID = (NSInteger)PPHomeSectionPremiumSearch;
+    NSInteger maxKnownID = (NSInteger)PPHomeSectionProviderCategoryNav;
 
     for (id raw in sectionsArray) {
         if (![raw isKindOfClass:NSDictionary.class]) {
@@ -6730,6 +6854,10 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     NSString *arrowImage = Language.isRTL ?  @"arrow.left" :  @"arrow.right";
 
     switch (section) {
+        case PPHomeSectionProviderCategoryNav:
+            cfg.hidden = YES;
+            break;
+
         case PPHomeSectionSuggestions: {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_picks_for_you") ?: kLang(@"SuggestedForYou");
@@ -6942,6 +7070,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     }
     [self.collectionView registerClass:PPHomePremiumSearchCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
+    [self.collectionView registerClass:PPHomeProviderCategoryPillCell.class
+            forCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier];
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
@@ -7159,6 +7289,28 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
                 return cell;
             }
+
+        if (section == PPHomeSectionProviderCategoryNav) {
+            PPHomeProviderCategoryPillCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier
+                                                          forIndexPath:indexPath];
+
+            PPHomeProviderCategoryItem *categoryItem =
+                [item.payload isKindOfClass:PPHomeProviderCategoryItem.class]
+                ? (PPHomeProviderCategoryItem *)item.payload
+                : [strongSelf pp_homeProviderCategoryItems].firstObject;
+
+            [cell configureWithItem:categoryItem selected:NO];
+
+            __weak typeof(strongSelf) weakHome = strongSelf;
+            cell.onTap = ^(PPHomeProviderCategoryItem *selectedItem) {
+                __strong typeof(weakHome) self = weakHome;
+                if (!self) return;
+                [self pp_handleProviderCategorySelection:selectedItem];
+            };
+
+            return cell;
+        }
 
         if ( section == PPHomeSectionPremiumCare) {
             if (PPULTRA_CARE_IS_ACTIVATED) {
@@ -8762,6 +8914,13 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     switch (section) {
+        case PPHomeSectionProviderCategoryNav: {
+            if ([item.payload isKindOfClass:PPHomeProviderCategoryItem.class]) {
+                [self pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item.payload];
+            }
+            return;
+        }
+
         case PPHomeSectionQuickActions:
             return;
 
@@ -9263,6 +9422,54 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return [PPHomeQuickActionModel defaultHomeQuickActions];
 }
 
+- (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderCategoryItems
+{
+    static NSArray<PPHomeProviderCategoryItem *> *items;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        items = @[
+            [PPHomeProviderCategoryItem itemWithIdentifier:@"marketplace"
+                                                  titleKey:@"provider_marketplace_title"
+                                               subtitleKey:@"provider_marketplace_subtitle"
+                                                systemIcon:@"square.grid.2x2.fill"
+                                                     route:PPHomeProviderCategoryRouteServices],
+            [PPHomeProviderCategoryItem itemWithIdentifier:@"pharmacy"
+                                                  titleKey:@"provider_pharmacies_title"
+                                               subtitleKey:@"provider_pharmacies_subtitle"
+                                                systemIcon:@"cross.case.fill"
+                                                     route:PPHomeProviderCategoryRouteServices],
+        ];
+    });
+    return items;
+}
+
+- (void)pp_refreshProviderCategoryNavigationSection
+{
+    NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+    NSArray<PPHomeItem *> *items =
+        [self pp_safeItemsInSection:PPHomeSectionProviderCategoryNav
+                         fromSnapshot:snapshot];
+    if (items.count == 0) {
+        return;
+    }
+    [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
+}
+
+- (void)pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item
+{
+    if (![item isKindOfClass:PPHomeProviderCategoryItem.class]) {
+        return;
+    }
+
+    [self pp_emitSelectionHaptic];
+
+    ProviderCompaniesListVC *vc = [[ProviderCompaniesListVC alloc] init];
+    vc.selectedProviderCategoryIdentifier = PPSafeString(item.identifier);
+    vc.selectedProviderCategoryTitleKey = PPSafeString(item.titleKey);
+    vc.selectedProviderCategorySubtitleKey = PPSafeString(item.subtitleKey);
+    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+}
+
 - (void)handleQuickActionSelection:(PPHomeQuickActionModel *)quickAction
 {
     if (![quickAction isKindOfClass:PPHomeQuickActionModel.class]) {
@@ -9762,6 +9969,42 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [glowView.layer addAnimation:positionAnimation forKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
 }
 
+- (void)pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded
+{
+    PPHomeAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
+    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+        [glowView.layer animationForKey:PPHomeMiddleBackgroundGlowPeekMotionKey]) {
+        return;
+    }
+
+    CGFloat travelDistance = MIN(26.0, MAX(16.0, CGRectGetWidth(glowView.bounds) * 0.08));
+    CGFloat direction = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -1.0 : 1.0;
+
+    CABasicAnimation *positionAnimation =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    positionAnimation.fromValue = @(0.0);
+    positionAnimation.toValue = @(travelDistance * direction);
+
+    CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.fromValue = @0.88;
+    opacityAnimation.toValue = @1.0;
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scaleAnimation.fromValue = @0.985;
+    scaleAnimation.toValue = @1.018;
+
+    CAAnimationGroup *peekAnimation = [CAAnimationGroup animation];
+    peekAnimation.animations = @[positionAnimation, opacityAnimation, scaleAnimation];
+    peekAnimation.duration = 4.8;
+    peekAnimation.autoreverses = YES;
+    peekAnimation.repeatCount = HUGE_VALF;
+    peekAnimation.removedOnCompletion = YES;
+    peekAnimation.timingFunction =
+        [CAMediaTimingFunction functionWithControlPoints:0.35 :0.0 :0.18 :1.0];
+
+    [glowView.layer addAnimation:peekAnimation forKey:PPHomeMiddleBackgroundGlowPeekMotionKey];
+}
+
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded
 {
     if (self.didStartPremiumBackgroundGlowMotion ||
@@ -9772,13 +10015,18 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
     self.didStartPremiumBackgroundGlowMotion = YES;
-    [self pp_addRandomizedMiddleBackgroundGlowPositionMotion];
+    if (self.backgroundGlowsFadedByHomeConfig) {
+        [self pp_addRandomizedMiddleBackgroundGlowPositionMotion];
+    } else {
+        [self pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded];
+    }
 }
 
 - (void)pp_stopPremiumBackgroundGlowMotion
 {
     self.didStartPremiumBackgroundGlowMotion = NO;
     [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
+    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPeekMotionKey];
 }
 
 - (void)pp_beginPremiumHomeEntranceIfNeeded
@@ -11935,24 +12183,40 @@ presentingViewController:self
     BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
-    UIColor *signatureColor = AppPrimaryClr ?: UIColor.systemPurpleColor;
+    UIColor *signatureColor = AppPrimaryClrShiner ?: UIColor.systemPurpleColor;
     UIColor *supportingColor = AppPrimaryClrShiner ?: AppForgroundColr ?: signatureColor;
-    UIColor *topAtmosphereColor = [UIColor colorNamed:@"HomeAmbientTopGlowColor"] ?: UIColor.systemBlueColor;
+    UIColor *topAtmosphereColor = AppPrimaryClrShiner;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:[UIColor colorNamed:@"AppBageGlows"]//topAtmosphereColor
-                        peakAlpha:(isDark ? 0.22 : 0.16) * accessibilityScale
-                      middleAlpha:(isDark ? 0.078 : 0.054) * accessibilityScale];
+                            color:UIColor.clearColor
+                        peakAlpha:(isDark ? 0.118 : 0.008) * accessibilityScale
+                      middleAlpha:(isDark ? 0.054 : 0.0008) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:[UIColor colorNamed:@"AppBageGlows"]//supportingColor
-                        peakAlpha:(isDark ? 0.075 : 0.050) * accessibilityScale
-                      middleAlpha:(isDark ? 0.026 : 0.018) * accessibilityScale];
+                            color:UIColor.clearColor
+                        peakAlpha:(isDark ? 0.075 : 0.00050) * accessibilityScale
+                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:[UIColor colorNamed:@"AppBageGlows"]//signatureColor
-                        peakAlpha:(isDark ? 0.27 : 0.21) * accessibilityScale
-                      middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
+                            color:UIColor.clearColor
+                        peakAlpha:(isDark ? 0.27 : 0.0021) * accessibilityScale
+                      middleAlpha:(isDark ? 0.095 : 0.00072) * accessibilityScale];
+    /*
+     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+                             color:topAtmosphereColor
+                         peakAlpha:(isDark ? 0.118 : 0.028) * accessibilityScale
+                       middleAlpha:(isDark ? 0.054 : 0.048) * accessibilityScale];
+
+     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                             color:supportingColor
+                         peakAlpha:(isDark ? 0.075 : 0.050) * accessibilityScale
+                       middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
+
+     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+                             color:signatureColor
+                         peakAlpha:(isDark ? 0.27 : 0.21) * accessibilityScale
+                       middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
+     */
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews
@@ -11973,7 +12237,7 @@ presentingViewController:self
     }
     self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
 
-    CGFloat topSize = MIN(320.0, MAX(160.0, width * 1.04));
+    CGFloat topSize = MIN(228.0, MAX(176.0, width * 0.72));
     CGFloat midSize = MIN(340.0, MAX(150.0, width * 0.86));
     CGFloat bottomSize = MIN(260.0, MAX(280.0, width * 1.12));
     BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
@@ -11983,15 +12247,20 @@ presentingViewController:self
 
     self.pp_premiumBackgroundGlowViewTop.bounds = CGRectMake(0.0, 0.0, topSize, topSize);
     self.pp_premiumBackgroundGlowViewTop.center = CGPointMake(
-        isRTL ? topSize * 0.36 : width - (topSize * 0.36),
-        safeTop - (topSize * 0.18)
+        isRTL ? topSize * 0.22 : width - (topSize * 0.22),
+        safeTop + (topSize * 0.10)
     );
 
     self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
-    self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
-        CGRectGetMidX(bounds),
-        MAX(180.0, height * 0.52)
-    );
+    CGFloat middleY = MAX(180.0, height * 0.52);
+    if (self.backgroundGlowsFadedByHomeConfig) {
+        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds), middleY);
+    } else {
+        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
+            isRTL ? width - (midSize * 0.20) : midSize * 0.20,
+            middleY
+        );
+    }
 
     self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
     self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(

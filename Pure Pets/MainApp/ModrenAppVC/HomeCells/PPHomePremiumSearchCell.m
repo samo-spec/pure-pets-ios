@@ -129,6 +129,35 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     return _glassChromeButton != nil;
 }
 
+- (void)pp_configureSystemGlassChromeIfNeeded
+{
+    if (!_glassChromeButton) {
+        return;
+    }
+
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.contentInsets = NSDirectionalEdgeInsetsZero;
+        configuration.baseForegroundColor = UIColor.clearColor;
+        configuration.baseBackgroundColor = UIColor.clearColor;
+
+        UIBackgroundConfiguration *background =
+            configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
+        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
+        background.backgroundColor = UIColor.clearColor;
+        background.strokeColor = UIColor.clearColor;
+        background.strokeWidth = 0.0;
+        background.visualEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
+        background.cornerRadius = CGRectGetHeight(_chromeView.bounds) > 0.0
+            ? CGRectGetHeight(_chromeView.bounds) * 0.5
+            : PPPSBChromeCornerRadius;
+        configuration.background = background;
+
+        _glassChromeButton.configuration = configuration;
+    }
+}
+
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -157,35 +186,15 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     self.layer.shadowOpacity = 0.0f;
     self.layer.shadowRadius = 0.0f;
     self.layer.shadowOffset = CGSizeZero;
- /*
- if (@available(iOS 26.0, *)) {
-     UIButtonConfiguration *configuration =
-     [UIButtonConfiguration glassButtonConfiguration];
-     configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-     configuration.contentInsets = NSDirectionalEdgeInsetsZero;
-     configuration.baseForegroundColor = UIColor.clearColor;
-     configuration.background.backgroundColor = UIColor.clearColor;
- }
- */
     UIView *chromeView = nil;
     if (@available(iOS 26.0, *)) {
-        UIButton *glassButton = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
+        UIButton *glassButton = [UIButton buttonWithType:UIButtonTypeSystem];
         glassButton.backgroundColor = UIColor.clearColor;
         glassButton.userInteractionEnabled = NO;
-
-        UIButtonConfiguration *configuration = glassButton.configuration;
-        configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        configuration.background.cornerRadius = PPPSBChromeCornerRadius ;
-        configuration.baseForegroundColor = UIColor.clearColor;
-        configuration.background.backgroundColor = UIColor.clearColor;
-
-        glassButton.configuration = configuration;
-
+        glassButton.clipsToBounds = NO;
         chromeView = glassButton;
         _glassChromeButton = glassButton;
-
-       
-        
+        [self pp_configureSystemGlassChromeIfNeeded];
     } else {
         chromeView = [[UIView alloc] initWithFrame:self.contentView.bounds];
     }
@@ -445,7 +454,9 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
         : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
     if (@available(iOS 26.0, *)) {
-        _chromeView.layer.cornerRadius = 6;
+        CGFloat chromeHeight = CGRectGetHeight(_chromeView.bounds);
+        _chromeView.layer.cornerRadius = chromeHeight > 0.0 ? chromeHeight * 0.5 : PPPSBChromeCornerRadius;
+        [self pp_configureSystemGlassChromeIfNeeded];
     } else {
         _chromeView.layer.cornerRadius = 22.0;
     }
@@ -749,7 +760,11 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
 
     _chromeView.backgroundColor = UIColor.clearColor;
-    if (!PPIOS26()) {
+    if (usesSystemGlassChrome) {
+        [self pp_configureSystemGlassChromeIfNeeded];
+        _chromeView.layer.borderWidth = 0.0f;
+        [_chromeView pp_setBorderColor:UIColor.clearColor];
+    } else {
         _chromeBlurView.alpha = 1.0;
 
         UIBlurEffectStyle blurStyle = isDark

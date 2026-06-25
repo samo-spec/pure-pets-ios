@@ -30,6 +30,16 @@
                                matchingKind:(AccessKindType)kind
                 requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility;
 + (NSArray<PetAccessory *> *)pp_sortItemsByCreatedAtDescending:(NSArray<PetAccessory *> *)items;
++ (void)pp_fetchPublicAccessoriesForKinds:(NSArray<NSNumber *> *)kinds
+               requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility
+                               completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                    NSError * _Nullable error))completion;
++ (void)pp_fetchProviderAccessoriesForOwnerID:(NSString *)ownerID
+                                         kinds:(NSArray<NSNumber *> *)kinds
+                             excludingAccessory:(nullable PetAccessory *)exclude
+                    requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility
+                                    completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                         NSError * _Nullable error))completion;
 @end
 
 @implementation PetAccessoryManager
@@ -2110,37 +2120,167 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     + (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
                                          excludingAccessory:(PetAccessory *)exclude
                                                 completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
-        if (ownerID.length == 0) { if (completion) completion(@[]); return; }
+        [self fetchProviderMarketplaceAccessoriesForOwnerID:ownerID
+                                          excludingAccessory:exclude
+                                         completionWithError:^(NSArray<PetAccessory *> *accessories, NSError * _Nullable error) {
+            if (error) {
+                NSLog(@"❌ fetchProviderMarketplaceAccessories error: %@", error.localizedDescription);
+            }
+            if (completion) completion(accessories ?: @[]);
+        }];
+    }
+
+    + (void)fetchProviderMarketplaceAccessoriesForOwnerID:(NSString *)ownerID
+                                        excludingAccessory:(PetAccessory *)exclude
+                                       completionWithError:(void (^)(NSArray<PetAccessory *> *accessories, NSError * _Nullable error))completion
+    {
+        [self pp_fetchProviderAccessoriesForOwnerID:ownerID
+                                              kinds:@[@(AccessTypeAccessory), @(AccessTypeFood)]
+                                  excludingAccessory:exclude
+                         requiresAppMarketVisibility:YES
+                                         completion:completion];
+    }
+
+    + (void)fetchProviderPharmacyAccessoriesForOwnerID:(NSString *)ownerID
+                                     excludingAccessory:(PetAccessory *)exclude
+                                    completionWithError:(void (^)(NSArray<PetAccessory *> *accessories, NSError * _Nullable error))completion
+    {
+        [self pp_fetchProviderAccessoriesForOwnerID:ownerID
+                                              kinds:@[@(AccessTypePetMedicine)]
+                                  excludingAccessory:exclude
+                         requiresAppMarketVisibility:NO
+                                         completion:completion];
+    }
+
+    + (void)fetchPublicMarketplaceAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                     NSError * _Nullable error))completion
+    {
+        [self pp_fetchPublicAccessoriesForKinds:@[@(AccessTypeAccessory), @(AccessTypeFood)]
+                    requiresAppMarketVisibility:YES
+                                    completion:completion];
+    }
+
+    + (void)fetchPublicPharmacyAccessoriesWithCompletion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                                  NSError * _Nullable error))completion
+    {
+        [self pp_fetchPublicAccessoriesForKinds:@[@(AccessTypePetMedicine)]
+                    requiresAppMarketVisibility:NO
+                                    completion:completion];
+    }
+
+    + (void)pp_fetchPublicAccessoriesForKinds:(NSArray<NSNumber *> *)kinds
+                  requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility
+                                  completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                       NSError * _Nullable error))completion
+    {
+        [self pp_loadExpiryThresholdIfNeeded];
+        if (kinds.count == 0) {
+            if (completion) completion(@[], nil);
+            return;
+        }
+
+        FIRFirestore *db = [FIRFirestore firestore];
+        dispatch_group_t group = dispatch_group_create();
+        __block NSError *firstError = nil;
+        NSMutableDictionary<NSString *, PetAccessory *> *mergedByID = [NSMutableDictionary dictionary];
+
+        for (NSNumber *kindNumber in kinds) {
+            AccessKindType kind = (AccessKindType)kindNumber.integerValue;
+            dispatch_group_enter(group);
+
+            FIRQuery *query = [[db collectionWithPath:@"petAccessories"]
+                               queryWhereField:@"accessKindType" isEqualTo:@(kind)];
+            if (requiresAppMarketVisibility) {
+                query = PPAccessoryRequirePublicMarketVisibility(query);
+            }
+
+            [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+                if (error && !firstError) {
+                    firstError = error;
+                }
+
+                NSMutableArray<PetAccessory *> *items = [NSMutableArray array];
+                for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+                    PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                    item.accessoryID = doc.documentID;
+                    [items addObject:item];
+                }
+
+                NSArray<PetAccessory *> *visible = [self pp_filterItems:items
+                                                           matchingKind:kind
+                                            requiresAppMarketVisibility:requiresAppMarketVisibility];
+                @synchronized (mergedByID) {
+                    for (PetAccessory *item in visible) {
+                        NSString *itemID = item.accessoryID ?: @"";
+                        if (itemID.length == 0 || mergedByID[itemID] != nil) {
+                            continue;
+                        }
+                        mergedByID[itemID] = item;
+                    }
+                }
+
+                dispatch_group_leave(group);
+            }];
+        }
+
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            NSArray<PetAccessory *> *results = [self pp_sortItemsByCreatedAtDescending:mergedByID.allValues ?: @[]];
+            if (completion) {
+                completion(results, (results.count == 0 ? firstError : nil));
+            }
+        });
+    }
+
+    + (void)pp_fetchProviderAccessoriesForOwnerID:(NSString *)ownerID
+                                            kinds:(NSArray<NSNumber *> *)kinds
+                                excludingAccessory:(PetAccessory *)exclude
+                       requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility
+                                       completion:(void (^)(NSArray<PetAccessory *> *accessories,
+                                                            NSError * _Nullable error))completion
+    {
+        [self pp_loadExpiryThresholdIfNeeded];
+        if (ownerID.length == 0) {
+            if (completion) completion(@[], nil);
+            return;
+        }
+
+        NSSet<NSNumber *> *allowedKinds = [NSSet setWithArray:kinds ?: @[]];
+        NSDate *cutoff = [[NSDate date] dateByAddingTimeInterval:_pp_cachedExpiryThresholdDays * 86400.0];
+        NSString *excludeID = exclude.accessoryID ?: @"";
 
         FIRFirestore *db = [FIRFirestore firestore];
         FIRQuery *query = [[[db collectionWithPath:@"petAccessories"]
                            queryWhereField:@"ownerID" isEqualTo:ownerID]
-                           queryLimitedTo:25];
+                           queryLimitedTo:60];
 
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
-                NSLog(@"❌ fetchProviderMarketplaceAccessories error: %@", error.localizedDescription);
-                if (completion) completion(@[]);
+                if (completion) completion(@[], error);
                 return;
             }
 
             NSMutableArray<PetAccessory *> *results = [NSMutableArray array];
-            NSString *excludeID = exclude.accessoryID;
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                if ([doc.documentID isEqualToString:excludeID]) continue;
-                PetAccessory *acc = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                acc.accessoryID = doc.documentID;
-                if (acc.isBlocked || acc.isDeleted || acc.isDisabled) continue;
-                if (acc.accessKindType != AccessTypeAccessory && acc.accessKindType != AccessTypeFood) continue;
-                if (!acc.showInAppMarket) continue;
-                [results addObject:acc];
+            for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+                if (excludeID.length > 0 && [doc.documentID isEqualToString:excludeID]) {
+                    continue;
+                }
+
+                PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                item.accessoryID = doc.documentID;
+
+                if (![allowedKinds containsObject:@(item.accessKindType)]) {
+                    continue;
+                }
+                if (![self pp_itemPassesVisibilityAndExpiry:item
+                                                 cutoffDate:cutoff
+                                  requiresAppMarketVisibility:requiresAppMarketVisibility]) {
+                    continue;
+                }
+                [results addObject:item];
             }
 
-            [results sortUsingComparator:^NSComparisonResult(PetAccessory *a, PetAccessory *b) {
-                return [b.createdAt compare:a.createdAt];
-            }];
-
-            if (completion) completion([results copy]);
+            NSArray<PetAccessory *> *sorted = [self pp_sortItemsByCreatedAtDescending:results];
+            if (completion) completion(sorted, nil);
         }];
     }
 
@@ -2554,8 +2694,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
      [self.collectionView reloadData];
  }];
  */
-
-
 
 
 

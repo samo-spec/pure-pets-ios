@@ -49,7 +49,7 @@
     // =========================
     // Glass container (modern blur)
     // =========================
-    self.glassBackgroundButton = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge configType:PPButtonConfigrationPromp];
+    self.glassBackgroundButton = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge configType:PPButtonConfigrationGlass];
     self.glassBackgroundButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.glassBackgroundButton.backgroundColor = UIColor.clearColor;
     self.glassBackgroundButton.configuration.background.backgroundColor = UIColor.clearColor;

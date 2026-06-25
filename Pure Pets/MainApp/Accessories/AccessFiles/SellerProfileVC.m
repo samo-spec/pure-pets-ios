@@ -6,8 +6,12 @@
 //
 
 #import "SellerProfileVC.h"
+#import "AccessViewerVC.h"
+#import "CartManager.h"
 #import "PetAccessory.h"
 #import "PetAccessoryManager.h"
+#import "PPFunc.h"
+#import "PPHUD.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import "PPImageLoaderManager.h"
@@ -60,7 +64,17 @@ static UIColor *SPSellerRoseColor(void) {
     return [UIColor colorWithRed:0.72 green:0.28 blue:0.34 alpha:1.0];
 }
 
-@interface SellerProfileVC () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate>
+static NSString *SPSellerNormalizedCategoryIdentifier(NSString *identifier)
+{
+    return [[PPSafeString(identifier) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
+}
+
+static BOOL SPSellerIsPharmacyCategory(NSString *identifier)
+{
+    return [SPSellerNormalizedCategoryIdentifier(identifier) isEqualToString:@"pharmacy"];
+}
+
+@interface SellerProfileVC () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate, UIScrollViewDelegate>
 
 @property (nonatomic, strong) UIView *glowTopView;
 @property (nonatomic, strong) UIView *glowMiddleView;
@@ -72,6 +86,7 @@ static UIColor *SPSellerRoseColor(void) {
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
+@property (nonatomic, strong) UIView *heroLiquidBorderView;
 @property (nonatomic, strong) UIView *avatarShellView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -85,10 +100,17 @@ static UIColor *SPSellerRoseColor(void) {
 @property (nonatomic, strong) UILabel *itemsTitleLabel;
 @property (nonatomic, strong) UILabel *itemsStateLabel;
 @property (nonatomic, strong) UIActivityIndicatorView *itemsActivityIndicator;
+@property (nonatomic, strong) UIButton *itemsRetryButton;
 @property (nonatomic, strong) UICollectionView *itemsCollectionView;
+@property (nonatomic, strong) UIView *compactHeaderView;
+@property (nonatomic, strong) UIView *compactHeaderAvatarShellView;
+@property (nonatomic, strong) UIImageView *compactHeaderAvatarImageView;
+@property (nonatomic, strong) UILabel *compactHeaderTitleLabel;
+@property (nonatomic, strong) UILabel *compactHeaderBadgeLabel;
 @property (nonatomic, strong) NSMutableArray<PPUniversalCellViewModel *> *itemViewModels;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedItemIndexes;
 @property (nonatomic, strong) NSLayoutConstraint *collectionHeightConstraint;
+@property (nonatomic, strong, nullable) NSError *itemsLoadError;
 
 @end
 
@@ -116,6 +138,18 @@ static UIColor *SPSellerRoseColor(void) {
     _sellerItems = [sellerItems copy] ?: @[];
     if (self.isViewLoaded) {
         [self applySellerItems:_sellerItems loading:NO];
+    }
+}
+
+- (void)setProviderCategoryIdentifier:(NSString *)providerCategoryIdentifier
+{
+    _providerCategoryIdentifier = [providerCategoryIdentifier copy];
+    self.didRequestSellerItems = NO;
+    self.itemsLoadError = nil;
+    if (self.isViewLoaded) {
+        [self configureSellerIdentity];
+        [self applySellerItems:self.sellerItems loading:self.sellerItems.count == 0];
+        [self fetchSellerItemsIfNeeded];
     }
 }
 
@@ -147,6 +181,7 @@ static UIColor *SPSellerRoseColor(void) {
     [self layoutGlowViews];
     [self updateCollectionHeight];
     [self updateSurfaceShadowPaths];
+    [self pp_updateCollapsibleHeaderForScrollOffset:self.scrollView.contentOffset.y animated:NO];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
@@ -166,6 +201,7 @@ static UIColor *SPSellerRoseColor(void) {
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.scrollView.showsVerticalScrollIndicator = NO;
     self.scrollView.alwaysBounceVertical = YES;
+    self.scrollView.delegate = self;
     if (@available(iOS 11.0, *)) {
         self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
     }
@@ -178,6 +214,7 @@ static UIColor *SPSellerRoseColor(void) {
 
     [self setupHeroSurface];
     [self setupItemsSection];
+    [self setupCompactHeader];
     [self applyTheme];
 }
 
@@ -206,6 +243,16 @@ static UIColor *SPSellerRoseColor(void) {
 - (void)setupHeroSurface {
     self.heroSurfaceView = [self createSurfaceView];
     [self.contentView addSubview:self.heroSurfaceView];
+
+    self.heroLiquidBorderView = [[UIView alloc] init];
+    self.heroLiquidBorderView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroLiquidBorderView.userInteractionEnabled = NO;
+    self.heroLiquidBorderView.layer.borderWidth = 1.0;
+    self.heroLiquidBorderView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.heroLiquidBorderView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroSurfaceView addSubview:self.heroLiquidBorderView];
 
     self.avatarShellView = [[UIView alloc] init];
     self.avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -262,6 +309,13 @@ static UIColor *SPSellerRoseColor(void) {
     self.contactButtonStack.spacing = kSPSpace12;
     self.contactButtonStack.distribution = UIStackViewDistributionFillEqually;
     [self.heroSurfaceView addSubview:self.contactButtonStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroLiquidBorderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:1.0],
+        [self.heroLiquidBorderView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:1.0],
+        [self.heroLiquidBorderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-1.0],
+        [self.heroLiquidBorderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-1.0],
+    ]];
 }
 
 - (void)setupItemsSection {
@@ -277,6 +331,20 @@ static UIColor *SPSellerRoseColor(void) {
     self.itemsActivityIndicator.hidesWhenStopped = YES;
     self.itemsActivityIndicator.color = SPSellerAccentTealColor();
     [self.contentView addSubview:self.itemsActivityIndicator];
+
+    self.itemsRetryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.itemsRetryButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.itemsRetryButton.layer.cornerRadius = 16.0;
+    self.itemsRetryButton.layer.masksToBounds = YES;
+    self.itemsRetryButton.titleLabel.font = [GM boldFontWithSize:15.0];
+    self.itemsRetryButton.backgroundColor = SPSellerInkColor();
+    [self.itemsRetryButton setTitleColor:SPSellerSurfaceColor(self.traitCollection) forState:UIControlStateNormal];
+    [self.itemsRetryButton setTitle:(kLang(@"provider_retry") ?: @"Retry") forState:UIControlStateNormal];
+    [self.itemsRetryButton addTarget:self action:@selector(handleRetryItemsTap) forControlEvents:UIControlEventTouchUpInside];
+    [self.itemsRetryButton addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [self.itemsRetryButton addTarget:self action:@selector(handleButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    self.itemsRetryButton.hidden = YES;
+    [self.contentView addSubview:self.itemsRetryButton];
 
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
@@ -294,13 +362,59 @@ static UIColor *SPSellerRoseColor(void) {
     [self.contentView addSubview:self.itemsCollectionView];
 }
 
+- (void)setupCompactHeader
+{
+    self.compactHeaderView = [self createSurfaceView];
+    self.compactHeaderView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.compactHeaderView.alpha = 0.0;
+    self.compactHeaderView.hidden = YES;
+    self.compactHeaderView.userInteractionEnabled = NO;
+    self.compactHeaderView.layer.cornerRadius = 24.0;
+    self.compactHeaderView.layer.shadowRadius = 16.0;
+    self.compactHeaderView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.compactHeaderView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.18 : 0.06;
+    UIView *compactBlurView = self.compactHeaderView.subviews.firstObject;
+    if ([compactBlurView isKindOfClass:UIView.class]) {
+        compactBlurView.layer.cornerRadius = 24.0;
+    }
+    [self.view addSubview:self.compactHeaderView];
+
+    self.compactHeaderAvatarShellView = [[UIView alloc] init];
+    self.compactHeaderAvatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.compactHeaderAvatarShellView.layer.masksToBounds = YES;
+    self.compactHeaderAvatarShellView.layer.borderWidth = 1.0;
+    [self.compactHeaderView addSubview:self.compactHeaderAvatarShellView];
+
+    self.compactHeaderAvatarImageView = [[UIImageView alloc] init];
+    self.compactHeaderAvatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.compactHeaderAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.compactHeaderAvatarImageView.layer.masksToBounds = YES;
+    [self.compactHeaderAvatarShellView addSubview:self.compactHeaderAvatarImageView];
+
+    self.compactHeaderTitleLabel = [self labelWithFont:[GM boldFontWithSize:16.0]
+                                                 color:SPSellerInkColor()
+                                                 lines:1];
+    self.compactHeaderTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.compactHeaderTitleLabel.minimumScaleFactor = 0.82;
+    [self.compactHeaderView addSubview:self.compactHeaderTitleLabel];
+
+    self.compactHeaderBadgeLabel = [self labelWithFont:[GM boldFontWithSize:11.0]
+                                                 color:SPSellerAccentTealColor()
+                                                 lines:1];
+    self.compactHeaderBadgeLabel.textAlignment = NSTextAlignmentCenter;
+    self.compactHeaderBadgeLabel.layer.cornerRadius = 11.0;
+    self.compactHeaderBadgeLabel.layer.masksToBounds = YES;
+    self.compactHeaderBadgeLabel.layer.borderWidth = 1.0;
+    [self.compactHeaderView addSubview:self.compactHeaderBadgeLabel];
+}
+
 - (UIView *)createSurfaceView {
     UIView *surface = [[UIView alloc] init];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.75];
     surface.layer.cornerRadius = kSPSurfaceCornerRadius;
     surface.layer.masksToBounds = NO;
-    surface.layer.borderWidth = 1.0;
+    surface.layer.borderWidth = 0.70;
     [surface pp_setBorderColor:[SPSellerInkColor() colorWithAlphaComponent:0.06]];
     [surface pp_setShadowColor:UIColor.blackColor];
     surface.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.24 : 0.08;
@@ -381,6 +495,11 @@ static UIColor *SPSellerRoseColor(void) {
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 
+        [self.compactHeaderView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:6.0],
+        [self.compactHeaderView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kSPSpace16],
+        [self.compactHeaderView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kSPSpace16],
+        [self.compactHeaderView.heightAnchor constraintEqualToConstant:60.0],
+
         [self.contentView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
         [self.contentView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
         [self.contentView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
@@ -400,6 +519,25 @@ static UIColor *SPSellerRoseColor(void) {
         [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.avatarShellView.centerYAnchor],
         [self.avatarImageView.widthAnchor constraintEqualToConstant:kSPAvatarSize],
         [self.avatarImageView.heightAnchor constraintEqualToConstant:kSPAvatarSize],
+
+        [self.compactHeaderAvatarShellView.leadingAnchor constraintEqualToAnchor:self.compactHeaderView.leadingAnchor constant:10.0],
+        [self.compactHeaderAvatarShellView.centerYAnchor constraintEqualToAnchor:self.compactHeaderView.centerYAnchor],
+        [self.compactHeaderAvatarShellView.widthAnchor constraintEqualToConstant:40.0],
+        [self.compactHeaderAvatarShellView.heightAnchor constraintEqualToConstant:40.0],
+
+        [self.compactHeaderAvatarImageView.centerXAnchor constraintEqualToAnchor:self.compactHeaderAvatarShellView.centerXAnchor],
+        [self.compactHeaderAvatarImageView.centerYAnchor constraintEqualToAnchor:self.compactHeaderAvatarShellView.centerYAnchor],
+        [self.compactHeaderAvatarImageView.widthAnchor constraintEqualToConstant:32.0],
+        [self.compactHeaderAvatarImageView.heightAnchor constraintEqualToConstant:32.0],
+
+        [self.compactHeaderBadgeLabel.trailingAnchor constraintEqualToAnchor:self.compactHeaderView.trailingAnchor constant:-12.0],
+        [self.compactHeaderBadgeLabel.centerYAnchor constraintEqualToAnchor:self.compactHeaderView.centerYAnchor],
+        [self.compactHeaderBadgeLabel.heightAnchor constraintEqualToConstant:22.0],
+        [self.compactHeaderBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:74.0],
+
+        [self.compactHeaderTitleLabel.leadingAnchor constraintEqualToAnchor:self.compactHeaderAvatarShellView.trailingAnchor constant:12.0],
+        [self.compactHeaderTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.compactHeaderBadgeLabel.leadingAnchor constant:-10.0],
+        [self.compactHeaderTitleLabel.centerYAnchor constraintEqualToAnchor:self.compactHeaderView.centerYAnchor],
 
         [self.statusBadgeLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace24],
         [self.statusBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace20],
@@ -439,6 +577,11 @@ static UIColor *SPSellerRoseColor(void) {
         [self.itemsStateLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kSPSpace32],
         [self.itemsStateLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kSPSpace32],
 
+        [self.itemsRetryButton.topAnchor constraintEqualToAnchor:self.itemsStateLabel.bottomAnchor constant:kSPSpace16],
+        [self.itemsRetryButton.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [self.itemsRetryButton.heightAnchor constraintEqualToConstant:50.0],
+        [self.itemsRetryButton.widthAnchor constraintGreaterThanOrEqualToConstant:128.0],
+
         [self.itemsCollectionView.topAnchor constraintEqualToAnchor:self.itemsTitleLabel.bottomAnchor constant:kSPSpace16],
         [self.itemsCollectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kSPSpace16],
         [self.itemsCollectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kSPSpace16],
@@ -454,14 +597,33 @@ static UIColor *SPSellerRoseColor(void) {
 - (void)applyTheme {
     self.view.backgroundColor = SPSellerBackgroundColor(self.traitCollection);
     self.heroSurfaceView.backgroundColor = SPSellerSurfaceColor(self.traitCollection);
-    [self.heroSurfaceView pp_setBorderColor:[SPSellerInkColor() colorWithAlphaComponent:0.06]];
+    [self.heroSurfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.14 : 0.42]];
+    [self.heroLiquidBorderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.12 : 0.58]];
     self.avatarShellView.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.94];
+    [self.avatarShellView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.10 : 0.48]];
+    self.compactHeaderView.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.88];
+    [self.compactHeaderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.12 : 0.44]];
+    self.compactHeaderView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.18 : 0.06;
+    self.compactHeaderAvatarShellView.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.94];
+    self.compactHeaderAvatarShellView.layer.cornerRadius = 20.0;
+    [self.compactHeaderAvatarShellView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.10 : 0.44]];
+    self.compactHeaderAvatarImageView.layer.cornerRadius = 16.0;
+    self.compactHeaderTitleLabel.textColor = SPSellerInkColor();
+    self.compactHeaderBadgeLabel.textColor = SPSellerAccentTealColor();
+    self.compactHeaderBadgeLabel.backgroundColor = [SPSellerAccentTealColor() colorWithAlphaComponent:0.10];
+    [self.compactHeaderBadgeLabel pp_setBorderColor:[SPSellerAccentTealColor() colorWithAlphaComponent:0.16]];
     self.messageButton.backgroundColor = SPSellerInkColor();
     [self.messageButton setTitleColor:SPSellerSurfaceColor(self.traitCollection) forState:UIControlStateNormal];
     self.messageButton.tintColor = SPSellerSurfaceColor(self.traitCollection);
+    self.messageButton.layer.borderWidth = 1.0;
+    [self.messageButton pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.06 : 0.18]];
     self.callButton.backgroundColor = [SPSellerInkColor() colorWithAlphaComponent:0.045];
     [self.callButton setTitleColor:SPSellerInkColor() forState:UIControlStateNormal];
     self.callButton.tintColor = SPSellerInkColor();
+    self.callButton.layer.borderWidth = 1.0;
+    [self.callButton pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.06 : 0.16]];
+    self.itemsRetryButton.backgroundColor = SPSellerInkColor();
+    [self.itemsRetryButton setTitleColor:SPSellerSurfaceColor(self.traitCollection) forState:UIControlStateNormal];
     self.glowTopView.backgroundColor = [SPSellerAccentTealColor() colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.16 : 0.11];
     self.glowMiddleView.backgroundColor = [SPSellerRoseColor() colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.13 : 0.08];
     self.glowBottomView.backgroundColor = [SPSellerGoldColor() colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.14 : 0.10];
@@ -473,6 +635,8 @@ static UIColor *SPSellerRoseColor(void) {
     self.heroSurfaceView.semanticContentAttribute = semantic;
     self.contactButtonStack.semanticContentAttribute = semantic;
     self.itemsCollectionView.semanticContentAttribute = semantic;
+    self.compactHeaderView.semanticContentAttribute = semantic;
+    self.compactHeaderTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     NSArray<UILabel *> *labels = @[
         self.eyebrowLabel,
@@ -480,7 +644,8 @@ static UIColor *SPSellerRoseColor(void) {
         self.subtitleLabel,
         self.descriptionLabel,
         self.itemsTitleLabel,
-        self.itemsStateLabel
+        self.itemsStateLabel,
+        self.compactHeaderTitleLabel
     ];
     for (UILabel *label in labels) {
         label.textAlignment = Language.alignmentForCurrentLanguage;
@@ -488,26 +653,126 @@ static UIColor *SPSellerRoseColor(void) {
 
     self.messageButton.semanticContentAttribute = semantic;
     self.callButton.semanticContentAttribute = semantic;
+    self.itemsRetryButton.semanticContentAttribute = semantic;
 }
 
 #pragma mark - Data
 
+- (BOOL)pp_isProviderStorefrontMode
+{
+    return SPSellerNormalizedCategoryIdentifier(self.providerCategoryIdentifier).length > 0;
+}
+
+- (BOOL)pp_isPharmacyStorefront
+{
+    return [self pp_isProviderStorefrontMode] && SPSellerIsPharmacyCategory(self.providerCategoryIdentifier);
+}
+
+- (NSString *)pp_categoryTitleText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"premium_seller") ?: @"Premium Seller";
+    }
+    return [self pp_isPharmacyStorefront]
+        ? (kLang(@"provider_pharmacies_title") ?: @"Pharmacies")
+        : (kLang(@"provider_marketplace_title") ?: @"Marketplace");
+}
+
+- (NSString *)pp_categorySupportText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"premium_seller_on_platform") ?: @"Premium seller on platform";
+    }
+    return [self pp_isPharmacyStorefront]
+        ? (kLang(@"provider_storefront_subtitle_pharmacy") ?: @"Curated pet medicines prepared by trusted pharmacies.")
+        : (kLang(@"provider_storefront_subtitle_marketplace") ?: @"Browse trusted pet essentials from this provider.");
+}
+
+- (NSString *)pp_storefrontDescriptionText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"premium_seller_description") ?: @"A trusted seller offering high-quality products with excellent customer service.";
+    }
+    return [self pp_isPharmacyStorefront]
+        ? (kLang(@"provider_storefront_description_pharmacy") ?: @"Each medicine here belongs to this pharmacy only and stays in the existing cart flow.")
+        : (kLang(@"provider_storefront_description_marketplace") ?: @"Only this provider’s published products appear here, with the same viewer and cart behavior you already use.");
+}
+
+- (NSString *)pp_itemsTitleText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"seller_items") ?: @"Seller's Items";
+    }
+    return [self pp_isPharmacyStorefront]
+        ? (kLang(@"provider_storefront_items_title_pharmacy") ?: @"Available medicines")
+        : (kLang(@"provider_storefront_items_title_marketplace") ?: @"Available products");
+}
+
+- (NSString *)pp_emptyItemsText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"seller_profile_empty_items") ?: @"No available items from this seller right now.";
+    }
+    return [self pp_isPharmacyStorefront]
+        ? (kLang(@"provider_storefront_empty_pharmacy") ?: @"No medicines are available from this pharmacy right now.")
+        : (kLang(@"provider_storefront_empty_marketplace") ?: @"No products are available from this provider right now.");
+}
+
+- (NSString *)pp_statusBadgeText
+{
+    if (![self pp_isProviderStorefrontMode]) {
+        return kLang(@"verified") ?: @"Verified";
+    }
+    if (self.seller.isVerified) {
+        return kLang(@"verified") ?: @"Verified";
+    }
+
+    if ([PPSafeString(self.seller.accountStatus) isEqualToString:@"active"]) {
+        return kLang(@"provider_company_status_active") ?: @"Active";
+    }
+
+    return @"";
+}
+
+- (UIColor *)pp_statusBadgeColor
+{
+    if (self.seller.isVerified) {
+        return [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0];
+    }
+    return SPSellerAccentTealColor();
+}
+
 - (void)configureSellerIdentity {
-    self.eyebrowLabel.text = kLang(@"premium_seller");
+    self.eyebrowLabel.text = [self pp_categoryTitleText];
     self.nameLabel.text = [self sellerDisplayName];
-    self.subtitleLabel.text = self.seller.UserAbout.length > 0 ? self.seller.UserAbout : kLang(@"premium_seller_on_platform");
-    self.statusBadgeLabel.text = kLang(@"verified");
-    self.descriptionLabel.text = kLang(@"premium_seller_description");
-    self.itemsTitleLabel.text = kLang(@"seller_items");
+    self.subtitleLabel.text = self.seller.UserAbout.length > 0 ? self.seller.UserAbout : [self pp_categorySupportText];
+    NSString *statusText = [self pp_statusBadgeText];
+    self.statusBadgeLabel.hidden = (statusText.length == 0);
+    self.statusBadgeLabel.text = statusText;
+    UIColor *statusColor = [self pp_statusBadgeColor];
+    self.statusBadgeLabel.textColor = statusColor;
+    self.statusBadgeLabel.backgroundColor = [statusColor colorWithAlphaComponent:0.10];
+    [self.statusBadgeLabel pp_setBorderColor:[statusColor colorWithAlphaComponent:0.16]];
+    self.descriptionLabel.text = [self pp_storefrontDescriptionText];
+    self.itemsTitleLabel.text = [self pp_itemsTitleText];
+    [self.itemsRetryButton setTitle:(kLang(@"provider_retry") ?: @"Retry") forState:UIControlStateNormal];
+    self.compactHeaderTitleLabel.text = [self sellerDisplayName];
+    self.compactHeaderBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", [self pp_categoryTitleText]];
 
     UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:[self sellerDisplayName] size:kSPAvatarSize];
     self.avatarImageView.image = placeholder ?: PPSYSImage(@"person.crop.circle.fill");
+    UIImage *compactPlaceholder = [PPModernAvatarRenderer avatarImageForName:[self sellerDisplayName] size:32.0];
+    self.compactHeaderAvatarImageView.image = compactPlaceholder ?: self.avatarImageView.image;
 
     NSString *imageURL = PPSafeString(self.seller.UserImageUrl.absoluteString);
     if (imageURL.length > 0) {
         [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView
                                                      url:imageURL
                                              placeholder:self.avatarImageView.image
+                                              complation:nil];
+        [PPImageLoaderManager.shared setImageOnImageView:self.compactHeaderAvatarImageView
+                                                     url:imageURL
+                                             placeholder:self.compactHeaderAvatarImageView.image
                                               complation:nil];
     }
 
@@ -518,6 +783,7 @@ static UIColor *SPSellerRoseColor(void) {
     self.messageButton.alpha = canContact ? 1.0 : 0.48;
     self.callButton.alpha = canCall ? 1.0 : 0.48;
     [self updateAccessibility];
+    [self pp_updateCollapsibleHeaderForScrollOffset:self.scrollView.contentOffset.y animated:NO];
 }
 
 - (NSString *)sellerDisplayName {
@@ -548,28 +814,37 @@ static UIColor *SPSellerRoseColor(void) {
     NSString *sellerID = [self sellerID];
     if (sellerID.length == 0 || self.didRequestSellerItems) {
         if (self.sellerItems.count == 0) {
-            [self applySellerItems:@[] loading:NO];
+            [self applySellerItems:@[] loading:NO error:nil];
         }
         return;
     }
 
     self.didRequestSellerItems = YES;
+    self.itemsLoadError = nil;
     if (self.sellerItems.count == 0) {
-        [self applySellerItems:@[] loading:YES];
+        [self applySellerItems:@[] loading:YES error:nil];
     }
 
     __weak typeof(self) weakSelf = self;
-    [PetAccessoryManager fetchProviderMarketplaceAccessoriesForOwnerID:sellerID
-                                                     excludingAccessory:nil
-                                                            completion:^(NSArray<PetAccessory *> *accessories) {
+    void (^completion)(NSArray<PetAccessory *> *, NSError * _Nullable) = ^(NSArray<PetAccessory *> *accessories, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
             NSArray<PetAccessory *> *mergedItems = [strongSelf mergedItemsWithFetchedItems:accessories ?: @[]];
             strongSelf->_sellerItems = [mergedItems copy];
-            [strongSelf applySellerItems:mergedItems loading:NO];
+            [strongSelf applySellerItems:mergedItems loading:NO error:error];
         });
-    }];
+    };
+
+    if ([self pp_isPharmacyStorefront]) {
+        [PetAccessoryManager fetchProviderPharmacyAccessoriesForOwnerID:sellerID
+                                                      excludingAccessory:nil
+                                                     completionWithError:completion];
+    } else {
+        [PetAccessoryManager fetchProviderMarketplaceAccessoriesForOwnerID:sellerID
+                                                         excludingAccessory:nil
+                                                        completionWithError:completion];
+    }
 }
 
 - (NSArray<PetAccessory *> *)mergedItemsWithFetchedItems:(NSArray<PetAccessory *> *)fetchedItems {
@@ -596,10 +871,24 @@ static UIColor *SPSellerRoseColor(void) {
     if (sellerID.length > 0 && item.ownerID.length > 0 && ![item.ownerID isEqualToString:sellerID]) {
         return NO;
     }
-    return YES;
+    if (![self pp_isProviderStorefrontMode]) {
+        return YES;
+    }
+    if ([self pp_isPharmacyStorefront]) {
+        return item.accessKindType == AccessTypePetMedicine;
+    }
+    return (item.accessKindType == AccessTypeAccessory || item.accessKindType == AccessTypeFood) && item.showInAppMarket;
 }
 
 - (void)applySellerItems:(NSArray<PetAccessory *> *)items loading:(BOOL)loading {
+    [self applySellerItems:items loading:loading error:nil];
+}
+
+- (void)applySellerItems:(NSArray<PetAccessory *> *)items
+                 loading:(BOOL)loading
+                   error:(NSError * _Nullable)error
+{
+    self.itemsLoadError = error;
     [self.itemViewModels removeAllObjects];
     [self.animatedItemIndexes removeAllObjects];
 
@@ -611,9 +900,13 @@ static UIColor *SPSellerRoseColor(void) {
     }
 
     BOOL hasItems = self.itemViewModels.count > 0;
+    BOOL showsError = (!loading && error != nil && !hasItems);
     self.itemsCollectionView.hidden = !hasItems;
     self.itemsStateLabel.hidden = hasItems || loading;
-    self.itemsStateLabel.text = hasItems ? @"" : kLang(@"seller_profile_empty_items");
+    self.itemsStateLabel.text = hasItems ? @"" : (showsError
+                                                  ? (kLang(@"provider_storefront_error_message") ?: @"We couldn’t load this storefront right now.")
+                                                  : [self pp_emptyItemsText]);
+    self.itemsRetryButton.hidden = !showsError;
 
     if (loading) {
         [self.itemsActivityIndicator startAnimating];
@@ -623,6 +916,13 @@ static UIColor *SPSellerRoseColor(void) {
 
     [self.itemsCollectionView reloadData];
     [self updateCollectionHeight];
+}
+
+- (void)handleRetryItemsTap
+{
+    self.didRequestSellerItems = NO;
+    self.itemsLoadError = nil;
+    [self fetchSellerItemsIfNeeded];
 }
 
 #pragma mark - Layout Helpers
@@ -645,6 +945,12 @@ static UIColor *SPSellerRoseColor(void) {
         self.heroSurfaceView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.heroSurfaceView.bounds
                                        cornerRadius:kSPSurfaceCornerRadius].CGPath;
+        self.heroLiquidBorderView.layer.cornerRadius = MAX(kSPSurfaceCornerRadius - 1.0, 0.0);
+    }
+    if (!CGRectIsEmpty(self.compactHeaderView.bounds)) {
+        self.compactHeaderView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.compactHeaderView.bounds
+                                       cornerRadius:24.0].CGPath;
     }
 }
 
@@ -659,6 +965,7 @@ static UIColor *SPSellerRoseColor(void) {
     if (!self.collectionHeightConstraint) return;
     if (self.itemViewModels.count == 0) {
         self.collectionHeightConstraint.constant = 0.0;
+        [self pp_updateCollapsibleHeaderForScrollOffset:self.scrollView.contentOffset.y animated:NO];
         return;
     }
 
@@ -671,6 +978,60 @@ static UIColor *SPSellerRoseColor(void) {
     NSInteger rows = (self.itemViewModels.count + columns - 1) / columns;
     CGFloat spacing = kSPSpace12 * MAX(rows - 1, 0);
     self.collectionHeightConstraint.constant = rows * itemSize.height + spacing;
+    [self pp_updateCollapsibleHeaderForScrollOffset:self.scrollView.contentOffset.y animated:NO];
+}
+
+- (BOOL)pp_shouldUseCollapsibleHeader
+{
+    return [self pp_isProviderStorefrontMode] && self.itemViewModels.count >= 6;
+}
+
+- (void)pp_updateCollapsibleHeaderForScrollOffset:(CGFloat)offsetY animated:(BOOL)animated
+{
+    BOOL enabled = [self pp_shouldUseCollapsibleHeader];
+    CGFloat startOffset = 18.0;
+    CGFloat travel = 104.0;
+    CGFloat progress = 0.0;
+    if (enabled) {
+        progress = MIN(MAX((offsetY - startOffset) / travel, 0.0), 1.0);
+    }
+
+    BOOL showCompact = enabled && progress > 0.01;
+    self.compactHeaderView.hidden = !showCompact;
+
+    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (progress * 0.95));
+    CGFloat bodyAlpha = MAX(0.0, 1.0 - (progress * 1.2));
+    CGAffineTransform avatarTransform = CGAffineTransformIdentity;
+    if (enabled && !UIAccessibilityIsReduceMotionEnabled()) {
+        CGFloat scale = 1.0 - (0.12 * progress);
+        avatarTransform = CGAffineTransformMakeScale(scale, scale);
+    }
+
+    void (^changes)(void) = ^{
+        self.compactHeaderView.alpha = showCompact ? progress : 0.0;
+        self.compactHeaderView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeTranslation(0.0, -8.0 * (1.0 - progress));
+        self.avatarShellView.transform = avatarTransform;
+        self.subtitleLabel.alpha = subtitleAlpha;
+        self.descriptionLabel.alpha = bodyAlpha;
+        self.contactButtonStack.alpha = bodyAlpha;
+        self.statusBadgeLabel.alpha = MAX(0.0, 1.0 - (progress * 0.9));
+        self.eyebrowLabel.alpha = MAX(0.0, 1.0 - (progress * 0.75));
+        self.nameLabel.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeTranslation(0.0, -10.0 * progress);
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.24
+                              delay:0.0
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
 }
 
 #pragma mark - Motion
@@ -801,6 +1162,14 @@ static UIColor *SPSellerRoseColor(void) {
     } completion:nil];
 }
 
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    if (scrollView != self.scrollView) {
+        return;
+    }
+    [self pp_updateCollapsibleHeaderForScrollOffset:scrollView.contentOffset.y animated:NO];
+}
+
 #pragma mark - Collection View
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
@@ -870,10 +1239,92 @@ static UIColor *SPSellerRoseColor(void) {
     [self notifySelectedItem:universalModel.ModelObject];
 }
 
+- (void)PPUniversalCell_changeQuantity:(PPUniversalCellViewModel *)universalModel quantity:(NSInteger)quantity
+{
+    if (![universalModel.ModelObject isKindOfClass:PetAccessory.class]) {
+        return;
+    }
+
+    PetAccessory *accessory = (PetAccessory *)universalModel.ModelObject;
+    NSInteger maxStock = MAX(accessory.quantity, 0);
+    NSInteger safeQuantity = MAX(0, quantity);
+
+    if (maxStock <= 0 && safeQuantity > 0) {
+        [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
+        safeQuantity = 0;
+    } else if (safeQuantity > maxStock) {
+        safeQuantity = maxStock;
+        [PPHUD showInfo:[NSString stringWithFormat:@"%@ %ld %@",
+                         kLang(@"Only") ?: @"Only",
+                         (long)maxStock,
+                         kLang(@"left in stock") ?: @"left in stock"]];
+    }
+
+    CartManager *cart = [CartManager sharedManager];
+    if (safeQuantity == 0) {
+        [cart removeItemForAccessory:accessory];
+        [PPFunc triggerWarningHaptic];
+        [self.itemsCollectionView reloadData];
+        [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        return;
+    }
+
+    CartItem *existing = [cart getCartItemForItemID:accessory.accessoryID];
+    CartItem *item = [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
+    __weak typeof(self) weakSelf = self;
+
+    if (existing) {
+        [cart updateQuantity:safeQuantity forItem:item completion:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                if (!success) {
+                    [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
+                } else if (safeQuantity == 1) {
+                    [PPFunc triggerLightHaptic];
+                } else {
+                    [PPFunc triggerMediumHaptic];
+                }
+                [self.itemsCollectionView reloadData];
+                [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+            });
+        }];
+        return;
+    }
+
+    [cart addItem:item presentingViewController:self completion:^(BOOL didAdd, BOOL didCancel) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            if (!didCancel && !didAdd) {
+                [PPHUD showError:kLang(@"Out of stock") ?: @"Out of stock"];
+            } else if (didAdd) {
+                if (safeQuantity == 1) {
+                    [PPFunc triggerLightHaptic];
+                } else {
+                    [PPFunc triggerMediumHaptic];
+                }
+            }
+            [self.itemsCollectionView reloadData];
+            [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        });
+    }];
+}
+
 - (void)notifySelectedItem:(id)item {
     if ([self.delegate respondsToSelector:@selector(sellerProfileDidSelectItem:)]) {
         [self.delegate sellerProfileDidSelectItem:item];
+        return;
     }
+
+    if (![item isKindOfClass:PetAccessory.class]) {
+        return;
+    }
+
+    AccessViewerVC *viewer = [[AccessViewerVC alloc] init];
+    viewer.accessAds = (PetAccessory *)item;
+    viewer.ParentVC = self.parentVC ?: self;
+    [self.navigationController pushViewController:viewer animated:YES];
 }
 
 #pragma mark - Actions
@@ -881,6 +1332,8 @@ static UIColor *SPSellerRoseColor(void) {
 - (void)handleMessageTap {
     if ([self.delegate respondsToSelector:@selector(sellerProfileDidTapContact:)]) {
         [self.delegate sellerProfileDidTapContact:self.seller];
+    } else if (self.seller) {
+        [GM chatWith:self.seller FromController:self.parentVC ?: self];
     }
     [self playLightFeedback];
 }
@@ -890,6 +1343,8 @@ static UIColor *SPSellerRoseColor(void) {
         [self.delegate sellerProfileDidTapCall:self.seller];
     } else if ([self.delegate respondsToSelector:@selector(sellerProfileDidTapContact:)]) {
         [self.delegate sellerProfileDidTapContact:self.seller];
+    } else if (self.seller.MobileNo.length > 0) {
+        [AppClasses callPhoneNumber:self.seller.MobileNo fromViewController:self.parentVC ?: self];
     }
     [self playLightFeedback];
 }

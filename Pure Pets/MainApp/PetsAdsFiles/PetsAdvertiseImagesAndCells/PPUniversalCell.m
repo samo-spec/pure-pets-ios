@@ -30,6 +30,7 @@ static CGFloat const PPUniversalPillHeight = 34.0;
 static CGFloat const PPUniversalCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 38.0;
+static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.86;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
 static CGFloat const PPUniversalCompactCardVerticalInset = 4.0;
 static CGFloat const PPUniversalCompactTitleToPriceSpacing = 4.0;
@@ -587,6 +588,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
 - (void)pp_runContainerTapImpulse;
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
+- (void)pp_applyFavoriteButtonAppearance:(FavoriteFloatingButton *)button;
 - (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown;
 
 @end
@@ -866,6 +868,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.favoriteButton.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
     self.favoriteButton.layer.cornerRadius = PPUniversalControlButtonSize / 2.0;
     self.favoriteButton.clipsToBounds = YES;
+    [self pp_applyFavoriteButtonAppearance:self.favoriteButton];
     [self.favoriteButton addTarget:self action:@selector(tapFavorite) forControlEvents:UIControlEventTouchUpInside];
     [self.imageContainer addSubview:self.favoriteButton];
 
@@ -922,6 +925,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.bodyFavButton = [[FavoriteFloatingButton alloc] init];
     self.bodyFavButton.hidesBackground = NO;
     self.bodyFavButton.hidden = YES;
+    [self pp_applyFavoriteButtonAppearance:self.bodyFavButton];
     [self.bodyFavButton addTarget:self action:@selector(tapFavorite) forControlEvents:UIControlEventTouchUpInside];
     [self.bodyContainer addSubview:self.bodyFavButton];
 
@@ -1176,9 +1180,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.subtitleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.43 green:0.45 blue:0.52 alpha:1.0],
                                                                [UIColor colorWithWhite:0.74 alpha:1.0]);
 
-    self.priceLabel.font = PPUniversalCellBlackFont(30.0);
+    self.priceLabel.font = PPUniversalCellBlackFont(26.0);
     self.priceLabel.textColor = AppPrimaryClr;
-    self.oldPriceLabel.font = PPUniversalCellMediumFont(12.0);
+    self.oldPriceLabel.font = PPUniversalCellMediumFont(13.0);
     self.oldPriceLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.57 green:0.59 blue:0.65 alpha:1.0],
                                                                [UIColor colorWithWhite:0.58 alpha:1.0]);
 
@@ -1208,6 +1212,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         button.layer.shadowRadius = isDark ? 12.0 : 9.0;
         button.layer.shadowOffset = CGSizeMake(0.0, isDark ? 6.0 : 4.0);
     }
+
+    [self pp_applyFavoriteButtonAppearance:self.favoriteButton];
+    [self pp_applyFavoriteButtonAppearance:self.bodyFavButton];
 
     [self pp_applySelectionAppearanceAnimated:NO];
 }
@@ -1540,6 +1547,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.favoriteButton.adID = vm.ModelID ?: @"";
         self.favoriteButton.collection = [self pp_favoritesCollectionForContext:self.context];
         [self.favoriteButton initValue];
+        [self pp_applyFavoriteButtonAppearance:self.favoriteButton];
         self.bodyFavButton.hidden = YES;
         self.bodyFavButton.alpha = 0.0;
         self.priceContainerTrailingToFavConstraint.active = NO;
@@ -1551,6 +1559,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             self.favoriteButton.adID = vm.ModelID ?: @"";
             self.favoriteButton.collection = [self pp_favoritesCollectionForContext:self.context];
             [self.favoriteButton initValue];
+            [self pp_applyFavoriteButtonAppearance:self.favoriteButton];
         }
         self.bodyFavButton.hidden = YES;
         self.bodyFavButton.alpha = 0.0;
@@ -2693,6 +2702,23 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     } else {
         changes();
     }
+}
+
+- (void)pp_applyFavoriteButtonAppearance:(FavoriteFloatingButton *)button
+{
+    if (!button) {
+        return;
+    }
+
+    button.transform = CGAffineTransformMakeScale(PPUniversalFavoriteButtonVisualScale,
+                                                  PPUniversalFavoriteButtonVisualScale);
+
+    if (UserManager.sharedManager.isUserLoggedIn || button.isFavorite) {
+        return;
+    }
+
+    UIColor *signedOutTint = AppPrimaryClr ?: UIColor.systemPinkColor;
+    button.tintColor = signedOutTint;
 }
 
 - (BOOL)pp_isFoodOrMedicineContext

@@ -20,7 +20,7 @@
 #import <UIKit/UIKit.h>
 
 static const CGFloat PPChatStoriesHeaderHiddenHeight = 8.0;
-static const CGFloat PPChatStoriesHeaderVisibleHeight = 156.0;
+static const CGFloat PPChatStoriesHeaderVisibleHeight = 208.0;
 static const CGFloat PPChatListContentTopInset = 10.0;
 static const CGFloat PPChatListContentBottomInset = 128.0;
 static const CGFloat PPChatListEstimatedRowHeight = 84.0;
@@ -85,7 +85,6 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     CGFloat height = self.storiesHeaderVisible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
     [self pp_applyStoriesHeaderHeight:height];
     [self pp_applyPremiumBottomContentInset];
-    [Styling addLiquidGlassBorderToView:self.storiesHeaderContainer cornerRadius:22];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -185,7 +184,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     self.storiesHeaderContainer =
     [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, PPChatStoriesHeaderHiddenHeight)];
     self.storiesHeaderContainer.backgroundColor = UIColor.clearColor;
-    self.storiesHeaderContainer.clipsToBounds = YES;
+    self.storiesHeaderContainer.clipsToBounds = NO;
     self.storiesHeaderContainer.layer.cornerRadius = 22;
     if (@available(iOS 13.0, *)) {
         self.storiesHeaderContainer.layer.cornerCurve = kCACornerCurveContinuous;
