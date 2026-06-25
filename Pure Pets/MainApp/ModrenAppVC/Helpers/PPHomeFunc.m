@@ -238,9 +238,9 @@ static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
         return 172.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 160.0;
+        return 74;
     }
-    return 154.0;
+    return 74;
 }
 
 static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
@@ -760,10 +760,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.interGroupSpacing = 0.0;
-     section.contentInsets = NSDirectionalEdgeInsetsMake(10.0,
-                                                        PPHomeEdgeSpacing,
+     section.contentInsets = NSDirectionalEdgeInsetsMake(8.0,
+                                                        12,
                                                         4.0,
-                                                        PPHomeEdgeSpacing);
+                                                        12);
      section.interGroupSpacing = 0.0;
      group.interItemSpacing = [NSCollectionLayoutSpacing fixedSpacing:12.0];
 

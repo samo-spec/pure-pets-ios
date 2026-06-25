@@ -651,7 +651,7 @@ typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
         [self.heroOrbView.widthAnchor constraintEqualToConstant:66.0],
         [self.heroOrbView.heightAnchor constraintEqualToConstant:66.0],
 
-        [self.heroIconShellView.centerYAnchor constraintEqualToAnchor:self.heroSurfaceView.centerYAnchor],
+        [self.heroIconShellView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
         [self.heroIconShellView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-22.0],
         [self.heroIconShellView.widthAnchor constraintEqualToConstant:82.0],
         [self.heroIconShellView.heightAnchor constraintEqualToConstant:82.0],
@@ -665,10 +665,7 @@ typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
         [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
         [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.countBadgeLabel.leadingAnchor constant:-12.0],
 
-        [self.countBadgeLabel.centerYAnchor constraintEqualToAnchor:self.eyebrowLabel.centerYAnchor],
-        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:32.0],
-        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:96.0],
+       
 
         [self.headerTitleLabel.topAnchor constraintEqualToAnchor:self.eyebrowLabel.bottomAnchor constant:10.0],
         [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.eyebrowLabel.leadingAnchor],
@@ -681,7 +678,12 @@ typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
         [self.heroCategoryBadgeLabel.topAnchor constraintEqualToAnchor:self.headerSubtitleLabel.bottomAnchor constant:16.0],
         [self.heroCategoryBadgeLabel.leadingAnchor constraintEqualToAnchor:self.headerSubtitleLabel.leadingAnchor],
         [self.heroCategoryBadgeLabel.heightAnchor constraintEqualToConstant:30.0],
-        [self.heroCategoryBadgeLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0]
+        [self.heroCategoryBadgeLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
+        
+        [self.countBadgeLabel.centerYAnchor constraintEqualToAnchor:self.heroCategoryBadgeLabel.centerYAnchor],
+        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:32.0],
+        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:96.0],
     ]];
 
     self.tableView.tableHeaderView = self.headerContainerView;

@@ -135,7 +135,7 @@
         _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     }
     [_surfaceView addSubview:_subtitleLabel];
-
+    _subtitleLabel.hidden = YES;
     _chevronContainerView = [[UIView alloc] init];
     _chevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     _chevronContainerView.userInteractionEnabled = NO;
@@ -158,44 +158,42 @@
         [_button.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
         [_surfaceView.topAnchor constraintEqualToAnchor:_button.topAnchor],
-        [_surfaceView.leadingAnchor constraintEqualToAnchor:_button.leadingAnchor],
-        [_surfaceView.trailingAnchor constraintEqualToAnchor:_button.trailingAnchor],
-        [_surfaceView.bottomAnchor constraintEqualToAnchor:_button.bottomAnchor],
+        [_surfaceView.leadingAnchor constraintEqualToAnchor:_button.leadingAnchor constant:6.0],
+        [_surfaceView.trailingAnchor constraintEqualToAnchor:_button.trailingAnchor constant:-6.0],
+        [_surfaceView.heightAnchor constraintEqualToAnchor:_button.heightAnchor constant:2.0],
 
         [_glowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
         [_glowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
         [_glowView.widthAnchor constraintEqualToConstant:64.0],
         [_glowView.heightAnchor constraintEqualToConstant:64.0],
 
-        [_iconContainerView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:16.0],
-        [_iconContainerView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-16.0],
-        [_iconContainerView.widthAnchor constraintEqualToConstant:46.0],
-        [_iconContainerView.heightAnchor constraintEqualToConstant:46.0],
+        [_iconContainerView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
+        [_iconContainerView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:16],
+        [_iconContainerView.widthAnchor constraintEqualToConstant:42.0],
+        [_iconContainerView.heightAnchor constraintEqualToConstant:42.0],
 
         [_iconView.centerXAnchor constraintEqualToAnchor:_iconContainerView.centerXAnchor],
         [_iconView.centerYAnchor constraintEqualToAnchor:_iconContainerView.centerYAnchor],
         [_iconView.widthAnchor constraintEqualToConstant:20.0],
         [_iconView.heightAnchor constraintEqualToConstant:20.0],
 
-        [_titleLabel.topAnchor constraintEqualToAnchor:_iconContainerView.bottomAnchor constant:18.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-16.0],
-
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_chevronContainerView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
-        [_chevronContainerView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-16.0],
-        [_chevronContainerView.widthAnchor constraintEqualToConstant:34.0],
-        [_chevronContainerView.heightAnchor constraintEqualToConstant:34.0],
+        [_chevronContainerView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
+        [_chevronContainerView.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor],
+        [_chevronContainerView.widthAnchor constraintEqualToConstant:28.0],
+        [_chevronContainerView.heightAnchor constraintEqualToConstant:28.0],
 
         [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronContainerView.centerXAnchor],
         [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronContainerView.centerYAnchor],
-        [_chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:14.0],
+        [_chevronView.widthAnchor constraintEqualToConstant:12.0],
+        [_chevronView.heightAnchor constraintEqualToConstant:12.0],
 
-        [_subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_chevronContainerView.topAnchor constant:-12.0]
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconContainerView.trailingAnchor constant:12.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-8.0],
+        [_titleLabel.centerYAnchor constraintEqualToAnchor:_iconContainerView.centerYAnchor constant:-0.0],
+
+        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_iconContainerView.trailingAnchor constant:12.0],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-8.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
     ]];
 
     self.layer.shadowColor = UIColor.blackColor.CGColor;
