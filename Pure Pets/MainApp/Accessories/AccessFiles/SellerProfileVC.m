@@ -470,8 +470,8 @@ static BOOL SPSellerIsPharmacyCategory(NSString *identifier)
     [button setImage:image forState:UIControlStateNormal];
     button.imageView.contentMode = UIViewContentModeScaleAspectFit;
     button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
-    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, -6.0, 0.0, 6.0);
-    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, -6.0);
+    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, 6.0);
+    button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, 6.0);
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(handleButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];

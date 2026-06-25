@@ -760,21 +760,20 @@ typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
         [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSeparatorView.trailingAnchor constant:12.0],
         [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-16.0],
 
-        [self.headerTitleLabel.topAnchor constraintEqualToAnchor:self.eyebrowLabel.bottomAnchor constant:9.0],
+        [self.headerTitleLabel.topAnchor constraintEqualToAnchor:self.eyebrowLabel.bottomAnchor constant:16.0],
         [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.eyebrowLabel.leadingAnchor],
         [self.headerTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-18.0],
 
-        [self.headerSubtitleLabel.topAnchor constraintEqualToAnchor:self.headerTitleLabel.bottomAnchor constant:8.0],
+[self.headerSubtitleLabel.topAnchor constraintEqualToAnchor:self.headerTitleLabel.bottomAnchor constant:8.0],
         [self.headerSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.headerTitleLabel.leadingAnchor],
         [self.headerSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.headerTitleLabel.trailingAnchor],
 
-        [self.heroCategoryBadgeLabel.topAnchor constraintEqualToAnchor:self.headerSubtitleLabel.bottomAnchor constant:15.0],
-        [self.heroCategoryBadgeLabel.leadingAnchor constraintEqualToAnchor:self.headerSubtitleLabel.leadingAnchor],
-        [self.heroCategoryBadgeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroProofRailView.leadingAnchor constant:-12.0],
+        [self.heroCategoryBadgeLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
+        [self.heroCategoryBadgeLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
+        [self.heroCategoryBadgeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-16.0],
         [self.heroCategoryBadgeLabel.heightAnchor constraintEqualToConstant:30.0],
-        [self.heroCategoryBadgeLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
 
-        [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
         [self.heroProofRailView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
         [self.heroProofRailView.heightAnchor constraintEqualToConstant:48.0],
         [self.heroProofRailView.widthAnchor constraintGreaterThanOrEqualToConstant:124.0],
@@ -1010,7 +1009,7 @@ typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
         ? (kLang(self.selectedProviderCategorySubtitleKey) ?: PPProviderCompaniesSubtitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier))
         : PPProviderCompaniesSubtitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
 
-    self.eyebrowLabel.text = PPProviderCompaniesSectionTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
+    //self.eyebrowLabel.text = PPProviderCompaniesSectionTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
     self.headerTitleLabel.text = title;
     self.headerSubtitleLabel.text = subtitle;
     self.heroCategoryBadgeLabel.text = title;
