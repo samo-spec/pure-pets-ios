@@ -29,6 +29,9 @@ static const CGFloat kPPAccessoryFilterHeight = 42.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
+static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
+static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.58;
+static const CGFloat kPPAdsPinterestMinimumContentAllowance = 120.0;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -137,7 +140,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 @end
 
-@interface PPDataViewVC () <PPUniversalCellDelegate,UITabBarDelegate,UIGestureRecognizerDelegate,UICollectionViewDataSourcePrefetching>//UITabBarDelegate
+@interface PPDataViewVC () <PPUniversalCellDelegate,UITabBarDelegate,UIGestureRecognizerDelegate,UICollectionViewDataSourcePrefetching, PPPinterestLayoutDelegate>//UITabBarDelegate
  // Input
 @property (nonatomic, strong) PPDataViewInput *input;
 @property (nonatomic, assign) BOOL didInitialReload;
@@ -203,6 +206,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, assign) BOOL didRunSectionsSegmentedEntrance;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
+- (void)pp_installPinterestHeightGuardIfNeeded;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
 - (void)saveCurrentSectionScrollOffset;
 - (void)restoreScrollOffsetForCurrentSection;
@@ -1162,6 +1166,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.collectionView =
     [[UICollectionView alloc] initWithFrame:CGRectZero
                        collectionViewLayout:layout];
+    [self pp_installPinterestHeightGuardIfNeeded];
 
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
@@ -1186,6 +1191,63 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
     
+}
+
+#pragma mark - Pinterest Height Guard
+
+- (void)pp_installPinterestHeightGuardIfNeeded
+{
+    UICollectionViewLayout *layout = self.collectionView.collectionViewLayout;
+    if (![layout isKindOfClass:PPPinterestLayout.class]) {
+        return;
+    }
+
+    ((PPPinterestLayout *)layout).delegate = self;
+}
+
+- (CGFloat)collectionView:(UICollectionView *)collectionView
+                   layout:(PPPinterestLayout *)layout
+heightForItemAtIndexPath:(NSIndexPath *)indexPath
+                withWidth:(CGFloat)width
+{
+    CGFloat proposedHeight =
+        [(id<PPPinterestLayoutDelegate>)self.layoutManager collectionView:collectionView
+                                                                   layout:layout
+                                              heightForItemAtIndexPath:indexPath
+                                                               withWidth:width];
+    if (!isfinite(proposedHeight) || proposedHeight <= 0.0) {
+        proposedHeight = MAX(width, kPPPinterestMinCellHeight);
+    }
+
+    if (self.layoutManager.currentLayoutMode != PPCellLayoutModePinterest ||
+        self.viewModel.currentSection != PPDataSectionAds ||
+        indexPath.item >= self.presentedItems.count) {
+        return proposedHeight;
+    }
+
+    id item = self.presentedItems[indexPath.item];
+    if (![item isKindOfClass:PPUniversalCellViewModel.class]) {
+        return proposedHeight;
+    }
+
+    PPUniversalCellViewModel *viewModel = (PPUniversalCellViewModel *)item;
+    BOOL isAd = viewModel.modelContext == PPCellForAds ||
+                viewModel.modelContext == PPCellForHomeAds;
+    if (!isAd || !isfinite(width) || width <= 0.0) {
+        return proposedHeight;
+    }
+
+    CGFloat widthLimit = ceil(width * kPPAdsPinterestMaximumHeightToWidthRatio);
+    CGFloat viewportHeight = CGRectGetHeight(collectionView.bounds);
+    CGFloat viewportLimit = isfinite(viewportHeight) && viewportHeight > 0.0
+        ? ceil(viewportHeight * kPPAdsPinterestMaximumViewportFraction)
+        : widthLimit;
+    CGFloat minimumFunctionalHeight =
+        ceil(width + kPPAdsPinterestMinimumContentAllowance);
+    CGFloat maximumHeight =
+        MAX(minimumFunctionalHeight, MIN(widthLimit, viewportLimit));
+
+    return MIN(proposedHeight, maximumHeight);
 }
 
 #pragma mark - Background
@@ -2972,11 +3034,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.layoutManager applyLayoutMode:self.layoutManager.currentLayoutMode
                        toCollectionView:self.collectionView
                                animated:NO];
+    [self pp_installPinterestHeightGuardIfNeeded];
 }
 
 - (void)performCrossFadeReload
 {
     if (!self.collectionView) { return; }
+    [self pp_installPinterestHeightGuardIfNeeded];
 
     if (!self.view.window) {
         self.layoutManager.items = self.presentedItems;

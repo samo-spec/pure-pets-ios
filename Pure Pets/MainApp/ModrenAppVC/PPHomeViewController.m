@@ -52,6 +52,7 @@
 #import <Pure_Pets-Swift.h>
 #import <SafariServices/SafariServices.h>
 #import <TargetConditionals.h>
+#import <objc/runtime.h>
 #import <math.h>
 #import <float.h>
 #import "PPHomeOrderStatusCell.h"
@@ -85,6 +86,9 @@ static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
+static CGFloat const PPHomeOrthogonalHorizontalIntentRatio = 1.15;
+static char PPHomeOrthogonalPanGateAssociationKey;
+static char PPHomeOrthogonalPanGateMarkerKey;
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -1385,9 +1389,11 @@ static NSString * const PPHomeMiddleBackgroundGlowPositionMotionKey = @"pp.home.
 static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.background.mid.peek";
 
 
-@interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate>
+@interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate, UIGestureRecognizerDelegate>
 - (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action;
 - (void)pp_openPurchasedItems;
+- (void)pp_handleOrthogonalPanGate:(UIPanGestureRecognizer *)panGestureRecognizer;
+- (void)pp_installOrthogonalGestureGatesIfNeeded;
 
  @property (nonatomic, assign) BOOL warmUpCache;
 @property (nonatomic, assign) BOOL chatsListenerStarted;
@@ -2448,6 +2454,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
     }];
     [CATransaction commit];
+    [self pp_installOrthogonalGestureGatesIfNeeded];
 
     if (self.shouldResetHomeScrollForConfigOrderChange) {
         self.shouldResetHomeScrollForConfigOrderChange = NO;
@@ -6985,6 +6992,70 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 #pragma mark - CollectionView
 
+- (void)pp_installOrthogonalGestureGateOnScrollView:(UIScrollView *)scrollView
+{
+    if (objc_getAssociatedObject(scrollView, &PPHomeOrthogonalPanGateAssociationKey)) {
+        return;
+    }
+
+    UIPanGestureRecognizer *gatePan =
+        [[UIPanGestureRecognizer alloc] initWithTarget:self
+                                               action:@selector(pp_handleOrthogonalPanGate:)];
+    gatePan.delegate = self;
+    gatePan.cancelsTouchesInView = NO;
+    gatePan.delaysTouchesBegan = NO;
+    gatePan.delaysTouchesEnded = NO;
+
+    [scrollView addGestureRecognizer:gatePan];
+    [scrollView.panGestureRecognizer requireGestureRecognizerToFail:gatePan];
+    objc_setAssociatedObject(gatePan,
+                             &PPHomeOrthogonalPanGateMarkerKey,
+                             @YES,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(scrollView,
+                             &PPHomeOrthogonalPanGateAssociationKey,
+                             @YES,
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
+
+- (void)pp_handleOrthogonalPanGate:(UIPanGestureRecognizer *)panGestureRecognizer
+{
+    // Direction arbitration happens in gestureRecognizerShouldBegin:.
+}
+
+- (void)pp_installOrthogonalGestureGatesBelowView:(UIView *)view
+{
+    for (UIView *subview in view.subviews) {
+        if ([subview isKindOfClass:UICollectionViewCell.class]) {
+            continue;
+        }
+
+        if ([subview isKindOfClass:UIScrollView.class]) {
+            UIScrollView *scrollView = (UIScrollView *)subview;
+            UIEdgeInsets inset = scrollView.adjustedContentInset;
+            CGFloat contentWidth = scrollView.contentSize.width + inset.left + inset.right;
+            BOOL hasHorizontalRange =
+                scrollView.alwaysBounceHorizontal ||
+                contentWidth > CGRectGetWidth(scrollView.bounds) + 1.0;
+
+            if (scrollView != self.collectionView &&
+                scrollView.scrollEnabled &&
+                hasHorizontalRange) {
+                [self pp_installOrthogonalGestureGateOnScrollView:scrollView];
+            }
+        }
+
+        [self pp_installOrthogonalGestureGatesBelowView:subview];
+    }
+}
+
+- (void)pp_installOrthogonalGestureGatesIfNeeded
+{
+    if (!self.collectionView) {
+        return;
+    }
+    [self pp_installOrthogonalGestureGatesBelowView:self.collectionView];
+}
 
 - (void)setupCollectionView {
     if (self.collectionView) {
@@ -8301,6 +8372,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             self.collectionView.contentOffset = savedOffset;
             [self.collectionView layoutIfNeeded];
             [CATransaction commit];
+            [self pp_installOrthogonalGestureGatesIfNeeded];
 
             // Force gradient/overlay re-layout on all visible MainKinds cells
             NSInteger sectionIdx = [self sectionIndexForType:PPHomeSectionMainKinds];
@@ -9066,6 +9138,7 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
+    [self pp_installOrthogonalGestureGatesIfNeeded];
 
     // First-reveal flash guard: when applyBaseSnapshot inserts sections after
     // HomeConfig arrives, cells are composited at full opacity for one frame
@@ -11877,10 +11950,22 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 
 
-#pragma mark - Swipe Back Gesture
+#pragma mark - Gesture Arbitration
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
+    if ([objc_getAssociatedObject(gestureRecognizer, &PPHomeOrthogonalPanGateMarkerKey) boolValue]) {
+        UIPanGestureRecognizer *panGestureRecognizer = (UIPanGestureRecognizer *)gestureRecognizer;
+        CGPoint velocity = [panGestureRecognizer velocityInView:gestureRecognizer.view];
+        if (fabs(velocity.x) < DBL_EPSILON && fabs(velocity.y) < DBL_EPSILON) {
+            velocity = [panGestureRecognizer translationInView:gestureRecognizer.view];
+        }
+
+        BOOL hasHorizontalIntent =
+            fabs(velocity.x) > fabs(velocity.y) * PPHomeOrthogonalHorizontalIntentRatio;
+        return !hasHorizontalIntent;
+    }
+
     if (gestureRecognizer ==
         self.navigationController.interactivePopGestureRecognizer) {
 
@@ -11888,6 +11973,18 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return self.navigationController.viewControllers.count > 1;
     }
     return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+        shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherGestureRecognizer
+{
+    BOOL gestureIsGate =
+        [objc_getAssociatedObject(gestureRecognizer, &PPHomeOrthogonalPanGateMarkerKey) boolValue];
+    BOOL otherGestureIsGate =
+        [objc_getAssociatedObject(otherGestureRecognizer, &PPHomeOrthogonalPanGateMarkerKey) boolValue];
+
+    return (gestureIsGate && otherGestureRecognizer == self.collectionView.panGestureRecognizer) ||
+           (otherGestureIsGate && gestureRecognizer == self.collectionView.panGestureRecognizer);
 }
 
 
@@ -12291,6 +12388,7 @@ presentingViewController:self
     if (![self pp_shouldDeferHomeLayoutStabilization]) {
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     }
+    [self pp_installOrthogonalGestureGatesIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 }
 

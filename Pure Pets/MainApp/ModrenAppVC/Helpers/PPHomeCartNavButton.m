@@ -11,8 +11,13 @@
     UIImageView *_iconView;
     PPInsetLabel *_badgeLabel;
     NSLayoutConstraint *_badgeMinWidthConstraint;
+    NSLayoutConstraint *_badgeBottomConstraint;
+    NSLayoutConstraint *_badgeCenterXConstraint;
+    NSLayoutConstraint *_badgeTopConstraint;
+    NSLayoutConstraint *_badgeTrailingConstraint;
     CAGradientLayer *_highlightLayer;
     NSInteger _renderedCount;
+    BOOL _usesHeroPresentationStyle;
 }
 
 - (CGSize)intrinsicContentSize
@@ -102,16 +107,16 @@
     if (@available(iOS 13.0, *)) {
         badgeLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [surfaceView addSubview:badgeLabel];
+    [self addSubview:badgeLabel];
     _badgeLabel = badgeLabel;
 
     _badgeMinWidthConstraint = [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:17.0];
     _badgeMinWidthConstraint.active = YES;
-    [NSLayoutConstraint activateConstraints:@[
-        [badgeLabel.heightAnchor constraintEqualToConstant:17.0],
-        [badgeLabel.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:3.0], // Positioned "bellow"
-        [badgeLabel.centerXAnchor constraintEqualToAnchor:surfaceView.centerXAnchor] // Centered below icon
-    ]];
+    [badgeLabel.heightAnchor constraintEqualToConstant:17.0].active = YES;
+    _badgeBottomConstraint = [badgeLabel.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:3.0];
+    _badgeCenterXConstraint = [badgeLabel.centerXAnchor constraintEqualToAnchor:surfaceView.centerXAnchor];
+    _badgeBottomConstraint.active = YES;
+    _badgeCenterXConstraint.active = YES;
 
     [self pp_applyPalette];
     return self;
@@ -126,9 +131,35 @@
                                  makeTemplate:YES];
 }
 
+- (void)applyHeroPresentationStyle
+{
+    _usesHeroPresentationStyle = YES;
+    _badgeBottomConstraint.active = NO;
+    _badgeCenterXConstraint.active = NO;
+
+    if (!_badgeTopConstraint) {
+        _badgeTopConstraint = [_badgeLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:-4.0];
+        _badgeTrailingConstraint = [_badgeLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:4.0];
+    }
+    _badgeTopConstraint.active = YES;
+    _badgeTrailingConstraint.active = YES;
+
+    _badgeLabel.backgroundColor = AppPrimaryClr ?: UIColor.systemRedColor;
+    _badgeLabel.layer.borderWidth = 1.5;
+    [_badgeLabel pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.96] ?: UIColor.whiteColor];
+    self.layer.shadowOpacity = 0.06f;
+    self.layer.shadowRadius = 12.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    [self pp_applyPalette];
+    [self setNeedsLayout];
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    CGFloat diameter = MIN(CGRectGetWidth(_surfaceView.bounds), CGRectGetHeight(_surfaceView.bounds));
+    _surfaceView.layer.cornerRadius = diameter * 0.5;
+    _badgeLabel.layer.cornerRadius = CGRectGetHeight(_badgeLabel.bounds) * 0.5;
     _highlightLayer.frame = _surfaceView.bounds;
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:CGRectGetWidth(self.bounds) * 0.5].CGPath;
@@ -202,10 +233,14 @@
 
 - (void)pp_applyPalette
 {
-    UIColor *surfaceColor = [AppForgroundColr colorWithAlphaComponent:0.66] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+    CGFloat surfaceAlpha = _usesHeroPresentationStyle ? 0.92 : 0.66;
+    UIColor *surfaceColor = [AppForgroundColr colorWithAlphaComponent:surfaceAlpha] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
     UIColor *iconColor = AppPrimaryTextClr ?: UIColor.labelColor;
     _surfaceView.backgroundColor = surfaceColor;
-    [_surfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+    UIColor *borderColor = _usesHeroPresentationStyle
+        ? ([AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor)
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.14];
+    [_surfaceView pp_setBorderColor:borderColor];
     _iconView.tintColor = iconColor;
     _highlightLayer.colors = @[
         (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.34].CGColor,

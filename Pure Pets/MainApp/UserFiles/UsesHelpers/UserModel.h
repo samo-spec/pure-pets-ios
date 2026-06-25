@@ -146,6 +146,11 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign, getter=isVerified) BOOL verified;
 @property (nonatomic, copy, nullable) NSString *plan;
 
+#pragma mark - Provider Reputation
+/// Server-owned aggregate from UsersCol/{providerID}/providerReviews.
+@property (nonatomic, assign) double providerRatingValue;
+@property (nonatomic, assign) NSInteger providerReviewCount;
+
 #pragma mark - Login Source
 @property (nonatomic, assign) UserLoginSource loginSource;
 

@@ -60,6 +60,8 @@ static NSString *const kUserKeyOnlineStatus = @"onlineStatus";
 static NSString *const kUserKeyIsOnline = @"isOnline";
 static NSString *const kUserKeyLastSeen = @"lastSeen";
 static NSString *const kUserKeyPermissions = @"permissions";
+static NSString *const kUserKeyProviderRatingValue = @"providerRatingValue";
+static NSString *const kUserKeyProviderReviewCount = @"providerReviewCount";
 
 // User Access Model keys (Console-managed)
 static NSString *const kUserKeyAccountStatus = @"accountStatus";
@@ -258,6 +260,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     self.Addresses = [NSMutableArray array];
     self.onlineStatus = OnlineStatusOffline;
     self.loginSource = UserLoginSourceUnknown;
+    self.providerRatingValue = 0.0;
+    self.providerReviewCount = 0;
 
     // User Access Model defaults
     self.accountStatus = @"active";
@@ -388,6 +392,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     self.verified = PPUserBoolValue(safeDict[kUserKeyVerified]);
     self.plan = PPSafeString(safeDict[kUserKeyPlan]);
     self.loginSource = PPSafeIntegerUniversal(safeDict[kUserKeyLoginSource]);
+    self.providerRatingValue = MAX(0.0, MIN(5.0, [safeDict[kUserKeyProviderRatingValue] doubleValue]));
+    self.providerReviewCount = MAX(0, PPSafeIntegerUniversal(safeDict[kUserKeyProviderReviewCount]));
 
     // ── User Access Model (Console-managed) ──
     self.accountStatus = PPSafeString(safeDict[kUserKeyAccountStatus]);
@@ -727,6 +733,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     [coder encodeBool:self.isOnline forKey:kUserKeyIsOnline];
     [coder encodeObject:self.lastSeen forKey:kUserKeyLastSeen];
     [coder encodeObject:self.permissions forKey:kUserKeyPermissions];
+    [coder encodeDouble:self.providerRatingValue forKey:kUserKeyProviderRatingValue];
+    [coder encodeInteger:self.providerReviewCount forKey:kUserKeyProviderReviewCount];
 
     // User Access Model (Console-managed)
     [coder encodeObject:self.accountStatus forKey:kUserKeyAccountStatus];
@@ -815,6 +823,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     }
 
     self.lastSeen = [coder decodeObjectOfClass:NSDate.class forKey:kUserKeyLastSeen];
+    self.providerRatingValue = MAX(0.0, MIN(5.0, [coder decodeDoubleForKey:kUserKeyProviderRatingValue]));
+    self.providerReviewCount = MAX(0, [coder decodeIntegerForKey:kUserKeyProviderReviewCount]);
 
     NSSet *permissionClasses = [NSSet setWithObjects:NSDictionary.class, NSString.class, NSNumber.class, nil];
     NSDictionary *decodedPermissions = [coder decodeObjectOfClasses:permissionClasses forKey:kUserKeyPermissions];

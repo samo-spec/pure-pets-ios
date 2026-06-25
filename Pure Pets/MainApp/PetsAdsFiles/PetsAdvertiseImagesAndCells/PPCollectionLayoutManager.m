@@ -189,7 +189,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
         NSLog(@"[PPCollectionLayoutManager] ERROR: newLayout is nil for mode");
         return nil;
     }
-    const CGFloat horizontalSpacing = 14.0;
+    const CGFloat horizontalSpacing = 12.0;
     const CGFloat verticalSpacing = 12.0;
     const CGFloat topInset = 12.0;
     const CGFloat bottomInset = 12.0;
@@ -405,7 +405,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
 
                 carousel.interGroupSpacing = 12;
                 carousel.contentInsets =
-                NSDirectionalEdgeInsetsMake(12, 16, 24, 16);
+                NSDirectionalEdgeInsetsMake(12, 12, 24, 12);
 
                 return carousel;
             }
@@ -439,7 +439,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
 
             sectionLayout.interGroupSpacing = 10;
             sectionLayout.contentInsets =
-            NSDirectionalEdgeInsetsMake(12, 16, 12, 16);
+            NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
             return sectionLayout;
          }];

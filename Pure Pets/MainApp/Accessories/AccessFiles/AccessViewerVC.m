@@ -2706,6 +2706,19 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     return [self pp_suggestionItemSize];
 }
 
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    [collectionView deselectItemAtIndexPath:indexPath animated:YES];
+    if (indexPath.item >= (NSInteger)self.suggestedAccessories.count) return;
+
+    PetAccessory *accessory = self.suggestedAccessories[indexPath.item];
+    AccessViewerVC *viewer = [[AccessViewerVC alloc] init];
+    viewer.accessAds = accessory;
+    viewer.QtyDelegate = self.QtyDelegate;
+    viewer.ParentVC = self;
+    [self.navigationController pushViewController:viewer animated:YES];
+}
+
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];

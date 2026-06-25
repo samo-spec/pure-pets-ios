@@ -235,12 +235,12 @@ static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
 static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 172.0;
+        return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 74;
+        return 64;
     }
-    return 74;
+    return 64;
 }
 
 static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)

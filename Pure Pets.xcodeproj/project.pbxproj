@@ -113,8 +113,6 @@
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
-		F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */; };
-		F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
 		F21843B12E8BB13300D8BF46 /* ImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843B02E8BB11900D8BF46 /* ImageViewerController.m */; };
@@ -784,6 +782,8 @@
 		F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */; };
 		F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */; };
 		F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2FD336D2F97CB000089BBB1 /* Main.storyboard */; };
+		F2FF90032FFD000100C0D111 /* ProviderCompaniesListVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */; };
+		F2FF90132FFD100100C0D111 /* ProviderStorefrontProductsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */; };
 		F2FFDA032FCDCFC00025B5A9 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA022FCDCFC00025B5A9 /* FirebaseAI */; };
 		F2FFDA052FCDCFC00025B5A9 /* FirebaseAILogic in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA042FCDCFC00025B5A9 /* FirebaseAILogic */; };
 		F2FFDA072FCDCFC00025B5A9 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = F2FFDA062FCDCFC00025B5A9 /* FirebaseAnalytics */; };
@@ -1804,10 +1804,6 @@
 		F28F03922D95E384008F962A /* Pure Pets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Pure Pets.entitlements"; sourceTree = "<group>"; };
 		F290F54D2FD9E943008EADEE /* SellerProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SellerProfileVC.h; sourceTree = "<group>"; };
 		F290F54E2FD9E943008EADEE /* SellerProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SellerProfileVC.m; sourceTree = "<group>"; };
-		F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderCompaniesListVC.h; sourceTree = "<group>"; };
-		F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderCompaniesListVC.m; sourceTree = "<group>"; };
-		F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderStorefrontProductsVC.h; sourceTree = "<group>"; };
-		F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderStorefrontProductsVC.m; sourceTree = "<group>"; };
 		F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Bold.ttf"; sourceTree = "<group>"; };
 		F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Medium.ttf"; sourceTree = "<group>"; };
 		F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Regular.ttf"; sourceTree = "<group>"; };
@@ -2330,6 +2326,10 @@
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
 		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderCompaniesListVC.h; sourceTree = "<group>"; };
+		F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderCompaniesListVC.m; sourceTree = "<group>"; };
+		F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ProviderStorefrontProductsVC.h; sourceTree = "<group>"; };
+		F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ProviderStorefrontProductsVC.m; sourceTree = "<group>"; };
 		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
 		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };

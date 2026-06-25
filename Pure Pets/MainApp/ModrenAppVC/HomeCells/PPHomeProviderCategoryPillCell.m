@@ -167,8 +167,8 @@
         [_glowView.widthAnchor constraintEqualToConstant:64.0],
         [_glowView.heightAnchor constraintEqualToConstant:64.0],
 
-        [_iconContainerView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
-        [_iconContainerView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:16],
+        [_iconContainerView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
+        [_iconContainerView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12],
         [_iconContainerView.widthAnchor constraintEqualToConstant:42.0],
         [_iconContainerView.heightAnchor constraintEqualToConstant:42.0],
 
@@ -208,10 +208,11 @@
         item = [PPHomeProviderCategoryItem itemWithIdentifier:@"marketplace"
                                                      titleKey:@"provider_marketplace_title"
                                                   subtitleKey:@"provider_marketplace_subtitle"
-                                                   systemIcon:@"square.grid.2x2.fill"
+                                                   systemIcon:@"pet-shop"
                                                         route:PPHomeProviderCategoryRouteServices];
     }
-
+    if([item.identifier isEqualToString:@"marketplace"])
+        item.systemIconName = @"pet-shop";
     _item = item;
     _selectedState = selected;
     _currentTitle = kLang(item.titleKey) ?: item.titleKey;
@@ -229,7 +230,7 @@
                                                             weight:UIImageSymbolWeightSemibold];
         image = [UIImage systemImageNamed:item.systemIconName withConfiguration:configuration];
         if (!image) {
-            image = [UIImage systemImageNamed:@"circle.fill" withConfiguration:configuration];
+            image = [UIImage imageNamed:item.systemIconName];
         }
     }
     if (!image) {
@@ -254,7 +255,7 @@
     (void)selected;
     _selectedState = NO;
 
-    UIColor *backgroundSurface = PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.996 green:0.992 blue:0.979 alpha:1.0],
+    UIColor *backgroundSurface = PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.996 green:0.992 blue:0.992 alpha:1.0],
                                                                     [UIColor colorWithWhite:0.11 alpha:1.0]);
     UIColor *titleColor = AppPrimaryTextClr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.12 alpha:1.0],
                                                                                   [UIColor colorWithWhite:0.95 alpha:1.0]);
@@ -306,7 +307,7 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    CGFloat radius = 26.0;
+    CGFloat radius = 28.0;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _surfaceView.layer.cornerRadius = radius;
