@@ -522,6 +522,7 @@
 		F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2916F0F2D54C6B600FF0394 /* PopupPickerView.m */; };
 		F291F51B2D71361E00A2B971 /* LBHamburgerButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */; };
 		F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */; };
+		F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */; };
 		F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2957C292EEF424F00006CB3 /* TrashManager.m */; };
 		F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D562E4ABAC7003A7005 /* SearchResultItem.m */; };
 		F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D592E4ABAF2003A7005 /* SearchManager.m */; };
@@ -1813,6 +1814,8 @@
 		F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LBHamburgerButton.m; sourceTree = "<group>"; };
 		F293B2182F1BE612001F0831 /* PPChatHeaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatHeaderView.h; sourceTree = "<group>"; };
 		F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatHeaderView.m; sourceTree = "<group>"; };
+		F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyPremiumCardCell.h; sourceTree = "<group>"; };
+		F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyPremiumCardCell.m; sourceTree = "<group>"; };
 		F2957C282EEF424600006CB3 /* TrashManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrashManager.h; sourceTree = "<group>"; };
 		F2957C292EEF424F00006CB3 /* TrashManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TrashManager.m; sourceTree = "<group>"; };
 		F2977D552E4ABABD003A7005 /* SearchResultItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchResultItem.h; sourceTree = "<group>"; };
@@ -3988,6 +3991,8 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */,
+				F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */,
 				F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */,
 				F2FF90022FFD000100C0D111 /* ProviderCompaniesListVC.m */,
 				F2FF90112FFD100100C0D111 /* ProviderStorefrontProductsVC.h */,
@@ -5643,6 +5648,7 @@
 				F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */,
 				F2710B162C4DB8CA0051B86A /* viewDataVC.m in Sources */,
 				F2AB48962C72CF3C00D88603 /* JGProgressHUDShadow.m in Sources */,
+				F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */,
 				F2AB48CB2C72D43D00D88603 /* UIScrollView+KafkaConfiguration.m in Sources */,
 				F2AB48902C72CF3C00D88603 /* JGProgressHUDFadeZoomAnimation.m in Sources */,
 				F2AB48CC2C72D43D00D88603 /* KafkaFootRefreshControl.m in Sources */,

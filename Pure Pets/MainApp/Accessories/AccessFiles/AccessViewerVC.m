@@ -9,6 +9,7 @@
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import "PPAdSharingHelper.h"
+#import "PetImageGalleryView.h"
 #import "CartManager.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPAlertHelper.h"
@@ -57,6 +58,11 @@ static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill hei
 static const CGFloat kAVNavigationTitleWidth = 242.0;
 static const CGFloat kAVNavigationTitleHeight = 44.0;
 static const CGFloat kAVHeroHorizontalInset  = 12.0;
+static const CGFloat kAVThumbnailSize        = 54.0;
+static const CGFloat kAVThumbnailCorner      = 14.0;
+static const CGFloat kAVThumbnailSpacing     = 8.0;
+static const CGFloat kAVThumbnailRailInset   = 10.0;
+static const NSInteger kAVMaxThumbnails      = 5;
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -579,6 +585,12 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @property (nonatomic, assign) BOOL isResolvingOwner;
 @property (nonatomic, assign) BOOL ownerLookupFailed;
 @property (nonatomic, assign) BOOL didAnimateSellerSection;
+
+// ── Thumbnail Rail ──
+@property (nonatomic, strong) UIView *thumbnailRailView;
+@property (nonatomic, strong) UIVisualEffectView *thumbnailRailMaterialView;
+@property (nonatomic, strong) UIStackView *thumbnailRailStack;
+@property (nonatomic, assign) NSInteger selectedThumbnailIndex;
 @end
 
 @implementation AccessViewerVC
@@ -781,6 +793,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
                                                        itemHeight:[self pp_heroHeight]
                                                          parentVC:self
                                                               obj:self.accessAds];
+    self.imageGallery.hidesPageControl = YES;
     self.imageGallery.translatesAutoresizingMaskIntoConstraints = NO;
     if (self.accessAds.accessKindType == AccessTypeFood) {
         self.imageGallery.contentMode = UIViewContentModeScaleAspectFit;
@@ -791,6 +804,17 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     if (@available(iOS 13.0, *)) {
         self.imageGallery.layer.cornerCurve = kCACornerCurveContinuous;
     }
+
+    // ── Premium thumbnail rail ──
+    [self pp_buildThumbnailRail];
+
+    // Wire gallery page changes to thumbnail selection
+    __weak typeof(self) weakSelf = self;
+    self.imageGallery.onPageChanged = ^(NSInteger page) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf pp_updateThumbnailSelectionToPage:page];
+    };
     // ── Badges ──
     self.heroKindBadgeLabel = [self pp_badgeLabelWithFontSize:13.0];
     self.heroKindBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
@@ -823,6 +847,232 @@ static UIColor *AVSellerCardSurfaceColor(void) {
         [self.heroStockBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor constant:-kAVSectionInset],
         [self.heroStockBadgeLabel.bottomAnchor   constraintEqualToAnchor:self.heroContainerView.bottomAnchor   constant:-kAVSectionInset],
     ]];
+}
+
+/// Builds the vertical thumbnail rail overlaid on the trailing edge of the hero container.
+- (void)pp_buildThumbnailRail
+{
+    NSArray<PetImageItem *> *items = self.accessAds.imageItems;
+    if (items.count < 2) return;
+
+    self.selectedThumbnailIndex = 0;
+
+    // ── Container ──
+    self.thumbnailRailView = [[UIView alloc] init];
+    self.thumbnailRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.thumbnailRailView.userInteractionEnabled = YES;
+    self.thumbnailRailView.clipsToBounds = NO;
+    [self.heroContainerView addSubview:self.thumbnailRailView];
+
+    // ── Material blur background ──
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    self.thumbnailRailMaterialView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    self.thumbnailRailMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.thumbnailRailMaterialView.layer.cornerRadius = kAVThumbnailCorner + 4.0;
+    self.thumbnailRailMaterialView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.thumbnailRailMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.thumbnailRailView addSubview:self.thumbnailRailMaterialView];
+
+    // ── Stack ──
+    self.thumbnailRailStack = [[UIStackView alloc] init];
+    self.thumbnailRailStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.thumbnailRailStack.axis = UILayoutConstraintAxisVertical;
+    self.thumbnailRailStack.spacing = kAVThumbnailSpacing;
+    self.thumbnailRailStack.alignment = UIStackViewAlignmentCenter;
+    self.thumbnailRailStack.distribution = UIStackViewDistributionFill;
+    self.thumbnailRailStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.thumbnailRailMaterialView.contentView addSubview:self.thumbnailRailStack];
+
+    // ── Build up to kAVMaxThumbnails thumbnail blocks ──
+    NSInteger count = MIN((NSInteger)items.count, kAVMaxThumbnails);
+    for (NSInteger i = 0; i < count; i++) {
+        PetImageItem *item = items[i];
+        UIView *block = [self pp_thumbnailBlockForItem:item index:i];
+        [self.thumbnailRailStack addArrangedSubview:block];
+    }
+
+    // ── Rail shadow ──
+    self.thumbnailRailView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.thumbnailRailView.layer.shadowOpacity = 0.12;
+    self.thumbnailRailView.layer.shadowRadius = 10.0;
+    self.thumbnailRailView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+
+    // ── Layout: overlaid on trailing edge (leading for RTL) ──
+    CGFloat railWidth = kAVThumbnailSize + (kAVThumbnailRailInset * 2.0);
+    CGFloat verticalInset = kAVThumbnailRailInset;
+    NSLayoutConstraint *trailing = [self.thumbnailRailView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor constant:-kAVThumbnailRailInset];
+
+    [NSLayoutConstraint activateConstraints:@[
+        trailing,
+        [self.thumbnailRailView.centerYAnchor constraintEqualToAnchor:self.heroContainerView.centerYAnchor],
+        [self.thumbnailRailView.widthAnchor constraintEqualToConstant:railWidth],
+        [self.thumbnailRailView.topAnchor constraintGreaterThanOrEqualToAnchor:self.heroContainerView.topAnchor constant:verticalInset + 40.0],
+        [self.thumbnailRailView.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroContainerView.bottomAnchor constant:-verticalInset - 20.0],
+
+        [self.thumbnailRailMaterialView.topAnchor constraintEqualToAnchor:self.thumbnailRailView.topAnchor],
+        [self.thumbnailRailMaterialView.leadingAnchor constraintEqualToAnchor:self.thumbnailRailView.leadingAnchor],
+        [self.thumbnailRailMaterialView.trailingAnchor constraintEqualToAnchor:self.thumbnailRailView.trailingAnchor],
+        [self.thumbnailRailMaterialView.bottomAnchor constraintEqualToAnchor:self.thumbnailRailView.bottomAnchor],
+
+        [self.thumbnailRailStack.topAnchor constraintEqualToAnchor:self.thumbnailRailMaterialView.contentView.topAnchor constant:kAVThumbnailRailInset],
+        [self.thumbnailRailStack.leadingAnchor constraintEqualToAnchor:self.thumbnailRailMaterialView.contentView.leadingAnchor constant:kAVThumbnailRailInset],
+        [self.thumbnailRailStack.trailingAnchor constraintEqualToAnchor:self.thumbnailRailMaterialView.contentView.trailingAnchor constant:-kAVThumbnailRailInset],
+        [self.thumbnailRailStack.bottomAnchor constraintEqualToAnchor:self.thumbnailRailMaterialView.contentView.bottomAnchor constant:-kAVThumbnailRailInset],
+    ]];
+
+    // RTL: flip the trailing constraint to leading
+    if (Language.isRTL) {
+        trailing.active = NO;
+        [self.thumbnailRailView.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:kAVThumbnailRailInset].active = YES;
+    }
+}
+
+- (UIView *)pp_thumbnailBlockForItem:(PetImageItem *)item index:(NSInteger)index
+{
+    UIView *block = [[UIView alloc] init];
+    block.translatesAutoresizingMaskIntoConstraints = NO;
+    block.tag = index;
+    block.layer.cornerRadius = kAVThumbnailCorner;
+    block.layer.masksToBounds = YES;
+    block.backgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    block.isAccessibilityElement = YES;
+    block.accessibilityLabel = [NSString stringWithFormat:kLang(@"image_gallery_page_format"), (long)(index + 1), (long)self.accessAds.imageItems.count];
+    block.accessibilityTraits = UIAccessibilityTraitButton;
+
+    // ── Selection ring border layer ──
+    CAShapeLayer *ring = [CAShapeLayer layer];
+    ring.name = @"PPSelRing";
+    ring.fillColor = UIColor.clearColor.CGColor;
+    ring.strokeColor = AppPrimaryClr.CGColor;
+    ring.lineWidth = 2.5;
+    ring.opacity = (index == 0) ? 1.0 : 0.0;
+    ring.shadowColor = AppPrimaryClr.CGColor;
+    ring.shadowOpacity = 0.30;
+    ring.shadowRadius = 5.0;
+    ring.shadowOffset = CGSizeZero;
+    ring.path = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, kAVThumbnailSize, kAVThumbnailSize)
+                                           cornerRadius:kAVThumbnailCorner].CGPath;
+    [block.layer addSublayer:ring];
+
+    // ── Image view ──
+    UIImageView *imageView = [[UIImageView alloc] init];
+    imageView.translatesAutoresizingMaskIntoConstraints = NO;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.clipsToBounds = YES;
+    imageView.layer.cornerRadius = kAVThumbnailCorner - 1.5;
+    imageView.tag = 100;
+    imageView.backgroundColor = [AppSecondaryTextClr colorWithAlphaComponent:0.08];
+    imageView.image = [UIImage systemImageNamed:@"photo"];
+    imageView.tintColor = [AppSecondaryTextClr colorWithAlphaComponent:0.30];
+    [block addSubview:imageView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [block.widthAnchor constraintEqualToConstant:kAVThumbnailSize],
+        [block.heightAnchor constraintEqualToConstant:kAVThumbnailSize],
+
+        [imageView.topAnchor constraintEqualToAnchor:block.topAnchor constant:1.5],
+        [imageView.leadingAnchor constraintEqualToAnchor:block.leadingAnchor constant:1.5],
+        [imageView.trailingAnchor constraintEqualToAnchor:block.trailingAnchor constant:-1.5],
+        [imageView.bottomAnchor constraintEqualToAnchor:block.bottomAnchor constant:-1.5],
+    ]];
+
+    // ── Load image ──
+    if (item.url.length > 0) {
+        UIImage *placeholder = [UIImage imageNamed:@"placeholder"];
+        [[PPImageLoaderManager shared] setImageOnImageView:imageView
+                                                       url:item.url
+                                               placeholder:placeholder
+                                                complation:nil];
+    }
+
+    // ── Tap gesture ──
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_thumbnailTapped:)];
+    [block addGestureRecognizer:tap];
+
+    return block;
+}
+
+- (void)pp_thumbnailTapped:(UITapGestureRecognizer *)gesture
+{
+    UIView *block = gesture.view;
+    NSInteger index = block.tag;
+    if (index < 0 || index >= (NSInteger)self.accessAds.imageItems.count) return;
+    if (index == self.selectedThumbnailIndex) return;
+
+    // Haptic
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        UIImpactFeedbackGenerator *gen = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [gen impactOccurredWithIntensity:0.50];
+    }
+
+    // Tap feedback animation
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        block.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.20
+                              delay:0.0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            block.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    // Update selection
+    [self pp_setThumbnailSelected:NO atIndex:self.selectedThumbnailIndex];
+    self.selectedThumbnailIndex = index;
+    [self pp_setThumbnailSelected:YES atIndex:index];
+
+    // Scroll gallery
+    [self.imageGallery scrollToPage:index animated:YES];
+}
+
+- (void)pp_updateThumbnailSelectionToPage:(NSInteger)page
+{
+    if (page < 0 || page >= (NSInteger)self.accessAds.imageItems.count) return;
+    if (page == self.selectedThumbnailIndex) return;
+    [self pp_setThumbnailSelected:NO atIndex:self.selectedThumbnailIndex];
+    self.selectedThumbnailIndex = page;
+    [self pp_setThumbnailSelected:YES atIndex:page];
+}
+
+- (void)pp_setThumbnailSelected:(BOOL)selected atIndex:(NSInteger)index
+{
+    if (!self.thumbnailRailStack) return;
+    if (index < 0 || index >= (NSInteger)self.thumbnailRailStack.arrangedSubviews.count) return;
+
+    UIView *block = self.thumbnailRailStack.arrangedSubviews[index];
+    for (CALayer *layer in block.layer.sublayers) {
+        if ([layer.name isEqualToString:@"PPSelRing"]) {
+            CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"opacity"];
+            anim.fromValue = @(layer.opacity);
+            anim.toValue = @(selected ? 1.0 : 0.0);
+            anim.duration = 0.25;
+            anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+            layer.opacity = selected ? 1.0 : 0.0;
+            [layer addAnimation:anim forKey:@"selRingOpacity"];
+            break;
+        }
+    }
+
+    // Scale the image subtly for selected state
+    UIImageView *iv = [block viewWithTag:100];
+    if (iv) {
+        [UIView animateWithDuration:0.25
+                              delay:0.0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            iv.transform = selected ? CGAffineTransformMakeScale(1.0, 1.0) : CGAffineTransformMakeScale(0.92, 0.92);
+        } completion:nil];
+    }
 }
 
 /// Title / subtitle / price summary — uses reusable PPPetsTitleView (same as ViewerVC)

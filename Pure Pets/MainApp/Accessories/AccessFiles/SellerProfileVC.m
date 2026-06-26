@@ -14,6 +14,7 @@
 #import "PPFunc.h"
 #import "PPHUD.h"
 #import "PPHomeCartNavButton.h"
+#import "PPRootTabBarController.h"
 #import "PPUniversalCell.h"
 #import "PPUniversalCellViewModel.h"
 #import "PPImageLoaderManager.h"
@@ -29,14 +30,12 @@ static CGFloat SPSellerBottomNavigationClearanceForController(UIViewController *
     }
 
     UITabBarController *tabBarController = controller.tabBarController;
-    if (PPIOS26()) {
-        SEL clearanceSelector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
-        if ([tabBarController respondsToSelector:clearanceSelector]) {
-            CGFloat (*clearanceIMP)(id, SEL) = (CGFloat (*)(id, SEL))[tabBarController methodForSelector:clearanceSelector];
-            CGFloat rootClearance = clearanceIMP ? clearanceIMP(tabBarController, clearanceSelector) : 0.0;
-            if (rootClearance > 0.0) {
-                return ceil(rootClearance);
-            }
+    SEL clearanceSelector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
+    if ([tabBarController respondsToSelector:clearanceSelector]) {
+        CGFloat (*clearanceIMP)(id, SEL) = (CGFloat (*)(id, SEL))[tabBarController methodForSelector:clearanceSelector];
+        CGFloat rootClearance = clearanceIMP ? clearanceIMP(tabBarController, clearanceSelector) : 0.0;
+        if (rootClearance > 0.0) {
+            return ceil(rootClearance);
         }
     }
 
@@ -672,6 +671,14 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self.navigationController setNavigationBarHidden:YES animated:NO];
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        __weak typeof(self) weakSelf = self;
+        [(PPRootTabBarController *)self.tabBarController pp_activateFloatingCartBarForSourceViewController:self
+                                                                                           openCartHandler:^{
+            [weakSelf pp_openCart];
+        }
+                                                                                                  animated:NO];
+    }
     [self applySemanticDirection];
     [self startLivingBackgroundIfNeeded];
     [self animateEntranceIfNeeded];
@@ -689,6 +696,10 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 - (void)viewDidDisappear:(BOOL)animated {
     [super viewDidDisappear:animated];
     [self stopLivingBackground];
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        [(PPRootTabBarController *)self.tabBarController pp_deactivateFloatingCartBarForSourceViewController:self
+                                                                                                    animated:NO];
+    }
 }
 
 - (void)viewDidLayoutSubviews {
@@ -700,6 +711,18 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self pp_updateBottomNavigationInsetsIfNeeded];
     [self.view bringSubviewToFront:self.topFadeView];
     [self.view bringSubviewToFront:self.heroSurfaceView];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        __weak typeof(self) weakSelf = self;
+        [(PPRootTabBarController *)self.tabBarController pp_activateFloatingCartBarForSourceViewController:self
+                                                                                           openCartHandler:^{
+            [weakSelf pp_openCart];
+        }
+                                                                                                  animated:YES];
+    }
 }
 
 - (void)viewSafeAreaInsetsDidChange {
@@ -859,7 +882,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.avatarShellView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.10;
     self.avatarShellView.layer.shadowRadius = 18.0;
     self.avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 9.0);
-    [self.avatarShellView pp_setBorderColor:SPSellerHeroAvatarStrokeColor(self.traitCollection)];
+    [self.avatarShellView pp_setBorderColor:[SPSellerHeroAvatarStrokeColor(self.traitCollection) colorWithAlphaComponent:0.5]];
     [self.heroSurfaceView addSubview:self.avatarShellView];
 
     self.avatarImageView = [[UIImageView alloc] initWithImage:PPSYSImage(@"person.crop.circle.fill")];
@@ -2512,6 +2535,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     (void)notification;
     NSInteger count = [[CartManager sharedManager] totalItemsCount];
     [self.cartNavButton updateCount:count animated:(notification != nil)];
+    [self pp_updateBottomNavigationInsetsIfNeeded];
 }
 
 - (void)pp_openCart

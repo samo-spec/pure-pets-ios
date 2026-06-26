@@ -12,6 +12,12 @@
 #import "ProviderStorefrontProductsVC.h"
 #import "UserManager.h"
 #import "UserModel.h"
+#import "PPAddressModel.h"
+
+#import "PPProviderCompanyPremiumCardCell.h"
+
+#import <QuartzCore/QuartzCore.h>
+
 @import FirebaseFunctions;
 
 static NSString *PPProviderCompaniesSafeString(id value)
@@ -76,8 +82,8 @@ static UIColor *PPProviderCompaniesDynamicColor(UIColor *lightColor, UIColor *da
 
 static UIColor *PPProviderCompaniesHeroSurfaceColor(void)
 {
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
-                                           [UIColor colorWithWhite:0.10 alpha:0.94]);
+    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.96],
+                                           [UIColor colorWithWhite:0.15 alpha:0.94]);
 }
 
 static UIColor *PPProviderCompaniesHeroStrokeColor(void)
@@ -134,7 +140,7 @@ static NSString *PPProviderCompaniesHeroTitleForCategoryIdentifier(NSString *ide
     if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
         return PPProviderCompaniesTitleForCategoryIdentifier(identifier);
     }
-    return kLang(@"provider_marketplace_hero_title") ?: @"Carefully chosen essentials";
+    return kLang(@"provider_marketplace_hero_title") ?: @"Trusted providers";
 }
 
 static NSString *PPProviderCompaniesSubtitleForCategoryIdentifier(NSString *identifier)
@@ -230,6 +236,37 @@ static NSString *PPProviderCompaniesDiscoverySymbol(PPProviderCompaniesDiscovery
     }
 }
 
+static NSString *PPProviderCompaniesHeroEyebrowText(NSString *identifier)
+{
+    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
+        return kLang(@"provider_companies_hero_eyebrow_pharmacy") ?: @"Pharmacies";
+    }
+    return kLang(@"provider_companies_hero_eyebrow_marketplace") ?: @"Marketplace";
+}
+
+static NSString *PPProviderCompaniesHeroSupportText(NSString *identifier)
+{
+    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
+        return kLang(@"provider_companies_hero_support_pharmacy") ?: @"Search trusted pharmacies.";
+    }
+    return kLang(@"provider_companies_hero_support_marketplace") ?: @"Search, compare, open the shop.";
+}
+
+static NSString *PPProviderCompaniesHeroModeSummary(PPProviderCompaniesDiscoveryMode mode)
+{
+    switch (mode) {
+        case PPProviderCompaniesDiscoveryModeFeatured:
+            return kLang(@"provider_companies_hero_mode_summary_featured") ?: @"Verified providers first";
+        case PPProviderCompaniesDiscoveryModeTopSellers:
+            return kLang(@"provider_companies_hero_mode_summary_top_sellers") ?: @"Most complete catalogs";
+        case PPProviderCompaniesDiscoveryModeNewest:
+            return kLang(@"provider_companies_hero_mode_summary_newest") ?: @"Recently added storefronts";
+        case PPProviderCompaniesDiscoveryModeRecommended:
+        default:
+            return kLang(@"provider_companies_hero_mode_summary_recommended") ?: @"Best overall match";
+    }
+}
+
 @interface PPProviderCompanyEntry : NSObject
 @property (nonatomic, copy) NSString *ownerID;
 @property (nonatomic, strong) NSArray<PetAccessory *> *items;
@@ -255,11 +292,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
         return fallback;
     }
 
-    if ([normalizedAbout localizedCaseInsensitiveContainsString:fallback]) {
-        return normalizedAbout;
-    }
-
-    return [NSString stringWithFormat:@"%@ • %@", fallback, normalizedAbout];
+    return normalizedAbout;
 }
 
 @interface PPProviderCompanyCell : UITableViewCell
@@ -291,6 +324,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     UILabel *_ratingValueLabel;
     UILabel *_ratingCountLabel;
     UIImageView *_chevronView;
+    UIImageView *_avatarVerifiedIconView;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
@@ -324,7 +358,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _ambientAccentView = [[UIView alloc] init];
     _ambientAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     _ambientAccentView.userInteractionEnabled = NO;
-    _ambientAccentView.alpha = 0.72;
+    _ambientAccentView.alpha = 0.0;
     [_cardView addSubview:_ambientAccentView];
 
     _topAccentView = [[UIView alloc] init];
@@ -336,6 +370,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _avatarHaloView = [[UIView alloc] init];
     _avatarHaloView.translatesAutoresizingMaskIntoConstraints = NO;
     _avatarHaloView.userInteractionEnabled = NO;
+
     _avatarHaloView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
     [_cardView addSubview:_avatarHaloView];
 
@@ -362,6 +397,12 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _avatarStatusDotView.layer.masksToBounds = YES;
     [_avatarStatusDotView pp_setBorderColor:PPProviderCompaniesHeroSurfaceColor()];
     [_cardView addSubview:_avatarStatusDotView];
+
+    _avatarVerifiedIconView = [[UIImageView alloc] init];
+    _avatarVerifiedIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _avatarVerifiedIconView.contentMode = UIViewContentModeScaleAspectFit;
+    _avatarVerifiedIconView.tintColor = [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0];
+    [_avatarStatusDotView addSubview:_avatarVerifiedIconView];
 
     _badgeStackView = [[UIStackView alloc] init];
     _badgeStackView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -407,7 +448,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _metaStackView.layer.borderWidth = 0.25;
     _metaStackView.layer.masksToBounds = YES;
     PPProviderCompaniesApplyContinuousCorners(_metaStackView, 14.0);
-    [_cardView addSubview:_metaStackView];
+    [_badgeStackView addArrangedSubview:_metaStackView];
 
     _metaIconView = [[UIImageView alloc] init];
     _metaIconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -476,7 +517,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _chevronContainerView = [[UIView alloc] init];
     _chevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     _chevronContainerView.layer.masksToBounds = YES;
-    _chevronContainerView.layer.borderWidth = 1.0;
+    _chevronContainerView.layer.borderWidth = 0.0;
     [_chevronContainerView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
     _chevronContainerView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
     [_cardView addSubview:_chevronContainerView];
@@ -530,7 +571,20 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
         [_avatarStatusDotView.widthAnchor constraintEqualToConstant:15.0],
         [_avatarStatusDotView.heightAnchor constraintEqualToConstant:15.0],
 
-        [_badgeStackView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:15.0],
+        [_avatarVerifiedIconView.centerXAnchor constraintEqualToAnchor:_avatarStatusDotView.centerXAnchor],
+        [_avatarVerifiedIconView.centerYAnchor constraintEqualToAnchor:_avatarStatusDotView.centerYAnchor],
+        [_avatarVerifiedIconView.widthAnchor constraintEqualToConstant:10.0],
+        [_avatarVerifiedIconView.heightAnchor constraintEqualToConstant:10.0],
+
+        [_titleLabel.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:15.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:14.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
+
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
+        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
+
+        [_badgeStackView.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:9.0],
         [_badgeStackView.leadingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:14.0],
         [_badgeStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
         [_badgeStackView.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
@@ -538,21 +592,9 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
         [_statusBadgeLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
         [_ratingPillView.heightAnchor constraintEqualToConstant:26.0],
         [_ratingPillView.widthAnchor constraintGreaterThanOrEqualToConstant:66.0],
-
-        [_titleLabel.topAnchor constraintEqualToAnchor:_badgeStackView.bottomAnchor constant:8.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_badgeStackView.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
-
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:3.0],
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_metaStackView.topAnchor constraintEqualToAnchor:_avatarShellView.bottomAnchor constant:8.0],
-        [_metaStackView.centerXAnchor constraintEqualToAnchor:_avatarShellView.centerXAnchor],
-        [_metaStackView.leadingAnchor constraintGreaterThanOrEqualToAnchor:_cardView.leadingAnchor constant:11.0],
-        [_metaStackView.widthAnchor constraintLessThanOrEqualToConstant:92.0],
         [_metaStackView.heightAnchor constraintEqualToConstant:28.0],
-        [_metaStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardView.bottomAnchor constant:-14.0],
+        [_metaStackView.widthAnchor constraintLessThanOrEqualToConstant:104.0],
+        [_badgeStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardView.bottomAnchor constant:-14.0],
 
         [_metaIconView.widthAnchor constraintEqualToConstant:12.5],
         [_metaIconView.heightAnchor constraintEqualToConstant:12.5],
@@ -619,24 +661,31 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
     BOOL showVerified = entry.user.isVerified;
     BOOL showActive = !showVerified && [PPProviderCompaniesSafeString(entry.user.accountStatus) isEqualToString:@"active"];
-    _statusBadgeLabel.hidden = !showVerified && !showActive;
+    _statusBadgeLabel.hidden = YES;
     _avatarStatusDotView.hidden = !showVerified && !showActive;
-    if (showVerified || showActive) {
-        NSString *statusText = showVerified
-            ? (kLang(@"verified") ?: @"Verified")
-            : (kLang(@"provider_company_status_active") ?: @"Active");
-        UIColor *statusColor = showVerified ? [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0] : accent;
-        _statusBadgeLabel.text = statusText;
-        _statusBadgeLabel.textColor = statusColor;
-        _statusBadgeLabel.backgroundColor = [statusColor colorWithAlphaComponent:0.075];
-        [_statusBadgeLabel pp_setBorderColor:[statusColor colorWithAlphaComponent:0.14]];
-        _avatarStatusDotView.backgroundColor = statusColor;
+    if (showVerified) {
+        UIColor *verifiedColor = [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0];
+        _avatarStatusDotView.backgroundColor = verifiedColor;
+        if (@available(iOS 13.0, *)) {
+            _avatarVerifiedIconView.image =
+                [[UIImage systemImageNamed:@"checkmark.seal.fill"
+                         withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:9.0
+                                                                                           weight:UIImageSymbolWeightBold]]
+                 imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        _avatarVerifiedIconView.tintColor = UIColor.whiteColor;
+    } else if (showActive) {
+        _avatarStatusDotView.backgroundColor = accent;
+        _avatarVerifiedIconView.image = nil;
     } else {
         _statusBadgeLabel.text = nil;
+        _avatarVerifiedIconView.image = nil;
     }
 
     _titleLabel.text = title;
-    _subtitleLabel.text = PPProviderCompaniesCellDisplaySubtitle(entry, categoryIdentifier);
+    NSString *subtitle = PPProviderCompaniesCellDisplaySubtitle(entry, categoryIdentifier);
+    _subtitleLabel.text = subtitle;
+    _subtitleLabel.hidden = subtitle.length == 0;
     _metaLabel.text = PPProviderCompaniesItemsCountText(entry.productCount, categoryIdentifier);
     if (@available(iOS 13.0, *)) {
         NSString *metaSymbolName = PPProviderCompaniesSymbolNameForCategoryIdentifier(categoryIdentifier);
@@ -693,8 +742,9 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
                                                 complation:nil];
     }
 
-    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@, %@",
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@, %@, %@",
                                title,
+                               _subtitleLabel.text ?: @"",
                                PPProviderCompaniesTitleForCategoryIdentifier(categoryIdentifier),
                                _metaLabel.text ?: @"",
                                _ratingPillView.accessibilityLabel ?: @""];
@@ -752,11 +802,13 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:22.0].CGPath;
+    PPProviderCompaniesApplyContinuousCorners(_cardView, 28.0);
+    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:28.0].CGPath;
     _ambientAccentView.layer.cornerRadius = CGRectGetWidth(_ambientAccentView.bounds) * 0.5;
     _avatarHaloView.layer.cornerRadius = CGRectGetWidth(_avatarHaloView.bounds) * 0.5;
     PPProviderCompaniesApplyContinuousCorners(_avatarShellView, CGRectGetWidth(_avatarShellView.bounds) * 0.5);
     PPProviderCompaniesApplyContinuousCorners(_avatarImageView, CGRectGetWidth(_avatarImageView.bounds) * 0.5);
+    PPProviderCompaniesApplyContinuousCorners(_ratingPillView, CGRectGetHeight(_ratingPillView.bounds) * 0.5);
     PPProviderCompaniesApplyContinuousCorners(_metaStackView, CGRectGetHeight(_metaStackView.bounds) * 0.5);
     _chevronContainerView.layer.cornerRadius = CGRectGetWidth(_chevronContainerView.bounds) * 0.5;
     _avatarStatusDotView.layer.cornerRadius = CGRectGetWidth(_avatarStatusDotView.bounds) * 0.5;
@@ -772,58 +824,71 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     _ratingStarView.image = nil;
     _titleLabel.text = nil;
     _subtitleLabel.text = nil;
+    _subtitleLabel.hidden = NO;
     _metaLabel.text = nil;
     _ratingValueLabel.text = nil;
     _ratingCountLabel.text = nil;
     _ratingCountLabel.hidden = NO;
     _ratingPillView.accessibilityLabel = nil;
     _statusBadgeLabel.text = nil;
-    _statusBadgeLabel.hidden = NO;
+    _statusBadgeLabel.hidden = YES;
     _avatarStatusDotView.hidden = NO;
+    _avatarVerifiedIconView.image = nil;
     self.accessibilityHint = nil;
     self.accessibilityLabel = nil;
 }
 
 @end
 
-@interface ProviderCompaniesListVC () <UITableViewDataSource, UITableViewDelegate, UISearchResultsUpdating, UISearchBarDelegate>
+@interface ProviderCompaniesListVC () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIView *headerContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) UIView *heroLiquidBorderView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *heroBorderSheenLayer;
-@property (nonatomic, strong) UIView *heroGlowView;
-@property (nonatomic, strong) UIView *heroOrbView;
-@property (nonatomic, strong) UIView *heroIconShellView;
-@property (nonatomic, strong) UIImageView *heroIconView;
-@property (nonatomic, strong) PPInsetLabel *heroCategoryBadgeLabel;
-@property (nonatomic, strong) UIStackView *heroTopBadgeStackView;
+@property (nonatomic, strong) CAGradientLayer *heroSurfaceGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *heroSurfaceBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *heroSurfaceBorderMaskLayer;
+@property (nonatomic, strong) UIView *heroAmbientGlowView;
+@property (nonatomic, strong) UIView *heroAmbientAccentView;
+@property (nonatomic, strong) UIView *heroContentContainerView;
+@property (nonatomic, strong) UILabel *heroEyebrowLabel;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
+@property (nonatomic, strong) UIView *heroTrailIconPlateView;
+@property (nonatomic, strong) UIImageView *heroTrailIconView;
+@property (nonatomic, strong) UIStackView *heroMetricsStackView;
+@property (nonatomic, strong) UIView *heroCountMetricView;
+@property (nonatomic, strong) UILabel *heroCountMetricTitleLabel;
+@property (nonatomic, strong) UILabel *heroCountMetricValueLabel;
+@property (nonatomic, strong) UIView *heroModeMetricView;
+@property (nonatomic, strong) UILabel *heroModeMetricTitleLabel;
+@property (nonatomic, strong) UILabel *heroModeMetricValueLabel;
+@property (nonatomic, strong) UIView *heroTrustMetricView;
+@property (nonatomic, strong) UILabel *heroTrustMetricTitleLabel;
+@property (nonatomic, strong) UILabel *heroTrustMetricValueLabel;
+@property (nonatomic, strong) UIButton *heroLayoutToggleButton;
+@property (nonatomic, strong) UIView *heroSearchChromeView;
+@property (nonatomic, strong) UIImageView *heroSearchIconView;
+@property (nonatomic, strong) UITextField *heroSearchTextField;
 @property (nonatomic, strong) UIView *heroProofRailView;
 @property (nonatomic, strong) UIScrollView *heroDiscoveryScrollView;
 @property (nonatomic, strong) UIStackView *heroDiscoveryStackView;
 @property (nonatomic, strong) NSArray<UIButton *> *heroDiscoveryButtons;
-@property (nonatomic, strong) UIView *heroSeparatorView;
 @property (nonatomic, strong) NSLayoutConstraint *heroContainerHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroSurfaceTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroSurfaceBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *heroContentHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroProofRailLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroProofRailTrailingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroProofRailBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroProofRailHeightConstraint;
-@property (nonatomic, strong) UILabel *eyebrowLabel;
-@property (nonatomic, strong) UILabel *headerTitleLabel;
-@property (nonatomic, strong) UILabel *headerSubtitleLabel;
-@property (nonatomic, strong) PPInsetLabel *countBadgeLabel;
+@property (nonatomic, strong) NSLayoutConstraint *heroSearchChromeBottomConstraint;
+
 @property (nonatomic, strong) UIView *stateContainerView;
 @property (nonatomic, strong) UIImageView *stateIconView;
 @property (nonatomic, strong) UILabel *stateTitleLabel;
 @property (nonatomic, strong) UILabel *stateSubtitleLabel;
 @property (nonatomic, strong) UIButton *retryButton;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
-@property (nonatomic, strong) UISearchController *searchController;
-@property (nonatomic, strong) UIButton *navigationSearchButton;
-@property (nonatomic, strong) UIBarButtonItem *navigationSearchBarButtonItem;
 @property (nonatomic, strong) NSArray<PPProviderCompanyEntry *> *allEntries;
 @property (nonatomic, strong) NSArray<PPProviderCompanyEntry *> *visibleEntries;
 @property (nonatomic, copy) NSString *searchQuery;
@@ -832,23 +897,35 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 @property (nonatomic, assign) BOOL heroEntrancePrepared;
 @property (nonatomic, assign) BOOL heroEntranceCompleted;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedCompanyCellKeys;
-@property (nonatomic, assign) BOOL searchBarFocused;
-@property (nonatomic, assign) BOOL searchBarPresented;
+@property (nonatomic, assign) BOOL searchChromeFocused;
 @property (nonatomic, assign) BOOL heroDiscoveryInitialOffsetApplied;
 @property (nonatomic, assign) BOOL heroPinnedScrollPositionApplied;
 @property (nonatomic, assign) CGFloat heroCollapseProgress;
 @property (nonatomic, assign) BOOL heroCollapsed;
+@property (nonatomic, assign) BOOL applyingHeroCollapseLayout;
+@property (nonatomic, assign) BOOL heroAmbientMotionStarted;
+@property (nonatomic, assign) BOOL prefersCompactListLayout;
 @property (nonatomic, assign) PPProviderCompaniesDiscoveryMode selectedDiscoveryMode;
 - (UIButton *)pp_makeDiscoveryButtonForMode:(PPProviderCompaniesDiscoveryMode)mode;
 - (void)pp_updateDiscoveryButtonAppearances;
 - (void)pp_handleDiscoveryButton:(UIButton *)button;
+- (UIView *)pp_makeHeroMetricViewWithTitleLabel:(UILabel * __strong *)titleLabel
+                                     valueLabel:(UILabel * __strong *)valueLabel;
+- (void)pp_handleLayoutToggleButton;
+- (void)pp_updateLayoutToggleAppearanceAnimated:(BOOL)animated;
+- (void)pp_focusHeroSearchTextField;
 - (void)pp_alignDiscoveryRailForCurrentLanguageIfNeeded;
 - (void)pp_updateBottomNavigationInsetsIfNeeded;
 - (void)pp_applyHeroCollapseProgress:(CGFloat)progress animated:(BOOL)animated;
 - (void)pp_updatePinnedHeroForCurrentScrollPosition;
+- (void)pp_updateHeroSurfaceGeometry;
+- (void)pp_hideDecorativeHeroContent;
+- (void)pp_handleHeroSearchTextChanged:(UITextField *)textField;
 - (CGFloat)pp_expandedHeroHeight;
+- (CGFloat)pp_expandedHeroContentHeight;
 - (CGFloat)pp_collapsedHeroHeight;
 - (CGFloat)pp_heroCollapseDistance;
+- (void)pp_stopHeroAmbientMotion;
 - (void)pp_refreshProviderRatingSummaries;
 @end
 
@@ -864,6 +941,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
         _searchQuery = @"";
         _animatedCompanyCellKeys = [NSMutableSet set];
         _selectedDiscoveryMode = PPProviderCompaniesDiscoveryModeRecommended;
+        _prefersCompactListLayout = NO;
     }
     return self;
 }
@@ -871,7 +949,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 - (void)dealloc
 {
     [self pp_stopHeroAmbientMotion];
-}
+ }
 
 - (void)viewDidLoad
 {
@@ -886,11 +964,10 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 {
     [super viewWillAppear:animated];
     [self pp_prepareHeroEntranceIfNeeded];
-    if (self.searchBarPresented) {
-        [self pp_applyPremiumSearchBarAppearanceFocused:self.searchBarFocused animated:NO];
-    } else {
-        [self pp_applyNavigationSearchButtonFocused:NO animated:NO];
-    }
+    self.navigationItem.searchController = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+    [self pp_hideDecorativeHeroContent];
+    [self pp_applyPremiumSearchChromeAppearanceFocused:self.searchChromeFocused animated:NO];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -906,32 +983,57 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 {
     [super viewWillDisappear:animated];
     [self pp_stopHeroAmbientMotion];
-}
+ }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
 
-    if (!CGRectIsEmpty(self.heroSurfaceView.bounds)) {
-        self.heroGradientLayer.frame = self.heroSurfaceView.bounds;
-        self.heroGradientLayer.cornerRadius = 32.0;
-        self.heroSurfaceView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.heroSurfaceView.bounds cornerRadius:32.0].CGPath;
-        PPProviderCompaniesApplyContinuousCorners(self.heroLiquidBorderView, 31.0);
-        self.heroBorderSheenLayer.frame = self.heroLiquidBorderView.bounds;
-        self.heroBorderSheenLayer.cornerRadius = 31.0;
-        PPProviderCompaniesApplyContinuousCorners(self.heroProofRailView, 24.0);
-    }
-
-    if (!CGRectIsEmpty(self.heroIconShellView.bounds)) {
-        PPProviderCompaniesApplyContinuousCorners(self.heroIconShellView, CGRectGetWidth(self.heroIconShellView.bounds) * 0.5);
-        PPProviderCompaniesApplyContinuousCorners(self.heroGlowView, CGRectGetWidth(self.heroGlowView.bounds) * 0.5);
-        PPProviderCompaniesApplyContinuousCorners(self.heroOrbView, CGRectGetWidth(self.heroOrbView.bounds) * 0.5);
-    }
+    [self pp_updateHeroSurfaceGeometry];
 
     [self pp_alignDiscoveryRailForCurrentLanguageIfNeeded];
     [self pp_updateBottomNavigationInsetsIfNeeded];
     [self pp_updatePinnedHeroForCurrentScrollPosition];
+}
+
+- (void)pp_updateHeroSurfaceGeometry
+{
+    if (CGRectIsEmpty(self.heroSurfaceView.bounds)) {
+        return;
+    }
+
+    PPProviderCompaniesApplyContinuousCorners(self.heroSurfaceView, 34.0);
+    self.heroSurfaceGradientLayer.frame = self.heroSurfaceView.bounds;
+    self.heroSurfaceGradientLayer.cornerRadius = 34.0;
+    self.heroSurfaceGradientLayer.masksToBounds = YES;
+    self.heroSurfaceBorderLayer.frame = self.heroSurfaceView.bounds;
+    self.heroSurfaceBorderLayer.cornerRadius = 34.0;
+    self.heroSurfaceBorderMaskLayer.frame = self.heroSurfaceView.bounds;
+    CGRect strokeRect = CGRectInset(self.heroSurfaceView.bounds, 0.5, 0.5);
+    self.heroSurfaceBorderMaskLayer.path =
+        [UIBezierPath bezierPathWithRoundedRect:strokeRect cornerRadius:33.5].CGPath;
+    self.heroSurfaceBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.heroSurfaceBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.heroSurfaceBorderMaskLayer.lineWidth = 1.0;
+    self.heroSurfaceBorderLayer.mask = self.heroSurfaceBorderMaskLayer;
+    [self.heroSurfaceView.layer addSublayer:self.heroSurfaceBorderLayer];
+    self.heroSurfaceView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroSurfaceView.bounds cornerRadius:34.0].CGPath;
+    self.heroAmbientGlowView.layer.cornerRadius = CGRectGetWidth(self.heroAmbientGlowView.bounds) * 0.5;
+    self.heroAmbientAccentView.layer.cornerRadius = CGRectGetWidth(self.heroAmbientAccentView.bounds) * 0.5;
+    PPProviderCompaniesApplyContinuousCorners(self.heroSearchChromeView, CGRectGetHeight(self.heroSearchChromeView.bounds) * 0.5);
+    self.heroSearchChromeView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroSearchChromeView.bounds
+                                   cornerRadius:CGRectGetHeight(self.heroSearchChromeView.bounds) * 0.5].CGPath;
+    self.heroLayoutToggleButton.layer.cornerRadius = CGRectGetWidth(self.heroLayoutToggleButton.bounds) * 0.5;
+    PPProviderCompaniesApplyContinuousCorners(self.heroCountMetricView, 22.0);
+    PPProviderCompaniesApplyContinuousCorners(self.heroModeMetricView, 22.0);
+    PPProviderCompaniesApplyContinuousCorners(self.heroTrustMetricView, 22.0);
+    PPProviderCompaniesApplyContinuousCorners(self.heroProofRailView, 24.0);
+    PPProviderCompaniesApplyContinuousCorners(self.heroTrailIconPlateView, 18.0);
+    self.heroTrailIconPlateView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroTrailIconPlateView.bounds
+                                   cornerRadius:18.0].CGPath;
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -956,8 +1058,13 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 {
     self.view.backgroundColor = AppBageColor() ?: [UIColor colorWithRed:0.982 green:0.976 blue:0.956 alpha:1.0];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-    self.title = PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
-
+    //self.title = PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
+    self.navigationItem.hidesBackButton = YES;
+    if (@available(iOS 16.0, *)) {
+        self.navigationItem.backBarButtonItem.hidden = YES;
+    } else {
+        // Fallback on earlier versions
+    }
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.backgroundColor = UIColor.clearColor;
@@ -970,18 +1077,20 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     self.tableView.delegate = self;
     self.tableView.tableFooterView = [UIView new];
     [self.tableView registerClass:PPProviderCompanyCell.class forCellReuseIdentifier:@"PPProviderCompanyCell"];
+    [self.tableView registerClass:PPProviderCompanyPremiumCardCell.class
+           forCellReuseIdentifier:PPProviderCompanyPremiumCardCell.reuseIdentifier];
     [self.view addSubview:self.tableView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-22]
     ]];
 
     [self pp_buildHeader];
+    [self pp_buildHeroSearchChrome];
     [self pp_buildStateView];
-    [self pp_buildSearchController];
 }
 
 - (void)pp_updateBottomNavigationInsetsIfNeeded
@@ -991,9 +1100,11 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     }
 
     CGFloat bottomInset = PPProviderCompaniesBottomNavigationClearanceForController(self);
-    CGFloat topInset = [self pp_expandedHeroHeight] + 8.0;
+    CGFloat topInset = ceil((PPStatusBarHeight + 8.0) + [self pp_expandedHeroHeight] + 12.0);
     UIEdgeInsets contentInset = self.tableView.contentInset;
     UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
+    CGFloat previousTopInset = contentInset.top;
+    CGFloat previousRelativeOffsetY = self.tableView.contentOffset.y + previousTopInset;
     if (fabs(contentInset.bottom - bottomInset) < 0.5 &&
         fabs(indicatorInset.bottom - bottomInset) < 0.5 &&
         fabs(contentInset.top - topInset) < 0.5) {
@@ -1002,7 +1113,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
     contentInset.top = topInset;
     contentInset.bottom = bottomInset;
-    indicatorInset.top = [self pp_collapsedHeroHeight] + 10.0;
+    indicatorInset.top = [self pp_collapsedHeroHeight] + 0;
     indicatorInset.bottom = bottomInset;
     self.tableView.contentInset = contentInset;
     self.tableView.scrollIndicatorInsets = indicatorInset;
@@ -1010,12 +1121,19 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     if (!self.heroPinnedScrollPositionApplied) {
         self.heroPinnedScrollPositionApplied = YES;
         [self.tableView setContentOffset:CGPointMake(0.0, -topInset) animated:NO];
+    } else if (fabs(previousTopInset - topInset) >= 0.5) {
+        CGFloat restoredRelativeOffsetY = previousRelativeOffsetY <= 8.0 ? 0.0 : previousRelativeOffsetY;
+        CGPoint restoredOffset = self.tableView.contentOffset;
+        restoredOffset.y = restoredRelativeOffsetY - topInset;
+        if (fabs(restoredOffset.y - self.tableView.contentOffset.y) >= 0.5) {
+            [self.tableView setContentOffset:restoredOffset animated:NO];
+        }
     }
 }
 
 - (void)pp_buildHeader
 {
-    self.headerContainerView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), [self pp_expandedHeroHeight])];
+    self.headerContainerView = [[UIView alloc] init];//[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed];
     self.headerContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.headerContainerView.backgroundColor = UIColor.clearColor;
     self.headerContainerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -1024,156 +1142,163 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
     self.heroSurfaceView = [[UIView alloc] init];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSurfaceView.backgroundColor = PPProviderCompaniesHeroSurfaceColor();
+    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    PPProviderCompaniesApplyContinuousCorners(self.heroSurfaceView, 32.0);
-    self.heroSurfaceView.layer.borderWidth = 0.55;
+    PPProviderCompaniesApplyContinuousCorners(self.heroSurfaceView, 0.0);
+    self.heroSurfaceView.layer.borderWidth = 0.0;
     self.heroSurfaceView.layer.masksToBounds = NO;
-    [self.heroSurfaceView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
     [self.heroSurfaceView pp_setShadowColor:UIColor.blackColor];
-    self.heroSurfaceView.layer.shadowOpacity = 0.035;
-    self.heroSurfaceView.layer.shadowRadius = 14.0;
-    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
+    self.heroSurfaceView.layer.shadowOpacity = 0.05;
+    self.heroSurfaceView.layer.shadowRadius = 40.0;
+    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 20.0);
     [self.headerContainerView addSubview:self.heroSurfaceView];
 
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroGradientLayer.locations = @[@0.0, @0.52, @1.0];
-    self.heroGradientLayer.masksToBounds = YES;
-    [self.heroSurfaceView.layer insertSublayer:self.heroGradientLayer atIndex:0];
+    self.heroSurfaceGradientLayer = [CAGradientLayer layer];
+    self.heroSurfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroSurfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.heroSurfaceGradientLayer.locations = @[@0.0, @0.55, @1.0];
+    [self.heroSurfaceView.layer insertSublayer:self.heroSurfaceGradientLayer atIndex:0];
 
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleExtraLight];
-    if (@available(iOS 13.0, *)) {
-        blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-    }
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.userInteractionEnabled = NO;
-    blurView.alpha = 0.54;
-    PPProviderCompaniesApplyContinuousCorners(blurView, 32.0);
-    blurView.layer.masksToBounds = YES;
-    [self.heroSurfaceView addSubview:blurView];
+    self.heroSurfaceBorderLayer = [CAGradientLayer layer];
+    self.heroSurfaceBorderLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroSurfaceBorderLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.heroSurfaceBorderLayer.locations = @[@0.0, @0.54, @1.0];
+    self.heroSurfaceBorderMaskLayer = [CAShapeLayer layer];
 
-    self.heroLiquidBorderView = [[UIView alloc] init];
-    self.heroLiquidBorderView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroLiquidBorderView.userInteractionEnabled = NO;
-    self.heroLiquidBorderView.layer.borderWidth = 0.45;
-    self.heroLiquidBorderView.layer.masksToBounds = YES;
-    [self.heroLiquidBorderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.34]];
-    [self.heroSurfaceView addSubview:self.heroLiquidBorderView];
+    self.heroAmbientGlowView = [[UIView alloc] init];
+    self.heroAmbientGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroAmbientGlowView.userInteractionEnabled = NO;
+    self.heroAmbientGlowView.alpha = 0.96;
+    [self.heroSurfaceView addSubview:self.heroAmbientGlowView];
 
-    self.heroBorderSheenLayer = [CAGradientLayer layer];
-    self.heroBorderSheenLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroBorderSheenLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroBorderSheenLayer.locations = @[@0.0, @0.44, @1.0];
-    self.heroBorderSheenLayer.opacity = 0.16;
-    self.heroBorderSheenLayer.masksToBounds = YES;
-    [self.heroLiquidBorderView.layer insertSublayer:self.heroBorderSheenLayer atIndex:0];
+    self.heroAmbientAccentView = [[UIView alloc] init];
+    self.heroAmbientAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroAmbientAccentView.userInteractionEnabled = NO;
+    self.heroAmbientAccentView.alpha = 0.72;
+    [self.heroSurfaceView addSubview:self.heroAmbientAccentView];
 
-    self.heroGlowView = [[UIView alloc] init];
-    self.heroGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroGlowView.userInteractionEnabled = NO;
-    self.heroGlowView.backgroundColor =
-        PPProviderCompaniesDynamicColor([UIColor colorWithWhite:0.0 alpha:0.035],
-                                        [UIColor colorWithWhite:1.0 alpha:0.055]);
-    self.heroGlowView.alpha = 0.26;
-    self.heroGlowView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.heroGlowView.layer.shadowOpacity = 0.0;
-    self.heroGlowView.layer.shadowRadius = 0.0;
-    self.heroGlowView.layer.shadowOffset = CGSizeZero;
-    [self.heroSurfaceView addSubview:self.heroGlowView];
+    self.heroContentContainerView = [[UIView alloc] init];
+    self.heroContentContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroContentContainerView.backgroundColor = UIColor.clearColor;
+    self.heroContentContainerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroContentContainerView.clipsToBounds = YES;
+    [self.heroSurfaceView addSubview:self.heroContentContainerView];
 
-    self.heroOrbView = [[UIView alloc] init];
-    self.heroOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroOrbView.userInteractionEnabled = NO;
-    self.heroOrbView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    self.heroOrbView.layer.borderWidth = 0.55;
-    [self.heroOrbView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    [self.heroSurfaceView addSubview:self.heroOrbView];
+    self.heroEyebrowLabel = [[UILabel alloc] init];
+    self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroEyebrowLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:12.0], UIFontTextStyleCaption1);
+    self.heroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroEyebrowLabel.numberOfLines = 1;
+    [self.heroContentContainerView addSubview:self.heroEyebrowLabel];
 
-    self.heroIconShellView = [[UIView alloc] init];
-    self.heroIconShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconShellView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: PPProviderCompaniesHeroSecondarySurfaceColor();
-    self.heroIconShellView.layer.borderWidth = 0.65;
-    self.heroIconShellView.layer.masksToBounds = YES;
-    [self.heroIconShellView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    [self.heroSurfaceView addSubview:self.heroIconShellView];
+    self.heroLayoutToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.heroLayoutToggleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroLayoutToggleButton.clipsToBounds = NO;
+    self.heroLayoutToggleButton.accessibilityHint =
+        kLang(@"provider_companies_layout_toggle_hint") ?: @"Changes the provider layout";
+    [self.heroLayoutToggleButton addTarget:self
+                                    action:@selector(pp_handleLayoutToggleButton)
+                          forControlEvents:UIControlEventTouchUpInside];
 
-    self.heroIconView = [[UIImageView alloc] init];
-    self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroIconView.tintColor = AppPrimaryClr ?: UIColor.systemRedColor;
-    [self.heroIconShellView addSubview:self.heroIconView];
+    self.heroTitleLabel = [[UILabel alloc] init];
+    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTitleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:28.0], UIFontTextStyleTitle1);
+    self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
+    [self.heroContentContainerView addSubview:self.heroTitleLabel];
 
-    self.eyebrowLabel = [[UILabel alloc] init];
-    self.eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.eyebrowLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:11.5], UIFontTextStyleCaption1);
-    self.eyebrowLabel.textColor = [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.58];
-    self.eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.eyebrowLabel.adjustsFontForContentSizeCategory = YES;
-    [self.heroSurfaceView addSubview:self.eyebrowLabel];
+    self.heroSubtitleLabel = [[UILabel alloc] init];
+    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSubtitleLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:13.5], UIFontTextStyleSubheadline);
+    self.heroSubtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroSubtitleLabel.numberOfLines = 1;
+    self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    [self.heroContentContainerView addSubview:self.heroSubtitleLabel];
 
-    self.headerTitleLabel = [[UILabel alloc] init];
-    self.headerTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.headerTitleLabel.font = PPProviderCompaniesScaledFont([GM BlackFontWithSize:31.0], UIFontTextStyleTitle1);
-    self.headerTitleLabel.textColor = AppPrimaryTextClr ?: [UIColor colorWithWhite:0.10 alpha:1.0];
-    self.headerTitleLabel.numberOfLines = 2;
-    self.headerTitleLabel.adjustsFontForContentSizeCategory = YES;
-    self.headerTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.heroSurfaceView addSubview:self.headerTitleLabel];
+    self.heroTrailIconPlateView = [[UIView alloc] init];
+    self.heroTrailIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTrailIconPlateView.userInteractionEnabled = NO;
+    self.heroTrailIconPlateView.accessibilityElementsHidden = YES;
+    self.heroTrailIconPlateView.layer.borderWidth = 1.0;
+    self.heroTrailIconPlateView.layer.masksToBounds = NO;
+    [self.heroTrailIconPlateView pp_setShadowColor:UIColor.blackColor];
+    self.heroTrailIconPlateView.layer.shadowOpacity = 0.035;
+    self.heroTrailIconPlateView.layer.shadowRadius = 12.0;
+    self.heroTrailIconPlateView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    [self.heroSurfaceView addSubview:self.heroTrailIconPlateView];
 
-    self.headerSubtitleLabel = [[UILabel alloc] init];
-    self.headerSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.headerSubtitleLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:14.5], UIFontTextStyleSubheadline);
-    self.headerSubtitleLabel.textColor = AppSecondaryTextClr ?: [UIColor colorWithWhite:0.42 alpha:1.0];
-    self.headerSubtitleLabel.numberOfLines = 2;
-    self.headerSubtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    self.headerSubtitleLabel.adjustsFontForContentSizeCategory = YES;
-    self.headerSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.heroSurfaceView addSubview:self.headerSubtitleLabel];
+    self.heroTrailIconView = [[UIImageView alloc] init];
+    self.heroTrailIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTrailIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroTrailIconView.accessibilityElementsHidden = YES;
+    [self.heroTrailIconPlateView addSubview:self.heroTrailIconView];
 
-    self.heroCategoryBadgeLabel = [[PPInsetLabel alloc] init];
-    self.heroCategoryBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroCategoryBadgeLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:11.5], UIFontTextStyleCaption1);
-    self.heroCategoryBadgeLabel.textAlignment = NSTextAlignmentCenter;
-    self.heroCategoryBadgeLabel.adjustsFontForContentSizeCategory = YES;
-    self.heroCategoryBadgeLabel.textInsets = UIEdgeInsetsMake(2.0, 12.0, 2.0, 12.0);
-    self.heroCategoryBadgeLabel.layer.cornerRadius = 15.0;
-    self.heroCategoryBadgeLabel.layer.masksToBounds = YES;
-    self.heroCategoryBadgeLabel.layer.borderWidth = 0.55;
+    self.heroMetricsStackView = [[UIStackView alloc] init];
+    self.heroMetricsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroMetricsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.heroMetricsStackView.alignment = UIStackViewAlignmentFill;
+    self.heroMetricsStackView.distribution = UIStackViewDistributionFillEqually;
+    self.heroMetricsStackView.spacing = 10.0;
+    self.heroMetricsStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroMetricsStackView.hidden = YES;
+    self.heroMetricsStackView.accessibilityElementsHidden = YES;
+    self.heroMetricsStackView.userInteractionEnabled = NO;
+    [self.heroContentContainerView addSubview:self.heroMetricsStackView];
 
-    self.countBadgeLabel = [[PPInsetLabel alloc] init];
-    self.countBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.countBadgeLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:11.5], UIFontTextStyleCaption1);
-    self.countBadgeLabel.textColor = AppPrimaryClr ?: [UIColor colorWithRed:0.84 green:0.25 blue:0.22 alpha:1.0];
-    self.countBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: PPProviderCompaniesHeroSecondarySurfaceColor();
-    self.countBadgeLabel.textAlignment = NSTextAlignmentCenter;
-    self.countBadgeLabel.textInsets = UIEdgeInsetsMake(2.0, 10.0, 2.0, 10.0);
-    PPProviderCompaniesApplyContinuousCorners(self.countBadgeLabel, 15.0);
-    self.countBadgeLabel.layer.masksToBounds = YES;
-    self.countBadgeLabel.layer.borderWidth = 0.55;
+    self.heroCountMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroCountMetricTitleLabel
+                                                              valueLabel:&_heroCountMetricValueLabel];
+    self.heroModeMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroModeMetricTitleLabel
+                                                             valueLabel:&_heroModeMetricValueLabel];
+    self.heroTrustMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroTrustMetricTitleLabel
+                                                              valueLabel:&_heroTrustMetricValueLabel];
+    [self.heroMetricsStackView addArrangedSubview:self.heroCountMetricView];
+    [self.heroMetricsStackView addArrangedSubview:self.heroModeMetricView];
+    [self.heroMetricsStackView addArrangedSubview:self.heroTrustMetricView];
 
-    self.heroTopBadgeStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.heroCategoryBadgeLabel,
-        self.countBadgeLabel
-    ]];
-    self.heroTopBadgeStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTopBadgeStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.heroTopBadgeStackView.alignment = UIStackViewAlignmentCenter;
-    self.heroTopBadgeStackView.distribution = UIStackViewDistributionFill;
-    self.heroTopBadgeStackView.spacing = 8.0;
-    self.heroTopBadgeStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.heroSurfaceView addSubview:self.heroTopBadgeStackView];
-    [self.heroCategoryBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
-                                                                 forAxis:UILayoutConstraintAxisHorizontal];
-    [self.countBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                          forAxis:UILayoutConstraintAxisHorizontal];
+    self.heroSearchChromeView = [[UIView alloc] init];
+    self.heroSearchChromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSearchChromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroSearchChromeView.layer.borderWidth = 1.0;
+    self.heroSearchChromeView.layer.masksToBounds = NO;
+    PPProviderCompaniesApplyContinuousCorners(self.heroSearchChromeView, 25.0);
+    [self.heroSurfaceView addSubview:self.heroSearchChromeView];
+    UITapGestureRecognizer *searchChromeTap =
+        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_focusHeroSearchTextField)];
+    searchChromeTap.cancelsTouchesInView = NO;
+    searchChromeTap.delegate = self;
+    [self.heroSearchChromeView addGestureRecognizer:searchChromeTap];
+
+    self.heroSearchIconView = [[UIImageView alloc] init];
+    self.heroSearchIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSearchIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.heroSearchChromeView addSubview:self.heroSearchIconView];
+
+    self.heroSearchTextField = [[UITextField alloc] init];
+    self.heroSearchTextField.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSearchTextField.borderStyle = UITextBorderStyleNone;
+    self.heroSearchTextField.backgroundColor = UIColor.clearColor;
+    self.heroSearchTextField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    self.heroSearchTextField.returnKeyType = UIReturnKeySearch;
+    self.heroSearchTextField.enablesReturnKeyAutomatically = NO;
+    self.heroSearchTextField.delegate = self;
+    self.heroSearchTextField.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroSearchTextField.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroSearchTextField.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:15.0], UIFontTextStyleSubheadline);
+    self.heroSearchTextField.adjustsFontForContentSizeCategory = YES;
+    self.heroSearchTextField.placeholder = kLang(@"provider_companies_search_placeholder") ?: @"Search providers";
+    [self.heroSearchTextField addTarget:self
+                                 action:@selector(pp_handleHeroSearchTextChanged:)
+                       forControlEvents:UIControlEventEditingChanged];
+    [self.heroSearchChromeView addSubview:self.heroSearchTextField];
+    [self.heroSearchChromeView addSubview:self.heroLayoutToggleButton];
 
     self.heroProofRailView = [[UIView alloc] init];
     self.heroProofRailView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroProofRailView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    self.heroProofRailView.layer.borderWidth = 0.55;
+    self.heroProofRailView.layer.borderWidth = 0.75;
     self.heroProofRailView.layer.masksToBounds = YES;
     [self.heroProofRailView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
     [self.heroSurfaceView addSubview:self.heroProofRailView];
@@ -1206,93 +1331,94 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     }
     self.heroDiscoveryButtons = discoveryButtons.copy;
 
-    self.heroSeparatorView = [[UIView alloc] init];
-    self.heroSeparatorView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSeparatorView.backgroundColor = [AppPrimaryClr ?: UIColor.systemRedColor colorWithAlphaComponent:0.36];
-    PPProviderCompaniesApplyContinuousCorners(self.heroSeparatorView, 1.5);
-    self.heroSeparatorView.hidden = YES;
-    [self.heroSurfaceView addSubview:self.heroSeparatorView];
-    self.eyebrowLabel.hidden = YES;
 
-    self.heroContainerHeightConstraint = [self.headerContainerView.heightAnchor constraintEqualToConstant:[self pp_expandedHeroHeight]];
-    self.heroSurfaceTopConstraint = [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.headerContainerView.topAnchor constant:14.0];
-    self.heroSurfaceBottomConstraint = [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.headerContainerView.bottomAnchor constant:-14.0];
-    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0];
-    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0];
-    self.heroProofRailBottomConstraint = [self.heroProofRailView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0];
+    self.heroContainerHeightConstraint = [self.headerContainerView.heightAnchor constraintEqualToConstant:0];
+    self.heroSurfaceTopConstraint = [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.headerContainerView.topAnchor constant:0];
+    self.heroSurfaceBottomConstraint = [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.headerContainerView.bottomAnchor constant:PPStatusBarHeight];
+    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:14.0];
+    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-14.0];
+    self.heroProofRailBottomConstraint = [self.heroProofRailView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-8.0];
     self.heroProofRailHeightConstraint = [self.heroProofRailView.heightAnchor constraintEqualToConstant:50.0];
+    self.heroSearchChromeBottomConstraint = [self.heroProofRailView.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:8.0];
+    self.heroContentHeightConstraint = [self.heroContentContainerView.heightAnchor constraintEqualToConstant:88.0];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
-        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:PPStatusBarHeight +0 ],
+        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
+        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
         self.heroContainerHeightConstraint,
 
         self.heroSurfaceTopConstraint,
-        [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.headerContainerView.leadingAnchor constant:16.0],
-        [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.headerContainerView.trailingAnchor constant:-16.0],
+        [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.headerContainerView.leadingAnchor constant:0.0],
+        [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.headerContainerView.trailingAnchor constant:-0.0],
         self.heroSurfaceBottomConstraint,
 
-        [blurView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor],
+        [self.heroAmbientGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-34.0],
+        [self.heroAmbientGlowView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:-38.0],
+        [self.heroAmbientGlowView.widthAnchor constraintEqualToConstant:206.0],
+        [self.heroAmbientGlowView.heightAnchor constraintEqualToConstant:206.0],
 
-        [self.heroLiquidBorderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:1.0],
-        [self.heroLiquidBorderView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:1.0],
-        [self.heroLiquidBorderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-1.0],
-        [self.heroLiquidBorderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-1.0],
+        [self.heroAmbientAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:18.0],
+        [self.heroAmbientAccentView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:34.0],
+        [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:154.0],
+        [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:154.0],
 
-        [self.heroGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
-        [self.heroGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
-        [self.heroGlowView.widthAnchor constraintEqualToConstant:116.0],
-        [self.heroGlowView.heightAnchor constraintEqualToConstant:116.0],
+        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
+        [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroContentContainerView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        self.heroContentHeightConstraint,
 
-        [self.heroOrbView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:28.0],
-        [self.heroOrbView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-34.0],
-        [self.heroOrbView.widthAnchor constraintEqualToConstant:42.0],
-        [self.heroOrbView.heightAnchor constraintEqualToConstant:42.0],
+        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroContentContainerView.topAnchor constant:4.0],
+        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
+        [self.heroEyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroContentContainerView.trailingAnchor],
 
-        [self.heroIconShellView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
-        [self.heroIconShellView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-22.0],
-        [self.heroIconShellView.widthAnchor constraintEqualToConstant:76.0],
-        [self.heroIconShellView.heightAnchor constraintEqualToConstant:76.0],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroEyebrowLabel.bottomAnchor constant:7.0],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
 
-        [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconShellView.centerXAnchor],
-        [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconShellView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:31.0],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:31.0],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:5.0],
+        [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
 
-        [self.heroSeparatorView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:24.0],
-        [self.heroSeparatorView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
-        [self.heroSeparatorView.widthAnchor constraintEqualToConstant:3.0],
-        [self.heroSeparatorView.heightAnchor constraintEqualToConstant:46.0],
+        [self.heroTrailIconPlateView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
+        [self.heroTrailIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.heroTrailIconPlateView.widthAnchor constraintEqualToConstant:48.0],
+        [self.heroTrailIconPlateView.heightAnchor constraintEqualToConstant:48.0],
 
-        [self.eyebrowLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
-        [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSeparatorView.trailingAnchor constant:12.0],
-        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-16.0],
+        [self.heroTrailIconView.centerXAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerXAnchor],
+        [self.heroTrailIconView.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
+        [self.heroTrailIconView.widthAnchor constraintEqualToConstant:21.0],
+        [self.heroTrailIconView.heightAnchor constraintEqualToConstant:21.0],
 
-        [self.headerTitleLabel.topAnchor constraintEqualToAnchor:self.heroTopBadgeStackView.bottomAnchor constant:14.0],
-        [self.headerTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.headerTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-18.0],
-
-        [self.headerSubtitleLabel.topAnchor constraintEqualToAnchor:self.headerTitleLabel.bottomAnchor constant:8.0],
-        [self.headerSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.headerTitleLabel.leadingAnchor],
-        [self.headerSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.headerTitleLabel.trailingAnchor],
-        [self.headerSubtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroProofRailView.topAnchor constant:-16.0],
-
-        [self.heroTopBadgeStackView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
-        [self.heroTopBadgeStackView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.heroTopBadgeStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroIconShellView.leadingAnchor constant:-16.0],
-        [self.heroTopBadgeStackView.heightAnchor constraintGreaterThanOrEqualToConstant:30.0],
-
-        [self.heroCategoryBadgeLabel.heightAnchor constraintEqualToConstant:30.0],
-        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:30.0],
+        [self.heroMetricsStackView.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:0.0],
+        [self.heroMetricsStackView.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
+        [self.heroMetricsStackView.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
+        [self.heroMetricsStackView.heightAnchor constraintEqualToConstant:0.0],
 
         self.heroProofRailLeadingConstraint,
         self.heroProofRailTrailingConstraint,
         self.heroProofRailBottomConstraint,
         self.heroProofRailHeightConstraint,
+        self.heroSearchChromeBottomConstraint,
+
+        [self.heroSearchChromeView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:14.0],
+        [self.heroSearchChromeView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-14.0],
+        [self.heroSearchChromeView.heightAnchor constraintEqualToConstant:54.0],
+
+        [self.heroSearchIconView.leadingAnchor constraintEqualToAnchor:self.heroSearchChromeView.leadingAnchor constant:16.0],
+        [self.heroSearchIconView.centerYAnchor constraintEqualToAnchor:self.heroSearchChromeView.centerYAnchor],
+        [self.heroSearchIconView.widthAnchor constraintEqualToConstant:19.0],
+        [self.heroSearchIconView.heightAnchor constraintEqualToConstant:19.0],
+
+        [self.heroLayoutToggleButton.trailingAnchor constraintEqualToAnchor:self.heroSearchChromeView.trailingAnchor constant:-5.0],
+        [self.heroLayoutToggleButton.centerYAnchor constraintEqualToAnchor:self.heroSearchChromeView.centerYAnchor],
+        [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:44.0],
+
+        [self.heroSearchTextField.leadingAnchor constraintEqualToAnchor:self.heroSearchIconView.trailingAnchor constant:10.0],
+        [self.heroSearchTextField.trailingAnchor constraintEqualToAnchor:self.heroLayoutToggleButton.leadingAnchor constant:-8.0],
+        [self.heroSearchTextField.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.topAnchor constant:7.0],
+        [self.heroSearchTextField.bottomAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:-7.0],
 
         [self.heroDiscoveryScrollView.topAnchor constraintEqualToAnchor:self.heroProofRailView.topAnchor constant:5.0],
         [self.heroDiscoveryScrollView.leadingAnchor constraintEqualToAnchor:self.heroProofRailView.leadingAnchor constant:5.0],
@@ -1308,7 +1434,9 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     ]];
 
     [self pp_updateDiscoveryButtonAppearances];
+    [self pp_updateLayoutToggleAppearanceAnimated:NO];
     [self pp_applyHeroMaterialPalette];
+    [self pp_hideDecorativeHeroContent];
     [self pp_applyHeroCollapseProgress:0.0 animated:NO];
 }
 
@@ -1453,6 +1581,142 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     } completion:nil];
 }
 
+- (UIView *)pp_makeHeroMetricViewWithTitleLabel:(UILabel * __strong *)titleLabel
+                                     valueLabel:(UILabel * __strong *)valueLabel
+{
+    UIView *container = [[UIView alloc] init];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.backgroundColor = PPProviderCompaniesHeroSurfaceColor();
+    container.layer.borderWidth = 1.0;
+    container.layer.masksToBounds = YES;
+    [container pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
+    PPProviderCompaniesApplyContinuousCorners(container, 22.0);
+
+    UILabel *title = [[UILabel alloc] init];
+    title.translatesAutoresizingMaskIntoConstraints = NO;
+    title.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:11.0], UIFontTextStyleCaption1);
+    title.textColor = [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:0.88];
+    title.textAlignment = Language.alignmentForCurrentLanguage;
+    title.numberOfLines = 1;
+    title.adjustsFontForContentSizeCategory = YES;
+    [container addSubview:title];
+
+    UILabel *value = [[UILabel alloc] init];
+    value.translatesAutoresizingMaskIntoConstraints = NO;
+    value.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:17.0], UIFontTextStyleHeadline);
+    value.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    value.textAlignment = Language.alignmentForCurrentLanguage;
+    value.numberOfLines = 2;
+    value.adjustsFontForContentSizeCategory = YES;
+    [container addSubview:value];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [title.topAnchor constraintEqualToAnchor:container.topAnchor constant:10.0],
+        [title.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:12.0],
+        [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-12.0],
+
+        [value.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:2.0],
+        [value.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:12.0],
+        [value.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-12.0],
+        [value.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-10.0]
+    ]];
+
+    if (titleLabel) {
+        *titleLabel = title;
+    }
+    if (valueLabel) {
+        *valueLabel = value;
+    }
+    return container;
+}
+
+- (void)pp_handleLayoutToggleButton
+{
+    self.prefersCompactListLayout = !self.prefersCompactListLayout;
+    [self pp_updateLayoutToggleAppearanceAnimated:YES];
+    [self pp_applyHeaderContent];
+
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+    [feedback prepare];
+    [feedback impactOccurred];
+
+    self.animatedCompanyCellKeys = [NSMutableSet set];
+    UIViewAnimationOptions transition = self.prefersCompactListLayout
+        ? UIViewAnimationOptionTransitionFlipFromLeft
+        : UIViewAnimationOptionTransitionFlipFromRight;
+    [UIView transitionWithView:self.tableView
+                      duration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.40
+                       options:transition | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                    animations:^{
+        [self.tableView reloadData];
+    } completion:nil];
+}
+
+- (void)pp_updateLayoutToggleAppearanceAnimated:(BOOL)animated
+{
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
+    UIColor *backgroundColor = self.prefersCompactListLayout
+        ? [accent colorWithAlphaComponent:0.12]
+        : PPProviderCompaniesHeroSurfaceColor();
+    UIColor *strokeColor = self.prefersCompactListLayout
+        ? [accent colorWithAlphaComponent:0.28]
+        : PPProviderCompaniesHeroStrokeColor();
+    UIColor *foregroundColor = self.prefersCompactListLayout
+        ? accent
+        : [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.74];
+    NSString *symbolName = self.prefersCompactListLayout ? @"square.grid.2x2.fill" : @"rectangle.grid.1x2.fill";
+    NSString *accessibilityLabel = self.prefersCompactListLayout
+        ? (kLang(@"provider_companies_layout_toggle_grid") ?: @"Show premium cards")
+        : (kLang(@"provider_companies_layout_toggle_list") ?: @"Show compact list");
+
+    void (^changes)(void) = ^{
+        self.heroLayoutToggleButton.backgroundColor = backgroundColor;
+        self.heroLayoutToggleButton.layer.borderWidth = 1.0;
+        [self.heroLayoutToggleButton pp_setBorderColor:strokeColor];
+        self.heroLayoutToggleButton.layer.shadowColor = UIColor.blackColor.CGColor;
+        self.heroLayoutToggleButton.layer.shadowOpacity = 0.08;
+        self.heroLayoutToggleButton.layer.shadowRadius = 14.0;
+        self.heroLayoutToggleButton.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+        self.heroLayoutToggleButton.tintColor = foregroundColor;
+        [self.heroLayoutToggleButton setImage:[[UIImage systemImageNamed:symbolName
+                                                        withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:17.0
+                                                                                                                      weight:UIImageSymbolWeightBold]]
+                                            imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]
+                                  forState:UIControlStateNormal];
+        self.heroLayoutToggleButton.accessibilityLabel = accessibilityLabel;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+    } else {
+        self.heroLayoutToggleButton.transform = CGAffineTransformMakeScale(0.92, 0.92);
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+             usingSpringWithDamping:0.82
+              initialSpringVelocity:0.16
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            changes();
+            self.heroLayoutToggleButton.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+}
+
+- (void)pp_focusHeroSearchTextField
+{
+    [self.heroSearchTextField becomeFirstResponder];
+}
+
+#pragma mark - UIGestureRecognizerDelegate
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    if ([touch.view isDescendantOfView:self.heroLayoutToggleButton]) {
+        return NO;
+    }
+    return YES;
+}
+
 - (void)pp_buildStateView
 {
     self.stateContainerView = [[UIView alloc] init];
@@ -1519,204 +1783,80 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     ]];
 }
 
-- (void)pp_buildSearchController
+- (void)pp_buildHeroSearchChrome
 {
-    self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
-    self.searchController.obscuresBackgroundDuringPresentation = NO;
-    self.searchController.hidesNavigationBarDuringPresentation = NO;
-    self.searchController.searchResultsUpdater = self;
-    self.searchController.searchBar.delegate = self;
-    self.searchController.searchBar.placeholder = kLang(@"provider_companies_search_placeholder") ?: @"Search providers";
-    self.searchController.searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    self.searchController.searchBar.tintColor = AppPrimaryClr ?: UIColor.systemRedColor;
-    self.searchController.searchBar.barTintColor = UIColor.clearColor;
-    self.searchController.searchBar.backgroundImage = [UIImage new];
-    self.searchController.searchBar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.navigationItem.hidesSearchBarWhenScrolling = NO;
     self.navigationItem.searchController = nil;
-    self.definesPresentationContext = YES;
-    [self pp_applyPremiumSearchBarAppearanceFocused:NO animated:NO];
-    [self pp_buildNavigationSearchButton];
-}
-
-- (void)pp_buildNavigationSearchButton
-{
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.adjustsImageWhenHighlighted = NO;
-    button.accessibilityLabel = kLang(@"provider_companies_search_placeholder") ?: @"Search providers";
-    button.accessibilityTraits = UIAccessibilityTraitButton;
-    button.tintColor = AppPrimaryClr ?: UIColor.systemRedColor;
-    button.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    button.layer.borderWidth = 1.0;
-    button.layer.masksToBounds = NO;
-    PPProviderCompaniesApplyContinuousCorners(button, 19.0);
-    [button pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    button.layer.shadowColor = UIColor.blackColor.CGColor;
-    button.layer.shadowOpacity = 0.035;
-    button.layer.shadowRadius = 9.0;
-    button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-    [button addTarget:self action:@selector(pp_handleNavigationSearchTap) forControlEvents:UIControlEventTouchUpInside];
-
-    if (@available(iOS 13.0, *)) {
-        UIImage *image = [[UIImage systemImageNamed:@"magnifyingglass"
-                                  withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:16.0
-                                                                                                    weight:UIImageSymbolWeightSemibold]]
-                          imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        [button setImage:image forState:UIControlStateNormal];
-    } else {
-        [button setTitle:(kLang(@"provider_companies_search_placeholder") ?: @"Search") forState:UIControlStateNormal];
-        button.titleLabel.font = [GM boldFontWithSize:10.0] ?: [UIFont boldSystemFontOfSize:10.0];
-    }
-
-    [NSLayoutConstraint activateConstraints:@[
-        [button.widthAnchor constraintEqualToConstant:38.0],
-        [button.heightAnchor constraintEqualToConstant:38.0]
-    ]];
-
-    self.navigationSearchButton = button;
-    self.navigationSearchBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:button];
-    self.navigationItem.rightBarButtonItem = self.navigationSearchBarButtonItem;
-    [self pp_applyNavigationSearchButtonFocused:NO animated:NO];
-}
-
-- (void)pp_applyNavigationSearchButtonFocused:(BOOL)focused animated:(BOOL)animated
-{
-    UIButton *button = self.navigationSearchButton;
-    if (!button) {
-        return;
-    }
-
-    void (^applyBlock)(void) = ^{
-        UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
-        button.tintColor = accent;
-        button.backgroundColor = focused ? [accent colorWithAlphaComponent:0.10] : PPProviderCompaniesHeroSecondarySurfaceColor();
-        [button pp_setBorderColor:focused ? [accent colorWithAlphaComponent:0.26] : PPProviderCompaniesHeroStrokeColor()];
-        button.layer.shadowOpacity = focused ? 0.060 : 0.035;
-        button.layer.shadowRadius = focused ? 13.0 : 9.0;
-        button.layer.shadowOffset = CGSizeMake(0.0, focused ? 7.0 : 4.0);
-        button.transform = focused && !UIAccessibilityIsReduceMotionEnabled()
-            ? CGAffineTransformMakeScale(0.94, 0.94)
-            : CGAffineTransformIdentity;
-    };
-
-    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
-        applyBlock();
-        return;
-    }
-
-    [UIView animateWithDuration:0.18
-                          delay:0.0
-         usingSpringWithDamping:0.82
-          initialSpringVelocity:0.25
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:applyBlock
-                     completion:nil];
-}
-
-- (void)pp_handleNavigationSearchTap
-{
-    [self pp_applyNavigationSearchButtonFocused:YES animated:YES];
-    [self pp_presentNavigationSearchBar];
-}
-
-- (void)pp_presentNavigationSearchBar
-{
-    if (self.searchBarPresented) {
-        self.searchController.active = YES;
-        [self.searchController.searchBar becomeFirstResponder];
-        return;
-    }
-
-    self.searchBarPresented = YES;
-    self.searchBarFocused = YES;
     self.navigationItem.rightBarButtonItem = nil;
-    self.navigationItem.searchController = self.searchController;
-    self.navigationItem.hidesSearchBarWhenScrolling = NO;
-    [self pp_applyPremiumSearchBarAppearanceFocused:YES animated:NO];
-
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
-        self.searchController.active = YES;
-        [self.searchController.searchBar becomeFirstResponder];
-        [self pp_applyPremiumSearchBarAppearanceFocused:YES animated:YES];
-    });
+    self.definesPresentationContext = YES;
+    [self pp_applyPremiumSearchChromeAppearanceFocused:NO animated:NO];
 }
 
-- (void)pp_dismissNavigationSearchBarAndClear:(BOOL)clearQuery
+- (void)pp_dismissHeroSearchChromeAndClear:(BOOL)clearQuery
 {
     if (clearQuery) {
-        self.searchController.searchBar.text = @"";
+        self.heroSearchTextField.text = @"";
         self.searchQuery = @"";
         [self pp_applySearchFilter];
     }
 
-    self.searchBarFocused = NO;
-    self.searchBarPresented = NO;
-    self.searchController.active = NO;
+    self.searchChromeFocused = NO;
+    if ([self.heroSearchTextField isFirstResponder]) {
+        [self.heroSearchTextField resignFirstResponder];
+    }
     self.navigationItem.searchController = nil;
-    self.navigationItem.rightBarButtonItem = self.navigationSearchBarButtonItem;
-    [self pp_applyNavigationSearchButtonFocused:NO animated:YES];
+    self.navigationItem.rightBarButtonItem = nil;
+    [self pp_applyPremiumSearchChromeAppearanceFocused:NO animated:YES];
+    [self pp_updatePinnedHeroForCurrentScrollPosition];
 }
 
-- (void)pp_applyPremiumSearchBarAppearanceFocused:(BOOL)focused animated:(BOOL)animated
+- (void)pp_applyPremiumSearchChromeAppearanceFocused:(BOOL)focused animated:(BOOL)animated
 {
-    UISearchBar *searchBar = self.searchController.searchBar;
-    if (!searchBar) {
+    if (!self.heroSearchChromeView || !self.heroSearchTextField) {
         return;
     }
 
-    searchBar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    searchBar.tintColor = AppPrimaryClr ?: UIColor.systemRedColor;
+    self.heroSearchChromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroSearchTextField.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroSearchTextField.textAlignment = Language.alignmentForCurrentLanguage;
 
     void (^applyBlock)(void) = ^{
-        searchBar.transform = focused && !UIAccessibilityIsReduceMotionEnabled()
+        UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
+        UIColor *surfaceColor = focused
+            ? PPProviderCompaniesHeroSurfaceColor()
+            : [PPProviderCompaniesHeroSecondarySurfaceColor() colorWithAlphaComponent:0.98];
+        UIColor *strokeColor = focused
+            ? [accent colorWithAlphaComponent:0.28]
+            : PPProviderCompaniesHeroStrokeColor();
+
+        self.heroSearchChromeView.transform = focused && !UIAccessibilityIsReduceMotionEnabled()
             ? CGAffineTransformMakeScale(1.012, 1.012)
             : CGAffineTransformIdentity;
+        self.heroSearchChromeView.backgroundColor = surfaceColor;
+        [self.heroSearchChromeView pp_setBorderColor:strokeColor];
+        self.heroSearchChromeView.layer.shadowColor = UIColor.blackColor.CGColor;
+        self.heroSearchChromeView.layer.shadowOpacity = focused ? 0.075 : 0.040;
+        self.heroSearchChromeView.layer.shadowRadius = focused ? 16.0 : 11.0;
+        self.heroSearchChromeView.layer.shadowOffset = CGSizeMake(0.0, focused ? 7.0 : 4.0);
 
+        self.heroSearchTextField.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        self.heroSearchTextField.tintColor = accent;
+        self.heroSearchTextField.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:15.0], UIFontTextStyleSubheadline);
+        self.heroSearchTextField.attributedPlaceholder =
+            [[NSAttributedString alloc] initWithString:(self.heroSearchTextField.placeholder ?: @"")
+                                            attributes:@{
+                NSForegroundColorAttributeName: [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:(focused ? 0.76 : 0.62)],
+                NSFontAttributeName: PPProviderCompaniesScaledFont([GM MidFontWithSize:15.0], UIFontTextStyleSubheadline)
+            }];
+
+        self.heroSearchIconView.tintColor = focused
+            ? accent
+            : [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:0.72];
         if (@available(iOS 13.0, *)) {
-            UITextField *textField = searchBar.searchTextField;
-            UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
-            UIColor *surfaceColor = focused ? PPProviderCompaniesHeroSurfaceColor() : PPProviderCompaniesHeroSecondarySurfaceColor();
-            UIColor *borderColor = focused
-                ? [accent colorWithAlphaComponent:0.26]
-                : PPProviderCompaniesHeroStrokeColor();
-
-            textField.backgroundColor = surfaceColor;
-            textField.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-            textField.tintColor = accent;
-            textField.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:15.0], UIFontTextStyleSubheadline);
-            textField.textAlignment = Language.alignmentForCurrentLanguage;
-            textField.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-            textField.layer.cornerRadius = 18.0;
-            if (@available(iOS 13.0, *)) {
-                textField.layer.cornerCurve = kCACornerCurveContinuous;
-            }
-            textField.layer.masksToBounds = NO;
-            textField.layer.borderWidth = focused ? 1.15 : 1.0;
-            [textField pp_setBorderColor:borderColor];
-            textField.layer.shadowColor = UIColor.blackColor.CGColor;
-            textField.layer.shadowOpacity = focused ? 0.065 : 0.028;
-            textField.layer.shadowRadius = focused ? 14.0 : 8.0;
-            textField.layer.shadowOffset = CGSizeMake(0.0, focused ? 7.0 : 3.0);
-
-            UIImageView *leftIconView = (UIImageView *)textField.leftView;
-            if ([leftIconView isKindOfClass:UIImageView.class]) {
-                leftIconView.tintColor = focused
-                    ? accent
-                    : [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:0.72];
-            }
-
-            textField.attributedPlaceholder =
-                [[NSAttributedString alloc] initWithString:(searchBar.placeholder ?: @"")
-                                                attributes:@{
-                    NSForegroundColorAttributeName: [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:(focused ? 0.74 : 0.62)],
-                    NSFontAttributeName: PPProviderCompaniesScaledFont([GM MidFontWithSize:15.0], UIFontTextStyleSubheadline)
-                }];
+            self.heroSearchIconView.image =
+                [[UIImage systemImageNamed:@"magnifyingglass"
+                         withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:16.5
+                                                                                           weight:focused ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold]]
+                 imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         }
     };
 
@@ -1742,19 +1882,16 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
     self.heroEntrancePrepared = YES;
     self.heroSurfaceView.alpha = 0.0;
-    self.heroSurfaceView.transform = CGAffineTransformMakeScale(1.018, 1.018);
-    self.heroIconShellView.alpha = 0.0;
-    self.heroIconShellView.transform = CGAffineTransformMakeScale(0.94, 0.94);
-    self.eyebrowLabel.alpha = 0.0;
-    self.eyebrowLabel.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    self.headerTitleLabel.alpha = 0.0;
-    self.headerTitleLabel.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
-    self.headerSubtitleLabel.alpha = 0.0;
-    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
-    self.heroTopBadgeStackView.alpha = 0.0;
-    self.heroTopBadgeStackView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    self.heroSurfaceView.transform = CGAffineTransformMakeScale(1.016, 1.016);
+    self.heroContentContainerView.alpha = 0.0;
+    self.heroContentContainerView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    self.heroTrailIconPlateView.alpha = 0.0;
+    self.heroTrailIconPlateView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    self.heroSearchChromeView.alpha = 0.0;
+    self.heroSearchChromeView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
     self.heroProofRailView.alpha = 0.0;
     self.heroProofRailView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    [self pp_hideDecorativeHeroContent];
 }
 
 - (void)pp_runHeroEntranceIfNeeded
@@ -1768,15 +1905,14 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         for (UIView *view in @[self.heroSurfaceView,
-                               self.heroIconShellView,
-                               self.eyebrowLabel,
-                               self.headerTitleLabel,
-                               self.headerSubtitleLabel,
-                               self.heroTopBadgeStackView,
+                               self.heroContentContainerView,
+                               self.heroTrailIconPlateView,
+                               self.heroSearchChromeView,
                                self.heroProofRailView]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
+        [self pp_hideDecorativeHeroContent];
         return;
     }
 
@@ -1788,171 +1924,237 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
         self.heroSurfaceView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    [UIView animateWithDuration:0.42
-                          delay:0.06
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.22
+    [UIView animateWithDuration:0.38
+                          delay:0.08
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.heroIconShellView.alpha = 1.0;
-        self.heroIconShellView.transform = CGAffineTransformIdentity;
+        self.heroContentContainerView.alpha = 1.0;
+        self.heroContentContainerView.transform = CGAffineTransformIdentity;
+        self.heroTrailIconPlateView.alpha = 1.0;
+        self.heroTrailIconPlateView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.34
-                          delay:0.10
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                          delay:0.12
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.eyebrowLabel.alpha = 1.0;
-        self.eyebrowLabel.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.40
-                          delay:0.15
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.headerTitleLabel.alpha = 1.0;
-        self.headerTitleLabel.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.38
-                          delay:0.20
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.headerSubtitleLabel.alpha = 1.0;
-        self.headerSubtitleLabel.transform = CGAffineTransformIdentity;
+        self.heroSearchChromeView.alpha = 1.0;
+        self.heroSearchChromeView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.42
-                          delay:0.25
+                          delay:0.18
          usingSpringWithDamping:0.88
           initialSpringVelocity:0.18
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.heroTopBadgeStackView.alpha = 1.0;
-        self.heroTopBadgeStackView.transform = CGAffineTransformIdentity;
         self.heroProofRailView.alpha = 1.0;
         self.heroProofRailView.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    } completion:^(__unused BOOL finished) {
+        [self pp_hideDecorativeHeroContent];
+    }];
 }
 
 - (void)pp_startHeroAmbientMotionIfNeeded
 {
-    if (UIAccessibilityIsReduceMotionEnabled() || !self.heroEntranceCompleted) {
-        return;
-    }
-    if ([self.heroGlowView.layer animationForKey:@"PPProviderCompaniesHeroBreath"]) {
+    [self pp_hideDecorativeHeroContent];
+    if (UIAccessibilityIsReduceMotionEnabled() || self.heroAmbientMotionStarted) {
         return;
     }
 
-    CABasicAnimation *glowBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    glowBreath.fromValue = @(0.58);
-    glowBreath.toValue = @(0.92);
-    glowBreath.duration = 2.8;
+    self.heroAmbientMotionStarted = YES;
+
+    CABasicAnimation *glowBreath = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    glowBreath.fromValue = @0.96;
+    glowBreath.toValue = @1.035;
+    glowBreath.duration = 3.8;
     glowBreath.autoreverses = YES;
     glowBreath.repeatCount = HUGE_VALF;
     glowBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.heroGlowView.layer addAnimation:glowBreath forKey:@"PPProviderCompaniesHeroBreath"];
+    [self.heroAmbientGlowView.layer addAnimation:glowBreath forKey:@"PPProviderCompaniesHeroGlowBreath"];
 
-    CABasicAnimation *iconBreath = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    iconBreath.fromValue = @(1.0);
-    iconBreath.toValue = @(1.025);
-    iconBreath.duration = 3.2;
-    iconBreath.autoreverses = YES;
-    iconBreath.repeatCount = HUGE_VALF;
-    iconBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.heroIconShellView.layer addAnimation:iconBreath forKey:@"PPProviderCompaniesIconBreath"];
+    CABasicAnimation *glowOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    glowOpacity.fromValue = @0.84;
+    glowOpacity.toValue = @0.98;
+    glowOpacity.duration = 3.8;
+    glowOpacity.autoreverses = YES;
+    glowOpacity.repeatCount = HUGE_VALF;
+    glowOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.heroAmbientGlowView.layer addAnimation:glowOpacity forKey:@"PPProviderCompaniesHeroGlowOpacity"];
+
+    CAKeyframeAnimation *accentDriftX = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+    accentDriftX.values = @[@0.0, @-6.0, @0.0, @5.0, @0.0];
+    accentDriftX.duration = 8.6;
+    accentDriftX.repeatCount = HUGE_VALF;
+    accentDriftX.calculationMode = kCAAnimationCubic;
+    accentDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.heroAmbientAccentView.layer addAnimation:accentDriftX forKey:@"PPProviderCompaniesHeroAccentDriftX"];
+
+    CAKeyframeAnimation *accentDriftY = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.y"];
+    accentDriftY.values = @[@0.0, @4.0, @8.0, @2.0, @0.0];
+    accentDriftY.duration = 8.6;
+    accentDriftY.repeatCount = HUGE_VALF;
+    accentDriftY.calculationMode = kCAAnimationCubic;
+    accentDriftY.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.heroAmbientAccentView.layer addAnimation:accentDriftY forKey:@"PPProviderCompaniesHeroAccentDriftY"];
 }
 
 - (void)pp_stopHeroAmbientMotion
 {
-    [self.heroGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroBreath"];
-    [self.heroIconShellView.layer removeAnimationForKey:@"PPProviderCompaniesIconBreath"];
+    self.heroAmbientMotionStarted = NO;
+    [self.heroAmbientGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroGlowBreath"];
+    [self.heroAmbientGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroGlowOpacity"];
+    [self.heroAmbientAccentView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAccentDriftX"];
+    [self.heroAmbientAccentView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAccentDriftY"];
 }
+
 
 - (CGFloat)pp_expandedHeroHeight
 {
-    return 308.0;
+    CGFloat contentHeight = [self pp_expandedHeroContentHeight];
+    CGFloat requiredHeight =
+        8.0 +   // expanded surface top inset
+        18.0 +  // content top inset
+        contentHeight +
+        24.0 +  // calm gap between title block and search
+        54.0 +  // search chrome
+        6.0 +   // search to discovery rail gap
+        50.0 +  // discovery rail
+        14.0;   // discovery rail bottom inset
+    return ceil(MAX(268.0, requiredHeight));
+}
+
+- (CGFloat)pp_expandedHeroContentHeight
+{
+    CGFloat eyebrowHeight = self.heroEyebrowLabel.font ? ceil(self.heroEyebrowLabel.font.lineHeight) : 15.0;
+    CGFloat titleHeight = self.heroTitleLabel.font ? ceil(self.heroTitleLabel.font.lineHeight) : 34.0;
+    CGFloat subtitleHeight = self.heroSubtitleLabel.font ? ceil(self.heroSubtitleLabel.font.lineHeight) : 18.0;
+    CGFloat requiredHeight =
+        4.0 +
+        eyebrowHeight +
+        7.0 +
+        titleHeight +
+        5.0 +
+        subtitleHeight +
+        6.0;
+    return ceil(MAX(88.0, requiredHeight));
 }
 
 - (CGFloat)pp_collapsedHeroHeight
 {
-    return 82.0;
+    return 150.0;
 }
 
 - (CGFloat)pp_heroCollapseDistance
 {
-    return MAX(1.0, [self pp_expandedHeroHeight] - [self pp_collapsedHeroHeight] - 36.0);
+    return MAX(1.0, [self pp_expandedHeroHeight] - [self pp_collapsedHeroHeight]);
 }
 
 - (void)pp_applyHeroCollapseProgress:(CGFloat)progress animated:(BOOL)animated
 {
     progress = MAX(0.0, MIN(1.0, progress));
+    if (progress < 0.012) {
+        progress = 0.0;
+    } else if (progress > 0.988) {
+        progress = 1.0;
+    }
     _heroCollapseProgress = progress;
 
     CGFloat expandedHeight = [self pp_expandedHeroHeight];
     CGFloat collapsedHeight = [self pp_collapsedHeroHeight];
-    CGFloat currentHeight = expandedHeight + ((collapsedHeight - expandedHeight) * progress);
-    CGFloat topInset = 14.0 - (8.0 * progress);
-    CGFloat bottomInset = -14.0 + (8.0 * progress);
-    CGFloat railSideInset = 18.0 - (4.0 * progress);
-    CGFloat railBottomInset = -18.0 + (9.0 * progress);
+    BOOL fullyExpanded = (progress <= 0.0);
+    BOOL fullyCollapsed = (progress >= 1.0);
+    CGFloat currentHeight = fullyExpanded ? expandedHeight : (fullyCollapsed ? collapsedHeight : expandedHeight + ((collapsedHeight - expandedHeight) * progress));
+    CGFloat topInset = fullyExpanded ? 8.0 : (fullyCollapsed ? 6.0 : 8.0 - (2.0 * progress));
+    CGFloat bottomInset = 0.0;
+    CGFloat railSideInset = fullyExpanded ? 14.0 : (fullyCollapsed ? 16.0 : 14.0 + (2.0 * progress));
+    CGFloat railBottomInset = fullyExpanded ? 14.0 : (fullyCollapsed ? 8.0 : 14.0 - (6.0 * progress));
     CGFloat railHeight = 50.0;
-    CGFloat textShift = -22.0 * progress;
-    CGFloat badgeShift = -18.0 * progress;
-    CGFloat iconShift = -18.0 * progress;
-    CGFloat textAlpha = 1.0 - progress;
-    CGFloat badgeAlpha = 1.0 - progress;
-    CGFloat iconAlpha = 1.0 - progress;
-    CGFloat surfaceShadowOpacity = 0.035 - (0.017 * progress);
-    CGFloat surfaceShadowRadius = 14.0 - (4.0 * progress);
-    CGFloat glowAlpha = 0.26 - (0.18 * progress);
+    CGFloat searchRailGap = fullyExpanded ? 6.0 : (fullyCollapsed ? 5.0 : 6.0 - (1.0 * progress));
+    CGFloat expandedContentHeight = [self pp_expandedHeroContentHeight];
+    CGFloat contentHeight = fullyExpanded ? expandedContentHeight : (fullyCollapsed ? 0.0 : MAX(0.0, expandedContentHeight * (1.0 - progress)));
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    CGFloat surfaceShadowOpacity = (dark ? 0.18 : 0.05) - ((dark ? 0.04 : 0.01) * progress);
+    CGFloat surfaceShadowRadius = 40.0 - (8.0 * progress);
+    CGFloat surfaceShadowY = 20.0 - (4.0 * progress);
+    CGFloat contentLift = -22.0 * progress;
+    CGFloat contentAlpha = MAX(0.0, 1.0 - (1.18 * progress));
+    CGFloat eyebrowAlpha = MAX(0.0, 1.0 - (1.12 * progress));
+    CGFloat titleAlpha = MAX(0.0, 1.0 - (1.34 * progress));
+    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (1.44 * progress));
+    CGFloat metricsAlpha = 0.0;
+    CGFloat layoutToggleScale = 1.0 - (0.05 * progress);
+    CGFloat searchScale = 1.0 - (0.010 * progress);
+    CGFloat proofRailScale = 1.0;
 
     void (^updates)(void) = ^{
         self.heroContainerHeightConstraint.constant = currentHeight;
         self.heroSurfaceTopConstraint.constant = topInset;
         self.heroSurfaceBottomConstraint.constant = bottomInset;
+        self.heroContentHeightConstraint.constant = contentHeight;
         self.heroProofRailLeadingConstraint.constant = railSideInset;
         self.heroProofRailTrailingConstraint.constant = -railSideInset;
-        self.heroProofRailBottomConstraint.constant = railBottomInset;
+        self.heroProofRailBottomConstraint.constant = -railBottomInset;
         self.heroProofRailHeightConstraint.constant = railHeight;
+        self.heroSearchChromeBottomConstraint.constant = searchRailGap;
 
         self.heroSurfaceView.layer.shadowOpacity = surfaceShadowOpacity;
         self.heroSurfaceView.layer.shadowRadius = surfaceShadowRadius;
-        self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 7.0 - (2.0 * progress));
-        self.heroGlowView.alpha = glowAlpha;
-        self.heroOrbView.alpha = 1.0 - (0.25 * progress);
+        self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, surfaceShadowY);
 
-        self.heroIconShellView.alpha = iconAlpha;
-        self.heroIconShellView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, iconShift),
-                                                                   CGAffineTransformMakeScale(1.0 - (0.08 * progress),
-                                                                                              1.0 - (0.08 * progress)));
-        self.heroTopBadgeStackView.alpha = badgeAlpha;
-        self.heroTopBadgeStackView.transform = CGAffineTransformMakeTranslation(0.0, badgeShift);
-
-        CGAffineTransform titleTransform = CGAffineTransformMakeTranslation(0.0, textShift);
-        self.headerTitleLabel.alpha = textAlpha;
-        self.headerTitleLabel.transform = titleTransform;
-        self.headerSubtitleLabel.alpha = textAlpha;
-        self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, textShift * 0.82);
-        self.eyebrowLabel.alpha = textAlpha;
-        self.eyebrowLabel.transform = CGAffineTransformMakeTranslation(0.0, textShift * 0.55);
-
+        self.heroContentContainerView.alpha = contentAlpha;
+        self.heroEyebrowLabel.alpha = eyebrowAlpha;
+        self.heroTitleLabel.alpha = titleAlpha;
+        self.heroSubtitleLabel.alpha = subtitleAlpha;
+        self.heroTrailIconPlateView.alpha = contentAlpha;
+        self.heroMetricsStackView.alpha = metricsAlpha;
+        self.heroAmbientGlowView.alpha = MAX(0.0, 0.16 * (1.0 - progress));
+        self.heroAmbientAccentView.alpha = MAX(0.0, 0.10 * (1.0 - progress));
+        self.heroContentContainerView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeTranslation(0.0, contentLift);
+        self.heroTrailIconPlateView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, contentLift * 0.45),
+                                      CGAffineTransformMakeScale(1.0 - (0.05 * progress),
+                                                                 1.0 - (0.05 * progress)));
+        self.heroLayoutToggleButton.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(layoutToggleScale, layoutToggleScale);
         self.heroProofRailView.alpha = 1.0;
-        self.heroProofRailView.transform = CGAffineTransformIdentity;
+        self.heroProofRailView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(proofRailScale, proofRailScale);
+        self.heroSearchChromeView.alpha = 1.0;
+        self.heroSearchChromeView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -4.0 * progress),
+                                      CGAffineTransformMakeScale(searchScale, searchScale));
+        [self pp_hideDecorativeHeroContent];
 
         [self.view layoutIfNeeded];
+        [self pp_updateHeroSurfaceGeometry];
     };
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        self.applyingHeroCollapseLayout = YES;
         updates();
+        self.applyingHeroCollapseLayout = NO;
     } else {
+        self.applyingHeroCollapseLayout = YES;
         [UIView animateWithDuration:0.32
                               delay:0.0
              usingSpringWithDamping:0.92
               initialSpringVelocity:0.12
                             options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                          animations:updates
-                         completion:nil];
+                         completion:^(BOOL finished) {
+            self.applyingHeroCollapseLayout = NO;
+        }];
     }
 
     BOOL collapsed = (progress >= 0.98);
@@ -1969,82 +2171,134 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
 - (void)pp_updatePinnedHeroForCurrentScrollPosition
 {
-    if (!self.tableView || !self.heroContainerHeightConstraint) {
+    if (self.applyingHeroCollapseLayout || !self.tableView || !self.heroContainerHeightConstraint) {
         return;
     }
 
-    CGFloat offsetY = self.tableView.contentOffset.y + self.tableView.contentInset.top;
-    CGFloat progress = offsetY / [self pp_heroCollapseDistance];
+    CGFloat topInset = self.tableView.adjustedContentInset.top;
+    CGFloat offset = self.tableView.contentOffset.y + topInset;
+    CGFloat collapseDistance = [self pp_heroCollapseDistance];
+    CGFloat snapThreshold = collapseDistance * 0.12;
+    if (offset <= snapThreshold) {
+        offset = 0.0;
+    }
+    CGFloat progress = offset <= 0.0 ? 0.0 : MIN(1.0, offset / collapseDistance);
+    if (self.searchChromeFocused) {
+        progress = 1.0;
+    }
     [self pp_applyHeroCollapseProgress:progress animated:NO];
+}
+
+- (void)pp_hideDecorativeHeroContent
+{
+    self.heroProofRailView.hidden = NO;
+    self.heroProofRailView.userInteractionEnabled = YES;
+    self.heroDiscoveryScrollView.hidden = NO;
+    self.heroDiscoveryScrollView.userInteractionEnabled = YES;
 }
 
 - (void)pp_applyHeroMaterialPalette
 {
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
+//[UIColor colorNamed:@"NewBg"]
+    UIColor *surface = PPProviderCompaniesHeroSurfaceColor();
+    UIColor *surfaceAlt = [accent colorWithAlphaComponent:(dark ? 0.10 : 0.05)];
+    UIColor *whiteStroke = [[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.10 : 0.28)];
+    UIColor *accentStroke = [accent colorWithAlphaComponent:(dark ? 0.20 : 0.16)];
 
-    self.heroGradientLayer.colors = @[
-        (__bridge id)[(dark ? [UIColor colorWithWhite:0.13 alpha:1.0] : UIColor.whiteColor) colorWithAlphaComponent:(dark ? 0.18 : 0.26)].CGColor,
-        (__bridge id)[[accent colorWithAlphaComponent:(dark ? 0.026 : 0.014)] CGColor],
-        (__bridge id)[[UIColor colorWithRed:0.80 green:0.66 blue:0.40 alpha:(dark ? 0.018 : 0.010)] CGColor]
+    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
+    self.heroSurfaceGradientLayer.colors = @[
+        (__bridge id)[[UIColor colorNamed:@"AppBageColor"] colorWithAlphaComponent:0.84].CGColor,
+        (__bridge id)[[UIColor colorNamed:@"AppForegroundColor"] colorWithAlphaComponent:0.84].CGColor,
+        (__bridge id)[[UIColor colorNamed:@"AppForegroundColor"] colorWithAlphaComponent:0.84].CGColor
     ];
-    self.heroBorderSheenLayer.colors = @[
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.72 : 0.96)].CGColor,
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.46 : 0.76)].CGColor,
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.26 : 0.54)].CGColor
+    self.heroSurfaceBorderLayer.colors = @[
+        (__bridge id)whiteStroke.CGColor,
+        (__bridge id)accentStroke.CGColor,
+        (__bridge id)PPProviderCompaniesHeroStrokeColor().CGColor
     ];
-    [self.heroSurfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.34 : 0.82)]];
-    [self.heroLiquidBorderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.52 : 0.94)]];
+    [self.heroSurfaceView pp_setShadowColor:UIColor.blackColor];
+    self.heroSurfaceView.layer.shadowOpacity = dark ? 0.18 : 0.05;
+    self.heroSurfaceView.layer.shadowRadius = 40.0;
+    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 20.0);
 
-    self.heroGlowView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.030 : 0.016)];
-    self.heroGlowView.layer.shadowColor = accent.CGColor;
-    self.heroGlowView.layer.shadowOpacity = 0.0;
-    self.heroGlowView.layer.shadowRadius = 0.0;
-    self.heroGlowView.layer.shadowOffset = CGSizeZero;
-    self.heroOrbView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.030 : 0.018)];
-    [self.heroOrbView pp_setBorderColor:[accent colorWithAlphaComponent:(dark ? 0.070 : 0.045)]];
-    self.heroIconShellView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: PPProviderCompaniesHeroSecondarySurfaceColor();
-    [self.heroIconShellView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.34 : 0.74)]];
-    self.heroProofRailView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    [self.heroProofRailView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.30 : 0.68)]];
-    self.countBadgeLabel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: PPProviderCompaniesHeroSecondarySurfaceColor();
-    [self.countBadgeLabel pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.30 : 0.68)]];
+    self.heroAmbientGlowView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.12 : 0.06)];
+    self.heroAmbientGlowView.layer.shadowColor = accent.CGColor;
+    self.heroAmbientGlowView.layer.shadowOpacity = dark ? 0.16 : 0.10;
+    self.heroAmbientGlowView.layer.shadowRadius = 22.0;
+    self.heroAmbientGlowView.layer.shadowOffset = CGSizeZero;
+
+    self.heroAmbientAccentView.backgroundColor =
+        PPProviderCompaniesDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.26],
+                                        [[UIColor whiteColor] colorWithAlphaComponent:0.04]);
+    self.heroAmbientAccentView.layer.borderWidth = 0.0;
+
+    self.heroTrailIconPlateView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.70 : 0.82)];
+    [self.heroTrailIconPlateView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.18 : 0.58)]];
+    self.heroTrailIconPlateView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.heroTrailIconPlateView.layer.shadowOpacity = dark ? 0.10 : 0.035;
+    self.heroTrailIconPlateView.layer.shadowRadius = 14.0;
+    self.heroTrailIconPlateView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.heroTrailIconView.tintColor = [accent colorWithAlphaComponent:0.92];
+
+    self.heroEyebrowLabel.textColor = [accent colorWithAlphaComponent:0.92];
+    self.heroProofRailView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.74 : 0.86)];
+    [self.heroProofRailView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.16 : 0.52)]];
+    for (UIView *metricView in @[self.heroCountMetricView, self.heroModeMetricView, self.heroTrustMetricView]) {
+        metricView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.76 : 0.88)];
+        [metricView pp_setBorderColor:[accent colorWithAlphaComponent:(dark ? 0.14 : 0.08)]];
+    }
+    [self pp_applyPremiumSearchChromeAppearanceFocused:self.searchChromeFocused animated:NO];
+    [self pp_updateLayoutToggleAppearanceAnimated:NO];
     [self pp_updateDiscoveryButtonAppearances];
 }
 
 - (void)pp_applyHeaderContent
 {
-    NSString *title = self.selectedProviderCategoryTitleKey.length > 0
-        ? (kLang(self.selectedProviderCategoryTitleKey) ?: PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier))
-        : PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
-    NSString *subtitle = self.selectedProviderCategorySubtitleKey.length > 0
-        ? (kLang(self.selectedProviderCategorySubtitleKey) ?: PPProviderCompaniesSubtitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier))
-        : PPProviderCompaniesSubtitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
-
-    //self.eyebrowLabel.text = PPProviderCompaniesSectionTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
-    self.headerTitleLabel.text = PPProviderCompaniesHeroTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
-    self.headerSubtitleLabel.text = subtitle;
-    self.heroCategoryBadgeLabel.text = title;
-    self.heroCategoryBadgeLabel.textColor = AppPrimaryClr ?: UIColor.systemRedColor;
-    self.heroCategoryBadgeLabel.backgroundColor = [AppPrimaryClr ?: UIColor.systemRedColor colorWithAlphaComponent:0.08];
-    [self.heroCategoryBadgeLabel pp_setBorderColor:[AppPrimaryClr ?: UIColor.systemRedColor colorWithAlphaComponent:0.16]];
-    self.countBadgeLabel.text = PPProviderCompaniesCountText(self.visibleEntries.count,
-                                                             self.selectedProviderCategoryIdentifier);
-    self.countBadgeLabel.textColor = AppPrimaryClr ?: UIColor.systemRedColor;
-    self.heroSeparatorView.backgroundColor = [AppPrimaryClr ?: UIColor.systemRedColor colorWithAlphaComponent:0.36];
     [self pp_applyHeroMaterialPalette];
 
-    if (@available(iOS 13.0, *)) {
-        self.heroIconView.image =  [[UIImage imageNamed:@"pet-shop"]
-                                  imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    } else {
-        self.heroIconView.image = [UIImage imageNamed:PPProviderCompaniesSymbolNameForCategoryIdentifier(self.selectedProviderCategoryIdentifier)];
-    }
-    self.heroIconView.tintColor = AppPrimaryClr ?: UIColor.systemRedColor;
+    NSString *identifier = self.selectedProviderCategoryIdentifier;
+    NSInteger sourceCount = self.loadState == PPProviderCompaniesLoadStateLoaded ? self.visibleEntries.count : self.allEntries.count;
+    sourceCount = MAX(sourceCount, self.visibleEntries.count);
+    NSString *heroTitle = PPProviderCompaniesHeroTitleForCategoryIdentifier(identifier);
+    NSString *heroSubtitle = PPProviderCompaniesHeroSupportText(identifier);
+    NSString *countValue = PPProviderCompaniesCountText(sourceCount, identifier);
+    NSString *modeTitle = kLang(@"provider_companies_metric_mode_title") ?: @"View";
+    NSString *trustTitle = kLang(@"provider_companies_metric_trust_title") ?: @"Focus";
+    NSString *layoutTitle = kLang(@"provider_companies_metric_layout_title") ?: @"Layout";
 
+    self.heroEyebrowLabel.text = PPProviderCompaniesHeroEyebrowText(identifier);
+    self.heroTitleLabel.text = heroTitle;
+    self.heroSubtitleLabel.text = heroSubtitle;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration =
+            [UIImageSymbolConfiguration configurationWithPointSize:20.0
+                                                           weight:UIImageSymbolWeightSemibold];
+        self.heroTrailIconView.image =
+            [[UIImage systemImageNamed:PPProviderCompaniesSymbolNameForCategoryIdentifier(identifier)
+                     withConfiguration:configuration] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    } else {
+        self.heroTrailIconView.image = nil;
+    }
+    self.heroCountMetricTitleLabel.text = kLang(@"provider_companies_metric_count_title") ?: @"Available now";
+    self.heroCountMetricValueLabel.text = countValue;
+    self.heroModeMetricTitleLabel.text = modeTitle;
+    self.heroModeMetricValueLabel.text = PPProviderCompaniesDiscoveryTitle(self.selectedDiscoveryMode);
+    self.heroTrustMetricTitleLabel.text = trustTitle;
+    self.heroTrustMetricValueLabel.text = PPProviderCompaniesHeroModeSummary(self.selectedDiscoveryMode);
+
+    NSString *layoutValue = self.prefersCompactListLayout
+        ? (kLang(@"provider_companies_layout_mode_list") ?: @"Compact")
+        : (kLang(@"provider_companies_layout_mode_grid") ?: @"Showcase");
+    self.heroLayoutToggleButton.accessibilityValue = layoutValue;
+    self.heroLayoutToggleButton.accessibilityHint =
+        [NSString stringWithFormat:@"%@. %@",
+         layoutTitle,
+         self.prefersCompactListLayout
+            ? (kLang(@"provider_companies_layout_toggle_grid") ?: @"Show premium cards")
+            : (kLang(@"provider_companies_layout_toggle_list") ?: @"Show compact list")];
     self.heroSurfaceView.isAccessibilityElement = NO;
-    self.countBadgeLabel.accessibilityLabel =
-        PPProviderCompaniesCountText(self.visibleEntries.count, self.selectedProviderCategoryIdentifier);
 }
 
 - (void)loadProviders
@@ -2438,23 +2692,41 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     [self loadProviders];
 }
 
-#pragma mark - UISearchBarDelegate
+#pragma mark - UITextFieldDelegate
 
-- (void)searchBarTextDidBeginEditing:(UISearchBar *)searchBar
+- (void)textFieldDidBeginEditing:(UITextField *)textField
 {
-    self.searchBarFocused = YES;
-    [self pp_applyPremiumSearchBarAppearanceFocused:YES animated:YES];
+    self.searchChromeFocused = YES;
+    [self pp_applyPremiumSearchChromeAppearanceFocused:YES animated:YES];
+    [self pp_updatePinnedHeroForCurrentScrollPosition];
+    [self pp_setPremiumTabDockHidden:YES animated:YES];
 }
 
-- (void)searchBarTextDidEndEditing:(UISearchBar *)searchBar
+- (void)textFieldDidEndEditing:(UITextField *)textField
 {
-    self.searchBarFocused = NO;
-    [self pp_applyPremiumSearchBarAppearanceFocused:NO animated:YES];
+    self.searchChromeFocused = NO;
+    [self pp_applyPremiumSearchChromeAppearanceFocused:NO animated:YES];
+    [self pp_updatePinnedHeroForCurrentScrollPosition];
+    [self pp_setPremiumTabDockHidden:NO animated:YES];
 }
 
-- (void)searchBarCancelButtonClicked:(UISearchBar *)searchBar
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
 {
-    [self pp_dismissNavigationSearchBarAndClear:YES];
+    [textField resignFirstResponder];
+    return YES;
+}
+
+- (BOOL)textFieldShouldClear:(UITextField *)textField
+{
+    self.searchQuery = @"";
+    [self pp_applySearchFilter];
+    return YES;
+}
+
+- (void)pp_handleHeroSearchTextChanged:(UITextField *)textField
+{
+    self.searchQuery = PPProviderCompaniesSafeString(textField.text);
+    [self pp_applySearchFilter];
 }
 
 #pragma mark - UITableViewDataSource
@@ -2466,19 +2738,85 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    PPProviderCompanyCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProviderCompanyCell" forIndexPath:indexPath];
-    if (indexPath.row < self.visibleEntries.count) {
-        [cell configureWithEntry:self.visibleEntries[indexPath.row]
-              categoryIdentifier:self.selectedProviderCategoryIdentifier];
+    PPProviderCompanyEntry *entry = self.visibleEntries[indexPath.row];
+    if (self.prefersCompactListLayout) {
+        PPProviderCompanyCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProviderCompanyCell"
+                                                                      forIndexPath:indexPath];
+        [cell configureWithEntry:entry categoryIdentifier:self.selectedProviderCategoryIdentifier];
+        return cell;
     }
+
+    PPProviderCompanyPremiumCardCell *cell =
+        [tableView dequeueReusableCellWithIdentifier:PPProviderCompanyPremiumCardCell.reuseIdentifier
+                                        forIndexPath:indexPath];
+    [cell configureWithViewModel:[self pp_premiumCardViewModelForEntry:entry]];
     return cell;
+}
+
+
+- (PPProviderCompanyPremiumCardViewModel *)pp_premiumCardViewModelForEntry:(PPProviderCompanyEntry *)entry
+{
+    PPProviderCompanyPremiumCardViewModel *model = [[PPProviderCompanyPremiumCardViewModel alloc] init];
+
+    NSString *title = PPProviderCompaniesSafeString([entry.user bestDisplayName]);
+    if (title.length == 0) {
+        NSMutableArray<NSString *> *parts = [NSMutableArray array];
+        if (entry.user.FirstName.length > 0) [parts addObject:entry.user.FirstName];
+        if (entry.user.LastName.length > 0) [parts addObject:entry.user.LastName];
+        title = parts.count > 0 ? [parts componentsJoinedByString:@" "] : PPProviderCompaniesSafeString(entry.user.UserName);
+    }
+    if (title.length == 0) {
+        title = PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
+    }
+
+    model.providerIdentifier = PPProviderCompaniesSafeString(entry.ownerID);
+    model.title = title;
+    model.subtitle = PPProviderCompaniesCellDisplaySubtitle(entry, self.selectedProviderCategoryIdentifier);
+    model.categoryText = PPProviderCompaniesTitleForCategoryIdentifier(self.selectedProviderCategoryIdentifier);
+    model.countTitleText = PPProviderCompaniesIsPharmacyCategory(self.selectedProviderCategoryIdentifier)
+        ? (kLang(@"provider_companies_count_title_pharmacy") ?: @"Medicines")
+        : (kLang(@"provider_companies_count_title_marketplace") ?: @"Products");
+    model.countValueText = [NSString stringWithFormat:@"%ld", (long)MAX(entry.productCount, 0)];
+    model.accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
+    model.verified = entry.user.isVerified;
+    model.active = [PPProviderCompaniesSafeString(entry.user.accountStatus) isEqualToString:@"active"];
+    model.accessoryStyle = PPProviderCompanyPremiumCardAccessoryStyleHeart;
+
+    if (entry.user.providerReviewCount > 0 && entry.user.providerRatingValue > 0.0) {
+        model.ratingText = [NSString stringWithFormat:@"%.1f", entry.user.providerRatingValue];
+        model.ratingCountText = [NSString stringWithFormat:@"(%ld)", (long)entry.user.providerReviewCount];
+    } else {
+        model.ratingText = @"New";
+        model.ratingCountText = @"";
+    }
+
+    NSString *coverImageURLString = @"";
+    if (entry.user.coverImageUrls && entry.user.coverImageUrls.count > 0) {
+        coverImageURLString = PPProviderCompaniesSafeString(entry.user.coverImageUrls[0]);
+    }
+    if (coverImageURLString.length == 0 && entry.items.count > 0) {
+        PetAccessory *latestProduct = entry.items.firstObject;
+        if (latestProduct.imageURLsArray && latestProduct.imageURLsArray.count > 0) {
+            coverImageURLString = PPProviderCompaniesSafeString(latestProduct.imageURLsArray[0]);
+        }
+    }
+    if (coverImageURLString.length > 0) {
+        model.imageURL = [NSURL URLWithString:coverImageURLString];
+    }
+
+    model.placeholderImage = [UIImage imageNamed:@"providers_placeholder"];
+
+    return model;
 }
 
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return UITableViewAutomaticDimension;
+    if (self.prefersCompactListLayout) {
+        return UITableViewAutomaticDimension;
+    }
+    return [PPProviderCompanyPremiumCardCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
@@ -2500,7 +2838,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
   willDisplayCell:(UITableViewCell *)cell
 forRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (![cell isKindOfClass:PPProviderCompanyCell.class] || indexPath.row >= self.visibleEntries.count) {
+    if (indexPath.row >= self.visibleEntries.count) {
         return;
     }
 
@@ -2518,7 +2856,11 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
     [self.animatedCompanyCellKeys addObject:ownerKey];
     NSTimeInterval delay = MIN(indexPath.row, 6) * 0.035;
-    [(PPProviderCompanyCell *)cell pp_runEntranceAnimationWithDelay:delay];
+    if ([cell isKindOfClass:PPProviderCompanyCell.class]) {
+        [(PPProviderCompanyCell *)cell pp_runEntranceAnimationWithDelay:delay];
+    } else if ([cell isKindOfClass:PPProviderCompanyPremiumCardCell.class]) {
+        [(PPProviderCompanyPremiumCardCell *)cell pp_runEntranceAnimationWithDelay:delay];
+    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -2530,12 +2872,16 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_updatePinnedHeroForCurrentScrollPosition];
 }
 
-#pragma mark - UISearchResultsUpdating
-
-- (void)updateSearchResultsForSearchController:(UISearchController *)searchController
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    self.searchQuery = PPProviderCompaniesSafeString(searchController.searchBar.text);
-    [self pp_applySearchFilter];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+        return;
+    }
+    if ([self.tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
+        [(id)self.tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
+        return;
+    }
 }
 
 @end

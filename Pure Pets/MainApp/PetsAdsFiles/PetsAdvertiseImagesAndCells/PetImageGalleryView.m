@@ -222,7 +222,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         [self.collectionView .heightAnchor constraintEqualToAnchor:self.heightAnchor]
     ]];
     
-    if (_imageItems.count > 1) {
+    if (_imageItems.count > 1 && !self.hidesPageControl) {
         [self setupUI];
     }
     [self pp_prepareGalleryEntranceAnimationIfNeeded];
@@ -248,7 +248,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     [super layoutSubviews];
     [self pp_synchronizeCollectionLayoutIfNeeded];
-    self.myPageControl1.frame = self.containerB.bounds;
+    if (!self.hidesPageControl) {
+        self.myPageControl1.frame = self.containerB.bounds;
+    }
     [self pp_applySwipeMotionToVisibleCells];
 }
 
@@ -308,10 +310,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 
 - (NSInteger)pageIndexForItemIndex:(NSInteger)itemIndex {
-    
-    UIUserInterfaceLayoutDirection dir = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:_myPageControl1.semanticContentAttribute];
+    UISemanticContentAttribute semantic = self.hidesPageControl
+        ? Language.semanticAttributeForCurrentLanguage
+        : _myPageControl1.semanticContentAttribute;
+    UIUserInterfaceLayoutDirection dir = [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:semantic];
     if (dir == UIUserInterfaceLayoutDirectionRightToLeft) {
-        // Reverse: item 0 (first image) becomes last dot, etc.
         return self.imageItems.count - 1 - itemIndex;
     }
     return itemIndex;
@@ -450,13 +453,13 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 #pragma  mark EllipsePageControlDelegat
 #pragma mark - EllipsePageControlDelegate
 - (void)ellipsePageControlClick:(EllipsePageControl *)pageControl index:(NSInteger)clickIndex {
+    if (self.hidesPageControl) return;
 
     UIUserInterfaceLayoutDirection dir =
     [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:_myPageControl1.semanticContentAttribute];
 
     NSInteger targetIndex = clickIndex;
     if (dir == UIUserInterfaceLayoutDirectionRightToLeft) {
-        // Reverse mapping back: visual index → collection index
         targetIndex = self.imageItems.count - 1 - clickIndex;
     }
 
@@ -473,6 +476,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 - (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page
 {
+    if (self.hidesPageControl) return;
     NSInteger count = self.imageItems.count;
     if (count <= 0) {
         self.myPageControl1.accessibilityValue = nil;
@@ -494,12 +498,14 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.pp_didNormalizeInitialLayout = NO;
     self.pp_lastLaidOutCollectionSize = CGSizeZero;
     self.pp_lastSettledPageIndex = NSNotFound;
-    if (_imageItems.count > 1 && !self.containerB) {
+    if (_imageItems.count > 1 && !self.containerB && !self.hidesPageControl) {
         [self setupUI];
     }
-    self.containerB.hidden = _imageItems.count <= 1;
+    self.containerB.hidden = _imageItems.count <= 1 || self.hidesPageControl;
     self.collectionView.backgroundView.hidden = _imageItems.count > 0;
-    _myPageControl1.numberOfPages = (int)_imageItems.count;
+    if (!self.hidesPageControl) {
+        _myPageControl1.numberOfPages = (int)_imageItems.count;
+    }
     [self pp_updateGalleryAccessibilityForPage:0];
     [self pp_prepareGalleryEntranceAnimationIfNeeded];
     [self.collectionView reloadData];
@@ -922,16 +928,20 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if (UIAccessibilityIsReduceMotionEnabled() || self.imageItems.count == 0) {
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
-        self.containerB.alpha = 1.0;
-        self.containerB.transform = CGAffineTransformIdentity;
+        if (!self.hidesPageControl) {
+            self.containerB.alpha = 1.0;
+            self.containerB.transform = CGAffineTransformIdentity;
+        }
         return;
     }
     self.collectionView.alpha = 0.0;
     self.collectionView.transform =
     CGAffineTransformMakeScale(1.025, 1.025);
-    self.containerB.alpha = 0.0;
-    self.containerB.transform =
-    CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 6.0), 0.94, 0.94);
+    if (!self.hidesPageControl) {
+        self.containerB.alpha = 0.0;
+        self.containerB.transform =
+        CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 6.0), 0.94, 0.94);
+    }
 }
 
 - (void)pp_runGalleryEntranceAnimationIfNeeded
@@ -943,28 +953,32 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
-        self.containerB.alpha = 1.0;
-        self.containerB.transform = CGAffineTransformIdentity;
+        if (!self.hidesPageControl) {
+            self.containerB.alpha = 1.0;
+            self.containerB.transform = CGAffineTransformIdentity;
+        }
         return;
     }
 
     [UIView animateWithDuration:0.48
                           delay:0.0
          usingSpringWithDamping:0.92
-          initialSpringVelocity:0.16
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
+           initialSpringVelocity:0.16
+                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                      animations:^{
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    [UIView animateWithDuration:0.30
-                          delay:0.12
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.containerB.alpha = 1.0;
-        self.containerB.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    if (!self.hidesPageControl) {
+        [UIView animateWithDuration:0.30
+                              delay:0.12
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.containerB.alpha = 1.0;
+            self.containerB.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 - (void)pp_applySwipeMotionToVisibleCells
@@ -1023,8 +1037,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
        willDisplayCell:(UICollectionViewCell *)cell
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSInteger page = [self pageIndexForItemIndex:indexPath.item];
-    _myPageControl1.currentPage = page;
+    if (!self.hidesPageControl) {
+        NSInteger page = [self pageIndexForItemIndex:indexPath.item];
+        _myPageControl1.currentPage = page;
+    }
     [self pp_updateGalleryAccessibilityForPage:indexPath.item];
     [self pp_applySwipeMotionToVisibleCells];
 }
@@ -1054,10 +1070,15 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     if (scrollView != self.collectionView) return;
     NSInteger page = (NSInteger)llround(scrollView.contentOffset.x / MAX(1.0, CGRectGetWidth(scrollView.bounds)));
-    _myPageControl1.currentPage = [self pageIndexForItemIndex:page];
+    if (!self.hidesPageControl) {
+        _myPageControl1.currentPage = [self pageIndexForItemIndex:page];
+    }
     [self pp_updateGalleryAccessibilityForPage:page];
     [self pp_emitSwipeFeedbackIfNeededForPage:page];
     [self pp_applySwipeMotionToVisibleCells];
+    if (self.onPageChanged) {
+        self.onPageChanged(page);
+    }
 }
 
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
@@ -1150,15 +1171,31 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         presentViewer();
     }
     
-   
-   //  [PPPhotoBrowser showBrowserFrom:AppMgr.topViewController
-       //            imageURLStrings:self.imageURLs
+     
+     //  [PPPhotoBrowser showBrowserFrom:AppMgr.topViewController
+        //            imageURLStrings:self.imageURLs
          //               startIndex:indexPath.item];
  
  
      
+ }
+
+- (void)scrollToPage:(NSInteger)page animated:(BOOL)animated
+{
+    if (page < 0 || page >= (NSInteger)self.imageItems.count) return;
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:page inSection:0];
+    [self.collectionView scrollToItemAtIndexPath:indexPath
+                                atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                        animated:animated];
+    if (!animated) {
+        if (!self.hidesPageControl) {
+            _myPageControl1.currentPage = [self pageIndexForItemIndex:page];
+        }
+        [self pp_updateGalleryAccessibilityForPage:page];
+        if (self.onPageChanged) {
+            self.onPageChanged(page);
+        }
+    }
 }
-
-
 
 @end

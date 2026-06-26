@@ -29,6 +29,10 @@ typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
 @property (assign,  nonatomic) PetAd *currentAd;
 @property (nonatomic, strong) NSMutableDictionary<NSIndexPath *, NSValue *> *imageSizes;
 
+/// Suppress the built-in page control pill (for custom thumbnail rails).
+@property (nonatomic, assign) BOOL hidesPageControl;
+/// Fires whenever the gallery settles on a new page (swipe or programmatic).
+@property (nonatomic, copy) void (^onPageChanged)(NSInteger page);
 
 - (instancetype)initWithFrame:(CGRect)frame
                    imageItems:(NSArray<PetImageItem *> *)items
@@ -36,6 +40,6 @@ typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
                    itemHeight:(CGFloat)itemHeight
                      parentVC:(UIViewController *)parentVC
                           obj:(id)obj;
-
+- (void)scrollToPage:(NSInteger)page animated:(BOOL)animated;
 
 @end

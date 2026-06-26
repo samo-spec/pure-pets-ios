@@ -12,6 +12,7 @@
 #import "PPAnalytics.h"
 #import "CartManager.h"
 #import "CartViewController.h"
+#import "PPRootTabBarController.h"
 #import "PPModrenSegmrnted.h"
 #import "PPNavigationController.h"
 #import "PPSearchViewController.h"
@@ -279,9 +280,13 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     [super viewWillAppear:animated];
 
-    // Restore premium dock after returning from pushed viewer/detail screens
-    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:NO];
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        __weak typeof(self) weakSelf = self;
+        [(PPRootTabBarController *)self.tabBarController pp_activateFloatingCartBarForSourceViewController:self
+                                                                                           openCartHandler:^{
+            [weakSelf onCartTapped];
+        }
+                                                                                                  animated:NO];
     }
 
     UINavigationController *nav = self.navigationController;
@@ -332,6 +337,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [self pp_restoreNavigationOwnership];
     [self.view bringSubviewToFront:self.sectionsSegmentedControl];
     [self.view bringSubviewToFront:self.filterChipContainer];
+    [self updateCollectionContentInset];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
                                                                                  screen:@"category"];
 }
@@ -352,6 +358,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
             cell.alpha = 1.0;
             cell.transform = CGAffineTransformIdentity;
         }
+    }
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        [(PPRootTabBarController *)self.tabBarController pp_deactivateFloatingCartBarForSourceViewController:self
+                                                                                                    animated:NO];
     }
 }
 
@@ -1597,17 +1607,26 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 6.0);
     }
 
-    CGFloat bottomInset = 0;
-
-    // Account for tab bar
-    if (self.tabBarController) {
-        bottomInset += self.tabBarController.tabBar.bounds.size.height;
+    CGFloat targetBottomInset = 16.0;
+    CGFloat rootClearance = 0.0;
+    SEL clearanceSelector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
+    if ([self.tabBarController respondsToSelector:clearanceSelector]) {
+        CGFloat (*clearanceIMP)(id, SEL) = (CGFloat (*)(id, SEL))[self.tabBarController methodForSelector:clearanceSelector];
+        rootClearance = clearanceIMP ? clearanceIMP(self.tabBarController, clearanceSelector) : 0.0;
     }
 
-    // Account for safe area
-    bottomInset += self.view.safeAreaInsets.bottom;
-
-    CGFloat targetBottomInset = bottomInset + 16.0;
+    if (rootClearance > 0.0) {
+        targetBottomInset = ceil(rootClearance);
+    } else {
+        CGFloat bottomInset = 0.0;
+        if (self.tabBarController &&
+            !self.tabBarController.tabBar.hidden &&
+            self.tabBarController.tabBar.alpha > 0.01) {
+            bottomInset += self.tabBarController.tabBar.bounds.size.height;
+        }
+        bottomInset += self.view.safeAreaInsets.bottom;
+        targetBottomInset = bottomInset + 16.0;
+    }
     UIEdgeInsets currentInset = self.collectionView.contentInset;
     CGFloat topDelta = currentInset.top - targetTopInset;
     if (topDelta < 0) { topDelta = -topDelta; }
@@ -1720,6 +1739,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)note;
     [self updateCartBadge];
+    [self updateCollectionContentInset];
 }
 
 - (NSInteger)currentCartItemCount

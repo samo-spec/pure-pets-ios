@@ -62,6 +62,7 @@ static NSString *const kUserKeyLastSeen = @"lastSeen";
 static NSString *const kUserKeyPermissions = @"permissions";
 static NSString *const kUserKeyProviderRatingValue = @"providerRatingValue";
 static NSString *const kUserKeyProviderReviewCount = @"providerReviewCount";
+static NSString *const kUserKeyCoverImageUrls = @"coverImageUrls";
 
 // User Access Model keys (Console-managed)
 static NSString *const kUserKeyAccountStatus = @"accountStatus";
@@ -394,6 +395,13 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     self.loginSource = PPSafeIntegerUniversal(safeDict[kUserKeyLoginSource]);
     self.providerRatingValue = MAX(0.0, MIN(5.0, [safeDict[kUserKeyProviderRatingValue] doubleValue]));
     self.providerReviewCount = MAX(0, PPSafeIntegerUniversal(safeDict[kUserKeyProviderReviewCount]));
+
+    id coverImages = safeDict[kUserKeyCoverImageUrls];
+    if ([coverImages isKindOfClass:NSArray.class]) {
+        self.coverImageUrls = [coverImages filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary * _Nullable bindings) {
+            return [evaluatedObject isKindOfClass:NSString.class] && ((NSString *)evaluatedObject).length > 0;
+        }]];
+    }
 
     // ── User Access Model (Console-managed) ──
     self.accountStatus = PPSafeString(safeDict[kUserKeyAccountStatus]);

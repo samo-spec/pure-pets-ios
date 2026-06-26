@@ -21,11 +21,18 @@
 
 
 NS_ASSUME_NONNULL_BEGIN
+
+typedef void (^PPCartFloatingBarOpenHandler)(void);
  
 @interface PPRootTabBarController : UITabBarController <UITabBarControllerDelegate>
 - (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated;
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
 - (nullable UIView *)pp_novaAmbientBottomNavigationAnchorView;
+- (void)pp_activateFloatingCartBarForSourceViewController:(UIViewController *)viewController
+                                          openCartHandler:(PPCartFloatingBarOpenHandler)openCartHandler
+                                                 animated:(BOOL)animated;
+- (void)pp_deactivateFloatingCartBarForSourceViewController:(UIViewController *)viewController
+                                                   animated:(BOOL)animated;
 @end
 
 

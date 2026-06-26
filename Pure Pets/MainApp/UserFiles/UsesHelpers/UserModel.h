@@ -151,6 +151,10 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) double providerRatingValue;
 @property (nonatomic, assign) NSInteger providerReviewCount;
 
+#pragma mark - Cover Images
+/// Array of cover image URLs (stored in UsersCol/{uid}.coverImageUrls).
+@property (nonatomic, strong, nullable) NSArray<NSString *> *coverImageUrls;
+
 #pragma mark - Login Source
 @property (nonatomic, assign) UserLoginSource loginSource;
 

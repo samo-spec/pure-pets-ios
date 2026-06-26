@@ -31,6 +31,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
+#import "CartManager.h"
 #import <Pure_Pets-Swift.h>
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
@@ -54,6 +55,7 @@ static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 
 @class PPPremiumDockBarDelegate;
+@class PPCartFloatingBarCoordinator;
 
 @interface PPRootTabBarController () <UINavigationControllerDelegate>
 @property (nonatomic, strong) UIButton *leadingTabButton;
@@ -88,6 +90,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 @property (nonatomic, strong, nullable) UIViewController *addActionPlaceholderViewController;
 @property (nonatomic, assign) BOOL didAttemptIntroPresentation;
 @property (nonatomic, strong, nullable) PPIntroViewController *activeIntroViewController;
+@property (nonatomic, strong) PPCartFloatingBarCoordinator *cartFloatingBarCoordinator;
 - (CGFloat)pp_bottomNavigationContentClearance;
 - (void)pp_applyBottomNavigationClearanceToVisibleLists;
 - (void)pp_applyBottomNavigationClearance:(CGFloat)clearance toListViewsInView:(UIView *)view;
@@ -238,12 +241,821 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 + (Class)layerClass { return [CAGradientLayer class]; }
 @end
 
+static NSString *PPCartFloatingBarCountText(NSInteger itemCount)
+{
+    NSString *format = itemCount == 1 ? kLang(@"myitems_count_single") : kLang(@"myitems_count_format");
+    if (format.length == 0) {
+        format = itemCount == 1 ? @"1 item" : @"%ld items";
+    }
+    if (itemCount == 1 && ![format containsString:@"%"]) {
+        return format;
+    }
+    return [NSString stringWithFormat:format, (long)itemCount];
+}
+
+static NSString *PPCartFloatingBarAmountText(double totalAmount)
+{
+    NSString *formatted = [GM formatPrice:@(MAX(0.0, totalAmount)) currencyCode:kLang(@"Rials")];
+    if (formatted.length == 0) {
+        NSString *currencyCode = kLang(@"Rials");
+        if (currencyCode.length == 0) {
+            currencyCode = @"QAR";
+        }
+        formatted = [NSString stringWithFormat:@"%.2f %@", MAX(0.0, totalAmount), currencyCode];
+    }
+    return formatted;
+}
+
+@interface PPCartFloatingBarState : NSObject
+@property (nonatomic, assign) NSInteger itemCount;
+@property (nonatomic, assign) double totalAmount;
+@property (nonatomic, assign, getter=isVisible) BOOL visible;
+@end
+
+@implementation PPCartFloatingBarState
+@end
+
+@interface PPCartFloatingBarView : UIControl
+@property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIView *tintOverlayView;
+@property (nonatomic, strong) UIView *highlightGlowView;
+@property (nonatomic, strong) UIView *iconOrbView;
+@property (nonatomic, strong) UIImageView *iconImageView;
+@property (nonatomic, strong) UILabel *countBadgeLabel;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIView *ctaContainerView;
+@property (nonatomic, strong) UILabel *ctaLabel;
+@property (nonatomic, strong) UIImageView *ctaChevronView;
+@property (nonatomic, strong) CAGradientLayer *borderGradientLayer;
+@property (nonatomic, strong) CAShapeLayer *borderMaskLayer;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *tapFeedbackGenerator;
+@end
+
+@implementation PPCartFloatingBarView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) {
+        return nil;
+    }
+
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemUltraThinMaterialLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemChromeMaterial;
+    }
+    self.materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.materialView.userInteractionEnabled = NO;
+    self.materialView.clipsToBounds = YES;
+    self.materialView.layer.cornerRadius = 28.0;
+    [self addSubview:self.materialView];
+
+    self.tintOverlayView = [[UIView alloc] init];
+    self.tintOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tintOverlayView.userInteractionEnabled = NO;
+    [self.materialView.contentView addSubview:self.tintOverlayView];
+
+    self.highlightGlowView = [[UIView alloc] init];
+    self.highlightGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.highlightGlowView.userInteractionEnabled = NO;
+    self.highlightGlowView.alpha = 0.92;
+    [self.materialView.contentView addSubview:self.highlightGlowView];
+
+    UIView *contentView = self.materialView.contentView;
+
+    self.iconOrbView = [[UIView alloc] init];
+    self.iconOrbView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.iconOrbView.userInteractionEnabled = NO;
+    self.iconOrbView.layer.cornerRadius = 20.0;
+    self.iconOrbView.layer.shadowOpacity = 0.16;
+    self.iconOrbView.layer.shadowRadius = 14.0;
+    self.iconOrbView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    [contentView addSubview:self.iconOrbView];
+
+    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:17.0
+                                                                                              weight:UIImageSymbolWeightSemibold
+                                                                                               scale:UIImageSymbolScaleMedium];
+    self.iconImageView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"cart.fill" withConfiguration:iconConfig]];
+    self.iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.iconImageView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.iconOrbView addSubview:self.iconImageView];
+
+    self.countBadgeLabel = [[UILabel alloc] init];
+    self.countBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.countBadgeLabel.font = [GM boldFontWithSize:11.0];
+    self.countBadgeLabel.textAlignment = NSTextAlignmentCenter;
+    self.countBadgeLabel.layer.cornerRadius = 11.0;
+    self.countBadgeLabel.layer.masksToBounds = YES;
+    [contentView addSubview:self.countBadgeLabel];
+
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.font = [GM boldFontWithSize:16.0];
+    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.titleLabel.minimumScaleFactor = 0.82;
+    [contentView addSubview:self.titleLabel];
+
+    self.subtitleLabel = [[UILabel alloc] init];
+    self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.subtitleLabel.font = [GM MidFontWithSize:13.0];
+    self.subtitleLabel.numberOfLines = 1;
+    self.subtitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.subtitleLabel.minimumScaleFactor = 0.84;
+    [contentView addSubview:self.subtitleLabel];
+
+    self.ctaContainerView = [[UIView alloc] init];
+    self.ctaContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ctaContainerView.userInteractionEnabled = NO;
+    self.ctaContainerView.layer.cornerRadius = 19.0;
+    [contentView addSubview:self.ctaContainerView];
+
+    self.ctaLabel = [[UILabel alloc] init];
+    self.ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ctaLabel.font = [GM boldFontWithSize:13.0];
+    self.ctaLabel.textAlignment = NSTextAlignmentCenter;
+    [self.ctaContainerView addSubview:self.ctaLabel];
+
+    UIImageSymbolConfiguration *chevronConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0
+                                                                                                 weight:UIImageSymbolWeightBold
+                                                                                                  scale:UIImageSymbolScaleSmall];
+    self.ctaChevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.forward" withConfiguration:chevronConfig]];
+    self.ctaChevronView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ctaChevronView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.ctaContainerView addSubview:self.ctaChevronView];
+
+    self.borderGradientLayer = [CAGradientLayer layer];
+    self.borderGradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.borderGradientLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.borderMaskLayer = [CAShapeLayer layer];
+    self.borderMaskLayer.lineWidth = 1.0;
+    self.borderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.borderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.borderGradientLayer.mask = self.borderMaskLayer;
+    [self.layer addSublayer:self.borderGradientLayer];
+
+    self.layer.shadowOpacity = 0.24;
+    self.layer.shadowRadius = 34.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    self.layer.masksToBounds = NO;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.materialView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.materialView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.materialView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.materialView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [self.tintOverlayView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
+        [self.tintOverlayView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
+        [self.tintOverlayView.topAnchor constraintEqualToAnchor:contentView.topAnchor],
+        [self.tintOverlayView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
+
+        [self.highlightGlowView.widthAnchor constraintEqualToConstant:138.0],
+        [self.highlightGlowView.heightAnchor constraintEqualToConstant:138.0],
+        [self.highlightGlowView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [self.highlightGlowView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:-28.0],
+
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
+        [self.iconOrbView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [self.iconOrbView.widthAnchor constraintEqualToConstant:40.0],
+        [self.iconOrbView.heightAnchor constraintEqualToConstant:40.0],
+
+        [self.iconImageView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
+        [self.iconImageView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
+
+        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:10.0],
+        [self.countBadgeLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:15.0],
+        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:22.0],
+        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:22.0],
+
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:14.0],
+        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
+
+        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
+        [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
+        [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor constant:-14.0],
+
+        [self.ctaContainerView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-14.0],
+        [self.ctaContainerView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [self.ctaContainerView.heightAnchor constraintEqualToConstant:38.0],
+        [self.ctaContainerView.widthAnchor constraintGreaterThanOrEqualToConstant:108.0],
+
+        [self.ctaLabel.leadingAnchor constraintEqualToAnchor:self.ctaContainerView.leadingAnchor constant:14.0],
+        [self.ctaLabel.centerYAnchor constraintEqualToAnchor:self.ctaContainerView.centerYAnchor],
+
+        [self.ctaChevronView.leadingAnchor constraintEqualToAnchor:self.ctaLabel.trailingAnchor constant:8.0],
+        [self.ctaChevronView.trailingAnchor constraintEqualToAnchor:self.ctaContainerView.trailingAnchor constant:-12.0],
+        [self.ctaChevronView.centerYAnchor constraintEqualToAnchor:self.ctaContainerView.centerYAnchor]
+    ]];
+
+    [self addTarget:self action:@selector(pp_touchDown) forControlEvents:UIControlEventTouchDown];
+    [self addTarget:self action:@selector(pp_touchUp) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+
+    if (@available(iOS 10.0, *)) {
+        self.tapFeedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+    }
+
+    [self pp_applyAppearance];
+    [self pp_applyState:nil];
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    CGFloat radius = CGRectGetHeight(self.bounds) * 0.5;
+    self.materialView.layer.cornerRadius = radius;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:radius].CGPath;
+    self.borderGradientLayer.frame = self.bounds;
+    self.borderMaskLayer.path = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(self.bounds, 0.5, 0.5)
+                                                           cornerRadius:MAX(0.0, radius - 0.5)].CGPath;
+}
+
+- (void)tintColorDidChange
+{
+    [super tintColorDidChange];
+    [self pp_applyAppearance];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyAppearance];
+        }
+    }
+}
+
+- (void)pp_applyAppearance
+{
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *brandColor = AppPrimaryClr ?: [UIColor colorWithRed:0.90 green:0.10 blue:0.35 alpha:1.0];
+    UIColor *secondaryBrandColor = [brandColor colorWithAlphaComponent:dark ? 0.72 : 0.52];
+    UIColor *titleColor = dark ? UIColor.whiteColor : [UIColor colorWithWhite:0.08 alpha:1.0];
+    UIColor *subtitleColor = dark ? [UIColor colorWithWhite:0.82 alpha:1.0] : [UIColor colorWithWhite:0.38 alpha:1.0];
+
+    self.tintOverlayView.backgroundColor = dark
+        ? [UIColor colorWithWhite:0.10 alpha:0.74]
+        : [UIColor colorWithWhite:1.0 alpha:0.54];
+    self.highlightGlowView.backgroundColor = [brandColor colorWithAlphaComponent:dark ? 0.18 : 0.13];
+    self.highlightGlowView.layer.cornerRadius = 69.0;
+
+    self.iconOrbView.backgroundColor = dark
+        ? [brandColor colorWithAlphaComponent:0.22]
+        : [brandColor colorWithAlphaComponent:0.12];
+    self.iconOrbView.layer.shadowColor = [brandColor colorWithAlphaComponent:0.26].CGColor;
+    self.iconImageView.tintColor = brandColor;
+
+    self.countBadgeLabel.backgroundColor = [brandColor colorWithAlphaComponent:dark ? 0.20 : 0.14];
+    self.countBadgeLabel.textColor = brandColor;
+
+    self.titleLabel.textColor = titleColor;
+    self.subtitleLabel.textColor = subtitleColor;
+
+    self.ctaContainerView.backgroundColor = dark
+        ? [brandColor colorWithAlphaComponent:0.20]
+        : [brandColor colorWithAlphaComponent:0.12];
+    self.ctaLabel.textColor = brandColor;
+    self.ctaChevronView.tintColor = brandColor;
+
+    self.borderGradientLayer.colors = @[
+        (__bridge id)[brandColor colorWithAlphaComponent:(dark ? 0.34 : 0.26)].CGColor,
+        (__bridge id)[secondaryBrandColor colorWithAlphaComponent:(dark ? 0.24 : 0.18)].CGColor,
+        (__bridge id)[UIColor colorWithWhite:1.0 alpha:(dark ? 0.16 : 0.52)].CGColor
+    ];
+    self.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:(dark ? 0.52 : 0.16)].CGColor;
+}
+
+- (void)pp_applyState:(nullable PPCartFloatingBarState *)state
+{
+    NSInteger itemCount = MAX(0, state.itemCount);
+    double totalAmount = MAX(0.0, state.totalAmount);
+
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *titleColor = dark ? UIColor.whiteColor : [UIColor colorWithWhite:0.08 alpha:1.0];
+    UIColor *subtitleColor = dark ? [UIColor colorWithWhite:0.82 alpha:1.0] : [UIColor colorWithWhite:0.38 alpha:1.0];
+    UIColor *brandColor = AppPrimaryClr ?: [UIColor colorWithRed:0.90 green:0.10 blue:0.35 alpha:1.0];
+
+    self.titleLabel.attributedText =
+        [[NSAttributedString alloc] initWithString:(kLang(@"Cart") ?: @"Cart")
+                                        attributes:@{NSFontAttributeName: [GM boldFontWithSize:16.0],
+                                                     NSForegroundColorAttributeName: titleColor}];
+    self.subtitleLabel.attributedText =
+        [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%@ · %@",
+                                                    PPCartFloatingBarCountText(itemCount),
+                                                    PPCartFloatingBarAmountText(totalAmount)]
+                                        attributes:@{NSFontAttributeName: [GM MidFontWithSize:13.0],
+                                                     NSForegroundColorAttributeName: subtitleColor}];
+    self.countBadgeLabel.text = itemCount > 99 ? @"99+" : [NSString stringWithFormat:@"%ld", (long)itemCount];
+    self.ctaLabel.attributedText =
+        [[NSAttributedString alloc] initWithString:(kLang(@"checkout_review_cart_action") ?: @"Review Cart")
+                                        attributes:@{NSFontAttributeName: [GM boldFontWithSize:13.0],
+                                                     NSForegroundColorAttributeName: brandColor}];
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@. %@",
+                               self.titleLabel.text ?: @"",
+                               self.subtitleLabel.text ?: @"",
+                               self.ctaLabel.text ?: @""];
+    self.accessibilityHint = kLang(@"a11y_btn_checkout_hint") ?: @"Double-tap to review your cart";
+}
+
+- (void)prepareForTapFeedback
+{
+    if (@available(iOS 10.0, *)) {
+        [self.tapFeedbackGenerator prepare];
+    }
+}
+
+- (void)emitTapFeedback
+{
+    if (@available(iOS 10.0, *)) {
+        if ([self.tapFeedbackGenerator respondsToSelector:@selector(impactOccurredWithIntensity:)]) {
+            [self.tapFeedbackGenerator impactOccurredWithIntensity:0.72];
+        } else {
+            [self.tapFeedbackGenerator impactOccurred];
+        }
+    }
+}
+
+- (void)pp_touchDown
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    } completion:nil];
+}
+
+- (void)pp_touchUp
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.transform = CGAffineTransformIdentity;
+        return;
+    }
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+         usingSpringWithDamping:0.8
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+@end
+
+@interface PPCartFloatingBarCoordinator : NSObject
+@property (nonatomic, weak) PPRootTabBarController *hostController;
+@property (nonatomic, weak, nullable) UIViewController *activeSourceViewController;
+@property (nonatomic, copy, nullable) PPCartFloatingBarOpenHandler openCartHandler;
+@property (nonatomic, strong) PPCartFloatingBarState *state;
+@property (nonatomic, strong, nullable) PPBottomFadeView *floatingBarFadeView;
+@property (nonatomic, strong, nullable) PPCartFloatingBarView *floatingBarView;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *floatingBarBottomConstraint;
+@property (nonatomic, assign) BOOL preparedForPremiumReveal;
+- (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController;
+- (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated;
+@end
+
+@implementation PPCartFloatingBarCoordinator
+
+- (instancetype)initWithHostController:(PPRootTabBarController *)hostController
+{
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+    _hostController = hostController;
+    _state = [PPCartFloatingBarState new];
+    return self;
+}
+
+- (void)activateForSourceViewController:(UIViewController *)viewController
+                        openCartHandler:(PPCartFloatingBarOpenHandler)openCartHandler
+                               animated:(BOOL)animated
+{
+    self.activeSourceViewController = viewController;
+    self.openCartHandler = [openCartHandler copy];
+    [self hostViewDidLayoutSubviews];
+
+    CartManager *cartManager = [CartManager sharedManager];
+    BOOL canPrepareCartReveal = ([cartManager totalItemsCount] > 0 &&
+                                 [self isEligibleFloatingCartSourceViewController:viewController]);
+    if (!animated && canPrepareCartReveal) {
+        if (!self.state.isVisible) {
+            [self prepareHiddenFloatingBarForPremiumReveal];
+        }
+        return;
+    }
+
+    [self updateVisibilityAnimated:animated];
+}
+
+- (void)deactivateForSourceViewController:(UIViewController *)viewController animated:(BOOL)animated
+{
+    if (self.activeSourceViewController != viewController) {
+        return;
+    }
+    self.activeSourceViewController = nil;
+    self.openCartHandler = nil;
+    [self updateVisibilityAnimated:animated];
+}
+
+- (void)hostViewDidLayoutSubviews
+{
+    if (!self.state.isVisible || !self.floatingBarView || !self.hostController) {
+        return;
+    }
+    if (self.floatingBarFadeView) {
+        [self.hostController.view bringSubviewToFront:self.floatingBarFadeView];
+    }
+    [self.hostController.view bringSubviewToFront:self.floatingBarView];
+}
+
+- (CGFloat)currentBottomClearance
+{
+    if (!self.state.isVisible || !self.floatingBarView || self.floatingBarView.hidden) {
+        return 0.0;
+    }
+
+    UIView *hostView = self.hostController.view;
+    if (!hostView || CGRectIsEmpty(hostView.bounds)) {
+        return 0.0;
+    }
+
+    CGRect floatingFrame = [self.floatingBarView.superview convertRect:self.floatingBarView.frame toView:hostView];
+    CGFloat safeBottomY = CGRectGetMaxY(hostView.bounds) - hostView.safeAreaInsets.bottom;
+    CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(floatingFrame));
+    return ceil(overlapAboveSafeArea + 12.0);
+}
+
+- (void)handleCartUpdatedAnimated:(BOOL)animated
+{
+    [self updateVisibilityAnimated:animated];
+}
+
+- (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated
+{
+    [self updateVisibilityAnimated:animated];
+}
+
+- (void)handleTap
+{
+    [self.floatingBarView emitTapFeedback];
+    if (self.openCartHandler) {
+        self.openCartHandler();
+    }
+}
+
+- (void)refreshActiveSourceInsetsIfNeeded
+{
+    UIViewController *source = self.activeSourceViewController;
+    if (!source) {
+        return;
+    }
+
+    SEL sellerInsetSelector = NSSelectorFromString(@"pp_updateBottomNavigationInsetsIfNeeded");
+    if ([source respondsToSelector:sellerInsetSelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [source performSelector:sellerInsetSelector];
+#pragma clang diagnostic pop
+    }
+
+    SEL collectionInsetSelector = NSSelectorFromString(@"updateCollectionContentInset");
+    if ([source respondsToSelector:collectionInsetSelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [source performSelector:collectionInsetSelector];
+#pragma clang diagnostic pop
+    }
+}
+
+- (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController
+{
+    if (!viewController) {
+        return NO;
+    }
+
+    for (Class candidateClass = viewController.class;
+         candidateClass && candidateClass != UIViewController.class;
+         candidateClass = class_getSuperclass(candidateClass)) {
+        NSString *className = NSStringFromClass(candidateClass);
+        if ([className isEqualToString:@"PPDataViewVC"] ||
+            [className isEqualToString:@"SellerProfileVC"]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (UIViewController *)topVisibleViewControllerFrom:(UIViewController *)viewController
+{
+    if (!viewController) {
+        return nil;
+    }
+
+    UIViewController *presented = viewController.presentedViewController;
+    if (presented) {
+        return [self topVisibleViewControllerFrom:presented];
+    }
+
+    if ([viewController isKindOfClass:UINavigationController.class]) {
+        UINavigationController *navigationController = (UINavigationController *)viewController;
+        return [self topVisibleViewControllerFrom:(navigationController.visibleViewController ?: navigationController.topViewController ?: navigationController)];
+    }
+
+    if ([viewController isKindOfClass:UITabBarController.class]) {
+        UITabBarController *tabController = (UITabBarController *)viewController;
+        return [self topVisibleViewControllerFrom:(tabController.selectedViewController ?: viewController)];
+    }
+
+    return viewController;
+}
+
+- (BOOL)isActiveSourceCurrentlyVisible
+{
+    UIViewController *source = self.activeSourceViewController;
+    if (!source || !self.hostController) {
+        return NO;
+    }
+
+    UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
+    return visible == source;
+}
+
+- (BOOL)shouldShowFloatingCartForSourceViewController:(UIViewController *)source
+{
+    if (!source) {
+        return NO;
+    }
+
+    CartManager *cartManager = [CartManager sharedManager];
+    return ([cartManager totalItemsCount] > 0 &&
+            [self isEligibleFloatingCartSourceViewController:source] &&
+            [self isActiveSourceCurrentlyVisible]);
+}
+
+- (BOOL)hostShouldKeepBottomNavigationHidden
+{
+    UIViewController *selected = self.hostController.selectedViewController;
+    UIViewController *visible = selected;
+    if ([selected isKindOfClass:UINavigationController.class]) {
+        visible = ((UINavigationController *)selected).topViewController ?: selected;
+    }
+    if ([self isEligibleFloatingCartSourceViewController:visible]) {
+        return NO;
+    }
+    return visible.hidesBottomBarWhenPushed;
+}
+
+- (void)prepareHiddenFloatingBarForPremiumReveal
+{
+    PPRootTabBarController *host = self.hostController;
+    UIViewController *source = self.activeSourceViewController;
+    if (!host || !source) {
+        return;
+    }
+
+    CartManager *cartManager = [CartManager sharedManager];
+    self.state.itemCount = MAX(0, [cartManager totalItemsCount]);
+    self.state.totalAmount = [cartManager totalAmount];
+
+    [self ensureFloatingBarIfNeeded];
+    [self.floatingBarView pp_applyState:self.state];
+    [self.floatingBarView prepareForTapFeedback];
+    [self pp_applyFloatingFadeAppearance];
+
+    self.state.visible = NO;
+    self.preparedForPremiumReveal = YES;
+    self.floatingBarFadeView.hidden = YES;
+    self.floatingBarFadeView.alpha = 0.0;
+    self.floatingBarView.hidden = YES;
+    self.floatingBarView.alpha = 0.0;
+    self.floatingBarView.transform = UIAccessibilityIsReduceMotionEnabled()
+        ? CGAffineTransformIdentity
+        : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0),
+                                  CGAffineTransformMakeScale(0.97, 0.97));
+    self.floatingBarBottomConstraint.constant = 28.0;
+    [host.view layoutIfNeeded];
+    [host pp_applyBottomNavigationClearanceToVisibleLists];
+    [self refreshActiveSourceInsetsIfNeeded];
+}
+
+- (void)updateVisibilityAnimated:(BOOL)animated
+{
+    PPRootTabBarController *host = self.hostController;
+    if (!host) {
+        return;
+    }
+
+    UIViewController *source = self.activeSourceViewController;
+    CartManager *cartManager = [CartManager sharedManager];
+    NSInteger itemCount = MAX(0, [cartManager totalItemsCount]);
+    double totalAmount = [cartManager totalAmount];
+    BOOL shouldShow = (source != nil &&
+                       [self shouldShowFloatingCartForSourceViewController:source]);
+
+    self.state.itemCount = itemCount;
+    self.state.totalAmount = totalAmount;
+
+    if (shouldShow) {
+        [self ensureFloatingBarIfNeeded];
+        [self.floatingBarView pp_applyState:self.state];
+        [self.floatingBarView prepareForTapFeedback];
+        [self pp_applyFloatingFadeAppearance];
+    }
+
+    BOOL wasVisible = self.state.isVisible;
+    if (wasVisible == shouldShow) {
+        if (shouldShow) {
+            [host pp_setPremiumBottomNavigationHidden:YES animated:NO];
+            [host pp_applyBottomNavigationClearanceToVisibleLists];
+            [self refreshActiveSourceInsetsIfNeeded];
+            [source setNeedsStatusBarAppearanceUpdate];
+            [self hostViewDidLayoutSubviews];
+        }
+        return;
+    }
+
+    self.state.visible = shouldShow;
+    CGFloat restingBottomConstant = 16.0;
+    CGFloat hiddenBottomConstant = 28.0;
+
+    if (shouldShow) {
+        [self ensureFloatingBarIfNeeded];
+        [self pp_applyFloatingFadeAppearance];
+        PPCartFloatingBarView *barView = self.floatingBarView;
+        PPBottomFadeView *fadeView = self.floatingBarFadeView;
+        fadeView.hidden = NO;
+        fadeView.alpha = self.preparedForPremiumReveal ? fadeView.alpha : 0.0;
+        barView.hidden = NO;
+        if (!self.preparedForPremiumReveal) {
+            barView.alpha = 0.0;
+            barView.transform = UIAccessibilityIsReduceMotionEnabled()
+                ? CGAffineTransformIdentity
+                : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0),
+                                          CGAffineTransformMakeScale(0.97, 0.97));
+        }
+        self.floatingBarBottomConstraint.constant = hiddenBottomConstant;
+        [host.view layoutIfNeeded];
+        [host pp_setPremiumBottomNavigationHidden:YES animated:animated];
+        if (fadeView) {
+            [host.view bringSubviewToFront:fadeView];
+        }
+        [host.view bringSubviewToFront:barView];
+        [host.view layoutIfNeeded];
+
+        void (^showChanges)(void) = ^{
+            fadeView.alpha = 1.0;
+            self.floatingBarBottomConstraint.constant = restingBottomConstant;
+            barView.alpha = 1.0;
+            barView.transform = CGAffineTransformIdentity;
+            [host.view layoutIfNeeded];
+        };
+        void (^showCompletion)(BOOL) = ^(__unused BOOL finished) {
+            self.preparedForPremiumReveal = NO;
+            [host pp_applyBottomNavigationClearanceToVisibleLists];
+            [self refreshActiveSourceInsetsIfNeeded];
+        };
+        if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+            showChanges();
+            showCompletion(YES);
+        } else {
+            [UIView animateWithDuration:0.72
+                                  delay:0.0
+                 usingSpringWithDamping:0.86
+                  initialSpringVelocity:0.18
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                             animations:showChanges
+                             completion:showCompletion];
+        }
+        return;
+    }
+
+    PPCartFloatingBarView *barView = self.floatingBarView;
+    PPBottomFadeView *fadeView = self.floatingBarFadeView;
+    void (^hideChanges)(void) = ^{
+        fadeView.alpha = 0.0;
+        self.floatingBarBottomConstraint.constant = hiddenBottomConstant;
+        barView.alpha = 0.0;
+        barView.transform = UIAccessibilityIsReduceMotionEnabled()
+            ? CGAffineTransformIdentity
+            : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 20.0),
+                                      CGAffineTransformMakeScale(0.97, 0.97));
+        [host.view layoutIfNeeded];
+    };
+    void (^hideCompletion)(BOOL) = ^(__unused BOOL finished) {
+        self.preparedForPremiumReveal = NO;
+        fadeView.hidden = YES;
+        barView.hidden = YES;
+        barView.transform = CGAffineTransformIdentity;
+        if (![self hostShouldKeepBottomNavigationHidden]) {
+            [host pp_setPremiumBottomNavigationHidden:NO animated:animated];
+        }
+        [host pp_applyBottomNavigationClearanceToVisibleLists];
+        [self refreshActiveSourceInsetsIfNeeded];
+    };
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        hideChanges();
+        hideCompletion(YES);
+    } else {
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                         animations:hideChanges
+                         completion:hideCompletion];
+    }
+}
+
+- (void)ensureFloatingBarIfNeeded
+{
+    if (self.floatingBarView || !self.hostController) {
+        return;
+    }
+
+    UIView *hostView = self.hostController.view;
+
+    PPBottomFadeView *fadeView = [[PPBottomFadeView alloc] init];
+    fadeView.translatesAutoresizingMaskIntoConstraints = NO;
+    fadeView.userInteractionEnabled = NO;
+    fadeView.hidden = YES;
+    fadeView.alpha = 0.0;
+    [hostView addSubview:fadeView];
+    self.floatingBarFadeView = fadeView;
+
+    PPCartFloatingBarView *barView = [[PPCartFloatingBarView alloc] initWithFrame:CGRectZero];
+    [barView addTarget:self action:@selector(handleTap) forControlEvents:UIControlEventTouchUpInside];
+    barView.hidden = YES;
+    barView.alpha = 0.0;
+
+    [hostView addSubview:barView];
+    self.floatingBarView = barView;
+    self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:32.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [fadeView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
+        [fadeView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor],
+        [fadeView.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor],
+        [fadeView.heightAnchor constraintEqualToConstant:164.0],
+
+        [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0],
+        [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0],
+        self.floatingBarBottomConstraint,
+        [barView.heightAnchor constraintEqualToConstant:72.0]
+    ]];
+
+    [self pp_applyFloatingFadeAppearance];
+}
+
+- (void)pp_applyFloatingFadeAppearance
+{
+    if (!self.floatingBarFadeView) {
+        return;
+    }
+
+    UIColor *baseColor = AppBackgroundClr ?: AppBageColor() ?: UIColor.whiteColor;
+    if (@available(iOS 13.0, *)) {
+        if (self.hostController.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            baseColor = [UIColor colorWithWhite:0.05 alpha:1.0];
+        }
+    }
+
+    CAGradientLayer *gradientLayer = (CAGradientLayer *)self.floatingBarFadeView.layer;
+    gradientLayer.startPoint = CGPointMake(0.5, 0.0);
+    gradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    gradientLayer.colors = @[
+        (__bridge id)[baseColor colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[baseColor colorWithAlphaComponent:0.16].CGColor,
+        (__bridge id)[baseColor colorWithAlphaComponent:0.58].CGColor
+    ];
+    gradientLayer.locations = @[@0.0, @0.58, @1.0];
+}
+
+@end
+
 @implementation PPRootTabBarController
 
 - (void)setSelectedIndex:(NSUInteger)selectedIndex
 {
     [super setSelectedIndex:selectedIndex];
     [self pp_assertPremiumTabBarState];
+    [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
@@ -350,6 +1162,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
     [self pp_setupPremiumBottomNavigation];
     [self pp_refreshProfileTabPresentation];
+    self.cartFloatingBarCoordinator = [[PPCartFloatingBarCoordinator alloc] initWithHostController:self];
 
     // ── KVO guard against UIKit tabBar flashes ──
     // UITabBarController internally sets self.tabBar.hidden = NO during pop
@@ -415,6 +1228,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         addObserver:self
            selector:@selector(pp_handleReduceMotionStatusChange:)
                name:UIAccessibilityReduceMotionStatusDidChangeNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleCartFloatingBarCartUpdated:)
+               name:kCartUpdatedNotification
              object:nil];
     //[self configureTabBarIndicatorColor];
 
@@ -509,6 +1327,13 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                     animated:(BOOL)animated
 {
     [self pp_assertPremiumTabBarState];
+    BOOL usesFloatingCartDeckReplacement =
+        [self.cartFloatingBarCoordinator isEligibleFloatingCartSourceViewController:viewController];
+    BOOL shouldHideBottomNavigation =
+        viewController.hidesBottomBarWhenPushed && !usesFloatingCartDeckReplacement;
+    if (shouldHideBottomNavigation || !self.cartFloatingBarCoordinator.state.isVisible) {
+        [self pp_setPremiumBottomNavigationHidden:shouldHideBottomNavigation animated:animated];
+    }
     // After the transition completes, re-assert in case UIKit altered state mid-animation
     if (animated) {
         id<UIViewControllerTransitionCoordinator> coordinator = navigationController.transitionCoordinator;
@@ -524,6 +1349,15 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
                     animated:(BOOL)animated
 {
     [self pp_assertPremiumTabBarState];
+    BOOL usesFloatingCartDeckReplacement =
+        [self.cartFloatingBarCoordinator isEligibleFloatingCartSourceViewController:viewController];
+    BOOL shouldHideBottomNavigation =
+        viewController.hidesBottomBarWhenPushed && !usesFloatingCartDeckReplacement;
+    if (shouldHideBottomNavigation || !self.cartFloatingBarCoordinator.state.isVisible) {
+        [self pp_setPremiumBottomNavigationHidden:shouldHideBottomNavigation animated:NO];
+    }
+    [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:animated];
+    [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
 
 #pragma mark - KVO: prevent tabBar flash during navigation transitions
@@ -662,6 +1496,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_applyPremiumTabSelectionAnimated:NO];
     [self pp_layoutGuestProfileAnimation];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
+    [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
     [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     
 }
@@ -675,6 +1510,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             [self pp_updatePremiumBottomFadeAppearance];
             [self pp_applyGuestProfileAnimationTint];
             [self pp_updateTabBarSelectionIndicatorIfNeeded];
+            [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
         }
     }
 }
@@ -1617,6 +2453,11 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
 - (CGFloat)pp_bottomNavigationContentClearance
 {
+    CGFloat floatingCartClearance = [self.cartFloatingBarCoordinator currentBottomClearance];
+    if (floatingCartClearance > 0.0) {
+        return floatingCartClearance;
+    }
+
     if (self.premiumBottomNavigationHidden) {
         return 0.0;
     }
@@ -1644,6 +2485,12 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     }
 
     return 0.0;
+}
+
+- (void)pp_handleCartFloatingBarCartUpdated:(NSNotification *)notification
+{
+    (void)notification;
+    [self.cartFloatingBarCoordinator handleCartUpdatedAnimated:YES];
 }
 
 - (void)pp_applyBottomNavigationClearanceToVisibleLists
@@ -2592,6 +3439,21 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
 }
 
+- (void)pp_activateFloatingCartBarForSourceViewController:(UIViewController *)viewController
+                                          openCartHandler:(PPCartFloatingBarOpenHandler)openCartHandler
+                                                 animated:(BOOL)animated
+{
+    [self.cartFloatingBarCoordinator activateForSourceViewController:viewController
+                                                     openCartHandler:openCartHandler
+                                                            animated:animated];
+}
+
+- (void)pp_deactivateFloatingCartBarForSourceViewController:(UIViewController *)viewController
+                                                   animated:(BOOL)animated
+{
+    [self.cartFloatingBarCoordinator deactivateForSourceViewController:viewController animated:animated];
+}
+
 - (UIView *)pp_novaAmbientBottomNavigationAnchorView
 {
     if (PPIOS26() &&
@@ -2964,6 +3826,7 @@ shouldSelectViewController:(UIViewController *)viewController {
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventRootTabSelected];
     }
     self.pp_lastSelectedIndex = (NSInteger)index;
+    [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
     [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 
