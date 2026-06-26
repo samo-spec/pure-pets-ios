@@ -247,7 +247,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 + (CGFloat)preferredHeightForTableWidth:(CGFloat)tableWidth
 {
     CGFloat stageHeight = PPProviderPremiumStageHeightForTableWidth(tableWidth);
-    return stageHeight +  112.0 + 8.0;
+    return stageHeight +  112.0 ;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
@@ -448,9 +448,9 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPProviderPremiumCardInsets().right],
         [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPProviderPremiumCardInsets().bottom],
 
-        [self.imageStageView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:16.0],
-        [self.imageStageView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16.0],
-        [self.imageStageView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16.0],
+        [self.imageStageView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:14.0],
+        [self.imageStageView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:14.0],
+        [self.imageStageView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-14.0],
         self.imageStageHeightConstraint,
 
         [self.highlightBloomView.topAnchor constraintEqualToAnchor:self.imageStageView.topAnchor constant:36.0],

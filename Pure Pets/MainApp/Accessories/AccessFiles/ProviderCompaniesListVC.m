@@ -82,14 +82,14 @@ static UIColor *PPProviderCompaniesDynamicColor(UIColor *lightColor, UIColor *da
 
 static UIColor *PPProviderCompaniesHeroSurfaceColor(void)
 {
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.96],
-                                           [UIColor colorWithWhite:0.15 alpha:0.94]);
+    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.99],
+                                           [UIColor colorWithWhite:0.15 alpha:0.99]);
 }
 
 static UIColor *PPProviderCompaniesHeroStrokeColor(void)
 {
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:0.0 alpha:0.055],
-                                           [UIColor colorWithWhite:1.0 alpha:0.10]);
+    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:0.0 alpha:0.035],
+                                           [UIColor colorWithWhite:1.0 alpha:0.06]);
 }
 
 static UIColor *PPProviderCompaniesHeroSecondarySurfaceColor(void)
@@ -1169,13 +1169,15 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     self.heroAmbientGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAmbientGlowView.userInteractionEnabled = NO;
     self.heroAmbientGlowView.alpha = 0.96;
-    [self.heroSurfaceView addSubview:self.heroAmbientGlowView];
+    [self.view addSubview:self.heroAmbientGlowView];
+    [self.view sendSubviewToBack:self.heroAmbientGlowView];
 
     self.heroAmbientAccentView = [[UIView alloc] init];
     self.heroAmbientAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAmbientAccentView.userInteractionEnabled = NO;
     self.heroAmbientAccentView.alpha = 0.72;
-    [self.heroSurfaceView addSubview:self.heroAmbientAccentView];
+    [self.view addSubview:self.heroAmbientAccentView];
+    [self.view sendSubviewToBack:self.heroAmbientAccentView];
 
     self.heroContentContainerView = [[UIView alloc] init];
     self.heroContentContainerView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1205,7 +1207,8 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     self.heroTitleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:28.0], UIFontTextStyleTitle1);
     self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.numberOfLines = 2;
+    self.heroTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
     [self.heroContentContainerView addSubview:self.heroTitleLabel];
 
@@ -1641,15 +1644,57 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
     [feedback impactOccurred];
 
     self.animatedCompanyCellKeys = [NSMutableSet set];
-    UIViewAnimationOptions transition = self.prefersCompactListLayout
-        ? UIViewAnimationOptionTransitionFlipFromLeft
-        : UIViewAnimationOptionTransitionFlipFromRight;
-    [UIView transitionWithView:self.tableView
-                      duration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.40
-                       options:transition | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                    animations:^{
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadData];
+            [self.tableView layoutIfNeeded];
+        }];
+        return;
+    }
+
+    [self.tableView.layer removeAllAnimations];
+    UIView *outgoingSnapshot = [self.tableView snapshotViewAfterScreenUpdates:NO];
+    outgoingSnapshot.frame = self.tableView.frame;
+    outgoingSnapshot.userInteractionEnabled = NO;
+    if (outgoingSnapshot) {
+        [self.view insertSubview:outgoingSnapshot aboveSubview:self.tableView];
+    }
+
+    self.tableView.alpha = 0.0;
+    self.tableView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    [UIView performWithoutAnimation:^{
         [self.tableView reloadData];
-    } completion:nil];
+        [self.tableView layoutIfNeeded];
+    }];
+
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        outgoingSnapshot.alpha = 0.0;
+        outgoingSnapshot.transform =
+            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -6.0),
+                                    CGAffineTransformMakeScale(0.996, 0.996));
+    } completion:^(__unused BOOL finished) {
+        [outgoingSnapshot removeFromSuperview];
+    }];
+
+    [UIView animateWithDuration:0.36
+                          delay:0.04
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.tableView.alpha = 1.0;
+        self.tableView.transform = CGAffineTransformIdentity;
+    } completion:^(__unused BOOL finished) {
+        self.tableView.alpha = 1.0;
+        self.tableView.transform = CGAffineTransformIdentity;
+    }];
 }
 
 - (void)pp_updateLayoutToggleAppearanceAnimated:(BOOL)animated
@@ -2031,7 +2076,7 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 - (CGFloat)pp_expandedHeroContentHeight
 {
     CGFloat eyebrowHeight = self.heroEyebrowLabel.font ? ceil(self.heroEyebrowLabel.font.lineHeight) : 15.0;
-    CGFloat titleHeight = self.heroTitleLabel.font ? ceil(self.heroTitleLabel.font.lineHeight) : 34.0;
+    CGFloat titleHeight = self.heroTitleLabel.font ? ceil(self.heroTitleLabel.font.lineHeight * 2.0) : 68.0;
     CGFloat subtitleHeight = self.heroSubtitleLabel.font ? ceil(self.heroSubtitleLabel.font.lineHeight) : 18.0;
     CGFloat requiredHeight =
         4.0 +
