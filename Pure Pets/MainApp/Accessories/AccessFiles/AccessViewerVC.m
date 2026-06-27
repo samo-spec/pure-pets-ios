@@ -71,7 +71,7 @@ static const CGFloat kAVCardShadowOffsetY    = 3.0;
 static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 static UIColor *AVSellerCardInkColor(void) {
-    return AppPageColor() ?: [UIColor colorWithWhite:0.08 alpha:1.0];
+    return AppBackgroundClr ?: [UIColor colorWithWhite:0.08 alpha:1.0];
 }
 
 static UIColor *AVSellerCardAccentColor(void) {
@@ -618,7 +618,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.isFavorite = NO;
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.view.clipsToBounds = YES;
     [self initData];
     [self initForms];
@@ -1619,7 +1619,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
     UIView *card = [[UIView alloc] init];
     card.translatesAutoresizingMaskIntoConstraints = NO;
-    card.backgroundColor = AppPageColor();
+    card.backgroundColor = AppBackgroundClr;
     card.layer.cornerRadius = 0;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
@@ -2778,7 +2778,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     UIColor *accent = AVSellerCardAccentColor();
     UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.scrollView.backgroundColor = UIColor.clearColor;
     self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
     self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];

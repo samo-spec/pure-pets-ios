@@ -8,6 +8,38 @@
 #import "PPHomeProviderCategoryPillCell.h"
 
 
+static UIColor *PPHomeProviderCategoryResolvedColor(UIColor *color, UITraitCollection *traitCollection)
+{
+    if (!color) {
+        return UIColor.clearColor;
+    }
+    if (@available(iOS 13.0, *)) {
+        return [color resolvedColorWithTraitCollection:traitCollection];
+    }
+    return color;
+}
+
+static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
+                                            UIColor *overlayColor,
+                                            CGFloat amount,
+                                            UITraitCollection *traitCollection)
+{
+    UIColor *base = PPHomeProviderCategoryResolvedColor(baseColor, traitCollection);
+    UIColor *overlay = PPHomeProviderCategoryResolvedColor(overlayColor, traitCollection);
+    CGFloat baseRed = 0.0, baseGreen = 0.0, baseBlue = 0.0, baseAlpha = 0.0;
+    CGFloat overlayRed = 0.0, overlayGreen = 0.0, overlayBlue = 0.0, overlayAlpha = 0.0;
+    if (![base getRed:&baseRed green:&baseGreen blue:&baseBlue alpha:&baseAlpha] ||
+        ![overlay getRed:&overlayRed green:&overlayGreen blue:&overlayBlue alpha:&overlayAlpha]) {
+        return baseColor ?: overlayColor ?: UIColor.clearColor;
+    }
+
+    CGFloat t = MIN(MAX(amount, 0.0), 1.0);
+    return [UIColor colorWithRed:(baseRed * (1.0 - t)) + (overlayRed * t)
+                           green:(baseGreen * (1.0 - t)) + (overlayGreen * t)
+                            blue:(baseBlue * (1.0 - t)) + (overlayBlue * t)
+                           alpha:(baseAlpha * (1.0 - t)) + (overlayAlpha * t)];
+}
+
 
 
 @implementation PPHomeProviderCategoryItem
@@ -158,14 +190,14 @@
         [_button.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
         [_surfaceView.topAnchor constraintEqualToAnchor:_button.topAnchor],
-        [_surfaceView.leadingAnchor constraintEqualToAnchor:_button.leadingAnchor constant:6.0],
-        [_surfaceView.trailingAnchor constraintEqualToAnchor:_button.trailingAnchor constant:-6.0],
-        [_surfaceView.heightAnchor constraintEqualToAnchor:_button.heightAnchor constant:2.0],
+        [_surfaceView.leadingAnchor constraintEqualToAnchor:_button.leadingAnchor constant:0.0],
+        [_surfaceView.trailingAnchor constraintEqualToAnchor:_button.trailingAnchor constant:-0.0],
+        [_surfaceView.heightAnchor constraintEqualToAnchor:_button.heightAnchor constant:0.0],
 
-        [_glowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
-        [_glowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
+        [_glowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:0.0],
+        [_glowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-0.0],
         [_glowView.widthAnchor constraintEqualToConstant:64.0],
-        [_glowView.heightAnchor constraintEqualToConstant:64.0],
+        [_glowView.heightAnchor constraintEqualToAnchor:_button.heightAnchor],
 
         [_iconContainerView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
         [_iconContainerView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12],
@@ -255,35 +287,57 @@
     (void)selected;
     _selectedState = NO;
 
-    UIColor *backgroundSurface = PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.996 green:0.992 blue:0.992 alpha:1.0],
-                                                                    [UIColor colorWithWhite:0.11 alpha:1.0]);
+    BOOL darkMode = NO;
+    if (@available(iOS 13.0, *)) {
+        darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
     UIColor *titleColor = AppPrimaryTextClr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.12 alpha:1.0],
                                                                                   [UIColor colorWithWhite:0.95 alpha:1.0]);
     UIColor *subtitleColor = AppSecondaryTextClr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.39 green:0.42 blue:0.46 alpha:1.0],
                                                                                        [UIColor colorWithWhite:0.72 alpha:1.0]);
     UIColor *accent = AppPrimaryClr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.85 green:0.24 blue:0.23 alpha:1.0],
                                                                           [UIColor colorWithRed:0.99 green:0.54 blue:0.49 alpha:1.0]);
-    UIColor *border = PPHomeProviderCategoryDynamicColor([[UIColor colorWithWhite:0.91 alpha:1.0] colorWithAlphaComponent:1.0],
-                                                         [[UIColor whiteColor] colorWithAlphaComponent:0.10]);
+    UIColor *foregroundSurface = AppForgroundColr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.996 green:0.992 blue:0.992 alpha:1.0],
+                                                                                        [UIColor colorWithWhite:0.11 alpha:1.0]);
+    UIColor *backgroundSurface = PPHomeProviderCategoryBlend(foregroundSurface,
+                                                             accent,
+                                                             darkMode ? 0.035 : 0.007,
+                                                             self.traitCollection);
+    UIColor *liquidBase = PPHomeProviderCategoryBlend(foregroundSurface,
+                                                      UIColor.whiteColor,
+                                                      darkMode ? 0.08 : 0.34,
+                                                      self.traitCollection);
+    UIColor *border = PPHomeProviderCategoryBlend(liquidBase,
+                                                  accent,
+                                                  darkMode ? 0.18 : 0.10,
+                                                  self.traitCollection);
+    UIColor *resolvedAccent = PPHomeProviderCategoryResolvedColor(accent, self.traitCollection);
 
     void (^changes)(void) = ^{
         self->_surfaceView.backgroundColor = backgroundSurface;
-        [self->_surfaceView pp_setBorderColor:border];
-        self->_iconContainerView.backgroundColor = [accent colorWithAlphaComponent:0.08];
-        self->_chevronContainerView.backgroundColor = PPHomeProviderCategoryDynamicColor([UIColor colorWithWhite:0.985 alpha:1.0],
-                                                                                        [UIColor colorWithWhite:0.17 alpha:1.0]);
+        self->_surfaceView.layer.borderWidth = darkMode ? 1.05 : 1.15;
+        [self->_surfaceView pp_setBorderColor:[border colorWithAlphaComponent:darkMode ? 0.58 : 0.74]];
+        self->_iconContainerView.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.16 : 0.09];
+        self->_iconContainerView.layer.borderWidth = 0.75;
+        [self->_iconContainerView pp_setBorderColor:[border colorWithAlphaComponent:darkMode ? 0.30 : 0.40]];
+        self->_chevronContainerView.backgroundColor = PPHomeProviderCategoryBlend(foregroundSurface,
+                                                                                  accent,
+                                                                                  darkMode ? 0.12 : 0.035,
+                                                                                  self.traitCollection);
         self->_titleLabel.textColor = titleColor;
         self->_subtitleLabel.textColor = subtitleColor;
         self->_iconView.tintColor = accent;
         self->_chevronView.tintColor = [titleColor colorWithAlphaComponent:0.66];
-        self->_glowView.alpha = 0.10;
-        self->_glowView.backgroundColor = [accent colorWithAlphaComponent:0.06];
-        self->_glowView.layer.shadowColor = accent.CGColor;
-        self->_glowView.layer.shadowOpacity = 0.04;
-        self->_glowView.layer.shadowRadius = 12.0;
-        self.layer.shadowOpacity = 0.045;
-        self.layer.shadowRadius = 16.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+        self->_glowView.alpha = 0;// darkMode ? 0.14 : 0.11;
+        self->_glowView.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.12 : 0.07];
+        self->_glowView.layer.shadowColor = resolvedAccent.CGColor;
+        self->_glowView.layer.shadowOpacity = darkMode ? 0.08 : 0.05;
+        self->_glowView.layer.shadowRadius = darkMode ? 16.0 : 13.0;
+        self.layer.shadowColor = AppPrimaryTextClr.CGColor;
+        self.layer.shadowOpacity = darkMode ? 0.075 : 0.045;
+        self.layer.shadowRadius = darkMode ? 18.0 : 15.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 9.0 : 7.0);
     };
 
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
@@ -307,7 +361,7 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    CGFloat radius = 28.0;
+    CGFloat radius = 22.0;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _surfaceView.layer.cornerRadius = radius;
@@ -327,16 +381,22 @@
                                                                           [UIColor colorWithRed:0.99 green:0.54 blue:0.49 alpha:1.0]);
     UIColor *titleColor = AppPrimaryTextClr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.12 alpha:1.0],
                                                                                   [UIColor colorWithWhite:0.95 alpha:1.0]);
+    UIColor *foregroundSurface = AppForgroundColr ?: PPHomeProviderCategoryDynamicColor([UIColor colorWithRed:0.996 green:0.992 blue:0.992 alpha:1.0],
+                                                                                        [UIColor colorWithWhite:0.11 alpha:1.0]);
+    UIColor *pressBorder = PPHomeProviderCategoryBlend(foregroundSurface,
+                                                       [UIColor colorNamed:@"AppBageGlows"],
+                                                       0.26,
+                                                       self.traitCollection);
     [UIView animateWithDuration:0.09
                           delay:0.0
                         options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
         self->_surfaceView.transform = CGAffineTransformMakeScale(0.982, 0.982);
-        [self->_surfaceView pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
+        [self->_surfaceView pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.86]];
         self->_iconContainerView.backgroundColor = [accent colorWithAlphaComponent:0.13];
         self->_chevronContainerView.backgroundColor = [accent colorWithAlphaComponent:0.10];
         self->_chevronView.tintColor = [titleColor colorWithAlphaComponent:0.84];
-        self->_glowView.alpha = 0.22;
+        self->_glowView.alpha = 0;//0.12;
         self->_glowView.backgroundColor = [accent colorWithAlphaComponent:0.12];
         self->_glowView.layer.shadowOpacity = 0.10;
         self->_glowView.layer.shadowRadius = 18.0;

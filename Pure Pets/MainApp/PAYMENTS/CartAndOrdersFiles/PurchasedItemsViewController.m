@@ -279,7 +279,7 @@ static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keywo
 {
     [super viewDidLoad];
     self.items = @[];
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     [self pp_setupDateFormatter];
     [self pp_setupNavigation];
     [self pp_setupTableView];

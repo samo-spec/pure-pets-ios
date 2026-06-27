@@ -304,7 +304,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
     self.availableMethods = [PaymentMethod defaultMethods];
     self.userInstruments = @[];
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.title = kLang(@"SelectPaymentMethod");
 

@@ -178,7 +178,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.orderDateFormatter = [[NSDateFormatter alloc] init];
     self.orderDateFormatter.locale = [NSLocale currentLocale];
     [self.orderDateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM yyyy h:mm a"];
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     [self emptyViewConfiger];
 }
 

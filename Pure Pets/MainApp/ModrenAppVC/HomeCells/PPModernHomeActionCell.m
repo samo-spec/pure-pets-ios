@@ -1,7 +1,7 @@
 #import "PPModernHomeActionCell.h"
 
-static CGFloat const PPModernHomeActionCornerRadius = 24.0;
-static CGFloat const PPModernHomeActionMinimumHeight = 52.0;
+static CGFloat const PPModernHomeActionCornerRadius = 20.0;
+static CGFloat const PPModernHomeActionMinimumHeight = 48.0;
 static CGFloat const PPModernHomeActionSignalLeading = 7.0;
 static CGFloat const PPModernHomeActionSignalWidth = 4.0;
 static CGFloat const PPModernHomeActionSignalHeight = 18.0;
@@ -119,7 +119,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
     self.surfaceView.layer.cornerRadius = PPModernHomeActionCornerRadius;
-    self.surfaceView.layer.borderWidth = 0.0;
+    self.surfaceView.layer.borderWidth = 0.95;
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -275,8 +275,6 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    self.surfaceLayer.borderColor = [AppForgroundColr colorWithAlphaComponent:1].CGColor;
-
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);
     self.currentSignalColor = [self pp_signalColorForQuickActionType:quickAction.type];
@@ -351,9 +349,9 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ];
     self.surfaceView.backgroundColor = bottom;
  
-    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(AppPrimaryClr,
-                                                                       AppPrimaryClr,
-                                                                       isDark ? 0.18 : 0.35).CGColor;
+    UIColor *liquidBorder = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.52 : 0.34);
+    self.surfaceView.layer.borderWidth = isDark ? 0.85 : 0.95;
+    self.surfaceView.layer.borderColor = [liquidBorder colorWithAlphaComponent:isDark ? 0.62 : 0.32].CGColor;
     self.signalMotionLayer.colors = @[
         (__bridge id)[signal colorWithAlphaComponent:0.84].CGColor,
         (__bridge id)[signal colorWithAlphaComponent:1.0].CGColor,
@@ -361,18 +359,18 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ];
 
     self.iconPlateView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.30 : 0.14];
-    [self.iconPlateView pp_setBorderColor:[signal colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
+    [self.iconPlateView pp_setBorderColor:[signal colorWithAlphaComponent:isDark ? 0.30 : 0.20]];
     self.titleLabel.textColor = titleColor;
     self.iconView.tintColor = signal;
     self.signalLineView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.24 : 0.17];
     self.signalLineView.alpha = 0.99;
-    self.signalLineView.layer.shadowColor = signal.CGColor;
+    self.signalLineView.layer.shadowColor = UIColor.clearColor.CGColor;// signal.CGColor;
     self.signalLineView.layer.shadowOpacity = isDark ? 0.30 : 0.18;
     self.signalLineView.layer.shadowRadius = isDark ? 7.0 : 5.5;
     self.signalLineView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     self.pinView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.34 : 0.22];
     self.chevronView.tintColor = [signal colorWithAlphaComponent:isDark ? 0.76 : 0.58];
-    [self pp_setShadowColor:signal];
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = isDark ? 0.12f : 0.07f;
     self.layer.shadowRadius = isDark ? 15.0f : 13.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 7.0);
@@ -420,8 +418,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.surfaceLayer.frame = self.surfaceView.bounds;
-    //self.liquidBorderLayer.frame = bounds;
-    self.surfaceLayer.borderWidth =0.4;
+    self.surfaceLayer.borderWidth = 0.0;
     self.surfaceLayer.cornerRadius = PPModernHomeActionCornerRadius;
     self.surfaceLayer.opacity = 0.7;
     self.signalMotionLayer.frame = self.signalLineView.bounds;

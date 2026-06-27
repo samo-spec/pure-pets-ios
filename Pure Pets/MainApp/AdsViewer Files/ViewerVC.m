@@ -589,7 +589,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 }
 
 - (void)initData {
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
 
     self.heroContainerView = [[UIView alloc] init];
     self.heroContainerView.translatesAutoresizingMaskIntoConstraints = NO;

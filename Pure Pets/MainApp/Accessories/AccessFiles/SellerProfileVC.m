@@ -97,7 +97,7 @@ static UIColor *SPSellerBackgroundColor(UITraitCollection *traitCollection) {
     if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
         return [UIColor colorWithWhite:0.055 alpha:1.0];
     }
-    UIColor *appBackground = AppBageColor();
+    UIColor *appBackground = AppBackgroundClr;
     return appBackground ?: [UIColor colorWithRed:0.982 green:0.976 blue:0.956 alpha:1.0];
 }
 

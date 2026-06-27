@@ -35,6 +35,8 @@ NS_ASSUME_NONNULL_BEGIN
                       menu:(nullable UIMenu *)menu
              ppHomeSection:(PPHomeSection)ppHomeSection;
 
+- (void)setSurfaceDecorationActive:(BOOL)active animated:(BOOL)animated;
+
 @end
 
 NS_ASSUME_NONNULL_END

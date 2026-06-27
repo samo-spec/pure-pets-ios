@@ -2441,7 +2441,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     if (![self isKindOfClass:UIAlertController.class] &&
         ![self isKindOfClass:UIImagePickerController.class] &&
         ![NSStringFromClass(self.class) hasPrefix:@"UI"]) {
-        self.view.backgroundColor = AppBageColor();
+        self.view.backgroundColor = AppBackgroundClr;
     }
 }
 

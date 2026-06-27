@@ -118,7 +118,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = AppBageColor();// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClr;// PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 - (void)pp_configureTableView {

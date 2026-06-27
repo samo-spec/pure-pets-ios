@@ -1029,7 +1029,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    UIColor *baseColor = AppBackgroundClr ?: AppBageColor() ?: UIColor.whiteColor;
+    UIColor *baseColor = AppBackgroundClr ?: AppBackgroundClr ?: UIColor.whiteColor;
     if (@available(iOS 13.0, *)) {
         if (self.hostController.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             baseColor = [UIColor colorWithWhite:0.05 alpha:1.0];
@@ -1435,23 +1435,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories
 {
-    UINavigationController *navigationController =
-        [self pp_preferredNavigationControllerForSearchExperience];
-    if (!navigationController) {
-        return;
-    }
-
-    PPSearchViewController *searchController =
-        [self pp_existingSearchControllerInNavigationController:navigationController];
-
-    if (searchController) {
-        if (navigationController.topViewController != searchController) {
-            [navigationController popToViewController:searchController animated:YES];
-        }
-    } else {
-        searchController = [PPSearchViewController new];
-        [navigationController pushViewController:searchController animated:YES];
-    }
+    PPSearchViewController *searchController = [PPSearchViewController new];
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:searchController];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:nav animated:YES completion:nil];
 
     if (openAccessories) {
         [searchController openAccessoriesAll];

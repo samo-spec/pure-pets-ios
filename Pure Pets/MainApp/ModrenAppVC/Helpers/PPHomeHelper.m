@@ -61,40 +61,11 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
         return;
     }
 
-    UINavigationController *navigationController = [self currentNavigationControllerFor:controller];
-    PPSearchViewController *searchController = nil;
-
-    for (UIViewController *viewController in navigationController.viewControllers.reverseObjectEnumerator) {
-        if ([viewController isKindOfClass:PPSearchViewController.class]) {
-            searchController = (PPSearchViewController *)viewController;
-            break;
-        }
-    }
-
-    if (searchController) {
-        [searchController focusSearchField];
-        if (navigationController.topViewController != searchController) {
-            [self pp_popToViewControllerSafely:searchController
-                        inNavigationController:navigationController
-                                      animated:YES];
-        }
-        return;
-    }
-
-    searchController = [PPSearchViewController new];
+    PPSearchViewController *searchController = [PPSearchViewController new];
     [searchController focusSearchField];
-
-    if (navigationController) {
-        [self pushViewControllerSafely:searchController from:controller animated:YES];
-        return;
-    }
-
-    UINavigationController *modalNavigationController =
-        [[UINavigationController alloc] initWithRootViewController:searchController];
-    [self presentViewControllerSafely:modalNavigationController
-                                 from:controller
-                             animated:YES
-                           completion:nil];
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:searchController];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewControllerSafely:nav from:controller animated:YES completion:nil];
 }
 + (UIMenu *)actionsArrayFrom:(UIViewController *)controller
               layoutManager:(PPCollectionLayoutManager *)layoutManager

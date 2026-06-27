@@ -396,7 +396,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = AppPageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.isHydratingFormData = YES;
     self.hasUserModifiedForm = NO;
 

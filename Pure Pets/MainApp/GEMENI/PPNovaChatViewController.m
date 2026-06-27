@@ -4716,7 +4716,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.10],
                                                                   [AppForgroundColr colorWithAlphaComponent:0.18]);
     self.headerBrandHaloView.layer.shadowColor = brand.CGColor;
-    self.statusDot.backgroundColor = AppBageColor();
+    self.statusDot.backgroundColor = AppBackgroundClr;
     self.statusDot.layer.shadowColor = brand.CGColor;
     self.headerLiveCapsule.backgroundColor = [brand colorWithAlphaComponent:0.10];
     self.headerLiveCapsule.layer.borderColor = [brand colorWithAlphaComponent:0.18].CGColor;

@@ -13,6 +13,7 @@
 @property (nonatomic, strong) UIStackView *textStackView;
 
 @property (nonatomic, assign) BOOL isExpanded;
+@property (nonatomic, assign) BOOL surfaceDecorationActive;
 @property (nonatomic, assign) PPHomeSection currentSection;
 @property (nonatomic, assign) CFTimeInterval lastActionTimestamp;
 
@@ -36,6 +37,8 @@
 - (void)pp_buildUI
 {
     self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
+    self.layer.masksToBounds = NO;
     self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.preservesSuperviewLayoutMargins = YES;
     self.isAccessibilityElement = NO;
@@ -57,12 +60,17 @@
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     self.surfaceView.layer.cornerRadius = 20.0;
     self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
+    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.surfaceView.layer.shadowOpacity = 0.055;
+    self.surfaceView.layer.shadowRadius = 12.0;
+    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     [self addSubview:self.surfaceView];
 
     self.accentRailView = [[UIView alloc] init];
     self.accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
     self.accentRailView.userInteractionEnabled = NO;
-    self.accentRailView.layer.cornerRadius = 1.25;
+    self.accentRailView.layer.cornerRadius = 1.5;
     self.accentRailView.layer.cornerCurve = kCACornerCurveContinuous;
     [self.surfaceView addSubview:self.accentRailView];
 
@@ -72,10 +80,10 @@
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor constant:2.0],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2.0],
 
-        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:14.0],
-        [self.accentRailView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:14.0],
-        [self.accentRailView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-14.0],
-        [self.accentRailView.widthAnchor constraintEqualToConstant:2.5],
+        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:20.0],
+        [self.accentRailView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.accentRailView.widthAnchor constraintEqualToConstant:44.0],
+        [self.accentRailView.heightAnchor constraintEqualToConstant:3.0],
     ]];
 }
 
@@ -221,20 +229,22 @@
 
 - (void)pp_refreshAppearance
 {
-    self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
-    self.surfaceView.layer.borderColor = [self pp_surfaceBorderColor].CGColor;
+    BOOL decorationActive = self.surfaceDecorationActive;
+    self.surfaceView.backgroundColor = decorationActive ? [self pp_surfaceFillColor] : UIColor.clearColor;
+    self.surfaceView.layer.borderColor = (decorationActive ? [self pp_surfaceBorderColor] : UIColor.clearColor).CGColor;
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = [self pp_isDarkMode] ? 0.0 : 0.035;
-    self.surfaceView.layer.shadowRadius = 12.0;
-    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.0;
+    self.surfaceView.layer.shadowRadius = decorationActive ? 12.0 : 0.0;
+    self.surfaceView.layer.shadowOffset = decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
 
-    self.accentRailView.backgroundColor = [self pp_accentColor];
+    self.accentRailView.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:0.5];
+    self.accentRailView.alpha = decorationActive ? 1.0 : 0.0;
     self.titleLabel.textColor = [self pp_titleColor];
     self.subtitleLabel.textColor = [self pp_subtitleColor];
 
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.18];
+    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.08];
     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
     cfg.background = background;
     cfg.baseForegroundColor = [self pp_accentColor];
@@ -263,8 +273,8 @@
     }
    
     
-    UIColor *baseColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.65];
+    UIColor *baseColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    return [baseColor colorWithAlphaComponent:0.6];
 }
 
 - (UIColor *)pp_surfaceBorderColor
@@ -272,11 +282,11 @@
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.08];
     }
-    UIColor *accent = [self pp_accentColor];
+    UIColor *accent = [UIColor colorNamed:@"AppBageGlows"];
     if (self.currentSection == PPHomeSectionMainKinds) {
-        return [accent colorWithAlphaComponent:0.075];
+        return [accent colorWithAlphaComponent:1.0];
     }
-    return [accent colorWithAlphaComponent:0.08];
+    return [accent colorWithAlphaComponent:1.0];
 }
 
 - (UIFont *)pp_titleFont
@@ -310,6 +320,7 @@
     self.surfaceView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.surfaceView.bounds
                                    cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    [self pp_refreshAppearance];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -326,6 +337,24 @@
 {
     self.actionButton.hidden = YES;
     [self pp_updateAccessibility];
+}
+
+- (void)setSurfaceDecorationActive:(BOOL)active animated:(BOOL)animated
+{
+    BOOL changed = (_surfaceDecorationActive != active);
+    _surfaceDecorationActive = active;
+
+    if (!animated || !changed || UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_refreshAppearance];
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        [self pp_refreshAppearance];
+    } completion:nil];
 }
 
 #pragma mark - Configuration
@@ -466,15 +495,18 @@
     self.actionButton.configuration = [self pp_baseActionButtonConfiguration];
     self.actionButton.imageView.transform = CGAffineTransformIdentity;
     self.surfaceView.transform = CGAffineTransformIdentity;
+    self.surfaceDecorationActive = NO;
     self.onTap = nil;
     self.onTapMenu = nil;
     self.lastActionTimestamp = 0;
+    [self pp_refreshAppearance];
     [self pp_updateAccessibility];
 }
 
 - (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
     [super applyLayoutAttributes:layoutAttributes];
+    self.layer.zPosition = MAX((CGFloat)layoutAttributes.zIndex, 2.0);
     [self setNeedsLayout];
 }
 

@@ -180,7 +180,7 @@ UINavigationControllerDelegate>
     [super viewDidLoad];
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.results = @[];
     self.allSearchResults = @[];
     self.searchQueue = dispatch_queue_create("com.purepets.search.controller", DISPATCH_QUEUE_SERIAL);
@@ -199,6 +199,7 @@ UINavigationControllerDelegate>
     [self warmUpSearchCacheIfNeeded];
     [self updateHeaderStateAnimated:NO];
     [self updateEmptyState];
+    [self pp_setRootBottomNavigationHidden:YES animated:NO];
 
     UITapGestureRecognizer *dismissTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
     dismissTap.cancelsTouchesInView = NO;
@@ -1378,7 +1379,7 @@ UINavigationControllerDelegate>
         return;
     }
 
-    UIColor *backgroundColor = AppBageColor() ?: self.view.backgroundColor ?: UIColor.systemBackgroundColor;
+    UIColor *backgroundColor = AppBackgroundClr ?: self.view.backgroundColor ?: UIColor.systemBackgroundColor;
     if (@available(iOS 13.0, *)) {
         backgroundColor = [backgroundColor resolvedColorWithTraitCollection:self.traitCollection];
     }

@@ -18,7 +18,6 @@
 #endif
 
 #import "PPLog.h"
-
 // =====================================================
 // System Frameworks
 // =====================================================
@@ -255,7 +254,8 @@
 #define AppPrimaryClrDarker         [UIColor colorNamed:@"AppPrimaryColorDarker"]
 #define AppPrimaryClrShiner         [UIColor colorNamed:@"AppPrimaryColorShainer"]
 //F3F4F4 //EFECE3
-#define AppBackgroundClr            [UIColor colorNamed:@"AppBackgroundColor"]// [UIColor colorNamed:@"AppBackgroundColor"] //F3F4F4//[UIColor colorNamed:@"AppBackgroundColor"] //FFE6D4 FCF5EE
+
+#define AppBackgroundClr        [UIColor colorNamed:@"AppBageColor"]// [UIColor colorNamed:@"AppBackgroundColor"] //F3F4F4//[UIColor colorNamed:@"AppBackgroundColor"] //FFE6D4 FCF5EE
 #define AppBackgroundClrLigter      [UIColor colorNamed:@"AppBackgroundColorLigter"]
 #define AppBackgroundClrDarker      [UIColor colorNamed:@"AppBackgroundColorDarker"]
 
@@ -434,27 +434,14 @@ static inline BOOL PPIOS18(void) {
     if (@available(iOS 18.0, *)) return YES;
     return NO;
 }
+ 
 
-static inline UIColor *AppBageColor(void)
-{
-    return bageColor;
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
-            //return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
-        }
-        return [UIColor colorWithRed:0.949 green:0.941 blue:0.929 alpha:1.0];
-        //return [UIColor colorWithRed:0.949 green:0.941 blue:0.929 alpha:1.0];
-        //return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
-    }];
-}
 
-static inline UIColor *AppPageColor(void) { return AppBageColor(); }
 
 
 
 static inline UIColor *PPBackgroundColorForIOS26(UIColor *fallbackColor) {
-    return UIColor.systemBackgroundColor;
+    //return UIColor.systemBackgroundColor;
     UIColor *ios26Color = [AppBackgroundClr colorWithAlphaComponent:1.0];
     return PPIOS26() ? ios26Color : (fallbackColor ?: ios26Color);
 }

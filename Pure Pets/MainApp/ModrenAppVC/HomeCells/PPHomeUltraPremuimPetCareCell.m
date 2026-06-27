@@ -6,18 +6,18 @@
 #import "PPHomeUltraPremuimPetCareCell.h"
 #import "AppClasses.h"
 
-static NSString * const PPUltraCareDefaultAnimationName = @"ecg3";
-static NSString * const PPUltraCareGlowTopAnimationKey = @"pp.home.ultraCare.glow.top";
+ static NSString * const PPUltraCareGlowTopAnimationKey = @"pp.home.ultraCare.glow.top";
 static NSString * const PPUltraCareGlowBottomAnimationKey = @"pp.home.ultraCare.glow.bottom";
 static NSString * const PPUltraCareOrbitAnimationKey = @"pp.home.ultraCare.orbit";
 static NSString * const PPUltraCarePulseAnimationKey = @"pp.home.ultraCare.pulse";
+static NSString * const PPUltraCareFloatingCircleAnimationKeyPrefix = @"pp.home.ultraCare.floatingCircle";
 static BOOL const PPUltraCareGlowsFaded = YES;
-static CGFloat const PPUltraCareSurfaceCornerRadius = 28.0;
+static CGFloat const PPUltraCareSurfaceCornerRadius = 26.0;
 static CGFloat const PPUltraCareHeroPortalSize = 84.0;
 static CGFloat const PPUltraCareOrbitCarrierSize = 72.0;
 static CGFloat const PPUltraCareHeroInnerSize = 62.0;
 static CGFloat const PPUltraCareFallbackIconSize = 28.0;
-static CGFloat const PPUltraCareAnimationSize = 58.0;
+static CGFloat const PPUltraCareAnimationSize = 116.0;
 
 static UIColor *PPUltraCareDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
@@ -39,11 +39,14 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
 @interface PPHomeUltraPremuimPetCareCell ()
 - (void)pp_stopAmbientMotion;
+- (UIView *)pp_makeFloatingAmbientCircleView;
 - (CAGradientLayer *)pp_makeAmbientGlowLayer;
 - (void)pp_applyAmbientGlowColor:(UIColor *)color
                             view:(UIView *)view
                    gradientLayer:(CAGradientLayer *)gradientLayer
                        peakAlpha:(CGFloat)peakAlpha;
+- (void)pp_applyFloatingAmbientCirclePaletteWithAccent:(UIColor *)accent
+                                                  dark:(BOOL)dark;
 @end
 
 @implementation PPHomeUltraPremuimPetCareCell {
@@ -55,6 +58,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     UIView *_bottomAmbientGlowView;
     CAGradientLayer *_topAmbientGlowLayer;
     CAGradientLayer *_bottomAmbientGlowLayer;
+    NSArray<UIView *> *_floatingAmbientCircleViews;
     UIView *_topAccentLineView;
 
     UIView *_heroPortalView;
@@ -63,7 +67,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     CAShapeLayer *_orbitRingLayer;
     CAShapeLayer *_pulseRingLayer;
     UIView *_orbitNodeView;
-    LOTAnimationView *_careAnimationView;
+
     UIImageView *_fallbackIconView;
 
     PPInsetLabel *_eyebrowLabel;
@@ -82,6 +86,10 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     BOOL _didRevealAnimation;
     BOOL _didPlayPostLayoutEntrance;
     BOOL _shouldDeferEntrance;
+
+    LOTAnimationView *_lottieHeaderView;
+    NSString *_currentLottiePath;
+    NSInteger _lottieLoopToken;
 }
 
 + (NSString *)reuseIdentifier
@@ -148,6 +156,14 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_surfaceView addSubview:_topAmbientGlowView];
     [_surfaceView addSubview:_bottomAmbientGlowView];
 
+    NSMutableArray<UIView *> *floatingAmbientCircleViews = [NSMutableArray arrayWithCapacity:5];
+    for (NSUInteger idx = 0; idx < 5; idx++) {
+        UIView *circleView = [self pp_makeFloatingAmbientCircleView];
+        [_surfaceView addSubview:circleView];
+        [floatingAmbientCircleViews addObject:circleView];
+    }
+    _floatingAmbientCircleViews = [floatingAmbientCircleViews copy];
+
     _edgeHighlightLayer = [CAShapeLayer layer];
     _edgeHighlightLayer.fillColor = UIColor.clearColor.CGColor;
     _edgeHighlightLayer.lineWidth = 0.7;
@@ -164,7 +180,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _heroPortalView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroPortalView.userInteractionEnabled = NO;
     _heroPortalView.layer.borderWidth = 0.99;
-    PPApplyContinuousCorners(_heroPortalView, 22.0);
+    PPApplyContinuousCorners(_heroPortalView, 18.0);
     [_surfaceView addSubview:_heroPortalView];
 
     _orbitCarrierView = [[UIView alloc] init];
@@ -194,7 +210,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _heroInnerView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroInnerView.userInteractionEnabled = NO;
     _heroInnerView.layer.borderWidth = 0.7;
-    PPApplyContinuousCorners(_heroInnerView, 22.0);
+    PPApplyContinuousCorners(_heroInnerView, 18.0);
     [_heroPortalView addSubview:_heroInnerView];
 
     _fallbackIconView = [[UIImageView alloc] init];
@@ -210,17 +226,16 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [_heroInnerView addSubview:_fallbackIconView];
 
-    _careAnimationView = [[LOTAnimationView alloc] init];
-    _careAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
-    _careAnimationView.userInteractionEnabled = NO;
-    _careAnimationView.isAccessibilityElement = NO;
-    _careAnimationView.accessibilityElementsHidden = YES;
-    _careAnimationView.backgroundColor = UIColor.clearColor;
-    _careAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-    _careAnimationView.loopAnimation = YES;
-    _careAnimationView.animationSpeed = 0.78;
-    _careAnimationView.hidden = YES;
-    [_heroInnerView addSubview:_careAnimationView];
+    _lottieHeaderView = [[LOTAnimationView alloc] init];
+    _lottieHeaderView.translatesAutoresizingMaskIntoConstraints = NO;
+    _lottieHeaderView.userInteractionEnabled = NO;
+    _lottieHeaderView.isAccessibilityElement = NO;
+    _lottieHeaderView.accessibilityElementsHidden = YES;
+    _lottieHeaderView.backgroundColor = UIColor.clearColor;
+    _lottieHeaderView.contentMode = UIViewContentModeScaleAspectFill;
+    _lottieHeaderView.hidden = YES;
+    _lottieHeaderView.alpha = 1.0;
+    [_surfaceView addSubview:_lottieHeaderView];
 
     _eyebrowLabel = [[PPInsetLabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -250,7 +265,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                    forAxis:UILayoutConstraintAxisVertical];
     [_surfaceView addSubview:_subtitleLabel];
-
+    //_subtitleLabel.hidden = YES;
     _ctaView = [[UIView alloc] init];
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaView.userInteractionEnabled = NO;
@@ -270,6 +285,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _ctaArrowView.contentMode = UIViewContentModeScaleAspectFit;
     [_ctaView addSubview:_ctaArrowView];
 
+    UIView *circle0 = _floatingAmbientCircleViews[0];
+    UIView *circle1 = _floatingAmbientCircleViews[1];
+    UIView *circle2 = _floatingAmbientCircleViews[2];
+    UIView *circle3 = _floatingAmbientCircleViews[3];
+    UIView *circle4 = _floatingAmbientCircleViews[4];
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -285,6 +305,31 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_bottomAmbientGlowView.heightAnchor constraintEqualToConstant:312.0],
         [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-104.0],
         [_bottomAmbientGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:112.0],
+
+        [circle0.widthAnchor constraintEqualToConstant:38.0],
+        [circle0.heightAnchor constraintEqualToAnchor:circle0.widthAnchor],
+        [circle0.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-30.0],
+        [circle0.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
+
+        [circle1.widthAnchor constraintEqualToConstant:30.0],
+        [circle1.heightAnchor constraintEqualToAnchor:circle1.widthAnchor],
+        [circle1.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:32.0],
+        [circle1.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:48.0],
+
+        [circle2.widthAnchor constraintEqualToConstant:33.0],
+        [circle2.heightAnchor constraintEqualToAnchor:circle2.widthAnchor],
+        [circle2.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-104.0],
+        [circle2.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-24.0],
+
+        [circle3.widthAnchor constraintEqualToConstant:17.0],
+        [circle3.heightAnchor constraintEqualToAnchor:circle3.widthAnchor],
+        [circle3.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
+        [circle3.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-34.0],
+
+        [circle4.widthAnchor constraintEqualToConstant:18.0],
+        [circle4.heightAnchor constraintEqualToAnchor:circle4.widthAnchor],
+        [circle4.centerXAnchor constraintEqualToAnchor:_surfaceView.centerXAnchor constant:24.0],
+        [circle4.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:82.0],
 
         [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:22.0],
         [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
@@ -316,10 +361,10 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_fallbackIconView.widthAnchor constraintEqualToConstant:PPUltraCareFallbackIconSize],
         [_fallbackIconView.heightAnchor constraintEqualToConstant:PPUltraCareFallbackIconSize],
 
-        [_careAnimationView.centerXAnchor constraintEqualToAnchor:_heroInnerView.centerXAnchor],
-        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_heroInnerView.centerYAnchor],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
+        [_lottieHeaderView.centerXAnchor constraintEqualToAnchor:_heroInnerView.centerXAnchor],
+        [_lottieHeaderView.centerYAnchor constraintEqualToAnchor:_heroInnerView.centerYAnchor],
+        [_lottieHeaderView.widthAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
+        [_lottieHeaderView.heightAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
 
         [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:18.0],
         [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
@@ -357,8 +402,22 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     view.translatesAutoresizingMaskIntoConstraints = NO;
     view.userInteractionEnabled = NO;
     view.layer.shadowOffset = CGSizeZero;
-    view.layer.shadowRadius = 54.0;
-    view.layer.shadowOpacity = 0.22;
+    view.layer.shadowRadius = 42.0;
+    view.layer.shadowOpacity = 0.16;
+    return view;
+}
+
+- (UIView *)pp_makeFloatingAmbientCircleView
+{
+    UIView *view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    view.userInteractionEnabled = NO;
+    view.isAccessibilityElement = NO;
+    view.accessibilityElementsHidden = YES;
+    view.layer.borderWidth = 0.55;
+    view.layer.shadowOffset = CGSizeZero;
+    view.layer.shadowOpacity = 0.08;
+    view.layer.shadowRadius = 6.0;
     return view;
 }
 
@@ -403,6 +462,35 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [CATransaction commit];
 }
 
+- (void)pp_applyFloatingAmbientCirclePaletteWithAccent:(UIColor *)accent
+                                                  dark:(BOOL)dark
+{
+    UIColor *safeAccent = accent ?: AppPrimaryClr ?: [UIColor colorWithRed:0.949 green:0.149 blue:0.455 alpha:1.0];
+    UIColor *resolvedAccent = PPUltraCareResolvedColor(safeAccent, self.traitCollection);
+    NSArray<NSNumber *> *fillAlphas = dark
+        ? @[@0.18, @0.11, @0.135, @0.085, @0.10]
+        : @[@0.105, @0.065, @0.08, @0.05, @0.06];
+    NSArray<NSNumber *> *borderAlphas = dark
+        ? @[@0.10, @0.06, @0.08, @0.05, @0.055]
+        : @[@0.24, @0.16, @0.19, @0.12, @0.14];
+    NSArray<NSNumber *> *shadowRadii = @[@8.0, @5.0, @6.5, @4.0, @4.5];
+
+    [_floatingAmbientCircleViews enumerateObjectsUsingBlock:^(UIView * _Nonnull circleView,
+                                                              NSUInteger idx,
+                                                              BOOL * _Nonnull stop) {
+        (void)stop;
+        NSUInteger styleIndex = MIN(idx, fillAlphas.count - 1);
+        CGFloat fillAlpha = [fillAlphas[styleIndex] doubleValue];
+        CGFloat borderAlpha = [borderAlphas[styleIndex] doubleValue];
+
+        circleView.backgroundColor = [safeAccent colorWithAlphaComponent:fillAlpha];
+        [circleView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:borderAlpha]];
+        circleView.layer.shadowColor = resolvedAccent.CGColor;
+        circleView.layer.shadowOpacity = dark ? 0.12 : 0.07;
+        circleView.layer.shadowRadius = [shadowRadii[styleIndex] doubleValue];
+    }];
+}
+
 #pragma mark - Layout and appearance
 
 - (void)layoutSubviews
@@ -424,6 +512,13 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _bottomAmbientGlowLayer.cornerRadius = CGRectGetWidth(_bottomAmbientGlowView.bounds) * 0.5;
     _bottomAmbientGlowLayer.masksToBounds = YES;
     [CATransaction commit];
+
+    for (UIView *circleView in _floatingAmbientCircleViews) {
+        CGFloat circleRadius = CGRectGetWidth(circleView.bounds) * 0.5;
+        PPApplyContinuousCorners(circleView, circleRadius);
+        circleView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:circleView.bounds].CGPath;
+    }
 
     _heroPortalView.layer.cornerRadius = CGRectGetHeight(_heroPortalView.bounds) * 0.5;
     _heroInnerView.layer.cornerRadius = CGRectGetHeight(_heroInnerView.bounds) * 0.5;
@@ -449,12 +544,16 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.frame
                                    cornerRadius:PPUltraCareSurfaceCornerRadius].CGPath;
 
-    [_surfaceView bringSubviewToFront:_topAccentLineView];
+    for (UIView *circleView in _floatingAmbientCircleViews) {
+        [_surfaceView bringSubviewToFront:circleView];
+    }
+     [_surfaceView bringSubviewToFront:_topAccentLineView];
     [_surfaceView bringSubviewToFront:_heroPortalView];
     [_surfaceView bringSubviewToFront:_eyebrowLabel];
     [_surfaceView bringSubviewToFront:_titleLabel];
     [_surfaceView bringSubviewToFront:_subtitleLabel];
     [_surfaceView bringSubviewToFront:_ctaView];
+    [_surfaceView bringSubviewToFront:_lottieHeaderView];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -532,7 +631,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_surfaceView pp_setBorderColor:surfaceBorder];
 
     UIColor *bottomGlowColor = [UIColor colorNamed:@"NewBg"];
-    CGFloat ambientGlowPeakAlpha = dark ? 0.14 : 0.11;
+    CGFloat ambientGlowPeakAlpha = dark ? 0.10 : 0.075;
     [self pp_applyAmbientGlowColor:accent
                              view:_topAmbientGlowView
                     gradientLayer:_topAmbientGlowLayer
@@ -540,7 +639,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [self pp_applyAmbientGlowColor:bottomGlowColor
                              view:_bottomAmbientGlowView
                     gradientLayer:_bottomAmbientGlowLayer
-                        peakAlpha:dark ? 0.14 : 0.15];
+                        peakAlpha:dark ? 0.10 : 0.11];
+    [self pp_applyFloatingAmbientCirclePaletteWithAccent:accent dark:dark];
 
     UIColor *portalFill =
         PPUltraCareDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
@@ -596,12 +696,6 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 }
 
 #pragma mark - Configuration
-
-- (void)configure
-{
-    [self configureWithAnimationName:PPUltraCareDefaultAnimationName];
-}
-
 - (void)configureWithAnimationName:(NSString *)animationName
 {
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -641,15 +735,9 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 {
     NSString *safeName = PPSafeString(animationName);
     if (safeName.length == 0) {
-        safeName = PPUltraCareDefaultAnimationName;
-    }
+     }
 
     if ([_currentAnimationName isEqualToString:safeName]) {
-        if (_careAnimationView.sceneModel) {
-            _animationReady = YES;
-            [self pp_revealConfiguredCareAnimation];
-            return;
-        }
         if (_animationLoading) {
             return;
         }
@@ -661,102 +749,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _animationLoading = YES;
     _animationReady = NO;
     _didRevealAnimation = NO;
-    [_careAnimationView stop];
-    _careAnimationView.hidden = YES;
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     _fallbackIconView.hidden = NO;
     _fallbackIconView.alpha = 1.0;
 
-    __weak typeof(self) weakSelf = self;
-    [AppClasses setAnimationNamed:safeName
-                            ToView:_careAnimationView
-                         withSpeed:0.48
-                        completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf->_animationLoadToken != loadToken) {
-                return;
-            }
-
-            strongSelf->_animationLoading = NO;
-            strongSelf->_animationReady = success && strongSelf->_careAnimationView.sceneModel;
-            if (!strongSelf->_animationReady) {
-                strongSelf->_careAnimationView.hidden = YES;
-                strongSelf->_fallbackIconView.hidden = NO;
-                strongSelf->_fallbackIconView.alpha = 1.0;
-                return;
-            }
-            [strongSelf pp_revealConfiguredCareAnimation];
-        });
-    }];
 }
 
-- (void)pp_revealConfiguredCareAnimation
-{
-    if (!_animationReady || !_careAnimationView.sceneModel) {
-        return;
-    }
-    if (_shouldDeferEntrance && !_didPlayPostLayoutEntrance) {
-        _careAnimationView.hidden = YES;
-        _careAnimationView.alpha = 0.0;
-        _fallbackIconView.hidden = NO;
-        return;
-    }
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [_careAnimationView stop];
-        _careAnimationView.animationProgress = 0.42;
-        _careAnimationView.hidden = NO;
-        _careAnimationView.alpha = 1.0;
-        _careAnimationView.transform = CGAffineTransformIdentity;
-        _fallbackIconView.hidden = YES;
-        _fallbackIconView.alpha = 0.0;
-        _didRevealAnimation = YES;
-        return;
-    }
-
-    if (_didRevealAnimation &&
-        !_careAnimationView.hidden &&
-        _careAnimationView.alpha >= 0.99) {
-        if (!_careAnimationView.isAnimationPlaying && self.window) {
-            _careAnimationView.loopAnimation = YES;
-            [_careAnimationView playFromProgress:0.0
-                                     toProgress:1.0
-                                 withCompletion:nil];
-        }
-        return;
-    }
-
-    _didRevealAnimation = YES;
-    _careAnimationView.hidden = NO;
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeScale(0.96, 0.96);
-    _fallbackIconView.hidden = NO;
-    _fallbackIconView.alpha = 1.0;
-
-    if (self.window) {
-        _careAnimationView.loopAnimation = YES;
-        [_careAnimationView playFromProgress:0.0
-                                 toProgress:1.0
-                             withCompletion:nil];
-    }
-
-    [UIView animateWithDuration:0.46
-                          delay:_didPlayPostLayoutEntrance ? 0.10 : 0.04
-                        options:UIViewAnimationOptionCurveEaseOut |
-                                UIViewAnimationOptionBeginFromCurrentState |
-                                UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self->_careAnimationView.alpha = 1.0;
-        self->_careAnimationView.transform = CGAffineTransformIdentity;
-        self->_fallbackIconView.alpha = 0.0;
-        self->_fallbackIconView.transform = CGAffineTransformMakeScale(0.94, 0.94);
-    } completion:^(__unused BOOL finished) {
-        self->_fallbackIconView.hidden = YES;
-        self->_fallbackIconView.transform = CGAffineTransformIdentity;
-    }];
-}
 
 #pragma mark - Entrance choreography
 
@@ -787,6 +784,20 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _bottomAmbientGlowView.transform =
         CGAffineTransformConcat(CGAffineTransformMakeTranslation(-7.0, 6.0),
                                 CGAffineTransformMakeScale(0.98, 0.98));
+    [_floatingAmbientCircleViews enumerateObjectsUsingBlock:^(UIView * _Nonnull circleView,
+                                                              NSUInteger idx,
+                                                              BOOL * _Nonnull stop) {
+        (void)stop;
+        CGFloat direction = (idx % 2 == 0) ? 1.0 : -1.0;
+        if (Language.isRTL) {
+            direction *= -1.0;
+        }
+        circleView.alpha = 0.0;
+        circleView.transform =
+            CGAffineTransformConcat(CGAffineTransformMakeTranslation(direction * (2.0 + (CGFloat)idx),
+                                                                     4.0 + MIN((CGFloat)idx, 2.0)),
+                                    CGAffineTransformMakeScale(0.92, 0.92));
+    }];
 
     CGFloat heroDirection = Language.isRTL ? -10.0 : 10.0;
     _heroPortalView.alpha = 0.0;
@@ -804,11 +815,6 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     }];
 
     _didRevealAnimation = NO;
-    [_careAnimationView stop];
-    _careAnimationView.animationProgress = 0.0;
-    _careAnimationView.hidden = YES;
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     _fallbackIconView.hidden = NO;
     _fallbackIconView.alpha = 0.0;
 }
@@ -841,6 +847,22 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         self->_bottomAmbientGlowView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
+    [_floatingAmbientCircleViews enumerateObjectsUsingBlock:^(UIView * _Nonnull circleView,
+                                                              NSUInteger idx,
+                                                              BOOL * _Nonnull stop) {
+        (void)stop;
+        NSTimeInterval circleDelay = delay + 0.05 + MIN((NSTimeInterval)idx * 0.035, 0.14);
+        [UIView animateWithDuration:0.52
+                              delay:circleDelay
+                            options:UIViewAnimationOptionCurveEaseOut |
+                                    UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            circleView.alpha = 1.0;
+            circleView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
     [UIView animateWithDuration:0.48
                           delay:delay + 0.02
                         options:UIViewAnimationOptionCurveEaseOut |
@@ -871,7 +893,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     if (_animationReady) {
         [self pp_revealConfiguredCareAnimation];
     } else {
-        [self pp_configureCareAnimationNamed:_currentAnimationName ?: PPUltraCareDefaultAnimationName];
+
     }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
@@ -893,6 +915,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _heroPortalView.transform = CGAffineTransformIdentity;
     _fallbackIconView.alpha = 1.0;
     _fallbackIconView.transform = CGAffineTransformIdentity;
+    for (UIView *circleView in _floatingAmbientCircleViews) {
+        circleView.alpha = 1.0;
+        circleView.transform = CGAffineTransformIdentity;
+        circleView.layer.opacity = 1.0;
+    }
     for (UIView *view in [self pp_copyViews]) {
         view.alpha = 1.0;
         view.transform = CGAffineTransformIdentity;
@@ -931,20 +958,58 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [view.layer addAnimation:group forKey:key];
 }
 
+- (void)pp_addFloatingCircleAnimationToView:(UIView *)view
+                                      index:(NSUInteger)index
+                                          x:(CGFloat)x
+                                          y:(CGFloat)y
+                                   duration:(NSTimeInterval)duration
+                                 minOpacity:(CGFloat)minOpacity
+                                 maxOpacity:(CGFloat)maxOpacity
+{
+    NSString *key =
+        [NSString stringWithFormat:@"%@.%lu",
+                                   PPUltraCareFloatingCircleAnimationKeyPrefix,
+                                   (unsigned long)index];
+    if (!view || [view.layer animationForKey:key]) {
+        return;
+    }
+
+    CABasicAnimation *xAnimation =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    xAnimation.fromValue = @0.0;
+    xAnimation.toValue = @(x);
+
+    CABasicAnimation *yAnimation =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    yAnimation.fromValue = @0.0;
+    yAnimation.toValue = @(y);
+
+    CABasicAnimation *scale =
+        [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scale.fromValue = @0.985;
+    scale.toValue = @1.035;
+
+    CABasicAnimation *opacity =
+        [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacity.fromValue = @(maxOpacity);
+    opacity.toValue = @(minOpacity);
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[xAnimation, yAnimation, scale, opacity];
+    group.duration = duration;
+    group.beginTime = CACurrentMediaTime() + MIN((NSTimeInterval)index * 0.18, 0.64);
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.timingFunction =
+        [CAMediaTimingFunction functionWithControlPoints:0.4 :0.0 :0.2 :1.0];
+    [view.layer addAnimation:group forKey:key];
+}
+
 - (void)pp_startBackgroundMotionIfNeeded
 {
     if (_shouldDeferEntrance || !self.window) {
         return;
     }
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopBackgroundMotion];
-        if (_animationReady) {
-            [_careAnimationView stop];
-            _careAnimationView.animationProgress = 0.42;
-        }
-        return;
-    }
-
     [self pp_addFloatAnimationToView:_topAmbientGlowView
                                 key:PPUltraCareGlowTopAnimationKey
                                   x:-5.0
@@ -955,6 +1020,21 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
                                   x:4.0
                                   y:-3.0
                            duration:6.6];
+
+    CGFloat circleXOffsets[] = {3.0, -2.5, -4.0, 2.0, 3.5};
+    CGFloat circleYOffsets[] = {8.0, -6.0, 7.0, -5.0, 5.0};
+    NSTimeInterval circleDurations[] = {4.8, 5.6, 6.4, 4.2, 5.1};
+    CGFloat circleMinOpacities[] = {0.72, 0.62, 0.68, 0.56, 0.60};
+    NSUInteger circleCount = MIN(_floatingAmbientCircleViews.count, (NSUInteger)5);
+    for (NSUInteger idx = 0; idx < circleCount; idx++) {
+        [self pp_addFloatingCircleAnimationToView:_floatingAmbientCircleViews[idx]
+                                            index:idx
+                                                x:circleXOffsets[idx]
+                                                y:circleYOffsets[idx]
+                                         duration:circleDurations[idx]
+                                       minOpacity:circleMinOpacities[idx]
+                                       maxOpacity:1.0];
+    }
 
     if (![_orbitCarrierView.layer animationForKey:PPUltraCareOrbitAnimationKey]) {
         CABasicAnimation *orbit =
@@ -989,16 +1069,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_pulseRingLayer addAnimation:pulse forKey:PPUltraCarePulseAnimationKey];
     }
 
-    if (_animationReady && !_careAnimationView.isAnimationPlaying) {
-        _careAnimationView.hidden = NO;
-        _careAnimationView.alpha = 1.0;
-        _careAnimationView.loopAnimation = YES;
-        _fallbackIconView.hidden = YES;
-        _fallbackIconView.alpha = 0.0;
-        [_careAnimationView playFromProgress:0.0
-                                 toProgress:1.0
-                             withCompletion:nil];
-    }
+    [self pp_updateLottieForCurrentTimeIfNeeded];
 }
 
 - (void)pp_stopAmbientMotion
@@ -1007,12 +1078,24 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_bottomAmbientGlowView.layer removeAnimationForKey:PPUltraCareGlowBottomAnimationKey];
     [_orbitCarrierView.layer removeAnimationForKey:PPUltraCareOrbitAnimationKey];
     [_pulseRingLayer removeAnimationForKey:PPUltraCarePulseAnimationKey];
+    [_floatingAmbientCircleViews enumerateObjectsUsingBlock:^(UIView * _Nonnull circleView,
+                                                              NSUInteger idx,
+                                                              BOOL * _Nonnull stop) {
+        (void)stop;
+        NSString *key =
+            [NSString stringWithFormat:@"%@.%lu",
+                                       PPUltraCareFloatingCircleAnimationKeyPrefix,
+                                       (unsigned long)idx];
+        [circleView.layer removeAnimationForKey:key];
+    }];
 }
 
 - (void)pp_stopBackgroundMotion
 {
     [self pp_stopAmbientMotion];
-    [_careAnimationView stop];
+     _lottieLoopToken += 1;
+    [_lottieHeaderView stop];
+    _lottieHeaderView.hidden = YES;
 }
 
 #pragma mark - Lifecycle
@@ -1040,11 +1123,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _didRevealAnimation = NO;
     _didPlayPostLayoutEntrance = NO;
     _shouldDeferEntrance = NO;
+    _currentLottiePath = nil;
 
-    [_careAnimationView stop];
-    _careAnimationView.hidden = YES;
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformIdentity;
     _fallbackIconView.hidden = NO;
     _fallbackIconView.alpha = 1.0;
     _fallbackIconView.transform = CGAffineTransformIdentity;
@@ -1071,6 +1151,105 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 {
     [self pp_applyTypography];
     [self setNeedsLayout];
+}
+
+#pragma mark - Lottie
+
+- (void)pp_playLottieLoopWithDelay2s
+{
+    _lottieLoopToken += 1;
+    NSInteger token = _lottieLoopToken;
+
+    _lottieHeaderView.hidden = NO;
+    _lottieHeaderView.alpha = 1;
+
+    [_lottieHeaderView stop];
+    _lottieHeaderView.loopAnimation = NO;
+    _lottieHeaderView.animationProgress = 0.0;
+
+    __weak typeof(self) weakSelf = self;
+    [_lottieHeaderView playWithCompletion:^(BOOL finished) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf->_lottieLoopToken != token) {
+                return;
+            }
+
+            NSTimeInterval delay = finished ? 2.0 : 0.5;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) innerSelf = weakSelf;
+                if (!innerSelf || innerSelf->_lottieLoopToken != token) {
+                    return;
+                }
+                [innerSelf pp_playLottieLoopWithDelay2s];
+            });
+        });
+    }];
+}
+
+- (NSString *)pp_lottieFirebasePathForCurrentTime
+{
+    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:NSDate.date];
+    return @"Boy Giving Food To Bird";
+    if (hour < 9) {
+        return @"Woman playing with a dog";
+    }
+    if (hour < 12) {
+        return @"Boy Giving Food To Bird";
+    }
+    if (hour < 17) {
+        return @"Man playing with a dog";
+    }
+    if (hour < 20) {
+        return @"Womanlovingpetcats";
+    }
+    if (hour < 23) {
+        return @"evening chair cat and girl";
+    }
+    return @"man playing with cat during free time";
+}
+
+- (void)pp_updateLottieForCurrentTimeIfNeeded
+{
+    NSString *path = [self pp_lottieFirebasePathForCurrentTime];
+    if (path.length == 0) return;
+
+    if (_currentLottiePath.length > 0 && [_currentLottiePath isEqualToString:path]) {
+        if (!_lottieHeaderView.isAnimationPlaying) {
+            [self pp_playLottieLoopWithDelay2s];
+        }
+        return;
+    }
+
+    _currentLottiePath = path;
+    _lottieHeaderView.alpha = 0.90;
+    __weak typeof(self) weakSelf = self;
+    NSString *storagePath = [NSString stringWithFormat:@"LottieAnimations/%@.json", path];
+    [AppClasses fetchLottieJSONFromFirebasePath:storagePath completion:^(NSDictionary * _Nonnull jsonDict,
+                                                                        NSError * _Nonnull error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            if (error || ![jsonDict isKindOfClass:[NSDictionary class]]) {
+                strongSelf->_currentLottiePath = nil;
+                return;
+            }
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                strongSelf->_currentLottiePath = nil;
+                return;
+            }
+
+            [strongSelf->_lottieHeaderView setSceneModel:composition];
+            [strongSelf->_lottieHeaderView setNeedsLayout];
+            [strongSelf->_lottieHeaderView layoutIfNeeded];
+            [strongSelf->_surfaceView bringSubviewToFront:strongSelf->_lottieHeaderView];
+            [strongSelf pp_playLottieLoopWithDelay2s];
+        });
+    }];
 }
 
 @end

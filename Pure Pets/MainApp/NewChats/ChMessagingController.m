@@ -336,7 +336,7 @@ static UIColor *PPChatEmptyStateIconSurfaceColor(void)
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
     self.typingAutoHideThreshold = 0.0; // px from bottom
 
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     [self setupInputView];
     [self setupTableView];
     [self pp_setupPremiumEmptyStateIfNeeded];

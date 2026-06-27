@@ -64,6 +64,7 @@
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
 #import "PPHomeProviderCategoryPillCell.h"
+#import "PPHomeUltraPremuimProviderCategoryPillCell.h"
 #import "ProviderCompaniesListVC.h"
 
 
@@ -2736,6 +2737,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.collectionView.contentOffset = CGPointMake(0.0, targetOffsetY);
 
     [self refreshHeroSectionAppearance];
+    [self pp_updateVisibleHomeHeaderScrollAppearanceAnimated:NO];
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionPremiumSearch),
@@ -2972,11 +2974,33 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                           iconName:cfg.iconName
                               menu:cfg.section == PPHomeSectionMainKinds ? nil : cfg.menu
                      ppHomeSection:cfg.section];
+        [header setSurfaceDecorationActive:[self pp_shouldShowScrolledSectionHeaderDecoration] animated:NO];
         header.onTap = ^{
             __strong typeof(weakSelf) self = weakSelf;
             [self handleSeeAllForSection:cfg.section];
         };
         PPHomeApplySemanticToViewTree(header, PPHomeCurrentSemanticAttribute());
+    }
+}
+
+- (BOOL)pp_shouldShowScrolledSectionHeaderDecoration
+{
+    return YES;
+}
+
+- (void)pp_updateVisibleHomeHeaderScrollAppearanceAnimated:(BOOL)animated
+{
+    if (!self.isViewLoaded || !self.collectionView) {
+        return;
+    }
+
+    BOOL decorationActive = [self pp_shouldShowScrolledSectionHeaderDecoration];
+    for (UICollectionReusableView *visibleHeader in
+         [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
+        if (![visibleHeader isKindOfClass:PPSectionHeaderView.class]) {
+            continue;
+        }
+        [(PPSectionHeaderView *)visibleHeader setSurfaceDecorationActive:decorationActive animated:animated];
     }
 }
 
@@ -6790,6 +6814,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 
     [self refreshHeroSectionAppearance];
+    [self pp_updateVisibleHomeHeaderScrollAppearanceAnimated:NO];
     if (self.needsVisibleHomeThemeAppearanceRefresh) {
         self.needsVisibleHomeThemeAppearanceRefresh = NO;
         [self pp_refreshVisibleHomeAppearanceForCurrentTheme];
@@ -7141,8 +7166,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     }
     [self.collectionView registerClass:PPHomePremiumSearchCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
-    [self.collectionView registerClass:PPHomeProviderCategoryPillCell.class
-            forCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomeUltraPremuimProviderCategoryPillCell.class
+            forCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier];
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
@@ -7362,8 +7387,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             }
 
         if (section == PPHomeSectionProviderCategoryNav) {
-            PPHomeProviderCategoryPillCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier
+            PPHomeUltraPremuimProviderCategoryPillCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier
                                                           forIndexPath:indexPath];
 
             PPHomeProviderCategoryItem *categoryItem =
@@ -7808,6 +7833,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                           iconName:cfg.iconName
                               menu:cfg.section == PPHomeSectionMainKinds ? nil : cfg.menu
                      ppHomeSection:cfg.section];
+        [header setSurfaceDecorationActive:[weakSelf pp_shouldShowScrolledSectionHeaderDecoration] animated:NO];
 
         header.onTap = ^{
             [weakSelf handleSeeAllForSection:cfg.section];
@@ -11267,25 +11293,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
 
-    UINavigationController *nav = self.navigationController;
-    PPSearchViewController *searchVC = nil;
-
-    for (UIViewController *vc in nav.viewControllers.reverseObjectEnumerator) {
-        if ([vc isKindOfClass:PPSearchViewController.class]) {
-            searchVC = (PPSearchViewController *)vc;
-            break;
-        }
-    }
-
-    if (searchVC) {
-        if (nav.topViewController != searchVC) {
-            [nav popToViewController:searchVC animated:YES];
-        }
-    } else {
-        searchVC = [PPSearchViewController new];
-        [PPHomeHelper pushViewControllerSafely:searchVC from:self animated:YES];
-    }
-
+    PPSearchViewController *searchVC = [PPSearchViewController new];
+    PPNavigationController *presentNav = [[PPNavigationController alloc] initWithRootViewController:searchVC];
+    presentNav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:presentNav animated:YES completion:nil];
     [searchVC focusSearchField];
 }
 
@@ -12193,7 +12204,7 @@ presentingViewController:self
 
 - (void)pp_applyPremiumHomeBackgroundAppearance
 {
-    UIColor *backgroundColor = AppBageColor() ?: AppBackgroundClr ?: UIColor.whiteColor;
+    UIColor *backgroundColor = AppBackgroundClr ?: AppBackgroundClr ?: UIColor.whiteColor;
     self.view.backgroundColor = backgroundColor;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     self.pp_premiumBackgroundCanvasView.backgroundColor = backgroundColor;
@@ -12284,36 +12295,36 @@ presentingViewController:self
     UIColor *signatureColor = AppPrimaryClrShiner ?: UIColor.systemPurpleColor;
     UIColor *supportingColor = AppPrimaryClrShiner ?: AppForgroundColr ?: signatureColor;
     UIColor *topAtmosphereColor = AppPrimaryClrShiner;
-
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:UIColor.clearColor
-                        peakAlpha:(isDark ? 0.118 : 0.008) * accessibilityScale
-                      middleAlpha:(isDark ? 0.054 : 0.0008) * accessibilityScale];
+                            color:topAtmosphereColor
+                        peakAlpha:(isDark ? 0.118 : 0.028) * accessibilityScale
+                      middleAlpha:(isDark ? 0.054 : 0.048) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:UIColor.clearColor
-                        peakAlpha:(isDark ? 0.075 : 0.00050) * accessibilityScale
-                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
+                            color:supportingColor
+                        peakAlpha:(isDark ? 0.075 : 0.035) * accessibilityScale
+                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.025)) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:UIColor.clearColor
-                        peakAlpha:(isDark ? 0.27 : 0.0021) * accessibilityScale
-                      middleAlpha:(isDark ? 0.095 : 0.00072) * accessibilityScale];
+                            color:signatureColor
+                        peakAlpha:(isDark ? 0.27 : 0.041) * accessibilityScale
+                      middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
     /*
-     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                             color:topAtmosphereColor
-                         peakAlpha:(isDark ? 0.118 : 0.028) * accessibilityScale
-                       middleAlpha:(isDark ? 0.054 : 0.048) * accessibilityScale];
 
-     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                             color:supportingColor
-                         peakAlpha:(isDark ? 0.075 : 0.050) * accessibilityScale
-                       middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
+[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+           color:UIColor.clearColor
+       peakAlpha:(isDark ? 0.118 : 0.008) * accessibilityScale
+     middleAlpha:(isDark ? 0.054 : 0.0008) * accessibilityScale];
 
-     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                             color:signatureColor
-                         peakAlpha:(isDark ? 0.27 : 0.21) * accessibilityScale
-                       middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
+[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+           color:UIColor.clearColor
+       peakAlpha:(isDark ? 0.075 : 0.00050) * accessibilityScale
+     middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
+
+[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+           color:UIColor.clearColor
+       peakAlpha:(isDark ? 0.27 : 0.0021) * accessibilityScale
+     middleAlpha:(isDark ? 0.095 : 0.00072) * accessibilityScale];
      */
 }
 

@@ -855,7 +855,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (UIColor *)pp_adCanvasColor
 {
-    return AppPageColor();
+    return AppBackgroundClr;
 }
 
 - (UIColor *)pp_adSurfaceColor

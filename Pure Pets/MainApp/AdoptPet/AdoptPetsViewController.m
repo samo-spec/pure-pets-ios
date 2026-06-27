@@ -74,7 +74,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.items = [NSMutableArray array];
     self.filteredItems = [NSMutableArray array];
 

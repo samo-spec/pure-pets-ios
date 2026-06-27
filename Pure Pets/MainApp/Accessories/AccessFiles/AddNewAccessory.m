@@ -668,7 +668,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     }
 }
 
-- (void)setBackAndCorners { self.view.backgroundColor = AppPageColor(); }
+- (void)setBackAndCorners { self.view.backgroundColor = AppBackgroundClr; }
 
 - (void)pp_setupUploadProgressView {
     if (self.uploadProgressView) return;
@@ -898,7 +898,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 #pragma mark - Form (TableView Setup)
 
 - (void)initForm {
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.view.clipsToBounds = YES;
     UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
     tv.translatesAutoresizingMaskIntoConstraints = NO;

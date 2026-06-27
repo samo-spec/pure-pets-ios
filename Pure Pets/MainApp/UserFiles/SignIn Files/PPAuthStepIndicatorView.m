@@ -32,7 +32,7 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
 - (NSArray<UIColor *> *)pp_appStepAnimationPalette
 {
     UIColor *primaryColor = AppPrimaryClr ?: [GM appPrimaryColor];
-    UIColor *pageColor = AppBageColor();
+    UIColor *pageColor = AppBackgroundClr;
     UIColor *lighterColor = AppPrimaryClrShiner ?: [GM AppPrimaryColorShainer];
 
     primaryColor = primaryColor ?: lighterColor ?: pageColor;

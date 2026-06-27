@@ -405,7 +405,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 {
     [super viewDidLoad];
     [self pp_applyKeyboardManagerOverridesIfNeeded];
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
                       button:nil
                        title:nil//PPPetCareLocalized(@"pet_care_title", @"Pet Care")
@@ -1866,7 +1866,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     }
 
     UIColor *accent = PPPetCareAccentColor();
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.heroView.backgroundColor = PPPetCareSurfaceColor();
     [self.heroView pp_setBorderColor:PPPetCareBorderColor()];
     self.heroView.layer.shadowOpacity = dark ? 0.0 : 0.08;

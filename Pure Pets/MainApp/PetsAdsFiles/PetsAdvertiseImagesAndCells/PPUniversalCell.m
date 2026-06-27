@@ -24,12 +24,12 @@
 static CGFloat const PPUniversalCardCornerRadius = 28.0;
 static CGFloat const PPUniversalImageCornerRadius = 22.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
-static CGFloat const PPUniversalInnerSpacing = 12.0;
-static CGFloat const PPUniversalButtonHeight = 38.0;
-static CGFloat const PPUniversalPillHeight = 34.0;
-static CGFloat const PPUniversalCompactTitleHeight = 24.0;
-static CGFloat const PPUniversalCompactPriceHeight = 26.0;
-static CGFloat const PPUniversalControlButtonSize = 38.0;
+static CGFloat const PPUniversalInnerSpacing = 8.0;
+static CGFloat const PPUniversalButtonHeight = 34.0;
+static CGFloat const PPUniversalPillHeight = 28.0;
+static CGFloat const PPUniversalCompactTitleHeight = 20.0;
+static CGFloat const PPUniversalCompactPriceHeight = 22.0;
+static CGFloat const PPUniversalControlButtonSize = 32.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.86;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
 static CGFloat const PPUniversalCompactCardVerticalInset = 4.0;
@@ -64,13 +64,13 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:0.82],
+    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:1.0],
                                       [UIColor colorWithWhite:0.12 alpha:0.82]);
 }
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return [AppLightGrayColor colorWithAlphaComponent:0.84];
+    return [[UIColor colorNamed:@"AppBageGlows"]  colorWithAlphaComponent:0.94];
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)

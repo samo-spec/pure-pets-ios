@@ -1264,7 +1264,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyPremiumDataViewBackgroundAppearance
 {
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     if (!self.collectionView) {
         return;
     }

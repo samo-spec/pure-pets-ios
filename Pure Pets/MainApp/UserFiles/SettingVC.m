@@ -737,7 +737,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     [super viewDidLoad];
     self.prefs = [NSUserDefaults standardUserDefaults];
     self.alertAppear = NO;
-    self.view.backgroundColor = AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.navigationItem.title = kLang(@"Setting");
 
     [self pp_setupTableView];
