@@ -298,33 +298,33 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
         [_topAmbientGlowView.widthAnchor constraintEqualToConstant:372.0],
         [_topAmbientGlowView.heightAnchor constraintEqualToConstant:372.0],
-        [_topAmbientGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:138.0],
-        [_topAmbientGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-152.0],
+        [_topAmbientGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:78.0],
+        [_topAmbientGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
 
         [_bottomAmbientGlowView.widthAnchor constraintEqualToConstant:312.0],
         [_bottomAmbientGlowView.heightAnchor constraintEqualToConstant:312.0],
-        [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-104.0],
+        [_bottomAmbientGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-54.0],
         [_bottomAmbientGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:112.0],
 
-        [circle0.widthAnchor constraintEqualToConstant:38.0],
+        [circle0.widthAnchor constraintEqualToConstant:18.0],
         [circle0.heightAnchor constraintEqualToAnchor:circle0.widthAnchor],
         [circle0.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-30.0],
         [circle0.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
 
-        [circle1.widthAnchor constraintEqualToConstant:30.0],
+        [circle1.widthAnchor constraintEqualToConstant:10.0],
         [circle1.heightAnchor constraintEqualToAnchor:circle1.widthAnchor],
         [circle1.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:32.0],
         [circle1.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:48.0],
 
-        [circle2.widthAnchor constraintEqualToConstant:33.0],
+        [circle2.widthAnchor constraintEqualToConstant:13.0],
         [circle2.heightAnchor constraintEqualToAnchor:circle2.widthAnchor],
         [circle2.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-104.0],
         [circle2.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-24.0],
 
         [circle3.widthAnchor constraintEqualToConstant:17.0],
         [circle3.heightAnchor constraintEqualToAnchor:circle3.widthAnchor],
-        [circle3.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
-        [circle3.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-34.0],
+        [circle3.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-70.0],
+        [circle3.bottomAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:34.0],
 
         [circle4.widthAnchor constraintEqualToConstant:18.0],
         [circle4.heightAnchor constraintEqualToAnchor:circle4.widthAnchor],
@@ -468,11 +468,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     UIColor *safeAccent = accent ?: AppPrimaryClr ?: [UIColor colorWithRed:0.949 green:0.149 blue:0.455 alpha:1.0];
     UIColor *resolvedAccent = PPUltraCareResolvedColor(safeAccent, self.traitCollection);
     NSArray<NSNumber *> *fillAlphas = dark
-        ? @[@0.18, @0.11, @0.135, @0.085, @0.10]
-        : @[@0.105, @0.065, @0.08, @0.05, @0.06];
+        ? @[@0.14, @0.08, @0.105, @0.055, @0.05]
+        : @[@0.55, @0.025, @0.03, @0.02, @0.01];
     NSArray<NSNumber *> *borderAlphas = dark
         ? @[@0.10, @0.06, @0.08, @0.05, @0.055]
-        : @[@0.24, @0.16, @0.19, @0.12, @0.14];
+        : @[@0.14, @0.08, @0.11, @0.06, @0.07];
     NSArray<NSNumber *> *shadowRadii = @[@8.0, @5.0, @6.5, @4.0, @4.5];
 
     [_floatingAmbientCircleViews enumerateObjectsUsingBlock:^(UIView * _Nonnull circleView,

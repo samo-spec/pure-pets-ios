@@ -22,12 +22,12 @@
 #import "VetModel.h"
 
 static CGFloat const PPUniversalCardCornerRadius = 28.0;
-static CGFloat const PPUniversalImageCornerRadius = 22.0;
+static CGFloat const PPUniversalImageCornerRadius = 24.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
-static CGFloat const PPUniversalInnerSpacing = 8.0;
+static CGFloat const PPUniversalInnerSpacing = 10.0;
 static CGFloat const PPUniversalButtonHeight = 34.0;
 static CGFloat const PPUniversalPillHeight = 28.0;
-static CGFloat const PPUniversalCompactTitleHeight = 20.0;
+static CGFloat const PPUniversalCompactTitleHeight = 22.0;
 static CGFloat const PPUniversalCompactPriceHeight = 22.0;
 static CGFloat const PPUniversalControlButtonSize = 32.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.86;

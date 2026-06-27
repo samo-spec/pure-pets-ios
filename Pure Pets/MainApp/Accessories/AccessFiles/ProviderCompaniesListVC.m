@@ -873,6 +873,10 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 
 @interface ProviderCompaniesListVC () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIView *tableBackgroundMiddleGlowView;
+@property (nonatomic, strong) UIView *tableBackgroundBottomGlowView;
+@property (nonatomic, strong) CAGradientLayer *tableBackgroundMiddleGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *tableBackgroundBottomGlowLayer;
 @property (nonatomic, strong) UIView *headerContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
 @property (nonatomic, strong) UIVisualEffectView *heroFrostedMaterialView;
@@ -958,6 +962,17 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 - (CGFloat)pp_expandedHeroContentHeight;
 - (CGFloat)pp_collapsedHeroHeight;
 - (CGFloat)pp_heroCollapseDistance;
+- (CAGradientLayer *)pp_makeBackgroundGlowLayer;
+- (void)pp_applyBackgroundGlowColor:(UIColor *)color
+                               view:(UIView *)view
+                      gradientLayer:(CAGradientLayer *)gradientLayer
+                          peakAlpha:(CGFloat)peakAlpha;
+- (void)pp_addHeroAmbientSequenceToView:(UIView *)view
+                                  delay:(CFTimeInterval)delay
+                                 travel:(CGFloat)travel
+                             scaleDelta:(CGFloat)scaleDelta
+                           opacityFloor:(CGFloat)opacityFloor
+                                    key:(NSString *)key;
 - (void)pp_stopHeroAmbientMotion;
 - (void)pp_refreshProviderRatingSummaries;
 @end
@@ -1059,6 +1074,18 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroAmbientGlowView.layer.cornerRadius = CGRectGetWidth(self.heroAmbientGlowView.bounds) * 0.5;
     self.heroAmbientAccentView.layer.cornerRadius = CGRectGetWidth(self.heroAmbientAccentView.bounds) * 0.5;
     self.heroAmbientSupportView.layer.cornerRadius = CGRectGetWidth(self.heroAmbientSupportView.bounds) * 0.5;
+    self.tableBackgroundMiddleGlowView.layer.cornerRadius = CGRectGetWidth(self.tableBackgroundMiddleGlowView.bounds) * 0.5;
+    self.tableBackgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.tableBackgroundBottomGlowView.bounds) * 0.5;
+    self.tableBackgroundMiddleGlowLayer.frame = self.tableBackgroundMiddleGlowView.bounds;
+    self.tableBackgroundMiddleGlowLayer.cornerRadius = CGRectGetWidth(self.tableBackgroundMiddleGlowView.bounds) * 0.5;
+    self.tableBackgroundMiddleGlowLayer.masksToBounds = YES;
+    self.tableBackgroundBottomGlowLayer.frame = self.tableBackgroundBottomGlowView.bounds;
+    self.tableBackgroundBottomGlowLayer.cornerRadius = CGRectGetWidth(self.tableBackgroundBottomGlowView.bounds) * 0.5;
+    self.tableBackgroundBottomGlowLayer.masksToBounds = YES;
+    self.tableBackgroundMiddleGlowView.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:self.tableBackgroundMiddleGlowView.bounds].CGPath;
+    self.tableBackgroundBottomGlowView.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:self.tableBackgroundBottomGlowView.bounds].CGPath;
     PPProviderCompaniesApplyContinuousCorners(self.heroSearchChromeView, CGRectGetHeight(self.heroSearchChromeView.bounds) * 0.5);
     self.heroSearchChromeView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.heroSearchChromeView.bounds
@@ -1106,6 +1133,23 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     } else {
         // Fallback on earlier versions
     }
+
+    self.tableBackgroundMiddleGlowView = [[UIView alloc] init];
+    self.tableBackgroundMiddleGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tableBackgroundMiddleGlowView.userInteractionEnabled = NO;
+    self.tableBackgroundMiddleGlowView.clipsToBounds = NO;
+    self.tableBackgroundMiddleGlowLayer = [self pp_makeBackgroundGlowLayer];
+    [self.tableBackgroundMiddleGlowView.layer insertSublayer:self.tableBackgroundMiddleGlowLayer atIndex:0];
+    [self.view addSubview:self.tableBackgroundMiddleGlowView];
+
+    self.tableBackgroundBottomGlowView = [[UIView alloc] init];
+    self.tableBackgroundBottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tableBackgroundBottomGlowView.userInteractionEnabled = NO;
+    self.tableBackgroundBottomGlowView.clipsToBounds = NO;
+    self.tableBackgroundBottomGlowLayer = [self pp_makeBackgroundGlowLayer];
+    [self.tableBackgroundBottomGlowView.layer insertSublayer:self.tableBackgroundBottomGlowLayer atIndex:0];
+    [self.view addSubview:self.tableBackgroundBottomGlowView];
+
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tableView.backgroundColor = UIColor.clearColor;
@@ -1123,6 +1167,16 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     [self.view addSubview:self.tableView];
 
     [NSLayoutConstraint activateConstraints:@[
+        [self.tableBackgroundMiddleGlowView.leadingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-60.0],
+        [self.tableBackgroundMiddleGlowView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:112.0],
+        [self.tableBackgroundMiddleGlowView.widthAnchor constraintEqualToConstant:228.0],
+        [self.tableBackgroundMiddleGlowView.heightAnchor constraintEqualToConstant:228.0],
+
+        [self.tableBackgroundBottomGlowView.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:96.0],
+        [self.tableBackgroundBottomGlowView.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-123.0],
+        [self.tableBackgroundBottomGlowView.widthAnchor constraintEqualToConstant:286.0],
+        [self.tableBackgroundBottomGlowView.heightAnchor constraintEqualToConstant:286.0],
+
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -1220,24 +1274,21 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroAmbientGlowView.userInteractionEnabled = NO;
     self.heroAmbientGlowView.alpha = 0.0;
     self.heroAmbientGlowView.hidden = YES;
-    [self.view addSubview:self.heroAmbientGlowView];
-    [self.view sendSubviewToBack:self.heroAmbientGlowView];
+    [self.heroSurfaceView insertSubview:self.heroAmbientGlowView belowSubview:self.heroFrostedMaterialView];
 
     self.heroAmbientAccentView = [[UIView alloc] init];
     self.heroAmbientAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAmbientAccentView.userInteractionEnabled = NO;
     self.heroAmbientAccentView.alpha = 0.0;
     self.heroAmbientAccentView.hidden = YES;
-    [self.view addSubview:self.heroAmbientAccentView];
-    [self.view sendSubviewToBack:self.heroAmbientAccentView];
+    [self.heroSurfaceView insertSubview:self.heroAmbientAccentView belowSubview:self.heroFrostedMaterialView];
 
     self.heroAmbientSupportView = [[UIView alloc] init];
     self.heroAmbientSupportView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAmbientSupportView.userInteractionEnabled = NO;
     self.heroAmbientSupportView.alpha = 0.0;
     self.heroAmbientSupportView.hidden = YES;
-    [self.view addSubview:self.heroAmbientSupportView];
-    [self.view sendSubviewToBack:self.heroAmbientSupportView];
+    [self.heroSurfaceView insertSubview:self.heroAmbientSupportView belowSubview:self.heroFrostedMaterialView];
 
     self.heroContentContainerView = [[UIView alloc] init];
     self.heroContentContainerView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1427,8 +1478,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroContainerHeightConstraint = [self.headerContainerView.heightAnchor constraintEqualToConstant:0];
     self.heroSurfaceTopConstraint = [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.headerContainerView.topAnchor constant:0];
     self.heroSurfaceBottomConstraint = [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.headerContainerView.bottomAnchor constant:0.0];
-    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:6.0];
-    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-6.0];
+    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:4.0];
+    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-4.0];
     self.heroProofRailBottomConstraint = [self.heroProofRailView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-8.0];
     self.heroProofRailHeightConstraint = [self.heroProofRailView.heightAnchor constraintEqualToConstant:38.0];
     self.heroSearchChromeBottomConstraint = [self.heroProofRailView.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:7.0];
@@ -1436,8 +1487,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 
     [NSLayoutConstraint activateConstraints:@[
         [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0],
-        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8.0],
-        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-8.0],
+        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:2.0],
+        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-2.0],
         self.heroContainerHeightConstraint,
 
         self.heroSurfaceTopConstraint,
@@ -1450,20 +1501,20 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [self.heroFrostedMaterialView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
         [self.heroFrostedMaterialView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor],
 
-        [self.heroAmbientGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-18.0],
-        [self.heroAmbientGlowView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:-34.0],
-        [self.heroAmbientGlowView.widthAnchor constraintEqualToConstant:132.0],
-        [self.heroAmbientGlowView.heightAnchor constraintEqualToConstant:132.0],
+        [self.heroAmbientSupportView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
+        [self.heroAmbientSupportView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-90.0],
+        [self.heroAmbientSupportView.widthAnchor constraintEqualToConstant:30.0],
+        [self.heroAmbientSupportView.heightAnchor constraintEqualToConstant:30.0],
 
-        [self.heroAmbientAccentView.centerYAnchor constraintEqualToAnchor:self.heroSurfaceView.centerYAnchor constant:-6.0],
-        [self.heroAmbientAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:34.0],
-        [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:112.0],
-        [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:112.0],
+        [self.heroAmbientGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:24.0],
+        [self.heroAmbientGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-54.0],
+        [self.heroAmbientGlowView.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroAmbientGlowView.heightAnchor constraintEqualToConstant:44.0],
 
-        [self.heroAmbientSupportView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:72.0],
-        [self.heroAmbientSupportView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:28.0],
-        [self.heroAmbientSupportView.widthAnchor constraintEqualToConstant:88.0],
-        [self.heroAmbientSupportView.heightAnchor constraintEqualToConstant:88.0],
+        [self.heroAmbientAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:31.0],
+        [self.heroAmbientAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:24.0],
+        [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:24.0],
 
         [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 10.0],
         [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:16.0],
@@ -2084,12 +2135,30 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
                      animations:^{
         self.heroSurfaceView.alpha = 1.0;
         self.heroSurfaceView.transform = CGAffineTransformIdentity;
-        self.heroAmbientGlowView.alpha = 1.0;
-        self.heroAmbientAccentView.alpha = 1.0;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.28
+                          delay:0.04
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
         self.heroAmbientSupportView.alpha = 1.0;
-        self.heroAmbientGlowView.transform = CGAffineTransformIdentity;
-        self.heroAmbientAccentView.transform = CGAffineTransformIdentity;
         self.heroAmbientSupportView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.30
+                          delay:0.10
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.heroAmbientGlowView.alpha = 1.0;
+        self.heroAmbientGlowView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.26
+                          delay:0.16
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.heroAmbientAccentView.alpha = 1.0;
+        self.heroAmbientAccentView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.38
@@ -2131,15 +2200,118 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 {
     [self pp_hideDecorativeHeroContent];
     [self pp_stopHeroAmbientMotion];
+    if (UIAccessibilityIsReduceMotionEnabled() || !self.heroEntranceCompleted || !self.view.window) {
+        return;
+    }
+
+    self.heroAmbientMotionStarted = YES;
+    UIUserInterfaceLayoutDirection layoutDirection =
+        [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.heroSurfaceView.semanticContentAttribute];
+    CGFloat trailingTravel = layoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -6.0 : 6.0;
+
+    [self pp_addHeroAmbientSequenceToView:self.heroAmbientSupportView
+                                    delay:0.00
+                                   travel:trailingTravel * 0.90
+                               scaleDelta:0.030
+                             opacityFloor:0.70
+                                      key:@"PPProviderCompaniesHeroAmbientSupportLine"];
+    [self pp_addHeroAmbientSequenceToView:self.heroAmbientGlowView
+                                    delay:0.20
+                                   travel:trailingTravel
+                               scaleDelta:0.040
+                             opacityFloor:0.76
+                                      key:@"PPProviderCompaniesHeroAmbientGlowLine"];
+    [self pp_addHeroAmbientSequenceToView:self.heroAmbientAccentView
+                                    delay:0.40
+                                   travel:trailingTravel * 1.10
+                               scaleDelta:0.048
+                             opacityFloor:0.82
+                                      key:@"PPProviderCompaniesHeroAmbientAccentLine"];
+}
+
+- (CAGradientLayer *)pp_makeBackgroundGlowLayer
+{
+    CAGradientLayer *layer = [CAGradientLayer layer];
+    layer.startPoint = CGPointMake(0.5, 0.5);
+    layer.endPoint = CGPointMake(1.0, 1.0);
+    layer.locations = @[@0.0, @0.44, @1.0];
+    layer.drawsAsynchronously = YES;
+    if (@available(iOS 12.0, *)) {
+        layer.type = kCAGradientLayerRadial;
+    }
+    return layer;
+}
+
+- (void)pp_applyBackgroundGlowColor:(UIColor *)color
+                               view:(UIView *)view
+                      gradientLayer:(CAGradientLayer *)gradientLayer
+                          peakAlpha:(CGFloat)peakAlpha
+{
+    if (!view || !gradientLayer) {
+        return;
+    }
+
+    UIColor *safeColor = color ?: UIColor.clearColor;
+    UIColor *resolvedColor = safeColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [safeColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    view.backgroundColor = UIColor.clearColor;
+    view.layer.shadowOpacity = 0.0;
+    gradientLayer.hidden = NO;
+    gradientLayer.colors = @[
+        (__bridge id)[resolvedColor colorWithAlphaComponent:peakAlpha].CGColor,
+        (__bridge id)[resolvedColor colorWithAlphaComponent:peakAlpha].CGColor,
+        (__bridge id)[resolvedColor colorWithAlphaComponent:peakAlpha].CGColor
+    ];
+    [CATransaction commit];
+}
+
+- (void)pp_addHeroAmbientSequenceToView:(UIView *)view
+                                  delay:(CFTimeInterval)delay
+                                 travel:(CGFloat)travel
+                             scaleDelta:(CGFloat)scaleDelta
+                           opacityFloor:(CGFloat)opacityFloor
+                                    key:(NSString *)key
+{
+    if (!view || key.length == 0) {
+        return;
+    }
+
+    CFTimeInterval duration = 4.6;
+    CFTimeInterval beginTime = CACurrentMediaTime() + delay;
+
+    CAKeyframeAnimation *translation = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+    translation.values = @[@0.0, @(travel * 0.52), @(travel), @(travel * 0.34), @0.0];
+    translation.keyTimes = @[@0.0, @0.30, @0.54, @0.78, @1.0];
+
+    CAKeyframeAnimation *scale = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    scale.values = @[@1.0, @(1.0 + scaleDelta), @1.0];
+    scale.keyTimes = @[@0.0, @0.52, @1.0];
+
+    CAKeyframeAnimation *opacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    opacity.values = @[@1.0, @(opacityFloor), @1.0];
+    opacity.keyTimes = @[@0.0, @0.52, @1.0];
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[translation, scale, opacity];
+    group.duration = duration;
+    group.beginTime = beginTime;
+    group.repeatCount = HUGE_VALF;
+    group.removedOnCompletion = NO;
+    group.fillMode = kCAFillModeBoth;
+    [view.layer addAnimation:group forKey:key];
 }
 
 - (void)pp_stopHeroAmbientMotion
 {
     self.heroAmbientMotionStarted = NO;
-    [self.heroAmbientGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroGlowBreath"];
-    [self.heroAmbientGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroGlowOpacity"];
-    [self.heroAmbientAccentView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAccentDriftX"];
-    [self.heroAmbientAccentView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAccentDriftY"];
+    [self.heroAmbientSupportView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAmbientSupportLine"];
+    [self.heroAmbientGlowView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAmbientGlowLine"];
+    [self.heroAmbientAccentView.layer removeAnimationForKey:@"PPProviderCompaniesHeroAmbientAccentLine"];
 }
 
 
@@ -2336,9 +2508,9 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 
     self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceGradientLayer.colors = @[
-        (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.36 : 0.0)].CGColor,
-        (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.28 : 0.0)].CGColor,
-        (__bridge id)[ [UIColor colorNamed:@"NewBg"]  colorWithAlphaComponent:(dark ? 0.22 : 0.0)].CGColor
+        (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.36 : 0.2)].CGColor,
+        (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.28 : 0.4)].CGColor,
+        (__bridge id)[ [UIColor colorNamed:@"NewBg"]  colorWithAlphaComponent:(dark ? 0.22 : 0.4)].CGColor
     ];
     [self.heroSurfaceView pp_setBorderColor:surfaceBorder];
     self.heroSurfaceEdgeHighlightLayer.strokeColor = edgeColor.CGColor;
@@ -2369,6 +2541,23 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroAmbientSupportView.layer.shadowRadius = 0.0;
     self.heroAmbientSupportView.layer.shadowOffset = CGSizeZero;
     self.heroAmbientSupportView.layer.borderWidth = 0.0;
+
+    [self pp_applyBackgroundGlowColor:accent
+                                 view:self.tableBackgroundMiddleGlowView
+                        gradientLayer:self.tableBackgroundMiddleGlowLayer
+                            peakAlpha:(dark ? 0.11 : 0.082)];
+    self.tableBackgroundMiddleGlowView.layer.shadowRadius = 0.0;
+    self.tableBackgroundMiddleGlowView.layer.shadowOffset = CGSizeZero;
+    self.tableBackgroundMiddleGlowView.layer.borderWidth = 0.0;
+
+    UIColor *bottomGlowColor = [UIColor colorNamed:@"NewBg"] ?: accent;
+    [self pp_applyBackgroundGlowColor:bottomGlowColor
+                                 view:self.tableBackgroundBottomGlowView
+                        gradientLayer:self.tableBackgroundBottomGlowLayer
+                            peakAlpha:(dark ? 0.10 : 0.095)];
+    self.tableBackgroundBottomGlowView.layer.shadowRadius = 0.0;
+    self.tableBackgroundBottomGlowView.layer.shadowOffset = CGSizeZero;
+    self.tableBackgroundBottomGlowView.layer.borderWidth = 0.0;
 
     self.heroTrailIconPlateView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.70 : 0.82)];
     [self.heroTrailIconPlateView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.18 : 0.58)]];

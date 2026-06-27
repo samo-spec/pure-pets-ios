@@ -3116,9 +3116,9 @@
 "provider_companies_title_marketplace" = "سوق المزودين";
 "provider_marketplace_hero_title" = "مزودون موثوقون\nلكل احتياجات حيوانك";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
-"provider_marketplace_subtitle" = "أطعمة، إكسسوارات، واحتياجات يومية لحيوانك الأليف.";
+"provider_marketplace_subtitle" = "أطعمة . إكسسوارات";
 "provider_pharmacies_title" = "الصيدلية";
-"provider_pharmacies_subtitle" = "أدوية ومستلزمات عناية من صيدليات موثوقة.";
+"provider_pharmacies_subtitle" = "أدوية ومستلزمات";
 "provider_companies_section_title_marketplace" = "واجهات المزودين";
 "provider_companies_section_title_pharmacy" = "واجهات الصيدليات";
 "provider_companies_count_marketplace_format" = "%ld مزود";

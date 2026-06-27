@@ -244,7 +244,14 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
                                                         route:PPHomeProviderCategoryRouteServices];
     }
     if([item.identifier isEqualToString:@"marketplace"])
+    {
         item.systemIconName = @"pet-shop";
+        [_button pp_ApplyCornerMask_tl:0 tr:20 bl:0 br:20];
+    }
+    else
+    {
+        
+    }
     _item = item;
     _selectedState = selected;
     _currentTitle = kLang(item.titleKey) ?: item.titleKey;

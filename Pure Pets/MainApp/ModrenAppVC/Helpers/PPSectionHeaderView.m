@@ -230,15 +230,15 @@
 - (void)pp_refreshAppearance
 {
     BOOL decorationActive = self.surfaceDecorationActive;
-    self.surfaceView.backgroundColor = decorationActive ? [self pp_surfaceFillColor] : UIColor.clearColor;
-    self.surfaceView.layer.borderColor = (decorationActive ? [self pp_surfaceBorderColor] : UIColor.clearColor).CGColor;
+    self.surfaceView.backgroundColor =  [self pp_surfaceFillColor];
+    self.surfaceView.layer.borderColor =  [self pp_surfaceBorderColor].CGColor;
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.0;
-    self.surfaceView.layer.shadowRadius = decorationActive ? 12.0 : 0.0;
-    self.surfaceView.layer.shadowOffset = decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
+    self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.1;
+    self.surfaceView.layer.shadowRadius =  12.0;  //decorationActive ? 12.0 : 0.0;
+    self.surfaceView.layer.shadowOffset =  CGSizeMake(0.0, 4.0);  //decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
 
     self.accentRailView.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:0.5];
-    self.accentRailView.alpha = decorationActive ? 1.0 : 0.0;
+    self.accentRailView.alpha = 1.0;  //decorationActive ? 1.0 : 0.0;
     self.titleLabel.textColor = [self pp_titleColor];
     self.subtitleLabel.textColor = [self pp_subtitleColor];
 
@@ -249,6 +249,30 @@
     cfg.background = background;
     cfg.baseForegroundColor = [self pp_accentColor];
     self.actionButton.configuration = cfg;
+    
+    
+    
+    /*
+     self.surfaceView.backgroundColor = decorationActive ? [self pp_surfaceFillColor] : UIColor.clearColor;
+     self.surfaceView.layer.borderColor = (decorationActive ? [self pp_surfaceBorderColor] : UIColor.clearColor).CGColor;
+     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
+     self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.1;
+     self.surfaceView.layer.shadowRadius =  12.0;  //decorationActive ? 12.0 : 0.0;
+     self.surfaceView.layer.shadowOffset =  CGSizeMake(0.0, 2.0);  //decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
+
+     self.accentRailView.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:0.5];
+     self.accentRailView.alpha = 1.0;  //decorationActive ? 1.0 : 0.0;
+     self.titleLabel.textColor = [self pp_titleColor];
+     self.subtitleLabel.textColor = [self pp_subtitleColor];
+
+     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
+     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
+     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.08];
+     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
+     cfg.background = background;
+     cfg.baseForegroundColor = [self pp_accentColor];
+     self.actionButton.configuration = cfg;
+     */
 }
 
 - (UIColor *)pp_accentColor
@@ -274,7 +298,7 @@
    
     
     UIColor *baseColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.6];
+    return [baseColor colorWithAlphaComponent:0.7];
 }
 
 - (UIColor *)pp_surfaceBorderColor

@@ -254,7 +254,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 + (CGFloat)preferredHeightForTableWidth:(CGFloat)tableWidth
 {
     CGFloat stageHeight = PPProviderPremiumStageHeightForTableWidth(tableWidth);
-    return stageHeight +  130.0 ;
+    return stageHeight + 110.0;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
@@ -274,20 +274,20 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
     self.cardView = [[UIView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cardView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.9];
+    self.cardView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.72];
     self.cardView.layer.borderWidth = 0.70;
     self.cardView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.cardView.layer.shadowOpacity = 0.085;
     self.cardView.layer.shadowRadius = 24.0;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-    PPProviderPremiumApplyContinuousCorners(self.cardView, 34.0);
+    PPProviderPremiumApplyContinuousCorners(self.cardView, 28.0);
     [self.contentView addSubview:self.cardView];
 
     self.imageStageView = [[UIView alloc] init];
     self.imageStageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imageStageView.backgroundColor = PPProviderPremiumStageColor();
     self.imageStageView.clipsToBounds = YES;
-    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 29.0);
+    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 26.0);
     [self.cardView addSubview:self.imageStageView];
 
     self.stageGradientLayer = [CAGradientLayer layer];
@@ -550,14 +550,14 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
         
-        [self.metaFootnoteLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:8.0],
-        [self.metaFootnoteLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        [self.metaFootnoteLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        //[self.metaFootnoteLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:8.0],
+        //[self.metaFootnoteLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
+        //[self.metaFootnoteLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
 
-        [self.metricsRailStackView.topAnchor constraintEqualToAnchor:self.metaFootnoteLabel.bottomAnchor constant:10.0],
-        [self.metricsRailStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
-        [self.metricsRailStackView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
-        [self.metricsRailStackView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
+        //[self.metricsRailStackView.topAnchor constraintEqualToAnchor:self.metaFootnoteLabel.bottomAnchor constant:10.0],
+        //[self.metricsRailStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        //[self.metricsRailStackView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        //[self.metricsRailStackView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
 
         [self.countTitleLabel.centerYAnchor constraintEqualToAnchor:self.countPillView.centerYAnchor],
         [self.countTitleLabel.leadingAnchor constraintEqualToAnchor:self.countPillView.leadingAnchor constant:10.0],

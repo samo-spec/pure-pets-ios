@@ -78,6 +78,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     UIButton *_button;
     UIView *_surfaceView;
     CAGradientLayer *_surfaceGradientLayer;
+    CAShapeLayer *_surfaceLiquidBorderLayer;
     UIView *_ambientOrbView;
     UIView *_accentBarView;
     UIView *_iconPlateView;
@@ -145,6 +146,11 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     [_surfaceView.layer insertSublayer:_surfaceGradientLayer atIndex:0];
 
+    _surfaceLiquidBorderLayer = [CAShapeLayer layer];
+    _surfaceLiquidBorderLayer.fillColor = UIColor.clearColor.CGColor;
+    _surfaceLiquidBorderLayer.lineWidth = 0.85;
+    [_surfaceView.layer addSublayer:_surfaceLiquidBorderLayer];
+
     _ambientOrbView = [[UIView alloc] init];
     _ambientOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _ambientOrbView.userInteractionEnabled = NO;
@@ -191,7 +197,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _subtitleLabel.textAlignment = NSTextAlignmentNatural;
-    _subtitleLabel.numberOfLines = 2;
+    _subtitleLabel.numberOfLines = 1;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     _subtitleLabel.adjustsFontSizeToFitWidth = YES;
     _subtitleLabel.minimumScaleFactor = 0.88;
@@ -225,8 +231,8 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     [_chevronPlateView addSubview:_chevronView];
 
     [_titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    [_textStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    //[_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    //[_textStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [_chevronPlateView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_chevronPlateView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
@@ -315,6 +321,12 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _accentBarView.layer.cornerRadius = CGRectGetHeight(_accentBarView.bounds) * 0.5;
     _ambientOrbView.layer.cornerRadius = CGRectGetWidth(_ambientOrbView.bounds) * 0.5;
     _surfaceGradientLayer.frame = _surfaceView.bounds;
+    CGFloat highlightInset = 0.65;
+    CGRect highlightBounds = CGRectInset(_surfaceView.bounds, highlightInset, highlightInset);
+    _surfaceLiquidBorderLayer.frame = _surfaceView.bounds;
+    _surfaceLiquidBorderLayer.path =
+        [UIBezierPath bezierPathWithRoundedRect:highlightBounds
+                                   cornerRadius:MAX(0.0, cornerRadius - highlightInset)].CGPath;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                                        cornerRadius:cornerRadius].CGPath;
     [CATransaction commit];
@@ -419,16 +431,17 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
                                                                                 [UIColor colorWithWhite:0.965 alpha:1.0]);
     UIColor *subtitleColor = AppSecondaryTextClr ?: PPHomeUltraProviderDynamicColor([UIColor colorWithRed:0.446 green:0.458 blue:0.485 alpha:1.0],
                                                                                      [UIColor colorWithWhite:0.735 alpha:1.0]);
-    UIColor *borderColor = PPHomeUltraProviderBlend(surfaceBase,
-                                                    accent,
-                                                    selected ? (darkMode ? 0.44 : 0.25) : (darkMode ? 0.28 : 0.13),
-                                                    self.traitCollection);
     UIColor *iconPlateColor = [accent colorWithAlphaComponent:selected ? (darkMode ? 0.28 : 0.16) : (darkMode ? 0.20 : 0.10)];
     UIColor *chevronPlateColor = PPHomeUltraProviderBlend(surfaceBase,
                                                           accent,
                                                           selected ? (darkMode ? 0.22 : 0.11) : (darkMode ? 0.14 : 0.05),
                                                           self.traitCollection);
     UIColor *orbColor = [accent colorWithAlphaComponent:selected ? (darkMode ? 0.20 : 0.14) : (darkMode ? 0.15 : 0.10)];
+    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.22 : 0.56];
+    UIColor *liquidBorderHighlight = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.34 : 0.26)
+                                                                                 : (selected ? 0.94 : 0.78)];
+    UIColor *plateLiquidBorder = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.20 : 0.14)
+                                                                             : (selected ? 0.52 : 0.36)];
 
     void (^styleChanges)(void) = ^{
         [CATransaction begin];
@@ -443,16 +456,19 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
                                                 self.traitCollection).CGColor
         ];
         self->_surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
+        self->_surfaceLiquidBorderLayer.strokeColor =
+            PPHomeUltraProviderResolvedColor(liquidBorderHighlight, self.traitCollection).CGColor;
+        self->_surfaceLiquidBorderLayer.opacity = selected ? 1.0f : 0.92f;
         [CATransaction commit];
 
         self->_surfaceView.backgroundColor = surfaceTint;
-        [self->_surfaceView pp_setBorderColor:[borderColor colorWithAlphaComponent:darkMode ? 0.68 : 0.82]];
+        [self->_surfaceView pp_setBorderColor:liquidBorderBase];
 
         self->_iconPlateView.backgroundColor = iconPlateColor;
-        [self->_iconPlateView pp_setBorderColor:[borderColor colorWithAlphaComponent:darkMode ? 0.34 : 0.42]];
+        [self->_iconPlateView pp_setBorderColor:plateLiquidBorder];
 
         self->_chevronPlateView.backgroundColor = chevronPlateColor;
-        [self->_chevronPlateView pp_setBorderColor:[borderColor colorWithAlphaComponent:darkMode ? 0.26 : 0.34]];
+        [self->_chevronPlateView pp_setBorderColor:[plateLiquidBorder colorWithAlphaComponent:darkMode ? 0.86 : 0.92]];
 
         self->_ambientOrbView.backgroundColor = orbColor;
         self->_ambientOrbView.transform = selected ? CGAffineTransformIdentity
