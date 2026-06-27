@@ -113,6 +113,7 @@
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
 		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
+		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
@@ -1937,6 +1938,8 @@
 		F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeInsetLabel.m; sourceTree = "<group>"; };
 		F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumSearchCell.h; sourceTree = "<group>"; };
 		F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumSearchCell.m; sourceTree = "<group>"; };
+		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
+		A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeMarketplaceHeroCell.m; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -2460,6 +2463,8 @@
 				F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */,
 				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
 				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
+				A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */,
+				A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */,
 				F2B641B82F4A95290092C2BF /* Stories */,
 				F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */,
 				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
@@ -5588,6 +5593,7 @@
 				F271467C2CCE6B5300F7F3BA /* XLFormOptionsObject.m in Sources */,
 				F271467D2CCE6B5300F7F3BA /* XLFormLeftRightSelectorCell.m in Sources */,
 				F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */,
+				A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */,
 				F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */,
 				F271467E2CCE6B5300F7F3BA /* NSObject+XLFormAdditions.m in Sources */,
 				F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */,

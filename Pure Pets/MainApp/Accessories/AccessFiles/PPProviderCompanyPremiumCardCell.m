@@ -280,14 +280,14 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.cardView.layer.shadowOpacity = 0.085;
     self.cardView.layer.shadowRadius = 24.0;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-    PPProviderPremiumApplyContinuousCorners(self.cardView, 28.0);
+    PPProviderPremiumApplyContinuousCorners(self.cardView, 22.0);
     [self.contentView addSubview:self.cardView];
 
     self.imageStageView = [[UIView alloc] init];
     self.imageStageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imageStageView.backgroundColor = PPProviderPremiumStageColor();
     self.imageStageView.clipsToBounds = YES;
-    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 26.0);
+    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 20.0);
     [self.cardView addSubview:self.imageStageView];
 
     self.stageGradientLayer = [CAGradientLayer layer];
@@ -853,8 +853,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         self.imageStageHeightConstraint.constant = stageHeight;
     }
 
-    PPProviderPremiumApplyContinuousCorners(self.cardView, 34.0);
-    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 29.0);
+    PPProviderPremiumApplyContinuousCorners(self.cardView, 28.0);
+    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 24.0);
     PPProviderPremiumApplyContinuousCorners(self.topBadgeView, CGRectGetHeight(self.topBadgeView.bounds) * 0.5);
     PPProviderPremiumApplyContinuousCorners(self.accessoryPocketView, CGRectGetHeight(self.accessoryPocketView.bounds) * 0.5);
     PPProviderPremiumApplyContinuousCorners(self.countPillView, 18.0);

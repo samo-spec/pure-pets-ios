@@ -127,6 +127,7 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     _glowView.translatesAutoresizingMaskIntoConstraints = NO;
     _glowView.userInteractionEnabled = NO;
     _glowView.alpha = 0.0;
+    _glowView.hidden = YES;
     _glowView.layer.shadowOffset = CGSizeZero;
     [_surfaceView addSubview:_glowView];
 

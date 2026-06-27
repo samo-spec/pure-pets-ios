@@ -154,7 +154,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _ambientOrbView = [[UIView alloc] init];
     _ambientOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _ambientOrbView.userInteractionEnabled = NO;
-    _ambientOrbView.alpha = 0.88;
+    _ambientOrbView.alpha = 0.0;
     if (@available(iOS 13.0, *)) {
         _ambientOrbView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -470,7 +470,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
         self->_chevronPlateView.backgroundColor = chevronPlateColor;
         [self->_chevronPlateView pp_setBorderColor:[plateLiquidBorder colorWithAlphaComponent:darkMode ? 0.86 : 0.92]];
 
-        self->_ambientOrbView.backgroundColor = orbColor;
+        self->_ambientOrbView.backgroundColor = AppClearClr; //orbColor;
         self->_ambientOrbView.transform = selected ? CGAffineTransformIdentity
                                                    : CGAffineTransformMakeScale(0.94, 0.94);
         self->_ambientOrbView.alpha = selected ? 1.0 : 0.80;

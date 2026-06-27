@@ -1050,7 +1050,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         return;
     }
 
-    CGFloat surfaceRadius = 32.0;
+    CGFloat surfaceRadius = 0.0;
     PPProviderCompaniesApplyContinuousCorners(self.heroSurfaceView, surfaceRadius);
     PPProviderCompaniesApplyContinuousCorners(self.heroFrostedMaterialView, surfaceRadius);
     self.heroFrostedMaterialView.layer.masksToBounds = YES;
@@ -1406,7 +1406,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroSearchChromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.heroSearchChromeView.layer.borderWidth = 1.0;
     self.heroSearchChromeView.layer.masksToBounds = NO;
-    PPProviderCompaniesApplyContinuousCorners(self.heroSearchChromeView, 23.0);
+    PPProviderCompaniesApplyContinuousCorners(self.heroSearchChromeView, 0.0);
     [self.heroSurfaceView addSubview:self.heroSearchChromeView];
     UITapGestureRecognizer *searchChromeTap =
         [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_focusHeroSearchTextField)];
@@ -1478,8 +1478,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroContainerHeightConstraint = [self.headerContainerView.heightAnchor constraintEqualToConstant:0];
     self.heroSurfaceTopConstraint = [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.headerContainerView.topAnchor constant:0];
     self.heroSurfaceBottomConstraint = [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.headerContainerView.bottomAnchor constant:0.0];
-    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:4.0];
-    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-4.0];
+    self.heroProofRailLeadingConstraint = [self.heroProofRailView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:0.0];
+    self.heroProofRailTrailingConstraint = [self.heroProofRailView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-0.0];
     self.heroProofRailBottomConstraint = [self.heroProofRailView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-8.0];
     self.heroProofRailHeightConstraint = [self.heroProofRailView.heightAnchor constraintEqualToConstant:38.0];
     self.heroSearchChromeBottomConstraint = [self.heroProofRailView.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:7.0];
@@ -1487,8 +1487,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 
     [NSLayoutConstraint activateConstraints:@[
         [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0],
-        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:2.0],
-        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-2.0],
+        [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:0.0],
+        [self.headerContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-0.0],
         self.heroContainerHeightConstraint,
 
         self.heroSurfaceTopConstraint,
@@ -1752,7 +1752,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     container.layer.borderWidth = 1.0;
     container.layer.masksToBounds = YES;
     [container pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    PPProviderCompaniesApplyContinuousCorners(container, 22.0);
+    PPProviderCompaniesApplyContinuousCorners(container, 0.0);
 
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2509,8 +2509,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceGradientLayer.colors = @[
         (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.36 : 0.2)].CGColor,
-        (__bridge id)[foregroundBase colorWithAlphaComponent:(dark ? 0.28 : 0.4)].CGColor,
-        (__bridge id)[ [UIColor colorNamed:@"NewBg"]  colorWithAlphaComponent:(dark ? 0.22 : 0.4)].CGColor
+        (__bridge id)[bageColor colorWithAlphaComponent:(dark ? 0.28 : 0.4)].CGColor,
+        (__bridge id)[AppForgroundColr  colorWithAlphaComponent:(dark ? 0.22 : 0.6)].CGColor
     ];
     [self.heroSurfaceView pp_setBorderColor:surfaceBorder];
     self.heroSurfaceEdgeHighlightLayer.strokeColor = edgeColor.CGColor;

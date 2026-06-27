@@ -65,6 +65,7 @@
 #import "PPHomePremiumSearchCell.h"
 #import "PPHomeProviderCategoryPillCell.h"
 #import "PPHomeUltraPremuimProviderCategoryPillCell.h"
+#import "PPHomeMarketplaceHeroCell.h"
 #import "ProviderCompaniesListVC.h"
 
 
@@ -1514,6 +1515,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (NSArray<PPHomeQuickActionModel *> *)pp_homeQuickActions;
 - (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderCategoryItems;
 - (void)pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item;
+- (void)pp_openMarketplaceProvidersListFromHero;
 - (void)pp_refreshProviderCategoryNavigationSection;
 - (void)handleQuickActionSelection:(PPHomeQuickActionModel *)quickAction;
 - (void)pp_openAddNewAdComposer;
@@ -2135,6 +2137,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (NSArray<NSNumber *> *)pp_defaultHomeSectionCatalogOrder {
     return @[
         @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionMarketplaceHero),
         @(PPHomeSectionProviderCategoryNav),
         @(PPHomeSectionHero),
         @(PPHomeSectionPremiumCare),
@@ -2189,6 +2192,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 @"PPHomeSectionBuyAgain" : @(PPHomeSectionBuyAgain),
                 @"PPHomeSectionPremiumSearch" : @(PPHomeSectionPremiumSearch),
                 @"PPHomeSectionProviderCategoryNav" : @(PPHomeSectionProviderCategoryNav),
+                @"PPHomeSectionMarketplaceHero" : @(PPHomeSectionMarketplaceHero),
             };
         });
         NSNumber *mapped = typeNameMap[raw];
@@ -2258,11 +2262,11 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
 
     NSMutableArray<NSDictionary *> *merged = [stored mutableCopy];
-    NSNumber *providerCategoryNavID = @(PPHomeSectionProviderCategoryNav);
-    if (![presentIDs containsObject:providerCategoryNavID]) {
-        NSDictionary *providerCategoryNavRow = @{
-            @"id" : providerCategoryNavID,
-            @"visible" : @([self pp_defaultVisibilityForHomeSection:PPHomeSectionProviderCategoryNav]),
+    NSNumber *marketplaceHeroID = @(PPHomeSectionMarketplaceHero);
+    if (![presentIDs containsObject:marketplaceHeroID]) {
+        NSDictionary *marketplaceHeroRow = @{
+            @"id" : marketplaceHeroID,
+            @"visible" : @([self pp_defaultVisibilityForHomeSection:PPHomeSectionMarketplaceHero]),
             @"type" : @""
         };
         NSUInteger premiumSearchIndex =
@@ -2273,10 +2277,45 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                        PPHomeSectionIDFromConfigValue(row[@"type"]) == PPHomeSectionPremiumSearch;
             }];
         if (premiumSearchIndex != NSNotFound) {
-            [merged insertObject:providerCategoryNavRow
+            [merged insertObject:marketplaceHeroRow
                           atIndex:MIN(premiumSearchIndex + 1, merged.count)];
         } else {
-            [merged insertObject:providerCategoryNavRow atIndex:0];
+            [merged insertObject:marketplaceHeroRow atIndex:0];
+        }
+        [presentIDs addObject:marketplaceHeroID];
+    }
+
+    NSNumber *providerCategoryNavID = @(PPHomeSectionProviderCategoryNav);
+    if (![presentIDs containsObject:providerCategoryNavID]) {
+        NSDictionary *providerCategoryNavRow = @{
+            @"id" : providerCategoryNavID,
+            @"visible" : @([self pp_defaultVisibilityForHomeSection:PPHomeSectionProviderCategoryNav]),
+            @"type" : @""
+        };
+        NSUInteger marketplaceHeroIndex =
+            [merged indexOfObjectPassingTest:^BOOL(NSDictionary *row, NSUInteger idx, BOOL *stop) {
+                (void)idx;
+                (void)stop;
+                return PPHomeSectionIDFromConfigValue(row[@"id"]) == PPHomeSectionMarketplaceHero ||
+                       PPHomeSectionIDFromConfigValue(row[@"type"]) == PPHomeSectionMarketplaceHero;
+            }];
+        if (marketplaceHeroIndex != NSNotFound) {
+            [merged insertObject:providerCategoryNavRow
+                          atIndex:MIN(marketplaceHeroIndex + 1, merged.count)];
+        } else {
+            NSUInteger premiumSearchIndex =
+                [merged indexOfObjectPassingTest:^BOOL(NSDictionary *row, NSUInteger idx, BOOL *stop) {
+                    (void)idx;
+                    (void)stop;
+                    return PPHomeSectionIDFromConfigValue(row[@"id"]) == PPHomeSectionPremiumSearch ||
+                           PPHomeSectionIDFromConfigValue(row[@"type"]) == PPHomeSectionPremiumSearch;
+                }];
+            if (premiumSearchIndex != NSNotFound) {
+                [merged insertObject:providerCategoryNavRow
+                              atIndex:MIN(premiumSearchIndex + 1, merged.count)];
+            } else {
+                [merged insertObject:providerCategoryNavRow atIndex:0];
+            }
         }
         [presentIDs addObject:providerCategoryNavID];
     }
@@ -2564,6 +2603,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-card"];
     safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
 
+    // Marketplace Hero
+    PPHomeItem *marketplaceHeroItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeMarketplaceHero payload:@"marketplace-hero-card"];
+    safeAppend(@[marketplaceHeroItem], @(PPHomeSectionMarketplaceHero));
+
     // ✅ Provider Marketplace Navigation
     safeAppend([self pp_buildItemsForSection:PPHomeSectionProviderCategoryNav],
                @(PPHomeSectionProviderCategoryNav));
@@ -2741,6 +2784,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionMarketplaceHero),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -2899,6 +2943,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionMarketplaceHero),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -3447,6 +3492,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         section == PPHomeSectionCarousel ||
         section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
+        section == PPHomeSectionMarketplaceHero ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [parts addObject:[NSString stringWithFormat:@"static:%ld", (long)section]];
@@ -3554,6 +3600,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
 
     switch (section) {
+        case PPHomeSectionMarketplaceHero: {
+            PPHomeItem *item = [[PPHomeItem alloc] initWithType:PPHomeItemTypeMarketplaceHero
+                                                        payload:@"marketplace-hero-card"];
+            [items addObject:item];
+            break;
+        }
+
         case PPHomeSectionProviderCategoryNav:
             for (PPHomeProviderCategoryItem *category in [self pp_homeProviderCategoryItems]) {
                 PPHomeItem *item = [[PPHomeItem alloc] initWithType:PPHomeItemTypeProviderCategoryNav
@@ -3773,6 +3826,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
         if (section == PPHomeSectionPetProfile ||
             section == PPHomeSectionPremiumSearch ||
+            section == PPHomeSectionMarketplaceHero ||
             section == PPHomeSectionPremiumCare ||
             section == PPHomeSectionAdopt) {
             [self.collectionView setNeedsLayout];
@@ -3834,6 +3888,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
+        section == PPHomeSectionMarketplaceHero ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt ||
         section == PPHomeSectionAccessories ||
@@ -3853,6 +3908,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
+        section == PPHomeSectionMarketplaceHero ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
@@ -4480,7 +4536,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<NSDictionary *> *sanitized =
         [NSMutableArray arrayWithCapacity:sectionsArray.count];
     NSMutableSet<NSNumber *> *seenIDs = [NSMutableSet set];
-    NSInteger maxKnownID = (NSInteger)PPHomeSectionProviderCategoryNav;
+    NSInteger maxKnownID = (NSInteger)PPHomeSectionMarketplaceHero;
 
     for (id raw in sectionsArray) {
         if (![raw isKindOfClass:NSDictionary.class]) {
@@ -7166,6 +7222,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     }
     [self.collectionView registerClass:PPHomePremiumSearchCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
+    [self.collectionView registerClass:PPHomeMarketplaceHeroCell.class
+            forCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeUltraPremuimProviderCategoryPillCell.class
             forCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier];
     
@@ -7383,8 +7441,24 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     [self pp_openSmartSearch];
                 };
 
-                return cell;
-            }
+	                return cell;
+	            }
+
+        if (section == PPHomeSectionMarketplaceHero) {
+            PPHomeMarketplaceHeroCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier
+                                                          forIndexPath:indexPath];
+            [cell configureDefaultContent];
+
+            __weak typeof(strongSelf) weakHome = strongSelf;
+            cell.onTap = ^{
+                __strong typeof(weakHome) self = weakHome;
+                if (!self) return;
+                [self pp_openMarketplaceProvidersListFromHero];
+            };
+
+            return cell;
+        }
 
         if (section == PPHomeSectionProviderCategoryNav) {
             PPHomeUltraPremuimProviderCategoryPillCell *cell =
@@ -9012,6 +9086,10 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     switch (section) {
+        case PPHomeSectionMarketplaceHero:
+            [self pp_openMarketplaceProvidersListFromHero];
+            return;
+
         case PPHomeSectionProviderCategoryNav: {
             if ([item.payload isKindOfClass:PPHomeProviderCategoryItem.class]) {
                 [self pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item.payload];
@@ -9183,6 +9261,7 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
+        section == PPHomeSectionMarketplaceHero ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         if ([self pp_isInitialHomeRevealSettled]) {
@@ -9206,6 +9285,7 @@ didHighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionHero ||
+        section == PPHomeSectionMarketplaceHero ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionCarousel ||
         section == PPHomeSectionAdopt) {
@@ -9540,6 +9620,26 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         ];
     });
     return items;
+}
+
+- (PPHomeProviderCategoryItem *)pp_marketplaceProviderCategoryItem
+{
+    for (PPHomeProviderCategoryItem *item in [self pp_homeProviderCategoryItems]) {
+        if ([PPSafeString(item.identifier) isEqualToString:@"marketplace"]) {
+            return item;
+        }
+    }
+
+    return [PPHomeProviderCategoryItem itemWithIdentifier:@"marketplace"
+                                                 titleKey:@"provider_marketplace_title"
+                                              subtitleKey:@"provider_marketplace_subtitle"
+                                               systemIcon:@"square.grid.2x2.fill"
+                                                    route:PPHomeProviderCategoryRouteServices];
+}
+
+- (void)pp_openMarketplaceProvidersListFromHero
+{
+    [self pp_handleProviderCategorySelection:[self pp_marketplaceProviderCategoryItem]];
 }
 
 - (void)pp_refreshProviderCategoryNavigationSection
@@ -10282,7 +10382,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
-    BOOL isHero = (section == PPHomeSectionHero);
+    BOOL isHero = (section == PPHomeSectionHero ||
+                   section == PPHomeSectionMarketplaceHero);
     BOOL isPrimarySurface = isHero
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
@@ -10470,7 +10571,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
-    BOOL isHero = (section == PPHomeSectionHero);
+    BOOL isHero = (section == PPHomeSectionHero ||
+                   section == PPHomeSectionMarketplaceHero);
     BOOL isPrimarySurface = isHero
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders

@@ -184,7 +184,8 @@ typedef NS_ENUM(NSInteger, PPHomeItemType) {
     PPHomeItemTypeBuyAgain,            // Repeat-purchase accessory rail
     PPHomeItemTypeLastFood,            // Last food added smart section
     PPHomeItemTypePremiumSearch,       // Premium in-feed search bar
-    PPHomeItemTypeProviderCategoryNav  // Top provider marketplace navigation
+    PPHomeItemTypeProviderCategoryNav, // Top provider marketplace navigation
+    PPHomeItemTypeMarketplaceHero      // Provider-first marketplace hero
 };
 
 
@@ -302,6 +303,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionBuyAgain = 14,
     PPHomeSectionPremiumSearch = 15,
     PPHomeSectionProviderCategoryNav = 16,
+    PPHomeSectionMarketplaceHero = 17,
 };
 
 typedef NS_ENUM(NSInteger, PPDataSection) {
