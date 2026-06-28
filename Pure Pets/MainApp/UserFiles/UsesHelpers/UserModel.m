@@ -589,7 +589,10 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *docRef = [[db collectionWithPath:kPPUsersCol] documentWithPath:documentID];
 
-    [docRef setData:[self toDictionary] merge:YES completion:^(NSError * _Nullable error) {
+    NSMutableDictionary *payload = [[self toDictionary] mutableCopy];
+    payload[kUserKeyUpdatedAt] = [FIRFieldValue fieldValueForServerTimestamp];
+
+    [docRef setData:payload merge:YES completion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ [UserModel] SYNC failed: %@", error.localizedDescription);
         } else {
