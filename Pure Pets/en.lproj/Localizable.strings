@@ -3135,6 +3135,8 @@
 "home_marketplace_hero_accessibility_hint" = "Opens the marketplace companies and providers list.";
 "seller_profile_back_hint" = "Double-tap to go back";
 "provider_marketplace_subtitle" = "Food, accessories, and daily pet essentials.";
+"provider_vets_title" = "Vets";
+"provider_vets_subtitle" = "Clinics and trusted care.";
 "provider_pharmacies_title" = "Pharmacies";
 "provider_pharmacies_subtitle" = "Medicines and care essentials from trusted pharmacies.";
 "provider_companies_section_title_marketplace" = "Provider storefronts";

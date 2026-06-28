@@ -9,6 +9,10 @@
 @property (nonatomic, copy) NSString *ownerID;
 @property (nonatomic, strong) NSArray<PetAccessory *> *items;
 @property (nonatomic, strong, nullable) UserModel *user;
+@property (nonatomic, copy) NSString *profileDisplayName;
+@property (nonatomic, copy) NSString *profileCityText;
+@property (nonatomic, copy) NSString *profileAvatarURLString;
+@property (nonatomic, strong) NSArray<NSString *> *profileCoverImageURLs;
 @property (nonatomic, assign) NSInteger productCount;
 @property (nonatomic, strong, nullable) NSDate *latestCreatedAt;
 @end
@@ -278,27 +282,8 @@ static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *
 
 static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 {
-    if (![entry.user isKindOfClass:UserModel.class]) {
-        return @"";
-    }
-
-    for (PPAddressModel *address in [entry.user addresses] ?: @[]) {
-        if (![address isKindOfClass:PPAddressModel.class]) {
-            continue;
-        }
-        NSString *cityName = address.cityID > 0 ? [CitiesManager.shared cityNameForID:address.cityID] : @"";
-        if (cityName.length > 0) {
-            return cityName;
-        }
-        NSString *locationName =
-            [PPProviderCompaniesSafeString(address.locatioName)
-             stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (locationName.length > 0) {
-            return locationName;
-        }
-    }
-
-    return @"";
+    return [PPProviderCompaniesSafeString(entry.profileCityText)
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 
 

@@ -63,10 +63,11 @@
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
-#import "PPHomeProviderCategoryPillCell.h"
+
 #import "PPHomeMarketplaceHeroCell.h"
 #import "ProviderCompaniesListVC.h"
-
+#import "PPHomeProviderCategoryPillCell.h"
+#import "PPHomeUltraPremuimProviderCategoryPillCell.h"
 
 // Forward declaration so PPHomePrepareProfileMenuButton can call pp_buildProfileMenuElements
 @class PPHomeViewController;
@@ -7223,8 +7224,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
     [self.collectionView registerClass:PPHomeMarketplaceHeroCell.class
             forCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeProviderCategoryPillCell.class
-            forCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomeUltraPremuimProviderCategoryPillCell.class
+            forCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier];
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
@@ -7460,8 +7461,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         if (section == PPHomeSectionProviderCategoryNav) {
-            PPHomeProviderCategoryPillCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier
+            PPHomeUltraPremuimProviderCategoryPillCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier
                                                           forIndexPath:indexPath];
 
             PPHomeProviderCategoryItem *categoryItem =
@@ -9606,11 +9607,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         items = @[
-            [PPHomeProviderCategoryItem itemWithIdentifier:@"marketplace"
-                                                  titleKey:@"provider_marketplace_title"
-                                               subtitleKey:@"provider_marketplace_subtitle"
-                                                systemIcon:@"square.grid.2x2.fill"
-                                                     route:PPHomeProviderCategoryRouteServices],
+            [PPHomeProviderCategoryItem itemWithIdentifier:@"veterinarians"
+                                                  titleKey:@"provider_vets_title"
+                                               subtitleKey:@"provider_vets_subtitle"
+                                                systemIcon:@"veterinaryNewColor"
+                                                     route:PPHomeProviderCategoryRouteVeterinarians],
             [PPHomeProviderCategoryItem itemWithIdentifier:@"pharmacy"
                                                   titleKey:@"provider_pharmacies_title"
                                                subtitleKey:@"provider_pharmacies_subtitle"
@@ -9660,6 +9661,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self pp_emitSelectionHaptic];
+
+    if (item.route == PPHomeProviderCategoryRouteVeterinarians) {
+        [self openNearestVet];
+        return;
+    }
 
     ProviderCompaniesListVC *vc = [[ProviderCompaniesListVC alloc] init];
     vc.selectedProviderCategoryIdentifier = PPSafeString(item.identifier);

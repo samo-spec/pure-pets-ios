@@ -3123,6 +3123,8 @@
 "home_marketplace_hero_accessibility_hint" = "يفتح قائمة شركات ومزودي المتجر.";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
 "provider_marketplace_subtitle" = "أطعمة . إكسسوارات";
+"provider_vets_title" = "الأطباء";
+"provider_vets_subtitle" = "عيادات ورعاية موثوقة.";
 "provider_pharmacies_title" = "الصيدلية";
 "provider_pharmacies_subtitle" = "أدوية ومستلزمات";
 "provider_companies_section_title_marketplace" = "واجهات المزودين";

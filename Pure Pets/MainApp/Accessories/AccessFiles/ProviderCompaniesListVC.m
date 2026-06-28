@@ -12,7 +12,6 @@
 #import "ProviderStorefrontProductsVC.h"
 #import "UserManager.h"
 #import "UserModel.h"
-#import "PPAddressModel.h"
 #import "CitiesManager.h"
 
 #import "PPProviderCompanyPremiumCardCell.h"
@@ -20,6 +19,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 @import FirebaseFunctions;
+@import FirebaseFirestore;
 
 
 
@@ -52,6 +52,7 @@
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
 @property (nonatomic, strong) UIView *heroTrailIconPlateView;
 @property (nonatomic, strong) UIImageView *heroTrailIconView;
+@property (nonatomic, strong) UIButton *heroDismissButton;
 
 @property (nonatomic, strong) UIButton *heroLayoutToggleButton;
 @property (nonatomic, strong) UIView *heroSearchChromeView;
@@ -125,6 +126,8 @@
                            opacityFloor:(CGFloat)opacityFloor
                                     key:(NSString *)key;
 - (void)pp_stopHeroAmbientMotion;
+- (void)pp_hydrateProviderProfileForEntry:(PPProviderCompanyEntry *)entry
+                               completion:(dispatch_block_t)completion;
 - (void)pp_refreshProviderRatingSummaries;
 @end
 
@@ -467,7 +470,7 @@
     
     self.heroTitleLabel = [[UILabel alloc] init];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTitleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:24.0]
+    self.heroTitleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:26.0]
                                                              ?: [UIFont systemFontOfSize:18.0
                                                                                   weight:UIFontWeightBold],
                                                              UIFontTextStyleTitle2);
@@ -529,6 +532,11 @@
     self.heroTrailIconView.accessibilityElementsHidden = YES;
     [self.heroTrailIconPlateView addSubview:self.heroTrailIconView];
 
+    self.heroDismissButton = [self pp_ButtonWithSystemName:@"chevron.down" action:@selector(onBack)];
+    self.heroDismissButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroDismissButton.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroDismissButton.accessibilityElementsHidden = YES;
+    [self.heroTrailIconPlateView addSubview:self.heroDismissButton];
     
 
     self.heroSearchChromeView = [[UIView alloc] init];
@@ -614,7 +622,7 @@
     self.heroProofRailHeightConstraint = [self.heroProofRailView.heightAnchor constraintEqualToConstant:40.0];
     self.heroSearchChromeBottomConstraint = [self.heroProofRailView.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:12.0];
     self.heroContentHeightConstraint = [self.heroContentContainerView.heightAnchor constraintEqualToConstant:[self pp_expandedHeroContentHeight]];
-
+    self.heroDismissButton.alpha = 0;
     [NSLayoutConstraint activateConstraints:@[
         [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0],
         [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:0.0],
@@ -646,7 +654,7 @@
         [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:24.0],
         [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:24.0],
 
-        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPIOS26() ? PPStatusBarHeight : PPStatusBarHeight + 8.0],
+        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPIOS26() ? PPStatusBarHeight+ 8.0 : PPStatusBarHeight + 8.0],
         [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
         [self.heroContentContainerView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
         self.heroContentHeightConstraint,
@@ -674,13 +682,19 @@
 
         [self.heroTrailIconPlateView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 8.0],
         [self.heroTrailIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.heroTrailIconPlateView.widthAnchor constraintEqualToConstant:40.0],
-        [self.heroTrailIconPlateView.heightAnchor constraintEqualToConstant:40.0],
+        [self.heroTrailIconPlateView.widthAnchor constraintEqualToConstant:52.0],
+        [self.heroTrailIconPlateView.heightAnchor constraintEqualToConstant:52.0],
 
         [self.heroTrailIconView.centerXAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerXAnchor],
         [self.heroTrailIconView.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
-        [self.heroTrailIconView.widthAnchor constraintEqualToConstant:19.0],
-        [self.heroTrailIconView.heightAnchor constraintEqualToConstant:19.0],
+        [self.heroTrailIconView.widthAnchor constraintEqualToConstant:24.0],
+        [self.heroTrailIconView.heightAnchor constraintEqualToConstant:24.0],
+        
+        
+        [self.heroDismissButton.centerXAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerXAnchor],
+        [self.heroDismissButton.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
+        [self.heroDismissButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroDismissButton.heightAnchor constraintEqualToConstant:44.0],
  
 
         self.heroProofRailLeadingConstraint,
@@ -869,55 +883,6 @@
     } completion:nil];
 }
 
-- (UIView *)pp_makeHeroMetricViewWithTitleLabel:(UILabel * __strong *)titleLabel
-                                     valueLabel:(UILabel * __strong *)valueLabel
-{
-    UIView *container = [[UIView alloc] init];
-    container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.backgroundColor = [PPProviderCompaniesHeroSecondarySurfaceColor() colorWithAlphaComponent:0.94];
-    container.layer.borderWidth = 0.75;
-    container.layer.masksToBounds = YES;
-    [container pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    PPProviderCompaniesApplyContinuousCorners(container, 20.0);
-
-    UILabel *title = [[UILabel alloc] init];
-    title.translatesAutoresizingMaskIntoConstraints = NO;
-    title.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:10.5], UIFontTextStyleCaption1);
-    title.textColor = [AppSecondaryTextClr ?: UIColor.secondaryLabelColor colorWithAlphaComponent:0.88];
-    title.textAlignment = Language.alignmentForCurrentLanguage;
-    title.numberOfLines = 1;
-    title.adjustsFontForContentSizeCategory = YES;
-    [container addSubview:title];
-
-    UILabel *value = [[UILabel alloc] init];
-    value.translatesAutoresizingMaskIntoConstraints = NO;
-    value.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:16.0], UIFontTextStyleHeadline);
-    value.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    value.textAlignment = Language.alignmentForCurrentLanguage;
-    value.numberOfLines = 2;
-    value.adjustsFontForContentSizeCategory = YES;
-    [container addSubview:value];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [title.topAnchor constraintEqualToAnchor:container.topAnchor constant:10.0],
-        [title.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:12.0],
-        [title.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-12.0],
-
-        [value.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:3.0],
-        [value.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:12.0],
-        [value.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-12.0],
-        [value.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-10.0]
-    ]];
-
-    if (titleLabel) {
-        *titleLabel = title;
-    }
-    if (valueLabel) {
-        *valueLabel = value;
-    }
-    return container;
-}
-
 - (void)pp_handleLayoutToggleButton
 {
     self.prefersCompactListLayout = !self.prefersCompactListLayout;
@@ -1001,7 +966,7 @@
 
     void (^changes)(void) = ^{
         self.heroLayoutToggleButton.backgroundColor = backgroundColor;
-        self.heroLayoutToggleButton.layer.borderWidth = 1.0;
+        self.heroLayoutToggleButton.layer.borderWidth = 0.2;
         [self.heroLayoutToggleButton pp_setBorderColor:strokeColor];
         self.heroLayoutToggleButton.layer.shadowColor = UIColor.blackColor.CGColor;
         self.heroLayoutToggleButton.layer.shadowOpacity = 0.06;
@@ -1446,10 +1411,10 @@
     CGFloat contentHeight = [self pp_expandedHeroContentHeight];
     CGFloat requiredHeight =
         PPStatusBarHeight +
-        18.0 +  // content top inset below status bar
+    (PPIOS26() ? 0 : 18.0) +  // content top inset below status bar
         contentHeight +
-        14.0 +  // content to search
-        50.0 +  // search chrome
+
+    50.0 +  // search chrome
         12.0 +  // search to discovery rail
         40.0 +  // discovery rail
         16.0;   // discovery rail bottom inset
@@ -1621,12 +1586,12 @@
         : [UIColor colorWithRed:0.995 green:0.987 blue:0.978 alpha:1.0];
     UIColor *warmHighlight = dark
         ? [UIColor colorWithWhite:0.170 alpha:1.0]
-        : [UIColor colorWithRed:1.0 green:0.998 blue:0.994 alpha:1.0];
+        : [UIColor colorWithRed:1.0 green:0.998 blue:0.994 alpha:0.3];
     UIColor *warmTint = dark
         ? [accent colorWithAlphaComponent:0.10]
         : [accent colorWithAlphaComponent:0.045];
     UIColor *surfaceBorder =
-        dark ? [UIColor.whiteColor colorWithAlphaComponent:0.12] : [UIColor.whiteColor colorWithAlphaComponent:0.82];
+        dark ? [UIColor.whiteColor colorWithAlphaComponent:0.12] : [UIColor.whiteColor colorWithAlphaComponent:0.86];
     UIColor *edgeColor =
         dark ? [UIColor.whiteColor colorWithAlphaComponent:0.06] : [UIColor.whiteColor colorWithAlphaComponent:0.92];
 
@@ -1636,7 +1601,7 @@
     }
     self.heroFrostedMaterialView.effect = [UIBlurEffect effectWithStyle:blurStyle];
     self.heroFrostedMaterialView.contentView.backgroundColor =
-        [surface colorWithAlphaComponent:(dark ? 0.14 : 0.18)];
+        [surface colorWithAlphaComponent:(dark ? 0.14 : 0.04)];
 
     self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceGradientLayer.colors = @[
@@ -1694,7 +1659,7 @@
     self.tableBackgroundBottomGlowView.layer.borderWidth = 0.0;
 
     self.heroTrailIconPlateView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.70 : 0.86)];
-    [self.heroTrailIconPlateView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.18 : 0.70)]];
+    [self.heroTrailIconPlateView pp_setBorderColor:[[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:(dark ? 0.18 : 0.70)]];
     self.heroTrailIconPlateView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.heroTrailIconPlateView.layer.shadowOpacity = dark ? 0.10 : 0.035;
     self.heroTrailIconPlateView.layer.shadowRadius = 14.0;
@@ -1839,6 +1804,7 @@
     dispatch_group_t group = dispatch_group_create();
     __block NSError *profileError = seedError;
     NSString *currentUID = [UserManager sharedManager].currentUser.ID ?: @"";
+    __weak typeof(self) weakSelf = self;
 
     for (PPProviderCompanyEntry *entry in entries) {
         dispatch_group_enter(group);
@@ -1847,13 +1813,29 @@
             [entry.ownerID isEqualToString:currentUID] &&
             [UserManager sharedManager].currentUser) {
             entry.user = [UserManager sharedManager].currentUser;
-            dispatch_group_leave(group);
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                dispatch_group_leave(group);
+                continue;
+            }
+            [strongSelf pp_hydrateProviderProfileForEntry:entry completion:^{
+                dispatch_group_leave(group);
+            }];
             continue;
         }
 
         [[UserManager sharedManager] getOtherUserModelFromFirestoreWithUID:entry.ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
             if (user) {
                 entry.user = user;
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) {
+                    dispatch_group_leave(group);
+                    return;
+                }
+                [strongSelf pp_hydrateProviderProfileForEntry:entry completion:^{
+                    dispatch_group_leave(group);
+                }];
+                return;
             } else if (error && !profileError) {
                 profileError = error;
             }
@@ -1861,7 +1843,6 @@
         }];
     }
 
-    __weak typeof(self) weakSelf = self;
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
@@ -1898,6 +1879,124 @@
             [self pp_refreshProviderRatingSummaries];
         }
     });
+}
+
+- (NSString *)pp_providerProfileCityTextForValue:(id)value
+{
+    NSString *rawCity = @"";
+    if ([value isKindOfClass:NSNumber.class]) {
+        rawCity = [(NSNumber *)value stringValue];
+    } else {
+        rawCity = PPProviderCompaniesSafeString(value);
+    }
+
+    rawCity = [rawCity stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (rawCity.length == 0) {
+        return @"";
+    }
+
+    NSCharacterSet *nonDigits = [NSCharacterSet.decimalDigitCharacterSet invertedSet];
+    BOOL looksNumeric = [rawCity rangeOfCharacterFromSet:nonDigits].location == NSNotFound;
+    NSInteger cityID = looksNumeric ? rawCity.integerValue : 0;
+    if (cityID > 0) {
+        NSString *localizedCity = [CitiesManager.shared cityNameForID:cityID];
+        if (localizedCity.length > 0) {
+            return localizedCity;
+        }
+    }
+
+    return rawCity;
+}
+
+- (NSArray<NSString *> *)pp_sanitizedProviderProfileURLArrayFromValue:(id)value
+{
+    if (![value isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+
+    NSMutableArray<NSString *> *urls = [NSMutableArray array];
+    for (id candidate in (NSArray *)value) {
+        NSString *url =
+            [PPProviderCompaniesSafeString(candidate)
+             stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (url.length > 0) {
+            [urls addObject:url];
+        }
+    }
+    return urls.copy;
+}
+
+- (NSString *)pp_trimmedProviderProfileStringFromValue:(id)value
+{
+    return [PPProviderCompaniesSafeString(value)
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+- (void)pp_applyProviderProfileData:(NSDictionary *)data
+                            toEntry:(PPProviderCompanyEntry *)entry
+{
+    if (![data isKindOfClass:NSDictionary.class] || ![entry isKindOfClass:PPProviderCompanyEntry.class]) {
+        return;
+    }
+
+    NSDictionary *form = [data[@"form"] isKindOfClass:NSDictionary.class] ? data[@"form"] : @{};
+    NSDictionary *userSummary = [data[@"userSummary"] isKindOfClass:NSDictionary.class] ? data[@"userSummary"] : @{};
+
+    NSString *displayName = [self pp_trimmedProviderProfileStringFromValue:form[@"fullName"]];
+    if (displayName.length == 0) {
+        displayName = [self pp_trimmedProviderProfileStringFromValue:userSummary[@"displayName"]];
+    }
+    if (displayName.length == 0) {
+        displayName = [self pp_trimmedProviderProfileStringFromValue:data[@"displayName"]];
+    }
+    entry.profileDisplayName = displayName ?: @"";
+
+    id cityValue = form[@"city"] ?: data[@"city"];
+    entry.profileCityText = [self pp_providerProfileCityTextForValue:cityValue] ?: @"";
+
+    NSArray<NSString *> *coverURLs = [self pp_sanitizedProviderProfileURLArrayFromValue:form[@"imageRefs"]];
+    if (coverURLs.count == 0) {
+        coverURLs = [self pp_sanitizedProviderProfileURLArrayFromValue:data[@"coverImageUrls"]];
+    }
+    entry.profileCoverImageURLs = coverURLs ?: @[];
+
+    NSString *avatarURL = [self pp_trimmedProviderProfileStringFromValue:userSummary[@"photoURL"]];
+    if (avatarURL.length == 0) {
+        avatarURL = [self pp_trimmedProviderProfileStringFromValue:data[@"avatarURL"]];
+    }
+    if (avatarURL.length == 0) {
+        avatarURL = [self pp_trimmedProviderProfileStringFromValue:data[@"photoURL"]];
+    }
+    entry.profileAvatarURLString = avatarURL ?: @"";
+}
+
+- (void)pp_hydrateProviderProfileForEntry:(PPProviderCompanyEntry *)entry
+                               completion:(dispatch_block_t)completion
+{
+    void (^finish)(void) = ^{
+        if (completion) {
+            completion();
+        }
+    };
+
+    if (entry.ownerID.length == 0) {
+        finish();
+        return;
+    }
+
+    NSString *providerType = PPProviderCompaniesIsPharmacyCategory(self.selectedProviderCategoryIdentifier)
+        ? @"pharmacy"
+        : @"marketplace";
+    NSString *profileID = [NSString stringWithFormat:@"%@_%@", entry.ownerID, providerType];
+    FIRDocumentReference *profileRef =
+        [[[FIRFirestore firestore] collectionWithPath:@"providerProfiles"] documentWithPath:profileID];
+
+    [profileRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (!error && snapshot.exists) {
+            [self pp_applyProviderProfileData:(snapshot.data ?: @{}) toEntry:entry];
+        }
+        finish();
+    }];
 }
 
 - (void)pp_refreshProviderRatingSummaries
@@ -1949,6 +2048,13 @@
 
 - (NSString *)pp_displayNameForEntry:(PPProviderCompanyEntry *)entry
 {
+    NSString *profileName =
+        [PPProviderCompaniesSafeString(entry.profileDisplayName)
+         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (profileName.length > 0) {
+        return profileName;
+    }
+
     if (![entry.user isKindOfClass:UserModel.class]) {
         return @"";
     }
@@ -2029,7 +2135,10 @@
         NSPredicate *predicate = [NSPredicate predicateWithBlock:^BOOL(PPProviderCompanyEntry *entry, NSDictionary *bindings) {
             NSString *displayName = [[self pp_displayNameForEntry:entry] lowercaseString];
             NSString *about = [PPProviderCompaniesSafeString(entry.user.UserAbout) lowercaseString];
-            return [displayName containsString:query] || [about containsString:query];
+            NSString *city = [PPProviderCompaniesSafeString(entry.profileCityText) lowercaseString];
+            return [displayName containsString:query] ||
+                   [about containsString:query] ||
+                   [city containsString:query];
         }];
         candidates = [candidates filteredArrayUsingPredicate:predicate] ?: @[];
     }
@@ -2219,7 +2328,12 @@
 {
     PPProviderCompanyPremiumCardViewModel *model = [[PPProviderCompanyPremiumCardViewModel alloc] init];
 
-    NSString *title = PPProviderCompaniesSafeString([entry.user bestDisplayName]);
+    NSString *title =
+        [PPProviderCompaniesSafeString(entry.profileDisplayName)
+         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (title.length == 0) {
+        title = PPProviderCompaniesSafeString([entry.user bestDisplayName]);
+    }
     if (title.length == 0) {
         NSMutableArray<NSString *> *parts = [NSMutableArray array];
         if (entry.user.FirstName.length > 0) [parts addObject:entry.user.FirstName];
@@ -2253,7 +2367,10 @@
     }
 
     NSString *coverImageURLString = @"";
-    if (entry.user.coverImageUrls && entry.user.coverImageUrls.count > 0) {
+    if (entry.profileCoverImageURLs.count > 0) {
+        coverImageURLString = PPProviderCompaniesSafeString(entry.profileCoverImageURLs[0]);
+    }
+    if (coverImageURLString.length == 0 && entry.user.coverImageUrls && entry.user.coverImageUrls.count > 0) {
         coverImageURLString = PPProviderCompaniesSafeString(entry.user.coverImageUrls[0]);
     }
     if (coverImageURLString.length == 0 && entry.items.count > 0) {

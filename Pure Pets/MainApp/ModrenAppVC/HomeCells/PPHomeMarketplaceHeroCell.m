@@ -237,6 +237,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.contentView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
     self.surfaceControl.semanticContentAttribute = PPMarketHeroSemanticAttribute();
     self.contentStackView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
+    self.eyebrowPillView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
+    self.eyebrowIconView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
+    self.eyebrowLabel.semanticContentAttribute = PPMarketHeroSemanticAttribute();
     self.ctaView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
     self.ctaIconView.image = [UIImage pp_symbolNamed:(Language.isRTL ? @"arrow.left" : @"arrow.right")
                                            pointSize:13.0
@@ -436,7 +439,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIView *topAccent = [[UIView alloc] init];
     topAccent.translatesAutoresizingMaskIntoConstraints = NO;
     topAccent.userInteractionEnabled = NO;
-    topAccent.layer.cornerRadius = 1.0;
+    topAccent.layer.cornerRadius = 2.0;
+    if (@available(iOS 13.0, *)) {
+        topAccent.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [surface addSubview:topAccent];
     self.topAccentView = topAccent;
 
@@ -459,10 +465,10 @@ static BOOL PPMarketHeroReduceMotion(void)
         [supportGlow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:28.0],
         [supportGlow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:Language.isRTL ? -16.0 : 18.0],
 
-        [topAccent.topAnchor constraintEqualToAnchor:surface.topAnchor constant:14.0],
-        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:(Language.isRTL ? -12.0 : 22.0)],
-        [topAccent.widthAnchor constraintEqualToConstant:42.0],
-        [topAccent.heightAnchor constraintEqualToConstant:2.0],
+        [topAccent.topAnchor constraintEqualToAnchor:surface.topAnchor],
+        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:22.0],
+        [topAccent.widthAnchor constraintEqualToConstant:44.0],
+        [topAccent.heightAnchor constraintEqualToConstant:4.0],
 
         [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:PPSpaceLG],
         [self.contentStackView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG],
@@ -512,7 +518,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = PPMarketHeroScaledFont([GM MidFontWithSize:11.0], UIFontTextStyleCaption1);
     eyebrowLabel.adjustsFontForContentSizeCategory = YES;
+    eyebrowLabel.adjustsFontSizeToFitWidth = YES;
+    eyebrowLabel.minimumScaleFactor = 0.86;
     eyebrowLabel.numberOfLines = 1;
+    eyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [eyebrowPill addSubview:eyebrowLabel];
     self.eyebrowLabel = eyebrowLabel;
 
@@ -591,13 +600,14 @@ static BOOL PPMarketHeroReduceMotion(void)
          [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
          [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
 
-         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:(Language.isRTL ? -10.0 : 10.0)],
+         [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
+         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
          [eyebrowIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
          [eyebrowIcon.widthAnchor constraintEqualToConstant:13.0],
          [eyebrowIcon.heightAnchor constraintEqualToConstant:13.0],
 
-         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:(Language.isRTL ? -6.0 : 6.0)],
-         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:(Language.isRTL ? -10.0 : -10.0)],
+         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:6.0],
+         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-10.0],
          [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:5.0],
          [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
 
