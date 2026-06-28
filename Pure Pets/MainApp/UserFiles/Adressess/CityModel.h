@@ -5,8 +5,12 @@
 //  Created by Mohammed Ahmed on 23/12/2025.
 //
 
+#import <Foundation/Foundation.h>
+#import "XLForm.h"
+
 @class CountryModel;
 @class StateModel;
+
 @interface CityModel : NSObject<XLFormOptionObject>
 + (instancetype)cityWithcityID:(NSInteger)citycityID
                      arName:(NSString *)ar

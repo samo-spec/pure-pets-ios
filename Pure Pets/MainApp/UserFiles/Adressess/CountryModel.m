@@ -1,5 +1,6 @@
 // CountryModel.m
 #import "CountryModel.h"
+#import "CitiesManager.h"
  
 @implementation CountryModel
 
@@ -67,8 +68,8 @@
         return current;
     }
 
-    // 5️⃣ Hard fallback (never nil)
-    return [[CitiesManager shared] countryWithCode:@""];
+    // 5️⃣ Stable manager fallback (never guesses a separate country source)
+    return [[CitiesManager shared] qatarCountry] ?: [[CitiesManager shared] countries].firstObject;
 }
 
 + (NSString *)safeCurrentCountryISOCode
@@ -140,18 +141,4 @@
 
 
 
-@end
- 
-
-
-@implementation StateModel
--(id)formValue
-{
-    return self;
-}
-
--(NSString *)formDisplayText
-{
-    return Language.isRTL ? self.arName : self.enName;
-}
 @end

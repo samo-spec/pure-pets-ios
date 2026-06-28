@@ -5,11 +5,13 @@
 //  Created by Mohammed Ahmed on 29/10/2025.
 //
 
-
 // CountryModel.h
 #import <Foundation/Foundation.h>
+#import "XLForm.h"
 
-@class StateModel;
+@class CityModel;
+
+
 
 @interface CountryModel : NSObject<XLFormOptionObject>
 
@@ -28,18 +30,4 @@
 + (CountryModel *)safeUserCountryModel;
 + (NSString *)safeCurrentCountryISOCode;
 + (NSString *)safeCurrentCurrencyCode;
-@end
-
- 
-
-
-
- 
-
-@interface StateModel : NSObject<XLFormOptionObject>
-
-@property (nonatomic, assign) NSInteger stateID;
-@property (nonatomic, copy) NSString *enName;
-@property (nonatomic, copy) NSString *arName;
-
 @end

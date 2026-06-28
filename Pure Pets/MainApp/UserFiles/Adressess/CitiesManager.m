@@ -1,18 +1,68 @@
 //
-//  CitiesManager 2.h
+//  CitiesManager.m
 //  Pure Pets
 //
-//  Created by Mohammed Ahmed on 29/10/2025.
-//
 
-
-// CitiesManager.m
 #import "CitiesManager.h"
-#import "CountryModel.h"
-#import "GM.h"
+#import "Language.h"
+#import <CoreTelephony/CTTelephonyNetworkInfo.h>
+#import <CoreTelephony/CTCarrier.h>
+@import FirebaseFirestore;
+
+NSNotificationName const CitiesManagerDidUpdateNotification = @"CitiesManagerDidUpdateNotification";
+
+static NSString *PPCitiesStringValue(id value) {
+    if ([value isKindOfClass:NSString.class]) {
+        return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        return [[value stringValue] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    return @"";
+}
+
+static NSDictionary *PPCitiesNameDictionary(id data) {
+    if ([data isKindOfClass:NSDictionary.class]) {
+        return (NSDictionary *)data;
+    }
+    return @{};
+}
+
+static NSString *PPCitiesLocalizedValue(NSString *english, NSString *arabic) {
+    NSString *localized = Language.isRTL ? arabic : english;
+    if (localized.length > 0) {
+        return localized;
+    }
+    return english.length > 0 ? english : (arabic ?: @"");
+}
+
+static NSString *PPCitiesNormalizedDialCode(NSString *dialCode) {
+    NSString *normalized = [PPCitiesStringValue(dialCode) stringByReplacingOccurrencesOfString:@" " withString:@""];
+    if (normalized.length == 0) {
+        return @"";
+    }
+    if (![normalized hasPrefix:@"+"]) {
+        normalized = [@"+" stringByAppendingString:normalized];
+    }
+    return normalized;
+}
+
+static NSString *PPCurrentCountryFromCarrier(void) {
+#if TARGET_OS_SIMULATOR
+    return @"";
+#else
+    CTTelephonyNetworkInfo *networkInfo = [[CTTelephonyNetworkInfo alloc] init];
+    CTCarrier *carrier = [networkInfo subscriberCellularProvider];
+    if (carrier) {
+        return [carrier isoCountryCode] ?: @"";
+    }
+    return @"";
+#endif
+}
 
 @interface CitiesManager ()
 @property (nonatomic, strong) NSArray<CountryModel *> *countries;
+@property (nonatomic, assign, readwrite) BOOL loading;
 @end
 
 @implementation CitiesManager
@@ -27,66 +77,142 @@
     return sharedInstance;
 }
 
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _countries = @[];
+        _loading = NO;
+    }
+    return self;
+}
+
 - (void)loadData {
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"cities" ofType:@"json"];
-    if (!path) {
-        NSLog(@"❌ [CitiesManager] cities.json not found in bundle!");
-        self.countries = @[];
+    if (self.countries.count > 0 || self.loading) {
         return;
     }
+    [self refreshFromFirestore];
+}
 
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    if (!data) {
-        NSLog(@"❌ [CitiesManager] Failed to load data from path: %@", path);
-        self.countries = @[];
-        return;
-    }
+- (void)refreshFromFirestore {
+    if (self.loading) return;
+    self.loading = YES;
 
-    NSError *error = nil;
-    NSArray *jsonArray = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:&error];
-    if (error || ![jsonArray isKindOfClass:[NSArray class]]) {
-        NSLog(@"❌ [CitiesManager] JSON parse error: %@", error);
-        self.countries = @[];
-        return;
-    }
-
-    NSMutableArray *countriesArray = [NSMutableArray array];
-     for (NSDictionary *countryDict in jsonArray) {
-        CountryModel *country = [CountryModel new];
-        country.countryID = [countryDict[@"id"] integerValue];
-        country.iso = countryDict[@"iso"];
-        country.countryCode = countryDict[@"countryCode"];
-        country.enName = countryDict[@"en"];
-        country.arName = countryDict[@"ar"];
-        country.defaultCountry = [countryDict[@"default"] boolValue];
-        country.defualtCityID = [countryDict[@"defualtCityID"] integerValue];
-
-         
-        NSMutableArray *cities = [NSMutableArray array];
-        for (NSDictionary *cityDict in countryDict[@"cities"]) {
-            CityModel *city = [CityModel new];
-            city.cityID = [cityDict[@"id"] integerValue];
-            city.enName = cityDict[@"en"];
-            city.arName = cityDict[@"ar"];
-            city.latitude = [cityDict[@"lat"] doubleValue];
-            city.longitude = [cityDict[@"lng"] doubleValue];
-            city.country = country;
-
-            NSMutableArray *states = [NSMutableArray array];
-            for (NSDictionary *stateDict in cityDict[@"states"]) {
-                StateModel *state = [StateModel new];
-                state.stateID = [stateDict[@"id"] integerValue];
-                state.enName = stateDict[@"en"];
-                state.arName = stateDict[@"ar"];
-                [states addObject:state];
-            }
-            city.states = states;
-            [cities addObject:city];
+    FIRFirestore *db = [FIRFirestore firestore];
+    [[db collectionWithPath:@"countries"] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"[CitiesManager] Failed to fetch countries: %@", error);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.loading = NO;
+                [[NSNotificationCenter defaultCenter] postNotificationName:CitiesManagerDidUpdateNotification object:self];
+            });
+            return;
         }
-        country.cities = cities;
-        [countriesArray addObject:country];
-    }
-    self.countries = countriesArray;
+
+        dispatch_group_t group = dispatch_group_create();
+        NSMutableArray<CountryModel *> *countriesArray = [NSMutableArray array];
+
+        for (FIRDocumentSnapshot *countryDoc in snapshot.documents) {
+            if (!countryDoc.exists) continue;
+
+            NSDictionary *countryData = countryDoc.data;
+            NSDictionary *countryName = PPCitiesNameDictionary(countryData[@"name"]);
+            CountryModel *country = [CountryModel new];
+            country.countryID = [countryData[@"id"] integerValue];
+            NSString *countryISO = PPCitiesStringValue(countryData[@"iso"]).uppercaseString;
+            country.iso = countryISO.length > 0 ? countryISO : countryDoc.documentID.uppercaseString;
+            country.countryCode = PPCitiesNormalizedDialCode(countryData[@"countryCode"]);
+            country.enName = PPCitiesStringValue(countryName[@"en"]).length > 0 ? PPCitiesStringValue(countryName[@"en"]) : PPCitiesStringValue(countryData[@"en"]);
+            country.arName = PPCitiesStringValue(countryName[@"ar"]).length > 0 ? PPCitiesStringValue(countryName[@"ar"]) : PPCitiesStringValue(countryData[@"ar"]);
+            country.defaultCountry = [countryData[@"default"] boolValue];
+            NSInteger defaultCityID = [countryData[@"defualtCityID"] integerValue];
+            if (defaultCityID <= 0) {
+                defaultCityID = [countryData[@"defaultCityID"] integerValue];
+            }
+            country.defualtCityID = defaultCityID;
+
+            dispatch_group_enter(group);
+            [[countryDoc.reference collectionWithPath:@"cities"] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable citiesSnapshot, NSError * _Nullable citiesError) {
+                if (citiesError) {
+                    NSLog(@"[CitiesManager] Failed to fetch cities for %@: %@", country.iso, citiesError);
+                    country.cities = @[];
+                    dispatch_group_leave(group);
+                    return;
+                }
+
+                NSMutableArray<CityModel *> *citiesArray = [NSMutableArray array];
+
+                for (FIRDocumentSnapshot *cityDoc in citiesSnapshot.documents) {
+                    if (!cityDoc.exists) continue;
+
+                    NSDictionary *cityData = cityDoc.data;
+                    NSDictionary *cityName = PPCitiesNameDictionary(cityData[@"name"]);
+                    CityModel *city = [CityModel new];
+                    city.cityID = [cityData[@"id"] integerValue];
+                    city.enName = PPCitiesStringValue(cityName[@"en"]).length > 0 ? PPCitiesStringValue(cityName[@"en"]) : PPCitiesStringValue(cityData[@"en"]);
+                    city.arName = PPCitiesStringValue(cityName[@"ar"]).length > 0 ? PPCitiesStringValue(cityName[@"ar"]) : PPCitiesStringValue(cityData[@"ar"]);
+                    city.latitude = [cityData[@"lat"] doubleValue];
+                    city.longitude = [cityData[@"lng"] doubleValue];
+                    city.country = country;
+
+                    dispatch_group_enter(group);
+                    [[cityDoc.reference collectionWithPath:@"states"] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable statesSnapshot, NSError * _Nullable statesError) {
+                        if (statesError) {
+                            NSLog(@"[CitiesManager] Failed to fetch states for city %ld: %@", (long)city.cityID, statesError);
+                            city.states = @[];
+                            dispatch_group_leave(group);
+                            return;
+                        }
+
+                        NSMutableArray *statesArray = [NSMutableArray array];
+                        for (FIRDocumentSnapshot *stateDoc in statesSnapshot.documents) {
+                            if (!stateDoc.exists) continue;
+
+                            NSDictionary *stateData = stateDoc.data;
+                            NSDictionary *stateName = PPCitiesNameDictionary(stateData[@"name"]);
+                            StateModel *state = [StateModel new];
+                            state.stateID = [stateData[@"id"] integerValue];
+                            state.enName = PPCitiesStringValue(stateName[@"en"]).length > 0 ? PPCitiesStringValue(stateName[@"en"]) : PPCitiesStringValue(stateData[@"en"]);
+                            state.arName = PPCitiesStringValue(stateName[@"ar"]).length > 0 ? PPCitiesStringValue(stateName[@"ar"]) : PPCitiesStringValue(stateData[@"ar"]);
+                            [statesArray addObject:state];
+                        }
+                        [statesArray sortUsingComparator:^NSComparisonResult(StateModel *lhs, StateModel *rhs) {
+                            return lhs.stateID < rhs.stateID ? NSOrderedAscending : (lhs.stateID > rhs.stateID ? NSOrderedDescending : NSOrderedSame);
+                        }];
+                        city.states = [statesArray copy];
+                        dispatch_group_leave(group);
+                    }];
+
+                    [citiesArray addObject:city];
+                }
+
+                [citiesArray sortUsingComparator:^NSComparisonResult(CityModel *lhs, CityModel *rhs) {
+                    return lhs.cityID < rhs.cityID ? NSOrderedAscending : (lhs.cityID > rhs.cityID ? NSOrderedDescending : NSOrderedSame);
+                }];
+                country.cities = [citiesArray copy];
+                dispatch_group_leave(group);
+            }];
+
+            [countriesArray addObject:country];
+        }
+
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            [countriesArray sortUsingComparator:^NSComparisonResult(CountryModel *lhs, CountryModel *rhs) {
+                if (lhs.defaultCountry != rhs.defaultCountry) {
+                    return lhs.defaultCountry ? NSOrderedAscending : NSOrderedDescending;
+                }
+                NSString *leftName = PPCitiesLocalizedValue(lhs.enName, lhs.arName);
+                NSString *rightName = PPCitiesLocalizedValue(rhs.enName, rhs.arName);
+                NSComparisonResult nameResult = [leftName localizedCaseInsensitiveCompare:rightName];
+                if (nameResult != NSOrderedSame) {
+                    return nameResult;
+                }
+                return lhs.countryID < rhs.countryID ? NSOrderedAscending : (lhs.countryID > rhs.countryID ? NSOrderedDescending : NSOrderedSame);
+            }];
+            self.countries = [countriesArray copy];
+            self.loading = NO;
+            [[NSNotificationCenter defaultCenter] postNotificationName:CitiesManagerDidUpdateNotification object:self];
+        });
+    }];
 }
 
 
@@ -125,7 +251,7 @@
 -(CountryModel *)CurrentCountry
 {
     NSArray<NSString *> *candidateISOCodes = @[
-        [GM getCurrentCountryFromCarrier] ?: @"",
+        PPCurrentCountryFromCarrier(),
         [[[NSLocale currentLocale] objectForKey:NSLocaleCountryCode] description] ?: @"",
     ];
 
@@ -212,14 +338,9 @@
     }
 
     for (CountryModel *country in self.countries) {
-        NSString *candidate = [[country.countryCode ?: @""
-            stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-            stringByReplacingOccurrencesOfString:@" " withString:@""];
+        NSString *candidate = PPCitiesNormalizedDialCode(country.countryCode);
         if (candidate.length == 0) {
             continue;
-        }
-        if (![candidate hasPrefix:@"+"]) {
-            candidate = [@"+" stringByAppendingString:candidate];
         }
         if ([candidate isEqualToString:normalized]) {
             return country;
@@ -227,6 +348,51 @@
     }
 
     return nil;
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)countryDialCodeOptions
+{
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *options = [NSMutableArray array];
+    for (CountryModel *country in self.countries) {
+        NSString *dialCode = PPCitiesNormalizedDialCode(country.countryCode);
+        NSString *iso = PPCitiesStringValue(country.iso).uppercaseString;
+        NSString *localizedName = PPCitiesLocalizedValue(country.enName, country.arName);
+        if (dialCode.length == 0 || iso.length == 0 || localizedName.length == 0) {
+            continue;
+        }
+
+        NSString *flag = [self emojiFlagForCountryCode:iso];
+        NSString *title = flag.length > 0 ? [NSString stringWithFormat:@"%@ %@", flag, localizedName] : localizedName;
+        [options addObject:@{
+            @"value": dialCode,
+            @"subtitle": dialCode,
+            @"title": title,
+            @"name": localizedName,
+            @"enName": country.enName ?: @"",
+            @"arName": country.arName ?: @"",
+            @"iso": iso,
+            @"flag": flag ?: @"",
+        }];
+    }
+    return [options copy];
+}
+
+- (NSString *)emojiFlagForCountryCode:(NSString *)isoCode
+{
+    NSString *code = PPCitiesStringValue(isoCode).uppercaseString;
+    if (code.length < 2) {
+        return @"";
+    }
+    code = [code substringToIndex:2];
+
+    uint32_t base = 127397;
+    uint32_t scalars[] = {
+        [code characterAtIndex:0] + base,
+        [code characterAtIndex:1] + base
+    };
+    return [[NSString alloc] initWithBytes:scalars
+                                    length:sizeof(scalars)
+                                  encoding:NSUTF32LittleEndianStringEncoding] ?: @"";
 }
 
 - (CountryModel *)qatarCountry
@@ -259,11 +425,15 @@
 @implementation LocalizationHelper
 
 + (NSString *)localizedNameWithEnglish:(NSString *)enName arabic:(NSString *)arName {
-    return [self isArabicLanguage] ? arName : enName;
+    return PPCitiesLocalizedValue(enName, arName);
 }
 
 + (BOOL)isArabicLanguage {
-    NSString *lang = [[NSLocale preferredLanguages].firstObject substringToIndex:2];
+    NSString *preferred = [NSLocale preferredLanguages].firstObject ?: @"";
+    if (preferred.length < 2) {
+        return NO;
+    }
+    NSString *lang = [preferred substringToIndex:2];
     return [lang isEqualToString:@"ar"];
 }
 

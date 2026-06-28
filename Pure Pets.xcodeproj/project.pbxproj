@@ -60,6 +60,7 @@
 		F20956852F85686F007C4ABA /* PPReminderEditorViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F20956842F856859007C4ABA /* PPReminderEditorViewController.m */; };
 		F20ACAB02EFAF419009B4FA2 /* SalesCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F20ACAAF2EFAF407009B4FA2 /* SalesCell.m */; };
 		F20ACAB32EFAF793009B4FA2 /* CityModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F20ACAB22EFAF793009B4FA2 /* CityModel.m */; };
+		F2C1A1112F00111100C1A111 /* StateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1A1132F00111100C1A113 /* StateModel.m */; };
 		F20ACAB72EFB86FD009B4FA2 /* MainController_Func.m in Sources */ = {isa = PBXBuildFile; fileRef = F20ACAB62EFB86FD009B4FA2 /* MainController_Func.m */; };
 		F20C62722F451AB200093332 /* PPCommerceFeedbackManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F20C62712F451AB200093332 /* PPCommerceFeedbackManager.m */; };
 		F20CB1422EF50E1500CDD5AD /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F20CB1412EF50E1500CDD5AD /* GoogleSignIn */; };
@@ -1908,6 +1909,8 @@
 		F2A2F1BA2EB1781E00BD1261 /* CountryModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CountryModel.m; sourceTree = "<group>"; };
 		F2A2F1BB2EB1794900BD1261 /* CitiesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CitiesManager.h; sourceTree = "<group>"; };
 		F2A2F1BC2EB1796200BD1261 /* CitiesManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CitiesManager.m; sourceTree = "<group>"; };
+		F2C1A1122F00111100C1A112 /* StateModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StateModel.h; sourceTree = "<group>"; };
+		F2C1A1132F00111100C1A113 /* StateModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StateModel.m; sourceTree = "<group>"; };
 		F2A302F42EBA3CEA005E45F0 /* PaymentMethod.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PaymentMethod.h; sourceTree = "<group>"; };
 		F2A302F52EBA3D00005E45F0 /* UserPaymentInstrument.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPaymentInstrument.h; sourceTree = "<group>"; };
 		F2A302F62EBA3D0B005E45F0 /* UserPaymentInstrument.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPaymentInstrument.m; sourceTree = "<group>"; };
@@ -4318,6 +4321,8 @@
 				F2A2F1BC2EB1796200BD1261 /* CitiesManager.m */,
 				F2A2F1B92EB177A900BD1261 /* CountryModel.h */,
 				F2A2F1BA2EB1781E00BD1261 /* CountryModel.m */,
+				F2C1A1122F00111100C1A112 /* StateModel.h */,
+				F2C1A1132F00111100C1A113 /* StateModel.m */,
 				F2A2F1B12EB13C9F00BD1261 /* AddressFormVC.h */,
 				F2A2F1B32EB13CD200BD1261 /* AddressFormVC.m */,
 				F2A2F1AE2EB13C4200BD1261 /* PPAddressModel.h */,
@@ -6117,6 +6122,7 @@
 				F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */,
 				F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */,
 				F2A2F1BD2EB1797400BD1261 /* CitiesManager.m in Sources */,
+				F2C1A1112F00111100C1A111 /* StateModel.m in Sources */,
 				F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */,
 				F2B604B22EAEAE04003F6F08 /* PPOptionCell.m in Sources */,
 				F27714BC2ED7760D00B1D062 /* QB.m in Sources */,
@@ -6400,7 +6406,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6510,7 +6516,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6616,7 +6622,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6634,7 +6640,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6651,7 +6657,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6668,7 +6674,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 182;
+				CURRENT_PROJECT_VERSION = 183;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
