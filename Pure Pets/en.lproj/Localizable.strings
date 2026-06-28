@@ -3149,6 +3149,7 @@
 "provider_companies_hero_eyebrow_marketplace" = "Marketplace";
 "provider_companies_hero_eyebrow_pharmacy" = "Pharmacies";
 "provider_companies_hero_support_marketplace" = "Search, compare, open the shop.";
+"provider_companies_hero_support_marketplace_short" = "Search, compare, open the shop.";
 "provider_companies_hero_support_pharmacy" = "Search trusted pharmacies.";
 "provider_companies_hero_mode_summary_recommended" = "Best overall match";
 "provider_companies_hero_mode_summary_featured" = "Verified providers first";

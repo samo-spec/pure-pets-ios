@@ -16,858 +16,20 @@
 #import "CitiesManager.h"
 
 #import "PPProviderCompanyPremiumCardCell.h"
-
+#import "PPProviderCompanyCell.h"
 #import <QuartzCore/QuartzCore.h>
 
 @import FirebaseFunctions;
 
-static NSString *PPProviderCompaniesSafeString(id value)
-{
-    return [value isKindOfClass:NSString.class] ? (NSString *)value : @"";
-}
 
-static CGFloat PPProviderCompaniesBottomNavigationClearanceForController(UIViewController *controller)
-{
-    if (!controller || !controller.tabBarController || CGRectIsEmpty(controller.view.bounds)) {
-        return 0.0;
-    }
 
-    UITabBarController *tabBarController = controller.tabBarController;
-    if (PPIOS26()) {
-        SEL clearanceSelector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
-        if ([tabBarController respondsToSelector:clearanceSelector]) {
-            CGFloat (*clearanceIMP)(id, SEL) = (CGFloat (*)(id, SEL))[tabBarController methodForSelector:clearanceSelector];
-            CGFloat rootClearance = clearanceIMP ? clearanceIMP(tabBarController, clearanceSelector) : 0.0;
-            if (rootClearance > 0.0) {
-                return ceil(rootClearance);
-            }
-        }
-    }
 
-    UIView *bottomNavigationView = nil;
-    SEL anchorSelector = NSSelectorFromString(@"pp_novaAmbientBottomNavigationAnchorView");
-    if ([tabBarController respondsToSelector:anchorSelector]) {
-        UIView *(*anchorIMP)(id, SEL) = (UIView *(*)(id, SEL))[tabBarController methodForSelector:anchorSelector];
-        bottomNavigationView = anchorIMP ? anchorIMP(tabBarController, anchorSelector) : nil;
-    }
-    if (!bottomNavigationView && !tabBarController.tabBar.hidden && tabBarController.tabBar.alpha > 0.01) {
-        bottomNavigationView = tabBarController.tabBar;
-    }
-    if (!bottomNavigationView ||
-        bottomNavigationView.hidden ||
-        bottomNavigationView.alpha <= 0.01 ||
-        !bottomNavigationView.superview) {
-        return 0.0;
-    }
 
-    CGRect navigationFrame = [bottomNavigationView.superview convertRect:bottomNavigationView.frame
-                                                                  toView:controller.view];
-    if (CGRectIsEmpty(navigationFrame)) {
-        return 0.0;
-    }
 
-    CGFloat safeBottomY = CGRectGetMaxY(controller.view.bounds) - controller.view.safeAreaInsets.bottom;
-    CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(navigationFrame));
-    return ceil(overlapAboveSafeArea + 12.0);
-}
 
-static UIColor *PPProviderCompaniesDynamicColor(UIColor *lightColor, UIColor *darkColor)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
-            return traits.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
-        }];
-    }
-    return lightColor;
-}
 
-static UIColor *PPProviderCompaniesHeroSurfaceColor(void)
-{
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.99],
-                                           [UIColor colorWithWhite:0.15 alpha:0.99]);
-}
 
-static UIColor *PPProviderCompaniesHeroStrokeColor(void)
-{
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:0.0 alpha:0.035],
-                                           [UIColor colorWithWhite:1.0 alpha:0.06]);
-}
 
-static UIColor *PPProviderCompaniesHeroSecondarySurfaceColor(void)
-{
-    return PPProviderCompaniesDynamicColor([UIColor colorWithWhite:0.965 alpha:0.86],
-                                           [UIColor colorWithWhite:1.0 alpha:0.07]);
-}
-
-static UIFont *PPProviderCompaniesScaledFont(UIFont *font, UIFontTextStyle textStyle)
-{
-    UIFont *resolvedFont = font ?: [UIFont preferredFontForTextStyle:textStyle];
-    if (@available(iOS 11.0, *)) {
-        return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:resolvedFont];
-    }
-    return resolvedFont;
-}
-
-static void PPProviderCompaniesApplyContinuousCorners(UIView *view, CGFloat radius)
-{
-    view.layer.cornerRadius = radius;
-    if (@available(iOS 13.0, *)) {
-        view.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-}
-
-static NSString *PPProviderCompaniesNormalizedIdentifier(NSString *identifier)
-{
-    return [[PPProviderCompaniesSafeString(identifier)
-             stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-            lowercaseString];
-}
-
-static BOOL PPProviderCompaniesIsPharmacyCategory(NSString *identifier)
-{
-    return [[PPProviderCompaniesNormalizedIdentifier(identifier) lowercaseString] isEqualToString:@"pharmacy"];
-}
-
-static NSString *PPProviderCompaniesTitleForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_pharmacies_title") ?: @"Pharmacies";
-    }
-    return kLang(@"provider_companies_title_marketplace") ?: kLang(@"provider_marketplace_title") ?: @"Provider Market";
-}
-
-static NSString *PPProviderCompaniesHeroTitleForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_pharmacies_title") ?: @"Pharmacies";
-    }
-    return kLang(@"provider_marketplace_title") ?: @"Marketplace";
-}
-
-static NSString *PPProviderCompaniesSubtitleForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_pharmacies_subtitle") ?: @"Verified pet medicines from trusted pharmacies.";
-    }
-    return kLang(@"provider_marketplace_subtitle") ?: @"Trusted providers offering food, accessories, and essentials.";
-}
-
-static NSString *PPProviderCompaniesCellSubtitleForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_companies_cell_subtitle_pharmacy") ?: @"Verified medicines and care essentials.";
-    }
-    return kLang(@"provider_companies_cell_subtitle_marketplace") ?: @"Food, accessories, and daily care.";
-}
-
-static NSString *PPProviderCompaniesSectionTitleForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_companies_section_title_pharmacy") ?: @"Approved pharmacies";
-    }
-    return kLang(@"provider_companies_section_title_marketplace") ?: @"Trusted marketplace providers";
-}
-
-static NSString *PPProviderCompaniesCountText(NSInteger count, NSString *identifier)
-{
-    NSString *format = PPProviderCompaniesIsPharmacyCategory(identifier)
-        ? (kLang(@"provider_companies_count_pharmacy_format") ?: @"%ld pharmacies")
-        : (kLang(@"provider_companies_count_marketplace_format") ?: @"%ld providers");
-    return [NSString stringWithFormat:format, (long)MAX(count, 0)];
-}
-
-static NSString *PPProviderCompaniesItemsCountText(NSInteger count, NSString *identifier)
-{
-    NSString *format = PPProviderCompaniesIsPharmacyCategory(identifier)
-        ? (kLang(@"provider_storefront_items_count_pharmacy_format") ?: @"%ld medicines")
-        : (kLang(@"provider_storefront_items_count_marketplace_format") ?: @"%ld products");
-    return [NSString stringWithFormat:format, (long)MAX(count, 0)];
-}
-
-static NSString *PPProviderCompaniesSymbolNameForCategoryIdentifier(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return @"cross.case.fill";
-    }
-    return @"square.grid.2x2.fill";
-}
-
-typedef NS_ENUM(NSInteger, PPProviderCompaniesLoadState) {
-    PPProviderCompaniesLoadStateIdle = 0,
-    PPProviderCompaniesLoadStateLoading,
-    PPProviderCompaniesLoadStateLoaded,
-    PPProviderCompaniesLoadStateEmpty,
-    PPProviderCompaniesLoadStateError,
-};
-
-typedef NS_ENUM(NSInteger, PPProviderCompaniesDiscoveryMode) {
-    PPProviderCompaniesDiscoveryModeRecommended = 0,
-    PPProviderCompaniesDiscoveryModeFeatured,
-    PPProviderCompaniesDiscoveryModeTopSellers,
-    PPProviderCompaniesDiscoveryModeNewest,
-};
-
-static NSString *PPProviderCompaniesDiscoveryTitle(PPProviderCompaniesDiscoveryMode mode)
-{
-    switch (mode) {
-        case PPProviderCompaniesDiscoveryModeFeatured:
-            return kLang(@"provider_companies_discovery_featured") ?: @"Featured";
-        case PPProviderCompaniesDiscoveryModeTopSellers:
-            return kLang(@"provider_companies_discovery_top_sellers") ?: @"Top sellers";
-        case PPProviderCompaniesDiscoveryModeNewest:
-            return kLang(@"provider_companies_discovery_newest") ?: @"Newest";
-        case PPProviderCompaniesDiscoveryModeRecommended:
-        default:
-            return kLang(@"provider_companies_discovery_recommended") ?: @"Recommended";
-    }
-}
-
-static NSString *PPProviderCompaniesDiscoverySymbol(PPProviderCompaniesDiscoveryMode mode)
-{
-    switch (mode) {
-        case PPProviderCompaniesDiscoveryModeFeatured:
-            return @"checkmark.seal.fill";
-        case PPProviderCompaniesDiscoveryModeTopSellers:
-            return @"chart.bar.fill";
-        case PPProviderCompaniesDiscoveryModeNewest:
-            return @"clock.fill";
-        case PPProviderCompaniesDiscoveryModeRecommended:
-        default:
-            return @"sparkles";
-    }
-}
-
-static NSString *PPProviderCompaniesHeroEyebrowText(NSString *identifier)
-{
-    (void)identifier;
-    return @"";
-}
-
-static NSString *PPProviderCompaniesHeroSupportText(NSString *identifier)
-{
-    if (PPProviderCompaniesIsPharmacyCategory(identifier)) {
-        return kLang(@"provider_companies_hero_support_pharmacy_short") ?: @"Choose a trusted pharmacy first.";
-    }
-    return kLang(@"provider_companies_hero_support_marketplace_short") ?: @"Choose a trusted provider first.";
-}
-
-static NSString *PPProviderCompaniesHeroModeSummary(PPProviderCompaniesDiscoveryMode mode)
-{
-    switch (mode) {
-        case PPProviderCompaniesDiscoveryModeFeatured:
-            return kLang(@"provider_companies_hero_mode_summary_featured") ?: @"Verified providers first";
-        case PPProviderCompaniesDiscoveryModeTopSellers:
-            return kLang(@"provider_companies_hero_mode_summary_top_sellers") ?: @"Most complete catalogs";
-        case PPProviderCompaniesDiscoveryModeNewest:
-            return kLang(@"provider_companies_hero_mode_summary_newest") ?: @"Recently added storefronts";
-        case PPProviderCompaniesDiscoveryModeRecommended:
-        default:
-            return kLang(@"provider_companies_hero_mode_summary_recommended") ?: @"Best overall match";
-    }
-}
-
-@interface PPProviderCompanyEntry : NSObject
-@property (nonatomic, copy) NSString *ownerID;
-@property (nonatomic, strong) NSArray<PetAccessory *> *items;
-@property (nonatomic, strong, nullable) UserModel *user;
-@property (nonatomic, assign) NSInteger productCount;
-@property (nonatomic, strong, nullable) NSDate *latestCreatedAt;
-@end
-
-@implementation PPProviderCompanyEntry
-@end
-
-static NSString *PPProviderCompaniesCellDisplaySubtitle(PPProviderCompanyEntry *entry, NSString *identifier)
-{
-    NSString *about = PPProviderCompaniesSafeString(entry.user.UserAbout);
-    NSString *fallback = PPProviderCompaniesCellSubtitleForCategoryIdentifier(identifier);
-    if (about.length == 0) {
-        return fallback;
-    }
-
-    NSString *normalizedAbout =
-        [about stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (normalizedAbout.length == 0) {
-        return fallback;
-    }
-
-    return normalizedAbout;
-}
-
-static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
-{
-    if (![entry.user isKindOfClass:UserModel.class]) {
-        return @"";
-    }
-
-    for (PPAddressModel *address in [entry.user addresses] ?: @[]) {
-        if (![address isKindOfClass:PPAddressModel.class] || address.cityID <= 0) {
-            continue;
-        }
-        NSString *cityName = [CitiesManager.shared cityNameForID:address.cityID];
-        if (cityName.length > 0) {
-            return cityName;
-        }
-    }
-
-    return @"";
-}
-
-@interface PPProviderCompanyCell : UITableViewCell
-- (void)configureWithEntry:(PPProviderCompanyEntry *)entry
-        categoryIdentifier:(NSString *)categoryIdentifier;
-- (void)pp_runEntranceAnimationWithDelay:(NSTimeInterval)delay;
-@end
-
-@implementation PPProviderCompanyCell {
-    UIView *_cardView;
-    UIView *_topAccentView;
-    UIView *_ambientAccentView;
-    UIView *_avatarShellView;
-    UIView *_avatarHaloView;
-    UIView *_avatarStatusDotView;
-    UIView *_chevronContainerView;
-    UIView *_ratingPillView;
-    UIStackView *_badgeStackView;
-    UIStackView *_metaStackView;
-    UIStackView *_ratingStackView;
-    UIImageView *_avatarImageView;
-    UIImageView *_metaIconView;
-    UIImageView *_ratingStarView;
-    PPInsetLabel *_categoryBadgeLabel;
-    PPInsetLabel *_statusBadgeLabel;
-    UILabel *_titleLabel;
-    UILabel *_subtitleLabel;
-    UILabel *_metaLabel;
-    UILabel *_ratingValueLabel;
-    UILabel *_ratingCountLabel;
-    UIImageView *_chevronView;
-    UIImageView *_avatarVerifiedIconView;
-}
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
-{
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        [self pp_buildUI];
-    }
-    return self;
-}
-
-- (void)pp_buildUI
-{
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    _cardView = [[UIView alloc] init];
-    _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = PPProviderCompaniesHeroSurfaceColor();
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 28.0);
-    _cardView.layer.borderWidth = 1.0;
-    _cardView.layer.masksToBounds = NO;
-    [_cardView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    [_cardView pp_setShadowColor:UIColor.blackColor];
-    _cardView.layer.shadowOpacity = 0.060;
-    _cardView.layer.shadowRadius = 24.0;
-    _cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    [self.contentView addSubview:_cardView];
-
-    _ambientAccentView = [[UIView alloc] init];
-    _ambientAccentView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ambientAccentView.userInteractionEnabled = NO;
-    _ambientAccentView.alpha = 0.0;
-    [_cardView addSubview:_ambientAccentView];
-
-    _topAccentView = [[UIView alloc] init];
-    _topAccentView.translatesAutoresizingMaskIntoConstraints = NO;
-    _topAccentView.userInteractionEnabled = NO;
-    PPProviderCompaniesApplyContinuousCorners(_topAccentView, 2.0);
-    [_cardView addSubview:_topAccentView];
-
-    _avatarHaloView = [[UIView alloc] init];
-    _avatarHaloView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarHaloView.userInteractionEnabled = NO;
-
-    _avatarHaloView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    [_cardView addSubview:_avatarHaloView];
-
-    _avatarShellView = [[UIView alloc] init];
-    _avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarShellView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    PPProviderCompaniesApplyContinuousCorners(_avatarShellView, 34.0);
-    _avatarShellView.layer.masksToBounds = NO;
-    _avatarShellView.layer.borderWidth = 1.0;
-    [_avatarShellView pp_setShadowColor:UIColor.blackColor];
-    _avatarShellView.layer.shadowOpacity = 0.075;
-    _avatarShellView.layer.shadowRadius = 16.0;
-    _avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    [_avatarShellView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    [_cardView addSubview:_avatarShellView];
-
-    _avatarImageView = [[UIImageView alloc] init];
-    _avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
-    PPProviderCompaniesApplyContinuousCorners(_avatarImageView, 26.0);
-    _avatarImageView.layer.masksToBounds = YES;
-    _avatarImageView.backgroundColor = [UIColor colorWithWhite:0.94 alpha:1.0];
-    [_avatarShellView addSubview:_avatarImageView];
-
-    _avatarStatusDotView = [[UIView alloc] init];
-    _avatarStatusDotView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarStatusDotView.layer.borderWidth = 2.5;
-    _avatarStatusDotView.layer.masksToBounds = YES;
-    [_avatarStatusDotView pp_setBorderColor:PPProviderCompaniesHeroSurfaceColor()];
-    [_cardView addSubview:_avatarStatusDotView];
-
-    _avatarVerifiedIconView = [[UIImageView alloc] init];
-    _avatarVerifiedIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarVerifiedIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _avatarVerifiedIconView.tintColor = [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0];
-    [_avatarStatusDotView addSubview:_avatarVerifiedIconView];
-
-    _badgeStackView = [[UIStackView alloc] init];
-    _badgeStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _badgeStackView.axis = UILayoutConstraintAxisHorizontal;
-    _badgeStackView.alignment = UIStackViewAlignmentCenter;
-    _badgeStackView.distribution = UIStackViewDistributionFill;
-    _badgeStackView.spacing = 7.0;
-    _badgeStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [_cardView addSubview:_badgeStackView];
-
-    _statusBadgeLabel = [self pp_badgeLabel];
-    [_badgeStackView addArrangedSubview:_statusBadgeLabel];
-
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:19.0],
-                                                     UIFontTextStyleHeadline);
-    _titleLabel.textColor = AppPrimaryTextClr ?: [UIColor colorWithWhite:0.10 alpha:1.0];
-    _titleLabel.numberOfLines = 2;
-    _titleLabel.adjustsFontForContentSizeCategory = YES;
-    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [_cardView addSubview:_titleLabel];
-
-    _subtitleLabel = [[UILabel alloc] init];
-    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:13.5], UIFontTextStyleSubheadline);
-    _subtitleLabel.textColor = AppSecondaryTextClr ?: [UIColor colorWithWhite:0.42 alpha:1.0];
-    _subtitleLabel.numberOfLines = 2;
-    _subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    _subtitleLabel.adjustsFontForContentSizeCategory = YES;
-    _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [_cardView addSubview:_subtitleLabel];
-
-    _metaStackView = [[UIStackView alloc] init];
-    _metaStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _metaStackView.axis = UILayoutConstraintAxisHorizontal;
-    _metaStackView.alignment = UIStackViewAlignmentCenter;
-    _metaStackView.distribution = UIStackViewDistributionFill;
-    _metaStackView.spacing = 4.0;
-    _metaStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    _metaStackView.layoutMargins = UIEdgeInsetsMake(3.0, 7.0, 3.0, 7.0);
-    _metaStackView.layoutMarginsRelativeArrangement = YES;
-    _metaStackView.layer.borderWidth = 0.25;
-    _metaStackView.layer.masksToBounds = YES;
-    PPProviderCompaniesApplyContinuousCorners(_metaStackView, 14.0);
-    [_badgeStackView addArrangedSubview:_metaStackView];
-
-    _metaIconView = [[UIImageView alloc] init];
-    _metaIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _metaIconView.contentMode = UIViewContentModeScaleAspectFit;
-    _metaIconView.tintColor = [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.46];
-    [_metaStackView addArrangedSubview:_metaIconView];
-
-    _metaLabel = [[UILabel alloc] init];
-    _metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _metaLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:12.5], UIFontTextStyleCaption1);
-    _metaLabel.textColor = [AppPrimaryTextClr ?: [UIColor colorWithWhite:0.12 alpha:1.0] colorWithAlphaComponent:0.66];
-    _metaLabel.numberOfLines = 1;
-    _metaLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    _metaLabel.adjustsFontSizeToFitWidth = YES;
-    _metaLabel.minimumScaleFactor = 0.84;
-    _metaLabel.adjustsFontForContentSizeCategory = YES;
-    _metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [_metaLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                forAxis:UILayoutConstraintAxisHorizontal];
-    [_metaLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh
-                                  forAxis:UILayoutConstraintAxisHorizontal];
-    [_metaStackView addArrangedSubview:_metaLabel];
-
-    _ratingPillView = [[UIView alloc] init];
-    _ratingPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ratingPillView.isAccessibilityElement = YES;
-    _ratingPillView.accessibilityTraits = UIAccessibilityTraitStaticText;
-    _ratingPillView.layer.borderWidth = 0.65;
-    _ratingPillView.layer.masksToBounds = YES;
-    PPProviderCompaniesApplyContinuousCorners(_ratingPillView, 13.0);
-    [_badgeStackView addArrangedSubview:_ratingPillView];
-    [_ratingPillView setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                     forAxis:UILayoutConstraintAxisHorizontal];
-    [_ratingPillView setContentHuggingPriority:UILayoutPriorityRequired
-                                       forAxis:UILayoutConstraintAxisHorizontal];
-
-    _ratingStarView = [[UIImageView alloc] init];
-    _ratingStarView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ratingStarView.contentMode = UIViewContentModeScaleAspectFit;
-    [_ratingPillView addSubview:_ratingStarView];
-
-    _ratingValueLabel = [[UILabel alloc] init];
-    _ratingValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _ratingValueLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:12.0], UIFontTextStyleCaption1);
-    _ratingValueLabel.adjustsFontForContentSizeCategory = YES;
-    _ratingValueLabel.textAlignment = NSTextAlignmentCenter;
-
-    _ratingCountLabel = [[UILabel alloc] init];
-    _ratingCountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _ratingCountLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:10.5], UIFontTextStyleCaption2);
-    _ratingCountLabel.adjustsFontForContentSizeCategory = YES;
-    _ratingCountLabel.textAlignment = NSTextAlignmentCenter;
-
-    _ratingStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        _ratingStarView,
-        _ratingValueLabel,
-        _ratingCountLabel
-    ]];
-    _ratingStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ratingStackView.axis = UILayoutConstraintAxisHorizontal;
-    _ratingStackView.alignment = UIStackViewAlignmentCenter;
-    _ratingStackView.spacing = 4.0;
-    _ratingStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    [_ratingPillView addSubview:_ratingStackView];
-
-    _chevronContainerView = [[UIView alloc] init];
-    _chevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronContainerView.layer.masksToBounds = YES;
-    _chevronContainerView.layer.borderWidth = 0.0;
-    [_chevronContainerView pp_setBorderColor:PPProviderCompaniesHeroStrokeColor()];
-    _chevronContainerView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
-    [_cardView addSubview:_chevronContainerView];
-
-    _chevronView = [[UIImageView alloc] init];
-    _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    if (@available(iOS 13.0, *)) {
-        NSString *chevronName = Language.isRTL ? @"arrow.left" : @"arrow.right";
-        _chevronView.image = [[UIImage systemImageNamed:chevronName
-                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14.0
-                                                                                                weight:UIImageSymbolWeightBold]]
-                             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
-    _chevronView.tintColor = [AppPrimaryTextClr ?: [UIColor colorWithWhite:0.12 alpha:1.0] colorWithAlphaComponent:0.54];
-    [_chevronContainerView addSubview:_chevronView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
-        [_cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
-        [_cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
-        [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6.0],
-
-        [_ambientAccentView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:16.0],
-        [_ambientAccentView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:18.0],
-        [_ambientAccentView.widthAnchor constraintEqualToConstant:78.0],
-        [_ambientAccentView.heightAnchor constraintEqualToConstant:78.0],
-
-        [_topAccentView.topAnchor constraintEqualToAnchor:_cardView.topAnchor],
-        [_topAccentView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:28.0],
-        [_topAccentView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-28.0],
-        [_topAccentView.heightAnchor constraintEqualToConstant:3.0],
-
-        [_avatarHaloView.centerXAnchor constraintEqualToAnchor:_avatarShellView.centerXAnchor],
-        [_avatarHaloView.centerYAnchor constraintEqualToAnchor:_avatarShellView.centerYAnchor],
-        [_avatarHaloView.widthAnchor constraintEqualToConstant:74.0],
-        [_avatarHaloView.heightAnchor constraintEqualToConstant:74.0],
-
-        [_avatarShellView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:16.0],
-        [_avatarShellView.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:16.0],
-        [_avatarShellView.widthAnchor constraintEqualToConstant:60.0],
-        [_avatarShellView.heightAnchor constraintEqualToConstant:60.0],
-
-        [_avatarImageView.centerXAnchor constraintEqualToAnchor:_avatarShellView.centerXAnchor],
-        [_avatarImageView.centerYAnchor constraintEqualToAnchor:_avatarShellView.centerYAnchor],
-        [_avatarImageView.widthAnchor constraintEqualToConstant:50.0],
-        [_avatarImageView.heightAnchor constraintEqualToConstant:50.0],
-
-        [_avatarStatusDotView.trailingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:-2.0],
-        [_avatarStatusDotView.bottomAnchor constraintEqualToAnchor:_avatarShellView.bottomAnchor constant:-2.0],
-        [_avatarStatusDotView.widthAnchor constraintEqualToConstant:15.0],
-        [_avatarStatusDotView.heightAnchor constraintEqualToConstant:15.0],
-
-        [_avatarVerifiedIconView.centerXAnchor constraintEqualToAnchor:_avatarStatusDotView.centerXAnchor],
-        [_avatarVerifiedIconView.centerYAnchor constraintEqualToAnchor:_avatarStatusDotView.centerYAnchor],
-        [_avatarVerifiedIconView.widthAnchor constraintEqualToConstant:10.0],
-        [_avatarVerifiedIconView.heightAnchor constraintEqualToConstant:10.0],
-
-        [_titleLabel.topAnchor constraintEqualToAnchor:_cardView.topAnchor constant:14.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:12.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
-
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:3.0],
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_badgeStackView.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:7.0],
-        [_badgeStackView.leadingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:12.0],
-        [_badgeStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
-        [_badgeStackView.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
-
-        [_statusBadgeLabel.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
-        [_ratingPillView.heightAnchor constraintEqualToConstant:25.0],
-        [_ratingPillView.widthAnchor constraintGreaterThanOrEqualToConstant:62.0],
-        [_metaStackView.heightAnchor constraintEqualToConstant:26.0],
-        [_metaStackView.widthAnchor constraintLessThanOrEqualToConstant:104.0],
-        [_badgeStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardView.bottomAnchor constant:-12.0],
-
-        [_metaIconView.widthAnchor constraintEqualToConstant:12.5],
-        [_metaIconView.heightAnchor constraintEqualToConstant:12.5],
-
-        [_ratingStarView.widthAnchor constraintEqualToConstant:13.0],
-        [_ratingStarView.heightAnchor constraintEqualToConstant:13.0],
-        [_ratingStackView.topAnchor constraintEqualToAnchor:_ratingPillView.topAnchor constant:3.5],
-        [_ratingStackView.leadingAnchor constraintEqualToAnchor:_ratingPillView.leadingAnchor constant:8.0],
-        [_ratingStackView.trailingAnchor constraintEqualToAnchor:_ratingPillView.trailingAnchor constant:-8.0],
-        [_ratingStackView.bottomAnchor constraintEqualToAnchor:_ratingPillView.bottomAnchor constant:-3.5],
-
-        [_chevronContainerView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-17.0],
-        [_chevronContainerView.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
-        [_chevronContainerView.widthAnchor constraintEqualToConstant:34.0],
-        [_chevronContainerView.heightAnchor constraintEqualToConstant:34.0],
-
-        [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronContainerView.centerXAnchor],
-        [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronContainerView.centerYAnchor],
-        [_chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:14.0]
-    ]];
-}
-
-- (PPInsetLabel *)pp_badgeLabel
-{
-    PPInsetLabel *label = [[PPInsetLabel alloc] init];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    label.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:11.0], UIFontTextStyleCaption1);
-    label.adjustsFontForContentSizeCategory = YES;
-    label.textAlignment = NSTextAlignmentCenter;
-    PPProviderCompaniesApplyContinuousCorners(label, 13.0);
-    label.layer.masksToBounds = YES;
-    label.layer.borderWidth = 1.0;
-    label.contentMode = UIViewContentModeCenter;
-    label.textInsets = UIEdgeInsetsMake(3.0, 10.0, 3.0, 10.0);
-    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    return label;
-}
-
-- (void)configureWithEntry:(PPProviderCompanyEntry *)entry
-        categoryIdentifier:(NSString *)categoryIdentifier
-{
-    NSString *title = [PPProviderCompaniesSafeString([entry.user bestDisplayName]) copy];
-    if (title.length == 0) {
-        NSMutableArray<NSString *> *parts = [NSMutableArray array];
-        if (entry.user.FirstName.length > 0) [parts addObject:entry.user.FirstName];
-        if (entry.user.LastName.length > 0) [parts addObject:entry.user.LastName];
-        title = parts.count > 0 ? [parts componentsJoinedByString:@" "] : PPProviderCompaniesSafeString(entry.user.UserName);
-    }
-    if (title.length == 0) {
-        title = PPProviderCompaniesTitleForCategoryIdentifier(categoryIdentifier);
-    }
-
-    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.84 green:0.25 blue:0.22 alpha:1.0];
-    _ambientAccentView.backgroundColor = [accent colorWithAlphaComponent:0.060];
-    _ambientAccentView.layer.shadowColor = accent.CGColor;
-    _ambientAccentView.layer.shadowOpacity = 0.080;
-    _ambientAccentView.layer.shadowRadius = 18.0;
-    _ambientAccentView.layer.shadowOffset = CGSizeZero;
-    _topAccentView.backgroundColor = [accent colorWithAlphaComponent:0.38];
-    _avatarHaloView.backgroundColor = [accent colorWithAlphaComponent:0.032];
-    [_avatarShellView pp_setBorderColor:[accent colorWithAlphaComponent:0.18]];
-    _avatarShellView.backgroundColor = PPProviderCompaniesDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
-                                                                       [UIColor colorWithWhite:1.0 alpha:0.10]);
-    _avatarShellView.layer.shadowOpacity = 0.080;
-    _avatarShellView.layer.shadowRadius = 16.0;
-    _avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    _chevronContainerView.backgroundColor = [accent colorWithAlphaComponent:0.055];
-
-    BOOL showVerified = entry.user.isVerified;
-    BOOL showActive = !showVerified && [PPProviderCompaniesSafeString(entry.user.accountStatus) isEqualToString:@"active"];
-    _statusBadgeLabel.hidden = YES;
-    _avatarStatusDotView.hidden = !showVerified && !showActive;
-    if (showVerified) {
-        UIColor *verifiedColor = [UIColor colorWithRed:0.14 green:0.52 blue:0.34 alpha:1.0];
-        _avatarStatusDotView.backgroundColor = verifiedColor;
-        if (@available(iOS 13.0, *)) {
-            _avatarVerifiedIconView.image =
-                [[UIImage systemImageNamed:@"checkmark.seal.fill"
-                         withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:9.0
-                                                                                           weight:UIImageSymbolWeightBold]]
-                 imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        }
-        _avatarVerifiedIconView.tintColor = UIColor.whiteColor;
-    } else if (showActive) {
-        _avatarStatusDotView.backgroundColor = accent;
-        _avatarVerifiedIconView.image = nil;
-    } else {
-        _statusBadgeLabel.text = nil;
-        _avatarVerifiedIconView.image = nil;
-    }
-
-    _titleLabel.text = PPProviderCompaniesItemsCountText(entry.productCount, categoryIdentifier);;
-    NSString *subtitle = PPProviderCompaniesCellDisplaySubtitle(entry, categoryIdentifier);
-    _subtitleLabel.text = subtitle;
-    _subtitleLabel.hidden = subtitle.length == 0;
-    _metaLabel.text = PPProviderCompaniesItemsCountText(entry.productCount, categoryIdentifier);
-    if (@available(iOS 13.0, *)) {
-        NSString *metaSymbolName = PPProviderCompaniesSymbolNameForCategoryIdentifier(categoryIdentifier);
-        _metaIconView.image = [[UIImage systemImageNamed:metaSymbolName
-                                       withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12.5
-                                                                                                         weight:UIImageSymbolWeightSemibold]]
-                              imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
-    _metaStackView.backgroundColor = [accent colorWithAlphaComponent:0.070];
-    [_metaStackView pp_setBorderColor:[accent colorWithAlphaComponent:0.145]];
-    _metaIconView.tintColor = [accent colorWithAlphaComponent:0.72];
-    _metaLabel.textColor = accent;
-
-    UIColor *ratingColor = [UIColor colorWithRed:0.76 green:0.54 blue:0.12 alpha:1.0];
-    BOOL hasProviderRating = entry.user.providerReviewCount > 0 && entry.user.providerRatingValue > 0.0;
-    NSString *ratingSymbolName = hasProviderRating ? @"star.fill" : @"star";
-    if (@available(iOS 13.0, *)) {
-        _ratingStarView.image =
-            [[UIImage systemImageNamed:ratingSymbolName
-                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:11.5
-                                                                                       weight:UIImageSymbolWeightBold]]
-             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
-    _ratingStarView.tintColor = ratingColor;
-    _ratingPillView.backgroundColor = [ratingColor colorWithAlphaComponent:0.075];
-    [_ratingPillView pp_setBorderColor:[ratingColor colorWithAlphaComponent:0.18]];
-    _ratingValueLabel.textColor = ratingColor;
-    _ratingCountLabel.textColor = [ratingColor colorWithAlphaComponent:0.72];
-    if (hasProviderRating) {
-        _ratingValueLabel.text = [NSString stringWithFormat:@"%.1f", entry.user.providerRatingValue];
-        _ratingCountLabel.hidden = NO;
-        _ratingCountLabel.text =
-            [NSString stringWithFormat:(kLang(@"provider_rating_compact_count_format") ?: @"(%ld)"),
-             (long)entry.user.providerReviewCount];
-        _ratingPillView.accessibilityLabel =
-            [NSString stringWithFormat:(kLang(@"provider_rating_accessibility_format") ?: @"Rated %.1f out of 5 from %ld reviews"),
-             entry.user.providerRatingValue,
-             (long)entry.user.providerReviewCount];
-    } else {
-        _ratingValueLabel.text = kLang(@"provider_rating_new") ?: @"New";
-        _ratingCountLabel.hidden = YES;
-        _ratingCountLabel.text = nil;
-        _ratingPillView.accessibilityLabel =
-            kLang(@"provider_rating_no_reviews") ?: @"No provider ratings yet";
-    }
-
-    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:title size:60.0];
-    _avatarImageView.image = placeholder ?: PPSYSImage(@"person.crop.circle.fill");
-    NSString *imageURL = PPProviderCompaniesSafeString(entry.user.UserImageUrl.absoluteString);
-    if (imageURL.length > 0) {
-        [[PPImageLoaderManager shared] setImageOnImageView:_avatarImageView
-                                                       url:imageURL
-                                               placeholder:_avatarImageView.image
-                                                complation:nil];
-    }
-
-    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@, %@, %@",
-                               title,
-                               _subtitleLabel.text ?: @"",
-                               PPProviderCompaniesTitleForCategoryIdentifier(categoryIdentifier),
-                               _metaLabel.text ?: @"",
-                               _ratingPillView.accessibilityLabel ?: @""];
-    self.accessibilityHint = kLang(@"a11y_cell_tap_hint") ?: @"Double-tap to view details";
-    self.accessibilityTraits = UIAccessibilityTraitButton;
-    [self setNeedsLayout];
-}
-
-- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
-{
-    [super setHighlighted:highlighted animated:animated];
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        _cardView.transform = CGAffineTransformIdentity;
-        _cardView.alpha = highlighted ? 0.92 : 1.0;
-        return;
-    }
-
-    CGAffineTransform target = highlighted ? CGAffineTransformMakeScale(0.982, 0.982) : CGAffineTransformIdentity;
-    CGFloat alpha = highlighted ? 0.94 : 1.0;
-    NSTimeInterval duration = highlighted ? 0.09 : 0.24;
-    UIViewAnimationOptions options = UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState;
-    [UIView animateWithDuration:duration
-                          delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.18
-                        options:options
-                     animations:^{
-        self->_cardView.transform = target;
-        self->_cardView.alpha = alpha;
-    } completion:nil];
-}
-
-- (void)pp_runEntranceAnimationWithDelay:(NSTimeInterval)delay
-{
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        _cardView.alpha = 1.0;
-        _cardView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    _cardView.alpha = 0.0;
-    _cardView.transform = CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 10.0), 0.985, 0.985);
-
-    [UIView animateWithDuration:0.34
-                          delay:delay
-         usingSpringWithDamping:0.90
-          initialSpringVelocity:0.22
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self->_cardView.alpha = 1.0;
-        self->_cardView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 28.0);
-    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:28.0].CGPath;
-    _ambientAccentView.layer.cornerRadius = CGRectGetWidth(_ambientAccentView.bounds) * 0.5;
-    _avatarHaloView.layer.cornerRadius = CGRectGetWidth(_avatarHaloView.bounds) * 0.5;
-    PPProviderCompaniesApplyContinuousCorners(_avatarShellView, CGRectGetWidth(_avatarShellView.bounds) * 0.5);
-    PPProviderCompaniesApplyContinuousCorners(_avatarImageView, CGRectGetWidth(_avatarImageView.bounds) * 0.5);
-    _avatarShellView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_avatarShellView.bounds
-                                                                   cornerRadius:CGRectGetWidth(_avatarShellView.bounds) * 0.5].CGPath;
-    PPProviderCompaniesApplyContinuousCorners(_ratingPillView, CGRectGetHeight(_ratingPillView.bounds) * 0.5);
-    PPProviderCompaniesApplyContinuousCorners(_metaStackView, CGRectGetHeight(_metaStackView.bounds) * 0.5);
-    _chevronContainerView.layer.cornerRadius = CGRectGetWidth(_chevronContainerView.bounds) * 0.5;
-    _avatarStatusDotView.layer.cornerRadius = CGRectGetWidth(_avatarStatusDotView.bounds) * 0.5;
-}
-
-- (void)prepareForReuse
-{
-    [super prepareForReuse];
-    _cardView.transform = CGAffineTransformIdentity;
-    _cardView.alpha = 1.0;
-    _avatarImageView.image = nil;
-    _metaIconView.image = nil;
-    _ratingStarView.image = nil;
-    _titleLabel.text = nil;
-    _subtitleLabel.text = nil;
-    _subtitleLabel.hidden = NO;
-    _metaLabel.text = nil;
-    _ratingValueLabel.text = nil;
-    _ratingCountLabel.text = nil;
-    _ratingCountLabel.hidden = NO;
-    _ratingPillView.accessibilityLabel = nil;
-    _statusBadgeLabel.text = nil;
-    _statusBadgeLabel.hidden = YES;
-    _avatarStatusDotView.hidden = NO;
-    _avatarVerifiedIconView.image = nil;
-    self.accessibilityHint = nil;
-    self.accessibilityLabel = nil;
-}
-
-@end
 
 @interface ProviderCompaniesListVC () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
@@ -890,16 +52,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
 @property (nonatomic, strong) UIView *heroTrailIconPlateView;
 @property (nonatomic, strong) UIImageView *heroTrailIconView;
-@property (nonatomic, strong) UIStackView *heroMetricsStackView;
-@property (nonatomic, strong) UIView *heroCountMetricView;
-@property (nonatomic, strong) UILabel *heroCountMetricTitleLabel;
-@property (nonatomic, strong) UILabel *heroCountMetricValueLabel;
-@property (nonatomic, strong) UIView *heroModeMetricView;
-@property (nonatomic, strong) UILabel *heroModeMetricTitleLabel;
-@property (nonatomic, strong) UILabel *heroModeMetricValueLabel;
-@property (nonatomic, strong) UIView *heroTrustMetricView;
-@property (nonatomic, strong) UILabel *heroTrustMetricTitleLabel;
-@property (nonatomic, strong) UILabel *heroTrustMetricValueLabel;
+
 @property (nonatomic, strong) UIButton *heroLayoutToggleButton;
 @property (nonatomic, strong) UIView *heroSearchChromeView;
 @property (nonatomic, strong) UIImageView *heroSearchIconView;
@@ -987,7 +140,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         _searchQuery = @"";
         _animatedCompanyCellKeys = [NSMutableSet set];
         _selectedDiscoveryMode = PPProviderCompaniesDiscoveryModeRecommended;
-        _prefersCompactListLayout = NO;
+        _prefersCompactListLayout = YES;
     }
     return self;
 }
@@ -1090,9 +243,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [UIBezierPath bezierPathWithRoundedRect:self.heroSearchChromeView.bounds
                                    cornerRadius:CGRectGetHeight(self.heroSearchChromeView.bounds) * 0.5].CGPath;
     self.heroLayoutToggleButton.layer.cornerRadius = CGRectGetWidth(self.heroLayoutToggleButton.bounds) * 0.5;
-    PPProviderCompaniesApplyContinuousCorners(self.heroCountMetricView, 20.0);
-    PPProviderCompaniesApplyContinuousCorners(self.heroModeMetricView, 20.0);
-    PPProviderCompaniesApplyContinuousCorners(self.heroTrustMetricView, 20.0);
+   
     PPProviderCompaniesApplyContinuousCorners(self.heroProofRailView, CGRectGetHeight(self.heroProofRailView.bounds) * 0.5);
     PPProviderCompaniesApplyContinuousCorners(self.heroTitleCountBadgeLabel,
                                              CGRectGetHeight(self.heroTitleCountBadgeLabel.bounds) * 0.5);
@@ -1155,7 +306,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 132.0;
+    self.tableView.estimatedRowHeight = 260.0;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
@@ -1299,7 +450,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroEyebrowLabel = [[UILabel alloc] init];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroEyebrowLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:11.0], UIFontTextStyleCaption1);
-    self.heroEyebrowLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroEyebrowLabel.numberOfLines = 1;
     self.heroEyebrowLabel.hidden = NO;
     self.heroEyebrowLabel.accessibilityElementsHidden = NO;
@@ -1313,7 +464,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     [self.heroLayoutToggleButton addTarget:self
                                     action:@selector(pp_handleLayoutToggleButton)
                           forControlEvents:UIControlEventTouchUpInside];
-
+    
     self.heroTitleLabel = [[UILabel alloc] init];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroTitleLabel.font = PPProviderCompaniesScaledFont([GM boldFontWithSize:24.0]
@@ -1321,7 +472,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
                                                                                   weight:UIFontWeightBold],
                                                              UIFontTextStyleTitle2);
     self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    self.heroTitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroTitleLabel.numberOfLines = 1;
     self.heroTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
@@ -1352,7 +503,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSubtitleLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:12.0], UIFontTextStyleCaption1);
     self.heroSubtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    self.heroSubtitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroSubtitleLabel.numberOfLines = 2;
     self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.heroSubtitleLabel.hidden = NO;
@@ -1371,34 +522,14 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroTrailIconPlateView.layer.shadowRadius = 12.0;
     self.heroTrailIconPlateView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     [self.heroSurfaceView addSubview:self.heroTrailIconPlateView];
-
+    
     self.heroTrailIconView = [[UIImageView alloc] init];
     self.heroTrailIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroTrailIconView.contentMode = UIViewContentModeScaleAspectFit;
     self.heroTrailIconView.accessibilityElementsHidden = YES;
     [self.heroTrailIconPlateView addSubview:self.heroTrailIconView];
 
-    self.heroMetricsStackView = [[UIStackView alloc] init];
-    self.heroMetricsStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroMetricsStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.heroMetricsStackView.alignment = UIStackViewAlignmentFill;
-    self.heroMetricsStackView.distribution = UIStackViewDistributionFillEqually;
-    self.heroMetricsStackView.spacing = 10.0;
-    self.heroMetricsStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.heroMetricsStackView.hidden = YES;
-    self.heroMetricsStackView.accessibilityElementsHidden = YES;
-    self.heroMetricsStackView.userInteractionEnabled = NO;
-    [self.heroContentContainerView addSubview:self.heroMetricsStackView];
-
-    self.heroCountMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroCountMetricTitleLabel
-                                                              valueLabel:&_heroCountMetricValueLabel];
-    self.heroModeMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroModeMetricTitleLabel
-                                                             valueLabel:&_heroModeMetricValueLabel];
-    self.heroTrustMetricView = [self pp_makeHeroMetricViewWithTitleLabel:&_heroTrustMetricTitleLabel
-                                                              valueLabel:&_heroTrustMetricValueLabel];
-    [self.heroMetricsStackView addArrangedSubview:self.heroCountMetricView];
-    [self.heroMetricsStackView addArrangedSubview:self.heroModeMetricView];
-    [self.heroMetricsStackView addArrangedSubview:self.heroTrustMetricView];
+    
 
     self.heroSearchChromeView = [[UIView alloc] init];
     self.heroSearchChromeView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1515,7 +646,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:24.0],
         [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:24.0],
 
-        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 18.0],
+        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPIOS26() ? PPStatusBarHeight : PPStatusBarHeight + 8.0],
         [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
         [self.heroContentContainerView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
         self.heroContentHeightConstraint,
@@ -1523,7 +654,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroContentContainerView.topAnchor],
         [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
         [self.heroEyebrowLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
-        [self.heroEyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:16.0],
+        [self.heroEyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:0.0],
 
         [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroContentContainerView.topAnchor],
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
@@ -1541,8 +672,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
         [self.heroSubtitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:18.0],
 
-        [self.heroTrailIconPlateView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 12.0],
-        [self.heroTrailIconPlateView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroTrailIconPlateView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 8.0],
+        [self.heroTrailIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
         [self.heroTrailIconPlateView.widthAnchor constraintEqualToConstant:40.0],
         [self.heroTrailIconPlateView.heightAnchor constraintEqualToConstant:40.0],
 
@@ -1550,11 +681,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         [self.heroTrailIconView.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
         [self.heroTrailIconView.widthAnchor constraintEqualToConstant:19.0],
         [self.heroTrailIconView.heightAnchor constraintEqualToConstant:19.0],
-
-        [self.heroMetricsStackView.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:12.0],
-        [self.heroMetricsStackView.leadingAnchor constraintEqualToAnchor:self.heroContentContainerView.leadingAnchor],
-        [self.heroMetricsStackView.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
-        [self.heroMetricsStackView.heightAnchor constraintEqualToConstant:0.0],
+ 
 
         self.heroProofRailLeadingConstraint,
         self.heroProofRailTrailingConstraint,
@@ -2400,8 +1527,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
         self.heroTitleCountBadgeLabel.alpha = titleBadgeAlpha;
         self.heroSubtitleLabel.alpha = subtitleAlpha;
         self.heroTrailIconPlateView.alpha = contentAlpha;
-        self.heroMetricsStackView.alpha = metricsAlpha;
-        self.heroAmbientGlowView.alpha = ambientAlpha;
+         self.heroAmbientGlowView.alpha = ambientAlpha;
         self.heroAmbientAccentView.alpha = ambientAlpha;
         self.heroAmbientSupportView.alpha = ambientAlpha;
         self.heroContentContainerView.transform = CGAffineTransformIdentity;
@@ -2472,8 +1598,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroSubtitleLabel.accessibilityElementsHidden = NO;
     self.heroTrailIconPlateView.hidden = NO;
     self.heroTrailIconPlateView.accessibilityElementsHidden = NO;
-    self.heroMetricsStackView.hidden = YES;
-    self.heroMetricsStackView.accessibilityElementsHidden = YES;
+ 
     self.heroContentContainerView.hidden = NO;
     self.heroContentContainerView.accessibilityElementsHidden = NO;
     self.heroTitleLabel.hidden = NO;
@@ -2585,10 +1710,8 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     self.heroTitleCountBadgeLabel.layer.shadowOffset = CGSizeZero;
     self.heroProofRailView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.50 : 0.72)];
     [self.heroProofRailView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.10 : 0.52)]];
-    for (UIView *metricView in @[self.heroCountMetricView, self.heroModeMetricView, self.heroTrustMetricView]) {
-        metricView.backgroundColor = [warmSurface colorWithAlphaComponent:(dark ? 0.92 : 0.96)];
-        [metricView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.08 : 0.62)]];
-    }
+        
+ 
     [self pp_applyPremiumSearchChromeAppearanceFocused:self.searchChromeFocused animated:NO];
     [self pp_updateLayoutToggleAppearanceAnimated:NO];
     [self pp_updateDiscoveryButtonAppearances];
@@ -2624,12 +1747,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
     } else {
         self.heroTrailIconView.image = nil;
     }
-    self.heroCountMetricTitleLabel.text = kLang(@"provider_companies_metric_count_title") ?: @"Available now";
-    self.heroCountMetricValueLabel.text = countValue;
-    self.heroModeMetricTitleLabel.text = modeTitle;
-    self.heroModeMetricValueLabel.text = PPProviderCompaniesDiscoveryTitle(self.selectedDiscoveryMode);
-    self.heroTrustMetricTitleLabel.text = trustTitle;
-    self.heroTrustMetricValueLabel.text = PPProviderCompaniesHeroModeSummary(self.selectedDiscoveryMode);
+   
 
     NSString *layoutValue = self.prefersCompactListLayout
         ? (kLang(@"provider_companies_layout_mode_list") ?: @"Compact")
@@ -3158,7 +2276,15 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.prefersCompactListLayout) {
-        return UITableViewAutomaticDimension;
+        return [PPProviderCompanyCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
+    }
+    return [PPProviderCompanyPremiumCardCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (self.prefersCompactListLayout) {
+        return [PPProviderCompanyCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
     }
     return [PPProviderCompanyPremiumCardCell preferredHeightForTableWidth:CGRectGetWidth(tableView.bounds)];
 }

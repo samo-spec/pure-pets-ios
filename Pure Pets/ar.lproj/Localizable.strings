@@ -3137,6 +3137,7 @@
 "provider_companies_hero_eyebrow_marketplace" = "المتجر";
 "provider_companies_hero_eyebrow_pharmacy" = "الصيدلية";
 "provider_companies_hero_support_marketplace" = "ابحث، قارن، وانتقل للمتجر.";
+"provider_companies_hero_support_marketplace_short" = "ابحث، قارن، وانتقل للمتجر.";
 "provider_companies_hero_support_pharmacy" = "ابحث عن صيدلية موثوقة.";
 "provider_companies_hero_mode_summary_recommended" = "أفضل تطابق عام";
 "provider_companies_hero_mode_summary_featured" = "المزودون الموثوقون أولاً";

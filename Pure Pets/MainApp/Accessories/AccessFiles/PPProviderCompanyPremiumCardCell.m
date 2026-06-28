@@ -62,7 +62,7 @@ static UIImage *PPProviderPremiumSymbolImage(NSString *name, CGFloat pointSize, 
 static UIColor *PPProviderPremiumSurfaceColor(void)
 {
     return PPProviderPremiumDynamicColor([UIColor colorWithWhite:1.0 alpha:0.96],
-                                         [UIColor colorWithWhite:0.105 alpha:0.96]);
+                                         [UIColor colorWithWhite:0.105 alpha:0.86]);
 }
 
 static UIColor *PPProviderPremiumStageColor(void)

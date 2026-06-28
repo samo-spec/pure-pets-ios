@@ -64,7 +64,6 @@
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
 #import "PPHomeProviderCategoryPillCell.h"
-#import "PPHomeUltraPremuimProviderCategoryPillCell.h"
 #import "PPHomeMarketplaceHeroCell.h"
 #import "ProviderCompaniesListVC.h"
 
@@ -7224,8 +7223,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
     [self.collectionView registerClass:PPHomeMarketplaceHeroCell.class
             forCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeUltraPremuimProviderCategoryPillCell.class
-            forCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomeProviderCategoryPillCell.class
+            forCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier];
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
@@ -7461,8 +7460,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         if (section == PPHomeSectionProviderCategoryNav) {
-            PPHomeUltraPremuimProviderCategoryPillCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier
+            PPHomeProviderCategoryPillCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeProviderCategoryPillCell.reuseIdentifier
                                                           forIndexPath:indexPath];
 
             PPHomeProviderCategoryItem *categoryItem =

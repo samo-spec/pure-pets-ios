@@ -25,6 +25,8 @@
 		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
 		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
+		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
+		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
@@ -112,8 +114,6 @@
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
 		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
-		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
-		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
 		F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F21843AA2E8B9EE500D8BF46 /* PPCollection.m */; };
@@ -664,6 +664,7 @@
 		F2BC865C2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
+		F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */; };
 		F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */; };
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
@@ -881,6 +882,10 @@
 		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
 		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
 		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
+		A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimProviderCategoryPillCell.h; sourceTree = "<group>"; };
+		A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimProviderCategoryPillCell.m; sourceTree = "<group>"; };
+		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
+		A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeMarketplaceHeroCell.m; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -1036,8 +1041,6 @@
 		F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFloatingSearchAccessoryView.m; sourceTree = "<group>"; };
 		F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderCategoryPillCell.h; sourceTree = "<group>"; };
 		F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderCategoryPillCell.m; sourceTree = "<group>"; };
-		A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimProviderCategoryPillCell.h; sourceTree = "<group>"; };
-		A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
 		F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+PressAnimation.m"; sourceTree = "<group>"; };
 		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPMenuHelper.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
@@ -1938,8 +1941,6 @@
 		F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeInsetLabel.m; sourceTree = "<group>"; };
 		F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumSearchCell.h; sourceTree = "<group>"; };
 		F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumSearchCell.m; sourceTree = "<group>"; };
-		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
-		A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeMarketplaceHeroCell.m; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -2109,6 +2110,8 @@
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
 		F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NovaConfirmationCell.m; sourceTree = "<group>"; };
+		F2C0BA492FF09F6B009D1C33 /* PPProviderCompanyCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyCell.h; sourceTree = "<group>"; };
+		F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyCell.m; sourceTree = "<group>"; };
 		F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPremuimChekoutView.swift; sourceTree = "<group>"; };
 		F2C158332E2100C700EFDC91 /* EmptyStateView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmptyStateView.h; sourceTree = "<group>"; };
 		F2C158342E2100D100EFDC91 /* EmptyStateView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EmptyStateView.m; sourceTree = "<group>"; };
@@ -4001,6 +4004,8 @@
 		F283FAB12E53FA23001EF0BA /* AccessFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F2C0BA492FF09F6B009D1C33 /* PPProviderCompanyCell.h */,
+				F2C0BA4A2FF09FCB009D1C33 /* PPProviderCompanyCell.m */,
 				F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */,
 				F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */,
 				F2FF90012FFD000100C0D111 /* ProviderCompaniesListVC.h */,
@@ -5563,6 +5568,7 @@
 				F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */,
 				6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */,
 				F27146732CCE6B5300F7F3BA /* XLFormSectionDescriptor.m in Sources */,
+				F2C0BA4B2FF09FCB009D1C33 /* PPProviderCompanyCell.m in Sources */,
 				F209567F2F856824007C4ABA /* PPPetProfileEditorViewController.m in Sources */,
 				F27146742CCE6B5300F7F3BA /* XLFormImageCell.m in Sources */,
 				F27146752CCE6B5300F7F3BA /* XLFormSelectorCell.m in Sources */,

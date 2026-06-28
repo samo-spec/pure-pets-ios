@@ -460,7 +460,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         [supportGlow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:Language.isRTL ? -16.0 : 18.0],
 
         [topAccent.topAnchor constraintEqualToAnchor:surface.topAnchor constant:14.0],
-        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:22.0],
+        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:(Language.isRTL ? -12.0 : 22.0)],
         [topAccent.widthAnchor constraintEqualToConstant:42.0],
         [topAccent.heightAnchor constraintEqualToConstant:2.0],
 
@@ -586,22 +586,22 @@ static BOOL PPMarketHeroReduceMotion(void)
     [surface addSubview:stack];
     self.contentStackView = stack;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
-        [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
-        [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
+[NSLayoutConstraint activateConstraints:@[
+         [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+         [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+         [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
 
-        [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
-        [eyebrowIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
-        [eyebrowIcon.widthAnchor constraintEqualToConstant:13.0],
-        [eyebrowIcon.heightAnchor constraintEqualToConstant:13.0],
+         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:(Language.isRTL ? -10.0 : 10.0)],
+         [eyebrowIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
+         [eyebrowIcon.widthAnchor constraintEqualToConstant:13.0],
+         [eyebrowIcon.heightAnchor constraintEqualToConstant:13.0],
 
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:6.0],
-        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-10.0],
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:5.0],
-        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
+         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:(Language.isRTL ? -6.0 : 6.0)],
+         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:(Language.isRTL ? -10.0 : -10.0)],
+         [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:5.0],
+         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
 
-        [cta.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
+         [cta.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
         [ctaLabel.leadingAnchor constraintEqualToAnchor:cta.leadingAnchor constant:PPSpaceMD - 2.0],
         [ctaLabel.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
         [ctaIcon.leadingAnchor constraintEqualToAnchor:ctaLabel.trailingAnchor constant:PPSpaceSM - 1.0],
