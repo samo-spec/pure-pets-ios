@@ -130,6 +130,15 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     self.view.backgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
     self.view.semanticContentAttribute = GM.setSemantic;
     self.view.clipsToBounds = YES;
+    
+    UIImage *bgImage = [[UIImage imageNamed:@"lunch_light"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    UIImageView *bgImageView = [[UIImageView alloc] initWithImage:bgImage];
+    bgImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    bgImageView.contentMode = UIViewContentModeScaleAspectFill;
+    bgImageView.userInteractionEnabled = NO;
+    [self.view addSubview:bgImageView];
+  
+    
 
     CAGradientLayer *backgroundGradientLayer = [CAGradientLayer layer];
     backgroundGradientLayer.startPoint = CGPointMake(0.08, 0.0);
@@ -308,8 +317,14 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     footerLabel.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
     [self.view addSubview:footerLabel];
     self.footerLabel = footerLabel;
-
+    
     [NSLayoutConstraint activateConstraints:@[
+        
+        [bgImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [bgImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [bgImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [bgImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        
         [topGlowView.widthAnchor constraintEqualToConstant:292.0],
         [topGlowView.heightAnchor constraintEqualToConstant:292.0],
         [topGlowView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:116.0],

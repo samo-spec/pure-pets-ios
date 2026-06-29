@@ -631,7 +631,7 @@
         [self.heroFrostedMaterialView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
         [self.heroFrostedMaterialView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor],
 
-        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:4.0],
         [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:28.0],
         [self.heroTopAccentView.widthAnchor constraintEqualToConstant:44.0],
         [self.heroTopAccentView.heightAnchor constraintEqualToConstant:4.0],
@@ -677,14 +677,14 @@
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
         [self.heroSubtitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:18.0],
 
-        [self.heroLayoutToggleButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant: 8.0],
+        [self.heroLayoutToggleButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant: 12.0],
         [self.heroLayoutToggleButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
         [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:44.0],
         [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:44.0],
 
        
 
-        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
         [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
         [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
         [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
@@ -1693,9 +1693,7 @@
         contentHeight +
 
     50.0 +  // search chrome
-        12.0 +  // search to discovery rail
-        40.0 +  // discovery rail
-        16.0;   // discovery rail bottom inset
+          16.0;   // discovery rail bottom inset
     return ceil(MAX(250.0, requiredHeight));
 }
 
