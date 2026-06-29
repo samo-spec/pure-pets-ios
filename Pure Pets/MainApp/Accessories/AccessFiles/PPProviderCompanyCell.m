@@ -91,7 +91,7 @@
     _cardView = [[UIView alloc] init];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
     _cardView.backgroundColor = UIColor.clearColor;
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 30.0);
+    PPProviderCompaniesApplyContinuousCorners(_cardView, 22.00);
     _cardView.layer.borderWidth = 0.0;
     _cardView.layer.masksToBounds = NO;
     [_cardView pp_setShadowColor:UIColor.blackColor];
@@ -105,7 +105,7 @@
     _mediaView.backgroundColor = [UIColor colorWithWhite:0.92 alpha:1.0];
     _mediaView.layer.borderWidth = 1.0;
     _mediaView.layer.masksToBounds = YES;
-    PPProviderCompaniesApplyContinuousCorners(_mediaView, 30.0);
+    PPProviderCompaniesApplyContinuousCorners(_mediaView, 22.00);
     [_mediaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.70]];
     [_cardView addSubview:_mediaView];
 
@@ -693,9 +693,9 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 30.0);
-    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:30.0].CGPath;
-    PPProviderCompaniesApplyContinuousCorners(_mediaView, 30.0);
+    PPProviderCompaniesApplyContinuousCorners(_cardView, 22.00);
+    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:22.00].CGPath;
+    PPProviderCompaniesApplyContinuousCorners(_mediaView, 22.00);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _readabilityGradientLayer.frame = _imageScrimView.bounds;

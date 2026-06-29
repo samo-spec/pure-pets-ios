@@ -1023,7 +1023,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self.heroSurfaceView addSubview:self.contactButtonStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:4.0],
         [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
         [self.heroTopAccentView.widthAnchor constraintEqualToConstant:44.0],
         [self.heroTopAccentView.heightAnchor constraintEqualToConstant:4.0],

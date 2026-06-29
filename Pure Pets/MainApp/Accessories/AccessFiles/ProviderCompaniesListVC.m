@@ -207,7 +207,7 @@
         return;
     }
 
-    CGFloat surfaceRadius = 30.0;
+    CGFloat surfaceRadius = 34.0;
     PPProviderCompaniesApplyContinuousCorners(self.heroSurfaceView, surfaceRadius);
     PPProviderCompaniesApplyContinuousCorners(self.heroFrostedMaterialView, surfaceRadius);
     self.heroFrostedMaterialView.layer.masksToBounds = YES;
@@ -519,7 +519,7 @@
     [self.heroContentContainerView addSubview:self.heroSubtitleLabel];
  
 
-    self.heroFilterButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.heroFilterButton = [self pp_ButtonWithSystemName:@"line.3.horizontal.decrease" action:@selector(pp_handleHeroFilterButtonTap:)];
     self.heroFilterButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroFilterButton.contentMode = UIViewContentModeScaleAspectFit;
     self.heroFilterButton.accessibilityElementsHidden = YES;
@@ -563,8 +563,8 @@
                                  action:@selector(pp_handleHeroSearchTextChanged:)
                        forControlEvents:UIControlEventEditingChanged];
     [self.heroSearchChromeView addSubview:self.heroSearchTextField];
-    [self.heroSearchChromeView addSubview:self.heroLayoutToggleButton];
-
+    [self.heroSurfaceView addSubview:self.heroLayoutToggleButton];
+    [self.heroSearchChromeView addSubview:self.heroFilterButton];
     self.heroProofRailView = [[UIView alloc] init];
     self.heroProofRailView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroProofRailView.backgroundColor = PPProviderCompaniesHeroSecondarySurfaceColor();
@@ -689,13 +689,7 @@
         [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
         [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
  
- 
-
-        self.heroProofRailLeadingConstraint,
-        self.heroProofRailTrailingConstraint,
-        self.heroProofRailBottomConstraint,
-        self.heroProofRailHeightConstraint,
-        self.heroSearchChromeBottomConstraint,
+        [self.heroSearchChromeView.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:8.0],
 
         [self.heroSearchChromeView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
         [self.heroSearchChromeView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
@@ -716,17 +710,7 @@
         [self.heroSearchTextField.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.topAnchor constant:6.0],
         [self.heroSearchTextField.bottomAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:-6.0],
 
-        [self.heroDiscoveryScrollView.topAnchor constraintEqualToAnchor:self.heroProofRailView.topAnchor constant:3.0],
-        [self.heroDiscoveryScrollView.leadingAnchor constraintEqualToAnchor:self.heroProofRailView.leadingAnchor constant:3.0],
-        [self.heroDiscoveryScrollView.trailingAnchor constraintEqualToAnchor:self.heroProofRailView.trailingAnchor constant:-3.0],
-        [self.heroDiscoveryScrollView.bottomAnchor constraintEqualToAnchor:self.heroProofRailView.bottomAnchor constant:-3.0],
-
-        [self.heroDiscoveryStackView.topAnchor constraintEqualToAnchor:self.heroDiscoveryScrollView.contentLayoutGuide.topAnchor],
-        [self.heroDiscoveryStackView.leadingAnchor constraintEqualToAnchor:self.heroDiscoveryScrollView.contentLayoutGuide.leadingAnchor],
-        [self.heroDiscoveryStackView.trailingAnchor constraintEqualToAnchor:self.heroDiscoveryScrollView.contentLayoutGuide.trailingAnchor],
-        [self.heroDiscoveryStackView.bottomAnchor constraintEqualToAnchor:self.heroDiscoveryScrollView.contentLayoutGuide.bottomAnchor],
-        [self.heroDiscoveryStackView.heightAnchor constraintEqualToAnchor:self.heroDiscoveryScrollView.frameLayoutGuide.heightAnchor],
-        [self.heroDiscoveryStackView.widthAnchor constraintGreaterThanOrEqualToAnchor:self.heroDiscoveryScrollView.frameLayoutGuide.widthAnchor],
+       
     ]];
 
     [self pp_updateDiscoveryButtonAppearances];
@@ -1692,9 +1676,8 @@
     (PPIOS26() ? 0 : 18.0) +  // content top inset below status bar
         contentHeight +
 
-    50.0 +  // search chrome
-          16.0;   // discovery rail bottom inset
-    return ceil(MAX(250.0, requiredHeight));
+           72.0;   // discovery rail bottom inset
+    return requiredHeight;
 }
 
 - (CGFloat)pp_expandedHeroContentHeight
@@ -1729,8 +1712,8 @@
     CGFloat bottomInset = 0.0;
     CGFloat railSideInset = 18.0;
     CGFloat railBottomInset = 16.0;
-    CGFloat railHeight = 40.0;
-    CGFloat searchRailGap = 12.0;
+    CGFloat railHeight = 0.0;
+    CGFloat searchRailGap = 0.0;
     CGFloat contentHeight = [self pp_expandedHeroContentHeight];
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     CGFloat surfaceShadowOpacity = dark ? 0.16 : 0.060;
