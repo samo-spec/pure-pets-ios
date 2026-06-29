@@ -20,7 +20,6 @@
 #import "CountryCodeModel.h"
 #import "PPSelectOptionViewController.h"
 #import "PPCommerceFeedbackManager.h"
-#import "UIViewController+PPBottomSurface.h"
 #import "OrderDetailsViewController.h"
 #import "Styling.h"
 #import "PetCareHelpers.h"
@@ -34,7 +33,6 @@
 
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
 static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;
-static CGFloat const PPPaymentSummaryMinimumPresentationHeight = 220.0;
 
 static NSString *PPPaymentHeroAnimationName(void)
 {
@@ -233,7 +231,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 @property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) UIView *bottomSecondaryGlowView;
 @property (nonatomic, strong) UIView *bottomTrailGlowView;
-@property (nonatomic, strong) NSLayoutConstraint *summaryHeightConstraint;
 @property (nonatomic, strong) PPInsetLabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) PaddedLabel *heroSubtitleLabel;
@@ -250,18 +247,12 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded;
 - (void)pp_beginPaymentHeroAmbientMotionIfNeeded;
 - (void)pp_stopPaymentHeroAmbientMotion;
-- (void)pp_updateSummaryPresentationHeightIfNeeded;
 - (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
 - (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
 @end
 
 
 @implementation PPSelectPaymentVC
-
-- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
-{
-    return PPBottomSurfaceKindSummaryBottomBar;
-}
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
@@ -293,7 +284,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     navBar.backgroundColor = UIColor.clearColor;
     navBar.alpha = 0.0;  navBar.layer.shadowOpacity = 0.0;  self.extendedLayoutIncludesOpaqueBars = YES;
     self.edgesForExtendedLayout = UIRectEdgeAll;
-    [self pp_applyBottomSurfaceAnimated:animated];
 
 
 }
@@ -389,8 +379,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     if (self.paymentBackgroundGlowTopView && self.heroCardView.superview == self.view) {
         [self.view insertSubview:self.paymentBackgroundGlowTopView belowSubview:self.heroCardView];
     }
-
-    [self pp_updateSummaryPresentationHeightIfNeeded];
 }
 
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded
@@ -573,11 +561,23 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 {
     [super viewDidAppear:animated];
 
-    [self pp_updateSummaryPresentationHeightIfNeeded];
     [self pp_animatePaymentHeroEntranceIfNeeded];
     [self pp_beginPaymentHeroAmbientMotionIfNeeded];
     [self pp_configurePaymentHeroAnimationIfNeeded];
-    [self pp_applyBottomSurfaceAnimated:NO];
+
+    // Reveal the summary view after the push transition and Auto Layout
+    // have fully settled, so there is no layout-driven jump.
+    if (self.summaryView && self.summaryView.alpha < 1.0) {
+        [UIView animateWithDuration:0.45
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.summaryView.alpha = 1.0;
+            self.summaryView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 - (void)setSummuryViewAtBottom
@@ -585,17 +585,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.summaryView = [[PPPremuimChekoutView alloc] init];
     [self.view addSubview:self.summaryView];
     self.summaryView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.summaryView setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                      forAxis:UILayoutConstraintAxisVertical];
-    [self.summaryView setContentHuggingPriority:UILayoutPriorityRequired
-                                        forAxis:UILayoutConstraintAxisVertical];
-    self.summaryHeightConstraint = [self.summaryView.heightAnchor constraintEqualToConstant:PPPaymentSummaryMinimumPresentationHeight];
-    self.summaryHeightConstraint.active = YES;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor]
-    ]];
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
+    [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
+    [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
     // Suppress the internal cardView entrance animation; this VC uses
     // its own entrance in viewDidAppear: instead.
@@ -623,8 +615,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [self.summaryView layoutIfNeeded];
     }];
 
-    [self pp_updateSummaryPresentationHeightIfNeeded];
-
     if ([CartManager sharedManager].cartItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
     }
@@ -633,49 +623,6 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     // animation after the push transition and Auto Layout have settled.
     self.summaryView.alpha = 0.0;
     self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
-}
-
-- (void)pp_updateSummaryPresentationHeightIfNeeded
-{
-    if (!self.isViewLoaded || !self.summaryView) {
-        return;
-    }
-
-    CGFloat availableWidth = CGRectGetWidth(self.view.bounds);
-    if (availableWidth <= 0.0) {
-        availableWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
-    }
-    if (availableWidth <= 0.0) {
-        return;
-    }
-
-    [self.summaryView setNeedsLayout];
-    [self.summaryView layoutIfNeeded];
-
-    CGSize targetSize = CGSizeMake(availableWidth, UILayoutFittingCompressedSize.height);
-    CGFloat fittedHeight =
-        [self.summaryView systemLayoutSizeFittingSize:targetSize
-                       withHorizontalFittingPriority:UILayoutPriorityRequired
-                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    if (fittedHeight <= 0.0) {
-        fittedHeight = [self.summaryView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize].height;
-    }
-
-    CGFloat resolvedHeight = MAX(PPPaymentSummaryMinimumPresentationHeight, ceil(fittedHeight));
-    if (!self.summaryHeightConstraint) {
-        self.summaryHeightConstraint = [self.summaryView.heightAnchor constraintEqualToConstant:resolvedHeight];
-        self.summaryHeightConstraint.active = YES;
-        return;
-    }
-
-    CGFloat heightDelta = self.summaryHeightConstraint.constant - resolvedHeight;
-    if (heightDelta < 0.0) {
-        heightDelta *= -1.0;
-    }
-
-    if (heightDelta > 0.5) {
-        self.summaryHeightConstraint.constant = resolvedHeight;
-    }
 }
 
 - (void)setlocViewViewAtTop
@@ -1548,13 +1495,9 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_refreshCheckoutPricingPresentation
 {
     PPCartSummary *summary = [PPCartCalculator currentSummary];
-    BOOL shouldShowCollectionPreview = CartManager.sharedManager.cartItems.count > 3;
 
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
-    self.summaryView.showDetails = !shouldShowCollectionPreview;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
-    self.summaryView.showsItemsPreview = shouldShowCollectionPreview;
-    [self pp_updateSummaryPresentationHeightIfNeeded];
 
     [self pp_applyDefaultSelectionIfNeeded];
     [self.paymentCollection reloadData];
