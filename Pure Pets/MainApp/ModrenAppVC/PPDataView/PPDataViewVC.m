@@ -11,6 +11,7 @@
 #import "PPAdSharingHelper.h"
 #import "PPAnalytics.h"
 #import "CartManager.h"
+#import "UIViewController+PPBottomSurface.h"
 #import "CartViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPModrenSegmrnted.h"
@@ -266,6 +267,12 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
                                         scrollToTop:(BOOL)scrollToTop;
 @end
 @implementation PPDataViewVC
+
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
+{
+    return PPBottomSurfaceKindFloatingCartSurface;
+}
+
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];
@@ -279,15 +286,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-
-    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
-        __weak typeof(self) weakSelf = self;
-        [(PPRootTabBarController *)self.tabBarController pp_activateFloatingCartBarForSourceViewController:self
-                                                                                           openCartHandler:^{
-            [weakSelf onCartTapped];
-        }
-                                                                                                  animated:NO];
-    }
+    [self pp_applyBottomSurfaceAnimated:animated];
 
     UINavigationController *nav = self.navigationController;
     if (!nav) return;
@@ -358,10 +357,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
             cell.alpha = 1.0;
             cell.transform = CGAffineTransformIdentity;
         }
-    }
-    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
-        [(PPRootTabBarController *)self.tabBarController pp_deactivateFloatingCartBarForSourceViewController:self
-                                                                                                    animated:NO];
     }
 }
 

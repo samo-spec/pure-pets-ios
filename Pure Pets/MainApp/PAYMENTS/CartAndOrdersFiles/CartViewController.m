@@ -12,6 +12,7 @@
 #import "PPSPinnerView.h"
 #import "ChManager.h"
 #import "AppClasses.h"
+#import "UIViewController+PPBottomSurface.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPChatsFunc.h"
 #import <QuartzCore/QuartzCore.h>
@@ -122,6 +123,13 @@ static UIColor *PPCartScreenBackgroundColor(void)
 @end
 
 @implementation CartViewController
+
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
+{
+    return CartManager.sharedManager.cartItems.count > 0
+        ? PPBottomSurfaceKindSummaryBottomBar
+        : PPBottomSurfaceKindNone;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -383,6 +391,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
     [self updateTotalLabel];
     [self.summaryView layoutIfNeeded];
     [self pp_startBackgroundGlowMotionIfNeeded];
+    [self pp_applyBottomSurfaceAnimated:animated];
 }
 
 - (void)pp_applyCartScreenBackgroundColor
@@ -1244,7 +1253,6 @@ static UIColor *PPCartScreenBackgroundColor(void)
     BOOL shouldShowSummary = ([CartManager sharedManager].cartItems.count > 0);
     self.cartTableView.alpha = 0.0;
     self.cartTableView.transform = CGAffineTransformMakeTranslation(0.0, 32.0);
-    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 26.0);
 
     [UIView animateWithDuration:0.62
                           delay:0.0
@@ -1255,16 +1263,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
         self.cartTableView.alpha = 1.0;
         self.cartTableView.transform = CGAffineTransformIdentity;
     } completion:nil];
-
-    [UIView animateWithDuration:0.58
-                          delay:0.06
-         usingSpringWithDamping:0.92
-          initialSpringVelocity:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.summaryView.alpha = shouldShowSummary ? 1.0 : 0.0;
-        self.summaryView.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    self.summaryView.alpha = shouldShowSummary ? self.summaryView.alpha : 0.0;
 }
 
 
@@ -1433,6 +1432,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
     }
 
     [self pp_applyEmptyStateIfNeeded];
+    [self pp_applyBottomSurfaceAnimated:YES];
 }
 
 // Guard: avoid structural table reloads during local quantity taps or row mutations.

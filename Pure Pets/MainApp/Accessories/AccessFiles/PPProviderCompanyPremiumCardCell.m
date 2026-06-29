@@ -71,6 +71,55 @@ static UIColor *PPProviderPremiumStageColor(void)
                                          [UIColor colorWithWhite:1.0 alpha:0.075]);
 }
 
+// --- Gradient Helper Functions ---
+static NSArray *PPProviderPremiumStageGradientColors(UIColor *accentColor)
+{
+    UIColor *accent = accentColor ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
+
+    UIColor *topWash = PPProviderPremiumDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
+                                                     [UIColor colorWithWhite:1.0 alpha:0.075]);
+    UIColor *middleTint = PPProviderPremiumDynamicColor([accent colorWithAlphaComponent:0.18],
+                                                        [accent colorWithAlphaComponent:0.18]);
+    UIColor *lowerDepth = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.0 alpha:0.035],
+                                                        [UIColor colorWithWhite:0.0 alpha:0.24]);
+
+    return @[
+        (__bridge id)topWash.CGColor,
+        (__bridge id)middleTint.CGColor,
+        (__bridge id)lowerDepth.CGColor
+    ];
+}
+
+static NSArray *PPProviderPremiumVignetteColors(void)
+{
+    UIColor *topLift = PPProviderPremiumDynamicColor([UIColor colorWithWhite:1.0 alpha:0.36],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.10]);
+    UIColor *clearMid = [UIColor clearColor];
+    UIColor *bottomDepth = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.0 alpha:0.16],
+                                                        [UIColor colorWithWhite:0.0 alpha:0.38]);
+
+    return @[
+        (__bridge id)topLift.CGColor,
+        (__bridge id)[clearMid colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)bottomDepth.CGColor
+    ];
+}
+
+static NSArray *PPProviderPremiumDoubleFadeColors(void)
+{
+    UIColor *topWhite = PPProviderPremiumDynamicColor([UIColor colorWithWhite:1.0 alpha:0.52],
+                                                     [UIColor colorWithWhite:1.0 alpha:0.12]);
+    UIColor *middleAir = [UIColor clearColor];
+    UIColor *lowerInk = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.0 alpha:0.12],
+                                                     [UIColor colorWithWhite:0.0 alpha:0.30]);
+
+    return @[
+        (__bridge id)topWhite.CGColor,
+        (__bridge id)[middleAir colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)lowerInk.CGColor
+    ];
+}
+
 static UIColor *PPProviderPremiumPrimaryTextColor(void)
 {
     if (@available(iOS 13.0, *)) {
@@ -218,6 +267,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 @property (nonatomic, strong) UIImageView *coverImageView;
 @property (nonatomic, strong) CAGradientLayer *stageGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *vignetteLayer;
+@property (nonatomic, strong) CAGradientLayer *doubleFadeLayer;
 @property (nonatomic, strong) UIView *highlightBloomView;
 @property (nonatomic, strong) UIView *topBadgeView;
 @property (nonatomic, strong) UIImageView *topBadgeIconView;
@@ -291,9 +341,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     [self.cardView addSubview:self.imageStageView];
 
     self.stageGradientLayer = [CAGradientLayer layer];
-    self.stageGradientLayer.startPoint = CGPointMake(0.08, 0.0);
-    self.stageGradientLayer.endPoint = CGPointMake(0.92, 1.0);
-    self.stageGradientLayer.locations = @[@0.0, @0.52, @1.0];
+    self.stageGradientLayer.startPoint = CGPointMake(0.12, 0.0);
+    self.stageGradientLayer.endPoint = CGPointMake(0.88, 1.0);
+    self.stageGradientLayer.locations = @[@0.0, @0.48, @1.0];
+    self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(nil);
     [self.imageStageView.layer addSublayer:self.stageGradientLayer];
 
     self.highlightBloomView = [[UIView alloc] init];
@@ -317,13 +368,17 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.vignetteLayer = [CAGradientLayer layer];
     self.vignetteLayer.startPoint = CGPointMake(0.5, 0.0);
     self.vignetteLayer.endPoint = CGPointMake(0.5, 1.0);
-    self.vignetteLayer.locations = @[@0.0, @0.62, @1.0];
-    self.vignetteLayer.colors = @[
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.08].CGColor,
-        (__bridge id)[UIColor clearColor].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0.0 alpha:0.085].CGColor
-    ];
+    self.vignetteLayer.locations = @[@0.0, @0.58, @1.0];
+    self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
     [self.imageStageView.layer addSublayer:self.vignetteLayer];
+
+    self.doubleFadeLayer = [CAGradientLayer layer];
+    self.doubleFadeLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.doubleFadeLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.doubleFadeLayer.locations = @[@0.0, @0.50, @1.0];
+    self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
+    self.doubleFadeLayer.opacity = 0.88;
+    [self.imageStageView.layer addSublayer:self.doubleFadeLayer];
 
     self.topBadgeView = [[UIView alloc] init];
     self.topBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -607,11 +662,9 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
     self.cardView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.imageStageView.backgroundColor = [accent colorWithAlphaComponent:0.10];
-    self.stageGradientLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:0.34].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.16].CGColor,
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:0.10].CGColor
-    ];
+    self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(accent);
+    self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
+    self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
     self.topBadgeView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.84];
     BOOL showsVerifiedBadge = model.isVerified;
     UIColor *verifiedTint = [UIColor colorWithRed:0.12 green:0.57 blue:0.36 alpha:1.0];
@@ -868,7 +921,12 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.stageGradientLayer.cornerRadius = 29.0;
     self.vignetteLayer.frame = self.imageStageView.bounds;
     self.vignetteLayer.cornerRadius = 29.0;
+    self.doubleFadeLayer.frame = self.imageStageView.bounds;
+    self.doubleFadeLayer.cornerRadius = 29.0;
 
+    self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(self.viewModel.accentColor);
+    self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
+    self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
     UIColor *accent = self.viewModel.accentColor ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
 
     self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.135].CGColor;
@@ -906,6 +964,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.countPillView.hidden = YES;
     self.contactPillView.hidden = YES;
  
+    self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(nil);
+    self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
+    self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
+
     self.accessoryPocketView.hidden = NO;
     self.accessoryButton.hidden = NO;
     self.accessibilityLabel = nil;

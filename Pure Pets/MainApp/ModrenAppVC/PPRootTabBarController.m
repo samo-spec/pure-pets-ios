@@ -32,6 +32,8 @@
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
 #import "CartManager.h"
+#import "PPBottomSurfaceCoordinator.h"
+#import "UIViewController+PPBottomSurface.h"
 #import <Pure_Pets-Swift.h>
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
@@ -937,10 +939,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             showChanges();
             showCompletion(YES);
         } else {
-            [UIView animateWithDuration:0.72
+            [UIView animateWithDuration:[PPBottomSurfaceCoordinator transitionInDuration]
                                   delay:0.0
-                 usingSpringWithDamping:0.86
-                  initialSpringVelocity:0.18
+                 usingSpringWithDamping:[PPBottomSurfaceCoordinator transitionInSpringDamping]
+                  initialSpringVelocity:[PPBottomSurfaceCoordinator transitionInSpringVelocity]
                                 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                              animations:showChanges
                              completion:showCompletion];
@@ -975,9 +977,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         hideChanges();
         hideCompletion(YES);
     } else {
-        [UIView animateWithDuration:0.34
+        [UIView animateWithDuration:[PPBottomSurfaceCoordinator transitionOutDuration]
                               delay:0.0
-                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn
                          animations:hideChanges
                          completion:hideCompletion];
     }
@@ -1017,7 +1019,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0],
         [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0],
         self.floatingBarBottomConstraint,
-        [barView.heightAnchor constraintEqualToConstant:72.0]
+        [barView.heightAnchor constraintEqualToConstant:66.0]
     ]];
 
     [self pp_applyFloatingFadeAppearance];
@@ -1253,6 +1255,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_assertPremiumTabBarState];
     [self pp_layoutGuestProfileAnimation];
     [self pp_updateGuestProfileAnimationPlayback];
+    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:NO];
     [self pp_showIntroIfNeeded];
     [self becomeFirstResponder];
 }
@@ -1327,10 +1330,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                     animated:(BOOL)animated
 {
     [self pp_assertPremiumTabBarState];
-    BOOL usesFloatingCartDeckReplacement =
-        [self.cartFloatingBarCoordinator isEligibleFloatingCartSourceViewController:viewController];
-    BOOL shouldHideBottomNavigation =
-        viewController.hidesBottomBarWhenPushed && !usesFloatingCartDeckReplacement;
+    PPBottomSurfaceKind requestedKind =
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:viewController];
+    BOOL shouldHideBottomNavigation = requestedKind != PPBottomSurfaceKindPremiumTabBar;
     if (shouldHideBottomNavigation || !self.cartFloatingBarCoordinator.state.isVisible) {
         [self pp_setPremiumBottomNavigationHidden:shouldHideBottomNavigation animated:animated];
     }
@@ -1349,13 +1351,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                     animated:(BOOL)animated
 {
     [self pp_assertPremiumTabBarState];
-    BOOL usesFloatingCartDeckReplacement =
-        [self.cartFloatingBarCoordinator isEligibleFloatingCartSourceViewController:viewController];
-    BOOL shouldHideBottomNavigation =
-        viewController.hidesBottomBarWhenPushed && !usesFloatingCartDeckReplacement;
+    PPBottomSurfaceKind requestedKind =
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:viewController];
+    BOOL shouldHideBottomNavigation = requestedKind != PPBottomSurfaceKindPremiumTabBar;
     if (shouldHideBottomNavigation || !self.cartFloatingBarCoordinator.state.isVisible) {
         [self pp_setPremiumBottomNavigationHidden:shouldHideBottomNavigation animated:NO];
     }
+    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:viewController animated:animated];
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:animated];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
@@ -3414,9 +3416,21 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         completion(YES);
         return;
     }
-    [UIView animateWithDuration:PPAnimDurationNormal
+    if (hidden || UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:[PPBottomSurfaceCoordinator transitionOutDuration]
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseIn
+                         animations:changes
+                         completion:completion];
+        return;
+    }
+    [UIView animateWithDuration:[PPBottomSurfaceCoordinator transitionInDuration]
                           delay:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+         usingSpringWithDamping:[PPBottomSurfaceCoordinator transitionInSpringDamping]
+          initialSpringVelocity:[PPBottomSurfaceCoordinator transitionInSpringVelocity]
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
                      animations:changes
                      completion:completion];
 }
@@ -3814,6 +3828,7 @@ shouldSelectViewController:(UIViewController *)viewController {
     }
     self.pp_lastSelectedIndex = (NSInteger)index;
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
+    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:viewController animated:YES];
     [self pp_refreshGuestProfileAnimationAfterSelection];
 }
 

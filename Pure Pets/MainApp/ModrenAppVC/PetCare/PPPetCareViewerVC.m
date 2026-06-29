@@ -10,6 +10,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPBottomBar.h"
 #import "CartManager.h"
+#import "UIViewController+PPBottomSurface.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPAlertHelper.h"
 #import "PPHUD.h"
@@ -177,6 +178,11 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 
 @implementation PPPetCareViewerVC
 
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
+{
+    return PPBottomSurfaceKindViewerCartBottomBar;
+}
+
 - (instancetype)initWithMedicine:(VetMedicineModel *)medicine
                     mainKindName:(NSString *)mainKindName
 {
@@ -209,9 +215,6 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
-    }
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
                       button:nil
                        title:nil
@@ -219,20 +222,7 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
     self.navigationItem.title = PPPetCareViewerLocalized(@"pet_care_medicines", @"Medicines");
     [self pp_syncBottomBarState];
     [self pp_applyTheme];
-}
-
-- (void)viewWillDisappear:(BOOL)animated
-{
-    [super viewWillDisappear:animated];
-    NSArray<UIViewController *> *stack = self.navigationController.viewControllers;
-    NSUInteger index = [stack indexOfObject:self];
-    UIViewController *previousController = (index != NSNotFound && index > 0) ? stack[index - 1] : nil;
-    BOOL returnsToPetCareList = [previousController isKindOfClass:NSClassFromString(@"PPPetCareViewController")];
-    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
-        !returnsToPetCareList &&
-        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
-    }
+    [self pp_applyBottomSurfaceAnimated:animated];
 }
 
 - (void)viewDidAppear:(BOOL)animated

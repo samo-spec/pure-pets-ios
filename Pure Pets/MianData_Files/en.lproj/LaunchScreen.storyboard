@@ -17,7 +17,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="chat3" translatesAutoresizingMaskIntoConstraints="NO" id="dzt-rU-j9H">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="lunch_light" translatesAutoresizingMaskIntoConstraints="NO" id="dzt-rU-j9H">
                                 <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -60,13 +60,13 @@
     </scenes>
     <resources>
         <image name="PureIconTransFilledV3" width="1024" height="1024"/>
-        <image name="chat3" width="736" height="1308"/>
         <image name="launchmageNew" width="428" height="926"/>
+        <image name="lunch_light" width="166.66667175292969" height="296"/>
         <namedColor name="AppForegroundColor">
-            <color red="0.95294117647058818" green="0.95294117647058818" blue="0.95294117647058818" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+            <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>
         <namedColor name="AppPrimaryColor">
-            <color red="0.66274509803921566" green="0.16078431372549021" blue="0.27843137254901962" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+            <color red="0.78823529411764703" green="0.18823529411764706" blue="0.32156862745098042" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>
         <namedColor name="SecondaryTextColor">
             <color red="0.25882352941176473" green="0.25882352941176473" blue="0.25882352941176473" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>

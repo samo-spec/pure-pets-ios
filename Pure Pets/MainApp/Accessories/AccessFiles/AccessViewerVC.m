@@ -11,6 +11,7 @@
 #import "PPAdSharingHelper.h"
 #import "PetImageGalleryView.h"
 #import "CartManager.h"
+#import "UIViewController+PPBottomSurface.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPAlertHelper.h"
 #import "PPHUD.h"
@@ -57,7 +58,7 @@ static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button he
 static const CGFloat kAVSellerStatusPillHeight = 22.0;  // seller badge pill height
 static const CGFloat kAVNavigationTitleWidth = 242.0;
 static const CGFloat kAVNavigationTitleHeight = 44.0;
-static const CGFloat kAVHeroHorizontalInset  = 12.0;
+static const CGFloat kAVHeroHorizontalInset  = 16.0;
 static const CGFloat kAVThumbnailSize        = 54.0;
 static const CGFloat kAVThumbnailCorner      = 14.0;
 static const CGFloat kAVThumbnailSpacing     = 8.0;
@@ -594,6 +595,13 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @end
 
 @implementation AccessViewerVC
+
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
+{
+    return [self pp_shouldShowCartBar]
+        ? PPBottomSurfaceKindViewerCartBottomBar
+        : PPBottomSurfaceKindNone;
+}
 
 - (instancetype)init
 {
@@ -2564,8 +2572,8 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self pp_setPremiumTabDockHidden:YES animated:animated];
     [self pp_configurePremiumNavigationChrome];
+    [self pp_applyBottomSurfaceAnimated:animated];
 }
 
 - (void)pp_configurePremiumNavigationChrome
@@ -2644,17 +2652,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
-    BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
-    if (exiting) {
-        [self pp_setPremiumTabDockHidden:NO animated:animated];
-    }
-}
-
-- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
-{
-    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
-    }
 }
 
 

@@ -16,6 +16,7 @@
 
 #import "PPProviderCompanyPremiumCardCell.h"
 #import "PPProviderCompanyCell.h"
+#import "PPMarketplaceHeroCardStyle.h"
 #import <QuartzCore/QuartzCore.h>
 
 @import FirebaseFunctions;
@@ -42,6 +43,7 @@
 @property (nonatomic, strong) UIVisualEffectView *heroFrostedMaterialView;
 @property (nonatomic, strong) CAGradientLayer *heroSurfaceGradientLayer;
 @property (nonatomic, strong) CAShapeLayer *heroSurfaceEdgeHighlightLayer;
+@property (nonatomic, strong) UIView *heroTopAccentView;
 @property (nonatomic, strong) UIView *heroAmbientGlowView;
 @property (nonatomic, strong) UIView *heroAmbientAccentView;
 @property (nonatomic, strong) UIView *heroAmbientSupportView;
@@ -50,10 +52,9 @@
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) PPInsetLabel *heroTitleCountBadgeLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
-@property (nonatomic, strong) UIView *heroTrailIconPlateView;
-@property (nonatomic, strong) UIImageView *heroTrailIconView;
-@property (nonatomic, strong) UIButton *heroDismissButton;
-
+  @property (nonatomic, strong) UIButton *heroFilterButton;
+@property (nonatomic, strong) UIButton *FilterBTN;
+@property (nonatomic, strong) UIButton *heroBackButton;
 @property (nonatomic, strong) UIButton *heroLayoutToggleButton;
 @property (nonatomic, strong) UIView *heroSearchChromeView;
 @property (nonatomic, strong) UIImageView *heroSearchIconView;
@@ -171,6 +172,7 @@
     self.navigationItem.leftBarButtonItem = nil;
     [self pp_hideDecorativeHeroContent];
     [self pp_applyPremiumSearchChromeAppearanceFocused:self.searchChromeFocused animated:NO];
+    self.hidesBottomBarWhenPushed=YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -251,10 +253,7 @@
     PPProviderCompaniesApplyContinuousCorners(self.heroTitleCountBadgeLabel,
                                              CGRectGetHeight(self.heroTitleCountBadgeLabel.bounds) * 0.5);
     self.heroTitleCountBadgeLabel.layer.shadowPath = nil;
-    PPProviderCompaniesApplyContinuousCorners(self.heroTrailIconPlateView, 20.0);
-    self.heroTrailIconPlateView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.heroTrailIconPlateView.bounds
-                                   cornerRadius:20.0].CGPath;
+    
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -333,7 +332,7 @@
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-22]
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-0]
     ]];
 
     [self pp_buildHeader];
@@ -411,6 +410,12 @@
     self.heroSurfaceEdgeHighlightLayer.fillColor = UIColor.clearColor.CGColor;
     self.heroSurfaceEdgeHighlightLayer.lineWidth = 0.7;
 
+    self.heroTopAccentView = [[UIView alloc] init];
+    self.heroTopAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTopAccentView.userInteractionEnabled = NO;
+    self.heroTopAccentView.layer.cornerRadius = 2.0;
+    [self.heroSurfaceView addSubview:self.heroTopAccentView];
+
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
     if (@available(iOS 13.0, *)) {
         blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
@@ -475,8 +480,8 @@
                                                                                   weight:UIFontWeightBold],
                                                              UIFontTextStyleTitle2);
     self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroTitleLabel.numberOfLines = 2;
     self.heroTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.heroTitleLabel.adjustsFontForContentSizeCategory = YES;
     [self.heroContentContainerView addSubview:self.heroTitleLabel];
@@ -506,37 +511,21 @@
     self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSubtitleLabel.font = PPProviderCompaniesScaledFont([GM MidFontWithSize:12.0], UIFontTextStyleCaption1);
     self.heroSubtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroSubtitleLabel.textAlignment = NSTextAlignmentCenter;
     self.heroSubtitleLabel.numberOfLines = 2;
     self.heroSubtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.heroSubtitleLabel.hidden = NO;
     self.heroSubtitleLabel.accessibilityElementsHidden = NO;
     [self.heroContentContainerView addSubview:self.heroSubtitleLabel];
+ 
 
-    self.heroTrailIconPlateView = [[UIView alloc] init];
-    self.heroTrailIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTrailIconPlateView.userInteractionEnabled = NO;
-    self.heroTrailIconPlateView.accessibilityElementsHidden = YES;
-    self.heroTrailIconPlateView.hidden = NO;
-    self.heroTrailIconPlateView.layer.borderWidth = 1.0;
-    self.heroTrailIconPlateView.layer.masksToBounds = NO;
-    [self.heroTrailIconPlateView pp_setShadowColor:UIColor.blackColor];
-    self.heroTrailIconPlateView.layer.shadowOpacity = 0.035;
-    self.heroTrailIconPlateView.layer.shadowRadius = 12.0;
-    self.heroTrailIconPlateView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
-    [self.heroSurfaceView addSubview:self.heroTrailIconPlateView];
-    
-    self.heroTrailIconView = [[UIImageView alloc] init];
-    self.heroTrailIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTrailIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroTrailIconView.accessibilityElementsHidden = YES;
-    [self.heroTrailIconPlateView addSubview:self.heroTrailIconView];
+    self.heroFilterButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.heroFilterButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroFilterButton.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroFilterButton.accessibilityElementsHidden = YES;
+    [self.heroSurfaceView addSubview:self.heroFilterButton];
 
-    self.heroDismissButton = [self pp_ButtonWithSystemName:@"chevron.down" action:@selector(onBack)];
-    self.heroDismissButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroDismissButton.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroDismissButton.accessibilityElementsHidden = YES;
-    [self.heroTrailIconPlateView addSubview:self.heroDismissButton];
+    self.FilterBTN = self.heroFilterButton;
     
 
     self.heroSearchChromeView = [[UIView alloc] init];
@@ -613,6 +602,9 @@
     self.heroDiscoveryButtons = discoveryButtons.copy;
 
 
+    self.heroBackButton = [self pp_makeHeroBackButton];
+    [self.heroSurfaceView addSubview:self.heroBackButton];
+
     self.heroContainerHeightConstraint = [self.headerContainerView.heightAnchor constraintEqualToConstant:0];
     self.heroSurfaceTopConstraint = [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.headerContainerView.topAnchor constant:0];
     self.heroSurfaceBottomConstraint = [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.headerContainerView.bottomAnchor constant:0.0];
@@ -622,7 +614,7 @@
     self.heroProofRailHeightConstraint = [self.heroProofRailView.heightAnchor constraintEqualToConstant:40.0];
     self.heroSearchChromeBottomConstraint = [self.heroProofRailView.topAnchor constraintEqualToAnchor:self.heroSearchChromeView.bottomAnchor constant:12.0];
     self.heroContentHeightConstraint = [self.heroContentContainerView.heightAnchor constraintEqualToConstant:[self pp_expandedHeroContentHeight]];
-    self.heroDismissButton.alpha = 0;
+
     [NSLayoutConstraint activateConstraints:@[
         [self.headerContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0],
         [self.headerContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:0.0],
@@ -639,24 +631,29 @@
         [self.heroFrostedMaterialView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
         [self.heroFrostedMaterialView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor],
 
-        [self.heroAmbientSupportView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
-        [self.heroAmbientSupportView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-90.0],
-        [self.heroAmbientSupportView.widthAnchor constraintEqualToConstant:30.0],
-        [self.heroAmbientSupportView.heightAnchor constraintEqualToConstant:30.0],
+        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:28.0],
+        [self.heroTopAccentView.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroTopAccentView.heightAnchor constraintEqualToConstant:4.0],
 
-        [self.heroAmbientGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:24.0],
-        [self.heroAmbientGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-54.0],
-        [self.heroAmbientGlowView.widthAnchor constraintEqualToConstant:44.0],
-        [self.heroAmbientGlowView.heightAnchor constraintEqualToConstant:44.0],
+        [self.heroAmbientSupportView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroAmbientSupportView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:28.0],
+        [self.heroAmbientSupportView.widthAnchor constraintEqualToConstant:92.0],
+        [self.heroAmbientSupportView.heightAnchor constraintEqualToConstant:92.0],
 
-        [self.heroAmbientAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:31.0],
+        [self.heroAmbientGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-34.0],
+        [self.heroAmbientGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
+        [self.heroAmbientGlowView.widthAnchor constraintEqualToConstant:116.0],
+        [self.heroAmbientGlowView.heightAnchor constraintEqualToConstant:116.0],
+
+        [self.heroAmbientAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:30.0],
         [self.heroAmbientAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
         [self.heroAmbientAccentView.widthAnchor constraintEqualToConstant:24.0],
         [self.heroAmbientAccentView.heightAnchor constraintEqualToConstant:24.0],
 
-        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPIOS26() ? PPStatusBarHeight+ 8.0 : PPStatusBarHeight + 8.0],
-        [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
-        [self.heroContentContainerView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
+        [self.heroContentContainerView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
+        [self.heroContentContainerView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:72.0],
+        [self.heroContentContainerView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-72.0],
         self.heroContentHeightConstraint,
 
         [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroContentContainerView.topAnchor],
@@ -680,21 +677,18 @@
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroContentContainerView.trailingAnchor],
         [self.heroSubtitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:18.0],
 
-        [self.heroTrailIconPlateView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:PPStatusBarHeight + 8.0],
-        [self.heroTrailIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.heroTrailIconPlateView.widthAnchor constraintEqualToConstant:52.0],
-        [self.heroTrailIconPlateView.heightAnchor constraintEqualToConstant:52.0],
+        [self.heroLayoutToggleButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant: 8.0],
+        [self.heroLayoutToggleButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:44.0],
+        [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:44.0],
 
-        [self.heroTrailIconView.centerXAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerXAnchor],
-        [self.heroTrailIconView.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
-        [self.heroTrailIconView.widthAnchor constraintEqualToConstant:24.0],
-        [self.heroTrailIconView.heightAnchor constraintEqualToConstant:24.0],
-        
-        
-        [self.heroDismissButton.centerXAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerXAnchor],
-        [self.heroDismissButton.centerYAnchor constraintEqualToAnchor:self.heroTrailIconPlateView.centerYAnchor],
-        [self.heroDismissButton.widthAnchor constraintEqualToConstant:44.0],
-        [self.heroDismissButton.heightAnchor constraintEqualToConstant:44.0],
+       
+
+        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
+        [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
+ 
  
 
         self.heroProofRailLeadingConstraint,
@@ -712,10 +706,10 @@
         [self.heroSearchIconView.widthAnchor constraintEqualToConstant:18.0],
         [self.heroSearchIconView.heightAnchor constraintEqualToConstant:18.0],
 
-        [self.heroLayoutToggleButton.trailingAnchor constraintEqualToAnchor:self.heroSearchChromeView.trailingAnchor constant:-4.0],
-        [self.heroLayoutToggleButton.centerYAnchor constraintEqualToAnchor:self.heroSearchChromeView.centerYAnchor],
-        [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:40.0],
-        [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:40.0],
+        [self.heroFilterButton.trailingAnchor constraintEqualToAnchor:self.heroSearchChromeView.trailingAnchor constant:-4.0],
+        [self.heroFilterButton.centerYAnchor constraintEqualToAnchor:self.heroSearchChromeView.centerYAnchor],
+        [self.heroFilterButton.widthAnchor constraintEqualToConstant:40.0],
+        [self.heroFilterButton.heightAnchor constraintEqualToConstant:40.0],
 
         [self.heroSearchTextField.leadingAnchor constraintEqualToAnchor:self.heroSearchIconView.trailingAnchor constant:9.0],
         [self.heroSearchTextField.trailingAnchor constraintEqualToAnchor:self.heroLayoutToggleButton.leadingAnchor constant:-7.0],
@@ -738,10 +732,301 @@
     [self pp_updateDiscoveryButtonAppearances];
     [self pp_updateLayoutToggleAppearanceAnimated:NO];
     [self pp_applyHeroMaterialPalette];
+    [self pp_configureHeroFilterMenu];
     [self pp_hideDecorativeHeroContent];
     [self pp_applyHeroCollapseProgress:0.0 animated:NO];
 }
+- (UIButton *)pp_makeHeroBackButton
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.accessibilityLabel = kLang(@"Back") ?: @"Back";
+    button.accessibilityHint = kLang(@"seller_profile_back_hint") ?: @"Double-tap to go back";
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+    button.adjustsImageWhenHighlighted = NO;
 
+    UIImage *image = [UIImage pp_symbolNamed:PPChevronName
+                                    pointSize:17.0
+                                       weight:UIImageSymbolWeightSemibold
+                                        scale:UIImageSymbolScaleMedium
+                                      palette:@[UIColor.labelColor, UIColor.labelColor]
+                                 makeTemplate:YES];
+    UIColor *fill = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+        return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : ([AppForgroundColr colorWithAlphaComponent:0.92] ?: [UIColor colorWithWhite:1.0 alpha:0.92]);
+    }];
+    UIColor *stroke = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traits) {
+        return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.12]
+            : [UIColor colorWithWhite:1.0 alpha:0.82];
+    }];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.image = image;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(11.0, 11.0, 11.0, 11.0);
+        configuration.baseForegroundColor = UIColor.labelColor;
+        configuration.background.backgroundColor = fill;
+        configuration.background.strokeColor = stroke;
+        configuration.background.strokeWidth = 0.8;
+        button.configuration = configuration;
+    } else {
+        [button setImage:image forState:UIControlStateNormal];
+        button.tintColor = UIColor.labelColor;
+        button.backgroundColor = fill;
+        button.layer.cornerRadius = 22.0;
+        button.layer.borderWidth = 0.8;
+        [button pp_setBorderColor:[stroke resolvedColorWithTraitCollection:self.traitCollection]];
+    }
+
+    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    button.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.06;
+    button.layer.shadowRadius = 12.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    [button addTarget:self action:@selector(pp_handleHeroBack) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(handleButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    return button;
+}
+
+#pragma mark - Hero Filter Menu
+
+- (void)pp_configureHeroFilterMenu
+{
+    if (!self.heroFilterButton) {
+        return;
+    }
+
+    self.heroFilterButton.accessibilityLabel = kLang(@"provider_companies_filter_menu") ?: @"Provider options";
+    self.heroFilterButton.accessibilityHint = kLang(@"provider_companies_filter_menu_hint") ?: @"Shows view and sorting options";
+
+    if (@available(iOS 14.0, *)) {
+        self.heroFilterButton.showsMenuAsPrimaryAction = YES;
+        self.heroFilterButton.menu = [self pp_makeHeroFilterMenu];
+    } else {
+        [self.heroFilterButton addTarget:self
+                                  action:@selector(pp_handleHeroFilterButtonTap:)
+                        forControlEvents:UIControlEventTouchUpInside];
+    }
+}
+
+- (void)pp_refreshHeroFilterMenuIfNeeded
+{
+    if (@available(iOS 14.0, *)) {
+        if (self.heroFilterButton) {
+            self.heroFilterButton.menu = [self pp_makeHeroFilterMenu];
+        }
+    }
+}
+
+- (void)pp_handleHeroFilterButtonTap:(UIButton *)sender
+{
+    [self pp_presentLegacyHeroFilterSheetFromButton:sender];
+}
+
+- (void)pp_applyDiscoveryModeFromFilterMenu:(PPProviderCompaniesDiscoveryMode)mode
+{
+    if (mode == self.selectedDiscoveryMode) {
+        return;
+    }
+
+    self.selectedDiscoveryMode = mode;
+    [self pp_updateDiscoveryButtonAppearances];
+    [self pp_refreshHeroFilterMenuIfNeeded];
+
+    UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+    [feedback prepare];
+    [feedback selectionChanged];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applySearchFilter];
+        return;
+    }
+
+    [UIView transitionWithView:self.tableView
+                      duration:0.24
+                       options:UIViewAnimationOptionTransitionCrossDissolve |
+                               UIViewAnimationOptionAllowUserInteraction |
+                               UIViewAnimationOptionBeginFromCurrentState
+                    animations:^{
+        [self pp_applySearchFilter];
+    } completion:nil];
+}
+
+- (void)pp_presentLegacyHeroFilterSheetFromButton:(UIButton *)button
+{
+    UIAlertController *sheet =
+    [UIAlertController alertControllerWithTitle:(kLang(@"provider_companies_filter_menu") ?: @"Provider options")
+                                        message:nil
+                                 preferredStyle:UIAlertControllerStyleActionSheet];
+
+    NSArray<NSNumber *> *modes = @[
+        @(PPProviderCompaniesDiscoveryModeFeatured),
+        @(PPProviderCompaniesDiscoveryModeTopSellers),
+        @(PPProviderCompaniesDiscoveryModeNewest)
+    ];
+
+    for (NSNumber *modeNumber in modes) {
+        PPProviderCompaniesDiscoveryMode mode = (PPProviderCompaniesDiscoveryMode)modeNumber.integerValue;
+        NSString *title = PPProviderCompaniesDiscoveryTitle(mode);
+
+        if (mode == self.selectedDiscoveryMode) {
+            title = [NSString stringWithFormat:@"✓ %@", title];
+        }
+
+        __weak typeof(self) weakSelf = self;
+        [sheet addAction:[UIAlertAction actionWithTitle:title
+                                                  style:UIAlertActionStyleDefault
+                                                handler:^(__unused UIAlertAction *action) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) { return; }
+            [self pp_applyDiscoveryModeFromFilterMenu:mode];
+        }]];
+    }
+
+    NSString *layoutTitle = self.prefersCompactListLayout
+        ? (kLang(@"provider_companies_layout_toggle_grid") ?: @"Show premium cards")
+        : (kLang(@"provider_companies_layout_toggle_list") ?: @"Show compact list");
+
+    __weak typeof(self) weakSelf = self;
+    [sheet addAction:[UIAlertAction actionWithTitle:layoutTitle
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) { return; }
+        [self pp_handleLayoutToggleButton];
+        [self pp_refreshHeroFilterMenuIfNeeded];
+    }]];
+
+    [sheet addAction:[UIAlertAction actionWithTitle:(kLang(@"cancel") ?: @"Cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    UIView *sourceView = button ?: self.heroFilterButton ?: self.view;
+    sheet.popoverPresentationController.sourceView = sourceView;
+    sheet.popoverPresentationController.sourceRect = sourceView.bounds;
+    sheet.popoverPresentationController.permittedArrowDirections =
+        UIPopoverArrowDirectionUp | UIPopoverArrowDirectionDown;
+
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (UIMenu *)pp_makeHeroFilterMenu API_AVAILABLE(ios(14.0))
+{
+    NSMutableArray<UIMenuElement *> *discoveryActions = [NSMutableArray array];
+
+    NSArray<NSNumber *> *modes = @[
+        @(PPProviderCompaniesDiscoveryModeFeatured),
+        @(PPProviderCompaniesDiscoveryModeTopSellers),
+        @(PPProviderCompaniesDiscoveryModeNewest)
+    ];
+
+    for (NSNumber *modeNumber in modes) {
+        PPProviderCompaniesDiscoveryMode mode = (PPProviderCompaniesDiscoveryMode)modeNumber.integerValue;
+
+        UIImage *image = nil;
+        if (@available(iOS 13.0, *)) {
+            image = [UIImage systemImageNamed:PPProviderCompaniesDiscoverySymbol(mode)];
+        }
+
+        UIAction *action =
+        [UIAction actionWithTitle:PPProviderCompaniesDiscoveryTitle(mode)
+                            image:image
+                       identifier:nil
+                          handler:^(__kindof UIAction * _Nonnull action) {
+            [self pp_applyDiscoveryModeFromFilterMenu:mode];
+        }];
+
+        action.state = (mode == self.selectedDiscoveryMode)
+            ? UIMenuElementStateOn
+            : UIMenuElementStateOff;
+
+        [discoveryActions addObject:action];
+    }
+
+    NSString *layoutTitle = self.prefersCompactListLayout
+        ? (kLang(@"provider_companies_layout_toggle_grid") ?: @"Show premium cards")
+        : (kLang(@"provider_companies_layout_toggle_list") ?: @"Show compact list");
+
+    UIImage *layoutImage = nil;
+    if (@available(iOS 13.0, *)) {
+        layoutImage = [UIImage systemImageNamed:(self.prefersCompactListLayout
+            ? @"square.grid.2x2.fill"
+            : @"rectangle.grid.1x2.fill")];
+    }
+
+    UIAction *layoutAction =
+    [UIAction actionWithTitle:layoutTitle
+                        image:layoutImage
+                   identifier:nil
+                      handler:^(__kindof UIAction * _Nonnull action) {
+        [self pp_handleLayoutToggleButton];
+        [self pp_refreshHeroFilterMenuIfNeeded];
+    }];
+
+    UIMenu *discoveryMenu =
+    [UIMenu menuWithTitle:(kLang(@"provider_companies_discovery_title") ?: @"View")
+                    image:nil
+               identifier:nil
+                  options:UIMenuOptionsDisplayInline
+                 children:discoveryActions];
+
+    UIMenu *layoutMenu =
+    [UIMenu menuWithTitle:@""
+                    image:nil
+               identifier:nil
+                  options:UIMenuOptionsDisplayInline
+                 children:@[layoutAction]];
+
+    return [UIMenu menuWithTitle:@""
+                           image:nil
+                      identifier:nil
+                         options:0
+                        children:@[discoveryMenu, layoutMenu]];
+}
+
+#pragma mark - Actions
+
+- (void)handleButtonTouchDown:(UIButton *)sender {
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.965, 0.965);
+    } completion:nil];
+}
+
+- (void)handleButtonTouchUp:(UIButton *)sender {
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    [UIView animateWithDuration:0.20
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+- (void)pp_handleHeroBack
+{
+    if (self.navigationController.viewControllers.firstObject != self) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+    [self playLightFeedback];
+}
+
+- (void)playLightFeedback {
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [generator prepare];
+        [generator impactOccurred];
+    }
+}
 - (void)pp_alignDiscoveryRailForCurrentLanguageIfNeeded
 {
     if (self.heroDiscoveryInitialOffsetApplied || !self.heroDiscoveryScrollView) {
@@ -852,6 +1137,8 @@
         [button setNeedsUpdateConfiguration];
         [self pp_applyDiscoveryAppearanceToButton:button];
     }
+
+    [self pp_refreshHeroFilterMenuIfNeeded];
 }
 
 - (void)pp_handleDiscoveryButton:(UIButton *)button
@@ -863,6 +1150,7 @@
 
     self.selectedDiscoveryMode = mode;
     [self pp_updateDiscoveryButtonAppearances];
+    [self pp_refreshHeroFilterMenuIfNeeded];
 
     UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
     [feedback prepare];
@@ -1186,8 +1474,9 @@
     self.heroAmbientSupportView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     self.heroContentContainerView.alpha = 0.0;
     self.heroContentContainerView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
-    self.heroTrailIconPlateView.alpha = 0.0;
-    self.heroTrailIconPlateView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    self.heroFilterButton.alpha = 0.0;
+    self.heroFilterButton.transform = CGAffineTransformMakeTranslation(0.0,
+                                                                       8.0);
     self.heroSearchChromeView.alpha = 0.0;
     self.heroSearchChromeView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
     self.heroProofRailView.alpha = 0.0;
@@ -1210,9 +1499,8 @@
                                self.heroAmbientAccentView,
                                self.heroAmbientSupportView,
                                self.heroContentContainerView,
-                               self.heroTrailIconPlateView,
-                               self.heroSearchChromeView,
-                               self.heroProofRailView]) {
+                               self.heroFilterButton,
+                               self.heroSearchChromeView]) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
@@ -1260,8 +1548,8 @@
                      animations:^{
         self.heroContentContainerView.alpha = 1.0;
         self.heroContentContainerView.transform = CGAffineTransformIdentity;
-        self.heroTrailIconPlateView.alpha = 1.0;
-        self.heroTrailIconPlateView.transform = CGAffineTransformIdentity;
+        self.heroFilterButton.alpha = 1.0;
+        self.heroFilterButton.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.34
@@ -1274,17 +1562,7 @@
         self.heroSearchChromeView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    [UIView animateWithDuration:0.42
-                          delay:0.18
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.18
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.heroProofRailView.alpha = 1.0;
-        self.heroProofRailView.transform = CGAffineTransformIdentity;
-    } completion:^(__unused BOOL finished) {
-        [self pp_hideDecorativeHeroContent];
-    }];
+    [self pp_hideDecorativeHeroContent];
 }
 
 - (void)pp_startHeroAmbientMotionIfNeeded
@@ -1449,7 +1727,7 @@
     _heroCollapseProgress = progress;
 
     CGFloat currentHeight = [self pp_expandedHeroHeight];
-    CGFloat topInset = 0.0;
+    CGFloat topInset = PPStatusBarHeight;
     CGFloat bottomInset = 0.0;
     CGFloat railSideInset = 18.0;
     CGFloat railBottomInset = 16.0;
@@ -1465,8 +1743,7 @@
     CGFloat titleAlpha = 1.0;
     CGFloat titleBadgeAlpha = 0.0;
     CGFloat subtitleAlpha = 1.0;
-    CGFloat metricsAlpha = 0.0;
-    CGFloat layoutToggleScale = 1.0;
+     CGFloat layoutToggleScale = 1.0;
     CGFloat searchScale = self.searchChromeFocused ? 1.008 : 1.0;
     CGFloat proofRailScale = 1.0;
     CGFloat ambientAlpha = self.heroEntranceCompleted ? 1.0 : 0.0;
@@ -1491,22 +1768,22 @@
         self.heroTitleLabel.alpha = titleAlpha;
         self.heroTitleCountBadgeLabel.alpha = titleBadgeAlpha;
         self.heroSubtitleLabel.alpha = subtitleAlpha;
-        self.heroTrailIconPlateView.alpha = contentAlpha;
-         self.heroAmbientGlowView.alpha = ambientAlpha;
+          self.heroAmbientGlowView.alpha = ambientAlpha;
         self.heroAmbientAccentView.alpha = ambientAlpha;
         self.heroAmbientSupportView.alpha = ambientAlpha;
         self.heroContentContainerView.transform = CGAffineTransformIdentity;
-        self.heroTrailIconPlateView.transform = CGAffineTransformIdentity;
+        self.heroFilterButton.transform = CGAffineTransformIdentity;
         self.heroAmbientGlowView.transform = CGAffineTransformIdentity;
         self.heroAmbientAccentView.transform = CGAffineTransformIdentity;
         self.heroAmbientSupportView.transform = CGAffineTransformIdentity;
         self.heroLayoutToggleButton.transform = UIAccessibilityIsReduceMotionEnabled()
             ? CGAffineTransformIdentity
             : CGAffineTransformMakeScale(layoutToggleScale, layoutToggleScale);
-        self.heroProofRailView.alpha = 1.0;
-        self.heroProofRailView.transform = UIAccessibilityIsReduceMotionEnabled()
-            ? CGAffineTransformIdentity
-            : CGAffineTransformMakeScale(proofRailScale, proofRailScale);
+        self.heroProofRailView.alpha = 0.0;
+        self.heroProofRailView.hidden = YES;
+        self.heroProofRailView.userInteractionEnabled = NO;
+        self.heroProofRailView.accessibilityElementsHidden = YES;
+        self.heroProofRailView.transform = CGAffineTransformIdentity;
         self.heroSearchChromeView.alpha = 1.0;
         self.heroSearchChromeView.transform = UIAccessibilityIsReduceMotionEnabled()
             ? CGAffineTransformIdentity
@@ -1561,8 +1838,8 @@
     self.heroEyebrowLabel.accessibilityElementsHidden = YES;
     self.heroSubtitleLabel.hidden = NO;
     self.heroSubtitleLabel.accessibilityElementsHidden = NO;
-    self.heroTrailIconPlateView.hidden = NO;
-    self.heroTrailIconPlateView.accessibilityElementsHidden = NO;
+    self.heroFilterButton.hidden = NO;
+    self.heroFilterButton.accessibilityElementsHidden = NO;
  
     self.heroContentContainerView.hidden = NO;
     self.heroContentContainerView.accessibilityElementsHidden = NO;
@@ -1570,72 +1847,69 @@
     self.heroTitleLabel.accessibilityElementsHidden = NO;
     self.heroTitleCountBadgeLabel.hidden = YES;
     self.heroTitleCountBadgeLabel.accessibilityElementsHidden = YES;
-    self.heroProofRailView.hidden = NO;
-    self.heroProofRailView.userInteractionEnabled = YES;
-    self.heroDiscoveryScrollView.hidden = NO;
-    self.heroDiscoveryScrollView.userInteractionEnabled = YES;
+    self.heroProofRailView.hidden = YES;
+    self.heroProofRailView.userInteractionEnabled = NO;
+    self.heroProofRailView.accessibilityElementsHidden = YES;
+
+    self.heroDiscoveryScrollView.hidden = YES;
+    self.heroDiscoveryScrollView.userInteractionEnabled = NO;
+    self.heroDiscoveryScrollView.accessibilityElementsHidden = YES;
 }
 
 - (void)pp_applyHeroMaterialPalette
 {
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemRedColor;
-    UIColor *surface = PPProviderCompaniesHeroSurfaceColor();
-    UIColor *warmSurface = dark
-        ? [UIColor colorWithWhite:0.135 alpha:1.0]
-        : [UIColor colorWithRed:0.995 green:0.987 blue:0.978 alpha:1.0];
-    UIColor *warmHighlight = dark
-        ? [UIColor colorWithWhite:0.170 alpha:1.0]
-        : [UIColor colorWithRed:1.0 green:0.998 blue:0.994 alpha:0.3];
-    UIColor *warmTint = dark
-        ? [accent colorWithAlphaComponent:0.10]
-        : [accent colorWithAlphaComponent:0.045];
-    UIColor *surfaceBorder =
-        dark ? [UIColor.whiteColor colorWithAlphaComponent:0.12] : [UIColor.whiteColor colorWithAlphaComponent:0.86];
-    UIColor *edgeColor =
-        dark ? [UIColor.whiteColor colorWithAlphaComponent:0.06] : [UIColor.whiteColor colorWithAlphaComponent:0.92];
+    UIColor *accent = PPMarketplaceHeroCardAccentColor();
+    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(self.traitCollection);
+    UIColor *surfaceHighlight = PPMarketplaceHeroCardSurfaceHighlightColor(self.traitCollection);
+    UIColor *surfaceTint = PPMarketplaceHeroCardSurfaceTintColor(self.traitCollection);
+    UIColor *surfaceTail = PPMarketplaceHeroCardSurfaceTailColor(self.traitCollection);
+    UIColor *surfaceBorder = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
 
-    UIBlurEffectStyle blurStyle = dark ? UIBlurEffectStyleDark : UIBlurEffectStyleExtraLight;
-    if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
-    }
-    self.heroFrostedMaterialView.effect = [UIBlurEffect effectWithStyle:blurStyle];
-    self.heroFrostedMaterialView.contentView.backgroundColor =
-        [surface colorWithAlphaComponent:(dark ? 0.14 : 0.04)];
+    self.heroFrostedMaterialView.effect = nil;
+    self.heroFrostedMaterialView.alpha = 0.0;
+    self.heroFrostedMaterialView.contentView.backgroundColor = UIColor.clearColor;
 
-    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
+    UIColor *surfaceHighlightSoft = [surfaceHighlight colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
+    UIColor *surfaceTintSoft = [surfaceTint colorWithAlphaComponent:(dark ? 0.96 : 0.90)];
+    UIColor *surfaceTailSoft = [surfaceTail colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
+
+    self.heroSurfaceView.backgroundColor = surfaceTintSoft;
     self.heroSurfaceGradientLayer.colors = @[
-        (__bridge id)warmHighlight.CGColor,
-        (__bridge id)warmSurface.CGColor,
-        (__bridge id)warmTint.CGColor
+        (__bridge id)surfaceHighlightSoft.CGColor,
+        (__bridge id)surfaceTintSoft.CGColor,
+        (__bridge id)surfaceTailSoft.CGColor
     ];
-    self.heroSurfaceGradientLayer.startPoint = CGPointMake(0.08, 0.0);
-    self.heroSurfaceGradientLayer.endPoint = CGPointMake(0.96, 1.0);
+    self.heroSurfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroSurfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.heroSurfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
     [self.heroSurfaceView pp_setBorderColor:surfaceBorder];
-    self.heroSurfaceEdgeHighlightLayer.strokeColor = edgeColor.CGColor;
+    self.heroSurfaceView.layer.borderWidth = 1.0;
+    self.heroSurfaceEdgeHighlightLayer.strokeColor = UIColor.clearColor.CGColor;
+    self.heroSurfaceEdgeHighlightLayer.lineWidth = 0.0;
     [self.heroSurfaceView pp_setShadowColor:UIColor.blackColor];
-    self.heroSurfaceView.layer.shadowOpacity = dark ? 0.16 : 0.060;
-    self.heroSurfaceView.layer.shadowRadius = dark ? 28.0 : 24.0;
-    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroSurfaceView.layer.shadowOpacity = 0.08;
+    self.heroSurfaceView.layer.shadowRadius = 20.0;
+    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
 
+    self.heroTopAccentView.backgroundColor = [PPMarketplaceHeroCardTopAccentColor(self.traitCollection) colorWithAlphaComponent:0.52];
     self.heroAmbientGlowView.hidden = NO;
-    self.heroAmbientAccentView.hidden = NO;
+    self.heroAmbientAccentView.hidden = YES;
     self.heroAmbientSupportView.hidden = NO;
-    self.heroAmbientGlowView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.18 : 0.10)];
+    self.heroAmbientGlowView.backgroundColor = PPMarketplaceHeroCardOrbColor(self.traitCollection);
     self.heroAmbientGlowView.layer.shadowOpacity = 0.0;
     self.heroAmbientGlowView.layer.shadowRadius = 0.0;
     self.heroAmbientGlowView.layer.shadowOffset = CGSizeZero;
     self.heroAmbientGlowView.layer.borderWidth = 0.0;
 
-    self.heroAmbientAccentView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.10 : 0.065)];
+    self.heroAmbientAccentView.alpha = 0.0;
+    self.heroAmbientAccentView.backgroundColor = UIColor.clearColor;
     self.heroAmbientAccentView.layer.shadowOpacity = 0.0;
     self.heroAmbientAccentView.layer.shadowRadius = 0.0;
     self.heroAmbientAccentView.layer.shadowOffset = CGSizeZero;
     self.heroAmbientAccentView.layer.borderWidth = 0.0;
 
-    self.heroAmbientSupportView.backgroundColor =
-        dark ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
-             : [UIColor colorWithRed:0.969 green:0.909 blue:0.814 alpha:0.64];
+    self.heroAmbientSupportView.backgroundColor = UIColor.clearColor;
     self.heroAmbientSupportView.layer.shadowOpacity = 0.0;
     self.heroAmbientSupportView.layer.shadowRadius = 0.0;
     self.heroAmbientSupportView.layer.shadowOffset = CGSizeZero;
@@ -1658,13 +1932,7 @@
     self.tableBackgroundBottomGlowView.layer.shadowOffset = CGSizeZero;
     self.tableBackgroundBottomGlowView.layer.borderWidth = 0.0;
 
-    self.heroTrailIconPlateView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.70 : 0.86)];
-    [self.heroTrailIconPlateView pp_setBorderColor:[[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:(dark ? 0.18 : 0.70)]];
-    self.heroTrailIconPlateView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.heroTrailIconPlateView.layer.shadowOpacity = dark ? 0.10 : 0.035;
-    self.heroTrailIconPlateView.layer.shadowRadius = 14.0;
-    self.heroTrailIconPlateView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    self.heroTrailIconView.tintColor = [accent colorWithAlphaComponent:0.92];
+    
 
     self.heroTitleCountBadgeLabel.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.18 : 0.095)];
     self.heroTitleCountBadgeLabel.textColor = [accent colorWithAlphaComponent:(dark ? 0.96 : 0.92)];
@@ -1673,8 +1941,10 @@
     self.heroTitleCountBadgeLabel.layer.shadowOpacity = 0.0;
     self.heroTitleCountBadgeLabel.layer.shadowRadius = 0.0;
     self.heroTitleCountBadgeLabel.layer.shadowOffset = CGSizeZero;
-    self.heroProofRailView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.50 : 0.72)];
-    [self.heroProofRailView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:(dark ? 0.10 : 0.52)]];
+    self.heroTitleLabel.textColor = PPMarketplaceHeroCardPrimaryTextColor();
+    self.heroSubtitleLabel.textColor = PPMarketplaceHeroCardSecondaryTextColor();
+    self.heroProofRailView.backgroundColor = [surfaceBase colorWithAlphaComponent:(dark ? 0.84 : 0.88)];
+    [self.heroProofRailView pp_setBorderColor:[surfaceBorder colorWithAlphaComponent:(dark ? 0.82 : 1.0)]];
         
  
     [self pp_applyPremiumSearchChromeAppearanceFocused:self.searchChromeFocused animated:NO];
@@ -1702,16 +1972,7 @@
     self.heroTitleCountBadgeLabel.text = countBadgeValue;
     self.heroTitleCountBadgeLabel.accessibilityLabel = countValue;
     self.heroSubtitleLabel.text = heroSubtitle;
-    if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *configuration =
-            [UIImageSymbolConfiguration configurationWithPointSize:20.0
-                                                           weight:UIImageSymbolWeightSemibold];
-        self.heroTrailIconView.image =
-            [[UIImage systemImageNamed:PPProviderCompaniesSymbolNameForCategoryIdentifier(identifier)
-                     withConfiguration:configuration] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    } else {
-        self.heroTrailIconView.image = nil;
-    }
+    
    
 
     NSString *layoutValue = self.prefersCompactListLayout
@@ -1725,6 +1986,8 @@
             ? (kLang(@"provider_companies_layout_toggle_grid") ?: @"Show premium cards")
             : (kLang(@"provider_companies_layout_toggle_list") ?: @"Show compact list")];
     self.heroSurfaceView.isAccessibilityElement = NO;
+
+    [self pp_refreshHeroFilterMenuIfNeeded];
 }
 
 - (void)loadProviders

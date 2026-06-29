@@ -363,6 +363,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private let trustPill = UIView()
     private let trustIcon = UIImageView()
     private let trustLabel = UILabel()
+    private var contentStackBottomConstraint: NSLayoutConstraint?
 
     private var didRunEntrance = false
     private var liveEffectsRunning = false
@@ -456,6 +457,12 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         }
         guard traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) else { return }
         refreshColors()
+    }
+
+    public override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        invalidateIntrinsicContentSize()
+        setNeedsLayout()
     }
 
     private func buildView() {
@@ -705,6 +712,11 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     }
 
     private func buildLayout() {
+        contentStackBottomConstraint = contentStack.bottomAnchor.constraint(
+            equalTo: cardView.safeAreaLayoutGuide.bottomAnchor,
+            constant: -18
+        )
+
         NSLayoutConstraint.activate([
             cardView.topAnchor.constraint(equalTo: topAnchor),
             cardView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -739,7 +751,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18),
             contentStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
             contentStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
-            contentStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -30),
+            contentStackBottomConstraint!,
 
             iconShell.widthAnchor.constraint(equalToConstant: 38),
             iconShell.heightAnchor.constraint(equalToConstant: 38),
@@ -768,6 +780,36 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             trustLabel.topAnchor.constraint(equalTo: trustPill.topAnchor),
             trustLabel.bottomAnchor.constraint(equalTo: trustPill.bottomAnchor)
         ])
+    }
+
+    public override var intrinsicContentSize: CGSize {
+        let resolvedWidth = bounds.width > 1 ? bounds.width : UIScreen.main.bounds.width
+        return CGSize(width: UIView.noIntrinsicMetric, height: measuredHeight(for: resolvedWidth))
+    }
+
+    public override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
+        let resolvedWidth = targetSize.width > 1 ? targetSize.width : (bounds.width > 1 ? bounds.width : UIScreen.main.bounds.width)
+        return CGSize(width: resolvedWidth, height: measuredHeight(for: resolvedWidth))
+    }
+
+    public override func systemLayoutSizeFitting(_ targetSize: CGSize,
+                                                 withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority,
+                                                 verticalFittingPriority: UILayoutPriority) -> CGSize {
+        let resolvedWidth = targetSize.width > 1 ? targetSize.width : (bounds.width > 1 ? bounds.width : UIScreen.main.bounds.width)
+        return CGSize(width: resolvedWidth, height: measuredHeight(for: resolvedWidth))
+    }
+
+    private func measuredHeight(for width: CGFloat) -> CGFloat {
+        let resolvedWidth = max(width, 1)
+        let contentWidth = max(resolvedWidth - 40.0, 1)
+        let contentSize = contentStack.systemLayoutSizeFitting(
+            CGSize(width: contentWidth, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        )
+        let topPadding: CGFloat = 18.0
+        let bottomPadding: CGFloat = 18.0 + safeAreaInsets.bottom
+        return ceil(contentSize.height + topPadding + bottomPadding)
     }
 
     private func refreshColors() {
@@ -1066,6 +1108,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             self.trustPill.isHidden = !shouldShowTrust
             self.previewCollection.transform = .identity
             self.detailsStack.transform = .identity
+            self.invalidateIntrinsicContentSize()
+            self.superview?.setNeedsLayout()
+            self.superview?.layoutIfNeeded()
         }
 
         guard animated, !UIAccessibility.isReduceMotionEnabled else {

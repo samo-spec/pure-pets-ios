@@ -27,6 +27,8 @@
 		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
 		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
 		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
+		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
+		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
@@ -883,6 +885,10 @@
 		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
 		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
 		A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimPetCareCell.m; sourceTree = "<group>"; };
+		A11D00022FFD100000000002 /* PPBottomSurfaceCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomSurfaceCoordinator.h; sourceTree = "<group>"; };
+		A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomSurfaceCoordinator.m; sourceTree = "<group>"; };
+		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
+		A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPBottomSurface.m"; sourceTree = "<group>"; };
 		A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimProviderCategoryPillCell.h; sourceTree = "<group>"; };
 		A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
@@ -4337,6 +4343,8 @@
 				F2A83AC22F88781B00930857 /* BBCheckoutSummaryView.h */,
 				F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */,
 				F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */,
+				A11D00022FFD100000000002 /* PPBottomSurfaceCoordinator.h */,
+				A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */,
 				F2A83AC42F88781B00930857 /* PPBottomBar.h */,
 				F2A83AC52F88781B00930857 /* PPBottomBar.m */,
 				F2A83AC62F88781B00930857 /* PPBottomBarManager.h */,
@@ -4347,6 +4355,8 @@
 				F2A83ACB2F88781B00930857 /* PPNavigationController.m */,
 				F2A83ACC2F88781B00930857 /* UITabBarItem+PPAdditions.h */,
 				F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */,
+				A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */,
+				A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */,
 				F2A83ACE2F88781B00930857 /* UIViewController+PPNavBar.h */,
 				F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */,
 			);
@@ -5678,6 +5688,8 @@
 				F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */,
 				F2F807C92E8BEBE90034FF2D /* PPBannerCell.m in Sources */,
 				F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */,
+				A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */,
+				A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */,
 				F2F807CA2E8BEBE90034FF2D /* PPBannerViewModel.m in Sources */,
 				F2B02B252EF88469001A7B19 /* PPChildCell.m in Sources */,
 				F2F807CB2E8BEBE90034FF2D /* PPBannerView.m in Sources */,

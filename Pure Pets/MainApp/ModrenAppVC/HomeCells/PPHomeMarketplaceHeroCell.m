@@ -976,4 +976,28 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.secondaryProductTileView.transform = CGAffineTransformIdentity;
 }
 
+- (NSString *)pp_lottieFirebasePathForCurrentTime
+{
+    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:NSDate.date];
+    return @"Boy Giving Food To Bird";
+    if (hour < 9) {
+        return @"Woman playing with a dog";
+    }
+    if (hour < 12) {
+        return @"Boy Giving Food To Bird";
+    }
+    if (hour < 17) {
+        return @"Man playing with a dog";
+    }
+    if (hour < 20) {
+        return @"Womanlovingpetcats";
+    }
+    if (hour < 23) {
+        return @"evening chair cat and girl";
+    }
+    return @"man playing with cat during free time";
+}
+
+
+
 @end
