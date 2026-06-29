@@ -40,7 +40,11 @@ typedef NS_ENUM(NSInteger, PPHomeProviderCategoryRoute) {
 
 @interface PPHomeProviderCategoryPillCell : UICollectionViewCell
 @property (nonatomic, copy, nullable) void (^onTap)(PPHomeProviderCategoryItem *item);
+@property (nonatomic, copy, nullable) void (^onFavTap)(PPHomeProviderCategoryItem *item);
 - (void)configureWithItem:(PPHomeProviderCategoryItem *)item selected:(BOOL)selected;
 + (NSString *)reuseIdentifier;
 @end
 NS_ASSUME_NONNULL_END
+
+
+ 

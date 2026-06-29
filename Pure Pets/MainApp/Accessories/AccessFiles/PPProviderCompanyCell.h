@@ -293,6 +293,7 @@ static NSString *PPProviderCompaniesCityForEntry(PPProviderCompanyEntry *entry)
 
 
 @interface PPProviderCompanyCell : UITableViewCell
+@property (nonatomic, copy, nullable) void (^onFavTap)(PPProviderCompanyEntry *entry);
 + (CGFloat)preferredHeightForTableWidth:(CGFloat)tableWidth;
 - (void)configureWithEntry:(PPProviderCompanyEntry *)entry
         categoryIdentifier:(NSString *)categoryIdentifier;

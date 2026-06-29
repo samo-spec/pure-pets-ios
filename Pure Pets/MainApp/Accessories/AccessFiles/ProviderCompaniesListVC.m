@@ -347,7 +347,7 @@
     }
 
     CGFloat bottomInset = PPProviderCompaniesBottomNavigationClearanceForController(self);
-    CGFloat topInset = ceil([self pp_expandedHeroHeight] + 8.0);
+    CGFloat topInset = ceil([self pp_expandedHeroHeight] + 20.0);
     UIEdgeInsets contentInset = self.tableView.contentInset;
     UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
     CGFloat previousTopInset = contentInset.top;
@@ -679,8 +679,8 @@
 
         [self.heroLayoutToggleButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant: 12.0],
         [self.heroLayoutToggleButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:44.0],
-        [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:44.0],
+        [self.heroLayoutToggleButton.widthAnchor constraintEqualToConstant:36.0],
+        [self.heroLayoutToggleButton.heightAnchor constraintEqualToConstant:36.0],
 
        
 
@@ -766,9 +766,9 @@
     }
 
     button.layer.shadowColor = UIColor.blackColor.CGColor;
-    button.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.06;
-    button.layer.shadowRadius = 12.0;
-    button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    button.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.02;
+    button.layer.shadowRadius = 4.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     [button addTarget:self action:@selector(pp_handleHeroBack) forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(handleButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
@@ -1238,13 +1238,13 @@
 
     void (^changes)(void) = ^{
         self.heroLayoutToggleButton.backgroundColor = backgroundColor;
-        self.heroLayoutToggleButton.layer.borderWidth = 0.2;
-        [self.heroLayoutToggleButton pp_setBorderColor:strokeColor];
+        self.heroLayoutToggleButton.layer.borderWidth = 0.0;
+        [self.heroLayoutToggleButton pp_setBorderColor:UIColor.clearColor];
         self.heroLayoutToggleButton.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.heroLayoutToggleButton.layer.shadowOpacity = 0.06;
-        self.heroLayoutToggleButton.layer.shadowRadius = 10.0;
-        self.heroLayoutToggleButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
-        self.heroLayoutToggleButton.tintColor = foregroundColor;
+        self.heroLayoutToggleButton.layer.shadowOpacity = 0.02;
+        self.heroLayoutToggleButton.layer.shadowRadius = 4.0;
+        self.heroLayoutToggleButton.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+        self.heroLayoutToggleButton.tintColor = [foregroundColor colorWithAlphaComponent:0.7];
         [self.heroLayoutToggleButton setImage:[[UIImage systemImageNamed:symbolName
                                                         withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14.0
                                                                                                                           weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleDefault]]
@@ -1851,9 +1851,9 @@
     self.heroFrostedMaterialView.alpha = 0.0;
     self.heroFrostedMaterialView.contentView.backgroundColor = UIColor.clearColor;
 
-    UIColor *surfaceHighlightSoft = [surfaceHighlight colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
-    UIColor *surfaceTintSoft = [surfaceTint colorWithAlphaComponent:(dark ? 0.96 : 0.90)];
-    UIColor *surfaceTailSoft = [surfaceTail colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
+    UIColor *surfaceHighlightSoft = [surfaceHighlight colorWithAlphaComponent:(dark ? 0.82 : 0.72)];
+    UIColor *surfaceTintSoft = [surfaceTint colorWithAlphaComponent:(dark ? 0.86 : 0.76)];
+    UIColor *surfaceTailSoft = [surfaceTail colorWithAlphaComponent:(dark ? 0.82 : 0.72)];
 
     self.heroSurfaceView.backgroundColor = surfaceTintSoft;
     self.heroSurfaceGradientLayer.colors = @[
@@ -1873,11 +1873,13 @@
     self.heroSurfaceView.layer.shadowRadius = 20.0;
     self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
 
-    self.heroTopAccentView.backgroundColor = [PPMarketplaceHeroCardTopAccentColor(self.traitCollection) colorWithAlphaComponent:0.52];
+    self.heroTopAccentView.backgroundColor = UIColor.clearColor;
+    self.heroTopAccentView.hidden = YES;
     self.heroAmbientGlowView.hidden = NO;
     self.heroAmbientAccentView.hidden = YES;
     self.heroAmbientSupportView.hidden = NO;
     self.heroAmbientGlowView.backgroundColor = PPMarketplaceHeroCardOrbColor(self.traitCollection);
+    self.heroAmbientGlowView.alpha = 0.35;
     self.heroAmbientGlowView.layer.shadowOpacity = 0.0;
     self.heroAmbientGlowView.layer.shadowRadius = 0.0;
     self.heroAmbientGlowView.layer.shadowOffset = CGSizeZero;
@@ -1924,6 +1926,7 @@
     self.heroTitleCountBadgeLabel.layer.shadowOffset = CGSizeZero;
     self.heroTitleLabel.textColor = PPMarketplaceHeroCardPrimaryTextColor();
     self.heroSubtitleLabel.textColor = PPMarketplaceHeroCardSecondaryTextColor();
+    self.heroSubtitleLabel.alpha = 0.55;
     self.heroProofRailView.backgroundColor = [surfaceBase colorWithAlphaComponent:(dark ? 0.84 : 0.88)];
     [self.heroProofRailView pp_setBorderColor:[surfaceBorder colorWithAlphaComponent:(dark ? 0.82 : 1.0)]];
         

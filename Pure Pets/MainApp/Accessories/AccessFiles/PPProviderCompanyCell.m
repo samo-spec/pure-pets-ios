@@ -26,6 +26,7 @@
 @end
 
 @implementation PPProviderCompanyCell {
+    PPProviderCompanyEntry *_entry;
     UIView *_cardView;
     UIView *_mediaView;
     UIImageView *_coverImageView;
@@ -33,7 +34,7 @@
     CAGradientLayer *_readabilityGradientLayer;
     UIView *_contentWrapView;
     UIView *_avatarShellView;
-    UIView *_chevronContainerView;
+    UIButton *_favButton;
     UIView *_cityPillView;
     NSLayoutConstraint *_cityPillHeightConstraint;
     UIStackView *_identityStackView;
@@ -53,7 +54,6 @@
     UILabel *_cityLabel;
     UILabel *_ratingLabel;
     UILabel *_productCountLabel;
-    UIImageView *_chevronView;
     UIImageView *_avatarVerifiedIconView;
 }
 
@@ -91,7 +91,7 @@
     _cardView = [[UIView alloc] init];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
     _cardView.backgroundColor = UIColor.clearColor;
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 22.00);
+    PPProviderCompaniesApplyContinuousCorners(_cardView, 32.00);
     _cardView.layer.borderWidth = 0.0;
     _cardView.layer.masksToBounds = NO;
     [_cardView pp_setShadowColor:UIColor.blackColor];
@@ -105,7 +105,7 @@
     _mediaView.backgroundColor = [UIColor colorWithWhite:0.92 alpha:1.0];
     _mediaView.layer.borderWidth = 1.0;
     _mediaView.layer.masksToBounds = YES;
-    PPProviderCompaniesApplyContinuousCorners(_mediaView, 22.00);
+    PPProviderCompaniesApplyContinuousCorners(_mediaView, 32.00);
     [_mediaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.70]];
     [_cardView addSubview:_mediaView];
 
@@ -316,7 +316,6 @@
                                             forAxis:UILayoutConstraintAxisHorizontal];
     [_ratingPillStackView setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                           forAxis:UILayoutConstraintAxisHorizontal];
-    [_metaStackView addArrangedSubview:_ratingPillStackView];
     [_metaStackView addArrangedSubview:_cityPillView];
 
     _productCountIconView = [[UIImageView alloc] init];
@@ -358,27 +357,19 @@
     [_productCountPillStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                                 forAxis:UILayoutConstraintAxisHorizontal];
     [_metaStackView addArrangedSubview:_productCountPillStackView];
+    [_metaStackView addArrangedSubview:_ratingPillStackView];
 
-    _chevronContainerView = [[UIView alloc] init];
-    _chevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronContainerView.layer.masksToBounds = YES;
-    _chevronContainerView.layer.borderWidth = 0.75;
-    [_chevronContainerView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.30]];
-    _chevronContainerView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
-    [_contentWrapView addSubview:_chevronContainerView];
-
-    _chevronView = [[UIImageView alloc] init];
-    _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    if (@available(iOS 13.0, *)) {
-        NSString *chevronName = Language.isRTL ? @"arrow.left" : @"arrow.right";
-        _chevronView.image = [[UIImage systemImageNamed:chevronName
-                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14.0
-                                                                                                weight:UIImageSymbolWeightBold]]
-                             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    }
-    _chevronView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.86];
-    [_chevronContainerView addSubview:_chevronView];
+    _favButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _favButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _favButton.clipsToBounds = YES;
+    _favButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    UIImage *favImage = [UIImage systemImageNamed:@"heart"
+                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                                                                  weight:UIImageSymbolWeightSemibold]];
+    [_favButton setImage:[favImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    _favButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.86];
+    [_favButton addTarget:self action:@selector(pp_handleFavTap) forControlEvents:UIControlEventTouchUpInside];
+    [_contentWrapView addSubview:_favButton];
 
     _cityPillHeightConstraint = [_cityPillView.heightAnchor constraintGreaterThanOrEqualToConstant:24.0];
     _cityPillHeightConstraint.priority = UILayoutPriorityDefaultHigh;
@@ -421,7 +412,7 @@
         [_avatarImageView.bottomAnchor constraintEqualToAnchor:_avatarShellView.bottomAnchor constant:-4.0],
 
         [_identityStackView.leadingAnchor constraintEqualToAnchor:_avatarShellView.trailingAnchor constant:12.0],
-        [_identityStackView.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-12.0],
+        [_identityStackView.trailingAnchor constraintEqualToAnchor:_favButton.leadingAnchor constant:-12.0],
         [_identityStackView.topAnchor constraintEqualToAnchor:_contentWrapView.topAnchor],
         [_identityStackView.bottomAnchor constraintEqualToAnchor:_contentWrapView.bottomAnchor],
 
@@ -463,21 +454,17 @@
         [_productCountIconView.widthAnchor constraintEqualToConstant:11.0],
         [_productCountIconView.heightAnchor constraintEqualToConstant:11.0],
 
-        [_chevronContainerView.trailingAnchor constraintEqualToAnchor:_contentWrapView.trailingAnchor],
-        [_chevronContainerView.centerYAnchor constraintEqualToAnchor:_contentWrapView.centerYAnchor],
-        [_chevronContainerView.widthAnchor constraintEqualToConstant:38.0],
-        [_chevronContainerView.heightAnchor constraintEqualToConstant:38.0],
-
-        [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronContainerView.centerXAnchor],
-        [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronContainerView.centerYAnchor],
-        [_chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:14.0]
+        [_favButton.trailingAnchor constraintEqualToAnchor:_contentWrapView.trailingAnchor],
+        [_favButton.centerYAnchor constraintEqualToAnchor:_contentWrapView.centerYAnchor],
+        [_favButton.widthAnchor constraintEqualToConstant:38.0],
+        [_favButton.heightAnchor constraintEqualToConstant:38.0]
     ]];
 }
 
 - (void)configureWithEntry:(PPProviderCompanyEntry *)entry
         categoryIdentifier:(NSString *)categoryIdentifier
 {
+    _entry = entry;
     NSString *title =
         [[PPProviderCompaniesSafeString(entry.profileDisplayName)
           stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] copy];
@@ -503,8 +490,7 @@
     [_ratingPillStackView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
     _productCountPillStackView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.16];
     [_productCountPillStackView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.22]];
-    _chevronContainerView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
-    [_chevronContainerView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.30]];
+    _favButton.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
     _titleRowContainerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     _titleRowStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     _metaRowContainerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -537,7 +523,7 @@
         if ([[_identityStackView arrangedSubviews] containsObject:_cityPillView]) {
             [_identityStackView removeArrangedSubview:_cityPillView];
         }
-        NSUInteger desiredCityIndex = MIN((NSUInteger)1, _metaStackView.arrangedSubviews.count);
+        NSUInteger desiredCityIndex = 0;
         if (![[_metaStackView arrangedSubviews] containsObject:_cityPillView]) {
             [_metaStackView insertArrangedSubview:_cityPillView atIndex:desiredCityIndex];
         } else if ([[_metaStackView arrangedSubviews] indexOfObject:_cityPillView] != desiredCityIndex) {
@@ -560,11 +546,13 @@
     _cityIconView.tintColor = [[UIColor whiteColor] colorWithAlphaComponent:0.82];
     _cityLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
 
-    NSString *ratingText = kLang(@"provider_rating_new") ?: @"New";
-    if (entry.user.providerReviewCount > 0 && entry.user.providerRatingValue > 0.0) {
-        ratingText = [NSString stringWithFormat:@"%.1f", entry.user.providerRatingValue];
+    BOOL hasRealRating = (entry.user.providerReviewCount > 0 && entry.user.providerRatingValue > 0.0);
+    if (hasRealRating) {
+        _ratingLabel.text = [NSString stringWithFormat:@"%.1f", entry.user.providerRatingValue];
+    } else {
+        _ratingLabel.text = @"";
     }
-    _ratingLabel.text = ratingText;
+    _ratingPillStackView.hidden = !hasRealRating;
     NSString *productCountAccessibilityText = PPProviderCompaniesItemsCountText(entry.productCount, categoryIdentifier);
     _productCountLabel.text = [NSString stringWithFormat:@"%ld", (long)MAX(entry.productCount, 0)];
     if (@available(iOS 13.0, *)) {
@@ -693,9 +681,9 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    PPProviderCompaniesApplyContinuousCorners(_cardView, 22.00);
-    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:22.00].CGPath;
-    PPProviderCompaniesApplyContinuousCorners(_mediaView, 22.00);
+    PPProviderCompaniesApplyContinuousCorners(_cardView, 32.00);
+    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_cardView.bounds cornerRadius:32.00].CGPath;
+    PPProviderCompaniesApplyContinuousCorners(_mediaView, 32.00);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _readabilityGradientLayer.frame = _imageScrimView.bounds;
@@ -713,7 +701,7 @@
     PPProviderCompaniesApplyContinuousCorners(_cityPillView, CGRectGetHeight(_cityPillView.bounds) * 0.5);
     PPProviderCompaniesApplyContinuousCorners(_ratingPillStackView, CGRectGetHeight(_ratingPillStackView.bounds) * 0.5);
     PPProviderCompaniesApplyContinuousCorners(_productCountPillStackView, CGRectGetHeight(_productCountPillStackView.bounds) * 0.5);
-    _chevronContainerView.layer.cornerRadius = CGRectGetWidth(_chevronContainerView.bounds) * 0.5;
+    _favButton.layer.cornerRadius = CGRectGetWidth(_favButton.bounds) * 0.5;
 }
 
 - (void)prepareForReuse
@@ -738,15 +726,22 @@
         [_identityStackView removeArrangedSubview:_cityPillView];
     }
     if (![[_metaStackView arrangedSubviews] containsObject:_cityPillView]) {
-        NSUInteger desiredCityIndex = MIN((NSUInteger)1, _metaStackView.arrangedSubviews.count);
-        [_metaStackView insertArrangedSubview:_cityPillView atIndex:desiredCityIndex];
+        [_metaStackView insertArrangedSubview:_cityPillView atIndex:0];
     }
     _cityPillView.hidden = YES;
     _cityPillHeightConstraint.priority = UILayoutPriorityDefaultLow;
+    _ratingPillStackView.hidden = NO;
     _avatarVerifiedIconView.image = nil;
     _avatarVerifiedIconView.hidden = YES;
     self.accessibilityHint = nil;
     self.accessibilityLabel = nil;
+}
+
+- (void)pp_handleFavTap
+{
+    if (self.onFavTap && _entry) {
+        self.onFavTap(_entry);
+    }
 }
 
 @end

@@ -68,9 +68,8 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     UIView *_surfaceView;
     UIView *_glowView;
     UIView *_iconContainerView;
-    UIView *_chevronContainerView;
     UIImageView *_iconView;
-    UIImageView *_chevronView;
+    UIButton *_favButton;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
     PPHomeProviderCategoryItem *_item;
@@ -169,20 +168,17 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     }
     [_surfaceView addSubview:_subtitleLabel];
     _subtitleLabel.hidden = YES;
-    _chevronContainerView = [[UIView alloc] init];
-    _chevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronContainerView.userInteractionEnabled = NO;
-    _chevronContainerView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _chevronContainerView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView addSubview:_chevronContainerView];
 
-    _chevronView = [[UIImageView alloc] init];
-    _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    _chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    _chevronView.userInteractionEnabled = NO;
-    [_chevronContainerView addSubview:_chevronView];
+    _favButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _favButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _favButton.tintColor = [UIColor.systemGrayColor colorWithAlphaComponent:0.6];
+    _favButton.clipsToBounds = YES;
+    UIImage *favImage = [UIImage systemImageNamed:@"heart"
+                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                                                                  weight:UIImageSymbolWeightSemibold]];
+    [_favButton setImage:[favImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    [_favButton addTarget:self action:@selector(pp_handleFavTap) forControlEvents:UIControlEventTouchUpInside];
+    [_surfaceView addSubview:_favButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [_button.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -210,22 +206,17 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
         [_iconView.widthAnchor constraintEqualToConstant:20.0],
         [_iconView.heightAnchor constraintEqualToConstant:20.0],
 
-        [_chevronContainerView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
-        [_chevronContainerView.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor],
-        [_chevronContainerView.widthAnchor constraintEqualToConstant:28.0],
-        [_chevronContainerView.heightAnchor constraintEqualToConstant:28.0],
-
-        [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronContainerView.centerXAnchor],
-        [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronContainerView.centerYAnchor],
-        [_chevronView.widthAnchor constraintEqualToConstant:12.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:12.0],
+        [_favButton.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
+        [_favButton.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor],
+        [_favButton.widthAnchor constraintEqualToConstant:28.0],
+        [_favButton.heightAnchor constraintEqualToConstant:28.0],
 
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconContainerView.trailingAnchor constant:12.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-8.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_favButton.leadingAnchor constant:-8.0],
         [_titleLabel.centerYAnchor constraintEqualToAnchor:_iconContainerView.centerYAnchor constant:-0.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_iconContainerView.trailingAnchor constant:12.0],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_chevronContainerView.leadingAnchor constant:-8.0],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_favButton.leadingAnchor constant:-8.0],
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
     ]];
 
@@ -278,14 +269,10 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     }
     _iconView.image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 
-    NSString *chevronName = Language.isRTL ? @"arrow.left" : @"arrow.right";
-    UIImage *chevronImage = nil;
-    if (@available(iOS 13.0, *)) {
-        chevronImage = [UIImage systemImageNamed:chevronName
-                               withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:15.0
-                                                                                                 weight:UIImageSymbolWeightSemibold]];
-    }
-    _chevronView.image = [chevronImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImage *favImage = [UIImage systemImageNamed:@"heart"
+                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                                                                  weight:UIImageSymbolWeightSemibold]];
+    [_favButton setImage:[favImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
 
     [self pp_applySelection:NO animated:NO];
 }
@@ -329,14 +316,14 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
         self->_iconContainerView.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.16 : 0.09];
         self->_iconContainerView.layer.borderWidth = 0.75;
         [self->_iconContainerView pp_setBorderColor:[border colorWithAlphaComponent:darkMode ? 0.30 : 0.40]];
-        self->_chevronContainerView.backgroundColor = PPHomeProviderCategoryBlend(foregroundSurface,
-                                                                                  accent,
-                                                                                  darkMode ? 0.12 : 0.035,
-                                                                                  self.traitCollection);
         self->_titleLabel.textColor = titleColor;
         self->_subtitleLabel.textColor = subtitleColor;
         self->_iconView.tintColor = accent;
-        self->_chevronView.tintColor = [titleColor colorWithAlphaComponent:0.66];
+        self->_favButton.backgroundColor = PPHomeProviderCategoryBlend(foregroundSurface,
+                                                                       accent,
+                                                                       darkMode ? 0.12 : 0.035,
+                                                                       self.traitCollection);
+        self->_favButton.tintColor = [titleColor colorWithAlphaComponent:0.55];
         self->_glowView.alpha = 0;// darkMode ? 0.14 : 0.11;
         self->_glowView.backgroundColor = [accent colorWithAlphaComponent:darkMode ? 0.12 : 0.07];
         self->_glowView.layer.shadowColor = resolvedAccent.CGColor;
@@ -373,7 +360,7 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _surfaceView.layer.cornerRadius = radius;
-    _chevronContainerView.layer.cornerRadius = CGRectGetWidth(_chevronContainerView.bounds) * 0.5;
+    _favButton.layer.cornerRadius = CGRectGetWidth(_favButton.bounds) * 0.5;
     _glowView.layer.cornerRadius = CGRectGetWidth(_glowView.bounds) * 0.5;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                                        cornerRadius:radius].CGPath;
@@ -402,8 +389,6 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
         self->_surfaceView.transform = CGAffineTransformMakeScale(0.982, 0.982);
         [self->_surfaceView pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.86]];
         self->_iconContainerView.backgroundColor = [accent colorWithAlphaComponent:0.13];
-        self->_chevronContainerView.backgroundColor = [accent colorWithAlphaComponent:0.10];
-        self->_chevronView.tintColor = [titleColor colorWithAlphaComponent:0.84];
         self->_glowView.alpha = 0;//0.12;
         self->_glowView.backgroundColor = [accent colorWithAlphaComponent:0.12];
         self->_glowView.layer.shadowOpacity = 0.10;
@@ -438,6 +423,13 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     }
 }
 
+- (void)pp_handleFavTap
+{
+    if (self.onFavTap && _item) {
+        self.onFavTap(_item);
+    }
+}
+
 - (void)prepareForReuse
 {
     [super prepareForReuse];
@@ -453,7 +445,6 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     _button.accessibilityTraits = UIAccessibilityTraitButton;
     _surfaceView.transform = CGAffineTransformIdentity;
     _iconView.image = nil;
-    _chevronView.image = nil;
     [self pp_applySelection:NO animated:NO];
 }
 

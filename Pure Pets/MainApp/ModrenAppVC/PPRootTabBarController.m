@@ -2397,17 +2397,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         dockHeight = 86.0;
     }
     NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
-        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
+        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-4],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
     if (PPIOS26()) {
      
         
         [dockConstraints addObject:
-            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-8.0]];
+            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2.0]];
         
             [dockConstraints addObject:
-             [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:12.0]];
+             [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:10.0]];
             
         
     } else {
@@ -3533,8 +3533,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
-            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-10.0],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
+            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:12.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
         ]];
