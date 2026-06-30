@@ -23,6 +23,7 @@ typedef NS_ENUM(NSInteger, PPProviderCompanyPremiumCardAccessoryStyle) {
 @property (nonatomic, copy) NSString *categoryText;
 @property (nonatomic, copy) NSString *countTitleText;
 @property (nonatomic, copy) NSString *countValueText;
+@property (nonatomic, copy) NSString *countDisplayText;
 @property (nonatomic, copy) NSString *ratingText;
 @property (nonatomic, copy) NSString *ratingCountText;
 @property (nonatomic, copy) NSString *cityText;

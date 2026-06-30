@@ -15,7 +15,7 @@
 
 static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
 {
-    id value = userInfo[@"threadID"] ?: userInfo[@"threadId"];
+    id value = userInfo[@"conversationId"] ?: userInfo[@"threadID"] ?: userInfo[@"threadId"];
     return [value isKindOfClass:NSString.class] ? value : @"";
 }
 

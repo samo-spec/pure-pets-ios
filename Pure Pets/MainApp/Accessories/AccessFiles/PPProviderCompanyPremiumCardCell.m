@@ -158,6 +158,39 @@ static NSString *PPProviderPremiumSafeText(NSString * _Nullable value)
     return [value isKindOfClass:NSString.class] ? value : @"";
 }
 
+static NSAttributedString *PPProviderPremiumMetricText(NSString *valueText,
+                                                       NSString *titleText,
+                                                       UIColor *accentColor)
+{
+    NSString *value = [PPProviderPremiumSafeText(valueText)
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *title = [PPProviderPremiumSafeText(titleText)
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *fullText = @"";
+    if (value.length && title.length) {
+        fullText = [title rangeOfString:value].location != NSNotFound
+            ? title
+            : [NSString stringWithFormat:@"%@ %@", value, title];
+    } else {
+        fullText = value.length ? value : title;
+    }
+    UIColor *accent = accentColor ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:fullText attributes:@{
+        NSFontAttributeName: PPProviderPremiumRoundedFont(12.0, UIFontWeightSemibold, UIFontTextStyleCaption1),
+        NSForegroundColorAttributeName: [PPProviderPremiumPrimaryTextColor() colorWithAlphaComponent:0.74]
+    }];
+    if (value.length > 0) {
+        NSRange valueRange = [fullText rangeOfString:value];
+        if (valueRange.location != NSNotFound) {
+            [text addAttributes:@{
+                NSFontAttributeName: PPProviderPremiumRoundedFont(12.0, UIFontWeightHeavy, UIFontTextStyleCaption1),
+                NSForegroundColorAttributeName: [accent colorWithAlphaComponent:0.92]
+            } range:valueRange];
+        }
+    }
+    return text;
+}
+
 static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentColor, CGSize size)
 {
     CGFloat scale = UIScreen.mainScreen.scale ?: 2.0;
@@ -228,6 +261,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         _categoryText = @"";
         _countTitleText = @"";
         _countValueText = @"0";
+        _countDisplayText = @"";
         _ratingText = kLang(@"provider_rating_new") ?: @"New";
         _ratingCountText = @"";
         _cityText = @"";
@@ -246,6 +280,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     copy.categoryText = self.categoryText;
     copy.countTitleText = self.countTitleText;
     copy.countValueText = self.countValueText;
+    copy.countDisplayText = self.countDisplayText;
     copy.ratingText = self.ratingText;
     copy.ratingCountText = self.ratingCountText;
     copy.cityText = self.cityText;
@@ -290,7 +325,6 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
 
 @property (nonatomic, strong) NSLayoutConstraint *imageStageHeightConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *metricsRailHeightConstraint;
 @property (nonatomic, strong) PPProviderCompanyPremiumCardViewModel *viewModel;
 @end
 
@@ -457,10 +491,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.metricsRailStackView = [[UIStackView alloc] init];
     self.metricsRailStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.metricsRailStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.metricsRailStackView.alignment = UIStackViewAlignmentFill;
-    self.metricsRailStackView.distribution = UIStackViewDistributionFillEqually;
+    self.metricsRailStackView.alignment = UIStackViewAlignmentCenter;
+    self.metricsRailStackView.distribution = UIStackViewDistributionFillProportionally;
     self.metricsRailStackView.spacing = 8.0;
-    self.metricsRailStackView.hidden = YES;
+    self.metricsRailStackView.hidden = NO;
     [self.contentPanelView addSubview:self.metricsRailStackView];
 
     self.countPillView = [[UIView alloc] init];
@@ -469,7 +503,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.countPillView.layer.borderWidth = 0.55;
     self.countPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.countPillView.clipsToBounds = YES;
-    self.countPillView.hidden = YES;
+    self.countPillView.hidden = NO;
     PPProviderPremiumApplyContinuousCorners(self.countPillView, 18.0);
     [self.metricsRailStackView addArrangedSubview:self.countPillView];
 
@@ -478,7 +512,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.countTitleLabel.numberOfLines = 1;
     self.countTitleLabel.adjustsFontForContentSizeCategory = YES;
     self.countTitleLabel.textAlignment = NSTextAlignmentCenter;
-    self.countTitleLabel.hidden = YES;
+    self.countTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.countTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.countTitleLabel.minimumScaleFactor = 0.82;
+    self.countTitleLabel.hidden = NO;
     [self.countPillView addSubview:self.countTitleLabel];
 
     self.contactPillView = [[UIView alloc] init];
@@ -494,7 +531,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.contactIconView = [[UIImageView alloc] init];
     self.contactIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.contactIconView.image = PPProviderPremiumSymbolImage(@"phone.fill", 11.0, UIImageSymbolWeightSemibold);
+    self.contactIconView.image = PPProviderPremiumSymbolImage(@"mappin.and.ellipse", 11.0, UIImageSymbolWeightSemibold);
     self.contactIconView.tintColor = [PPProviderPremiumPrimaryTextColor() colorWithAlphaComponent:0.58];
     [self.contactPillView addSubview:self.contactIconView];
 
@@ -535,6 +572,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.ratingLabel.minimumScaleFactor = 0.82;
     self.ratingLabel.adjustsFontForContentSizeCategory = YES;
     [self.ratingPillView addSubview:self.ratingLabel];
+    [self.metricsRailStackView addArrangedSubview:self.ratingPillView];
   
 
     self.imageStageHeightConstraint = [self.imageStageView.heightAnchor constraintEqualToConstant:218.0];
@@ -593,26 +631,25 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
         [self.titleLabel.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ratingPillView.leadingAnchor constant:-10.0],
-
-        [self.ratingPillView.topAnchor constraintEqualToAnchor:self.titleLabel.topAnchor constant:1.0],
-        [self.ratingPillView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
-        [self.ratingPillView.heightAnchor constraintEqualToConstant:30.0],
-        [self.ratingPillView.widthAnchor constraintGreaterThanOrEqualToConstant:72.0],
-        [self.ratingPillView.widthAnchor constraintLessThanOrEqualToConstant:114.0],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
 
         [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
         
-        //[self.metaFootnoteLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:8.0],
-        //[self.metaFootnoteLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
-        //[self.metaFootnoteLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
-
-        //[self.metricsRailStackView.topAnchor constraintEqualToAnchor:self.metaFootnoteLabel.bottomAnchor constant:10.0],
-        //[self.metricsRailStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
-        //[self.metricsRailStackView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
-        //[self.metricsRailStackView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
+        [self.metricsRailStackView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:11.0],
+        [self.metricsRailStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.metricsRailStackView.trailingAnchor constraintLessThanOrEqualToAnchor:contentGuide.trailingAnchor],
+        [self.metricsRailStackView.bottomAnchor constraintLessThanOrEqualToAnchor:contentGuide.bottomAnchor],
+        [self.metricsRailStackView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
+        [self.countPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
+        [self.countPillView.widthAnchor constraintGreaterThanOrEqualToConstant:82.0],
+        [self.contactPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
+        [self.contactPillView.widthAnchor constraintGreaterThanOrEqualToConstant:74.0],
+        [self.contactPillView.widthAnchor constraintLessThanOrEqualToConstant:156.0],
+        [self.ratingPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
+        [self.ratingPillView.widthAnchor constraintGreaterThanOrEqualToConstant:66.0],
+        [self.ratingPillView.widthAnchor constraintLessThanOrEqualToConstant:118.0],
 
         [self.countTitleLabel.centerYAnchor constraintEqualToAnchor:self.countPillView.centerYAnchor],
         [self.countTitleLabel.leadingAnchor constraintEqualToAnchor:self.countPillView.leadingAnchor constant:10.0],
@@ -636,8 +673,6 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.ratingLabel.trailingAnchor constraintEqualToAnchor:self.ratingPillView.trailingAnchor constant:-11.0],
         [self.ratingLabel.centerYAnchor constraintEqualToAnchor:self.ratingPillView.centerYAnchor]
     ]];
-    self.metricsRailHeightConstraint = [self.metricsRailStackView.heightAnchor constraintEqualToConstant:0.0];
-    self.metricsRailHeightConstraint.active = YES;
     [self.ratingPillView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.ratingPillView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -678,11 +713,9 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.accessoryPocketView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.50].CGColor;
     self.countPillView.backgroundColor = [accent colorWithAlphaComponent:0.060];
     self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.135].CGColor;
-    self.metricsRailStackView.hidden = YES;
-    self.countPillView.hidden = YES;
-    self.countTitleLabel.hidden = YES;
-    self.contactPillView.hidden = YES;
-    self.contactLabel.hidden = YES;
+    self.metricsRailStackView.hidden = NO;
+    self.countPillView.hidden = NO;
+    self.countTitleLabel.hidden = NO;
 
     self.titleLabel.text = title;
     NSString *displaySubtitle = subtitle.length ? subtitle : category;
@@ -698,8 +731,24 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
             NSParagraphStyleAttributeName: subtitleStyle
         }];
     self.subtitleLabel.hidden = NO;
-    self.metaFootnoteLabel.text = PPProviderPremiumSafeText(model.cityText);
-    self.countTitleLabel.attributedText = nil;
+    NSString *cityText =
+        [PPProviderPremiumSafeText(model.cityText)
+         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *countDisplay =
+        [PPProviderPremiumSafeText(model.countDisplayText)
+         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (countDisplay.length == 0) {
+        countDisplay = [PPProviderPremiumSafeText(model.countTitleText)
+                        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    self.metaFootnoteLabel.text = cityText;
+    self.countTitleLabel.attributedText = PPProviderPremiumMetricText(PPProviderPremiumSafeText(model.countValueText),
+                                                                      countDisplay,
+                                                                      accent);
+    self.contactLabel.text = cityText;
+    self.contactPillView.hidden = (cityText.length == 0);
+    self.contactLabel.hidden = self.contactPillView.hidden;
+    self.contactIconView.hidden = self.contactPillView.hidden;
     self.ratingLabel.text = ratingCount.length ? [NSString stringWithFormat:@"%@ %@", ratingText, ratingCount] : ratingText;
     self.metaFootnoteLabel.hidden = (self.metaFootnoteLabel.text.length == 0);
  
@@ -733,15 +782,21 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         self.subtitleLabel.attributedText = subtitleText;
     }
     self.countTitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.contactLabel.textAlignment = leading;
+    self.metricsRailStackView.alignment = UIStackViewAlignmentCenter;
     self.semanticContentAttribute = isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.cardView.semanticContentAttribute = self.semanticContentAttribute;
     self.contentPanelView.semanticContentAttribute = self.semanticContentAttribute;
     self.metricsRailStackView.semanticContentAttribute = self.semanticContentAttribute;
+    self.contactPillView.semanticContentAttribute = self.semanticContentAttribute;
+    self.countPillView.semanticContentAttribute = self.semanticContentAttribute;
+    self.ratingPillView.semanticContentAttribute = self.semanticContentAttribute;
 
     NSMutableArray<NSString *> *a11yParts = [NSMutableArray array];
     if (title.length) [a11yParts addObject:title];
     if (displaySubtitle.length) [a11yParts addObject:displaySubtitle];
     if (self.metaFootnoteLabel.text.length) [a11yParts addObject:self.metaFootnoteLabel.text];
+    if (self.countTitleLabel.attributedText.string.length) [a11yParts addObject:self.countTitleLabel.attributedText.string];
     if (self.ratingLabel.text.length) [a11yParts addObject:self.ratingLabel.text];
     self.accessibilityLabel = [a11yParts componentsJoinedByString:@", "];
     self.accessibilityHint = kLang(@"a11y_cell_tap_hint") ?: @"Double-tap to view details";
@@ -948,9 +1003,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.metaFootnoteLabel.hidden = NO;
     self.countTitleLabel.attributedText = nil;
     self.countTitleLabel.text = nil;
-    self.countTitleLabel.hidden = YES;
+    self.countTitleLabel.hidden = NO;
     self.contactLabel.text = nil;
     self.contactLabel.hidden = YES;
+    self.contactIconView.hidden = YES;
     self.ratingLabel.text = nil;
     self.topBadgeLabel.text = nil;
     self.cardView.alpha = 1.0;
@@ -960,8 +1016,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.contentPanelView.alpha = 1.0;
     self.contentPanelView.transform = CGAffineTransformIdentity;
     self.accessoryButton.transform = CGAffineTransformIdentity;
-    self.metricsRailStackView.hidden = YES;
-    self.countPillView.hidden = YES;
+    self.metricsRailStackView.hidden = NO;
+    self.countPillView.hidden = NO;
     self.contactPillView.hidden = YES;
  
     self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(nil);

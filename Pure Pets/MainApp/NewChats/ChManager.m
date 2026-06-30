@@ -2507,6 +2507,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     NSDictionary *payload = @{
         @"toUserId"  : toUserID,
         @"senderId"  : senderID,
+        @"conversationId" : threadID,
         @"threadId"  : threadID,
         @"messageId" : messageID ?: @"",
         @"title"     : title ?: @"",
@@ -3052,6 +3053,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
          @"toUserId": toUserID ?: @"",
          @"title": title ?: @"",
          @"body": body ?: @"",
+         @"conversationId": threadID ?: @"",
          @"threadId": threadID ?: @"",
          @"senderId": senderID ?: @""
      };

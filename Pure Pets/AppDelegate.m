@@ -74,11 +74,27 @@ static BOOL PPAppDelegateIsChatNotificationPayload(NSDictionary *userInfo) {
         return NO;
     }
     NSString *type = [userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"";
+    NSString *notificationType = [userInfo[@"notificationType"] isKindOfClass:NSString.class] ? userInfo[@"notificationType"] : @"";
+    NSString *route = [userInfo[@"route"] isKindOfClass:NSString.class] ? userInfo[@"route"] : @"";
     NSString *threadID = [userInfo[@"threadID"] isKindOfClass:NSString.class] ? userInfo[@"threadID"] : @"";
     if (threadID.length == 0 && [userInfo[@"threadId"] isKindOfClass:NSString.class]) {
         threadID = userInfo[@"threadId"];
     }
-    return [type isEqualToString:@"chat"] || threadID.length > 0;
+    if (threadID.length == 0 && [userInfo[@"conversationId"] isKindOfClass:NSString.class]) {
+        threadID = userInfo[@"conversationId"];
+    }
+    return [type isEqualToString:@"chat"] ||
+           [notificationType isEqualToString:@"chat"] ||
+           [route isEqualToString:@"chat"] ||
+           threadID.length > 0;
+}
+
+static BOOL PPAppDelegateIsTargetedAwayFromUserApp(NSDictionary *userInfo) {
+    if (![userInfo isKindOfClass:NSDictionary.class]) return NO;
+    NSString *targetApp = [PPAppDelegateTrimmedString(userInfo[@"targetApp"] ?: userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
+    return [targetApp isEqualToString:@"pro_ios"] ||
+           [targetApp isEqualToString:@"pro_android"] ||
+           [targetApp isEqualToString:@"admin_console"];
 }
 
 static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInfo) {
@@ -86,10 +102,11 @@ static BOOL PPAppDelegateIsProviderOnlyNotificationPayload(NSDictionary *userInf
 
     NSString *type = [PPAppDelegateTrimmedString(userInfo[@"notificationType"] ?: userInfo[@"type"]) lowercaseString];
     NSString *route = [PPAppDelegateTrimmedString(userInfo[@"route"]) lowercaseString];
-    NSString *targetAppId = [PPAppDelegateTrimmedString(userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
+    NSString *targetAppId = [PPAppDelegateTrimmedString(userInfo[@"targetApp"] ?: userInfo[@"targetAppId"] ?: userInfo[@"appId"]) lowercaseString];
     NSString *audience = [PPAppDelegateTrimmedString(userInfo[@"audience"]) lowercaseString];
 
-    return [targetAppId isEqualToString:@"pro_ios"] ||
+    return PPAppDelegateIsTargetedAwayFromUserApp(userInfo) ||
+           [targetAppId isEqualToString:@"pro_ios"] ||
            [audience isEqualToString:@"delivery_providers"] ||
            [type hasPrefix:@"drivers_delivery_"] ||
            [type isEqualToString:@"provider_new_fulfillment"] ||
@@ -869,7 +886,7 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
     }
 
     NSString *type = userInfo[@"type"];
-    NSString *threadID = userInfo[@"threadID"] ?: userInfo[@"threadId"];
+    NSString *threadID = userInfo[@"conversationId"] ?: userInfo[@"threadID"] ?: userInfo[@"threadId"];
     NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
     NSString *status = [userInfo[@"status"] isKindOfClass:NSString.class] ? userInfo[@"status"] : @"";
     NSString *paymentStatus = [userInfo[@"paymentStatus"] isKindOfClass:NSString.class] ? userInfo[@"paymentStatus"] : @"";

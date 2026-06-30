@@ -427,7 +427,7 @@
         [_avatarVerifiedIconView.heightAnchor constraintEqualToConstant:17.0],
 
         [_cityPillView.widthAnchor constraintLessThanOrEqualToAnchor:_metaRowContainerView.widthAnchor],
-        [_cityPillView.widthAnchor constraintLessThanOrEqualToConstant:106.0],
+        [_cityPillView.widthAnchor constraintLessThanOrEqualToConstant:144.0],
         _cityPillHeightConstraint,
 
         [_cityStackView.topAnchor constraintEqualToAnchor:_cityPillView.topAnchor constant:5.0],
@@ -448,7 +448,8 @@
         [_ratingPillStackView.widthAnchor constraintGreaterThanOrEqualToConstant:52.0],
         [_ratingPillStackView.widthAnchor constraintLessThanOrEqualToConstant:74.0],
         [_productCountPillStackView.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
-        [_productCountPillStackView.widthAnchor constraintLessThanOrEqualToConstant:68.0],
+        [_productCountPillStackView.widthAnchor constraintGreaterThanOrEqualToConstant:58.0],
+        [_productCountPillStackView.widthAnchor constraintLessThanOrEqualToConstant:132.0],
         [_ratingIconView.widthAnchor constraintEqualToConstant:11.0],
         [_ratingIconView.heightAnchor constraintEqualToConstant:11.0],
         [_productCountIconView.widthAnchor constraintEqualToConstant:11.0],
@@ -554,7 +555,7 @@
     }
     _ratingPillStackView.hidden = !hasRealRating;
     NSString *productCountAccessibilityText = PPProviderCompaniesItemsCountText(entry.productCount, categoryIdentifier);
-    _productCountLabel.text = [NSString stringWithFormat:@"%ld", (long)MAX(entry.productCount, 0)];
+    _productCountLabel.text = productCountAccessibilityText;
     if (@available(iOS 13.0, *)) {
         _ratingIconView.image = [[UIImage systemImageNamed:@"star.fill"
                                       withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:10.5

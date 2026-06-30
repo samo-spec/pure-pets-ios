@@ -13,20 +13,20 @@
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
 static const CGFloat kPPHomeBannerSectionHeight = 188.0;
-static const CGFloat kPPHomeBannerSectionTopInset = 2.0;
-static const CGFloat kPPHomeBannerSectionHorizontalInset = 16.0;
+static const CGFloat kPPHomeBannerSectionTopInset = 0.0;
+static const CGFloat kPPHomeBannerSectionHorizontalInset = 8.0;
 static const CGFloat kPPHomeBannerSectionBottomInset = 14.0;
-static const CGFloat kPPHomeBannerCellVerticalPadding = 2.0;
-static const CGFloat kPPHomePromoCarouselCardWidthFraction = 0.905;
-static const CGFloat kPPHomePromoCarouselLineSpacing = -34.0;
+static const CGFloat kPPHomeBannerCellVerticalPadding = 0.0;
+static const CGFloat kPPHomePromoCarouselCardWidthFraction = .999;
+static const CGFloat kPPHomePromoCarouselLineSpacing = -94.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
-static const CGFloat kPPHomePromoCarouselMinScale = 0.875;
+static const CGFloat kPPHomePromoCarouselMinScale = 0.825;
 static const CGFloat kPPHomePromoCarouselMaxTranslateY = 8.0;
-static const CGFloat kPPHomePromoCarouselMaxDepth = 78.0;
-static const CGFloat kPPHomePromoCarouselMaxRotation = 0.18;
-static const CGFloat kPPHomePromoCarouselPerspective = 680.0;
+static const CGFloat kPPHomePromoCarouselMaxDepth = 88.0;
+static const CGFloat kPPHomePromoCarouselMaxRotation = 0.28;
+static const CGFloat kPPHomePromoCarouselPerspective = 780.0;
 
 static CGFloat PPCinematicClamp(CGFloat value, CGFloat lower, CGFloat upper)
 {
@@ -1262,9 +1262,13 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_pageControl.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8],
         [_pageControl.heightAnchor constraintEqualToConstant:kPPHomePromoCarouselPageControlHeight],
     ]];
+    _collectionView.alwaysBounceVertical = NO;
 
     return self;
 }
+
+
+
 
 - (void)layoutSubviews
 {
