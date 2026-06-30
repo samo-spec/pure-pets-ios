@@ -15,6 +15,7 @@
 @property (nonatomic, strong) NSArray<NSString *> *profileCoverImageURLs;
 @property (nonatomic, assign) NSInteger productCount;
 @property (nonatomic, strong, nullable) NSDate *latestCreatedAt;
+@property (nonatomic, assign, getter=isFavorite) BOOL favorite;
 @end
 
 

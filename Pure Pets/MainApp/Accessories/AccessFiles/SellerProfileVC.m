@@ -21,6 +21,7 @@
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PPModernAvatarRenderer.h"
 #import "UIViewController+PPBottomSurface.h"
+#import <QuartzCore/QuartzCore.h>
 @import FirebaseAuth;
 @import FirebaseFirestore;
 @import FirebaseFunctions;
@@ -76,9 +77,10 @@ static const CGFloat kSPSpace20 = 20.0;
 static const CGFloat kSPSpace24 = 24.0;
 static const CGFloat kSPSpace32 = 32.0;
 static const CGFloat kSPAvatarSize = 66.0;
-static const CGFloat kSPAvatarShellSize = 78.0;
+static const CGFloat kSPAvatarShellSize = 82.0;
+static const CGFloat kSPAvatarHaloSize = 98.0;
 static const CGFloat kSPSurfaceCornerRadius = 30.0;
-static const CGFloat kSPButtonHeight = 46.0;
+static const CGFloat kSPButtonHeight = 44.0;
 
 static UIColor *SPSellerInkColor(void) {
     return AppPrimaryClr ?: [UIColor colorWithWhite:0.08 alpha:1.0];
@@ -93,6 +95,17 @@ static UIColor *SPSellerSurfaceColor(UITraitCollection *traitCollection) {
         return [UIColor colorWithWhite:0.105 alpha:1.0];
     }
     return [AppForgroundColr colorWithAlphaComponent:0.7] ?: UIColor.whiteColor;
+}
+
+static UIColor *SPSellerAppForegroundColor(UITraitCollection *traitCollection) {
+    UIColor *foreground = AppForgroundColr;
+    if (foreground) {
+        return foreground;
+    }
+    if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        return [UIColor colorWithWhite:0.115 alpha:1.0];
+    }
+    return UIColor.systemBackgroundColor;
 }
 
 static UIColor *SPSellerBackgroundColor(UITraitCollection *traitCollection) {
@@ -128,9 +141,9 @@ static UIColor *SPSellerBrandAccentColor(void) {
 static UIColor *SPSellerHeroAvatarShellColor(UITraitCollection *traitCollection) {
     BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     if (dark) {
-        return [UIColor colorWithRed:0.20 green:0.08 blue:0.13 alpha:0.96];
+        return [UIColor colorWithWhite:1.0 alpha:0.080];
     }
-    return [UIColor colorWithRed:1.00 green:0.925 blue:0.952 alpha:0.96];
+    return [SPSellerAppForegroundColor(traitCollection) colorWithAlphaComponent:0.98];
 }
 
 static UIColor *SPSellerHeroAvatarStrokeColor(UITraitCollection *traitCollection) {
@@ -147,6 +160,88 @@ static BOOL SPSellerIsPharmacyCategory(NSString *identifier)
 {
     return [SPSellerNormalizedCategoryIdentifier(identifier) isEqualToString:@"pharmacy"];
 }
+
+@interface SPSellerAmbientGlowView : UIView
+@property (nonatomic, strong) CAGradientLayer *radialLayer;
+@property (nonatomic, assign, getter=isFaded) BOOL faded;
+- (void)applyColor:(UIColor *)color
+         peakAlpha:(CGFloat)peakAlpha
+       middleAlpha:(CGFloat)middleAlpha;
+@end
+
+@implementation SPSellerAmbientGlowView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+
+    self.userInteractionEnabled = NO;
+    self.isAccessibilityElement = NO;
+    self.accessibilityElementsHidden = YES;
+    self.backgroundColor = UIColor.clearColor;
+    self.opaque = NO;
+    self.faded = NO;
+
+    _radialLayer = [CAGradientLayer layer];
+    if (@available(iOS 12.0, *)) {
+        _radialLayer.type = kCAGradientLayerRadial;
+        _radialLayer.startPoint = CGPointMake(0.5, 0.5);
+        _radialLayer.endPoint = CGPointMake(1.0, 1.0);
+    } else {
+        _radialLayer.startPoint = CGPointMake(0.0, 0.5);
+        _radialLayer.endPoint = CGPointMake(1.0, 0.5);
+    }
+    _radialLayer.locations = @[@0.0, @0.46, @1.0];
+    _radialLayer.drawsAsynchronously = YES;
+    [self.layer addSublayer:_radialLayer];
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.masksToBounds = !self.isFaded;
+    self.radialLayer.frame = self.bounds;
+    [CATransaction commit];
+}
+
+- (void)applyColor:(UIColor *)color
+         peakAlpha:(CGFloat)peakAlpha
+       middleAlpha:(CGFloat)middleAlpha
+{
+    UIColor *safeColor = color ?: UIColor.clearColor;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.masksToBounds = !self.isFaded;
+    if (self.isFaded) {
+        self.backgroundColor = UIColor.clearColor;
+        self.radialLayer.hidden = NO;
+        self.radialLayer.locations = @[@0.0, @0.46, @1.0];
+        self.radialLayer.colors = @[
+            (id)[safeColor colorWithAlphaComponent:peakAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:middleAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:0.0].CGColor
+        ];
+    } else {
+        self.radialLayer.hidden = YES;
+        self.backgroundColor = [safeColor colorWithAlphaComponent:peakAlpha];
+    }
+    [CATransaction commit];
+}
+
+@end
+
+static NSString * const SPSellerMiddleBackgroundGlowPositionMotionKey = @"pp.sellerProfile.background.mid.position";
+static NSString * const SPSellerMiddleBackgroundGlowPeekMotionKey = @"pp.sellerProfile.background.mid.peek";
+static NSString * const SPSellerHeroInnerGlowMotionKey = @"pp.sellerProfile.hero.innerGlow.alive";
+static NSString * const SPSellerHeroAccentMotionKey = @"pp.sellerProfile.hero.accent.alive";
+static NSString * const SPSellerHeroSupportGlowMotionKey = @"pp.sellerProfile.hero.supportGlow.alive";
+static NSString * const SPSellerAvatarBreathingMotionKey = @"pp.sellerProfile.hero.avatar.breathing";
 
 typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment);
 
@@ -229,7 +324,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     iconShell.translatesAutoresizingMaskIntoConstraints = NO;
     iconShell.backgroundColor = [SPSellerGoldColor() colorWithAlphaComponent:0.11];
     iconShell.layer.cornerRadius = 28.0;
-    iconShell.layer.borderWidth = 0.75;
+    iconShell.layer.borderWidth = 0.25;
     iconShell.layer.masksToBounds = YES;
     [iconShell pp_setBorderColor:[SPSellerGoldColor() colorWithAlphaComponent:0.20]];
 
@@ -353,8 +448,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [contentView.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor],
         [contentView.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor],
 
-        [closeButton.topAnchor constraintEqualToAnchor:safe.topAnchor constant:12.0],
-        [closeButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-18.0],
+        [closeButton.topAnchor constraintEqualToAnchor:safe.topAnchor constant:16.0],
+        [closeButton.trailingAnchor constraintEqualToAnchor:safe.trailingAnchor constant:-22.0],
         [closeButton.widthAnchor constraintEqualToConstant:40.0],
         [closeButton.heightAnchor constraintEqualToConstant:40.0],
 
@@ -530,10 +625,15 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 @interface SellerProfileVC () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate, UIScrollViewDelegate>
 
-@property (nonatomic, strong) UIView *glowTopView;
-@property (nonatomic, strong) UIView *glowMiddleView;
-@property (nonatomic, strong) UIView *glowBottomView;
+@property (nonatomic, strong) UIView *pp_premiumBackgroundCanvasView;
+@property (nonatomic, strong) SPSellerAmbientGlowView *pp_premiumBackgroundGlowViewTop;
+@property (nonatomic, strong) SPSellerAmbientGlowView *pp_premiumBackgroundGlowViewMid;
+@property (nonatomic, strong) SPSellerAmbientGlowView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, assign) BOOL livingBackgroundActive;
+@property (nonatomic, assign) BOOL backgroundGlowsFadedByHomeConfig;
+@property (nonatomic, assign) BOOL sellerScreenVisible;
+@property (nonatomic, assign) BOOL didStartHeroAliveMotion;
+@property (nonatomic, assign) CGSize premiumBackgroundGlowMotionCanvasSize;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
 @property (nonatomic, assign) BOOL didRequestSellerItems;
 
@@ -549,7 +649,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 @property (nonatomic, strong) UIView *topFadeView;
 @property (nonatomic, strong) CAGradientLayer *heroBottomFadeLayer;
 @property (nonatomic, strong) UIButton *heroBackButton;
+@property (nonatomic, strong) UIView *avatarBreathingHaloView;
 @property (nonatomic, strong) UIView *avatarShellView;
+@property (nonatomic, strong) UIView *avatarInnerPlateView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *nameLabel;
@@ -593,6 +695,21 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 - (void)pp_presentProviderRatingSheet;
 - (void)pp_applyHeroActionStyleToButton:(UIButton *)button role:(SPSellerHeroActionRole)role;
 - (void)pp_updateBottomNavigationInsetsIfNeeded;
+- (void)pp_applyPremiumSellerBackgroundAppearance;
+- (SPSellerAmbientGlowView *)pp_makePremiumBackgroundGlowView;
+- (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
+- (void)pp_applyPremiumGlowView:(SPSellerAmbientGlowView *)glowView
+                          color:(UIColor *)color
+                      peakAlpha:(CGFloat)peakAlpha
+                    middleAlpha:(CGFloat)middleAlpha;
+- (void)pp_updatePremiumBackgroundGlowAppearance;
+- (void)pp_layoutPremiumBackgroundGlowViews;
+- (void)pp_addRandomizedMiddleBackgroundGlowPositionMotion;
+- (void)pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded;
+- (void)pp_beginHeroAliveMotionIfNeeded;
+- (void)pp_stopHeroAliveMotion;
+- (void)pp_prepareHeroEntranceState;
+- (void)pp_resetHeroEntranceState;
 - (void)pp_submitProviderRating:(NSInteger)rating
                          comment:(NSString *)comment
                            sheet:(SPProviderRatingSheetViewController *)sheet;
@@ -612,12 +729,14 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         self.hidesBottomBarWhenPushed = YES;
         _itemViewModels = [NSMutableArray array];
         _animatedItemIndexes = [NSMutableSet set];
+        _backgroundGlowsFadedByHomeConfig = NO;
     }
     return self;
 }
 
 - (void)dealloc
 {
+    [self stopLivingBackground];
     [self.providerRatingListener remove];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
@@ -681,7 +800,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [super viewWillAppear:animated];
     [self.navigationController setNavigationBarHidden:YES animated:NO];
     [self applySemanticDirection];
+    self.sellerScreenVisible = YES;
     [self startLivingBackgroundIfNeeded];
+    [self pp_prepareHeroEntranceState];
     [self animateEntranceIfNeeded];
     [self pp_updateBottomNavigationInsetsIfNeeded];
     [self pp_startProviderRatingListener];
@@ -692,6 +813,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    self.sellerScreenVisible = NO;
+    [self pp_stopHeroAliveMotion];
     [self.navigationController setNavigationBarHidden:NO animated:animated];
 }
 
@@ -713,10 +836,12 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    [self pp_beginHeroAliveMotionIfNeeded];
 }
 
 - (void)viewSafeAreaInsetsDidChange {
     [super viewSafeAreaInsetsDidChange];
+    [self layoutGlowViews];
     [self pp_updateBottomNavigationInsetsIfNeeded];
 }
 
@@ -834,24 +959,13 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 }
 
 - (void)setupLivingBackground {
-    self.glowTopView = [self createGlowViewWithColor:SPSellerAccentTealColor()];
-    self.glowMiddleView = [self createGlowViewWithColor:SPSellerRoseColor()];
-    self.glowBottomView = [self createGlowViewWithColor:SPSellerGoldColor()];
-
-    [self.view addSubview:self.glowTopView];
-    [self.view addSubview:self.glowMiddleView];
-    [self.view addSubview:self.glowBottomView];
+    [self pp_applyPremiumSellerBackgroundAppearance];
 }
 
 - (UIView *)createGlowViewWithColor:(UIColor *)color {
-    UIView *view = [[UIView alloc] initWithFrame:CGRectZero];
-    view.userInteractionEnabled = NO;
-    view.backgroundColor = [color colorWithAlphaComponent:0.13];
-    view.layer.shadowColor = color.CGColor;
-    view.layer.shadowOpacity = 0.20;
-    view.layer.shadowRadius = 44.0;
-    view.layer.shadowOffset = CGSizeZero;
-    view.alpha = 0.72;
+    SPSellerAmbientGlowView *view = [[SPSellerAmbientGlowView alloc] initWithFrame:CGRectZero];
+    view.faded = self.backgroundGlowsFadedByHomeConfig;
+    [view applyColor:color peakAlpha:0.0 middleAlpha:0.0];
     return view;
 }
 
@@ -860,8 +974,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.heroSurfaceView.layer.borderWidth = 0.55;
     self.heroSurfaceView.layer.shadowOpacity = 0.035;
-    self.heroSurfaceView.layer.shadowRadius = 14.0;
-    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
+    self.heroSurfaceView.layer.shadowRadius = 16.0;
+    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     UIVisualEffectView *heroBlurView = [self.heroSurfaceView.subviews.firstObject isKindOfClass:UIVisualEffectView.class]
         ? (UIVisualEffectView *)self.heroSurfaceView.subviews.firstObject
         : nil;
@@ -888,9 +1002,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self.topFadeView.layer addSublayer:self.heroBottomFadeLayer];
 
     self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroGradientLayer.locations = @[@0.0, @0.52, @1.0];
+    self.heroGradientLayer.hidden = YES;
     self.heroGradientLayer.masksToBounds = YES;
     [self.heroSurfaceView.layer insertSublayer:self.heroGradientLayer atIndex:0];
 
@@ -898,17 +1010,19 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.heroTopAccentView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroTopAccentView.userInteractionEnabled = NO;
     self.heroTopAccentView.layer.cornerRadius = 2.0;
+    self.heroTopAccentView.alpha = 0.42;
     [self.heroSurfaceView addSubview:self.heroTopAccentView];
 
     self.heroInnerGlowView = [[UIView alloc] init];
     self.heroInnerGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroInnerGlowView.userInteractionEnabled = NO;
-    self.heroInnerGlowView.alpha = 0.26;
+    self.heroInnerGlowView.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.heroInnerGlowView];
 
     self.heroSupportGlowView = [[UIView alloc] init];
     self.heroSupportGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSupportGlowView.userInteractionEnabled = NO;
+    self.heroSupportGlowView.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.heroSupportGlowView];
 
     self.heroLiquidBorderView = [[UIView alloc] init];
@@ -933,17 +1047,39 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self.heroSurfaceView addSubview:self.heroBackButton];
     [self.heroSurfaceView addSubview:self.cartNavButton];
 
+    self.avatarBreathingHaloView = [[UIView alloc] init];
+    self.avatarBreathingHaloView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarBreathingHaloView.userInteractionEnabled = NO;
+    self.avatarBreathingHaloView.isAccessibilityElement = NO;
+    self.avatarBreathingHaloView.layer.cornerRadius = kSPAvatarHaloSize / 2.0;
+    self.avatarBreathingHaloView.layer.masksToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        self.avatarBreathingHaloView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroSurfaceView addSubview:self.avatarBreathingHaloView];
+
     self.avatarShellView = [[UIView alloc] init];
     self.avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
     self.avatarShellView.backgroundColor = SPSellerHeroAvatarShellColor(self.traitCollection);
     self.avatarShellView.layer.cornerRadius = kSPAvatarShellSize / 2.0;
     self.avatarShellView.layer.borderWidth = 1.0;
-    self.avatarShellView.layer.shadowColor = SPSellerBrandAccentColor().CGColor;
-    self.avatarShellView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.10;
+    self.avatarShellView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.avatarShellView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.0 : 0.075;
     self.avatarShellView.layer.shadowRadius = 18.0;
     self.avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 9.0);
-    [self.avatarShellView pp_setBorderColor:[SPSellerHeroAvatarStrokeColor(self.traitCollection) colorWithAlphaComponent:0.5]];
+    self.avatarShellView.clipsToBounds = NO;
+    [self.avatarShellView pp_setBorderColor:[SPSellerHeroAvatarStrokeColor(self.traitCollection) colorWithAlphaComponent:0.38]];
     [self.heroSurfaceView addSubview:self.avatarShellView];
+
+    self.avatarInnerPlateView = [[UIView alloc] init];
+    self.avatarInnerPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarInnerPlateView.layer.cornerRadius = kSPAvatarSize / 2.0;
+    self.avatarInnerPlateView.layer.borderWidth = 0.75;
+    self.avatarInnerPlateView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.avatarInnerPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.avatarShellView addSubview:self.avatarInnerPlateView];
 
     self.avatarImageView = [[UIImageView alloc] initWithImage:PPSYSImage(@"person.crop.circle.fill")];
     self.avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -952,31 +1088,32 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.avatarImageView.layer.masksToBounds = YES;
     self.avatarImageView.backgroundColor = [SPSellerInkColor() colorWithAlphaComponent:0.045];
     self.avatarImageView.tintColor = [SPSellerSecondaryTextColor() colorWithAlphaComponent:0.72];
-    [self.avatarShellView addSubview:self.avatarImageView];
+    [self.avatarInnerPlateView addSubview:self.avatarImageView];
 
-    self.eyebrowLabel = [self labelWithFont:[GM boldFontWithSize:12] color:SPSellerAccentTealColor() lines:1];
+    self.eyebrowLabel = [self labelWithFont:[GM boldFontWithSize:11.0] color:SPSellerAccentTealColor() lines:1];
     [self.heroSurfaceView addSubview:self.eyebrowLabel];
 
-    self.nameLabel = [self labelWithFont:[GM boldFontWithSize:24] color:SPSellerInkColor() lines:1];
+    self.nameLabel = [self labelWithFont:[GM boldFontWithSize:24.0] color:SPSellerInkColor() lines:1];
     self.nameLabel.adjustsFontSizeToFitWidth = YES;
-    self.nameLabel.minimumScaleFactor = 0.78;
+    self.nameLabel.minimumScaleFactor = 0.72;
     [self.heroSurfaceView addSubview:self.nameLabel];
 
-    self.subtitleLabel = [self labelWithFont:[GM MidFontWithSize:13.5] color:SPSellerSecondaryTextColor() lines:1];
+    self.subtitleLabel = [self labelWithFont:[GM MidFontWithSize:12.5] color:SPSellerSecondaryTextColor() lines:2];
+    self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [self.heroSurfaceView addSubview:self.subtitleLabel];
 
     self.statusBadgeView = [[UIView alloc] init];
     self.statusBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusBadgeView.isAccessibilityElement = YES;
     self.statusBadgeView.accessibilityTraits = UIAccessibilityTraitImage;
-    self.statusBadgeView.layer.cornerRadius = 15.0;
-    self.statusBadgeView.layer.borderWidth = 2.0;
+    self.statusBadgeView.layer.cornerRadius = 11.0;
+    self.statusBadgeView.layer.borderWidth = 1.5;
     self.statusBadgeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.systemBackgroundColor;
     [self.statusBadgeView pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor];
     self.statusBadgeView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.statusBadgeView.layer.shadowOpacity = 0.08;
-    self.statusBadgeView.layer.shadowRadius = 8.0;
-    self.statusBadgeView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.statusBadgeView.layer.shadowOpacity = 0.055;
+    self.statusBadgeView.layer.shadowRadius = 5.0;
+    self.statusBadgeView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     [self.heroSurfaceView addSubview:self.statusBadgeView];
 
     self.statusBadgeIconView = [[UIImageView alloc] init];
@@ -986,8 +1123,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [NSLayoutConstraint activateConstraints:@[
         [self.statusBadgeIconView.centerXAnchor constraintEqualToAnchor:self.statusBadgeView.centerXAnchor],
         [self.statusBadgeIconView.centerYAnchor constraintEqualToAnchor:self.statusBadgeView.centerYAnchor],
-        [self.statusBadgeIconView.widthAnchor constraintEqualToConstant:16.0],
-        [self.statusBadgeIconView.heightAnchor constraintEqualToConstant:16.0],
+        [self.statusBadgeIconView.widthAnchor constraintEqualToConstant:12.0],
+        [self.statusBadgeIconView.heightAnchor constraintEqualToConstant:12.0],
     ]];
 
     self.descriptionLabel = [self labelWithFont:[GM MidFontWithSize:14] color:SPSellerSecondaryTextColor() lines:0];
@@ -1003,6 +1140,10 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
                                               imageName:@"phone.fill"
                                              emphasized:NO
                                                selector:@selector(handleCallTap)];
+    self.callButton.hidden = YES;
+    self.callButton.enabled = NO;
+    self.callButton.alpha = 0.0;
+    self.callButton.accessibilityElementsHidden = YES;
     self.rateButton = [self createActionButtonWithTitle:(kLang(@"provider_rating_action") ?: @"Rate provider")
                                               imageName:@"star.fill"
                                              emphasized:NO
@@ -1013,30 +1154,30 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
     self.contactButtonStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.messageButton,
-        self.callButton,
         self.rateButton
     ]];
     self.contactButtonStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactButtonStack.axis = UILayoutConstraintAxisHorizontal;
-    self.contactButtonStack.spacing = 10.0;
+    self.contactButtonStack.spacing = 12.0;
     self.contactButtonStack.distribution = UIStackViewDistributionFillEqually;
+    self.contactButtonStack.alignment = UIStackViewAlignmentFill;
     [self.heroSurfaceView addSubview:self.contactButtonStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:4.0],
-        [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.heroTopAccentView.widthAnchor constraintEqualToConstant:44.0],
-        [self.heroTopAccentView.heightAnchor constraintEqualToConstant:4.0],
+        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
+        [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:24.0],
+        [self.heroTopAccentView.widthAnchor constraintEqualToConstant:42.0],
+        [self.heroTopAccentView.heightAnchor constraintEqualToConstant:3.0],
 
-        [self.heroInnerGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-34.0],
-        [self.heroInnerGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
-        [self.heroInnerGlowView.widthAnchor constraintEqualToConstant:116.0],
-        [self.heroInnerGlowView.heightAnchor constraintEqualToConstant:116.0],
+        [self.heroInnerGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-24.0],
+        [self.heroInnerGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-16.0],
+        [self.heroInnerGlowView.widthAnchor constraintEqualToConstant:112.0],
+        [self.heroInnerGlowView.heightAnchor constraintEqualToConstant:112.0],
 
-        [self.heroSupportGlowView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
-        [self.heroSupportGlowView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:28.0],
-        [self.heroSupportGlowView.widthAnchor constraintEqualToConstant:92.0],
-        [self.heroSupportGlowView.heightAnchor constraintEqualToConstant:92.0],
+        [self.heroSupportGlowView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
+        [self.heroSupportGlowView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:24.0],
+        [self.heroSupportGlowView.widthAnchor constraintEqualToConstant:74.0],
+        [self.heroSupportGlowView.heightAnchor constraintEqualToConstant:74.0],
 
         [self.heroLiquidBorderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:1.0],
         [self.heroLiquidBorderView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:1.0],
@@ -1052,6 +1193,11 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.cartNavButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace12],
         [self.cartNavButton.widthAnchor constraintEqualToConstant:40.0],
         [self.cartNavButton.heightAnchor constraintEqualToConstant:40.0],
+
+        [self.avatarBreathingHaloView.centerXAnchor constraintEqualToAnchor:self.avatarShellView.centerXAnchor],
+        [self.avatarBreathingHaloView.centerYAnchor constraintEqualToAnchor:self.avatarShellView.centerYAnchor],
+        [self.avatarBreathingHaloView.widthAnchor constraintEqualToConstant:kSPAvatarHaloSize],
+        [self.avatarBreathingHaloView.heightAnchor constraintEqualToConstant:kSPAvatarHaloSize],
     ]];
 
     [self.heroSurfaceView bringSubviewToFront:self.heroBackButton];
@@ -1201,11 +1347,11 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.layer.cornerRadius = kSPButtonHeight / 2.0;
     button.layer.masksToBounds = NO;
-    button.layer.borderWidth = 0.85;
-    button.titleLabel.font = [GM boldFontWithSize:14.0];
+    button.layer.borderWidth = 0.65;
+    button.titleLabel.font = [GM boldFontWithSize:13.2];
     button.titleLabel.adjustsFontForContentSizeCategory = YES;
     button.titleLabel.adjustsFontSizeToFitWidth = YES;
-    button.titleLabel.minimumScaleFactor = 0.76;
+    button.titleLabel.minimumScaleFactor = 0.78;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     button.titleLabel.numberOfLines = 1;
     button.adjustsImageWhenHighlighted = NO;
@@ -1217,8 +1363,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     UIImage *image = PPSYSImage(imageName);
     [button setImage:image forState:UIControlStateNormal];
     button.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 9.0, 0.0, 9.0);
-    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, 4.0, 0.0, 4.0);
+    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
+    button.imageEdgeInsets = UIEdgeInsetsMake(0.0, 2.0, 0.0, 2.0);
     button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 4.0, 0.0, 4.0);
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(handleButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
@@ -1233,13 +1379,15 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     }
 
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *foreground = SPSellerAppForegroundColor(self.traitCollection);
     UIColor *brand = SPSellerBrandAccentColor();
     UIColor *gold = SPSellerGoldColor();
+    UIColor *primaryText = PPMarketplaceHeroCardPrimaryTextColor() ?: SPSellerInkColor();
     UIColor *titleColor = brand;
-    UIColor *fillColor = [brand colorWithAlphaComponent:dark ? 0.11 : 0.075];
-    UIColor *borderColor = [brand colorWithAlphaComponent:dark ? 0.24 : 0.17];
+    UIColor *fillColor = [foreground colorWithAlphaComponent:dark ? 0.12 : 0.96];
+    UIColor *borderColor = [primaryText colorWithAlphaComponent:dark ? 0.16 : 0.075];
     UIColor *shadowColor = UIColor.blackColor;
-    CGFloat shadowOpacity = dark ? 0.0 : 0.04;
+    CGFloat shadowOpacity = dark ? 0.0 : 0.035;
     CGFloat shadowRadius = 10.0;
     CGSize shadowOffset = CGSizeMake(0.0, 5.0);
 
@@ -1247,11 +1395,11 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         case SPSellerHeroActionRolePrimary:
             fillColor = brand;
             titleColor = UIColor.whiteColor;
-            borderColor = [[UIColor whiteColor] colorWithAlphaComponent:dark ? 0.08 : 0.18];
+            borderColor = [[UIColor whiteColor] colorWithAlphaComponent:dark ? 0.10 : 0.20];
             shadowColor = brand;
-            shadowOpacity = dark ? 0.0 : 0.16;
-            shadowRadius = 16.0;
-            shadowOffset = CGSizeMake(0.0, 9.0);
+            shadowOpacity = dark ? 0.0 : 0.12;
+            shadowRadius = 14.0;
+            shadowOffset = CGSizeMake(0.0, 7.0);
             break;
         case SPSellerHeroActionRoleSecondary:
             fillColor = dark
@@ -1262,12 +1410,14 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
             break;
         case SPSellerHeroActionRoleTertiary:
             fillColor = dark
-                ? [gold colorWithAlphaComponent:0.15]
-                : [UIColor colorWithRed:1.00 green:0.965 blue:0.895 alpha:0.84];
+                ? [gold colorWithAlphaComponent:0.11]
+                : [foreground colorWithAlphaComponent:0.96];
             titleColor = gold;
-            borderColor = [gold colorWithAlphaComponent:dark ? 0.27 : 0.22];
-            shadowColor = gold;
+            borderColor = [gold colorWithAlphaComponent:dark ? 0.24 : 0.20];
+            shadowColor = UIColor.blackColor;
             shadowOpacity = dark ? 0.0 : 0.035;
+            shadowRadius = 11.0;
+            shadowOffset = CGSizeMake(0.0, 5.0);
             break;
     }
 
@@ -1276,7 +1426,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [button setTitleColor:titleColor forState:UIControlStateNormal];
     [button pp_setBorderColor:borderColor];
     button.layer.cornerRadius = kSPButtonHeight / 2.0;
-    button.layer.borderWidth = 0.85;
+    button.layer.borderWidth = role == SPSellerHeroActionRolePrimary ? 0.65 : 0.75;
     button.layer.shadowColor = shadowColor.CGColor;
     button.layer.shadowOpacity = shadowOpacity;
     button.layer.shadowRadius = shadowRadius;
@@ -1297,9 +1447,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:2.0],
-        [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kSPSpace12],
-        [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kSPSpace12],
+        [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:6.0],
+        [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kSPSpace16],
+        [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kSPSpace16],
 
         [self.topFadeView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0],
         [self.topFadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -1323,14 +1473,19 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.contentView.widthAnchor constraintEqualToAnchor:frameGuide.widthAnchor],
 
         [self.avatarShellView.topAnchor constraintEqualToAnchor:self.heroBackButton.bottomAnchor constant:kSPSpace12],
-        [self.avatarShellView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace16],
+        [self.avatarShellView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace20],
         [self.avatarShellView.widthAnchor constraintEqualToConstant:kSPAvatarShellSize],
         [self.avatarShellView.heightAnchor constraintEqualToConstant:kSPAvatarShellSize],
 
-        [self.avatarImageView.centerXAnchor constraintEqualToAnchor:self.avatarShellView.centerXAnchor],
-        [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.avatarShellView.centerYAnchor],
-        [self.avatarImageView.widthAnchor constraintEqualToConstant:kSPAvatarSize],
-        [self.avatarImageView.heightAnchor constraintEqualToConstant:kSPAvatarSize],
+        [self.avatarInnerPlateView.centerXAnchor constraintEqualToAnchor:self.avatarShellView.centerXAnchor],
+        [self.avatarInnerPlateView.centerYAnchor constraintEqualToAnchor:self.avatarShellView.centerYAnchor],
+        [self.avatarInnerPlateView.widthAnchor constraintEqualToConstant:kSPAvatarSize],
+        [self.avatarInnerPlateView.heightAnchor constraintEqualToConstant:kSPAvatarSize],
+
+        [self.avatarImageView.topAnchor constraintEqualToAnchor:self.avatarInnerPlateView.topAnchor],
+        [self.avatarImageView.leadingAnchor constraintEqualToAnchor:self.avatarInnerPlateView.leadingAnchor],
+        [self.avatarImageView.trailingAnchor constraintEqualToAnchor:self.avatarInnerPlateView.trailingAnchor],
+        [self.avatarImageView.bottomAnchor constraintEqualToAnchor:self.avatarInnerPlateView.bottomAnchor],
 
         [self.compactHeaderAvatarShellView.leadingAnchor constraintEqualToAnchor:self.compactHeaderView.leadingAnchor constant:10.0],
         [self.compactHeaderAvatarShellView.centerYAnchor constraintEqualToAnchor:self.compactHeaderView.centerYAnchor],
@@ -1353,7 +1508,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
         [self.eyebrowLabel.topAnchor constraintEqualToAnchor:self.avatarShellView.topAnchor],
         [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:kSPSpace12],
-        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace16],
+        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace20],
 
         [self.nameLabel.topAnchor constraintEqualToAnchor:self.eyebrowLabel.bottomAnchor constant:kSPSpace4],
         [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.eyebrowLabel.leadingAnchor],
@@ -1364,16 +1519,17 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.nameLabel.trailingAnchor],
         [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.avatarShellView.bottomAnchor],
 
-        [self.statusBadgeView.trailingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:3.0],
-        [self.statusBadgeView.bottomAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:3.0],
-        [self.statusBadgeView.heightAnchor constraintEqualToConstant:30.0],
-        [self.statusBadgeView.widthAnchor constraintEqualToConstant:30.0],
+        [self.statusBadgeView.trailingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:2.0],
+        [self.statusBadgeView.bottomAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:2.0],
+        [self.statusBadgeView.heightAnchor constraintEqualToConstant:22.0],
+        [self.statusBadgeView.widthAnchor constraintEqualToConstant:22.0],
 
-        [self.contactButtonStack.topAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:kSPSpace20],
-        [self.contactButtonStack.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace16],
-        [self.contactButtonStack.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace16],
+        [self.contactButtonStack.topAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:14.0],
+        [self.contactButtonStack.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace20],
+        [self.contactButtonStack.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace20],
         [self.contactButtonStack.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-kSPSpace16],
         [self.messageButton.heightAnchor constraintEqualToConstant:kSPButtonHeight],
+        [self.rateButton.heightAnchor constraintEqualToConstant:kSPButtonHeight],
 
         [self.itemsTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:kSPSpace16],
         [self.itemsTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:kSPSpace20],
@@ -1405,27 +1561,14 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 - (void)applyTheme {
     self.view.backgroundColor = SPSellerBackgroundColor(self.traitCollection);
-    UIColor *foreground = AppForgroundColr ?: SPSellerSurfaceColor(self.traitCollection);
+    UIColor *foreground = SPSellerAppForegroundColor(self.traitCollection);
     UIColor *accent = PPMarketplaceHeroCardAccentColor();
-    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(self.traitCollection);
-    UIColor *surfaceHighlight = PPMarketplaceHeroCardSurfaceHighlightColor(self.traitCollection);
-    UIColor *surfaceTint = PPMarketplaceHeroCardSurfaceTintColor(self.traitCollection);
-    UIColor *surfaceTail = PPMarketplaceHeroCardSurfaceTailColor(self.traitCollection);
     UIColor *surfaceBorder = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *surfaceHighlightSoft = [surfaceHighlight colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
-    UIColor *surfaceTintSoft = [surfaceTint colorWithAlphaComponent:(dark ? 0.96 : 0.90)];
-    UIColor *surfaceTailSoft = [surfaceTail colorWithAlphaComponent:(dark ? 0.94 : 0.88)];
 
-    self.heroSurfaceView.backgroundColor = surfaceTintSoft;
-    self.heroGradientLayer.colors = @[
-        (__bridge id)surfaceHighlightSoft.CGColor,
-        (__bridge id)surfaceTintSoft.CGColor,
-        (__bridge id)surfaceTailSoft.CGColor
-    ];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    self.heroSurfaceView.backgroundColor = foreground;
+    self.heroGradientLayer.hidden = YES;
+    self.heroGradientLayer.colors = nil;
     self.topFadeView.hidden = YES;
     self.topFadeView.alpha = 0.0;
     self.heroBottomFadeLayer.colors = @[
@@ -1436,22 +1579,26 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         (__bridge id)UIColor.clearColor.CGColor,
         (__bridge id)UIColor.clearColor.CGColor
     ];
-    self.heroTopAccentView.backgroundColor = [PPMarketplaceHeroCardTopAccentColor(self.traitCollection) colorWithAlphaComponent:0.52];
-    self.heroInnerGlowView.backgroundColor = PPMarketplaceHeroCardOrbColor(self.traitCollection);
-    self.heroSupportGlowView.backgroundColor = UIColor.clearColor;
-    self.heroInnerGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
-    self.heroInnerGlowView.layer.shadowOpacity = 0.0;
-    self.heroInnerGlowView.layer.shadowRadius = 0.0;
+    self.heroTopAccentView.backgroundColor = [PPMarketplaceHeroCardTopAccentColor(self.traitCollection) colorWithAlphaComponent:dark ? 0.42 : 0.38];
+    self.heroInnerGlowView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.15];
+    self.heroSupportGlowView.backgroundColor = [SPSellerGoldColor() colorWithAlphaComponent:dark ? 0.18 : 0.13];
+    self.heroInnerGlowView.layer.shadowColor = accent.CGColor;
+    self.heroInnerGlowView.layer.shadowOpacity = dark ? 0.10 : 0.13;
+    self.heroInnerGlowView.layer.shadowRadius = 18.0;
     self.heroInnerGlowView.layer.shadowOffset = CGSizeZero;
+    self.heroSupportGlowView.layer.shadowColor = SPSellerGoldColor().CGColor;
+    self.heroSupportGlowView.layer.shadowOpacity = dark ? 0.09 : 0.10;
+    self.heroSupportGlowView.layer.shadowRadius = 16.0;
+    self.heroSupportGlowView.layer.shadowOffset = CGSizeZero;
     [self.heroSurfaceView pp_setBorderColor:surfaceBorder];
-    self.heroSurfaceView.layer.borderWidth = 1.0;
-    self.heroLiquidBorderView.hidden = YES;
-    self.heroLiquidBorderView.layer.borderWidth = 0.0;
-    [self.heroLiquidBorderView pp_setBorderColor:UIColor.clearColor];
+    self.heroSurfaceView.layer.borderWidth = 0.70;
+    self.heroLiquidBorderView.hidden = NO;
+    self.heroLiquidBorderView.layer.borderWidth = 0.75;
+    [self.heroLiquidBorderView pp_setBorderColor:surfaceBorder];
     self.heroBorderGradientLayer.opacity = 0.0;
-    self.heroSurfaceView.layer.shadowOpacity = 0.08;
-    self.heroSurfaceView.layer.shadowRadius = 20.0;
-    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.heroSurfaceView.layer.shadowOpacity = dark ? 0.14 : 0.050;
+    self.heroSurfaceView.layer.shadowRadius = 18.0;
+    self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     UIView *heroBlurView = self.heroSurfaceView.subviews.firstObject;
     if ([heroBlurView isKindOfClass:UIVisualEffectView.class]) {
         ((UIVisualEffectView *)heroBlurView).effect = nil;
@@ -1461,12 +1608,19 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.nameLabel.textColor = PPMarketplaceHeroCardPrimaryTextColor();
     self.subtitleLabel.textColor = PPMarketplaceHeroCardSecondaryTextColor();
     self.descriptionLabel.textColor = PPMarketplaceHeroCardSecondaryTextColor();
+    self.avatarBreathingHaloView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.12];
+    self.avatarBreathingHaloView.layer.shadowColor = accent.CGColor;
+    self.avatarBreathingHaloView.layer.shadowOpacity = dark ? 0.10 : 0.13;
+    self.avatarBreathingHaloView.layer.shadowRadius = 22.0;
+    self.avatarBreathingHaloView.layer.shadowOffset = CGSizeZero;
     self.avatarShellView.backgroundColor = SPSellerHeroAvatarShellColor(self.traitCollection);
-    self.avatarShellView.layer.shadowColor = SPSellerBrandAccentColor().CGColor;
-    self.avatarShellView.layer.shadowOpacity = dark ? 0.0 : 0.10;
+    self.avatarShellView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.avatarShellView.layer.shadowOpacity = dark ? 0.0 : 0.075;
     self.avatarShellView.layer.shadowRadius = 18.0;
     self.avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 9.0);
-    [self.avatarShellView pp_setBorderColor:SPSellerHeroAvatarStrokeColor(self.traitCollection)];
+    [self.avatarShellView pp_setBorderColor:[SPSellerHeroAvatarStrokeColor(self.traitCollection) colorWithAlphaComponent:dark ? 0.62 : 0.42]];
+    self.avatarInnerPlateView.backgroundColor = [foreground colorWithAlphaComponent:dark ? 0.12 : 0.92];
+    [self.avatarInnerPlateView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:dark ? 0.10 : 0.70]];
     self.compactHeaderView.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.88];
     [self.compactHeaderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.12 : 0.44]];
     self.compactHeaderView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.18 : 0.06;
@@ -1483,15 +1637,13 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self pp_applyHeroActionStyleToButton:self.messageButton role:SPSellerHeroActionRolePrimary];
     [self pp_applyHeroActionStyleToButton:self.callButton role:SPSellerHeroActionRoleSecondary];
     [self pp_applyHeroActionStyleToButton:self.rateButton role:SPSellerHeroActionRoleTertiary];
+    self.callButton.hidden = YES;
+    self.callButton.enabled = NO;
+    self.callButton.alpha = 0.0;
+    self.callButton.accessibilityElementsHidden = YES;
     self.itemsRetryButton.backgroundColor = SPSellerInkColor();
     [self.itemsRetryButton setTitleColor:SPSellerSurfaceColor(self.traitCollection) forState:UIControlStateNormal];
-    [self stopLivingBackground];
-    self.glowTopView.hidden = YES;
-    self.glowMiddleView.hidden = YES;
-    self.glowBottomView.hidden = YES;
-    self.glowTopView.alpha = 0.0;
-    self.glowMiddleView.alpha = 0.0;
-    self.glowBottomView.alpha = 0.0;
+    [self pp_updatePremiumBackgroundGlowAppearance];
 }
 
 - (void)applySemanticDirection {
@@ -1649,11 +1801,12 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     }
 
     BOOL canContact = self.seller != nil;
-    BOOL canCall = self.seller.MobileNo.length > 0;
     self.messageButton.enabled = canContact;
-    self.callButton.enabled = canCall;
     self.messageButton.alpha = canContact ? 1.0 : 0.48;
-    self.callButton.alpha = canCall ? 1.0 : 0.48;
+    self.callButton.hidden = YES;
+    self.callButton.enabled = NO;
+    self.callButton.alpha = 0.0;
+    self.callButton.accessibilityElementsHidden = YES;
     [self pp_updateRateButtonState];
     [self updateAccessibility];
     [self pp_updateCollapsibleHeaderForScrollOffset:self.scrollView.contentOffset.y animated:NO];
@@ -1838,7 +1991,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         title = [NSString stringWithFormat:format, self.seller.providerRatingValue];
     }
 
-    BOOL shouldAllowWrappedRateTitle = title.length > 13;
+    BOOL shouldAllowWrappedRateTitle = NO;
     self.rateButton.titleLabel.numberOfLines = shouldAllowWrappedRateTitle ? 2 : 1;
     self.rateButton.titleLabel.lineBreakMode = shouldAllowWrappedRateTitle
         ? NSLineBreakByWordWrapping
@@ -2107,16 +2260,176 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 #pragma mark - Layout Helpers
 
 - (void)layoutGlowViews {
-    CGFloat width = CGRectGetWidth(self.view.bounds);
-    CGFloat height = CGRectGetHeight(self.view.bounds);
+    [self pp_layoutPremiumBackgroundGlowViews];
+}
 
-    self.glowTopView.frame = CGRectMake(-118.0, 72.0, 246.0, 246.0);
-    self.glowMiddleView.frame = CGRectMake(width - 132.0, height * 0.30, 226.0, 226.0);
-    self.glowBottomView.frame = CGRectMake(width * 0.15, MAX(height - 236.0, 320.0), 286.0, 286.0);
+- (void)pp_applyPremiumSellerBackgroundAppearance
+{
+    UIColor *backgroundColor = SPSellerBackgroundColor(self.traitCollection);
+    self.view.backgroundColor = backgroundColor;
+    [self pp_installPremiumBackgroundGlowViewsIfNeeded];
+    self.pp_premiumBackgroundCanvasView.backgroundColor = backgroundColor;
+    self.scrollView.backgroundColor = UIColor.clearColor;
+    [self pp_updatePremiumBackgroundGlowAppearance];
+}
 
-    self.glowTopView.layer.cornerRadius = CGRectGetWidth(self.glowTopView.bounds) / 2.0;
-    self.glowMiddleView.layer.cornerRadius = CGRectGetWidth(self.glowMiddleView.bounds) / 2.0;
-    self.glowBottomView.layer.cornerRadius = CGRectGetWidth(self.glowBottomView.bounds) / 2.0;
+- (SPSellerAmbientGlowView *)pp_makePremiumBackgroundGlowView
+{
+    return [[SPSellerAmbientGlowView alloc] initWithFrame:CGRectZero];
+}
+
+- (void)pp_installPremiumBackgroundGlowViewsIfNeeded
+{
+    if (!self.pp_premiumBackgroundCanvasView) {
+        UIView *canvasView = [[UIView alloc] initWithFrame:CGRectZero];
+        canvasView.translatesAutoresizingMaskIntoConstraints = NO;
+        canvasView.userInteractionEnabled = NO;
+        canvasView.isAccessibilityElement = NO;
+        canvasView.accessibilityElementsHidden = YES;
+        canvasView.clipsToBounds = YES;
+        canvasView.opaque = YES;
+        self.pp_premiumBackgroundCanvasView = canvasView;
+        [self.view insertSubview:canvasView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [canvasView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [canvasView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [canvasView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [canvasView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    } else if (self.pp_premiumBackgroundCanvasView.superview != self.view) {
+        [self.view insertSubview:self.pp_premiumBackgroundCanvasView atIndex:0];
+    }
+
+    if (!self.pp_premiumBackgroundGlowViewTop) {
+        self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
+    }
+    if (!self.pp_premiumBackgroundGlowViewMid) {
+        self.pp_premiumBackgroundGlowViewMid = [self pp_makePremiumBackgroundGlowView];
+    }
+    if (!self.pp_premiumBackgroundGlowViewBottom) {
+        self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
+    }
+
+    for (SPSellerAmbientGlowView *glowView in @[
+        self.pp_premiumBackgroundGlowViewBottom,
+        self.pp_premiumBackgroundGlowViewMid,
+        self.pp_premiumBackgroundGlowViewTop
+    ]) {
+        if (glowView.superview != self.pp_premiumBackgroundCanvasView) {
+            [self.pp_premiumBackgroundCanvasView addSubview:glowView];
+        }
+    }
+
+    [self.view sendSubviewToBack:self.pp_premiumBackgroundCanvasView];
+}
+
+- (void)pp_applyPremiumGlowView:(SPSellerAmbientGlowView *)glowView
+                          color:(UIColor *)color
+                      peakAlpha:(CGFloat)peakAlpha
+                    middleAlpha:(CGFloat)middleAlpha
+{
+    if (!glowView || !color) {
+        return;
+    }
+
+    glowView.alpha = 1.0;
+    UIColor *resolvedColor = color;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [color resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    glowView.faded = self.backgroundGlowsFadedByHomeConfig;
+    [glowView setNeedsLayout];
+    [glowView applyColor:resolvedColor peakAlpha:peakAlpha middleAlpha:middleAlpha];
+}
+
+- (void)pp_updatePremiumBackgroundGlowAppearance
+{
+    BOOL isDark = NO;
+    if (@available(iOS 12.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+
+    BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
+    BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
+    CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
+
+    UIColor *signatureColor = AppPrimaryClr ?: [UIColor colorWithRed:0.92 green:0.16 blue:0.42 alpha:1.0];
+    UIColor *supportingColor = AppForgroundColr ?: signatureColor;
+    UIColor *topAtmosphereColor = SPSellerSurfaceColor(self.traitCollection);
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+                            color:topAtmosphereColor
+                        peakAlpha:(isDark ? 0.050 : 0.018) * accessibilityScale
+                      middleAlpha:(isDark ? 0.025 : 0.010) * accessibilityScale];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                            color:supportingColor
+                        peakAlpha:(isDark ? 0.050 : 0.014) * accessibilityScale
+                      middleAlpha:(isDark ? 0.018 : 0.008) * accessibilityScale];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+                            color:signatureColor
+                        peakAlpha:(isDark ? 0.090 : 0.016) * accessibilityScale
+                      middleAlpha:(isDark ? 0.032 : 0.010) * accessibilityScale];
+}
+
+- (void)pp_layoutPremiumBackgroundGlowViews
+{
+    CGRect bounds = self.view.bounds;
+    if (CGRectIsEmpty(bounds)) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth(bounds);
+    CGFloat height = CGRectGetHeight(bounds);
+    CGFloat safeTop = self.view.safeAreaInsets.top;
+    CGSize canvasSize = bounds.size;
+    BOOL motionLayoutChanged = (fabs(canvasSize.width - self.premiumBackgroundGlowMotionCanvasSize.width) > 0.5 ||
+                                fabs(canvasSize.height - self.premiumBackgroundGlowMotionCanvasSize.height) > 0.5);
+    if (motionLayoutChanged && self.livingBackgroundActive) {
+        [self stopLivingBackground];
+    }
+    self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
+
+    CGFloat topSize = MIN(178.0, MAX(132.0, width * 0.46));
+    CGFloat midSize = MIN(238.0, MAX(150.0, width * 0.62));
+    CGFloat bottomSize = MIN(220.0, MAX(176.0, width * 0.72));
+    BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    self.pp_premiumBackgroundGlowViewTop.bounds = CGRectMake(0.0, 0.0, topSize, topSize);
+    self.pp_premiumBackgroundGlowViewTop.center = CGPointMake(
+        isRTL ? topSize * 0.22 : width - (topSize * 0.22),
+        safeTop + (topSize * 0.05)
+    );
+
+    self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
+    CGFloat middleY = MAX(210.0, height * 0.54);
+    if (self.backgroundGlowsFadedByHomeConfig) {
+        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds), middleY);
+    } else {
+        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
+            isRTL ? width - (midSize * 0.10) : midSize * 0.10,
+            middleY
+        );
+    }
+
+    self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
+    self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
+        isRTL ? bottomSize * 0.34 : width - (bottomSize * 0.34),
+        height - (bottomSize * 0.03)
+    );
+
+    [CATransaction commit];
+
+    [self.pp_premiumBackgroundGlowViewTop setNeedsLayout];
+    [self.pp_premiumBackgroundGlowViewMid setNeedsLayout];
+    [self.pp_premiumBackgroundGlowViewBottom setNeedsLayout];
+
+    if (motionLayoutChanged && self.sellerScreenVisible) {
+        [self startLivingBackgroundIfNeeded];
+    }
 }
 
 - (void)updateSurfaceShadowPaths {
@@ -2131,7 +2444,17 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         self.heroBorderGradientLayer.cornerRadius = MAX(kSPSurfaceCornerRadius - 1.0, 0.0);
         self.heroTopAccentView.layer.cornerRadius = CGRectGetHeight(self.heroTopAccentView.bounds) * 0.5;
         self.heroInnerGlowView.layer.cornerRadius = CGRectGetWidth(self.heroInnerGlowView.bounds) * 0.5;
+        self.heroInnerGlowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.heroInnerGlowView.bounds].CGPath;
         self.heroSupportGlowView.layer.cornerRadius = CGRectGetWidth(self.heroSupportGlowView.bounds) * 0.5;
+        self.heroSupportGlowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.heroSupportGlowView.bounds].CGPath;
+        self.avatarBreathingHaloView.layer.cornerRadius = CGRectGetWidth(self.avatarBreathingHaloView.bounds) * 0.5;
+        self.avatarBreathingHaloView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.avatarBreathingHaloView.bounds].CGPath;
+        self.avatarShellView.layer.cornerRadius = CGRectGetWidth(self.avatarShellView.bounds) * 0.5;
+        self.avatarInnerPlateView.layer.cornerRadius = CGRectGetWidth(self.avatarInnerPlateView.bounds) * 0.5;
+        self.avatarImageView.layer.cornerRadius = CGRectGetWidth(self.avatarImageView.bounds) * 0.5;
     }
     self.heroBottomFadeLayer.frame = self.topFadeView.bounds;
     if (!CGRectIsEmpty(self.compactHeaderView.bounds)) {
@@ -2249,6 +2572,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         self.compactHeaderView.transform = UIAccessibilityIsReduceMotionEnabled()
             ? CGAffineTransformIdentity
             : CGAffineTransformMakeTranslation(0.0, -8.0 * (1.0 - progress));
+        self.avatarBreathingHaloView.transform = avatarTransform;
         self.avatarShellView.transform = avatarTransform;
         self.subtitleLabel.alpha = subtitleAlpha;
         self.descriptionLabel.alpha = bodyAlpha;
@@ -2274,72 +2598,330 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 #pragma mark - Motion
 
 - (void)startLivingBackgroundIfNeeded {
-    if (self.livingBackgroundActive || UIAccessibilityIsReduceMotionEnabled()) return;
-    if (self.glowTopView.hidden && self.glowMiddleView.hidden && self.glowBottomView.hidden) return;
+    if (self.livingBackgroundActive ||
+        UIAccessibilityIsReduceMotionEnabled() ||
+        !self.sellerScreenVisible ||
+        self.view.window == nil ||
+        CGRectIsEmpty(self.pp_premiumBackgroundGlowViewMid.bounds)) {
+        return;
+    }
     self.livingBackgroundActive = YES;
-    [self animateGlowView:self.glowTopView
-                  keyPath:@"seller.profile.glow.top"
-                    scale:1.08
-              translation:CGPointMake(14.0, -10.0)
-                 duration:6.8
-                    delay:0.0];
-    [self animateGlowView:self.glowMiddleView
-                  keyPath:@"seller.profile.glow.middle"
-                    scale:1.10
-              translation:CGPointMake(-16.0, 18.0)
-                 duration:7.6
-                    delay:0.35];
-    [self animateGlowView:self.glowBottomView
-                  keyPath:@"seller.profile.glow.bottom"
-                    scale:1.07
-              translation:CGPointMake(18.0, 12.0)
-                 duration:8.4
-                    delay:0.18];
-
+    if (self.backgroundGlowsFadedByHomeConfig) {
+        [self pp_addRandomizedMiddleBackgroundGlowPositionMotion];
+    } else {
+        [self pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded];
+    }
 }
 
 - (void)animateGlowView:(UIView *)view
                 keyPath:(NSString *)key
                   scale:(CGFloat)scale
             translation:(CGPoint)translation
-               duration:(NSTimeInterval)duration
-                  delay:(NSTimeInterval)delay {
-    view.transform = CGAffineTransformIdentity;
-    [UIView animateWithDuration:duration
-                          delay:delay
-                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
-                     animations:^{
-        view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(translation.x, translation.y),
-                                                 CGAffineTransformMakeScale(scale, scale));
-        view.alpha = 0.92;
-    } completion:nil];
+	               duration:(NSTimeInterval)duration
+	                  delay:(NSTimeInterval)delay {
+    (void)view;
     (void)key;
+    (void)scale;
+    (void)translation;
+    (void)duration;
+    (void)delay;
 }
 
 - (void)stopLivingBackground {
     self.livingBackgroundActive = NO;
-    NSArray<UIView *> *glows = @[self.glowTopView, self.glowMiddleView, self.glowBottomView];
-    for (UIView *view in glows) {
-        [view.layer removeAllAnimations];
-        view.transform = CGAffineTransformIdentity;
+    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:SPSellerMiddleBackgroundGlowPositionMotionKey];
+    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:SPSellerMiddleBackgroundGlowPeekMotionKey];
+}
+
+- (void)pp_addRandomizedMiddleBackgroundGlowPositionMotion
+{
+    SPSellerAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
+    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+        [glowView.layer animationForKey:SPSellerMiddleBackgroundGlowPositionMotionKey]) {
+        return;
     }
+
+    CGFloat canvasWidth = CGRectGetWidth(self.pp_premiumBackgroundCanvasView.bounds);
+    CGFloat canvasHeight = CGRectGetHeight(self.pp_premiumBackgroundCanvasView.bounds);
+    CGFloat maximumXOffset = MIN(92.0, MAX(64.0, canvasWidth * 0.22));
+    CGFloat maximumYOffset = MIN(116.0, MAX(78.0, canvasHeight * 0.115));
+    CGPoint restingPosition = glowView.layer.position;
+
+    NSMutableArray<NSValue *> *positions = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:restingPosition]];
+    NSMutableArray<NSNumber *> *keyTimes = [NSMutableArray arrayWithObject:@0.0];
+    static NSInteger const waypointCount = 7;
+    for (NSInteger index = 1; index <= waypointCount; index++) {
+        CGFloat randomXUnit = ((CGFloat)arc4random_uniform(2001) / 1000.0) - 1.0;
+        CGFloat randomYUnit = ((CGFloat)arc4random_uniform(2001) / 1000.0) - 1.0;
+        CGPoint waypoint = CGPointMake(restingPosition.x + (randomXUnit * maximumXOffset),
+                                       restingPosition.y + (randomYUnit * maximumYOffset));
+        [positions addObject:[NSValue valueWithCGPoint:waypoint]];
+        [keyTimes addObject:@((CGFloat)index / (CGFloat)(waypointCount + 1))];
+    }
+    [positions addObject:[NSValue valueWithCGPoint:restingPosition]];
+    [keyTimes addObject:@1.0];
+
+    CFTimeInterval duration = 13.0 + ((CGFloat)arc4random_uniform(3501) / 1000.0);
+    CAKeyframeAnimation *positionAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
+    positionAnimation.values = positions;
+    positionAnimation.keyTimes = keyTimes;
+    positionAnimation.calculationMode = kCAAnimationCubic;
+    positionAnimation.duration = duration;
+    positionAnimation.repeatCount = HUGE_VALF;
+    positionAnimation.removedOnCompletion = YES;
+    positionAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    CFTimeInterval localNow = [glowView.layer convertTime:CACurrentMediaTime() fromLayer:nil];
+    CGFloat randomPhase = ((CGFloat)arc4random_uniform(10001) / 10000.0) * duration;
+    positionAnimation.beginTime = localNow - randomPhase;
+
+    [glowView.layer addAnimation:positionAnimation forKey:SPSellerMiddleBackgroundGlowPositionMotionKey];
+}
+
+- (void)pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded
+{
+    SPSellerAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
+    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+        [glowView.layer animationForKey:SPSellerMiddleBackgroundGlowPeekMotionKey]) {
+        return;
+    }
+
+    CGFloat travelDistance = MIN(26.0, MAX(16.0, CGRectGetWidth(glowView.bounds) * 0.08));
+    CGFloat direction = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -1.0 : 1.0;
+
+    CABasicAnimation *positionAnimation =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    positionAnimation.fromValue = @(0.0);
+    positionAnimation.toValue = @(travelDistance * direction);
+
+    CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.fromValue = @0.88;
+    opacityAnimation.toValue = @1.0;
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scaleAnimation.fromValue = @0.985;
+    scaleAnimation.toValue = @1.018;
+
+    CAAnimationGroup *peekAnimation = [CAAnimationGroup animation];
+    peekAnimation.animations = @[positionAnimation, opacityAnimation, scaleAnimation];
+    peekAnimation.duration = 4.8;
+    peekAnimation.autoreverses = YES;
+    peekAnimation.repeatCount = HUGE_VALF;
+    peekAnimation.removedOnCompletion = YES;
+    peekAnimation.timingFunction =
+        [CAMediaTimingFunction functionWithControlPoints:0.35 :0.0 :0.18 :1.0];
+
+    [glowView.layer addAnimation:peekAnimation forKey:SPSellerMiddleBackgroundGlowPeekMotionKey];
+}
+
+- (void)pp_prepareHeroEntranceState
+{
+    if (self.didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.heroSurfaceView.alpha = 0.0;
+    self.heroSurfaceView.transform =
+        CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 14.0), 0.982, 0.982);
+
+    self.avatarShellView.alpha = 0.0;
+    self.avatarShellView.transform =
+        CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 8.0), 0.92, 0.92);
+    self.avatarBreathingHaloView.alpha = 0.0;
+    self.avatarBreathingHaloView.transform =
+        CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 8.0), 0.90, 0.90);
+
+    NSArray<UIView *> *textViews = @[self.eyebrowLabel, self.nameLabel, self.subtitleLabel];
+    [textViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 10.0 + (CGFloat)idx * 2.0);
+    }];
+
+    self.statusBadgeView.alpha = 0.0;
+    self.statusBadgeView.transform = CGAffineTransformMakeScale(0.84, 0.84);
+
+    self.contactButtonStack.alpha = 0.0;
+    self.contactButtonStack.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+}
+
+- (void)pp_resetHeroEntranceState
+{
+    NSArray<UIView *> *heroViews = @[
+        self.heroSurfaceView,
+        self.avatarBreathingHaloView,
+        self.avatarShellView,
+        self.eyebrowLabel,
+        self.nameLabel,
+        self.subtitleLabel,
+        self.statusBadgeView,
+        self.contactButtonStack
+    ];
+    [heroViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
+    }];
+
+    self.callButton.hidden = YES;
+    self.callButton.enabled = NO;
+    self.callButton.alpha = 0.0;
+    self.callButton.accessibilityElementsHidden = YES;
+}
+
+- (void)pp_beginHeroAliveMotionIfNeeded
+{
+    if (self.didStartHeroAliveMotion ||
+        UIAccessibilityIsReduceMotionEnabled() ||
+        !self.sellerScreenVisible ||
+        !self.view.window ||
+        CGRectIsEmpty(self.heroSurfaceView.bounds)) {
+        return;
+    }
+
+    self.didStartHeroAliveMotion = YES;
+    CGFloat direction = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -1.0 : 1.0;
+    CAMediaTimingFunction *softEase =
+        [CAMediaTimingFunction functionWithControlPoints:0.45 :0.0 :0.55 :1.0];
+
+    CABasicAnimation *glowTravel =
+        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    glowTravel.fromValue = @0.0;
+    glowTravel.toValue = @(12.0 * direction);
+
+    CABasicAnimation *glowOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    glowOpacity.fromValue = @0.08;
+    glowOpacity.toValue = @0.16;
+
+    CABasicAnimation *glowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    glowScale.fromValue = @0.985;
+    glowScale.toValue = @1.035;
+
+    CAAnimationGroup *glowGroup = [CAAnimationGroup animation];
+    glowGroup.animations = @[glowTravel, glowOpacity, glowScale];
+    glowGroup.duration = 5.8;
+    glowGroup.autoreverses = YES;
+    glowGroup.repeatCount = HUGE_VALF;
+    glowGroup.removedOnCompletion = YES;
+    glowGroup.timingFunction = softEase;
+    [self.heroInnerGlowView.layer addAnimation:glowGroup forKey:SPSellerHeroInnerGlowMotionKey];
+
+    CABasicAnimation *supportGlowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    supportGlowScale.fromValue = @0.98;
+    supportGlowScale.toValue = @1.045;
+
+    CABasicAnimation *supportGlowOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    supportGlowOpacity.fromValue = @0.92;
+    supportGlowOpacity.toValue = @1.0;
+
+    CAAnimationGroup *supportGlowGroup = [CAAnimationGroup animation];
+    supportGlowGroup.animations = @[supportGlowScale, supportGlowOpacity];
+    supportGlowGroup.duration = 6.4;
+    supportGlowGroup.autoreverses = YES;
+    supportGlowGroup.repeatCount = HUGE_VALF;
+    supportGlowGroup.removedOnCompletion = YES;
+    supportGlowGroup.timingFunction = softEase;
+    [self.heroSupportGlowView.layer addAnimation:supportGlowGroup forKey:SPSellerHeroSupportGlowMotionKey];
+
+    CABasicAnimation *avatarScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    avatarScale.fromValue = @0.965;
+    avatarScale.toValue = @1.035;
+
+    CABasicAnimation *avatarOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    avatarOpacity.fromValue = @0.72;
+    avatarOpacity.toValue = @1.0;
+
+    CAAnimationGroup *avatarBreathingGroup = [CAAnimationGroup animation];
+    avatarBreathingGroup.animations = @[avatarScale, avatarOpacity];
+    avatarBreathingGroup.duration = 3.8;
+    avatarBreathingGroup.autoreverses = YES;
+    avatarBreathingGroup.repeatCount = HUGE_VALF;
+    avatarBreathingGroup.removedOnCompletion = YES;
+    avatarBreathingGroup.timingFunction = softEase;
+    [self.avatarBreathingHaloView.layer addAnimation:avatarBreathingGroup forKey:SPSellerAvatarBreathingMotionKey];
+
+    CABasicAnimation *accentOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    accentOpacity.fromValue = @0.28;
+    accentOpacity.toValue = @0.46;
+    accentOpacity.duration = 4.4;
+    accentOpacity.autoreverses = YES;
+    accentOpacity.repeatCount = HUGE_VALF;
+    accentOpacity.removedOnCompletion = YES;
+    accentOpacity.timingFunction = softEase;
+    [self.heroTopAccentView.layer addAnimation:accentOpacity forKey:SPSellerHeroAccentMotionKey];
+}
+
+- (void)pp_stopHeroAliveMotion
+{
+    self.didStartHeroAliveMotion = NO;
+    [self.heroInnerGlowView.layer removeAnimationForKey:SPSellerHeroInnerGlowMotionKey];
+    [self.heroSupportGlowView.layer removeAnimationForKey:SPSellerHeroSupportGlowMotionKey];
+    [self.heroTopAccentView.layer removeAnimationForKey:SPSellerHeroAccentMotionKey];
+    [self.avatarBreathingHaloView.layer removeAnimationForKey:SPSellerAvatarBreathingMotionKey];
 }
 
 - (void)animateEntranceIfNeeded {
     if (self.didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
-        self.heroSurfaceView.alpha = 1.0;
+        [self pp_resetHeroEntranceState];
         self.itemsTitleLabel.alpha = 1.0;
+        self.itemsTitleLabel.transform = CGAffineTransformIdentity;
         self.itemsCollectionView.alpha = 1.0;
+        self.itemsCollectionView.transform = CGAffineTransformIdentity;
         return;
     }
+    [self pp_prepareHeroEntranceState];
     self.didAnimateEntrance = YES;
-
-    NSArray<UIView *> *views = @[self.heroSurfaceView, self.itemsTitleLabel, self.itemsCollectionView];
-    [views enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+    NSArray<UIView *> *contentViews = @[self.itemsTitleLabel, self.itemsCollectionView];
+    [contentViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
         view.alpha = 0.0;
         view.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
-        [UIView animateWithDuration:0.52
-                              delay:0.06 * idx
+    }];
+
+    [UIView animateWithDuration:0.48
+                          delay:0.0
+         usingSpringWithDamping:0.94
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.heroSurfaceView.alpha = 1.0;
+        self.heroSurfaceView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.42
+                          delay:0.07
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.avatarShellView.alpha = 1.0;
+        self.avatarShellView.transform = CGAffineTransformIdentity;
+        self.avatarBreathingHaloView.alpha = 1.0;
+        self.avatarBreathingHaloView.transform = CGAffineTransformIdentity;
+        self.statusBadgeView.alpha = 1.0;
+        self.statusBadgeView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    NSArray<UIView *> *textViews = @[self.eyebrowLabel, self.nameLabel, self.subtitleLabel];
+    [textViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        [UIView animateWithDuration:0.34
+                              delay:0.12 + (0.045 * idx)
+                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    [UIView animateWithDuration:0.42
+                          delay:0.24
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.10
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.contactButtonStack.alpha = 1.0;
+        self.contactButtonStack.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [contentViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        [UIView animateWithDuration:0.46
+                              delay:0.30 + (0.06 * idx)
              usingSpringWithDamping:0.92
               initialSpringVelocity:0.0
                             options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
@@ -2624,7 +3206,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.avatarImageView.accessibilityLabel = sellerName;
     self.statusBadgeView.accessibilityLabel = [self pp_statusBadgeText];
     self.messageButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"message"), sellerName];
-    self.callButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"call"), sellerName];
+    self.callButton.accessibilityLabel = nil;
+    self.callButton.accessibilityElementsHidden = YES;
     NSString *ratingSummary = self.seller.providerReviewCount > 0
         ? [NSString stringWithFormat:(kLang(@"provider_rating_accessibility_format") ?: @"Rated %.1f out of 5 from %ld reviews"),
            self.seller.providerRatingValue,

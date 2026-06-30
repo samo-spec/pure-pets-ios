@@ -1610,6 +1610,7 @@
 "ReadMore" = "اقرأ المزيد";
 "Home_NearbyAds"        = "بالقرب منك";
 "Home_NearbyAds_Action"    = "";
+"Home_NearbyAdsSubtitle"   = "مميزة";
 "Home_RecentlyAdded"    = "أُضيفت مؤخراً";
 "empty_no_results_title" = "لا توجد نتائج";
 "empty_no_results_subtitle" = "جرّب تغيير القسم أو تعديل عوامل التصفية.";

@@ -690,7 +690,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:height]];
+       [NSCollectionLayoutDimension estimatedDimension:height]];
 
     NSCollectionLayoutBoundarySupplementaryItem *header =
         [NSCollectionLayoutBoundarySupplementaryItem

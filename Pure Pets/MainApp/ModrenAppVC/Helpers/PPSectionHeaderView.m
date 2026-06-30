@@ -306,16 +306,16 @@
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.08];
     }
-    UIColor *accent = [UIColor colorNamed:@"AppBageGlows"];
-    if (self.currentSection == PPHomeSectionMainKinds) {
-        return [accent colorWithAlphaComponent:1.0];
-    }
-    return [accent colorWithAlphaComponent:1.0];
+    UIColor *accent = AppForgroundColr;
+    //if (self.currentSection == PPHomeSectionMainKinds) {
+    //    return [accent colorWithAlphaComponent:1.0];
+    //}
+    return [accent colorWithAlphaComponent:0.35];
 }
 
 - (UIFont *)pp_titleFont
 {
-    UIFont *font = [GM boldFontWithSize:18.5] ?: [UIFont systemFontOfSize:18.5 weight:UIFontWeightBold];
+    UIFont *font = [GM boldFontWithSize:17.5] ?: [UIFont systemFontOfSize:18.5 weight:UIFontWeightBold];
     return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:font];
 }
 
@@ -353,6 +353,18 @@
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         [self pp_refreshAppearance];
     }
+}
+
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    UICollectionViewLayoutAttributes *attrs = [layoutAttributes copy];
+    CGSize size = [self systemLayoutSizeFittingSize:CGSizeMake(attrs.size.width, UIViewNoIntrinsicMetric)
+                      withHorizontalFittingPriority:UILayoutPriorityRequired
+                            verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGRect frame = attrs.frame;
+    frame.size.height = MAX(ceil(size.height), layoutAttributes.frame.size.height);
+    attrs.frame = frame;
+    return attrs;
 }
 
 #pragma mark - Public
@@ -409,6 +421,7 @@
                  toConfiguration:cfg
                       forSection:ppHomeSection];
     self.actionButton.configuration = cfg;
+    [self.contentStackView invalidateIntrinsicContentSize];
 
     [self pp_configureMenu:menu];
     [self pp_refreshAppearance];
@@ -532,6 +545,7 @@
     [super applyLayoutAttributes:layoutAttributes];
     self.layer.zPosition = MAX((CGFloat)layoutAttributes.zIndex, 2.0);
     [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 #pragma mark - Actions

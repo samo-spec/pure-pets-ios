@@ -712,6 +712,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated
 {
+    UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
+    PPBottomSurfaceKind resolvedKind =
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:visible];
+    if (resolvedKind != PPBottomSurfaceKindFloatingCartSurface) {
+        if (self.state.isVisible || self.activeSourceViewController) {
+            self.activeSourceViewController = nil;
+            self.openCartHandler = nil;
+            [self updateVisibilityAnimated:animated];
+        }
+        return;
+    }
     [self updateVisibilityAnimated:animated];
 }
 
@@ -808,9 +819,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     CartManager *cartManager = [CartManager sharedManager];
-    return ([cartManager totalItemsCount] > 0 &&
-            [self isEligibleFloatingCartSourceViewController:source] &&
-            [self isActiveSourceCurrentlyVisible]);
+    if ([cartManager totalItemsCount] <= 0 ||
+        ![self isEligibleFloatingCartSourceViewController:source] ||
+        ![self isActiveSourceCurrentlyVisible]) {
+        return NO;
+    }
+
+    UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
+    PPBottomSurfaceKind resolvedKind =
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:visible];
+    return resolvedKind == PPBottomSurfaceKindFloatingCartSurface;
 }
 
 - (BOOL)hostShouldKeepBottomNavigationHidden
@@ -1452,11 +1470,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)openAccessoriesAll
 {
-    [self pp_setPremiumBottomNavigationHidden:NO animated:YES];
+    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:YES];
 }
 - (void)showSystemTabBar
 {
-    [self pp_setPremiumBottomNavigationHidden:NO animated:YES];
+    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:YES];
 }
 
 - (void)hideSystemTabBar

@@ -20,6 +20,7 @@
         _profileCityText = @"";
         _profileAvatarURLString = @"";
         _profileCoverImageURLs = @[];
+        _favorite = NO;
     }
     return self;
 }
@@ -135,7 +136,7 @@
 
     _avatarShellView = [[UIView alloc] init];
     _avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    _avatarShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.20];
+    _avatarShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.65];
     PPProviderCompaniesApplyContinuousCorners(_avatarShellView, 24.0);
     _avatarShellView.layer.masksToBounds = NO;
     _avatarShellView.layer.borderWidth = 1.0;
@@ -270,7 +271,7 @@
     _metaStackView = [[UIStackView alloc] init];
     _metaStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _metaStackView.axis = UILayoutConstraintAxisHorizontal;
-    _metaStackView.alignment = UIStackViewAlignmentCenter;
+    _metaStackView.alignment = UIStackViewAlignmentLeading;
     _metaStackView.distribution = UIStackViewDistributionFill;
     _metaStackView.spacing = 7.0;
     _metaStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -342,7 +343,7 @@
     ]];
     _productCountPillStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _productCountPillStackView.axis = UILayoutConstraintAxisHorizontal;
-    _productCountPillStackView.alignment = UIStackViewAlignmentCenter;
+    _productCountPillStackView.alignment = UIStackViewAlignmentLeading;
     _productCountPillStackView.distribution = UIStackViewDistributionFill;
     _productCountPillStackView.spacing = 4.0;
     _productCountPillStackView.layoutMargins = UIEdgeInsetsMake(5.0, 8.0, 5.0, 8.0);
@@ -364,9 +365,9 @@
     _favButton.clipsToBounds = YES;
     _favButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
     UIImage *favImage = [UIImage systemImageNamed:@"heart"
-                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:14.0
                                                                                                   weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleDefault]];
-    [_favButton setImage:[favImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    [_favButton setImage:favImage forState:UIControlStateNormal];
     _favButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.86];
     [_favButton addTarget:self action:@selector(pp_handleFavTap) forControlEvents:UIControlEventTouchUpInside];
     [_contentWrapView addSubview:_favButton];
@@ -511,7 +512,7 @@
     } else {
         _avatarVerifiedIconView.image = nil;
     }
-
+    
     _titleLabel.text = title;
     NSString *subtitle = PPProviderCompaniesCellDisplaySubtitle(entry, categoryIdentifier);
     _subtitleLabel.text = subtitle;
@@ -602,14 +603,16 @@
     if (coverImageURLString.length == 0) {
         coverImageURLString = avatarURL;
     }
-    if (coverImageURLString.length > 0) {
+if (coverImageURLString.length > 0) {
         [[PPImageLoaderManager shared] setImageOnImageView:_coverImageView
-                                                       url:coverImageURLString
-                                               placeholder:_coverImageView.image
-                                           transitionStyle:PPImageTransitionStyleCrossDissolve
-                                                complation:nil];
+                                                   url:coverImageURLString
+                                           placeholder:_coverImageView.image
+                                   transitionStyle:PPImageTransitionStyleCrossDissolve
+                                            complation:nil];
     }
-
+    
+    [self pp_updateFavButtonImageAnimated:NO];
+    
     NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
     for (NSString *part in @[title ?: @"",
                              _subtitleLabel.text ?: @"",
@@ -736,13 +739,63 @@
     _avatarVerifiedIconView.hidden = YES;
     self.accessibilityHint = nil;
     self.accessibilityLabel = nil;
+    _entry = nil;
+    [self pp_updateFavButtonImageAnimated:NO];
 }
 
 - (void)pp_handleFavTap
 {
+    _entry.favorite = !_entry.favorite;
+    [self pp_updateFavButtonImageAnimated:YES];
+    
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        if (self.onFavTap && _entry) {
+            self.onFavTap(_entry);
+        }
+        return;
+    }
+    _favButton.transform = CGAffineTransformMakeScale(0.90, 0.90);
+    [UIView animateWithDuration:0.34
+                          delay:0.0
+         usingSpringWithDamping:0.58
+          initialSpringVelocity:0.45
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        _favButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+    
     if (self.onFavTap && _entry) {
         self.onFavTap(_entry);
     }
+}
+
+- (void)pp_updateFavButtonImageAnimated:(BOOL)animated
+{
+    NSString *symbolName = _entry.favorite ? @"heart.fill" : @"heart";
+    UIImageSymbolWeight weight = _entry.favorite ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular;
+    UIColor *tintColor = _entry.favorite ? [UIColor colorWithRed:0.93 green:0.35 blue:0.35 alpha:1.0] : [UIColor colorWithWhite:1.0 alpha:0.86];
+    
+    UIImage *image = nil;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:14.0 weight:weight scale:UIImageSymbolScaleSmall];
+        image = [[UIImage systemImageNamed:symbolName withConfiguration:configuration] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+    
+    void (^changes)(void) = ^{
+        [_favButton setImage:image forState:UIControlStateNormal];
+        _favButton.tintColor = tintColor;
+    };
+    
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        return;
+    }
+    
+    [UIView transitionWithView:_favButton
+                      duration:0.18
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
+                    animations:changes
+                    completion:nil];
 }
 
 @end

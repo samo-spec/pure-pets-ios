@@ -7030,7 +7030,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             } else {
                 cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyAds");
             }
-           // cfg.actionTitle = kLang(@"ShowAll");
+            cfg.subtitle = kLang(@"Home_NearbyAdsSubtitle") ?: @"Premium";
             cfg.iconName = arrowImage;
             break;
         }
@@ -7040,7 +7040,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             if (self.nearbyServicesShowingLatest) {
                 cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_ServiceProviders") ?: @"Service Providers";
             } else {
-                cfg.title = kLang(@"home_header_near_you") ?: kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
+                cfg.title = kLang(@"Home_NearbyServiceProviders") ?: kLang(@"home_header_near_you") ?: @"Nearby Services Providers";
             }
             cfg.subtitle = kLang(@"Home_ServiceProvidersSubtitle") ?: @"Find grooming, training & more";
             cfg.iconName = arrowImage;

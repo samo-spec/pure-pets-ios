@@ -17,8 +17,8 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" alpha="0.14999999999999999" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="lunch_light" translatesAutoresizingMaskIntoConstraints="NO" id="dzt-rU-j9H">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="lunch_light" translatesAutoresizingMaskIntoConstraints="NO" id="dzt-rU-j9H">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="854"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="tintColor" name="AppPrimaryColor"/>
@@ -35,13 +35,13 @@
                                 <size key="shadowOffset" width="0.0" height="0.0"/>
                             </label>
                             <imageView clipsSubviews="YES" userInteractionEnabled="NO" alpha="0.0" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="launchmageNew" translatesAutoresizingMaskIntoConstraints="NO" id="1mb-7s-Bej">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="854"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="tintColor" name="AppPrimaryColor"/>
                             </imageView>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="PureIconTransFilledV3" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
-                                <rect key="frame" x="123" y="202" width="147" height="147"/>
+                                <rect key="frame" x="122" y="190" width="150" height="150"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="tintColor" name="AppPrimaryColor"/>
@@ -61,7 +61,7 @@
     <resources>
         <image name="PureIconTransFilledV3" width="1024" height="1024"/>
         <image name="launchmageNew" width="428" height="926"/>
-        <image name="lunch_light" width="166.66667175292969" height="296"/>
+        <image name="lunch_light" width="200" height="355.33334350585938"/>
         <namedColor name="AppForegroundColor">
             <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>

@@ -1640,6 +1640,7 @@
 "Home_NearbyAds"        = "Nearby";
 "Home_NearbyAds_Sub"    = "Ads close to you";
 "Home_NearbyAds_Action"    = "";
+"Home_NearbyAdsSubtitle"   = "Premium";
 "Home_RecentlyAdded"    = "Recently Added";
 
 "AllCategories" = "All Categories";
@@ -2697,7 +2698,7 @@
 "SystemMode" = "System";
 
 /* ── Nearby Service Providers Section ── */
-"Home_NearbyServiceProviders" = "Nearby Service Providers";
+"Home_NearbyServiceProviders" = "Nearby Services Providers";
 "home_header_discover_by_category" = "Discover by category";
 "home_header_most_requested" = "Most requested";
 "home_header_featured_products" = "Featured products";
