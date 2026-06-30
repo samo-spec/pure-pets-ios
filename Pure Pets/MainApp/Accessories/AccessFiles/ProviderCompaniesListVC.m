@@ -1644,6 +1644,18 @@
     model.countValueText = [NSString stringWithFormat:@"%ld", (long)MAX(entry.productCount, 0)];
     model.countDisplayText = PPProviderCompaniesItemsCountText(entry.productCount, self.selectedProviderCategoryIdentifier);
     model.cityText = PPProviderCompaniesCityForEntry(entry);
+    model.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:title size:60.0];
+    NSString *avatarURLString =
+        [PPProviderCompaniesSafeString(entry.profileAvatarURLString)
+         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (avatarURLString.length == 0) {
+        avatarURLString =
+            [PPProviderCompaniesSafeString(entry.user.UserImageUrl.absoluteString)
+             stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    if (avatarURLString.length > 0) {
+        model.avatarURL = [NSURL URLWithString:avatarURLString];
+    }
     model.accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
     model.verified = entry.user.isVerified;
     model.active = [PPProviderCompaniesSafeString(entry.user.accountStatus) isEqualToString:@"active"];
@@ -1653,7 +1665,7 @@
         model.ratingText = [NSString stringWithFormat:@"%.1f", entry.user.providerRatingValue];
         model.ratingCountText = [NSString stringWithFormat:@"(%ld)", (long)entry.user.providerReviewCount];
     } else {
-        model.ratingText = @"New";
+        model.ratingText = kLang(@"provider_rating_new") ?: @"New";
         model.ratingCountText = @"";
     }
 

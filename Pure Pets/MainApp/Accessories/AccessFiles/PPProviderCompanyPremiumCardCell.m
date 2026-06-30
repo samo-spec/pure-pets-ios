@@ -285,7 +285,9 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     copy.ratingCountText = self.ratingCountText;
     copy.cityText = self.cityText;
     copy.imageURL = self.imageURL;
+    copy.avatarURL = self.avatarURL;
     copy.placeholderImage = self.placeholderImage;
+    copy.avatarPlaceholderImage = self.avatarPlaceholderImage;
     copy.accentColor = self.accentColor;
     copy.verified = self.verified;
     copy.active = self.active;
@@ -310,6 +312,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 @property (nonatomic, strong) UIView *accessoryPocketView;
 @property (nonatomic, strong) UIButton *accessoryButton;
 @property (nonatomic, strong) UIView *contentPanelView;
+@property (nonatomic, strong) UIView *avatarShellView;
+@property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIStackView *metricsRailStackView;
@@ -338,7 +342,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 + (CGFloat)preferredHeightForTableWidth:(CGFloat)tableWidth
 {
     CGFloat stageHeight = PPProviderPremiumStageHeightForTableWidth(tableWidth);
-    return stageHeight + 110.0;
+    return stageHeight + 170.0;
 }
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
@@ -364,14 +368,16 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.cardView.layer.shadowOpacity = 0.085;
     self.cardView.layer.shadowRadius = 24.0;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-    PPProviderPremiumApplyContinuousCorners(self.cardView, 22.0);
+    PPProviderPremiumApplyContinuousCorners(self.cardView, 28.0);
     [self.contentView addSubview:self.cardView];
 
     self.imageStageView = [[UIView alloc] init];
     self.imageStageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imageStageView.backgroundColor = PPProviderPremiumStageColor();
+    self.imageStageView.layer.borderWidth = 0.75;
+    self.imageStageView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.60].CGColor;
     self.imageStageView.clipsToBounds = YES;
-    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 20.0);
+    PPProviderPremiumApplyContinuousCorners(self.imageStageView, 24.0);
     [self.cardView addSubview:self.imageStageView];
 
     self.stageGradientLayer = [CAGradientLayer layer];
@@ -419,6 +425,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.topBadgeView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.82];
     self.topBadgeView.layer.borderWidth = 0.55;
     self.topBadgeView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.50].CGColor;
+    self.topBadgeView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.topBadgeView.layer.shadowOpacity = 0.055;
+    self.topBadgeView.layer.shadowRadius = 12.0;
+    self.topBadgeView.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     self.topBadgeView.clipsToBounds = NO;
     PPProviderPremiumApplyContinuousCorners(self.topBadgeView, 17.0);
     [self.imageStageView addSubview:self.topBadgeView];
@@ -461,12 +471,34 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.contentPanelView.backgroundColor = UIColor.clearColor;
     [self.cardView addSubview:self.contentPanelView];
 
+    self.avatarShellView = [[UIView alloc] init];
+    self.avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarShellView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.94];
+    self.avatarShellView.layer.borderWidth = 0.75;
+    self.avatarShellView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.62].CGColor;
+    self.avatarShellView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.avatarShellView.layer.shadowOpacity = 0.085;
+    self.avatarShellView.layer.shadowRadius = 16.0;
+    self.avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.avatarShellView.clipsToBounds = NO;
+    PPProviderPremiumApplyContinuousCorners(self.avatarShellView, 28.0);
+    [self.contentPanelView addSubview:self.avatarShellView];
+
+    self.avatarImageView = [[UIImageView alloc] init];
+    self.avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.avatarImageView.clipsToBounds = YES;
+    self.avatarImageView.backgroundColor = [PPProviderPremiumStageColor() colorWithAlphaComponent:0.74];
+    self.avatarImageView.isAccessibilityElement = NO;
+    PPProviderPremiumApplyContinuousCorners(self.avatarImageView, 24.0);
+    [self.avatarShellView addSubview:self.avatarImageView];
+
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font =[GM boldFontWithSize:23];
+    self.titleLabel.font =[GM boldFontWithSize:20];
     self.titleLabel.textColor = PPProviderPremiumPrimaryTextColor();
-    self.titleLabel.numberOfLines = 2;
-    self.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     [self.contentPanelView addSubview:self.titleLabel];
 
@@ -474,8 +506,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtitleLabel.font = [GM MidFontWithSize:14];
     self.subtitleLabel.textColor = [PPProviderPremiumSecondaryTextColor() colorWithAlphaComponent:0.82];
-    self.subtitleLabel.numberOfLines = 2;
-    self.subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.subtitleLabel.numberOfLines = 1;
+    self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
     [self.contentPanelView addSubview:self.subtitleLabel];
 
@@ -486,20 +518,19 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.metaFootnoteLabel.numberOfLines = 1;
     self.metaFootnoteLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.metaFootnoteLabel.adjustsFontForContentSizeCategory = YES;
-    [self.contentPanelView addSubview:self.metaFootnoteLabel];
 
     self.metricsRailStackView = [[UIStackView alloc] init];
     self.metricsRailStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.metricsRailStackView.axis = UILayoutConstraintAxisHorizontal;
     self.metricsRailStackView.alignment = UIStackViewAlignmentCenter;
-    self.metricsRailStackView.distribution = UIStackViewDistributionFillProportionally;
-    self.metricsRailStackView.spacing = 8.0;
+    self.metricsRailStackView.distribution = UIStackViewDistributionFill;
+    self.metricsRailStackView.spacing = 7.0;
     self.metricsRailStackView.hidden = NO;
     [self.contentPanelView addSubview:self.metricsRailStackView];
 
     self.countPillView = [[UIView alloc] init];
     self.countPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.countPillView.backgroundColor = PPProviderPremiumStageColor();
+    self.countPillView.backgroundColor = [PPProviderPremiumStageColor() colorWithAlphaComponent:0.80];
     self.countPillView.layer.borderWidth = 0.55;
     self.countPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.countPillView.clipsToBounds = YES;
@@ -548,8 +579,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
     self.ratingPillView = [[UIView alloc] init];
     self.ratingPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.ratingPillView.backgroundColor = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.96 alpha:0.92],
-                                                                         [UIColor colorWithWhite:1.0 alpha:0.08]);
+    self.ratingPillView.backgroundColor = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.985 alpha:0.90],
+                                                                         [UIColor colorWithWhite:1.0 alpha:0.075]);
     self.ratingPillView.layer.borderWidth = 0.65;
     self.ratingPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.ratingPillView.clipsToBounds = YES;
@@ -600,19 +631,19 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.coverImageView.trailingAnchor constraintEqualToAnchor:self.imageStageView.trailingAnchor],
         [self.coverImageView.bottomAnchor constraintEqualToAnchor:self.imageStageView.bottomAnchor],
 
-        [self.accessoryPocketView.trailingAnchor constraintEqualToAnchor:self.imageStageView.trailingAnchor constant:-16.0],
-        [self.accessoryPocketView.centerYAnchor constraintEqualToAnchor:self.topBadgeView.centerYAnchor],
-        [self.accessoryPocketView.widthAnchor constraintEqualToConstant:40.0],
-        [self.accessoryPocketView.heightAnchor constraintEqualToConstant:40.0],
+        [self.accessoryPocketView.trailingAnchor constraintEqualToAnchor:self.imageStageView.trailingAnchor constant:-14.0],
+        [self.accessoryPocketView.topAnchor constraintEqualToAnchor:self.imageStageView.topAnchor constant:14.0],
+        [self.accessoryPocketView.widthAnchor constraintEqualToConstant:42.0],
+        [self.accessoryPocketView.heightAnchor constraintEqualToConstant:42.0],
 
         [self.accessoryButton.centerXAnchor constraintEqualToAnchor:self.accessoryPocketView.centerXAnchor],
         [self.accessoryButton.centerYAnchor constraintEqualToAnchor:self.accessoryPocketView.centerYAnchor],
-        [self.accessoryButton.widthAnchor constraintEqualToConstant:40.0],
-        [self.accessoryButton.heightAnchor constraintEqualToConstant:40.0],
+        [self.accessoryButton.widthAnchor constraintEqualToConstant:42.0],
+        [self.accessoryButton.heightAnchor constraintEqualToConstant:42.0],
 
-        [self.topBadgeView.leadingAnchor constraintEqualToAnchor:self.imageStageView.leadingAnchor constant:16.0],
-        [self.topBadgeView.topAnchor constraintEqualToAnchor:self.imageStageView.topAnchor constant:15.0],
-        [self.topBadgeView.heightAnchor constraintEqualToConstant:34.0],
+        [self.topBadgeView.leadingAnchor constraintEqualToAnchor:self.imageStageView.leadingAnchor constant:14.0],
+        [self.topBadgeView.topAnchor constraintEqualToAnchor:self.imageStageView.topAnchor constant:17.0],
+        [self.topBadgeView.heightAnchor constraintEqualToConstant:36.0],
         [self.topBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:self.accessoryPocketView.leadingAnchor constant:-12.0],
 
         [self.topBadgeIconView.leadingAnchor constraintEqualToAnchor:self.topBadgeView.leadingAnchor constant:12.0],
@@ -629,21 +660,32 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.contentPanelView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-22.0],
         [self.contentPanelView.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-14.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.avatarShellView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:-30.0],
+        [self.avatarShellView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.avatarShellView.widthAnchor constraintEqualToConstant:58.0],
+        [self.avatarShellView.heightAnchor constraintEqualToConstant:58.0],
+
+        [self.avatarImageView.topAnchor constraintEqualToAnchor:self.avatarShellView.topAnchor constant:4.0],
+        [self.avatarImageView.leadingAnchor constraintEqualToAnchor:self.avatarShellView.leadingAnchor constant:4.0],
+        [self.avatarImageView.trailingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:-4.0],
+        [self.avatarImageView.bottomAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:-4.0],
+
+        [self.titleLabel.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:6.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:13.0],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
 
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
         
         [self.metricsRailStackView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:11.0],
         [self.metricsRailStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
         [self.metricsRailStackView.trailingAnchor constraintLessThanOrEqualToAnchor:contentGuide.trailingAnchor],
-        [self.metricsRailStackView.bottomAnchor constraintLessThanOrEqualToAnchor:contentGuide.bottomAnchor],
+        [self.metricsRailStackView.bottomAnchor constraintLessThanOrEqualToAnchor:contentGuide.bottomAnchor constant:-1.0],
         [self.metricsRailStackView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
         [self.countPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
         [self.countPillView.widthAnchor constraintGreaterThanOrEqualToConstant:82.0],
+        [self.countPillView.widthAnchor constraintLessThanOrEqualToConstant:138.0],
         [self.contactPillView.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
         [self.contactPillView.widthAnchor constraintGreaterThanOrEqualToConstant:74.0],
         [self.contactPillView.widthAnchor constraintLessThanOrEqualToConstant:156.0],
@@ -675,8 +717,17 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     ]];
     [self.ratingPillView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.ratingPillView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.avatarShellView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.avatarShellView setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisVertical];
     [self.titleLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisVertical];
+    [self.metricsRailStackView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.metricsRailStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+    [self.countPillView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.countPillView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+    [self.contactPillView setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.contactPillView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.countTitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
     self.isAccessibilityElement = YES;
@@ -697,10 +748,11 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
     self.cardView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.imageStageView.backgroundColor = [accent colorWithAlphaComponent:0.10];
+    self.imageStageView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.60].CGColor;
     self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(accent);
     self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
     self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
-    self.topBadgeView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.84];
+    self.topBadgeView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.90];
     BOOL showsVerifiedBadge = model.isVerified;
     UIColor *verifiedTint = [UIColor colorWithRed:0.12 green:0.57 blue:0.36 alpha:1.0];
     self.topBadgeIconView.image = showsVerifiedBadge
@@ -709,10 +761,18 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.topBadgeIconView.tintColor = showsVerifiedBadge ? verifiedTint : accent;
     self.topBadgeLabel.textColor = showsVerifiedBadge ? verifiedTint : [accent colorWithAlphaComponent:0.90];
     self.topBadgeLabel.text = showsVerifiedBadge ? (kLang(@"service_view_provider_verified") ?: @"Verified account") : category;
-    self.accessoryPocketView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.84];
-    self.accessoryPocketView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.50].CGColor;
-    self.countPillView.backgroundColor = [accent colorWithAlphaComponent:0.060];
-    self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.135].CGColor;
+    self.accessoryPocketView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.90];
+    self.accessoryPocketView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.58].CGColor;
+    self.avatarShellView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.94];
+    self.avatarShellView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.62].CGColor;
+    self.countPillView.backgroundColor = [accent colorWithAlphaComponent:0.052];
+    self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.115].CGColor;
+    self.contactPillView.backgroundColor = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.985 alpha:0.88],
+                                                                         [UIColor colorWithWhite:1.0 alpha:0.070]);
+    self.contactPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
+    self.ratingPillView.backgroundColor = PPProviderPremiumDynamicColor([UIColor colorWithWhite:0.985 alpha:0.88],
+                                                                        [UIColor colorWithWhite:1.0 alpha:0.070]);
+    self.ratingPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
     self.metricsRailStackView.hidden = NO;
     self.countPillView.hidden = NO;
     self.countTitleLabel.hidden = NO;
@@ -721,7 +781,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     NSString *displaySubtitle = subtitle.length ? subtitle : category;
     NSMutableParagraphStyle *subtitleStyle = [[NSMutableParagraphStyle alloc] init];
     subtitleStyle.lineSpacing = 2.0;
-    subtitleStyle.lineBreakMode = NSLineBreakByWordWrapping;
+    subtitleStyle.lineBreakMode = NSLineBreakByTruncatingTail;
     subtitleStyle.alignment = self.subtitleLabel.textAlignment;
     self.subtitleLabel.attributedText =
         [[NSAttributedString alloc] initWithString:displaySubtitle
@@ -734,6 +794,10 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     NSString *cityText =
         [PPProviderPremiumSafeText(model.cityText)
          stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    BOOL hasResolvedCity = cityText.length > 0;
+    if (!hasResolvedCity) {
+        cityText = kLang(@"City Undefined") ?: kLang(@"city") ?: @"City";
+    }
     NSString *countDisplay =
         [PPProviderPremiumSafeText(model.countDisplayText)
          stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -741,16 +805,19 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         countDisplay = [PPProviderPremiumSafeText(model.countTitleText)
                         stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     }
-    self.metaFootnoteLabel.text = cityText;
     self.countTitleLabel.attributedText = PPProviderPremiumMetricText(PPProviderPremiumSafeText(model.countValueText),
                                                                       countDisplay,
                                                                       accent);
     self.contactLabel.text = cityText;
-    self.contactPillView.hidden = (cityText.length == 0);
-    self.contactLabel.hidden = self.contactPillView.hidden;
-    self.contactIconView.hidden = self.contactPillView.hidden;
+    self.contactPillView.hidden = NO;
+    self.contactLabel.hidden = NO;
+    self.contactIconView.hidden = NO;
+    CGFloat cityAlpha = hasResolvedCity ? 0.76 : 0.48;
+    self.contactIconView.tintColor = [PPProviderPremiumPrimaryTextColor() colorWithAlphaComponent:cityAlpha];
+    self.contactLabel.textColor = [PPProviderPremiumPrimaryTextColor() colorWithAlphaComponent:cityAlpha];
     self.ratingLabel.text = ratingCount.length ? [NSString stringWithFormat:@"%@ %@", ratingText, ratingCount] : ratingText;
-    self.metaFootnoteLabel.hidden = (self.metaFootnoteLabel.text.length == 0);
+    self.metaFootnoteLabel.text = nil;
+    self.metaFootnoteLabel.hidden = YES;
  
 
     self.accessoryPocketView.hidden = (model.accessoryStyle == PPProviderCompanyPremiumCardAccessoryStyleHidden);
@@ -765,6 +832,11 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.coverImageView.image = placeholder;
     [self pp_loadImageURL:model.imageURL placeholder:placeholder];
 
+    UIImage *avatarPlaceholder =
+        model.avatarPlaceholderImage ?: PPProviderPremiumInitialsImage(title, accent, CGSizeMake(72.0, 72.0));
+    self.avatarImageView.image = avatarPlaceholder;
+    [self pp_loadAvatarImageURL:model.avatarURL placeholder:avatarPlaceholder];
+
     BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
     NSTextAlignment leading = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     self.titleLabel.textAlignment = leading;
@@ -774,7 +846,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         NSMutableAttributedString *subtitleText = [self.subtitleLabel.attributedText mutableCopy];
         NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
         style.lineSpacing = 2.0;
-        style.lineBreakMode = NSLineBreakByWordWrapping;
+        style.lineBreakMode = NSLineBreakByTruncatingTail;
         style.alignment = leading;
         [subtitleText addAttribute:NSParagraphStyleAttributeName
                               value:style
@@ -787,6 +859,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.semanticContentAttribute = isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.cardView.semanticContentAttribute = self.semanticContentAttribute;
     self.contentPanelView.semanticContentAttribute = self.semanticContentAttribute;
+    self.avatarShellView.semanticContentAttribute = self.semanticContentAttribute;
     self.metricsRailStackView.semanticContentAttribute = self.semanticContentAttribute;
     self.contactPillView.semanticContentAttribute = self.semanticContentAttribute;
     self.countPillView.semanticContentAttribute = self.semanticContentAttribute;
@@ -795,7 +868,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     NSMutableArray<NSString *> *a11yParts = [NSMutableArray array];
     if (title.length) [a11yParts addObject:title];
     if (displaySubtitle.length) [a11yParts addObject:displaySubtitle];
-    if (self.metaFootnoteLabel.text.length) [a11yParts addObject:self.metaFootnoteLabel.text];
+    if (cityText.length) [a11yParts addObject:cityText];
     if (self.countTitleLabel.attributedText.string.length) [a11yParts addObject:self.countTitleLabel.attributedText.string];
     if (self.ratingLabel.text.length) [a11yParts addObject:self.ratingLabel.text];
     self.accessibilityLabel = [a11yParts componentsJoinedByString:@", "];
@@ -822,6 +895,21 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     }
 
     [[PPImageLoaderManager shared] setImageOnImageView:self.coverImageView
+                                                 url:urlString
+                                       placeholder:placeholder
+                                    transitionStyle:PPImageTransitionStyleCrossDissolve
+                                      complation:nil];
+}
+
+- (void)pp_loadAvatarImageURL:(NSURL *)imageURL placeholder:(UIImage *)placeholder
+{
+    NSString *urlString = imageURL.absoluteString ?: @"";
+    if (urlString.length == 0) {
+        self.avatarImageView.image = placeholder;
+        return;
+    }
+
+    [[PPImageLoaderManager shared] setImageOnImageView:self.avatarImageView
                                                  url:urlString
                                        placeholder:placeholder
                                     transitionStyle:PPImageTransitionStyleCrossDissolve
@@ -965,36 +1053,42 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     PPProviderPremiumApplyContinuousCorners(self.imageStageView, 24.0);
     PPProviderPremiumApplyContinuousCorners(self.topBadgeView, CGRectGetHeight(self.topBadgeView.bounds) * 0.5);
     PPProviderPremiumApplyContinuousCorners(self.accessoryPocketView, CGRectGetHeight(self.accessoryPocketView.bounds) * 0.5);
+    PPProviderPremiumApplyContinuousCorners(self.avatarShellView, CGRectGetHeight(self.avatarShellView.bounds) * 0.5);
+    PPProviderPremiumApplyContinuousCorners(self.avatarImageView, CGRectGetHeight(self.avatarImageView.bounds) * 0.5);
     PPProviderPremiumApplyContinuousCorners(self.countPillView, 18.0);
     PPProviderPremiumApplyContinuousCorners(self.contactPillView, 18.0);
     PPProviderPremiumApplyContinuousCorners(self.ratingPillView, CGRectGetHeight(self.ratingPillView.bounds) * 0.5);
 
     PPProviderPremiumApplyContinuousCorners(self.highlightBloomView, CGRectGetWidth(self.highlightBloomView.bounds) * 0.5);
 
-    self.cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds cornerRadius:34.0].CGPath;
+    self.cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds cornerRadius:28.0].CGPath;
     self.stageGradientLayer.frame = self.imageStageView.bounds;
-    self.stageGradientLayer.cornerRadius = 29.0;
+    self.stageGradientLayer.cornerRadius = 24.0;
     self.vignetteLayer.frame = self.imageStageView.bounds;
-    self.vignetteLayer.cornerRadius = 29.0;
+    self.vignetteLayer.cornerRadius = 24.0;
     self.doubleFadeLayer.frame = self.imageStageView.bounds;
-    self.doubleFadeLayer.cornerRadius = 29.0;
+    self.doubleFadeLayer.cornerRadius = 24.0;
 
     self.stageGradientLayer.colors = PPProviderPremiumStageGradientColors(self.viewModel.accentColor);
     self.vignetteLayer.colors = PPProviderPremiumVignetteColors();
     self.doubleFadeLayer.colors = PPProviderPremiumDoubleFadeColors();
     UIColor *accent = self.viewModel.accentColor ?: [UIColor colorWithRed:0.93 green:0.43 blue:0.18 alpha:1.0];
 
-    self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.135].CGColor;
+    self.countPillView.layer.borderColor = [accent colorWithAlphaComponent:0.115].CGColor;
     self.ratingPillView.layer.borderColor = PPProviderPremiumStrokeColor().CGColor;
-    self.accessoryPocketView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.50].CGColor;
+    self.accessoryPocketView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.58].CGColor;
+    self.avatarShellView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.62].CGColor;
+    self.imageStageView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.60].CGColor;
 }
 
 - (void)prepareForReuse
 {
     [super prepareForReuse];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.coverImageView];
+    [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.avatarImageView];
     self.viewModel = nil;
     self.coverImageView.image = nil;
+    self.avatarImageView.image = nil;
     self.titleLabel.text = nil;
     self.subtitleLabel.text = nil;
     self.subtitleLabel.attributedText = nil;
@@ -1026,6 +1120,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
 
     self.accessoryPocketView.hidden = NO;
     self.accessoryButton.hidden = NO;
+    self.avatarShellView.backgroundColor = [PPProviderPremiumSurfaceColor() colorWithAlphaComponent:0.94];
+    self.avatarShellView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.62].CGColor;
     self.accessibilityLabel = nil;
     self.accessibilityHint = nil;
 }

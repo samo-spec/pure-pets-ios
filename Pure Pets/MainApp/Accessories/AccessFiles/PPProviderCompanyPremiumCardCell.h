@@ -28,7 +28,9 @@ typedef NS_ENUM(NSInteger, PPProviderCompanyPremiumCardAccessoryStyle) {
 @property (nonatomic, copy) NSString *ratingCountText;
 @property (nonatomic, copy) NSString *cityText;
 @property (nonatomic, strong, nullable) NSURL *imageURL;
+@property (nonatomic, strong, nullable) NSURL *avatarURL;
 @property (nonatomic, strong, nullable) UIImage *placeholderImage;
+@property (nonatomic, strong, nullable) UIImage *avatarPlaceholderImage;
 @property (nonatomic, strong) UIColor *accentColor;
 @property (nonatomic, assign, getter=isVerified) BOOL verified;
 @property (nonatomic, assign, getter=isActive) BOOL active;

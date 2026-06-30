@@ -365,7 +365,7 @@
     _favButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
     UIImage *favImage = [UIImage systemImageNamed:@"heart"
                                 withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
-                                                                                                  weight:UIImageSymbolWeightSemibold]];
+                                                                                                  weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleDefault]];
     [_favButton setImage:[favImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
     _favButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.86];
     [_favButton addTarget:self action:@selector(pp_handleFavTap) forControlEvents:UIControlEventTouchUpInside];
@@ -483,7 +483,7 @@
     }
 
     [_mediaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.66]];
-    [_avatarShellView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.55]];
+    [_avatarShellView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.0]];
     _avatarShellView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.20];
     _cityPillView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.16];
     [_cityPillView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.26]];
