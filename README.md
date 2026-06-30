@@ -1,76 +1,188 @@
-# Pure Pets IOS — Premium Mobile Experience
-
-## Project Context
-`Pure Pets IOS` is the cornerstone mobile application of the Pure Pets ecosystem. It is designed to deliver a god-level, premium minimalist user experience for iOS users, powered by a robust Firebase backend managed by `Pure Pets Infra`. It serves as the primary consumer of platform services, pioneering the design language and feature sets for the entire ecosystem.
-
-## Role & Mission
-The iOS application provides a seamless, high-performance interface for:
--   **User Onboarding & Identity**: Secure authentication via Firebase Auth.
--   **Pet Ecosystem Access**: Real-time browsing of pets, accessories, and services.
--   **Direct Interaction**: Real-time messaging between users and service providers.
--   **Secure Commerce**: Integrated payment workflows and order management.
--   **Asset-Rich Experience**: High-fidelity media handling with custom transitions.
-
-## App Documentation
-
-### 1. Architecture & Design
-The project follows a hybrid architecture, meticulously blending Objective-C and Swift:
--   **`MainApp/`**: Core logic, navigation flows, and primary view controllers.
--   **`FireData/`**: A specialized data layer for Firestore/Realtime Database listeners and model parsing.
--   **`DataClasses/`**: Defines the platform's data models, ensuring consistency with the backend.
--   **`DesignFiles/`**: Centralized UI component library and theme definitions.
--   **`Bridges/`**: Crucial interoperability layers between Objective-C and Swift modules.
-
-### 2. Technology Stack
--   **Languages**: Objective-C (Core/Legacy) and Swift (Modern Features).
--   **Dependency Management**: CocoaPods (`Podfile`).
--   **UI Framework**: UIKit with code-only construction for precise layout control.
--   **Media**: `lame.framework` for audio and `HXPhotoPicker` for advanced media selection.
-
-### 3. Key Components
--   **`AppManager` / `GM`**: Global orchestrators handling application state, session persistence, and shared services.
--   **`BirdsCards`**: Specialized module for bird-specific platform features.
--   **`Resources/`**: Contains brand fonts (Beiruti), localization strings (`ar.lproj`, `en.lproj`), and asset catalogs.
-
-## Full Project Tree
-```text
-.
-├── Pure Pets/                   # Main Source Hub
-│   ├── MainApp/                 # Feature-specific Controllers
-│   ├── FireData/                # Firebase Sync & Persistence
-│   ├── DataClasses/             # Model & Schema Definitions
-│   ├── DesignFiles/             # UI Components & Themes
-│   ├── Bridges/                 # Obj-C / Swift Interop
-│   ├── Resources/               # Fonts, JSON Data, Locales
-│   ├── Assets.xcassets          # Global Image Assets
-│   ├── ColorsAssets.xcassets    # Semantic Color Definitions
-│   ├── AppDelegate.m            # Lifecycle Management
-│   ├── SceneDelegate.m          # Window & Scene Logic
-│   └── Info.plist               # App Configuration
-├── Pure Pets.xcworkspace        # Master Workspace (Required)
-├── Pure Pets.xcodeproj          # Project Configuration
-├── Podfile                      # Dependency Manifest
-├── MyFrames/                    # Custom Frameworks (QIB, Lame, HX)
-├── xcode-studio-mcp/            # Specialized MCP Tooling for IOS
-└── functions/                   # Scoped helper scripts
-```
-
-## Build & Maintenance
--   **Local Setup**:
-    1.  Ensure latest Xcode is installed.
-    2.  Run `pod install` in the root directory.
--   **Building**: Always open `Pure Pets.xcworkspace`. Use `Cmd+B` to build.
--   **Standards**: Maintain Premium Minimalist UI. All data writes must adhere to the audit requirements of `Pure Pets Infra`.
+<div align="center">
+  <br/>
+  <h1>Pure Pets iOS</h1>
+  <p><strong>Premium Pet Ecosystem — iOS Client</strong></p>
+  <br/>
+  <p>
+    <img src="https://img.shields.io/badge/platform-iOS%2015.0+-000?style=flat-square&logo=apple&logoColor=white"/>
+    <img src="https://img.shields.io/badge/lang-Objective--C%20%7C%20Swift-000?style=flat-square&logo=swift"/>
+    <img src="https://img.shields.io/badge/UI%20only-UIKit-000?style=flat-square"/>
+    <img src="https://img.shields.io/badge/RTL-Arabic%20primary-000?style=flat-square"/>
+    <img src="https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=000"/>
+    <img src="https://img.shields.io/badge/CocoaPods-FB3A3A?style=flat-square&logo=cocoapods&logoColor=white"/>
+  </p>
+  <br/>
+</div>
 
 ---
 
-# For Agents
-**Role**: Senior Staff iOS Engineer & UIKit Expert.
-**Directives**:
-1.  **Architecture**: Maintain the separation between `FireData` (persistence) and `MainApp` (UI). Respect the `AppManager` and `GM` for global state.
-2.  **UI standard**: Follow the God-level Premium Minimalism standard. Prioritize UIKit code-only layouts over Storyboards/XIBs.
-3.  **Hybrid Handling**: Ensure all Swift additions are properly bridged to Objective-C using `@objc` and `Pure Pets-Bridging-Header.h`.
-4.  **Firebase Sync**: Adhere strictly to the backend structures in `Pure Pets Infra/`. Use listeners efficiently to avoid memory leaks.
-5.  **Lifecycle**: Watch for retain cycles in blocks and delegates. Use `weakSelf` in Objective-C.
-6.  **Dependency**: Any new library must be approved for both performance and size. Use CocoaPods for all management.
-7.  **Workflow**: Use `xcode-studio-mcp` for deeper integration when debugging simulator or build issues.
+## Overview
+
+**Pure Pets iOS** is the flagship consumer mobile app of the Pure Pets ecosystem — a premium marketplace connecting pet owners with breeders, veterinarians, pet stores, and service providers across the Middle East. Built with iOS 15+ in mind, the app delivers a fast, RTL-first experience with code-only UIKit and Firebase at its core.
+
+| | |
+|---|---|
+| **Minimum Deployment** | iOS 15.0 |
+| **Primary Languages** | Arabic (RTL) · English (LTR) |
+| **Codebase** | Objective-C (core) + Swift (new features) |
+| **UI Framework** | UIKit — code-only, no Storyboards |
+| **Backend** | Firebase (Firestore, Auth, Storage, Functions) |
+| **Dependencies** | CocoaPods |
+
+---
+
+## Features
+
+- **Onboarding & Auth** — Firebase Authentication with Google Sign-In
+- **Pet Listings** — Browse, search, and filter pets, accessories, and services
+- **Breeder Cards** — Bird-specific marketplace with cage management and archives
+- **Real-time Chat** — Direct messaging between users and providers
+- **Secure Checkout** — Cart, order management, and QIB payment integration
+- **Veterinary Services** — Find and book vet appointments
+- **Pet Adoption** — Rehoming and adoption listings
+- **Visual Search** — Camera/photo library search by image
+- **Bilingual RTL** — Full Arabic primary / English secondary support
+
+---
+
+## Architecture
+
+```
+Pure Pets.xcworkspace
+└── Pure Pets/
+    ├── MainApp/          Feature view controllers & coordinators
+    ├── FireData/         Firestore/RTDB listeners & sync
+    ├── DataClasses/      Model objects & managers
+    ├── DesignFiles/      Reusable UI components & design tokens
+    ├── Bridges/          Objective-C ↔ Swift interop layer
+    └── Resources/        Fonts, localization, assets, JSON
+```
+
+### Layer Rules
+
+| Layer | Responsibility | Forbidden |
+|---|---|---|
+| `MainApp/` | Navigation, view controllers, feature logic | Firebase calls outside coordinator |
+| `FireData/` | Firestore listeners, snapshot parsing | UI code of any kind |
+| `DataClasses/` | Models, managers, file upload, audit logging | UIKit imports |
+| `DesignFiles/` | Reusable views, design tokens, styling | Business logic, Firebase |
+
+### Key Components
+
+- **`AppManager`** (`AppMgr`) — Global singleton owning Firestore reference, user session, image cache, and snack-bar presentation
+- **`GM`** — Stateless utility class for fonts, colors, images, Firebase Storage, compression, haptics, formatting
+- **`PPDesignTokens.h`** — Design system macros (spacing, corners, colors, typography, shadows)
+- **`PPBottomBar`** — Custom tab bar controller for app navigation
+- **`PPCheckoutCoordinator`** — Coordinator pattern for the full checkout flow
+
+---
+
+## Setup
+
+### Prerequisites
+
+- Xcode 15+
+- CocoaPods (`gem install cocoapods`)
+- An Apple Developer account (for device builds)
+
+### Install
+
+```bash
+git clone <repo>
+cd "Pure Pets IOS"
+pod install
+```
+
+### Build
+
+Always open the **workspace**, never the `.xcodeproj`:
+
+```bash
+open "Pure Pets.xcworkspace"
+```
+
+**Device build** (QIBPayment.framework is device-only):
+```bash
+xcodebuild -workspace "Pure Pets.xcworkspace" \
+  -scheme "Pure Pets" -configuration Debug \
+  -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO build
+```
+
+**Simulator build** (QIB payment path will not link):
+```bash
+xcodebuild -workspace "Pure Pets.xcworkspace" \
+  -scheme "Pure Pets" -configuration Debug \
+  -destination "platform=iOS Simulator,name=iPhone 17 Pro,OS=26.2" \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+---
+
+## Design System
+
+All tokens are defined in `PPDesignTokens.h` and available globally via `PrefixHeader.pch`.
+
+| Token | Value |
+|---|---|
+| `PPSpaceSM` | 8pt |
+| `PPSpaceBase` | 16pt |
+| `PPScreenMargin` | 20pt |
+| `PPCornerCard` | 22pt |
+| `PPCornerHero` | 32pt |
+| `PPCornerPill` | 9999pt |
+| `AppPrimaryClr` | Brand primary |
+| `PPFontHeadline` | 17pt (+1pt internal boost) |
+
+Always use these macros — no magic numbers.
+
+---
+
+## Localization
+
+Arabic is the **primary** language (RTL), English is secondary (LTR).
+
+- iOS strings: `ar.lproj/Localizable.strings` · `en.lproj/Localizable.strings`
+- Access: `kLang(@"key_name")` — never hardcode user-facing strings
+- Layout: Use leading/trailing Auto Layout anchors (never left/right)
+
+---
+
+## Firebase
+
+| Service | Usage |
+|---|---|
+| **Firestore** | All data storage — accessed via `AppMgr.dF` |
+| **Auth** | Email/password + Google Sign-In |
+| **Storage** | Pet photos, user avatars, chat media |
+| **Cloud Functions** | Payment processing, audit logging, permissions |
+| **App Check** | Always enabled on all platforms |
+
+---
+
+## Project Context
+
+Pure Pets iOS is the **reference implementation** for the entire Pure Pets ecosystem. Its UI/UX behavior and feature set define the standard that all other clients (Android, Web Console, Admin iOS) must match. The backend source of truth lives in `Pure Pets Infra/`.
+
+---
+
+## Contributing
+
+- Follow the existing code style and layer separation
+- All UI must be **code-only UIKit** — no new Storyboards
+- Use `kLang(@"key")` for any new user-facing string (Arabic + English)
+- Never hardcode design tokens — use `PPSpace*`, `PPCorner*`, `App*Clr` macros
+- Add `@objc` and bridging header entries for Swift files callable from ObjC
+- Every Firebase write must pass through the backend's permission + audit layer
+- `QIBPayment.framework` is **device-only** — do not test the online payment path in the simulator
+
+---
+
+## License
+
+Proprietary — Pure Pets. All rights reserved.
+
+---
+
+<div align="center">
+  <small>Built with ❤️ for pets and their people</small>
+</div>
