@@ -305,8 +305,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
     UIView *contentView = [[UIView alloc] init];
     contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [scrollView addSubview:contentView];
+     [scrollView addSubview:contentView];
 
     UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
     closeButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -361,8 +360,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     starsStack.alignment = UIStackViewAlignmentCenter;
     starsStack.distribution = UIStackViewDistributionFillEqually;
     starsStack.spacing = 8.0;
-    starsStack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-
+ 
     NSMutableArray<UIButton *> *starButtons = [NSMutableArray arrayWithCapacity:5];
     for (NSInteger rating = 1; rating <= 5; rating++) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -395,8 +393,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
                                  scaledFontForFont:([GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0])];
     self.commentTextView.adjustsFontForContentSizeCategory = YES;
     self.commentTextView.textAlignment = Language.alignmentForCurrentLanguage;
-    self.commentTextView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.commentTextView.backgroundColor = UIColor.secondarySystemBackgroundColor;
+     self.commentTextView.backgroundColor = UIColor.secondarySystemBackgroundColor;
     self.commentTextView.layer.cornerRadius = 18.0;
     self.commentTextView.layer.borderWidth = 0.75;
     self.commentTextView.layer.masksToBounds = YES;
@@ -985,7 +982,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
             heroBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         }
         heroBlurView.effect = heroBlur;
-        heroBlurView.alpha = 0.54;
+        heroBlurView.alpha = 0.38;
     }
     [self.view addSubview:self.heroSurfaceView];
 
@@ -1184,13 +1181,13 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.heroLiquidBorderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-1.0],
         [self.heroLiquidBorderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-1.0],
 
-        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace12],
-        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace12],
+        [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace16],
+        [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace16],
         [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
         [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
 
-        [self.cartNavButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace12],
-        [self.cartNavButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace12],
+        [self.cartNavButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace16],
+        [self.cartNavButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace16],
         [self.cartNavButton.widthAnchor constraintEqualToConstant:40.0],
         [self.cartNavButton.heightAnchor constraintEqualToConstant:40.0],
 
@@ -1297,7 +1294,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 - (UIView *)createSurfaceView {
     UIView *surface = [[UIView alloc] init];
     surface.translatesAutoresizingMaskIntoConstraints = NO;
-    surface.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.75];
+    surface.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.82];
     surface.layer.cornerRadius = kSPSurfaceCornerRadius;
     surface.layer.masksToBounds = NO;
     surface.layer.borderWidth = 0.25;
@@ -1447,7 +1444,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:6.0],
+        [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
         [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kSPSpace16],
         [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kSPSpace16],
 
@@ -1472,8 +1469,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.contentView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
         [self.contentView.widthAnchor constraintEqualToAnchor:frameGuide.widthAnchor],
 
-        [self.avatarShellView.topAnchor constraintEqualToAnchor:self.heroBackButton.bottomAnchor constant:kSPSpace12],
-        [self.avatarShellView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace20],
+        [self.avatarShellView.topAnchor constraintEqualToAnchor:self.heroBackButton.bottomAnchor constant:kSPSpace20],
+        [self.avatarShellView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace24],
         [self.avatarShellView.widthAnchor constraintEqualToConstant:kSPAvatarShellSize],
         [self.avatarShellView.heightAnchor constraintEqualToConstant:kSPAvatarShellSize],
 
@@ -1507,8 +1504,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.compactHeaderTitleLabel.centerYAnchor constraintEqualToAnchor:self.compactHeaderView.centerYAnchor],
 
         [self.eyebrowLabel.topAnchor constraintEqualToAnchor:self.avatarShellView.topAnchor],
-        [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:kSPSpace12],
-        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace20],
+        [self.eyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace24],
+        [self.eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarShellView.leadingAnchor constant:-kSPSpace16],
 
         [self.nameLabel.topAnchor constraintEqualToAnchor:self.eyebrowLabel.bottomAnchor constant:kSPSpace4],
         [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.eyebrowLabel.leadingAnchor],
@@ -1524,10 +1521,10 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         [self.statusBadgeView.heightAnchor constraintEqualToConstant:22.0],
         [self.statusBadgeView.widthAnchor constraintEqualToConstant:22.0],
 
-        [self.contactButtonStack.topAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:14.0],
-        [self.contactButtonStack.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace20],
-        [self.contactButtonStack.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace20],
-        [self.contactButtonStack.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-kSPSpace16],
+        [self.contactButtonStack.topAnchor constraintEqualToAnchor:self.avatarShellView.bottomAnchor constant:18.0],
+        [self.contactButtonStack.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace24],
+        [self.contactButtonStack.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-kSPSpace24],
+        [self.contactButtonStack.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-kSPSpace20],
         [self.messageButton.heightAnchor constraintEqualToConstant:kSPButtonHeight],
         [self.rateButton.heightAnchor constraintEqualToConstant:kSPButtonHeight],
 
@@ -1566,7 +1563,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     UIColor *surfaceBorder = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
 
-    self.heroSurfaceView.backgroundColor = foreground;
+    self.heroSurfaceView.backgroundColor = [foreground colorWithAlphaComponent:dark ? 0.82 : 0.86];
     self.heroGradientLayer.hidden = YES;
     self.heroGradientLayer.colors = nil;
     self.topFadeView.hidden = YES;
@@ -1596,6 +1593,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.heroLiquidBorderView.layer.borderWidth = 0.75;
     [self.heroLiquidBorderView pp_setBorderColor:surfaceBorder];
     self.heroBorderGradientLayer.opacity = 0.0;
+    self.heroLiquidBorderView.alpha = dark ? 0.78 : 0.62;
+    self.heroInnerGlowView.alpha = dark ? 0.86 : 0.62;
+    self.heroSupportGlowView.alpha = dark ? 0.82 : 0.58;
     self.heroSurfaceView.layer.shadowOpacity = dark ? 0.14 : 0.050;
     self.heroSurfaceView.layer.shadowRadius = 18.0;
     self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -1649,11 +1649,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 - (void)applySemanticDirection {
     UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
     self.view.semanticContentAttribute = semantic;
-    self.heroSurfaceView.semanticContentAttribute = semantic;
-    self.contactButtonStack.semanticContentAttribute = semantic;
-    self.itemsCollectionView.semanticContentAttribute = semantic;
-    self.compactHeaderView.semanticContentAttribute = semantic;
-    self.compactHeaderTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+     self.compactHeaderTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     NSArray<UILabel *> *labels = @[
         self.eyebrowLabel,
@@ -1668,10 +1664,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         label.textAlignment = Language.alignmentForCurrentLanguage;
     }
 
-    self.messageButton.semanticContentAttribute = semantic;
-    self.callButton.semanticContentAttribute = semantic;
-    self.rateButton.semanticContentAttribute = semantic;
-    self.itemsRetryButton.semanticContentAttribute = semantic;
+    
 }
 
 #pragma mark - Data
@@ -2617,8 +2610,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
                 keyPath:(NSString *)key
                   scale:(CGFloat)scale
             translation:(CGPoint)translation
-	               duration:(NSTimeInterval)duration
-	                  delay:(NSTimeInterval)delay {
+                   duration:(NSTimeInterval)duration
+                      delay:(NSTimeInterval)delay {
     (void)view;
     (void)key;
     (void)scale;

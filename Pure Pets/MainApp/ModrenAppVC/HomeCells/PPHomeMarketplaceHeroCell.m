@@ -9,9 +9,14 @@
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroGlowMotionKey = @"pp.home.marketplaceHero.glow";
 static NSString * const PPHomeMarketplaceHeroTopGlowBreathKey = @"pp.home.marketplaceHero.topGlowBreath";
+static NSString * const PPHomeMarketplaceHeroSupportGlowBreathKey = @"pp.home.marketplaceHero.supportGlowBreath";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
 static NSString * const PPHomeMarketplaceHeroPrimaryTileBreathKey = @"pp.home.marketplaceHero.primaryTileBreath";
 static NSString * const PPHomeMarketplaceHeroSecondaryTileBreathKey = @"pp.home.marketplaceHero.secondaryTileBreath";
+
+static UIColor *MarketHeroGoldColor(void) {
+    return [UIColor colorWithRed:0.78 green:0.62 blue:0.30 alpha:1.0];
+}
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {
@@ -267,22 +272,31 @@ static BOOL PPMarketHeroReduceMotion(void)
                                                   UIColor.whiteColor,
                                                   darkMode ? 0.08 : 0.20,
                                                   self.traitCollection);
+    UIColor *backgroundAccent = PPMarketHeroBlend(primaryAccent,
+                                                  surfaceBase,
+                                                  darkMode ? 0.12 : 0.18,
+                                                  self.traitCollection);
     UIColor *surfaceTint = PPMarketHeroBlend(surfaceBase,
-                                             primaryAccent,
-                                             darkMode ? 0.11 : 0.045,
+                                             backgroundAccent,
+                                             darkMode ? 0.095 : 0.038,
                                              self.traitCollection);
     UIColor *surfaceTail = PPMarketHeroBlend(surfaceTint,
-                                             primaryAccent,
-                                             darkMode ? 0.08 : 0.03,
+                                             backgroundAccent,
+                                             darkMode ? 0.062 : 0.024,
                                              self.traitCollection);
     UIColor *textPrimary = PPMarketHeroColor(0x2A171D, 1.0);
     UIColor *textSecondary = PPMarketHeroColor(0x7A666C, 1.0);
     UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.78];
-    UIColor *orbColor = [primaryAccent colorWithAlphaComponent:darkMode ? 0.15 : 0.10];
+    UIColor *orbColor = [backgroundAccent colorWithAlphaComponent:darkMode ? 0.17 : 0.11];
+    UIColor *supportGlowColor = PPMarketHeroBlend(backgroundAccent,
+                                                  PPMarketHeroColor(0x00F5D4, 1.0),
+                                                  darkMode ? 0.18 : 0.22,
+                                                  self.traitCollection);
     UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:0.09];
     UIColor *ctaEnd = PPMarketHeroColor(0xD91557, 0.82);
 
-    self.surfaceControl.backgroundColor = surfaceTint;
+    self.surfaceControl.backgroundColor = [UIColor clearColor];
+    self.surfaceGradientLayer.opacity = darkMode ? 0.85 : 0.60;
     self.surfaceGradientLayer.colors = @[
         (id)PPMarketHeroResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
         (id)PPMarketHeroResolvedColor(surfaceTint, self.traitCollection).CGColor,
@@ -321,10 +335,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ambientGlowView.layer.shadowOpacity = 0.0f;
     self.ambientGlowView.layer.shadowRadius = 0.0f;
     self.ambientGlowView.layer.shadowOffset = CGSizeZero;
-    self.ambientSupportGlowView.backgroundColor = UIColor.clearColor;
-    self.ambientSupportGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
-    self.ambientSupportGlowView.layer.shadowOpacity = 0.0f;
-    self.ambientSupportGlowView.layer.shadowRadius = 0.0f;
+    self.ambientSupportGlowView.backgroundColor = [supportGlowColor colorWithAlphaComponent:darkMode ? 0.12 : 0.095];
+    self.ambientSupportGlowView.layer.shadowColor = supportGlowColor.CGColor;
+    self.ambientSupportGlowView.layer.shadowOpacity = darkMode ? 0.11f : 0.075f;
+    self.ambientSupportGlowView.layer.shadowRadius = 18.0f;
     self.ambientSupportGlowView.layer.shadowOffset = CGSizeZero;
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
@@ -432,10 +446,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIView *supportGlow = [[UIView alloc] init];
     supportGlow.translatesAutoresizingMaskIntoConstraints = NO;
     supportGlow.userInteractionEnabled = NO;
-    supportGlow.layer.cornerRadius = 46.0;
+    supportGlow.layer.cornerRadius = 66.0;
     [surface addSubview:supportGlow];
     self.ambientSupportGlowView = supportGlow;
-
+    
     UIView *topAccent = [[UIView alloc] init];
     topAccent.translatesAutoresizingMaskIntoConstraints = NO;
     topAccent.userInteractionEnabled = NO;
@@ -460,13 +474,13 @@ static BOOL PPMarketHeroReduceMotion(void)
         [ambientGlow.topAnchor constraintEqualToAnchor:surface.topAnchor constant:-34.0],
         [ambientGlow.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:Language.isRTL ? 22.0 : -12.0],
 
-        [supportGlow.widthAnchor constraintEqualToConstant:92.0],
-        [supportGlow.heightAnchor constraintEqualToConstant:92.0],
-        [supportGlow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:28.0],
-        [supportGlow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:Language.isRTL ? -16.0 : 18.0],
+        [supportGlow.widthAnchor constraintEqualToConstant:132.0],
+        [supportGlow.heightAnchor constraintEqualToConstant:132.0],
+        [supportGlow.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:48.0],
+        [supportGlow.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:Language.isRTL ? -26.0 : 28.0],
 
         [topAccent.topAnchor constraintEqualToAnchor:surface.topAnchor],
-        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:22.0],
+        [topAccent.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:30.0],
         [topAccent.widthAnchor constraintEqualToConstant:44.0],
         [topAccent.heightAnchor constraintEqualToConstant:4.0],
 
@@ -836,8 +850,8 @@ static BOOL PPMarketHeroReduceMotion(void)
     if (![self.visualContainerView.layer animationForKey:PPHomeMarketplaceHeroFloatMotionKey]) {
         CABasicAnimation *floatAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         floatAnimation.fromValue = @0.0;
-        floatAnimation.toValue = @(-5.5);
-        floatAnimation.duration = 4.2;
+        floatAnimation.toValue = @(-7.0);
+        floatAnimation.duration = 3.1;
         floatAnimation.autoreverses = YES;
         floatAnimation.repeatCount = HUGE_VALF;
         floatAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -848,15 +862,15 @@ static BOOL PPMarketHeroReduceMotion(void)
     if (![self.ambientGlowView.layer animationForKey:PPHomeMarketplaceHeroGlowMotionKey]) {
         CABasicAnimation *glowDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
         glowDriftX.fromValue = @0.0;
-        glowDriftX.toValue = @(Language.isRTL ? -15.0 : 15.0);
+        glowDriftX.toValue = @(Language.isRTL ? -20.0 : 20.0);
 
         CABasicAnimation *glowDriftY = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         glowDriftY.fromValue = @0.0;
-        glowDriftY.toValue = @12.0;
+        glowDriftY.toValue = @16.0;
 
         CAAnimationGroup *glowDrift = [CAAnimationGroup animation];
         glowDrift.animations = @[glowDriftX, glowDriftY];
-        glowDrift.duration = 5.7;
+        glowDrift.duration = 3.8;
         glowDrift.autoreverses = YES;
         glowDrift.repeatCount = HUGE_VALF;
         glowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -866,33 +880,41 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     [self pp_applyBreathingGlowToView:self.ambientGlowView
                                   key:PPHomeMarketplaceHeroTopGlowBreathKey
-                            fromAlpha:0.48
-                              toAlpha:0.78
-                            fromScale:0.92
-                              toScale:1.12
-                             duration:5.8];
+                            fromAlpha:0.54
+                              toAlpha:0.90
+                            fromScale:0.90
+                              toScale:1.18
+                             duration:3.7];
+
+    [self pp_applyBreathingGlowToView:self.ambientSupportGlowView
+                                  key:PPHomeMarketplaceHeroSupportGlowBreathKey
+                            fromAlpha:0.66
+                              toAlpha:0.98
+                            fromScale:0.94
+                              toScale:1.08
+                             duration:4.1];
 
     [self pp_applyBreathingGlowToView:self.visualHaloView
                                   key:PPHomeMarketplaceHeroHaloBreathKey
-                            fromAlpha:0.74
+                            fromAlpha:0.78
                               toAlpha:1.0
-                            fromScale:0.96
-                              toScale:1.05
-                             duration:4.9];
+                            fromScale:0.95
+                              toScale:1.075
+                             duration:3.4];
 
     [self pp_applyBreathAnimationToTile:self.primaryProductTileView
                                     key:PPHomeMarketplaceHeroPrimaryTileBreathKey
-                                  delay:0.18
-                               duration:3.8
-                              amplitude:0.060
-                                   lift:-2.4
+                                  delay:0.04
+                               duration:2.8
+                              amplitude:0.078
+                                   lift:-3.4
                              lowOpacity:0.84];
     [self pp_applyBreathAnimationToTile:self.secondaryProductTileView
                                     key:PPHomeMarketplaceHeroSecondaryTileBreathKey
-                                  delay:1.12
-                               duration:4.3
-                              amplitude:0.068
-                                   lift:-2.8
+                                  delay:0.48
+                               duration:3.2
+                              amplitude:0.082
+                                   lift:-3.8
                              lowOpacity:0.82];
 }
 
@@ -966,11 +988,13 @@ static BOOL PPMarketHeroReduceMotion(void)
     [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
     [self.ambientGlowView.layer removeAnimationForKey:PPHomeMarketplaceHeroGlowMotionKey];
     [self.ambientGlowView.layer removeAnimationForKey:PPHomeMarketplaceHeroTopGlowBreathKey];
+    [self.ambientSupportGlowView.layer removeAnimationForKey:PPHomeMarketplaceHeroSupportGlowBreathKey];
     [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
     [self.primaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroPrimaryTileBreathKey];
     [self.secondaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroSecondaryTileBreathKey];
     self.visualContainerView.transform = CGAffineTransformIdentity;
     self.ambientGlowView.transform = CGAffineTransformIdentity;
+    self.ambientSupportGlowView.transform = CGAffineTransformIdentity;
     self.visualHaloView.transform = CGAffineTransformIdentity;
     self.primaryProductTileView.transform = CGAffineTransformIdentity;
     self.secondaryProductTileView.transform = CGAffineTransformIdentity;

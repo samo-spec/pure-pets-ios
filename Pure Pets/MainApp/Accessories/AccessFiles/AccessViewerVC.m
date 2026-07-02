@@ -2572,6 +2572,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:YES];
     [self pp_configurePremiumNavigationChrome];
     [self pp_applyBottomSurfaceAnimated:animated];
 }
@@ -2652,6 +2653,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:NO];
 }
 
 
@@ -2972,8 +2974,6 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self.navigationTitleView animateEntranceIfNeeded];
     [self.petsTitleView animatePillsIn];
     [self pp_animateSellerCardEntranceIfNeeded];
-    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
-                                                                                 screen:@"product"];
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
         [self trackAccessoryInteraction:PPItemInteractionTypeView];

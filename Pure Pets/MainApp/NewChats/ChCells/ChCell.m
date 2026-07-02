@@ -20,7 +20,7 @@
 
 #pragma mark - Design Tokens
 
-static CGFloat const kCellOuterHorizontalInset   = 12.0;
+static CGFloat const kCellOuterHorizontalInset   = 18.0;
 static CGFloat const kCellOuterVerticalInset     = 5.0;
 static CGFloat const kCanvasCornerRadius         = 24.0;
 static CGFloat const kCanvasBorderWidth          = 1.0;

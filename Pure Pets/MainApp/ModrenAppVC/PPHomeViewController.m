@@ -1402,6 +1402,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, copy, nullable) NSString *unreadListenerUserID;
 @property (nonatomic, assign) BOOL adsLoaded;
 @property (nonatomic, assign) BOOL accessoriesLoaded;
+@property (nonatomic, assign) BOOL lastFoodLoaded;
 @property (nonatomic, assign) BOOL nearbyLoaded;
 @property (nonatomic, assign) BOOL nearbyLoading;
 @property (nonatomic, strong) NSArray<ServiceModel *> *nearbyServiceProviders;
@@ -1485,6 +1486,10 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, copy, nullable) NSString *lastAppliedHomeConfigOrderSignature;
 @property (nonatomic, assign) BOOL shouldResetHomeScrollForConfigOrderChange;
 @property (nonatomic, assign) BOOL didApplyServerHomeConfig;
+@property (nonatomic, assign) BOOL isHomeBootstrapped;
+@property (nonatomic, strong, nullable) UIView *bootstrapOverlayView;
+@property (nonatomic, strong, nullable) UIActivityIndicatorView *bootstrapSpinner;
+@property (nonatomic, strong, nullable) NSTimer *bootstrapTimeoutTimer;
 // YES once the HomeConfig listener has reported (or the safety timeout has fired).
 // Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
 // the full default-section set just to relayout to the config-filtered set seconds
@@ -1534,6 +1539,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
 - (BOOL)pp_isInitialHomeRevealSettled;
 - (BOOL)pp_shouldReduceHomeMotion;
+- (BOOL)pp_shouldStageHomeEntranceContent;
 - (BOOL)pp_shouldDeferHomeLayoutStabilization;
 - (NSArray<NSNumber *> *)pp_collectionSectionIndexesOrderedForEntrance;
 - (NSArray<NSIndexPath *> *)pp_sortedVisibleIndexPathsForEntrance;
@@ -1551,6 +1557,11 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                                                             kind:(NSString *)kind
                                                      atIndexPath:(NSIndexPath *)indexPath
                                                   lateAppearance:(BOOL)isLateAppearance;
+- (void)pp_stageHomeEntranceCellIfNeeded:(UICollectionViewCell *)cell
+                              indexPath:(NSIndexPath *)indexPath;
+- (void)pp_stageHomeEntranceSupplementaryViewIfNeeded:(UICollectionReusableView *)supplementaryView
+                                                 kind:(NSString *)kind
+                                            indexPath:(NSIndexPath *)indexPath;
 - (void)pp_animateHomeEntranceForCell:(UICollectionViewCell *)cell
                           atIndexPath:(NSIndexPath *)indexPath
                        initialOrdinal:(NSUInteger)initialOrdinal;
@@ -2394,7 +2405,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
                                             forKey:PPNovaFloatingVisibleDefaultsKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
-    
+
     // We also set it individually so other view controllers can read it easily
     [[NSUserDefaults standardUserDefaults] setBool:novaUseGenkit forKey:@"pp_nova_use_genkit"];
 }
@@ -2561,12 +2572,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (void)applyBaseSnapshot
 {
-    // Until the HomeConfig listener (or the safety timeout) tells us which
-    // sections are visible, keep the snapshot empty. Rendering defaults first
-    // and relaying out after the config arrives produces the "everything appears
-    // then half of it disappears" flash we're trying to avoid. The premium
-    // entrance animation runs once below, on the first non-empty apply.
-    if (!self.didReceiveHomeConfig) {
+    // Until the Home controller is fully bootstrapped with section config and real data,
+    // keep the snapshot empty to ensure all sections are hidden by default. This avoids
+    // any initial flash of placeholder/incorrect sections on first launch.
+    if (!self.isHomeBootstrapped) {
         NSDiffableDataSourceSnapshot *emptySnapshot = [[NSDiffableDataSourceSnapshot alloc] init];
         [self.dataSource applySnapshot:emptySnapshot animatingDifferences:NO];
         return;
@@ -2691,7 +2700,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     // stage the fade-in below.
     BOOL isFirstContentApply = !self.didApplyInitialBaseSnapshot;
     self.didApplyInitialBaseSnapshot = YES;
-    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    [self.dataSource applySnapshot:snapshot animatingDifferences:!isFirstContentApply];
     [self pp_reloadHomeCollectionLayoutPreservingScrollOffset];
 
     // First time we render non-empty sections and the screen is on stage: stage
@@ -3779,6 +3788,11 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (void)reloadSection:(PPHomeSection)section
 {
+    // Prevent partial section reloads and layout updates until the Home controller is fully bootstrapped
+    if (!self.isHomeBootstrapped) {
+        return;
+    }
+
     NSNumber *sectionIdentifier = @(section);
     CGPoint preservedOffset = CGPointZero;
     BOOL preserveOffset = (section == PPHomeSectionSuggestions);
@@ -3962,6 +3976,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.petProfilesLoaded = NO;
     self.buyAgainEntries = @[];
     self.lastFoodAccessories = @[];
+    self.lastFoodLoaded = NO;
     self.isCurrentOrdersExpanded = NO;
     id storedPetProfileCardExpanded = [[NSUserDefaults standardUserDefaults] objectForKey:PPHomePetProfileCardExpandedKey];
     self.isPetProfileCardExpanded = storedPetProfileCardExpanded
@@ -3988,8 +4003,17 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self pp_applyPremiumHomeBackgroundAppearance];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
     [self configureDataSource];
+
+    // 🏁 Production-grade First-Render Gate setup: restored to prevent flash/stacking
+    self.isHomeBootstrapped = NO;
+    self.bootstrapTimeoutTimer = [NSTimer scheduledTimerWithTimeInterval:4.0
+                                                                   target:self
+                                                                 selector:@selector(pp_bootstrapTimeoutFired)
+                                                                 userInfo:nil
+                                                                  repeats:NO];
+
     [self pp_applyCachedHomeConfigIfAvailable];
-    [self applyBaseSnapshot];   // 🔥 NEW
+    [self applyBaseSnapshot];   // Will render empty snapshot initially since bootstrapped is NO
     [self refreshHeroSectionAppearance];
 
     __weak typeof(self) weakSelf = self;
@@ -4023,6 +4047,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         if ([self pp_applyCachedHomeConfigIfAvailable]) {
             NSLog(@"[HomeConfig] Listener silent for 800ms — using cached Console sections.");
             [self applyBaseSnapshot];
+            [self pp_checkBootstrapStatus];
             return;
         }
         NSLog(@"[HomeConfig] Listener silent for 800ms — using default sections fallback.");
@@ -4032,6 +4057,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
         [self pp_publishNovaFloatingVisibility:YES];
         [self applyBaseSnapshot];
+        [self pp_checkBootstrapStatus];
     });
 
     // 🔥 Fill top banner once banners are ready
@@ -4115,6 +4141,111 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
            selector:@selector(handleHomeAccessibilityAppearanceDidChange:)
                name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
               object:nil];
+}
+
+#pragma mark - First-Render Gate Bootstrap System
+
+- (void)pp_checkBootstrapStatus
+{
+    if (self.isHomeBootstrapped) {
+        return;
+    }
+
+    BOOL configReady = self.didReceiveHomeConfig;
+    BOOL dataReady = self.accessoriesLoaded &&
+                     self.lastFoodLoaded &&
+                     self.nearbyLoaded &&
+                     self.nearbyServicesLoaded &&
+                     self.petProfilesLoaded &&
+                     self.currentOrdersLoaded;
+
+    if (configReady && dataReady) {
+        [self pp_revealHomeAtomic];
+    }
+}
+
+- (void)pp_bootstrapTimeoutFired
+{
+    if (self.isHomeBootstrapped) {
+        return;
+    }
+    self.bootstrapTimeoutTimer = nil;
+    NSLog(@"[HomeBootstrap] ⚠️ Bootstrap watchdog fired. Keeping splash cover until real Home data is ready.");
+
+    if (!self.didReceiveHomeConfig) {
+        if ([self pp_applyCachedHomeConfigIfAvailable]) {
+            NSLog(@"[HomeBootstrap] Applied cached HomeConfig while waiting for first complete data snapshot.");
+        } else {
+            self.homeConfigSections = [self pp_mergeHomeConfigSectionsWithCatalog:@[]];
+            self.didReceiveHomeConfig = YES;
+            self.lastAppliedHomeConfigOrderSignature =
+                [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
+            [self pp_publishNovaFloatingVisibility:YES];
+            NSLog(@"[HomeBootstrap] Applied default HomeConfig while waiting for first complete data snapshot.");
+        }
+        [self applyBaseSnapshot];
+    }
+
+    [self pp_checkBootstrapStatus];
+}
+
+- (void)pp_revealHomeAtomic
+{
+    if (self.isHomeBootstrapped) {
+        return;
+    }
+    self.isHomeBootstrapped = YES;
+
+    if (self.bootstrapTimeoutTimer) {
+        [self.bootstrapTimeoutTimer invalidate];
+        self.bootstrapTimeoutTimer = nil;
+    }
+
+    NSLog(@"[HomeBootstrap] 🚀 Revealing Home atomically with final allowed sections!");
+
+    // Build the first visible snapshot with real resolved data
+    [self applyBaseSnapshot];
+    [self.view setNeedsLayout];
+    [self.view layoutIfNeeded];
+    [self.collectionView setNeedsLayout];
+    [self.collectionView layoutIfNeeded];
+
+    if ([PPHUD isVisible]) {
+        [PPHUD dismiss];
+    }
+
+    if (self.bootstrapOverlayView) {
+        [UIView animateWithDuration:0.38
+                              delay:0.1
+                            options:UIViewAnimationOptionCurveEaseInOut
+                         animations:^{
+            self.bootstrapOverlayView.alpha = 0.0;
+            self.bootstrapSpinner.alpha = 0.0;
+        } completion:^(BOOL finished) {
+            [self.bootstrapOverlayView removeFromSuperview];
+            self.bootstrapOverlayView = nil;
+            [self.bootstrapSpinner removeFromSuperview];
+            self.bootstrapSpinner = nil;
+        }];
+    }
+
+    // Find and fade out the window-level splash cover view overlay
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *window = self.view.window;
+        UIView *coverView = [window viewWithTag:99182];
+        if (coverView) {
+            coverView.frame = window.bounds;
+            [window bringSubviewToFront:coverView];
+            [UIView animateWithDuration:0.4
+                                  delay:0.04
+                                options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                coverView.alpha = 0.0;
+            } completion:^(BOOL finished) {
+                [coverView removeFromSuperview];
+            }];
+        }
+    });
 }
 
 - (BOOL)pp_cachedNovaFloatingVisibility
@@ -4773,6 +4904,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
             [strongSelf.homeLocationTitleView startLivingMotion];
         }
+        [strongSelf pp_checkBootstrapStatus];
     });
 }
 
@@ -4890,7 +5022,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
 
     return [self pp_homeStatusKey:statusKey
-                 matchesAnyKeywords:@[@"preparing_for_shipment",
+                 matchesAnyKeywords:@[@"pending",
+                                      @"preparing_for_shipment",
                                       @"ready_for_delivery",
                                       @"delivery_partner_assigned",
                                       @"on_the_way"]];
@@ -4899,6 +5032,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (NSString *)pp_homeOrderStatusTitle:(PPOrder *)order
 {
     NSString *statusKey = [self pp_homeOrderStatusKey:order];
+    if ([statusKey isEqualToString:@"pending"]) {
+        return kLang(@"order_placed_title") ?: kLang(@"Pending");
+    }
     if ([statusKey isEqualToString:@"ready_for_delivery"]) {
         return kLang(@"Ready for Delivery");
     }
@@ -5674,10 +5810,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 static NSInteger const PPLastFoodVisibleLimit = 10;
 
-- (void)pp_refreshLastFoodSection
+- (NSArray<PetAccessory *> *)pp_lastFoodItemsFromSource:(NSArray<PetAccessory *> *)source
 {
     NSMutableArray<PetAccessory *> *foodItems = [NSMutableArray array];
-    for (PetAccessory *accessory in self.accessories ?: @[]) {
+    for (PetAccessory *accessory in source ?: @[]) {
         if (![accessory isKindOfClass:PetAccessory.class]) continue;
         if (accessory.accessKindType == AccessTypeFood) {
             [foodItems addObject:accessory];
@@ -5688,7 +5824,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [foodItems sortUsingComparator:^NSComparisonResult(PetAccessory *a, PetAccessory *b) {
         NSDate *aDate = a.createdAt ?: [NSDate distantPast];
         NSDate *bDate = b.createdAt ?: [NSDate distantPast];
-        return [bDate compare:aDate];
+        NSComparisonResult dateOrder = [bDate compare:aDate];
+        if (dateOrder != NSOrderedSame) return dateOrder;
+
+        NSString *aID = PPSafeString(a.accessoryID);
+        NSString *bID = PPSafeString(b.accessoryID);
+        return [aID compare:bID options:NSCaseInsensitiveSearch];
     }];
 
     // Limit to visible count
@@ -5697,8 +5838,39 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                                      foodItems.count - PPLastFoodVisibleLimit)];
     }
 
-    self.lastFoodAccessories = foodItems.copy;
+    return foodItems.copy;
+}
+
+- (void)pp_applyLastFoodItems:(NSArray<PetAccessory *> *)items
+{
+    self.lastFoodAccessories = [self pp_lastFoodItemsFromSource:items];
     [self reloadSection:PPHomeSectionLastFood];
+}
+
+- (void)pp_refreshLastFoodSection
+{
+    [self pp_applyLastFoodItems:self.accessories ?: @[]];
+}
+
+- (void)pp_fetchLastFoodSection
+{
+    __weak typeof(self) weakSelf = self;
+    [[PetAccessoryManager sharedManager] fetchFoodForAllMainKinds:^(NSArray<PetAccessory *> *foods) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.lastFoodLoaded = YES;
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            [self pp_applyLastFoodItems:foods ?: @[]];
+            [CATransaction commit];
+            [self tryApplySnapshot];
+            [self pp_checkBootstrapStatus];
+        });
+    }];
 }
 
 - (NSString *)pp_homeOrderItemIdentifier:(id)rawItem
@@ -6180,6 +6352,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [self reloadSection:PPHomeSectionBuyAgain];
             }
         }
+        [self pp_checkBootstrapStatus];
         return;
     }
 
@@ -6244,6 +6417,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 NSLog(@"[Home][CurrentOrders] fetch failed: %@", error.localizedDescription ?: @"Unknown error");
                 [self reloadSection:PPHomeSectionCurrentOrders];
                 [self pp_refreshBuyAgainSection];
+                [self pp_checkBootstrapStatus];
                 return;
             }
 
@@ -6322,6 +6496,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self pp_refreshSuggestionsForAppearanceIfNeeded];
     // Refresh hero peek strip to reflect order changes
     [self refreshHeroSectionAppearance];
+    [self pp_checkBootstrapStatus];
 }
 
 - (void)persistNearbyLocationIfNeeded
@@ -6994,9 +7169,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories");
-            cfg.actionTitle = self.isMainKindsExpanded
-                ? kLang(@"ShowLess")
-                : kLang(@"ShowAll");
+            //cfg.actionTitle = self.isMainKindsExpanded
+             //   ? kLang(@"ShowLess")
+             //   : kLang(@"ShowAll");
 
             cfg.iconName = self.isMainKindsExpanded
                 ? @"chevron.up"
@@ -7317,9 +7492,33 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
              (UICollectionView *collectionView, NSIndexPath *indexPath, PPHomeItem *item) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) {
-            return [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier
+            UICollectionViewCell *fallbackCell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier
                                                              forIndexPath:indexPath];
+            fallbackCell.alpha = 0.0;
+            return fallbackCell;
         }
+
+        // ── Born-hidden entrance gate ──────────────────────────────────
+        // Every cell the provider returns is born invisible when the
+        // premium entrance animation hasn't fired yet. The staggered
+        // entrance system (pp_animateHomeEntranceForCell / horizontal
+        // universal) will reveal each cell with its proper delay &
+        // spring. After the first entrance settles, cells appear
+        // normally so scrolling and reconfiguration are unaffected.
+        BOOL shouldStageForEntrance = !strongSelf.didRunPremiumHomeEntranceAnimation &&
+                                      ![strongSelf pp_shouldReduceHomeMotion];
+
+        // Inline staging block — sets a cell to its pre-entrance hidden
+        // state (alpha 0, slight translateY + scale) so it never flashes
+        // at full opacity before the staggered entrance animation fires.
+        void (^pp_stageCell)(UICollectionViewCell *) = ^(UICollectionViewCell *cell) {
+            if (!shouldStageForEntrance || !cell) return;
+            cell.alpha = 0.0;
+            cell.transform = CGAffineTransformConcat(
+                CGAffineTransformMakeTranslation(0.0, 7.0),
+                CGAffineTransformMakeScale(0.996, 0.996));
+        };
+
         PPHomeSection section = [strongSelf sectionTypeForIndexPath:indexPath];
 
         if (section == PPHomeSectionHero) {
@@ -7327,7 +7526,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeHeroCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             [strongSelf pp_configureHeroCell:cell];
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionQuickActions) {
@@ -7355,7 +7554,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 }
                 [self handleQuickActionSelection:quickAction];
             };
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionCurrentOrders) {
@@ -7366,7 +7565,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
             if (item.payload == [NSNull null] || ![item.payload isKindOfClass:PPOrder.class]) {
                 [cell configurePlaceholderExpanded:expanded];
-                return cell;
+                pp_stageCell(cell); return cell;
             }
 
             PPOrder *order = (PPOrder *)item.payload;
@@ -7406,7 +7605,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     [self pp_scrollCurrentOrdersSectionIntoViewAnimated:YES];
                 }
             };
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionPetProfile) {
@@ -7424,7 +7623,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 if (!home) return;
                 [home pp_setPetProfileCardExpanded:expanded animated:YES];
             };
-            return cell;
+            pp_stageCell(cell); return cell;
         }
    
             if ( section == PPHomeSectionPremiumSearch) {
@@ -7441,7 +7640,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     [self pp_openSmartSearch];
                 };
 
-	                return cell;
+	                pp_stageCell(cell); return cell;
 	            }
 
         if (section == PPHomeSectionMarketplaceHero) {
@@ -7457,7 +7656,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [self pp_openMarketplaceProvidersListFromHero];
             };
 
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionProviderCategoryNav) {
@@ -7479,7 +7678,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [self pp_handleProviderCategorySelection:selectedItem];
             };
 
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if ( section == PPHomeSectionPremiumCare) {
@@ -7488,14 +7687,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier
                                                               forIndexPath:indexPath];
                 [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
-                return cell;
+                pp_stageCell(cell); return cell;
             }
 
             PPHomePremiumCareCell *legacyCell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             [legacyCell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
-            return legacyCell;
+            pp_stageCell(legacyCell); return legacyCell;
         }
 
         if (section == PPHomeSectionCarousel) {
@@ -7504,7 +7703,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             [strongSelf pp_configureBannerCell:cell forItem:item];
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         /*
@@ -7567,7 +7766,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
             if (item.payload == [NSNull null]) {
                 [cell configureSkeleton];
-                return cell;
+                pp_stageCell(cell); return cell;
             }
 
             PPHomeServiceItem *service = (PPHomeServiceItem *)item.payload;
@@ -7592,7 +7791,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                             source:PPInputSourceHomeServicesSection];
             };
 
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
 
@@ -7605,7 +7804,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                             subtitle:kLang(@"Find your new best friend")
                            seedImage:[UIImage imageNamed:@"icn_cat"]];
 
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
                 if (section == PPHomeSectionSuggestions) {
@@ -7614,7 +7813,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     PPUniversalCell *cell =
                             [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier
                                                                       forIndexPath:indexPath];
-                        return cell; // height-only placeholder
+                        pp_stageCell(cell); return cell; // height-only placeholder
                     }
 
             // ✅ REAL CONTENT
@@ -7627,7 +7826,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
             PPUniversalCellViewModel *vm = item.universalViewModel;
             if (!vm || !vm.ModelObject) {
-                return cell;
+                pp_stageCell(cell); return cell;
             }
 
             vm.indexPath = indexPath;
@@ -7676,7 +7875,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                complation:nil];
             }];
 
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
 
@@ -7695,7 +7894,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                         [cell configureWithMainKind:nil
                                               isAll:YES
                                           selected:(strongSelf.selectedCategory == nil)];
-                        return cell;
+                        pp_stageCell(cell); return cell;
                     }
 
                 MainKindsModel *kind = (MainKindsModel *)item.payload;
@@ -7751,7 +7950,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 };
 
 
-                return cell;
+                pp_stageCell(cell); return cell;
             }
 
         if (section == PPHomeSectionAdsNearBy &&
@@ -7775,7 +7974,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                               systemIcon:@"hourglass"];
                 cell.onTap = nil;
             }
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionNearbyServices &&
@@ -7793,7 +7992,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                               systemIcon:@"hourglass"];
                 cell.onTap = nil;
             }
-            return cell;
+            pp_stageCell(cell); return cell;
         }
 
 
@@ -7860,7 +8059,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         }
 
-        return cell;
+        pp_stageCell(cell); return cell;
     }];
 
     // =========================
@@ -7894,6 +8093,15 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             header.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
         }
 
+        // ── Born-hidden entrance gate for headers ────────────────────
+        BOOL stageHeader = weakSelf &&
+                           !weakSelf.didRunPremiumHomeEntranceAnimation &&
+                           ![weakSelf pp_shouldReduceHomeMotion];
+        if (stageHeader) {
+            header.alpha = 0.0;
+            header.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+        }
+
         if (cfg.hidden) {
             header.hidden = YES;
             return header;
@@ -7908,6 +8116,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                               menu:cfg.section == PPHomeSectionMainKinds ? nil : cfg.menu
                      ppHomeSection:cfg.section];
         [header setSurfaceDecorationActive:[weakSelf pp_shouldShowScrolledSectionHeaderDecoration] animated:NO];
+        [weakSelf pp_stageHomeEntranceSupplementaryViewIfNeeded:header
+                                                           kind:kind
+                                                      indexPath:indexPath];
 
         header.onTap = ^{
             [weakSelf handleSeeAllForSection:cfg.section];
@@ -8045,6 +8256,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         if (error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                self.accessories = @[];
+                self.accessoriesLoaded = YES;
+                [self pp_refreshBuyAgainSection];
+                [self reloadSection:PPHomeSectionCurrentOrders];
+                [self reloadSection:PPHomeSectionAccessories];
+                [self reloadSection:PPHomeSectionSuggestions];
+                [self tryApplySnapshot];
+                [self pp_checkBootstrapStatus];
                 [PPHUD showError:kLang(@"SomethingWentWrong")];
             });
             return;
@@ -8074,7 +8293,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             self.accessories = sorted;
             self.accessoriesLoaded = YES;
             [self pp_refreshBuyAgainSection];
-            [self pp_refreshLastFoodSection];
 
             // Batch all section reloads into a single layout pass
             [CATransaction begin];
@@ -8082,15 +8300,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [self reloadSection:PPHomeSectionCurrentOrders];
             [self reloadSection:PPHomeSectionAccessories];
             [self reloadSection:PPHomeSectionSuggestions];
-            [self reloadSection:PPHomeSectionLastFood];
             [CATransaction commit];
 
             [self tryApplySnapshot];
             [self pp_prefetchTopImagesWithLimit:20];
+            [self pp_checkBootstrapStatus];
         });
 
     }];
 
+    [self pp_fetchLastFoodSection];
     [self refreshCurrentOrdersForce:YES];
     [self refreshNearbyAdsForce:YES reason:@"initial-load"];
     [self refreshNearbyServicesForce:YES];
@@ -8114,6 +8333,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [self pp_refreshSuggestionsForAppearanceIfNeeded];
         }
         [self tryApplySnapshot];
+        [self pp_checkBootstrapStatus];
         return;
     }
 
@@ -8186,6 +8406,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [self reloadSection:PPHomeSectionSuggestions];
                 [self tryApplySnapshot];
                 [self pp_prefetchTopImagesWithLimit:24];
+                [self pp_checkBootstrapStatus];
             }];
             return;
         } else {
@@ -8210,6 +8431,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             self.didAutoScrollSuggestions = YES;
             [self autoScrollIndextoIndex:2 inSection:PPHomeSectionSuggestions];
         }
+        [self pp_checkBootstrapStatus];
     }];
 }
 
@@ -8253,6 +8475,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     self.didAutoScrollNearbyServices = YES;
                     [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
                 }
+                [self pp_checkBootstrapStatus];
             });
         }];
     } else {
@@ -8275,6 +8498,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     self.didAutoScrollNearbyServices = YES;
                     [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
                 }
+                [self pp_checkBootstrapStatus];
             });
         }];
     }
@@ -8895,6 +9119,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         if (shouldReload) {
             [self reloadSection:PPHomeSectionPetProfile];
         }
+        [self pp_checkBootstrapStatus];
         return;
     }
 
@@ -8953,6 +9178,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             if (shouldReload) {
                 [self reloadSection:PPHomeSectionPetProfile];
             }
+            [self pp_checkBootstrapStatus];
         });
     }];
 }
@@ -9249,14 +9475,7 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     // before pp_prepareVisibleHomeEntranceContentIfNeeded can fade them. Pre-
     // fade them here so they're already in the entrance "before" state at the
     // moment of display, then let the staggered animation reveal them.
-    if (!self.didRunPremiumHomeEntranceAnimation && ![self pp_shouldReduceHomeMotion]) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        [self pp_configureHomeEntranceInitialStateForCell:cell
-                                              atIndexPath:indexPath
-                                           lateAppearance:NO];
-        [CATransaction commit];
-    }
+    [self pp_stageHomeEntranceCellIfNeeded:cell indexPath:indexPath];
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
@@ -9278,6 +9497,17 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_animateHorizontalUniversalCellIfNeeded:cell
                                         atIndexPath:indexPath
                                             section:section];
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+willDisplaySupplementaryView:(UICollectionReusableView *)view
+        forElementKind:(NSString *)elementKind
+           atIndexPath:(NSIndexPath *)indexPath
+{
+    (void)collectionView;
+    [self pp_stageHomeEntranceSupplementaryViewIfNeeded:view
+                                                   kind:elementKind
+                                              indexPath:indexPath];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -9949,6 +10179,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return UIAccessibilityIsReduceMotionEnabled();
 }
 
+- (BOOL)pp_shouldStageHomeEntranceContent
+{
+    return self.collectionView != nil &&
+           !self.didRunPremiumHomeEntranceAnimation &&
+           ![self pp_shouldReduceHomeMotion];
+}
+
 - (BOOL)pp_shouldDeferHomeLayoutStabilization
 {
     if (self.isPremiumHomeEntranceAnimating) {
@@ -10074,7 +10311,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_prepareVisibleHomeEntranceContentIfNeeded
 {
-    if (!self.collectionView || [self pp_shouldReduceHomeMotion] || self.didRunPremiumHomeEntranceAnimation) {
+    if (![self pp_shouldStageHomeEntranceContent]) {
         return;
     }
 
@@ -10112,10 +10349,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         if (!header) {
             return;
         }
-        [self pp_configureHomeEntranceInitialStateForSupplementaryView:header
-                                                                  kind:UICollectionElementKindSectionHeader
-                                                           atIndexPath:headerIndexPath
-                                                        lateAppearance:NO];
+        [self pp_stageHomeEntranceSupplementaryViewIfNeeded:header
+                                                       kind:UICollectionElementKindSectionHeader
+                                                  indexPath:headerIndexPath];
         headerOrdinal += 1;
     }];
 
@@ -10123,9 +10359,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         (void)idx;
         (void)stop;
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
-        [self pp_configureHomeEntranceInitialStateForCell:cell
-                                              atIndexPath:indexPath
-                                           lateAppearance:NO];
+        [self pp_stageHomeEntranceCellIfNeeded:cell indexPath:indexPath];
     }];
 }
 
@@ -10253,7 +10487,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     // so that the post-config apply in applyBaseSnapshot can retrigger this and
     // get a real reveal. Setting the flag here would silently consume the only
     // entrance we have.
-    if (self.collectionView.indexPathsForVisibleItems.count == 0) {
+    BOOL hasVisibleCells = (self.collectionView.indexPathsForVisibleItems.count > 0);
+    BOOL hasVisibleHeaders =
+        ([self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader].count > 0);
+    if (!hasVisibleCells && !hasVisibleHeaders) {
         return;
     }
 
@@ -10589,7 +10826,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                                           : (isHero ? 14.0 : (isPrimarySurface ? 10.0 : 7.0));
     CGFloat scale = isLateAppearance ? (isHero ? 0.996 : (isPrimarySurface ? 0.997 : 0.998))
                                      : (isHero ? 0.992 : (isPrimarySurface ? 0.994 : 0.996));
-    CGFloat initialAlpha = isLateAppearance ? 0.0 : (isHero ? 0.0 : 0.04);
+    CGFloat initialAlpha = 0.0;
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -10631,6 +10868,41 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     supplementaryView.layer.zPosition = 0.0f;
     supplementaryView.alpha = 0.0;
     supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, isLateAppearance ? 3.0 : 8.0);
+    [CATransaction commit];
+}
+
+- (void)pp_stageHomeEntranceCellIfNeeded:(UICollectionViewCell *)cell
+                               indexPath:(NSIndexPath *)indexPath
+{
+    if (![self pp_shouldStageHomeEntranceContent] || !cell || !indexPath) {
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [self pp_configureHomeEntranceInitialStateForCell:cell
+                                          atIndexPath:indexPath
+                                       lateAppearance:NO];
+    [CATransaction commit];
+}
+
+- (void)pp_stageHomeEntranceSupplementaryViewIfNeeded:(UICollectionReusableView *)supplementaryView
+                                                 kind:(NSString *)kind
+                                            indexPath:(NSIndexPath *)indexPath
+{
+    if (![self pp_shouldStageHomeEntranceContent] ||
+        !supplementaryView ||
+        !indexPath ||
+        ![kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [self pp_configureHomeEntranceInitialStateForSupplementaryView:supplementaryView
+                                                              kind:kind
+                                                       atIndexPath:indexPath
+                                                    lateAppearance:NO];
     [CATransaction commit];
 }
 
@@ -11145,6 +11417,20 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     UIButton *badgeHost = self.homeCartButton;
     [badgeHost removeBadge];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.homeCartButton.configuration;
+        if (config) {
+            if (count <= 0) {
+                config.background.backgroundColor = UIColor.clearColor;
+                config.background.strokeColor = UIColor.clearColor;
+            } else {
+                config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ?: [UIColor colorWithWhite:1.0 alpha:0.72];
+                config.background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.16];
+            }
+            self.homeCartButton.configuration = config;
+        }
+    }
 
     if (count <= 0) {
         return;
@@ -11826,6 +12112,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)fillCarouselBanner
 {
+    if (!self.isHomeBootstrapped) return;
     if (!self.dataSource) return;
 
     NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
@@ -12400,7 +12687,7 @@ presentingViewController:self
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
     UIColor *signatureColor = AppPrimaryClrShiner ?: UIColor.systemPurpleColor;
-    UIColor *supportingColor = AppPrimaryClrShiner ?: AppForgroundColr ?: signatureColor;
+    UIColor *supportingColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: signatureColor;
     UIColor *topAtmosphereColor = AppPrimaryClrShiner;
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
                             color:topAtmosphereColor
@@ -12410,7 +12697,7 @@ presentingViewController:self
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
                             color:supportingColor
                         peakAlpha:(isDark ? 0.075 : 0.035) * accessibilityScale
-                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.025)) * accessibilityScale];
+                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.018)) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
                             color:signatureColor
@@ -12470,10 +12757,10 @@ presentingViewController:self
     self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
     CGFloat middleY = MAX(180.0, height * 0.52);
     if (self.backgroundGlowsFadedByHomeConfig) {
-        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds), middleY);
+        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds) + 40, middleY);
     } else {
         self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
-            isRTL ? width - (midSize * 0.20) : midSize * 0.20,
+            isRTL ? width - (midSize * 0.10) : midSize * 0.10,
             middleY
         );
     }

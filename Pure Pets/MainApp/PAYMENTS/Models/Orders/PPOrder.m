@@ -509,6 +509,7 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
         return @"ready_for_delivery";
     }
     if (PPOrderStatusContainsToken(raw, @"pending") ||
+        PPOrderStatusContainsToken(raw, @"created") ||
         PPOrderStatusContainsToken(raw, @"placed") ||
         PPOrderStatusContainsToken(raw, @"waiting")) {
         return @"pending";

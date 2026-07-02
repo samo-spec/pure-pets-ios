@@ -37,7 +37,7 @@ static const CGFloat kHeaderHeightMin     = 52.0;
 
 // Standard card sizes
 static const CGFloat kCardMedium  = 164.0;
-static const CGFloat kCardLarge   = 238.0;
+static const CGFloat kCardLarge   = 248.0;
 
 static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
 static const CGFloat kCurrentOrdersCollapsedItemHeight = 93.0;
@@ -279,13 +279,13 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 352.0;
+        return 362.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 332.0;
+        return 352.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 332.0;
+        return 352.0;
     }
     return kCardLarge + 0.0;
 }
@@ -484,7 +484,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
-     section.contentInsets = NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(), PPHomeEdgeSpacing, PPHomeSpacingSection, PPHomeEdgeSpacing);
+     section.contentInsets = NSDirectionalEdgeInsetsMake(8.0, PPHomeEdgeSpacing, PPHomeSpacingSection, PPHomeEdgeSpacing);
 
      return section;
  }
@@ -542,7 +542,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 14.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 26.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeightMin,
                                              NO);
@@ -555,12 +555,14 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth
  {
+     
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 0.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 26.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);
+      
  }
 
  + (NSCollectionLayoutSection *)petProfileSection
@@ -608,7 +610,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 0.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 26.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);
@@ -670,7 +672,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 15.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) + 20.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);
@@ -903,12 +905,12 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth
  {
-      return PPHomeBuildHorizontalRailSection(
-                                              PPHomeAccessoryCardWidth(availableWidth) - 0.0,
-                                              PPHomeAccessoryCardHeight(availableWidth) - 0.0,
-                                              PPHomeSpacingBase,
-                                              kHeaderHeight,
-                                              YES);
+     return PPHomeBuildHorizontalRailSection(
+                                             PPHomeAccessoryCardWidth(availableWidth),
+                                             PPHomeAccessoryCardHeight(availableWidth) + 20.0,
+                                             PPHomeSpacingBase,
+                                             kHeaderHeight,
+                                             NO);
  }
 
  + (NSCollectionLayoutSection *)nearbyServicesSection {
@@ -917,12 +919,12 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)nearbyServicesSectionForWidth:(CGFloat)availableWidth
  {
-      return PPHomeBuildHorizontalRailSection(
-                                              PPHomeAccessoryCardWidth(availableWidth),
-                                              PPHomeAccessoryCardHeight(availableWidth)+20 ,
-                                              PPHomeSpacingBase,
-                                              kHeaderHeight,
-                                              YES);
+     return PPHomeBuildHorizontalRailSection(
+                                             PPHomeAccessoryCardWidth(availableWidth),
+                                             PPHomeAccessoryCardHeight(availableWidth) + 20.0,
+                                             PPHomeSpacingBase,
+                                             kHeaderHeight,
+                                             NO);
  }
 
 

@@ -359,7 +359,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     CGFloat glowOpacity = selected
-        ? (self.isAllOption ? 0.38 : 0.77)
+        ? (self.isAllOption ? 0.38 : 0.87)
         : (self.isAllOption ? 0.24 : 0.52);
 
     void (^changes)(void) = ^{
@@ -392,8 +392,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
     CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
-    self.imagePlateWidthConstraint.constant = (isAll ? 52.0 : 52.0) * scale;
-    self.imagePlateHeightConstraint.constant = (isAll ? 52.0 : 52.0) * scale;
+    self.imagePlateWidthConstraint.constant = (isAll ? 54.0 : 54.0) * scale;
+    self.imagePlateHeightConstraint.constant = (isAll ? 54.0 : 54.0) * scale;
     self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
     self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
 }

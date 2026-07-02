@@ -298,7 +298,7 @@
    
     
     UIColor *baseColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.7];
+    return [baseColor colorWithAlphaComponent:0.75];
 }
 
 - (UIColor *)pp_surfaceBorderColor
@@ -310,7 +310,7 @@
     //if (self.currentSection == PPHomeSectionMainKinds) {
     //    return [accent colorWithAlphaComponent:1.0];
     //}
-    return [accent colorWithAlphaComponent:0.35];
+    return [accent colorWithAlphaComponent:0.85];
 }
 
 - (UIFont *)pp_titleFont

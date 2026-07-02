@@ -740,7 +740,14 @@
 "PPCellLayoutFullWidth" = "العرض الكامل";
 "PPCellLayoutSquare" = "مربع";
 "PPCellLayoutVertical" = "عموديًا";
+"PPCellLayoutPinterest" = "بنترست";
+"Pintrest" = "بنترست";
 "PPCellLayout" = "تخطيط الخلية";
+"PPDataViewActionsTitle" = "أدوات التصفح";
+"PPDataViewPrimaryLayouts" = "تخطيطات مميزة";
+"PPDataViewMoreLayouts" = "تخطيطات أخرى";
+"PPDataViewSearchMenuA11y" = "أدوات البحث والتخطيط";
+"PPDataViewSearchMenuHint" = "يفتح إجراءات البحث والتصفية وتخطيط التصفح";
 
 "searchOnly" = "بحث";
 "search" = "البحث";
@@ -1253,6 +1260,8 @@
 "Title" = "العنوان";
 "Description" = "الوصف";
 "Category" = "الفئة";
+"data_nav_species" = "النوع";
+"data_nav_breed" = "السلالة";
 "Breed" = "السلالة";
 "Subcategory" = "الفئة الفرعية";
 "Price" = "السعر";
@@ -2473,6 +2482,10 @@
 "pet_reminders_tab" = "التذكيرات";
 "pet_chats_tab" = "الدردشات";
 "notifications_inbox_tab" = "الإشعارات";
+"notifications_hub_hero_eyebrow" = "صندوق التواصل";
+"notifications_hub_hero_chats_subtitle" = "القصص والمحادثات الأخيرة جاهزة بدون ازدحام.";
+"notifications_hub_hero_reminders_subtitle" = "تذكيرات الرعاية والمتابعات والمواعيد في عرض هادئ.";
+"notifications_hub_hero_notifications_subtitle" = "تحديثات الطلبات وتنبيهات التطبيق مجمعة لمراجعة سريعة.";
 "notifications_inbox_empty_title" = "لا توجد إشعارات بعد";
 "notifications_inbox_empty_subtitle" = "ستظهر هنا تحديثات الطلبات وتنبيهات المحادثات.";
 "notifications_inbox_category_chat" = "الدردشات";

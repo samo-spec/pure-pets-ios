@@ -5,6 +5,8 @@ static const NSInteger PPModrenSegmrntedNoSelection = -1;
 static const CGFloat PPModrenSegmrntedOuterInset = 3.0;
 static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
 static const CGFloat PPModrenSegmrntedUnderlineHeight = 4.0;
+static const CGFloat PPModrenSegmrntedContainerCornerRadius = 22.0;
+static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 15.0;
 static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.36;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
@@ -331,7 +333,7 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     self.containerFillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.containerFillView.userInteractionEnabled = NO;
     self.containerFillView.backgroundColor = UIColor.clearColor;
-     self.containerFillView.layer.masksToBounds = YES;
+    self.containerFillView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.containerFillView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -346,9 +348,12 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     config.background.backgroundColor = UIColor.clearColor;
     config.background.strokeColor = UIColor.clearColor;
     config.background.strokeWidth = 0.0;
+    config.background.cornerRadius = PPModrenSegmrntedContainerCornerRadius;
     self.containerBlurView.configuration = config;
     self.containerBlurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.containerBlurView.userInteractionEnabled = NO;
+    self.containerBlurView.clipsToBounds = YES;
+    self.containerBlurView.layer.masksToBounds = YES;
     self.containerBlurView.layer.borderWidth = 0.0;
     self.containerBlurView.layer.borderColor = UIColor.clearColor.CGColor;
     [self.containerFillView addSubview:self.containerBlurView];
@@ -357,6 +362,10 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     self.containerTintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     self.containerTintOverlay.userInteractionEnabled = NO;
     self.containerTintOverlay.backgroundColor = UIColor.clearColor;
+    self.containerTintOverlay.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.containerTintOverlay.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.containerFillView addSubview:self.containerTintOverlay];
 
     self.selectionOutlineView = [[UIView alloc] init];
@@ -457,28 +466,30 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {
     [super layoutSubviews];
 
-    CGFloat controlRadius = CGRectGetHeight(self.bounds) * 0.5;
-    self.containerFillView.layer.cornerRadius = 22;
+    CGFloat controlRadius = PPModrenSegmrntedContainerCornerRadius;
+    CGFloat selectionRadius = PPModrenSegmrntedSelectionCornerRadius;
+    self.layer.cornerRadius = controlRadius;
+    self.containerFillView.layer.cornerRadius = controlRadius;
+    self.containerBlurView.layer.cornerRadius = controlRadius;
+    self.containerTintOverlay.layer.cornerRadius = controlRadius;
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                    cornerRadius:controlRadius].CGPath;
 
-    CGFloat outlineHeight = MAX(0.0, CGRectGetHeight(self.bounds) - (PPModrenSegmrntedOuterInset * 2.0));
-    CGFloat outlineRadius = outlineHeight * 0.5;
-    self.selectionOutlineView.layer.cornerRadius = 22;
+    self.selectionOutlineView.layer.cornerRadius = selectionRadius;
     self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
 
 
     self.selectionSurfaceLayer.frame = self.selectionOutlineView.bounds;
-    self.selectionSurfaceLayer.cornerRadius = 22;
+    self.selectionSurfaceLayer.cornerRadius = selectionRadius;
 
 
     self.selectionUnderlineLayer.frame = self.selectionUnderlineView.bounds;
-    self.selectionUnderlineLayer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
+    self.selectionUnderlineLayer.cornerRadius = 2.0;
 
     self.selectionOutlineView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.selectionOutlineView.bounds
-                                   cornerRadius:outlineRadius].CGPath;
+                                   cornerRadius:selectionRadius].CGPath;
     self.selectionUnderlineView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.selectionUnderlineView.bounds
                                    cornerRadius:PPModrenSegmrntedUnderlineHeight * 0.5].CGPath;

@@ -16,7 +16,9 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     PPSplashLoadingPhaseFinalizing,
     PPSplashLoadingPhaseReady
 };
-
+static UIColor *SplashViewControllerGoldColor(void) {
+    return [UIColor colorWithRed:0.78 green:0.62 blue:0.30 alpha:1.0];
+}
 @interface SplashViewController ()
 @property (nonatomic, assign) BOOL didShowMainVC;
 @property (nonatomic, assign) BOOL didStartInitialDataLoad;
@@ -398,8 +400,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     self.topGlowView.layer.shadowRadius = 60.0f;
     self.topGlowView.layer.shadowOffset = CGSizeZero;
 
-    self.bottomGlowView.backgroundColor = [primaryGlowColor colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    [self.bottomGlowView pp_setShadowColor:primaryGlowColor];
+    self.bottomGlowView.backgroundColor = [[UIColor colorWithHexString:@"#6D2E4D"] colorWithAlphaComponent:isDark ? 0.18 : 0.10];
+    [self.bottomGlowView pp_setShadowColor:[UIColor colorWithHexString:@"#6D2E4D"]];
     self.bottomGlowView.layer.shadowOpacity = isDark ? 0.16f : 0.10f;
     self.bottomGlowView.layer.shadowRadius = 54.0f;
     self.bottomGlowView.layer.shadowOffset = CGSizeZero;
@@ -1086,7 +1088,28 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
         return;
     }
 
+    // Capture a static snapshot of the splash interface to overlay on the window.
+    // This snapshot covers the screen seamlessly during the Home screen's remote
+    // config and initial data bootstrap process, preventing any visual stacking.
+    UIView *coverView = [self.view snapshotViewAfterScreenUpdates:NO];
+    if (!coverView) {
+        coverView = [[UIView alloc] initWithFrame:window.bounds];
+        coverView.backgroundColor = self.view.backgroundColor;
+    } else {
+        coverView.frame = window.bounds;
+    }
+    coverView.tag = 99182;
+    coverView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    coverView.opaque = YES;
+    coverView.userInteractionEnabled = YES;
+    coverView.accessibilityElementsHidden = YES;
+    coverView.backgroundColor = coverView.backgroundColor ?: self.view.backgroundColor ?: window.backgroundColor ?: UIColor.systemBackgroundColor;
+
     [self pp_swapRootViewController:rootVC onWindow:window];
+    coverView.frame = window.bounds;
+    [[window viewWithTag:99182] removeFromSuperview];
+    [window addSubview:coverView];
+    [window bringSubviewToFront:coverView];
 }
 
 - (nullable UIWindow *)pp_transitionWindow
@@ -1138,17 +1161,14 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 {
     window.semanticContentAttribute = GM.setSemantic;
 
-    [UIView transitionWithView:window
-                      duration:0.35
-                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
-                    animations:^{
-        BOOL previousAnimationState = [UIView areAnimationsEnabled];
-        [UIView setAnimationsEnabled:NO];
-        window.rootViewController = rootViewController;
-        [window makeKeyAndVisible];
-        [window layoutIfNeeded];
-        [UIView setAnimationsEnabled:previousAnimationState];
-    } completion:nil];
+    // Swap root view controller instantly without transitions to avoid cross-dissolving
+    // while Home is in an unbootstrapped/empty state.
+    BOOL previousAnimationState = [UIView areAnimationsEnabled];
+    [UIView setAnimationsEnabled:NO];
+    window.rootViewController = rootViewController;
+    [window makeKeyAndVisible];
+    [window layoutIfNeeded];
+    [UIView setAnimationsEnabled:previousAnimationState];
 }
 
 @end

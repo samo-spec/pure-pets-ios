@@ -18,6 +18,8 @@
 @property (nonatomic, assign) BOOL didUpdateLayoutOnce;
 @property (nonatomic, assign) float ppContextPreviousShadowOpacity;
 @property (nonatomic, assign) BOOL ppContextSuppressedShadow;
+@property (nonatomic, strong) UIColor *ppContextBubbleBackgroundColor;
+@property (nonatomic, assign) BOOL ppContextHasBubbleBackgroundColor;
 
 @end
 @implementation ChatMessageCell
@@ -101,6 +103,8 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     [self pp_setContextFocusSuppressed:NO];
+    self.ppContextBubbleBackgroundColor = nil;
+    self.ppContextHasBubbleBackgroundColor = NO;
     self.didUpdateLayoutOnce = NO;
     self.bubbleMaxWidthConstraint.active = NO;
     self.bubbleMaxWidthConstraint = nil;
@@ -191,15 +195,62 @@
     // Do not touch thumbnail, loading, play state, or applyVisualState.
 }
 
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    [self pp_restoreContextBubbleBackgroundIfNeeded];
+}
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated
+{
+    [super setSelected:selected animated:animated];
+    [self pp_restoreContextBubbleBackgroundIfNeeded];
+}
+
 #pragma mark - Long-Press Context Menu
+
+- (nullable UIColor *)pp_visibleBubbleBackgroundColor
+{
+    UIColor *color = self.bubbleView.backgroundColor;
+    if (!color) {
+        return nil;
+    }
+
+    CGFloat alpha = CGColorGetAlpha(color.CGColor);
+    return alpha > 0.01 ? color : nil;
+}
+
+- (void)pp_captureContextBubbleBackgroundIfNeeded
+{
+    UIColor *color = [self pp_visibleBubbleBackgroundColor];
+    self.ppContextBubbleBackgroundColor = color;
+    self.ppContextHasBubbleBackgroundColor = (color != nil);
+}
+
+- (UIColor *)pp_contextPreviewBackgroundColor
+{
+    if (self.ppContextHasBubbleBackgroundColor && self.ppContextBubbleBackgroundColor) {
+        return self.ppContextBubbleBackgroundColor;
+    }
+    return [self pp_visibleBubbleBackgroundColor] ?: UIColor.clearColor;
+}
+
+- (void)pp_restoreContextBubbleBackgroundIfNeeded
+{
+    if (self.ppContextHasBubbleBackgroundColor && self.ppContextBubbleBackgroundColor) {
+        self.bubbleView.backgroundColor = self.ppContextBubbleBackgroundColor;
+    }
+}
 
 - (void)pp_setContextFocusSuppressed:(BOOL)suppressed
 {
     if (suppressed) {
         if (!self.ppContextSuppressedShadow) {
             self.ppContextPreviousShadowOpacity = self.bubbleView.layer.shadowOpacity;
+            [self pp_captureContextBubbleBackgroundIfNeeded];
         }
         self.ppContextSuppressedShadow = YES;
+        [self pp_restoreContextBubbleBackgroundIfNeeded];
         self.bubbleView.layer.shadowOpacity = 0.0;
         return;
     }
@@ -207,7 +258,10 @@
     if (self.ppContextSuppressedShadow) {
         self.bubbleView.layer.shadowOpacity = self.ppContextPreviousShadowOpacity;
     }
+    [self pp_restoreContextBubbleBackgroundIfNeeded];
     self.ppContextSuppressedShadow = NO;
+    self.ppContextBubbleBackgroundColor = nil;
+    self.ppContextHasBubbleBackgroundColor = NO;
 }
 
 - (nullable UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
@@ -262,7 +316,7 @@
 {
     [self pp_setContextFocusSuppressed:YES];
     UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
-    parameters.backgroundColor = UIColor.clearColor;
+    parameters.backgroundColor = [self pp_contextPreviewBackgroundColor];
     parameters.visiblePath =
         [UIBezierPath bezierPathWithRoundedRect:self.bubbleView.bounds
                                    cornerRadius:30.0];
@@ -274,7 +328,7 @@
                         previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
 {
     UIPreviewParameters *parameters = [[UIPreviewParameters alloc] init];
-    parameters.backgroundColor = UIColor.clearColor;
+    parameters.backgroundColor = [self pp_contextPreviewBackgroundColor];
     parameters.visiblePath =
         [UIBezierPath bezierPathWithRoundedRect:self.bubbleView.bounds
                                    cornerRadius:30.0];

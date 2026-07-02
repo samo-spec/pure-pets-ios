@@ -1192,6 +1192,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (NSString *)displayTitleForCustomerStatusKey:(NSString *)statusKey
 {
     NSString *key = PPOrderHistoryNormalizedStatus(statusKey);
+    if ([key isEqualToString:@"pending"]) return kLang(@"order_placed_title") ?: kLang(@"Pending");
     if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
     if ([key isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
     if ([key isEqualToString:@"on_the_way"]) return kLang(@"On the Way");

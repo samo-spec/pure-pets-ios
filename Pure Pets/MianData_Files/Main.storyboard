@@ -2833,7 +2833,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="793"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="lunch_light" translatesAutoresizingMaskIntoConstraints="NO" id="dHN-gn-AV8">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="splash_light" translatesAutoresizingMaskIntoConstraints="NO" id="dHN-gn-AV8">
                                 <rect key="frame" x="0.0" y="0.0" width="393" height="793"/>
                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                 <color key="backgroundColor" name="AppForegroundColor"/>
@@ -2900,7 +2900,6 @@
         <image name="close" width="25" height="25"/>
         <image name="google2" width="25" height="25"/>
         <image name="login3" width="42.666667938232422" height="42.666667938232422"/>
-        <image name="lunch_light" width="200" height="355.33334350585938"/>
         <image name="man" width="42.666667938232422" height="42.666667938232422"/>
         <image name="multiply" catalog="system" width="128" height="111"/>
         <image name="newlogo" width="341.33334350585938" height="341.33334350585938"/>
@@ -2913,6 +2912,7 @@
         <image name="profile5" width="128" height="128"/>
         <image name="refresh-arrow" width="128" height="128"/>
         <image name="return.right" catalog="system" width="128" height="102"/>
+        <image name="splash_light" width="200" height="355.33334350585938"/>
         <image name="trash.circle.fill" catalog="system" width="128" height="123"/>
         <image name="userchat" width="80" height="80"/>
         <image name="userr" width="30" height="30"/>

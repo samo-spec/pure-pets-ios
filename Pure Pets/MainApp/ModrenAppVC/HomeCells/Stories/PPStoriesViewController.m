@@ -18,12 +18,13 @@
 #import "PPHUD.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
-static const CGFloat PPStoriesSidePadding        = 14.0;
-static const CGFloat PPStoriesTopPadding         = 14.0;
-static const CGFloat PPStoriesBottomPadding      = 14.0;
+static const CGFloat PPStoriesSidePadding        = 18.0;
+static const CGFloat PPStoriesContainerSideInset = 16.0;
+static const CGFloat PPStoriesTopPadding         = 10.0;
+static const CGFloat PPStoriesBottomPadding      = 10.0;
 static const CGFloat PPStoriesItemSpacing        = 12.0;
-static const CGFloat PPStoriesItemWidth          = 92.0;
-static const CGFloat PPStoriesItemHeight         = 126.0;
+static const CGFloat PPStoriesItemWidth          = 106.0;
+static const CGFloat PPStoriesItemHeight         = 138.0;
 static const CGFloat PPStoriesTitleTopPadding    = 16.0;
 static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 
@@ -46,7 +47,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
-
+    self.view.semanticContentAttribute = GM.setSemantic;
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
     UIColor *storiesAccentColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
     UIColor *storiesSurfaceColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor;
@@ -55,7 +56,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
     _glassBackdrop.layer.cornerRadius = 28.0;
     _glassBackdrop.layer.masksToBounds = YES;
     _glassBackdrop.clipsToBounds = YES;
-    _glassBackdrop.layer.borderWidth = 1.0;
+    _glassBackdrop.layer.borderWidth = 0.0;
     [_glassBackdrop pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.68]];
     [_glassBackdrop pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.10]];
     _glassBackdrop.layer.shadowOpacity = 1.0;
@@ -113,7 +114,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
     _sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _sectionTitleLabel.font = [GM boldFontWithSize:15.5];
     _sectionTitleLabel.textColor = UIColor.labelColor;
-    _sectionTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     _sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     _sectionTitleLabel.numberOfLines = 1;
     _sectionTitleLabel.hidden = YES;
@@ -121,7 +121,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 
     UICollectionViewFlowLayout *layout = [UICollectionViewFlowLayout new];
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    layout.sectionInset = UIEdgeInsetsMake(PPStoriesTopPadding, PPStoriesSidePadding, PPStoriesBottomPadding, PPStoriesSidePadding);
+    layout.sectionInset = UIEdgeInsetsMake(PPStoriesTopPadding, PPStoriesSidePadding + 6, PPStoriesBottomPadding, PPStoriesSidePadding+6);
     layout.minimumInteritemSpacing = PPStoriesItemSpacing;
     layout.minimumLineSpacing = PPStoriesItemSpacing;
     layout.itemSize = CGSizeMake(PPStoriesItemWidth, PPStoriesItemHeight);
@@ -132,11 +132,11 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
     _collectionView.showsHorizontalScrollIndicator = NO;
     _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
-    _collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_collectionView registerClass:[PPStoryCollectionViewCell class]
         forCellWithReuseIdentifier:@"StoryCell"];
     _collectionView.dataSource = self;
     _collectionView.delegate = self;
+    _collectionView.semanticContentAttribute = GM.setSemantic;
     [self.view addSubview:_collectionView];
 
     _collectionTopConstraint =
@@ -144,8 +144,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [_glassBackdrop.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:4.0],
-        [_glassBackdrop.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8.0],
-        [_glassBackdrop.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-8.0],
+        [_glassBackdrop.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPStoriesContainerSideInset],
+        [_glassBackdrop.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPStoriesContainerSideInset],
         [_glassBackdrop.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-4.0],
 
         [_sectionTitleLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:PPStoriesTitleTopPadding],
@@ -166,6 +166,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 8.0;
     self.glassBackdrop.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.glassBackdrop.bounds
                                                                      cornerRadius:28.0].CGPath;
     [Styling addLiquidGlassBorderToView:_glassBackdrop cornerRadius:28.0];
+    [self.collectionView.collectionViewLayout invalidateLayout];
 }
 
 #pragma mark - Public
@@ -412,7 +413,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 - (PPStory *)pp_currentUserDisplayStory {
     PPStory *story = [[PPStory alloc] init];
     story.userID = [self pp_currentUserID];
-    story.userName = kLang(@"story_your_story");
+    story.userName = kLang(@"your_story");
     story.items = @[];
     return story;
 }
@@ -456,7 +457,6 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
     self.hasSectionTitle = resolvedTitle.length > 0;
     self.sectionTitleLabel.text = resolvedTitle;
     self.sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.sectionTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.sectionTitleLabel.hidden = !self.hasSectionTitle;
     CGFloat labelHeight = ceil(self.sectionTitleLabel.font.lineHeight);
     self.collectionTopConstraint.constant =
@@ -484,7 +484,20 @@ minimumLineSpacingForSectionAtIndex:(NSInteger)section
         insetForSectionAtIndex:(NSInteger)section
 {
     (void)collectionView; (void)collectionViewLayout; (void)section;
-    return UIEdgeInsetsMake(PPStoriesTopPadding, PPStoriesSidePadding, PPStoriesBottomPadding, PPStoriesSidePadding);
+    NSInteger itemCount = self.stories.count + ([self pp_hasCurrentUserEntry] ? 1 : 0);
+    CGFloat width = CGRectGetWidth(collectionView.bounds);
+    CGFloat contentWidth = (itemCount * PPStoriesItemWidth) + (MAX(0, itemCount - 1) * PPStoriesItemSpacing);
+    CGFloat extraInset = MAX(0.0, width - contentWidth - (PPStoriesSidePadding * 2.0));
+    CGFloat leadingInset = PPStoriesSidePadding;
+    CGFloat trailingInset = PPStoriesSidePadding;
+
+    if (Language.isRTL) {
+        leadingInset += extraInset;
+    } else {
+        trailingInset += extraInset;
+    }
+
+    return UIEdgeInsetsMake(PPStoriesTopPadding, leadingInset, PPStoriesBottomPadding, trailingInset);
 }
 
 @end

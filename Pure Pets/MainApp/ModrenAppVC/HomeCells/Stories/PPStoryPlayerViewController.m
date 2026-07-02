@@ -207,8 +207,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     previewStatusLabel.textColor = UIColor.whiteColor;
     previewStatusLabel.text = kLang(@"story_edit_change_media");
     previewStatusLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    previewStatusLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [previewFooter.contentView addSubview:previewStatusLabel];
+     [previewFooter.contentView addSubview:previewStatusLabel];
     self.previewStatusLabel = previewStatusLabel;
 
     UIButton *changeButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -240,8 +239,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     captionTextView.textContainerInset = UIEdgeInsetsMake(26.0, 16.0, 22.0, 16.0);
     captionTextView.delegate = self;
     captionTextView.textAlignment = [Language alignmentForCurrentLanguage];
-    captionTextView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    captionTextView.text = self.item.caption ?: @"";
+     captionTextView.text = self.item.caption ?: @"";
     [captionCard addSubview:captionTextView];
     self.captionTextView = captionTextView;
 
@@ -251,8 +249,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     placeholder.textColor = UIColor.placeholderTextColor;
     placeholder.text = kLang(@"story_edit_caption_placeholder");
     placeholder.textAlignment = [Language alignmentForCurrentLanguage];
-    placeholder.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [captionCard addSubview:placeholder];
+     [captionCard addSubview:placeholder];
     self.placeholderLabel = placeholder;
 
     UILabel *characterCountLabel = [[UILabel alloc] init];
@@ -260,8 +257,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     characterCountLabel.font = [GM MidFontWithSize:12.0];
     characterCountLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
     characterCountLabel.textAlignment = NSTextAlignmentNatural;
-    characterCountLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [contentView addSubview:characterCountLabel];
+     [contentView addSubview:characterCountLabel];
     self.characterCountLabel = characterCountLabel;
 
     UILabel *errorLabel = [[UILabel alloc] init];
@@ -271,8 +267,7 @@ static CAMediaTimingFunction *PPPremiumEaseIn(void)
     errorLabel.numberOfLines = 2;
     errorLabel.hidden = YES;
     errorLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    errorLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [contentView addSubview:errorLabel];
+     [contentView addSubview:errorLabel];
     self.errorLabel = errorLabel;
 
     UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeSystem];

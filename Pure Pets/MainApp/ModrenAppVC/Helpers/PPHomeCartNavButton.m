@@ -213,6 +213,15 @@
     _badgeLabel.alpha = shouldShowBadge ? 1.0 : 0.0;
     self.accessibilityValue = shouldShowBadge ? text : nil;
 
+    [self pp_applyPalette];
+    if (safeCount <= 0) {
+        _surfaceView.backgroundColor = UIColor.clearColor;
+        _surfaceView.layer.borderColor = UIColor.clearColor.CGColor;
+        self.layer.shadowOpacity = 0.0;
+    } else {
+        self.layer.shadowOpacity = _usesHeroPresentationStyle ? 0.06f : 0.08f;
+    }
+
     [self setNeedsLayout];
     [self layoutIfNeeded];
 

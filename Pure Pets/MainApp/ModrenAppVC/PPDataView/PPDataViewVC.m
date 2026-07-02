@@ -26,14 +26,17 @@
 #define PPDataViewLog(...)
 #endif
 
-static const CGFloat kPPSectionsTabBarHeight = 64.0;
+static const CGFloat kPPSectionsTabBarHeight = 58.0;
 static const CGFloat kPPAccessoryFilterHeight = 42.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
-static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
+static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.00;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.58;
-static const CGFloat kPPAdsPinterestMinimumContentAllowance = 120.0;
+static const CGFloat kPPAdsPinterestMinimumContentAllowance = 130.0;
+static const CGFloat kPPDataViewNavigationChromeCornerRadius = 24.0;
+static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
+static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 22.0;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -46,6 +49,57 @@ typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
 static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     return kPPSectionsTabBarHeight;
+}
+
+static UIColor *PPDataViewDynamicColor(UIColor *light, UIColor *dark)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? dark : light;
+        }];
+    }
+    return light;
+}
+
+static UIColor *PPDataViewChromeSurfaceColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.78],
+                                  [UIColor colorWithWhite:0.10 alpha:0.76]);
+}
+
+static UIColor *PPDataViewChromeElevatedSurfaceColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
+                                  [UIColor colorWithWhite:1.0 alpha:0.105]);
+}
+
+static UIColor *PPDataViewChromeStrokeColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.86],
+                                  [UIColor colorWithWhite:1.0 alpha:0.13]);
+}
+
+static UIColor *PPDataViewChromeTextColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.14 alpha:1.0],
+                                  [UIColor colorWithWhite:0.96 alpha:1.0]);
+}
+
+static UIColor *PPDataViewChromeSecondaryTextColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithRed:0.42 green:0.43 blue:0.49 alpha:1.0],
+                                  [UIColor colorWithWhite:0.78 alpha:1.0]);
+}
+
+static UIColor *PPDataViewChromeShadowColor(void)
+{
+    return PPDataViewDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.14 alpha:1.0],
+                                  [UIColor colorWithRed:0.00 green:0.00 blue:0.00 alpha:1.0]);
+}
+
+static UIColor *PPDataViewAccentColor(void)
+{
+    return AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
 }
 
 
@@ -107,7 +161,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
     // --- Configuration ---
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleLarge;
     cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 14, 6, 11);
     cfg.baseForegroundColor = fg;
     cfg.attributedTitle = attrTitle;
@@ -172,9 +226,11 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) UIButton *navContainerView;
 @property (nonatomic, strong) UIButton *KindsButton;
 @property (nonatomic, strong) UIButton *subKindsButton;
+@property (nonatomic, strong) UIButton *centerCapsuleButton;
 @property (nonatomic, strong) UIButton *cartButton;
 @property (nonatomic, strong, nullable) UIButton *navCartButton;
-@property (nonatomic, strong)  PPEmptyStateConfig *emptyStateConfig;
+@property (nonatomic, strong, nullable) UIButton *navSearchActionsButton;
+ @property (nonatomic, strong)  PPEmptyStateConfig *emptyStateConfig;
 @property (nonatomic, strong) NSLayoutConstraint *mainKindsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
@@ -183,8 +239,11 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToContainerConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *centerCapsuleMinWidthConstraint;
 
 @property (nonatomic, assign) BOOL isCartButtonVisible;
+@property (nonatomic, assign) BOOL isSubKindsChevronHidden;
+@property (nonatomic, assign) BOOL useCapsuleNavigation;
 // Skeleton loading stateAppForgroundColr
 @property (nonatomic, assign) BOOL isShowingSkeleton;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
@@ -229,6 +288,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)refreshFilterChipTitles;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
+- (void)pp_openSearchController;
+- (void)pp_applyTemporaryHiddenCartButtonState;
+- (void)pp_refreshSearchActionsMenu;
+- (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode;
 - (CGFloat)preferredNavigationCenterViewWidth;
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (PPFilterState *)pp_currentFilterState;
@@ -236,6 +299,28 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)pp_removeForeignHomeSearchViewsFromView:(UIView *)view;
 - (void)pp_handleForegroundRestore:(NSNotification *)notification;
 - (void)pp_refreshVisibleUniversalCellsAppearance;
+- (void)pp_applyPremiumNavigationBarAppearance;
+- (void)pp_applyPremiumNavigationChromeAppearance;
+- (void)pp_applyPremiumNavIconButtonAppearance:(UIButton *)button emphasized:(BOOL)emphasized;
+- (void)pp_applyPremiumNavSearchButtonAppearance;
+- (void)pp_applyPremiumMainKindsButtonSurface;
+- (void)pp_applyPremiumSubKindsButtonSurface;
+- (NSString *)pp_centerCapsuleNavigationTitle;
+- (void)pp_applyExperimentalCenterCapsuleAppearance;
+- (void)pp_syncExperimentalCenterCapsuleState;
+- (NSString *)pp_mainKindsSelectorCaption;
+- (NSString *)pp_subKindsSelectorCaption;
+- (BOOL)pp_mainKindsSelectorIsActive;
+- (BOOL)pp_subKindsSelectorIsActive;
+- (void)pp_applyPremiumSelectorButton:(UIButton *)button
+                          primaryText:(NSString *)primaryText
+                              caption:(NSString *)caption
+                           emphasized:(BOOL)emphasized;
+- (void)pp_updateMainKindsButtonTitleAnimated:(BOOL)animated;
+- (NSString *)pp_currentMainKindsDisplayTitle;
+- (NSString *)pp_currentSubKindsDisplayTitle;
+- (void)pp_applyPremiumSectionsSegmentedAppearance;
+- (void)pp_updatePremiumChromeShadowPaths;
 - (void)pp_applyPremiumDataViewBackgroundAppearance;
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
 - (void)pp_layoutPremiumBackgroundGlowViews;
@@ -268,6 +353,16 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @end
 @implementation PPDataViewVC
 
+- (void)setUseCapsuleNavigation:(BOOL)useCapsuleNavigation
+{
+    if (_useCapsuleNavigation == useCapsuleNavigation) {
+        return;
+    }
+
+    _useCapsuleNavigation = useCapsuleNavigation;
+    [self pp_syncExperimentalCenterCapsuleState];
+}
+
 - (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
 {
     return PPBottomSurfaceKindFloatingCartSurface;
@@ -286,6 +381,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:YES];
     [self pp_applyBottomSurfaceAnimated:animated];
 
     UINavigationController *nav = self.navigationController;
@@ -309,6 +405,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
             cell.transform = CGAffineTransformIdentity;
         }
     }
+    [self pp_applyPremiumNavigationBarAppearance];
+    [self pp_applyPremiumNavigationChromeAppearance];
+    [self pp_applyPremiumSectionsSegmentedAppearance];
     [self pp_restoreNavigationOwnership];
     [self pp_refreshVisibleUniversalCellsAppearance];
 
@@ -324,6 +423,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     [super viewWillDisappear:animated];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:NO];
 
     UIGestureRecognizer *pop = self.navigationController.interactivePopGestureRecognizer;
     if (pop.delegate == self) {
@@ -337,8 +437,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [self.view bringSubviewToFront:self.sectionsSegmentedControl];
     [self.view bringSubviewToFront:self.filterChipContainer];
     [self updateCollectionContentInset];
-    [[NovaAmbientAssistantCoordinator sharedCoordinator] screenDidAppearInViewController:self
-                                                                                 screen:@"category"];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -367,6 +465,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         BOOL changed = [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection];
         if (changed) {
             [self pp_applyPremiumDataViewBackgroundAppearance];
+            [self pp_applyPremiumNavigationBarAppearance];
+            [self pp_applyPremiumNavigationChromeAppearance];
+            [self pp_applyPremiumSectionsSegmentedAppearance];
         }
         if (changed && self.lastSubKindsTitle.length > 0) {
             [self updateSubKindsButtonTitle:self.lastSubKindsTitle];
@@ -459,6 +560,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     }
     self.didFixInitialScroll = NO;
     _didlayout = NO;
+    self.useCapsuleNavigation = YES;
     self.blurHashCache = [NSCache new];
     self.blurHashCache.countLimit = 200;
     self.blurHashQueue =
@@ -487,7 +589,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [self pp_applyPremiumDataViewBackgroundAppearance];
     [self showSkeleton];
     [self updateEmptyState];
-    
+
     [self bindViewModel];
     [self handleInitialRoute];
     
@@ -583,6 +685,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     if (self.navContainerView && self.navigationItem.titleView != self.navContainerView) {
         self.navigationItem.titleView = self.navContainerView;
     }
+
+    [self pp_applyTemporaryHiddenCartButtonState];
+    [self pp_applyPremiumNavigationBarAppearance];
+    [self pp_applyPremiumNavigationChromeAppearance];
     self.navContainerView.hidden = NO;
     self.navContainerView.alpha = 1.0;
     [self.navContainerView setNeedsLayout];
@@ -617,6 +723,491 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         } else {
             [cell setNeedsLayout];
         }
+    }
+}
+
+- (void)pp_applyPremiumNavigationBarAppearance
+{
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    if (!navigationBar) {
+        return;
+    }
+
+    navigationBar.translucent = YES;
+    navigationBar.tintColor = PPDataViewChromeTextColor();
+
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithTransparentBackground];
+    appearance.backgroundColor = UIColor.clearColor;
+    appearance.shadowColor = UIColor.clearColor;
+    appearance.titleTextAttributes = @{
+        NSForegroundColorAttributeName : PPDataViewChromeTextColor(),
+        NSFontAttributeName : [GM boldFontWithSize:17.0]
+    };
+
+    navigationBar.standardAppearance = appearance;
+    navigationBar.scrollEdgeAppearance = appearance;
+    navigationBar.compactAppearance = appearance;
+    if (@available(iOS 15.0, *)) {
+        navigationBar.compactScrollEdgeAppearance = appearance;
+    }
+}
+
+- (void)pp_applyPremiumNavIconButtonAppearance:(UIButton *)button emphasized:(BOOL)emphasized
+{
+    if (!button) {
+        return;
+    }
+
+    UIColor *accent = PPDataViewAccentColor();
+    UIColor *foreground = emphasized ? accent : PPDataViewChromeTextColor();
+    UIColor *surface = emphasized
+        ? [accent colorWithAlphaComponent:0.115]
+        : PPDataViewChromeElevatedSurfaceColor();
+    UIColor *stroke = emphasized
+        ? [accent colorWithAlphaComponent:0.28]
+        : PPDataViewChromeStrokeColor();
+
+    UIButtonConfiguration *configuration = button.configuration;
+    if (!configuration) {
+        configuration = [UIButtonConfiguration plainButtonConfiguration];
+    }
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 7.0, 2.0, 7.0);
+    configuration.baseForegroundColor = foreground;
+    configuration.background.backgroundColor = surface;
+    configuration.background.strokeColor = stroke;
+    configuration.background.strokeWidth = 0.8;
+    button.configuration = configuration;
+
+    button.tintColor = foreground;
+    button.backgroundColor = UIColor.clearColor;
+    button.clipsToBounds = NO;
+    button.layer.masksToBounds = NO;
+    button.layer.cornerRadius = 18.0; // fallback until layout updates it to half height
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.layer.borderWidth = 0.0;
+    button.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    button.adjustsImageWhenHighlighted = NO;
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+    [button pp_setShadowColor:PPDataViewChromeShadowColor()];
+    button.layer.shadowOpacity = emphasized ? 0.05 : 0.035;
+    button.layer.shadowRadius = emphasized ? 8.0 : 6.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+}
+
+- (void)pp_applyPremiumNavSearchButtonAppearance
+{
+    UIButton *button = self.navSearchActionsButton;
+    if (!button) {
+        return;
+    }
+
+    [self pp_applyPremiumNavIconButtonAppearance:button emphasized:NO];
+
+    UIImageSymbolConfiguration *symbolConfiguration =
+    [UIImageSymbolConfiguration configurationWithPointSize:16.0
+                                                    weight:UIImageSymbolWeightSemibold
+                                                     scale:UIImageSymbolScaleMedium];
+    UIButtonConfiguration *configuration = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+    configuration.image = [UIImage systemImageNamed:@"magnifyingglass" withConfiguration:symbolConfiguration];
+    configuration.imagePadding = 0.0;
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 7.0, 2.0, 7.0);
+    configuration.baseForegroundColor = PPDataViewChromeTextColor();
+    button.configuration = configuration;
+    button.tintColor = PPDataViewChromeTextColor();
+    button.showsMenuAsPrimaryAction = YES;
+    if (@available(iOS 15.0, *)) {
+        button.changesSelectionAsPrimaryAction = NO;
+    }
+    button.accessibilityLabel = kLang(@"PPDataViewSearchMenuA11y");
+    button.accessibilityHint = kLang(@"PPDataViewSearchMenuHint");
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+}
+
+- (void)pp_applyPremiumSelectorButton:(UIButton *)button
+                          primaryText:(NSString *)primaryText
+                              caption:(NSString *)caption
+                           emphasized:(BOOL)emphasized
+{
+    if (!button) {
+        return;
+    }
+
+    NSString *resolvedPrimary = primaryText.length > 0 ? primaryText : (kLang(@"All") ?: @"All");
+    NSString *resolvedCaption = caption.length > 0 ? caption : @"";
+    UIColor *accent = PPDataViewAccentColor();
+    UIColor *primaryColor = PPDataViewChromeTextColor();
+    UIColor *captionColor = emphasized
+        ? [accent colorWithAlphaComponent:0.82]
+        : PPDataViewChromeSecondaryTextColor();
+    UIColor *chevronColor = emphasized ? captionColor : [PPDataViewChromeSecondaryTextColor() colorWithAlphaComponent:0.82];
+    BOOL shouldShowChevron = (button != self.subKindsButton) || !self.isSubKindsChevronHidden;
+
+    NSMutableParagraphStyle *centeredStyle = [[NSMutableParagraphStyle alloc] init];
+    centeredStyle.alignment = NSTextAlignmentCenter;
+    centeredStyle.lineBreakMode = NSLineBreakByTruncatingTail;
+
+    centeredStyle.lineSpacing = -1.5;
+    centeredStyle.paragraphSpacing = 0;
+    centeredStyle.lineHeightMultiple = 0.78;
+
+    NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:resolvedPrimary
+                                                                              attributes:@{
+        NSFontAttributeName : [GM boldFontWithSize:14.2],
+        NSForegroundColorAttributeName : primaryColor,
+        NSParagraphStyleAttributeName : centeredStyle
+    }];
+
+    UIButtonConfiguration *configuration = button.configuration;
+    if (!configuration) {
+        configuration = [UIButtonConfiguration plainButtonConfiguration];
+    }
+    CGFloat selectorRadius = CGRectGetHeight(button.bounds) > 0.0
+        ? CGRectGetHeight(button.bounds) * 0.5
+        : kPPDataViewSelectorCornerRadius;
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    configuration.background.cornerRadius = selectorRadius;
+
+    configuration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 6.0, 2.0, 6.0);
+    // Tighten spacing between Species/Breed caption and selected value (reduces the gap significantly)
+
+    configuration.attributedSubtitle =
+    [[NSAttributedString alloc] initWithString:resolvedCaption
+                                    attributes:@{
+        NSFontAttributeName : [GM MidFontWithSize:8.3],
+        NSForegroundColorAttributeName : captionColor,
+        NSParagraphStyleAttributeName : centeredStyle
+    }];
+    configuration.attributedTitle = title;
+    configuration.titleLineBreakMode = NSLineBreakByTruncatingTail;
+    configuration.subtitleLineBreakMode = NSLineBreakByTruncatingTail;
+    configuration.baseForegroundColor = primaryColor;
+
+    // Use native UIButtonConfiguration trailing image alignment instead of a hacky NSTextAttachment.
+    // This perfectly centers the arrow vertically with the text line-height and adapts to RTL direction.
+    if (shouldShowChevron) {
+        UIImage *chevron =
+        [UIImage pp_symbolNamed:@"chevron.down"
+                      pointSize:9.4
+                         weight:UIImageSymbolWeightBold
+                          scale:UIImageSymbolScaleSmall
+                        palette:@[chevronColor]
+                   makeTemplate:NO];
+        configuration.image = chevron;
+        configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
+        configuration.imagePadding = 7.5; // Added elegant horizontal breathing room next to the value
+    } else {
+        configuration.image = nil;
+        configuration.imagePadding = 0.0;
+    }
+    configuration.background.backgroundColor = emphasized
+        ? PPDataViewDynamicColor([accent colorWithAlphaComponent:0.075], [accent colorWithAlphaComponent:0.16])
+        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.16], [UIColor colorWithWhite:1.0 alpha:0.045]);
+    configuration.background.strokeColor = emphasized
+        ? [accent colorWithAlphaComponent:0.14]
+        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.24], [UIColor colorWithWhite:1.0 alpha:0.04]);
+    configuration.background.strokeWidth = emphasized ? 0.65 : 0.45;
+    configuration.background.cornerRadius = selectorRadius;
+    button.configuration = configuration;
+
+    button.tintColor = emphasized ? accent : PPDataViewChromeSecondaryTextColor();
+    button.backgroundColor = UIColor.clearColor;
+    button.layer.cornerRadius = selectorRadius;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.clipsToBounds = NO;
+    button.titleLabel.numberOfLines = 2;
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.82;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    button.titleLabel.adjustsFontForContentSizeCategory = YES;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    button.accessibilityTraits = emphasized ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected) : UIAccessibilityTraitButton;
+}
+
+- (NSString *)pp_mainKindsSelectorCaption
+{
+    return kLang(@"data_nav_species") ?: @"Species";
+}
+
+- (NSString *)pp_subKindsSelectorCaption
+{
+    return kLang(@"data_nav_breed") ?: @"Breed";
+}
+
+- (BOOL)pp_mainKindsSelectorIsActive
+{
+    return self.input.mainKind != nil && self.input.sourceTarget != PPDeepLinkTargetAllCategories;
+}
+
+- (BOOL)pp_subKindsSelectorIsActive
+{
+    return self.viewModel.currentSubKindID != 0;
+}
+
+- (void)pp_applyPremiumMainKindsButtonSurface
+{
+    [self pp_applyPremiumSelectorButton:self.KindsButton
+                            primaryText:[self pp_currentMainKindsDisplayTitle]
+                                caption:[self pp_mainKindsSelectorCaption]
+                             emphasized:[self pp_mainKindsSelectorIsActive]];
+}
+
+- (void)pp_applyPremiumSubKindsButtonSurface
+{
+    if (!self.subKindsButton) {
+        return;
+    }
+
+    [self pp_applyPremiumSelectorButton:self.subKindsButton
+                            primaryText:self.lastSubKindsTitle ?: [self pp_currentSubKindsDisplayTitle]
+                                caption:[self pp_subKindsSelectorCaption]
+                             emphasized:[self pp_subKindsSelectorIsActive]];
+}
+
+- (NSString *)pp_centerCapsuleNavigationTitle
+{
+    NSString *mainTitle = [self pp_currentMainKindsDisplayTitle];
+    NSString *subTitle = self.lastSubKindsTitle ?: [self pp_currentSubKindsDisplayTitle];
+
+    if (mainTitle.length == 0) {
+        return subTitle.length > 0 ? subTitle : (kLang(@"All") ?: @"All");
+    }
+    if (subTitle.length == 0) {
+        return mainTitle;
+    }
+
+    return [NSString stringWithFormat:@"%@ • %@", mainTitle, subTitle];
+}
+
+- (void)pp_applyExperimentalCenterCapsuleAppearance
+{
+    if (!self.centerCapsuleButton) {
+        return;
+    }
+
+    UIColor *accentColor = AppPrimaryClr ?: PPDataViewChromeTextColor();
+    UIButtonConfiguration *configuration = self.centerCapsuleButton.configuration;
+    if (!configuration) {
+        configuration = [UIButtonConfiguration plainButtonConfiguration];
+    }
+
+    configuration.title = [self pp_centerCapsuleNavigationTitle];
+    configuration.image = nil;
+    configuration.imagePadding = 6.0;
+    configuration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
+    configuration.baseForegroundColor = PPDataViewChromeTextColor();
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    configuration.background.cornerRadius = 19.0;
+    configuration.background.strokeWidth = 0.0;
+    configuration.background.strokeColor = UIColor.clearColor;
+    configuration.background.backgroundColor = [accentColor colorWithAlphaComponent:0.08];
+    self.centerCapsuleButton.configuration = configuration;
+
+    self.centerCapsuleButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.centerCapsuleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.centerCapsuleButton.accessibilityTraits = UIAccessibilityTraitButton;
+    self.centerCapsuleButton.accessibilityLabel = configuration.title;
+    [self.centerCapsuleButton invalidateIntrinsicContentSize];
+    self.centerCapsuleButton.showsMenuAsPrimaryAction = YES;
+    self.centerCapsuleButton.titleLabel.numberOfLines = 1;
+    self.centerCapsuleButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.centerCapsuleButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.centerCapsuleButton.titleLabel.minimumScaleFactor = 0.84;
+    self.centerCapsuleButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+
+    if (!PPIOS26()) {
+        self.centerCapsuleButton.layer.cornerRadius = 19.0;
+        self.centerCapsuleButton.clipsToBounds = YES;
+    }
+}
+
+- (void)pp_syncExperimentalCenterCapsuleState
+{
+    if (!self.navContainerView) {
+        return;
+    }
+
+    [self pp_applyExperimentalCenterCapsuleAppearance];
+
+    BOOL showingCapsule = self.useCapsuleNavigation && self.centerCapsuleButton != nil;
+    self.centerCapsuleButton.menu = self.subKindsButton.menu ?: [self subKindsMenu];
+    self.KindsButton.hidden = showingCapsule;
+    self.subKindsButton.hidden = showingCapsule;
+    self.centerCapsuleButton.hidden = !showingCapsule;
+
+    self.KindsButton.userInteractionEnabled = !showingCapsule;
+    self.subKindsButton.userInteractionEnabled = !showingCapsule;
+    self.centerCapsuleButton.userInteractionEnabled = showingCapsule;
+    self.KindsButton.accessibilityElementsHidden = showingCapsule;
+    self.subKindsButton.accessibilityElementsHidden = showingCapsule;
+    self.centerCapsuleButton.accessibilityElementsHidden = !showingCapsule;
+
+    if (self.centerCapsuleButton) {
+        [self.navContainerView bringSubviewToFront:self.centerCapsuleButton];
+    }
+    if (self.cartButton) {
+        [self.navContainerView bringSubviewToFront:self.cartButton];
+    }
+}
+
+- (void)pp_applyPremiumNavigationChromeAppearance
+{
+    if (!self.navContainerView) {
+        return;
+    }
+
+    self.navContainerView.backgroundColor = UIColor.clearColor;
+    self.navContainerView.clipsToBounds = NO;
+    self.navContainerView.layer.masksToBounds = NO;
+    CGFloat chromeRadius = CGRectGetHeight(self.navContainerView.bounds) > 0.0
+        ? CGRectGetHeight(self.navContainerView.bounds) * 0.5
+        : kPPDataViewNavigationChromeCornerRadius;
+    self.navContainerView.layer.cornerRadius = chromeRadius;
+    if (@available(iOS 13.0, *)) {
+        self.navContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    for (UIView *subview in self.navContainerView.subviews) {
+        if ([subview isKindOfClass:UIVisualEffectView.class]) {
+            subview.layer.cornerRadius = chromeRadius;
+            if (@available(iOS 13.0, *)) {
+                subview.layer.cornerCurve = kCACornerCurveContinuous;
+            }
+        }
+    }
+    self.navContainerView.layer.borderWidth = 0.65;
+    [self.navContainerView pp_setBorderColor:PPDataViewChromeStrokeColor()];
+    [self.navContainerView pp_setShadowColor:PPDataViewChromeShadowColor()];
+    self.navContainerView.layer.shadowOpacity = 0.075;
+    self.navContainerView.layer.shadowRadius = 14.0;
+    self.navContainerView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+
+    UIButtonConfiguration *configuration = self.navContainerView.configuration;
+    if (!configuration) {
+        configuration = [UIButtonConfiguration plainButtonConfiguration];
+    }
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    configuration.background.cornerRadius = chromeRadius;
+    configuration.contentInsets = NSDirectionalEdgeInsetsZero;
+    configuration.baseForegroundColor = PPDataViewChromeTextColor();
+    configuration.background.backgroundColor = PPDataViewChromeSurfaceColor();
+    configuration.background.strokeColor = PPDataViewChromeStrokeColor();
+    configuration.background.strokeWidth = 0.65;
+
+    self.navContainerView.configuration = configuration;
+    self.navContainerView.isAccessibilityElement = NO;
+
+    [self pp_applyPremiumMainKindsButtonSurface];
+    [self pp_applyPremiumSubKindsButtonSurface];
+    [self pp_syncExperimentalCenterCapsuleState];
+    [self pp_applyPremiumNavIconButtonAppearance:self.cartButton emphasized:NO];
+    [self pp_applyPremiumNavSearchButtonAppearance];
+     [self pp_applyTemporaryHiddenCartButtonState];
+}
+
+- (void)pp_applyPremiumSectionsSegmentedAppearance
+{
+    if (!self.sectionsSegmentedControl) {
+        return;
+    }
+
+    self.sectionsSegmentedControl.containerBackgroundColor = PPDataViewChromeSurfaceColor();
+    self.sectionsSegmentedControl.normalTextColor = PPDataViewChromeSecondaryTextColor();
+    self.sectionsSegmentedControl.selectedTextColor = PPDataViewChromeTextColor();
+    self.sectionsSegmentedControl.selectedSegmentColor = PPDataViewAccentColor();
+    self.sectionsSegmentedControl.normalFont = [GM MidFontWithSize:13.2];
+    self.sectionsSegmentedControl.selectedFont = [GM boldFontWithSize:13.6];
+    self.sectionsSegmentedControl.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
+    self.sectionsSegmentedControl.layer.borderWidth = 0.0;
+    [self.sectionsSegmentedControl pp_setBorderColor:PPDataViewChromeStrokeColor()];
+    [self.sectionsSegmentedControl pp_setShadowColor:PPDataViewChromeShadowColor()];
+    self.sectionsSegmentedControl.layer.shadowOpacity = 0.11;
+    self.sectionsSegmentedControl.layer.shadowRadius = 22.0;
+    self.sectionsSegmentedControl.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    if (@available(iOS 13.0, *)) {
+        self.sectionsSegmentedControl.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.sectionsSegmentedBlurView.alpha = 0.76;
+    self.sectionsSegmentedBlurView.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
+    if (@available(iOS 13.0, *)) {
+        self.sectionsSegmentedBlurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
+
+- (void)pp_updatePremiumChromeShadowPaths
+{
+    if (self.navContainerView && !CGRectIsEmpty(self.navContainerView.bounds)) {
+        CGFloat radius = CGRectGetHeight(self.navContainerView.bounds) > 0.0
+            ? CGRectGetHeight(self.navContainerView.bounds) * 0.5
+            : kPPDataViewNavigationChromeCornerRadius;
+        self.navContainerView.layer.cornerRadius = radius;
+        for (UIView *subview in self.navContainerView.subviews) {
+            if ([subview isKindOfClass:UIVisualEffectView.class]) {
+                subview.layer.cornerRadius = radius;
+                if (@available(iOS 13.0, *)) {
+                    subview.layer.cornerCurve = kCACornerCurveContinuous;
+                }
+            }
+        }
+        self.navContainerView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.navContainerView.bounds
+                                   cornerRadius:radius].CGPath;
+    }
+
+    if (self.sectionsSegmentedControl && !CGRectIsEmpty(self.sectionsSegmentedControl.bounds)) {
+        CGFloat radius = kPPDataViewSectionsSegmentedCornerRadius;
+        self.sectionsSegmentedControl.layer.cornerRadius = radius;
+        self.sectionsSegmentedControl.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.sectionsSegmentedControl.bounds
+                                   cornerRadius:radius].CGPath;
+    }
+
+
+    UIButton *navCartButton = self.navCartButton;
+    if (navCartButton && !CGRectIsEmpty(navCartButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(navCartButton.bounds) * 0.5;
+        navCartButton.layer.cornerRadius = radius;
+        navCartButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:navCartButton.bounds cornerRadius:radius].CGPath;
+    }
+
+
+    if (self.KindsButton && !CGRectIsEmpty(self.KindsButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(self.KindsButton.bounds) * 0.5;
+        self.KindsButton.layer.cornerRadius = radius;
+        self.KindsButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.KindsButton.bounds cornerRadius:radius].CGPath;
+    }
+
+    if (self.subKindsButton && !CGRectIsEmpty(self.subKindsButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(self.subKindsButton.bounds) * 0.5;
+        self.subKindsButton.layer.cornerRadius = radius;
+        self.subKindsButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.subKindsButton.bounds cornerRadius:radius].CGPath;
+    }
+
+    if (self.centerCapsuleButton && !CGRectIsEmpty(self.centerCapsuleButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(self.centerCapsuleButton.bounds) * 0.5;
+        self.centerCapsuleButton.layer.cornerRadius = radius;
+        self.centerCapsuleButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.centerCapsuleButton.bounds cornerRadius:radius].CGPath;
+    }
+
+    if (self.cartButton && !CGRectIsEmpty(self.cartButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(self.cartButton.bounds) * 0.5;
+        self.cartButton.layer.cornerRadius = radius;
+        self.cartButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.cartButton.bounds cornerRadius:radius].CGPath;
+    }
+
+    UIButton *searchButton = self.navSearchActionsButton;
+    if (searchButton && !CGRectIsEmpty(searchButton.bounds)) {
+        CGFloat radius = CGRectGetHeight(searchButton.bounds) * 0.5;
+        searchButton.layer.cornerRadius = radius;
+        searchButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:searchButton.bounds cornerRadius:radius].CGPath;
     }
 }
 
@@ -1091,10 +1682,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     if (section < PPDataSectionAds || section > PPDataSectionServices) {
         section = PPDataSectionAds;
     }
-    
+
     PPDataViewLog(@"[ROUTE] Initial switchToSection = %ld",
           (long)section);
-    
+
     
     
     PPDataViewLog(@"[VC] resolved section = %ld", (long)section);
@@ -1107,13 +1698,14 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     
     self.viewModel.currentSubKindID = 0;
     if (self.input.mainKind) {
-        [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
+        [self updateNavMainKindTitle];
+        [self updateSubKindsButtonTitle:[self pp_currentSubKindsDisplayTitle]];
     }
 
     [self.scrollOffsetsBySection removeAllObjects];
     PPDataViewLog(@"[VC] scrollOffsetsBySection cleared");
     
-   
+
 }
 
 #pragma mark - Setup
@@ -1195,6 +1787,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
+    [self pp_refreshSearchActionsMenu];
     
 }
 
@@ -1421,6 +2014,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [super viewDidLayoutSubviews];
     [self pp_applyPremiumDataViewBackgroundAppearance];
     [self pp_layoutPremiumBackgroundGlowViews];
+    [self pp_applyPremiumNavigationChromeAppearance];
+    [self pp_applyPremiumSectionsSegmentedAppearance];
+    [self pp_updatePremiumChromeShadowPaths];
     [self updateCollectionContentInset];
     [self updateSectionsTabBarSelectionIndicatorIfNeeded];
     [self reloadNavigationCenterViewLayout];
@@ -1471,6 +2067,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
     self.subKindsButton.menu = [self subKindsMenu];
+    self.centerCapsuleButton.menu = [self subKindsMenu];
+    [self pp_syncExperimentalCenterCapsuleState];
 }
 
 
@@ -1752,7 +2350,17 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [badgeHost removeBadge];
 
     NSInteger count = [self currentCartItemCount];
+
+    [self pp_applyPremiumNavIconButtonAppearance:self.navCartButton emphasized:YES];
+
     if (count <= 0) {
+        UIButtonConfiguration *config = self.navCartButton.configuration;
+        if (config) {
+            config.background.backgroundColor = UIColor.clearColor;
+            config.background.strokeColor = UIColor.clearColor;
+            self.navCartButton.configuration = config;
+        }
+        self.navCartButton.layer.shadowOpacity = 0.0;
         return;
     }
 
@@ -1806,6 +2414,30 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
                                    completion:nil];
 }
 
+- (void)pp_openSearchController
+{
+    if (self.presentedViewController) {
+        return;
+    }
+
+    PPSearchViewController *searchVC = [[PPSearchViewController alloc] init];
+    PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:searchVC];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [PPHomeHelper presentViewControllerSafely:nav from:self animated:YES completion:nil];
+}
+
+- (void)pp_applyTemporaryHiddenCartButtonState
+{
+    if (!self.navCartButton) {
+        return;
+    }
+
+    self.navCartButton.hidden = YES;
+    self.navCartButton.alpha = 0.0;
+    self.navCartButton.userInteractionEnabled = NO;
+    self.navCartButton.accessibilityElementsHidden = YES;
+}
+
 - (void)updateCartButtonVisibility
 {
     [self updateCartButtonVisibilityForSection:self.viewModel.currentSection animated:NO];
@@ -1822,9 +2454,12 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    BOOL shouldShow = YES;//(section == PPDataSectionAccessories);
+    // Search now lives in the right navbar slot. Keep this legacy center button
+    // retained for rollback safety, but do not present it in the title view.
+    BOOL shouldShow = NO;
     self.isCartButtonVisible = shouldShow;
     self.cartButton.userInteractionEnabled = shouldShow;
+    self.cartButton.accessibilityElementsHidden = !shouldShow;
 
     if (self.subKindsTrailingToCartConstraint && self.subKindsTrailingToContainerConstraint) {
         self.subKindsTrailingToCartConstraint.active = shouldShow;
@@ -2379,7 +3014,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self pp_beginMotionTransition:motionReason direction:motionDirection];
 
     [self persistSectionSelection:section];
-    [self updateCartButtonVisibilityForSection:section animated:userInitiated];
+    [self updateCartButtonVisibilityForSection:section animated:NO];
     [self updateFilterChipVisibilityForSection:section animated:userInitiated];
     [self.viewModel switchToSection:section];
 }
@@ -2496,23 +3131,56 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 #pragma mark - Custom Navigation Center View
 
+- (NSString *)pp_currentMainKindsDisplayTitle
+{
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        return self.input.title.length > 0 ? self.input.title : (kLang(@"All") ?: @"All");
+    }
+
+    NSString *title = self.input.mainKind.KindName;
+    if (title.length == 0) {
+        title = self.input.mainKind.KindNameEn;
+    }
+    return title.length > 0 ? title : (kLang(@"All") ?: @"All");
+}
+
+- (NSString *)pp_currentSubKindsDisplayTitle
+{
+    if (self.viewModel.currentSubKindID == 0) {
+        return kLang(@"All") ?: @"All";
+    }
+
+    SubKindModel *subKind = [self.input.mainKind subKindForID:self.viewModel.currentSubKindID];
+    NSString *title = subKind.SubKindName;
+    return title.length > 0 ? title : (kLang(@"All") ?: @"All");
+}
+
 // Updates the main kinds button title in the navigation bar
 - (void)updateNavMainKindTitle
 {
-    if (!self.input.mainKind) return;
-    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) return;
+    if (!self.KindsButton) return;
+    [self pp_updateMainKindsButtonTitleAnimated:(self.pendingMotionReason == PPDataViewMotionReasonMainKindChange)];
+}
 
-    UIImage *icon = [PPImageButtonHelper imageFor44ptButton:PPImage(self.input.mainKind.KindImageNamed)];
-    if (self.pendingMotionReason == PPDataViewMotionReasonMainKindChange && [self pp_allowsPremiumMotion]) {
-        [self pp_applyNavigationChangeAnimationToButton:self.KindsButton updates:^{
-            [self.KindsButton setImage:icon forState:UIControlStateNormal];
-        }];
+- (void)pp_updateMainKindsButtonTitleAnimated:(BOOL)animated
+{
+    NSString *title = [self pp_currentMainKindsDisplayTitle];
+
+    void (^applyMainKindChange)(void) = ^{
+        [self pp_applyPremiumMainKindsButtonSurface];
+        self.KindsButton.accessibilityLabel =
+        [NSString stringWithFormat:@"%@, %@", [self pp_mainKindsSelectorCaption], title];
+        [self.KindsButton invalidateIntrinsicContentSize];
+        [self pp_syncExperimentalCenterCapsuleState];
+        [self reloadNavigationCenterViewLayout];
+    };
+
+    if (animated && [self pp_allowsPremiumMotion]) {
+        [self pp_applyNavigationChangeAnimationToButton:self.KindsButton updates:applyMainKindChange];
         [self pp_applyFeedbackPulseToView:self.KindsButton];
     } else {
-        [self.KindsButton setImage:icon forState:UIControlStateNormal];
+        applyMainKindChange();
     }
-    
-     
 }
 
 
@@ -2524,23 +3192,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             return;
         }
 
-        // 2️⃣ Update input
         self.input.mainKind = model;
-         
-         [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
-         self.viewModel.currentSubKindID = 0;
-         [self updateSubKindsButtonTitle:model.KindName animated:YES];
-         [self refreshsubKindsMenu];
-         
+        self.KindsButton.menu = [self mainMenu];
 
-         // 🔥 Exit AllCategories mode once user selects a real kind
-         if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
-             self.input.sourceTarget = PPDeepLinkTargetNone;
-             [self pp_setSubKindsChevronHidden:NO];
-         }
-         self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
-         
-         
+        [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
+        self.viewModel.currentSubKindID = 0;
+
+        if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+            self.input.sourceTarget = PPDeepLinkTargetNone;
+            [self pp_setSubKindsChevronHidden:NO];
+        }
+        self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
+
+        [self updateNavMainKindTitle];
+        [self updateSubKindsButtonTitle:[self pp_currentSubKindsDisplayTitle] animated:YES];
+        [self refreshsubKindsMenu];
+
         [self reloadNavigationCenterViewLayout];
 
         // 4️⃣ Clear saved scroll positions (VERY IMPORTANT)
@@ -2565,27 +3232,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.viewModel switchToMainKind:model];
         [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:model.KindName ?: model.KindNameEn];
         [self prefetchSubKindIcons];
-        [self updateNavMainKindTitle];
 
     }];
 }
 // Modified to add a second navigation button: sectionsButton
 -(void)setupKindsView
 {
-    _navContainerView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
+    _navContainerView = [UIButton new];
     self.navContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    UIButtonConfiguration *navContainerViewcfg = self.navContainerView.configuration;
-    navContainerViewcfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.30];
-    navContainerViewcfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.30];
-    
-    self.navContainerView.configuration = navContainerViewcfg;
+    self.navContainerView.isAccessibilityElement = NO;
+    self.navContainerView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     
     if (!PPIOS26()) {
         UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.layer.cornerRadius = 22;
+        blurView.layer.cornerRadius = kPPDataViewNavigationChromeCornerRadius;
         blurView.clipsToBounds = YES;
         if (@available(iOS 13.0, *)) {
             blurView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -2599,66 +3261,21 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [blurView.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor]
         ]];
     }
-    self.KindsButton = [self pp_ZeroButtonWithSystemName:self.input.sourceTarget ==  PPDeepLinkTargetAllCategories ? @"square.grid.2x2.fill" : (self.input.mainKind
-                                                                                                                                       ? self.input.mainKind.KindImageNamed
-                                                                                                                             : @"square.grid.2x2.fill") action:nil];
-    // Remove any size constraints previously set by helpers
+    self.KindsButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.KindsButton.translatesAutoresizingMaskIntoConstraints = NO;
-    // Do NOT add width/height constraints here except the explicit width below
     self.KindsButton.showsMenuAsPrimaryAction = YES;
-    self.KindsButton.menu =   [PPHomeHelper MainKindsMenuWithHandler:^(MainKindsModel *model) {
-        // 1️⃣ Ignore if same main kind
-        if (model.ID == self.input.mainKind.ID) {
-            return;
-        }
-
-        // 2️⃣ Update input
-        self.input.mainKind = model;
-        
-        self.KindsButton.menu =
-        [self mainMenu];
-         
-         [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
-         self.viewModel.currentSubKindID = 0;
-         [self updateSubKindsButtonTitle:model.KindName animated:YES];
-         [self refreshsubKindsMenu];
-         
-
-         // 🔥 Exit AllCategories mode once user selects a real kind
-         if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
-             self.input.sourceTarget = PPDeepLinkTargetNone;
-             [self pp_setSubKindsChevronHidden:NO];
-         }
-         self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
-         
-         
-        [self reloadNavigationCenterViewLayout];
-
-        // 4️⃣ Clear saved scroll positions (VERY IMPORTANT)
-        [self.scrollOffsetsBySection removeAllObjects];
-
-        // 5️⃣ Reset layout cache (Pinterest safety)
-        [self resetLayoutForSectionChange];
-
-        // 6️⃣ Restore last selected section for this MainKind
-        NSString *key = [self sectionKeyForMainKind:model];
-        PPDataSection lastSection =
-        (PPDataSection)[[NSUserDefaults standardUserDefaults] integerForKey:key];
-
-        if (lastSection >= PPDataSectionAds &&
-            lastSection <= PPDataSectionServices) {
-            self.viewModel.pendingRestoreSection = lastSection;
-
-            [self updateSectionsTabBarSelectionForSection:lastSection];
-            [self updateCartButtonVisibilityForSection:lastSection];
-        }
-
-        [self.viewModel switchToMainKind:model];
-        [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:model.KindName ?: model.KindNameEn];
-        [self prefetchSubKindIcons];
-        [self updateNavMainKindTitle];
-
-    }];
+    self.KindsButton.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    self.KindsButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.KindsButton.accessibilityLabel =
+    [NSString stringWithFormat:@"%@, %@", [self pp_mainKindsSelectorCaption], [self pp_currentMainKindsDisplayTitle]];
+    self.KindsButton.accessibilityTraits = UIAccessibilityTraitButton;
+    self.KindsButton.menu = [self mainMenu];
+    self.KindsButton.layer.actions = @{
+        @"position" : [NSNull null],
+        @"bounds"   : [NSNull null],
+        @"transform": [NSNull null],
+        @"opacity"  : [NSNull null]
+    };
  
  
     UIButton *sectionsBtn = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -2671,15 +3288,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     } else {
         cfg = [UIButtonConfiguration plainButtonConfiguration];
     }
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 12, 6, 12);
-    cfg.imagePadding = 6;
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(2, 10, 2, 10);
+    cfg.imagePadding = 2;
     cfg.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
     cfg.baseForegroundColor = UIColor.labelColor;
- 
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    cfg.background.cornerRadius = kPPDataViewSelectorCornerRadius;
 
 
     UIImage *chevron =
-    [UIImage pp_symbolNamed:@"chevron.down" pointSize:16 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleDefault palette:@[AppPrimaryClr] makeTemplate:NO];
+    [UIImage pp_symbolNamed:@"chevron.down" pointSize:16 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleMedium palette:@[AppPrimaryClr] makeTemplate:NO];
     cfg.image = chevron;
 
     sectionsBtn.configuration = cfg;
@@ -2702,58 +3320,88 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     // Assign
     self.subKindsButton = sectionsBtn;
-    if (@available(iOS 18.0, *)) {
-        [self.subKindsButton.imageView addSymbolEffect: [[NSSymbolWiggleEffect effect] effectWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:2.0]]];
-    } else {
-        // Fallback on earlier versions
-    }
+    self.subKindsButton.accessibilityTraits = UIAccessibilityTraitButton;
+
+    self.KindsButton.configuration = cfg;
+    self.subKindsButton.configuration = cfg;
     
     if (!PPIOS26()) {
-        self.KindsButton.layer.cornerRadius = 18;
+        self.KindsButton.layer.cornerRadius = kPPDataViewSelectorCornerRadius;
         self.KindsButton.clipsToBounds = YES;
-        self.subKindsButton.layer.cornerRadius = 18;
+        self.subKindsButton.layer.cornerRadius = kPPDataViewSelectorCornerRadius;
         self.subKindsButton.clipsToBounds = YES;
     }
 
     self.subKindsButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.centerCapsuleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.centerCapsuleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.centerCapsuleButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.centerCapsuleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.centerCapsuleButton.showsMenuAsPrimaryAction = YES;
+    self.centerCapsuleButton.hidden = YES;
+    self.centerCapsuleButton.layer.actions = @{
+        @"position" : [NSNull null],
+        @"bounds"   : [NSNull null],
+        @"transform": [NSNull null],
+        @"opacity"  : [NSNull null]
+    };
+    UIColor *capsuleAccentColor = AppPrimaryClr ?: PPDataViewChromeTextColor();
+    UIButtonConfiguration *capsuleConfiguration = [UIButtonConfiguration plainButtonConfiguration];
+    capsuleConfiguration.background.strokeWidth = 0.0;
+    capsuleConfiguration.background.strokeColor = UIColor.clearColor;
+    capsuleConfiguration.background.backgroundColor = [capsuleAccentColor colorWithAlphaComponent:0.08];
+    capsuleConfiguration.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
+    capsuleConfiguration.imagePadding = 6.0;
+    capsuleConfiguration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+    capsuleConfiguration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    self.centerCapsuleButton.configuration = capsuleConfiguration;
+
     self.cartButton = [self pp_ZeroButtonWithSystemName:@"magnifyingglass"
                                                   action:nil];
     self.cartButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cartButton.showsMenuAsPrimaryAction = YES;
-    self.cartButton.menu = [self actionsArrayFrom:self collectionView:nil];
-    self.cartButton.hidden = NO;
-    self.cartButton.alpha = 1.0;
+    self.cartButton.showsMenuAsPrimaryAction = NO;
+    self.cartButton.menu = nil;
+    self.cartButton.hidden = YES;
+    self.cartButton.alpha = 0.0;
+    self.cartButton.userInteractionEnabled = NO;
+    self.cartButton.accessibilityElementsHidden = YES;
 
     if (!PPIOS26()) {
-        self.cartButton.layer.cornerRadius = 18;
+        self.cartButton.layer.cornerRadius = 20;
         self.cartButton.clipsToBounds = YES;
     }
 
+
     self.mainKindsWidthConstraint =
-    [self.KindsButton.widthAnchor constraintEqualToConstant:36];
+    [self.KindsButton.widthAnchor constraintEqualToConstant:112];
     self.sectionsWidthConstraint =
     [self.subKindsButton.widthAnchor constraintEqualToConstant:140];
     self.cartButtonWidthConstraint =
     [self.cartButton.widthAnchor constraintEqualToConstant:0];
     self.navContainerWidthConstraint =
     [self.navContainerView.widthAnchor constraintEqualToConstant:220];
+    self.centerCapsuleMinWidthConstraint =
+    [self.centerCapsuleButton.widthAnchor constraintGreaterThanOrEqualToConstant:140.0];
     self.mainKindsWidthConstraint.priority = UILayoutPriorityRequired;
     self.sectionsWidthConstraint.priority = UILayoutPriorityRequired;
     self.cartButtonWidthConstraint.priority = UILayoutPriorityRequired;
     self.navContainerWidthConstraint.priority = UILayoutPriorityRequired;
+    self.centerCapsuleMinWidthConstraint.priority = UILayoutPriorityRequired;
     self.mainKindsWidthConstraint.active = YES;
     self.sectionsWidthConstraint.active = YES;
     self.cartButtonWidthConstraint.active = YES;
     self.navContainerWidthConstraint.active = YES;
+    self.centerCapsuleMinWidthConstraint.active = YES;
 
     [self.navContainerView addSubview:self.KindsButton];
     [self.navContainerView addSubview:self.subKindsButton];
+    [self.navContainerView addSubview:self.centerCapsuleButton];
     [self.navContainerView addSubview:self.cartButton];
 
-    // Cart badge moved to rightBarButtonItem — see setupNavigation
+    // Legacy center action retained hidden; search now lives in the right navbar slot.
  
     
-    float inset = 4;
+    CGFloat inset = 3.0;
     self.subKindsTrailingToCartConstraint =
     [self.subKindsButton.trailingAnchor constraintEqualToAnchor:self.cartButton.leadingAnchor constant:-inset];
     self.subKindsTrailingToContainerConstraint =
@@ -2774,29 +3422,36 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.cartButton.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor constant:-inset],
         [self.KindsButton.trailingAnchor constraintEqualToAnchor:self.subKindsButton.leadingAnchor  constant:-inset],
 
+        [self.centerCapsuleButton.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:4.0],
+        [self.centerCapsuleButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-4.0],
+        [self.centerCapsuleButton.centerXAnchor constraintEqualToAnchor:self.navContainerView.centerXAnchor],
+        [self.centerCapsuleButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.navContainerView.leadingAnchor constant:inset],
+        [self.centerCapsuleButton.trailingAnchor constraintLessThanOrEqualToAnchor:self.cartButton.leadingAnchor constant:-inset],
+
         // Height
-        [self.navContainerView.heightAnchor constraintEqualToConstant:44]
+        [self.navContainerView.heightAnchor constraintEqualToConstant:46.0]
     ]];
     
 
-    // No max-width cap — navContainerView stretches to fill available nav bar space
+    // Width is recalculated against the live navigation bar to avoid compact-screen overlap.
    
-    
-    // Remove forced intrinsic layout for KindsButton (do not call setNeedsLayout/layoutIfNeeded here)
     
     sectionsBtn.menu = [self subKindsMenu];
     
     self.viewModel.currentSubKindID = 0;
-    [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
+    [self updateNavMainKindTitle];
+    [self updateSubKindsButtonTitle:[self pp_currentSubKindsDisplayTitle]];
 
     // AllCategories mode: show the section header title & hide chevron until user picks a kind
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
-        NSString *headerTitle = (self.input.title.length > 0) ? self.input.title : kLang(@"All");
-        [self updateSubKindsButtonTitle:headerTitle];
+        [self updateNavMainKindTitle];
+        [self updateSubKindsButtonTitle:kLang(@"All") ?: @"All"];
         [self pp_setSubKindsChevronHidden:YES];
     }
 
     sectionsBtn.menu = [self subKindsMenu];
+    [self pp_applyPremiumNavigationChromeAppearance];
+    [self pp_syncExperimentalCenterCapsuleState];
     [self updateCartButtonVisibility];
 }
 
@@ -2804,43 +3459,43 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)reloadNavigationCenterViewLayout
 {
-    if (!self.navContainerView) {
-        return;
-    }
+    [UIView performWithoutAnimation:^{
+        if (!self.navContainerView) {
+            return;
+        }
 
-    CGFloat targetWidth = [self preferredNavigationCenterViewWidth];
-    if (targetWidth > 0.0) {
-        self.navContainerWidthConstraint.constant = targetWidth;
-        CGRect frame = self.navContainerView.frame;
-        frame.size = CGSizeMake(targetWidth, 44.0);
-        self.navContainerView.frame = frame;
-        self.navContainerView.bounds = (CGRect){CGPointZero, frame.size};
-    }
+        CGFloat targetWidth = [self preferredNavigationCenterViewWidth];
+        if (targetWidth > 0.0) {
+            self.navContainerWidthConstraint.constant = targetWidth;
+            CGRect frame = self.navContainerView.frame;
+            frame.size = CGSizeMake(targetWidth, 46.0);
+            self.navContainerView.frame = frame;
+            self.navContainerView.bounds = (CGRect){CGPointZero, frame.size};
+        }
 
-    // ✅ FORCE layout pass FIRST (fixes AllKinds → first switch)
-    [self.navContainerView layoutIfNeeded];
+        // ✅ FORCE layout pass FIRST (fixes AllKinds → first switch)
+        [self.navContainerView layoutIfNeeded];
 
-    [self.KindsButton invalidateIntrinsicContentSize];
-    [self.subKindsButton invalidateIntrinsicContentSize];
-    [self.cartButton invalidateIntrinsicContentSize];
+        [self.KindsButton invalidateIntrinsicContentSize];
+        [self.subKindsButton invalidateIntrinsicContentSize];
+        [self.cartButton invalidateIntrinsicContentSize];
 
-    // 🔒 Icon-only main kind button → square
-    CGFloat h = CGRectGetHeight(self.navContainerView.bounds) > 0.0 ? CGRectGetHeight(self.navContainerView.bounds) : 46.0;
-    CGFloat inset = 4.0;
-    CGFloat mainWidth = MAX(36.0, h - (inset * 2.0));
-    CGFloat cartWidth = self.isCartButtonVisible ? 38.0 : 0.0;
-    CGFloat chromeWidth = self.isCartButtonVisible
-        ? ((inset * 4.0) + mainWidth + cartWidth)
-        : ((inset * 3.0) + mainWidth);
-    CGFloat availableSectionWidth = MAX(124.0, self.navContainerWidthConstraint.constant - chromeWidth);
-    CGFloat sectionWidth = availableSectionWidth;
+        CGFloat inset = 5.0;
+        CGFloat visibleChromeWidth = MAX(176.0, self.navContainerWidthConstraint.constant);
+        CGFloat hiddenCartWidth = self.isCartButtonVisible ? 36.0 : 0.0;
+        CGFloat insetCount = self.isCartButtonVisible ? 4.0 : 3.0;
+        CGFloat availableSelectorWidth = MAX(150.0, visibleChromeWidth - (inset * insetCount) - hiddenCartWidth);
+        CGFloat mainWidth = floor(availableSelectorWidth * 0.5);
+        CGFloat cartWidth = self.isCartButtonVisible ? 36.0 : 0.0;
+        CGFloat chromeWidth = (inset * insetCount) + mainWidth + cartWidth;
+        CGFloat sectionWidth = MAX(0.0, visibleChromeWidth - chromeWidth);
 
-    self.mainKindsWidthConstraint.constant = mainWidth;
-    self.sectionsWidthConstraint.constant = sectionWidth;
+        self.mainKindsWidthConstraint.constant = mainWidth;
+        self.sectionsWidthConstraint.constant = sectionWidth;
 
-    [self.navContainerView setNeedsLayout];
-    [self.navContainerView layoutIfNeeded];
-
+        [self.navContainerView setNeedsLayout];
+        [self.navContainerView layoutIfNeeded];
+    }];
 }
 
 - (CGFloat)preferredNavigationCenterViewWidth
@@ -2866,7 +3521,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return self.navContainerWidthConstraint.constant > 0.0 ? self.navContainerWidthConstraint.constant : 220.0;
     }
 
-    return floor(availableWidth);
+    CGFloat resolvedWidth = floor(availableWidth);
+    if (resolvedWidth < 218.0) {
+        return MAX(176.0, resolvedWidth);
+    }
+    return MIN(resolvedWidth, 292.0);
 }
 
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback
@@ -2909,7 +3568,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [btn setImage:img forState:UIControlStateNormal];
     UIButtonConfiguration *cfg;
     if (@available(iOS 26.0, *)) {
-        cfg = UIButtonConfiguration.prominentClearGlassButtonConfiguration;
+        cfg = UIButtonConfiguration.glassButtonConfiguration;
     } else {
         // Fallback on earlier versions
     }
@@ -2967,28 +3626,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (!title || title.length == 0) return;
     self.lastSubKindsTitle = title;
 
-    BOOL isLight =
-    (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight);
-
-    UIColor *titleColor = isLight
-        ? AppPrimaryClr
-        : UIColor.labelColor;
-
-    UIFont *titleFont = isLight
-        ? [GM boldFontWithSize:17]
-        : [GM MidFontWithSize:17];
-
     void (^applyButtonTitleChange)(void) = ^{
-        UIButtonConfiguration *config = self.subKindsButton.configuration;
-        config.attributedTitle =
-        [[NSAttributedString alloc] initWithString:title
-                                        attributes:@{
-            NSFontAttributeName : titleFont,
-            NSForegroundColorAttributeName : titleColor
-        }];
-        config.baseForegroundColor = titleColor;
-        self.subKindsButton.configuration = config;
+        [self pp_applyPremiumSelectorButton:self.subKindsButton
+                                primaryText:title
+                                    caption:[self pp_subKindsSelectorCaption]
+                                 emphasized:[self pp_subKindsSelectorIsActive]];
+        self.subKindsButton.accessibilityLabel =
+        [NSString stringWithFormat:@"%@, %@", [self pp_subKindsSelectorCaption], title];
         [self.subKindsButton invalidateIntrinsicContentSize];
+        [self pp_syncExperimentalCenterCapsuleState];
 
         if (animated && [self pp_allowsPremiumMotion]) {
             [self reloadNavigationCenterViewLayout];
@@ -3008,16 +3654,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     if (subKind) {
         PPDataViewLog(@"subKind %ld %@ %@ ",subKind.ID,subKind.SubKindName,subKind.SubKindImageName);
-        UIImage *btnImg =
-        [PPImageButtonHelper imageFor44ptButton:PPImage(subKind.SubKindImageName)];
-        if (animated) {
-            [self pp_applyNavigationChangeAnimationToButton:self.KindsButton updates:^{
-                [self.KindsButton setImage:btnImg forState:UIControlStateNormal];
-            }];
-            [self pp_applyFeedbackPulseToView:self.KindsButton];
-        } else {
-            [self.KindsButton setImage:btnImg forState:UIControlStateNormal];
-        }
     }
 }
 
@@ -3025,21 +3661,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (void)pp_setSubKindsChevronHidden:(BOOL)hidden
 {
     if (!self.subKindsButton) return;
+    self.isSubKindsChevronHidden = hidden;
+    [self pp_applyPremiumSubKindsButtonSurface];
     UIButtonConfiguration *cfg = self.subKindsButton.configuration;
-    if (hidden) {
-        cfg.image = nil;
-        cfg.imagePadding = 0;
-    } else {
-        UIImage *chevron =
-        [UIImage pp_symbolNamed:@"chevron.down"
-                      pointSize:16
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleDefault
-                        palette:@[AppPrimaryClr]
-                   makeTemplate:NO];
-        cfg.image = chevron;
-        cfg.imagePadding = 6;
-    }
+    cfg.image = nil;
+    cfg.imagePadding = 0.0;
     self.subKindsButton.configuration = cfg;
 }
 
@@ -3215,57 +3841,97 @@ presentingViewController:self
             (long)mainKind.ID];
 }
  
+- (PPManagerCellLayoutMode)pp_currentActionsMenuLayoutMode
+{
+    PPManagerCellLayoutMode currentMode = self.layoutManager.currentLayoutMode;
+    if (currentMode >= PPCellLayoutModeSquare &&
+        currentMode <= PPCellLayoutModePinterest) {
+        return currentMode;
+    }
+
+    PPManagerCellLayoutMode savedMode =
+    (PPManagerCellLayoutMode)[[NSUserDefaults standardUserDefaults] integerForKey:kPPLayoutModeKey];
+    if (savedMode >= PPCellLayoutModeSquare &&
+        savedMode <= PPCellLayoutModePinterest) {
+        return savedMode;
+    }
+
+    return PPCellLayoutModePinterest;
+}
+
+- (void)pp_refreshSearchActionsMenu
+{
+    if (!self.navSearchActionsButton) {
+        return;
+    }
+
+    self.navSearchActionsButton.menu = [self actionsArrayFrom:self collectionView:self.collectionView];
+    [self pp_applyPremiumNavSearchButtonAppearance];
+}
+
+- (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode
+{
+    if (mode < PPCellLayoutModeSquare || mode > PPCellLayoutModePinterest) {
+        return;
+    }
+
+    [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kPPLayoutModeKey];
+
+    if (!self.layoutManager || !self.collectionView) {
+        [self pp_refreshSearchActionsMenu];
+        return;
+    }
+
+    if (self.layoutManager.currentLayoutMode == mode) {
+        [PPFunc triggerLightHaptic];
+        [self pp_refreshSearchActionsMenu];
+        return;
+    }
+
+    PPDataViewLog(@"PPManagerCellLayoutMode selected %ld", (long)mode);
+    [PPFunc triggerLightHaptic];
+    [self.layoutManager applyLayoutMode:mode
+                       toCollectionView:self.collectionView
+                               animated:YES];
+    [self pp_installPinterestHeightGuardIfNeeded];
+    [self performCrossFadeReload];
+    [self pp_refreshSearchActionsMenu];
+}
+
 
 // Navigation bar setup with custom center view (main kinds + sections menu)
 - (void)setupNavigation
 {
-    // 1️⃣ Back button (LEFT)
-    if (!PPIOS26()) {
-        UIButton *backBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [backBtn setImage:[UIImage systemImageNamed:PPChevronName] forState:UIControlStateNormal];
-        backBtn.backgroundColor = AppForgroundColr;
-        backBtn.layer.cornerRadius = 20;
-        backBtn.clipsToBounds = YES;
-        [backBtn addTarget:self action:@selector(onBack) forControlEvents:UIControlEventTouchUpInside];
-        [backBtn.widthAnchor constraintEqualToConstant:40].active = YES;
-        [backBtn.heightAnchor constraintEqualToConstant:40].active = YES;
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backBtn];
-    } else {
-        UIBarButtonItem *backItem =
-        [[UIBarButtonItem alloc]
-         initWithImage:[UIImage systemImageNamed:PPChevronName]
-                 style:UIBarButtonItemStylePlain
-                target:self
-                action:@selector(onBack)];
+    [self pp_applyPremiumNavigationBarAppearance];
 
-        self.navigationItem.leftBarButtonItem = backItem;
-    }
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(onBack)];
 
-    // 2️⃣ Center title view
     [self setupKindsView];
+    [self pp_applyPremiumNavigationChromeAppearance];
     self.navigationItem.titleView = self.navContainerView;
 
-    // 3️⃣ Right cart button (swapped — cart moved here, filter moved to center nav)
-    if (!PPIOS26()) {
-        UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
-        cartNavBtn.backgroundColor = AppForgroundColr;
-        cartNavBtn.layer.cornerRadius = 20;
-        cartNavBtn.clipsToBounds = NO;
-        [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
-        [cartNavBtn.widthAnchor constraintEqualToConstant:40].active = YES;
-        [cartNavBtn.heightAnchor constraintEqualToConstant:40].active = YES;
+    UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
+    [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+    cartNavBtn.accessibilityLabel = kLang(@"Cart");
+    [self pp_applyPremiumNavIconButtonAppearance:cartNavBtn emphasized:YES];
+    cartNavBtn.clipsToBounds = NO;
+    [cartNavBtn.widthAnchor constraintEqualToConstant:42.0].active = YES;
+    [cartNavBtn.heightAnchor constraintEqualToConstant:42.0].active = YES;
+    self.navCartButton = cartNavBtn;
+    [self pp_applyTemporaryHiddenCartButtonState];
 
-        self.navCartButton = cartNavBtn;
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
-    } else {
-        UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
-        [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *searchNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    searchNavBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    searchNavBtn.clipsToBounds = NO;
+    [searchNavBtn.widthAnchor constraintEqualToConstant:42.0].active = YES;
+    [searchNavBtn.heightAnchor constraintEqualToConstant:42.0].active = YES;
+    self.navSearchActionsButton = searchNavBtn;
+    [self pp_refreshSearchActionsMenu];
 
-        self.navCartButton = cartNavBtn;
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
-    }
+    self.navigationItem.rightBarButtonItem =
+    [[UIBarButtonItem alloc] initWithCustomView:searchNavBtn];
+    [self reloadNavigationCenterViewLayout];
 
     [self updateCartBadge];
 }
@@ -3274,140 +3940,106 @@ presentingViewController:self
 {
     (void)controller;
     (void)collectionView;
-    
-    NSMutableArray *searchGroup = [NSMutableArray array];
-    NSMutableArray *filterGroup = [NSMutableArray array];
-    NSMutableArray *layoutGroup = [NSMutableArray array];
-    // Search action — opens PPSearchViewController
-   UIAction *searchPPAction = [PPActionButton actionWithTitle:kLang(@"searchOnly")
-                                              systemImageName:@"magnifyingglass"
-                                                         font:[GM MidFontWithSize:16]
-                                                        color:AppSecondaryTextClr
-                                                        handler:^(UIAction * _Nonnull action){
-        PPSearchViewController *searchVC = [[PPSearchViewController alloc] init];
-        PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:searchVC];
-        nav.modalPresentationStyle = UIModalPresentationFullScreen;
-        [PPHomeHelper presentViewControllerSafely:nav from:self animated:YES completion:nil];
+
+    __weak typeof(self) weakSelf = self;
+    PPManagerCellLayoutMode currentMode = [self pp_currentActionsMenuLayoutMode];
+
+    UIAction *searchPPAction =
+    [PPActionButton actionWithTitle:kLang(@"searchOnly")
+                    systemImageName:@"magnifyingglass"
+                               font:[GM MidFontWithSize:15.0]
+                              color:PPDataViewChromeTextColor()
+                            handler:^(__unused UIAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [PPFunc triggerLightHaptic];
+        [self pp_openSearchController];
     }];
-    [searchGroup addObject:searchPPAction];
-    
-    
-    
-    UIAction *filterPPAction = [PPActionButton actionWithTitle:kLang(@"filterPPAction")
-                                               systemImageName:@"line.3.horizontal.decrease"
-                                                          font:[GM MidFontWithSize:16]
-                                                         color:AppSecondaryTextClr
-                                                       handler:^(UIAction * _Nonnull action){
+    searchPPAction.discoverabilityTitle = kLang(@"searchOnly");
+
+    UIAction *filterPPAction =
+    [PPActionButton actionWithTitle:kLang(@"filterPPAction")
+                    systemImageName:@"line.3.horizontal.decrease.circle"
+                               font:[GM MidFontWithSize:15.0]
+                              color:PPDataViewChromeTextColor()
+                            handler:^(__unused UIAction *action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [PPFunc triggerLightHaptic];
         [self openFilters];
     }];
-    
-    
-    /// ------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    
-    
-    UIAction *layoutSquirePPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutSquare")
-                                                     systemImageName:@"widget.small"
-                                                                font:[GM MidFontWithSize:16]
-                                                               color:AppPrimaryTextClr
-                                                             handler:^(UIAction * _Nonnull action)  {
-        PPDataViewLog(@"PPManagerCellLayoutMode PPCellLayoutModeSquare");
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeSquare; // or FullWidth, Square, Vertical
-        [self.layoutManager applyLayoutMode:newMode
-                           toCollectionView:self.collectionView
-                                   animated:YES];
 
-        [self performCrossFadeReload];
-        [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
-    }];
-    
-    
-    UIAction *layoutFullPPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutFullWidth")
-                                                   systemImageName:@"widget.medium"
-                                                              font:[GM MidFontWithSize:16]
-                                                             color:AppPrimaryTextClr
-                                                           handler:^(UIAction * _Nonnull action) {
-        PPDataViewLog(@"PPManagerCellLayoutMode PPCellLayoutModeFullWidth");
-        
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeFullWidth; // or FullWidth, Square, Vertical
-        [self.layoutManager applyLayoutMode:newMode
-                           toCollectionView:self.collectionView
-                                   animated:YES];
+    UIAction *(^layoutAction)(NSString *, NSString *, PPManagerCellLayoutMode, BOOL) =
+    ^UIAction *(NSString *title, NSString *systemImageName, PPManagerCellLayoutMode mode, BOOL primary) {
+        UIAction *action =
+        [PPActionButton actionWithTitle:title
+                        systemImageName:systemImageName
+                                   font:(primary ? [GM boldFontWithSize:15.0] : [GM MidFontWithSize:15.0])
+                                  color:(currentMode == mode ? PPDataViewAccentColor() : PPDataViewChromeTextColor())
+                                handler:^(__unused UIAction *menuAction) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self pp_applyLayoutModeFromActionsMenu:mode];
+        }];
+        action.state = (currentMode == mode) ? UIMenuElementStateOn : UIMenuElementStateOff;
+        return action;
+    };
 
-       
-        [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
-        [self performCrossFadeReload];
-    }];
-    
-    
-    UIAction *layoutLargePPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutVertical")
-                                                    systemImageName:@"widget.extralarge"
-                                                               font:[GM MidFontWithSize:16]
-                                                              color:AppPrimaryTextClr
-                                                            handler:^(UIAction * _Nonnull action) {
-        PPDataViewLog(@"PPManagerCellLayoutMode PPCellLayoutModeVertical");
-        
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeVertical; // or FullWidth, Square, Vertical
-        [self.layoutManager applyLayoutMode:newMode
-                           toCollectionView:self.collectionView
-                                   animated:YES];
-        [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
-        
-        [self performCrossFadeReload];
-    }];
+    UIAction *layoutPintrestPPAction =
+    layoutAction(kLang(@"PPCellLayoutPinterest"),
+                 @"square.grid.2x2.fill",
+                 PPCellLayoutModePinterest,
+                 YES);
 
-   
-    UIAction *layoutPintrestPPAction = [PPActionButton actionWithTitle:kLang(@"Pintrest")
-                                                    systemImageName:@"widget.extralarge"
-                                                               font:[GM MidFontWithSize:16]
-                                                              color:AppPrimaryTextClr
-                                                            handler:^(UIAction * _Nonnull action) {
-        PPDataViewLog(@"PPManagerCellLayoutMode PPCellLayoutModePinterest");
-        PPManagerCellLayoutMode newMode = PPCellLayoutModePinterest; // or FullWidth, Square, Vertical
-        [self.layoutManager applyLayoutMode:newMode
-                           toCollectionView:self.collectionView
-                                   animated:YES];
+    UIAction *layoutLargePPAction =
+    layoutAction(kLang(@"PPCellLayoutVertical"),
+                 @"rectangle.portrait.fill",
+                 PPCellLayoutModeVertical,
+                 YES);
 
-       
-        [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
-        
-        [self performCrossFadeReload];
-    }];
-    
-     [filterGroup addObject:filterPPAction];
-    
-    [layoutGroup addObject:layoutSquirePPAction];
-    [layoutGroup addObject:layoutFullPPAction];
-    [layoutGroup addObject:layoutLargePPAction];
-    [layoutGroup addObject:layoutPintrestPPAction];
-    
-    UIMenu *menu;
-    
+    UIAction *layoutSquirePPAction =
+    layoutAction(kLang(@"PPCellLayoutSquare"),
+                 @"square.fill",
+                 PPCellLayoutModeSquare,
+                 NO);
+
+    UIAction *layoutFullPPAction =
+    layoutAction(kLang(@"PPCellLayoutFullWidth"),
+                 @"rectangle.fill",
+                 PPCellLayoutModeFullWidth,
+                 NO);
+
+    UIMenuOptions primaryLayoutOptions = UIMenuOptionsDisplayInline;
     if (@available(iOS 17.0, *)) {
-        menu  = [UIMenu menuWithTitle:kLang(@"searchOnly")
-                                image:nil
-                           identifier:nil
-                              options:UIMenuOptionsDisplayAsPalette
-                             children:@[
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:searchGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:filterGroup],
-            [UIMenu menuWithTitle:kLang(@"PPCellLayout") image:nil identifier:nil options:UIMenuOptionsDisplayInline children:layoutGroup]        ]];
-        
-        return  menu;
-    } else {
-     
-        menu  = [UIMenu menuWithTitle:@""
-                                image:nil
-                           identifier:nil
-                              options:UIMenuOptionsDisplayInline
-                             children:@[
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:searchGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:filterGroup],
-            [UIMenu menuWithTitle:kLang(@"PPCellLayout") image:nil identifier:nil options:UIMenuOptionsDisplayInline children:layoutGroup]
-        ]];
-        
+        primaryLayoutOptions = UIMenuOptionsDisplayAsPalette;
     }
-    
-    return  menu;
+
+    UIMenu *primaryLayoutMenu =
+    [UIMenu menuWithTitle:(kLang(@"PPDataViewPrimaryLayouts") ?: @"")
+                   image:[UIImage systemImageNamed:@"rectangle.grid.1x2"]
+              identifier:nil
+                 options:primaryLayoutOptions
+                children:@[layoutPintrestPPAction, layoutLargePPAction]];
+
+    UIMenu *utilityMenu =
+    [UIMenu menuWithTitle:@""
+                   image:nil
+              identifier:nil
+                 options:UIMenuOptionsDisplayInline
+                children:@[searchPPAction, filterPPAction]];
+
+    UIMenu *secondaryLayoutMenu =
+    [UIMenu menuWithTitle:(kLang(@"PPDataViewMoreLayouts") ?: @"")
+                   image:nil
+              identifier:nil
+                 options:UIMenuOptionsDisplayInline
+                children:@[layoutSquirePPAction, layoutFullPPAction]];
+
+    return [UIMenu menuWithTitle:(kLang(@"PPDataViewActionsTitle") ?: @"")
+                           image:nil
+                      identifier:nil
+                         options:0
+                        children:@[primaryLayoutMenu, utilityMenu, secondaryLayoutMenu]];
 }
 
 - (PPDataSection)sectionFromDeepLinkTarget:(PPDeepLinkTarget)target
@@ -3461,18 +4093,6 @@ presentingViewController:self
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
-    sectionsControl.containerBackgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.26];
-    sectionsControl.normalTextColor = UIColor.secondaryLabelColor;
-    sectionsControl.selectedTextColor = [UIColor colorWithWhite:1.0 alpha:0.94];
-    sectionsControl.selectedSegmentColor = AppPrimaryClr;
-    sectionsControl.normalFont = [GM MidFontWithSize:15];
-    sectionsControl.selectedFont = [GM boldFontWithSize:15];
-    sectionsControl.layer.cornerRadius = 17.0;
-    sectionsControl.layer.borderWidth = 0.0;
-    [sectionsControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.20]];
-    if (@available(iOS 13.0, *)) {
-        sectionsControl.layer.cornerCurve = kCACornerCurveContinuous;
-    }
     [sectionsControl setSelectedIndex:PPDataSectionAds animated:NO];
     [sectionsControl addTarget:self
                         action:@selector(sectionsSegmentedControlChanged:)
@@ -3483,22 +4103,17 @@ presentingViewController:self
     [self.view addSubview:sectionsControl];
 
     if (!PPIOS26()) {
-        [sectionsControl pp_setShadowColor:UIColor.blackColor];
-        sectionsControl.layer.shadowOpacity = 0.1;
-        sectionsControl.layer.shadowRadius = 4;
-        sectionsControl.layer.shadowOffset = CGSizeMake(0, 2);
-
         UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
         blurView.userInteractionEnabled = NO;
-        blurView.layer.cornerRadius = PPCurrentSectionsTabBarHeight() * 0.5;
+        blurView.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
         blurView.clipsToBounds = YES;
         if (@available(iOS 13.0, *)) {
             blurView.layer.cornerCurve = kCACornerCurveContinuous;
         }
         self.sectionsSegmentedBlurView = blurView;
-        [self.view addSubview:blurView];
+        [self.view insertSubview:blurView belowSubview:sectionsControl];
         [NSLayoutConstraint activateConstraints:@[
             [blurView.topAnchor constraintEqualToAnchor:sectionsControl.topAnchor],
             [blurView.leadingAnchor constraintEqualToAnchor:sectionsControl.leadingAnchor],
@@ -3506,14 +4121,16 @@ presentingViewController:self
             [blurView.bottomAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor]
         ]];
     }
+    [self pp_applyPremiumSectionsSegmentedAppearance];
+
     self.sectionsTabBarHeightConstraint =
     [sectionsControl.heightAnchor constraintEqualToConstant:PPCurrentSectionsTabBarHeight()];
     self.sectionsTabBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [sectionsControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
-        [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18.0],
-        [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-18.0]
+        [sectionsControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 4.0 : 12.0],
+        [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
+        [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
     
@@ -3734,8 +4351,7 @@ presentingViewController:self
             
         }];
 
-        // Update button title back to MainKind name
-        [self updateSubKindsButtonTitle:self.input.mainKind.KindName animated:YES];
+        [self updateSubKindsButtonTitle:[self pp_currentSubKindsDisplayTitle] animated:YES];
         [[NovaAmbientAssistantCoordinator sharedCoordinator] categoryDidOpen:self.input.mainKind.KindName];
 
         // Refresh menu states

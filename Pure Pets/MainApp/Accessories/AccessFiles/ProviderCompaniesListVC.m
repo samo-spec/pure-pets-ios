@@ -113,6 +113,10 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 
 @interface ProviderCompaniesListVC () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, UIGestureRecognizerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) NSLayoutConstraint *searchBarBottomConstraint;
+@property (nonatomic, assign) BOOL previousIQKeyboardManagerEnabled;
+@property (nonatomic, assign) BOOL previousIQKeyboardToolbarEnabled;
+@property (nonatomic, assign) BOOL isOverridingIQKeyboardManager;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundCanvasView;
 @property (nonatomic, strong) PPProviderCompaniesAmbientGlowView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) PPProviderCompaniesAmbientGlowView *pp_premiumBackgroundGlowViewMid;
@@ -204,7 +208,16 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 {
     [super viewDidLoad];
     [self pp_buildUI];
+    
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    tap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:tap];
+    
      [self loadProviders];
+}
+
+- (void)pp_dismissKeyboard {
+    [self.view endEditing:YES];
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -221,6 +234,24 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
                      button:_heroLayoutToggleButton
                        title:kLang(@"provider_marketplace_title")
                    showBack:YES];
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
+    
+    IQKeyboardManager *manager = [IQKeyboardManager sharedManager];
+    if (!self.isOverridingIQKeyboardManager) {
+        self.previousIQKeyboardManagerEnabled = manager.enable;
+        self.previousIQKeyboardToolbarEnabled = manager.enableAutoToolbar;
+        self.isOverridingIQKeyboardManager = YES;
+    }
+    manager.enable = NO;
+    manager.enableAutoToolbar = NO;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -236,6 +267,15 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
     [super viewWillDisappear:animated];
     self.providerCompaniesScreenVisible = NO;
     [self pp_stopPremiumBackgroundGlowMotion];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
+    
+    IQKeyboardManager *manager = [IQKeyboardManager sharedManager];
+    if (self.isOverridingIQKeyboardManager) {
+        manager.enable = self.previousIQKeyboardManagerEnabled;
+        manager.enableAutoToolbar = self.previousIQKeyboardToolbarEnabled;
+        self.isOverridingIQKeyboardManager = NO;
+    }
  }
 
 - (void)viewDidLayoutSubviews
@@ -439,10 +479,11 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
      [self.heroSearchChromeView addSubview:self.FilterBTN];
      [self.heroSearchChromeView addSubview:self.heroLayoutToggleButton];
     
+    self.searchBarBottomConstraint = [self.heroSearchChromeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-16.0];
+    self.searchBarBottomConstraint.active = YES;
+    
     [NSLayoutConstraint activateConstraints:@[
           
-        [self.heroSearchChromeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-16.0],
-
         [self.heroSearchChromeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [self.heroSearchChromeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
         [self.heroSearchChromeView.heightAnchor constraintEqualToConstant:54.0],
@@ -2095,6 +2136,38 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         [(id)self.tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
         return;
     }
+}
+
+#pragma mark - Keyboard Handling
+
+- (void)pp_keyboardWillShow:(NSNotification *)notification
+{
+    NSDictionary *userInfo = notification.userInfo;
+    CGRect keyboardEndFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect convertedFrame = [self.view convertRect:keyboardEndFrame fromView:nil];
+    CGFloat keyboardHeight = CGRectGetHeight(convertedFrame);
+    
+    CGFloat bottomOffset = -keyboardHeight - 16.0;
+    
+    [UIView animateWithDuration:[userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]
+                          delay:0.0
+                        options:[userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue] << 16
+                     animations:^{
+        self.searchBarBottomConstraint.constant = bottomOffset;
+        [self.view layoutIfNeeded];
+    } completion:nil];
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)notification
+{
+    NSDictionary *userInfo = notification.userInfo;
+    [UIView animateWithDuration:[userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue]
+                          delay:0.0
+                        options:[userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue] << 16
+                     animations:^{
+        self.searchBarBottomConstraint.constant = -16.0;
+        [self.view layoutIfNeeded];
+    } completion:nil];
 }
 
 @end

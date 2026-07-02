@@ -676,30 +676,62 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
 - (void)handleUnreadUpdate {
     NSDictionary<NSString *, NSNumber *> *liveUnreadCounts = [ChManager sharedManager].liveUnreadCounts ?: @{};
+    NSDictionary<NSString *, ChatMessageModel *> *latestUnreadMessages = [ChManager sharedManager].latestUnreadMessages ?: @{};
+    
     if (self.threads.count == 0) {
         return;
     }
 
+    BOOL anyChanges = NO;
     NSMutableArray<NSIndexPath *> *reloadPaths = [NSMutableArray array];
     for (NSInteger row = 0; row < self.threads.count; row++) {
         ChatThreadModel *thread = self.threads[row];
         NSInteger newCount = liveUnreadCounts[thread.ID].integerValue;
-        if (thread.unreadCount == newCount) {
-            continue;
+        
+        ChatMessageModel *latestMsg = latestUnreadMessages[thread.ID];
+        BOOL messageUpdated = NO;
+        if (latestMsg) {
+            NSString *lastMessageText = @"";
+            if (latestMsg.isTextMessage) {
+                lastMessageText = latestMsg.text ?: @"";
+            } else if (latestMsg.isAudioMessage) {
+                lastMessageText = kLang(@"Audio message");
+            } else if (latestMsg.isImageMessage) {
+                lastMessageText = kLang(@"Image");
+            } else if (latestMsg.isVideoMessage) {
+                lastMessageText = kLang(@"Video");
+            } else if (latestMsg.isFileMessage) {
+                lastMessageText = kLang(@"File");
+            }
+            
+            // Normalize preview text
+            lastMessageText = [lastMessageText stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
+            lastMessageText = [lastMessageText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if (lastMessageText.length == 0) {
+                lastMessageText = kLang(@"NewMessage");
+            }
+            
+            if (![thread.lastMessage isEqualToString:lastMessageText]) {
+                thread.lastMessage = lastMessageText;
+                thread.lastMessageAt = latestMsg.timestamp;
+                messageUpdated = YES;
+            }
         }
-
-        thread.unreadCount = newCount;
-        [reloadPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+        
+        if (thread.unreadCount != newCount || messageUpdated) {
+            thread.unreadCount = newCount;
+            anyChanges = YES;
+            [reloadPaths addObject:[NSIndexPath indexPathForRow:row inSection:0]];
+        }
     }
 
-    if (reloadPaths.count == 0) {
+    if (!anyChanges) {
         return;
     }
 
-    [UIView performWithoutAnimation:^{
-        [self.tableView reloadRowsAtIndexPaths:reloadPaths
-                              withRowAnimation:UITableViewRowAnimationNone];
-    }];
+    // Sort and apply the snapshot so the order is updated if a new message has arrived
+    NSArray<ChatThreadModel *> *sortedThreads = [self pp_sortedVisibleThreads:self.threads];
+    [self pp_applyThreadsSnapshot:sortedThreads animated:YES];
 }
 
 #pragma mark - Table Refresh
@@ -863,6 +895,10 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
 }
 
+- (void)pp_dismissPresentedStartChatPicker {
+    [self.presentedViewController dismissViewControllerAnimated:YES completion:nil];
+}
+
 - (void)startNewChat {
     NSString *currentUID = [self pp_currentChatIdentity];
     NSArray<UserModel *> *options =
@@ -888,13 +924,44 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     picker.imageLoaded = NO;
     picker.presentationStyle = PPSelectOptionPresentationSheet;
     picker.title = kLang(@"Select User");
-    picker.modalPresentationStyle = UIModalPresentationOverCurrentContext;
-    picker.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
-    picker.modalPresentationCapturesStatusBarAppearance = YES;
     picker.view.backgroundColor = UIColor.systemBackgroundColor;
+    picker.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+    picker.navigationItem.leftBarButtonItem =
+    [[UIBarButtonItem alloc] initWithTitle:kLang(@"Cancel")
+                                     style:UIBarButtonItemStylePlain
+                                    target:self
+                                    action:@selector(pp_dismissPresentedStartChatPicker)];
 
-    self.definesPresentationContext = YES;
-    [self presentViewController:picker animated:YES completion:nil];
+    UINavigationController *navigationController =
+    [[UINavigationController alloc] initWithRootViewController:picker];
+    navigationController.modalPresentationStyle = UIModalPresentationPageSheet;
+    navigationController.modalTransitionStyle = UIModalTransitionStyleCoverVertical;
+    navigationController.modalPresentationCapturesStatusBarAppearance = YES;
+    navigationController.modalInPresentation = NO;
+    navigationController.view.backgroundColor = UIColor.systemBackgroundColor;
+    navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.modalInPresentation = NO;
+    if (@available(iOS 13.0, *)) {
+        UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+        [appearance configureWithDefaultBackground];
+        appearance.backgroundColor = UIColor.systemBackgroundColor;
+        appearance.shadowColor = UIColor.clearColor;
+        navigationController.navigationBar.standardAppearance = appearance;
+        navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = navigationController.sheetPresentationController;
+        sheet.detents = @[
+            [UISheetPresentationControllerDetent mediumDetent],
+            [UISheetPresentationControllerDetent largeDetent]
+        ];
+        sheet.prefersGrabberVisible = YES;
+        sheet.preferredCornerRadius = 28.0;
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+    }
+
+    [self presentViewController:navigationController animated:YES completion:nil];
 }
 
 - (void)chat:(ChatThreadModel *)chat didUpdateOnlineStatus:(OnlineStatus)status {

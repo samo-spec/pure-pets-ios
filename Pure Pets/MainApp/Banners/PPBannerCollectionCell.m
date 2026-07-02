@@ -12,21 +12,21 @@
 #import <math.h>
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
-static const CGFloat kPPHomeBannerSectionHeight = 188.0;
+static const CGFloat kPPHomeBannerSectionHeight = 168.0;
 static const CGFloat kPPHomeBannerSectionTopInset = 0.0;
 static const CGFloat kPPHomeBannerSectionHorizontalInset = 8.0;
 static const CGFloat kPPHomeBannerSectionBottomInset = 14.0;
 static const CGFloat kPPHomeBannerCellVerticalPadding = 0.0;
-static const CGFloat kPPHomePromoCarouselCardWidthFraction = .999;
+static const CGFloat kPPHomePromoCarouselCardWidthFraction = .899;
 static const CGFloat kPPHomePromoCarouselLineSpacing = -94.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
 static const CGFloat kPPHomePromoCarouselMinScale = 0.825;
-static const CGFloat kPPHomePromoCarouselMaxTranslateY = 8.0;
-static const CGFloat kPPHomePromoCarouselMaxDepth = 88.0;
-static const CGFloat kPPHomePromoCarouselMaxRotation = 0.28;
-static const CGFloat kPPHomePromoCarouselPerspective = 780.0;
+static const CGFloat kPPHomePromoCarouselMaxTranslateY = 6.0;
+static const CGFloat kPPHomePromoCarouselMaxDepth = 68.0;
+static const CGFloat kPPHomePromoCarouselMaxRotation = 0.68;
+static const CGFloat kPPHomePromoCarouselPerspective = 100.0;
 
 static CGFloat PPCinematicClamp(CGFloat value, CGFloat lower, CGFloat upper)
 {

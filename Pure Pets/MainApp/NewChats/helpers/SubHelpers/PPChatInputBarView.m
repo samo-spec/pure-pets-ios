@@ -122,6 +122,8 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
 - (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active;
 - (void)pp_buildReplyPreview;
 - (void)pp_setReplyPreviewVisible:(BOOL)visible animated:(BOOL)animated;
+- (void)pp_iconTouchDown:(UIButton *)sender;
+- (void)pp_iconTouchUp:(UIButton *)sender;
 @end
 
 @implementation PPChatInputBarView
@@ -330,11 +332,11 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
    
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.recordingBar.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:0],
-        [self.recordingBar.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-0],
-        [self.recordingBar.heightAnchor constraintEqualToConstant:44],
-        //[self.recordingBar.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-0],
-        [self.recordingBar.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
+	        [self.recordingBar.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:0],
+	        [self.recordingBar.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-0],
+	        [self.recordingBar.heightAnchor constraintEqualToConstant:56],
+	        //[self.recordingBar.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-0],
+	        [self.recordingBar.centerYAnchor constraintEqualToAnchor:self.contentContainer.centerYAnchor],
      
     ]];
    
@@ -1054,9 +1056,44 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
         b.backgroundColor = PPChatInputBarControlSurfaceColor(self.traitCollection);
     }
 
-    b.clipsToBounds = YES;
-    b.layer.cornerRadius = 22;
-    return b;
+	    b.clipsToBounds = YES;
+	    b.layer.cornerRadius = 22;
+        [b addTarget:self
+              action:@selector(pp_iconTouchDown:)
+    forControlEvents:UIControlEventTouchDown];
+        [b addTarget:self
+              action:@selector(pp_iconTouchUp:)
+    forControlEvents:UIControlEventTouchUpInside |
+                     UIControlEventTouchUpOutside |
+                     UIControlEventTouchCancel];
+	    return b;
+	}
+
+- (void)pp_iconTouchDown:(UIButton *)sender
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        sender.alpha = 0.88;
+        return;
+    }
+
+    [UIView animateWithDuration:0.08
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.96, 0.96);
+        sender.alpha = 0.88;
+    } completion:nil];
+}
+
+- (void)pp_iconTouchUp:(UIButton *)sender
+{
+    [UIView animateWithDuration:(UIAccessibilityIsReduceMotionEnabled() ? 0.01 : 0.16)
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+        sender.alpha = 1.0;
+    } completion:nil];
 }
 
 - (void)setReplyPreviewTitle:(NSString *)title subtitle:(NSString *)subtitle animated:(BOOL)animated
@@ -1210,12 +1247,29 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     self.panGesture.enabled = YES;
 
     [self.recordingBar reset];
+    self.recordingBar.transform = UIAccessibilityIsReduceMotionEnabled()
+        ? CGAffineTransformIdentity
+        : CGAffineTransformMakeTranslation(0.0, 6.0);
     [self.recordingBar setRecordingState:PPRecordingBarStateRecording animated:NO];
 
-    self.textView.alpha = 0.0;
-    self.placeholderLabel.alpha = 0.0;
-    self.mediaButton.alpha = 0.0;
-    
+    void (^changes)(void) = ^{
+        self.textBackgroundView.alpha = 0.0;
+        self.textView.alpha = 0.0;
+        self.placeholderLabel.alpha = 0.0;
+        self.mediaButton.alpha = 0.0;
+        self.recordingBar.transform = CGAffineTransformIdentity;
+    };
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+    } else {
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                         animations:changes
+                         completion:nil];
+    }
+
     [self.lockPill setState:PPRecordingLockPillStateIdle animated:YES];
 }
 
@@ -1235,11 +1289,23 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
 
     [self.recordingBar setRecordingState:PPRecordingBarStateHidden animated:YES];
     [self.lockPill setState:PPRecordingLockPillStateHidden animated:YES];
-    
-    self.textView.alpha = 1.0;
-    self.mediaButton.alpha = 1.0;
-    self.placeholderLabel.alpha = (self.textView.text.length == 0) ? 1.0 : 0.0;
- 
+
+    void (^changes)(void) = ^{
+        self.textBackgroundView.alpha = 1.0;
+        self.textView.alpha = 1.0;
+        self.mediaButton.alpha = 1.0;
+        self.placeholderLabel.alpha = (self.textView.text.length == 0) ? 1.0 : 0.0;
+    };
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+    } else {
+        [UIView animateWithDuration:0.20
+                              delay:0.03
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+                         animations:changes
+                         completion:nil];
+    }
 }
 
  

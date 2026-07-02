@@ -174,6 +174,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         sharedInstance.initialSyncedThreads = [NSMutableSet set];
         
         sharedInstance.liveUnreadCounts = [NSMutableDictionary dictionary];
+        sharedInstance.latestUnreadMessages = [NSMutableDictionary dictionary];
         sharedInstance.mutedThreadIDsStorage = [NSMutableSet set];
     });
     return sharedInstance;
@@ -1050,14 +1051,27 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         if (error || !snapshot) return;
 
         NSMutableDictionary *counts = [NSMutableDictionary dictionary];
+        NSMutableDictionary *latestMessages = [NSMutableDictionary dictionary];
 
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             NSString *threadID = doc.reference.parent.parent.documentID;
             NSInteger c = [counts[threadID] integerValue];
             counts[threadID] = @(c + 1);
+
+            ChatMessageModel *msg = [[ChatMessageModel alloc] initWithDictionary:doc.data ?: @{}];
+            if (msg.ID.length == 0) {
+                msg.ID = doc.documentID;
+            }
+            if (threadID.length > 0) {
+                ChatMessageModel *existing = latestMessages[threadID];
+                if (!existing || [msg.timestamp compare:existing.timestamp] == NSOrderedDescending) {
+                    latestMessages[threadID] = msg;
+                }
+            }
         }
 
         weakSelf.liveUnreadCounts = counts;
+        weakSelf.latestUnreadMessages = latestMessages;
 
         [[NSNotificationCenter defaultCenter]
          postNotificationName:@"UnreadCountsUpdated"
@@ -1814,6 +1828,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }
 
     [self.liveUnreadCounts removeAllObjects];
+    [self.latestUnreadMessages removeAllObjects];
 }
 
  
@@ -1909,10 +1924,20 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         if (snap.documents.count == 0) {
             NSLog(@"ℹ️ [Read] No unread messages to mark");
+            BOOL changed = NO;
             NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
             if (counts[threadID]) {
                 [counts removeObjectForKey:threadID];
                 self.liveUnreadCounts = counts;
+                changed = YES;
+            }
+            NSMutableDictionary *latest = [self.latestUnreadMessages mutableCopy] ?: [NSMutableDictionary dictionary];
+            if (latest[threadID]) {
+                [latest removeObjectForKey:threadID];
+                self.latestUnreadMessages = latest;
+                changed = YES;
+            }
+            if (changed) {
                 [[NSNotificationCenter defaultCenter]
                  postNotificationName:@"UnreadCountsUpdated"
                  object:nil];
@@ -1947,10 +1972,20 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 NSLog(@"✅ [Read] Marked %lu messages as READ",
                       (unsigned long)snap.documents.count);
 
+                BOOL changed = NO;
                 NSMutableDictionary *counts = [self.liveUnreadCounts mutableCopy] ?: [NSMutableDictionary dictionary];
                 if (counts[threadID]) {
                     [counts removeObjectForKey:threadID];
                     self.liveUnreadCounts = counts;
+                    changed = YES;
+                }
+                NSMutableDictionary *latest = [self.latestUnreadMessages mutableCopy] ?: [NSMutableDictionary dictionary];
+                if (latest[threadID]) {
+                    [latest removeObjectForKey:threadID];
+                    self.latestUnreadMessages = latest;
+                    changed = YES;
+                }
+                if (changed) {
                     [[NSNotificationCenter defaultCenter]
                      postNotificationName:@"UnreadCountsUpdated"
                      object:nil];

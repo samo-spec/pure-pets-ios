@@ -83,6 +83,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
 @property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
 @property (nonatomic, assign) CGFloat premiumDockAppliedItemWidth;
+@property (nonatomic, assign) NSInteger premiumMyAdsRootTabIndex;
 @property (nonatomic, strong, nullable) UIControl *blockedOverlayView;
 @property (nonatomic, strong, nullable) UIView *blockedOverlayCardView;
 @property (nonatomic, strong, nullable) LOTAnimationView *blockedHeaderAnimationView;
@@ -107,6 +108,8 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 - (void)pp_handleNovaFloatingVisibilityUpdate:(NSNotification *)notification;
 - (BOOL)pp_cachedNovaFloatingVisibility;
 - (void)pp_updatePremiumNovaButtonVisibility;
+- (NSInteger)pp_resolvedMyAdsRootTabIndex;
+- (BOOL)pp_isResolvedMyAdsRootTabIndex:(NSInteger)index;
 - (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
 - (UIImage *)pp_profileTabItemImageSelected:(BOOL)selected;
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected;
@@ -278,7 +281,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @end
 
 @interface PPCartFloatingBarView : UIControl
-@property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIButton *materialView;
 @property (nonatomic, strong) UIView *tintOverlayView;
 @property (nonatomic, strong) UIView *highlightGlowView;
 @property (nonatomic, strong) UIView *iconOrbView;
@@ -312,7 +315,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (@available(iOS 13.0, *)) {
         blurStyle = UIBlurEffectStyleSystemChromeMaterial;
     }
-    self.materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    self.materialView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule];
     self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.materialView.userInteractionEnabled = NO;
     self.materialView.clipsToBounds = YES;
@@ -322,15 +325,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.tintOverlayView = [[UIView alloc] init];
     self.tintOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
     self.tintOverlayView.userInteractionEnabled = NO;
-    [self.materialView.contentView addSubview:self.tintOverlayView];
+    [self.materialView addSubview:self.tintOverlayView];
 
     self.highlightGlowView = [[UIView alloc] init];
     self.highlightGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.highlightGlowView.userInteractionEnabled = NO;
     self.highlightGlowView.alpha = 0.92;
-    [self.materialView.contentView addSubview:self.highlightGlowView];
+    [self.materialView addSubview:self.highlightGlowView];
 
-    UIView *contentView = self.materialView.contentView;
+    UIView *contentView = self.materialView;
 
     self.iconOrbView = [[UIView alloc] init];
     self.iconOrbView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -631,6 +634,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @property (nonatomic, assign) BOOL preparedForPremiumReveal;
 - (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController;
 - (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated;
+- (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController;
+- (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController
+                                         visitedControllers:(NSMutableSet<NSValue *> *)visitedControllers;
 @end
 
 @implementation PPCartFloatingBarCoordinator
@@ -779,23 +785,43 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (UIViewController *)topVisibleViewControllerFrom:(UIViewController *)viewController
 {
+    return [self topVisibleViewControllerFrom:viewController visitedControllers:[NSMutableSet set]];
+}
+
+- (UIViewController *)topVisibleViewControllerFrom:(UIViewController *)viewController
+                                visitedControllers:(NSMutableSet<NSValue *> *)visitedControllers
+{
     if (!viewController) {
         return nil;
     }
 
+    NSValue *viewControllerPointer = [NSValue valueWithNonretainedObject:viewController];
+    if ([visitedControllers containsObject:viewControllerPointer]) {
+        return viewController;
+    }
+    [visitedControllers addObject:viewControllerPointer];
+
     UIViewController *presented = viewController.presentedViewController;
-    if (presented) {
-        return [self topVisibleViewControllerFrom:presented];
+    if (presented && presented != viewController && !presented.isBeingDismissed) {
+        return [self topVisibleViewControllerFrom:presented visitedControllers:visitedControllers];
     }
 
     if ([viewController isKindOfClass:UINavigationController.class]) {
         UINavigationController *navigationController = (UINavigationController *)viewController;
-        return [self topVisibleViewControllerFrom:(navigationController.visibleViewController ?: navigationController.topViewController ?: navigationController)];
+        UIViewController *candidate = navigationController.visibleViewController ?: navigationController.topViewController;
+        if (candidate && candidate != viewController) {
+            return [self topVisibleViewControllerFrom:candidate visitedControllers:visitedControllers];
+        }
+        return viewController;
     }
 
     if ([viewController isKindOfClass:UITabBarController.class]) {
         UITabBarController *tabController = (UITabBarController *)viewController;
-        return [self topVisibleViewControllerFrom:(tabController.selectedViewController ?: viewController)];
+        UIViewController *candidate = tabController.selectedViewController;
+        if (candidate && candidate != viewController) {
+            return [self topVisibleViewControllerFrom:candidate visitedControllers:visitedControllers];
+        }
+        return viewController;
     }
 
     return viewController;
@@ -1071,8 +1097,36 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 @implementation PPRootTabBarController
 
+- (nullable UIViewController *)pp_viewControllerForRootTabIndex:(NSInteger)index
+{
+    NSArray<UIViewController *> *controllers = self.viewControllers;
+    if (index < 0 || index >= (NSInteger)controllers.count) {
+        return nil;
+    }
+    return controllers[(NSUInteger)index];
+}
+
+- (NSInteger)pp_resolvedMyAdsRootTabIndex
+{
+    return self.premiumMyAdsRootTabIndex != NSNotFound
+        ? self.premiumMyAdsRootTabIndex
+        : PPRootTabIndexMyAds;
+}
+
+- (BOOL)pp_isResolvedMyAdsRootTabIndex:(NSInteger)index
+{
+    return index == [self pp_resolvedMyAdsRootTabIndex];
+}
+
 - (void)setSelectedIndex:(NSUInteger)selectedIndex
 {
+    if (selectedIndex >= self.viewControllers.count) {
+        NSLog(@"[PPRootTabBar] Ignoring invalid selectedIndex=%lu count=%lu",
+              (unsigned long)selectedIndex,
+              (unsigned long)self.viewControllers.count);
+        [self pp_applyPremiumTabSelectionAnimated:NO];
+        return;
+    }
     [super setSelectedIndex:selectedIndex];
     [self pp_assertPremiumTabBarState];
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
@@ -1091,6 +1145,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.tabBar.semanticContentAttribute = semantic;
     self.view.backgroundColor = AppClearClr;
     self.delegate = self;
+    self.premiumMyAdsRootTabIndex = NSNotFound;
     // Home
     UINavigationController *homeNav =
     [self nav:[PPHomeViewController new]
@@ -1143,17 +1198,25 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     
     */
 
-    NSMutableArray<UIViewController *> *rootControllers = [@[
-        homeNav,
-        notiNav,
-        addNav,
-        cartNav,
-        settingsNav
-    ] mutableCopy];
     if (PPIOS26()) {
-        [rootControllers addObject:myAdsNav];
+        NSMutableArray<UIViewController *> *premiumRootControllers = [@[
+            homeNav,
+            notiNav,
+            addNav,
+            cartNav,
+            myAdsNav
+        ] mutableCopy];
+        self.premiumMyAdsRootTabIndex = (NSInteger)premiumRootControllers.count - 1;
+        self.viewControllers = premiumRootControllers.copy;
+    } else {
+        self.viewControllers = @[
+            homeNav,
+            notiNav,
+            addNav,
+            cartNav,
+            settingsNav
+        ];
     }
-    self.viewControllers = rootControllers.copy;
 
     // ── Centralized tab bar state management ──
     // Set self as delegate for every tab's navigation controller so
@@ -2387,9 +2450,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
     dockView.clipsToBounds = NO;
 
+    NSInteger myAdsTabIndex = [self pp_resolvedMyAdsRootTabIndex];
     NSArray<NSNumber *> *visibleTabIndexes = @[
         @(PPRootTabIndexHome),
-        @(PPRootTabIndexMyAds),
+        @(myAdsTabIndex),
         @(PPRootTabIndexChats),
        // @(PPRootTabIndexSettings),
         @(PPRootTabIndexOrders)
@@ -2397,7 +2461,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     NSMutableArray<UITabBarItem *> *items = [NSMutableArray arrayWithCapacity:visibleTabIndexes.count];
     for (NSNumber *tabIndexValue in visibleTabIndexes) {
         NSInteger index = tabIndexValue.integerValue;
-        UITabBarItem *sourceItem = self.viewControllers[index].tabBarItem;
+        UIViewController *sourceController = [self pp_viewControllerForRootTabIndex:index];
+        if (!sourceController) {
+            NSLog(@"[PPRootTabBar] Skipping premium dock item for unavailable tab index=%ld count=%lu",
+                  (long)index,
+                  (unsigned long)self.viewControllers.count);
+            continue;
+        }
+        UITabBarItem *sourceItem = sourceController.tabBarItem;
         UITabBarItem *item =
             [[UITabBarItem alloc] initWithTitle:sourceItem.title
                                          image:[self pp_premiumSymbolForTabIndex:index selected:NO]
@@ -2497,6 +2568,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_handleCartFloatingBarCartUpdated:(NSNotification *)notification
 {
     (void)notification;
+    UIViewController *visible = [self.cartFloatingBarCoordinator topVisibleViewControllerFrom:self.selectedViewController ?: self];
+    if (visible) {
+        [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:visible animated:YES];
+    }
     [self.cartFloatingBarCoordinator handleCartUpdatedAnimated:YES];
 }
 
@@ -2791,6 +2866,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 {
     NSString *normalSymbolName = @"circle";
     NSString *selectedSymbolName = @"circle.fill";
+    if ([self pp_isResolvedMyAdsRootTabIndex:index]) {
+        normalSymbolName = @"square.stack.3d.up";
+        selectedSymbolName = @"square.stack.3d.up.fill";
+        return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
+                              pointSize:20.0
+                                 weight:selected ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold
+                                  scale:UIImageSymbolScaleMedium
+                                palette:@[selected ? (AppPrimaryClr ?: UIColor.systemTealColor) : UIColor.secondaryLabelColor]
+                           makeTemplate:YES];
+    }
     switch (index) {
         case PPRootTabIndexHome:
             normalSymbolName = @"house";
@@ -2799,10 +2884,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         case PPRootTabIndexChats:
             normalSymbolName = @"bubble.left.and.bubble.right";
             selectedSymbolName = @"bubble.left.and.bubble.right.fill";
-            break;
-        case PPRootTabIndexMyAds:
-            normalSymbolName = @"square.stack.3d.up";
-            selectedSymbolName = @"square.stack.3d.up.fill";
             break;
         case PPRootTabIndexOrders:
             return [self pp_profileTabItemImageSelected:selected];
@@ -3190,10 +3271,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
 {
     NSInteger index = item.tag;
-    if (index < 0 || index >= (NSInteger)self.viewControllers.count) {
+    UIViewController *viewController = [self pp_viewControllerForRootTabIndex:index];
+    if (!viewController) {
+        [self pp_applyPremiumTabSelectionAnimated:NO];
         return;
     }
-    UIViewController *viewController = self.viewControllers[index];
     if (![self tabBarController:self shouldSelectViewController:viewController]) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
         return;
@@ -3822,6 +3904,9 @@ shouldSelectViewController:(UIViewController *)viewController {
 
     NSUInteger index =
     [tabBarController.viewControllers indexOfObject:viewController];
+    if (index == NSNotFound) {
+        return NO;
+    }
 
     if (index == PPRootTabIndexChats) { // Chats tab
         if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return NO; }

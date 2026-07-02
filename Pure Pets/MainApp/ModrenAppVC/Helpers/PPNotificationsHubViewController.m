@@ -18,6 +18,12 @@
 
 static CGFloat const kPPHubTopBarHeight = 46.0;
 static CGFloat const kPPHubActionButtonSize = 44.0;
+static CGFloat const kPPHubHeroHeight = 156.0;
+static CGFloat const kPPHubHeroHorizontalInset = 16.0;
+static CGFloat const kPPHubHeroTopInset = 8.0;
+static CGFloat const kPPHubContentTopGap = 10.0;
+static NSInteger const kPPHubSegmentIconTag = 4701;
+static NSInteger const kPPHubSegmentTitleTag = 4702;
 
 static NSString *PPHubTrimmedString(id value)
 {
@@ -541,8 +547,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 @interface PPHubTopTabsView : UIView
 @property (nonatomic, strong) UIView *surfaceView;
-@property (nonatomic, strong) UIButton *contentClipView;
+@property (nonatomic, strong) UIView *contentClipView;
 @property (nonatomic, strong) UIView *selectionIndicator;
+@property (nonatomic, strong) UIStackView *stackView;
 @property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
 @property (nonatomic, strong) NSLayoutConstraint *indicatorLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *indicatorWidthConstraint;
@@ -560,27 +567,29 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     if (!self) return nil;
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0 : 0];
-    _surfaceView.layer.cornerRadius = 28.0;
+    _surfaceView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.38];
+    _surfaceView.layer.cornerRadius = 23.0;
     _surfaceView.layer.masksToBounds = NO;
-    _surfaceView.layer.borderWidth = 0.0;
-     [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.20]];
-    _surfaceView.layer.shadowOpacity = 0.12;
-    _surfaceView.layer.shadowRadius = 14.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    _surfaceView.layer.borderWidth = 1.0;
+    [_surfaceView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
+    [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.12]];
+    _surfaceView.layer.shadowOpacity = 0.04;
+    _surfaceView.layer.shadowRadius = 10.0;
+    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self addSubview:_surfaceView];
 
-    // Content clip view — clips indicator within rounded corners while surface keeps shadow
-    _contentClipView =   [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
+    _contentClipView = [[UIView alloc] initWithFrame:CGRectZero];
     _contentClipView.translatesAutoresizingMaskIntoConstraints = NO;
     _contentClipView.backgroundColor = UIColor.clearColor;
-     _contentClipView.layer.masksToBounds = YES;
+    _contentClipView.layer.masksToBounds = YES;
+    _contentClipView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
         _contentClipView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -588,10 +597,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _selectionIndicator = [[UIView alloc] initWithFrame:CGRectZero];
     _selectionIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-
-    _selectionIndicator.backgroundColor = AppClearClr;// brand;
-    _selectionIndicator.layer.cornerRadius = 22.0;
+    _selectionIndicator.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+    _selectionIndicator.layer.cornerRadius = 19.0;
     _selectionIndicator.layer.masksToBounds = YES;
+    _selectionIndicator.hidden = YES;
     if (@available(iOS 13.0, *)) {
         _selectionIndicator.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -602,35 +611,23 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     stackView.axis = UILayoutConstraintAxisHorizontal;
     stackView.alignment = UIStackViewAlignmentFill;
     stackView.distribution = UIStackViewDistributionFillEqually;
-    stackView.spacing = 0.0;
+    stackView.spacing = 6.0;
+    stackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [_contentClipView addSubview:stackView];
+    self.stackView = stackView;
 
     UIImageSymbolConfiguration *symbolConfig = nil;
     if (@available(iOS 13.0, *)) {
-        symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+        symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.5 weight:UIImageSymbolWeightSemibold];
     }
 
     NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
     NSUInteger count = MIN(titles.count, icons.count);
     for (NSUInteger index = 0; index < count; index++) {
-        UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
-        button.tag = (NSInteger)index;
-        button.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-        button.titleLabel.adjustsFontSizeToFitWidth = YES;
-        button.titleLabel.minimumScaleFactor = 0.72;
-        button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-        button.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-        button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 8.0, 0.0, 8.0);
-
-        UIImage *image = nil;
-        if (@available(iOS 13.0, *)) {
-            image = [[UIImage systemImageNamed:icons[index] withConfiguration:symbolConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        } else {
-            image = [UIImage imageNamed:icons[index]];
-        }
-        [button setImage:image forState:UIControlStateNormal];
-        [button setTitle:[NSString stringWithFormat:@"  %@", titles[index]] forState:UIControlStateNormal];
+        UIButton *button = [self pp_makeSegmentButtonWithTitle:titles[index]
+                                                       iconName:icons[index]
+                                                          index:(NSInteger)index
+                                                   symbolConfig:symbolConfig];
         [button addTarget:self action:@selector(pp_handleTap:) forControlEvents:UIControlEventTouchUpInside];
         [stackView addArrangedSubview:button];
         [buttons addObject:button];
@@ -647,10 +644,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         [self.surfaceView.heightAnchor constraintEqualToConstant:kPPHubTopBarHeight],
 
-        [self.contentClipView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
-        [self.contentClipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
-        [self.contentClipView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
-        [self.contentClipView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+        [self.contentClipView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:4.0],
+        [self.contentClipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:4.0],
+        [self.contentClipView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-4.0],
+        [self.contentClipView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-4.0],
 
         self.indicatorLeadingConstraint,
         [self.selectionIndicator.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor constant:2.0],
@@ -665,6 +662,75 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     self.selectedIndex = NSNotFound;
     return self;
+}
+
+- (UIButton *)pp_makeSegmentButtonWithTitle:(NSString *)title
+                                   iconName:(NSString *)iconName
+                                      index:(NSInteger)index
+                               symbolConfig:(UIImageSymbolConfiguration *)symbolConfig
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.tag = index;
+    button.backgroundColor = UIColor.clearColor;
+    button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    button.layer.cornerRadius = 18.0;
+    button.layer.borderWidth = 1.0;
+    button.layer.masksToBounds = YES;
+    [button pp_setBorderColor:UIColor.clearColor];
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIImage *image = nil;
+    if (@available(iOS 13.0, *)) {
+        image = [[UIImage systemImageNamed:iconName withConfiguration:symbolConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    } else {
+        image = [UIImage imageNamed:iconName];
+    }
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:image];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tag = kPPHubSegmentIconTag;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.tag = kPPHubSegmentTitleTag;
+    titleLabel.text = title ?: @"";
+    titleLabel.font = [GM boldFontWithSize:12.2] ?: [UIFont systemFontOfSize:12.2 weight:UIFontWeightSemibold];
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.numberOfLines = 1;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.76;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    titleLabel.allowsDefaultTighteningForTruncation = YES;
+
+    UIStackView *contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[iconView, titleLabel]];
+    contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    contentStack.axis = UILayoutConstraintAxisHorizontal;
+    contentStack.alignment = UIStackViewAlignmentCenter;
+    contentStack.distribution = UIStackViewDistributionFill;
+    contentStack.spacing = 5.0;
+    contentStack.userInteractionEnabled = NO;
+    contentStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [button addSubview:contentStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+
+        [contentStack.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+        [contentStack.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+        [contentStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:button.leadingAnchor constant:7.0],
+        [contentStack.trailingAnchor constraintLessThanOrEqualToAnchor:button.trailingAnchor constant:-7.0],
+        [contentStack.topAnchor constraintGreaterThanOrEqualToAnchor:button.topAnchor constant:4.0],
+        [contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:button.bottomAnchor constant:-4.0],
+    ]];
+
+    button.accessibilityLabel = title ?: @"";
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+    return button;
 }
 
 - (void)layoutSubviews
@@ -730,14 +796,21 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_refreshButtonAppearance
 {
-    UIColor *inactiveColor = AppSecondaryTextClr;
+    UIColor *inactiveColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    UIColor *selectedColor = AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
     for (NSInteger index = 0; index < (NSInteger)self.tabButtons.count; index++) {
         BOOL isSelected = (index == self.selectedIndex);
         UIButton *button = self.tabButtons[index];
-        UIColor *titleColor = isSelected ? AppPrimaryClr : inactiveColor;
-        button.tintColor = titleColor;
-        [button setTitleColor:titleColor forState:UIControlStateNormal];
-        button.alpha = isSelected ? 1.0 : 0.92;
+        UIImageView *iconView = [button viewWithTag:kPPHubSegmentIconTag];
+        UILabel *titleLabel = [button viewWithTag:kPPHubSegmentTitleTag];
+        UIColor *contentColor = isSelected ? selectedColor : [inactiveColor colorWithAlphaComponent:0.82];
+        button.backgroundColor = isSelected ? [selectedColor colorWithAlphaComponent:0.11] : UIColor.clearColor;
+        [button pp_setBorderColor:isSelected ? [selectedColor colorWithAlphaComponent:0.18] : UIColor.clearColor];
+        button.tintColor = contentColor;
+        iconView.tintColor = contentColor;
+        titleLabel.textColor = contentColor;
+        button.alpha = isSelected ? 1.0 : 0.86;
+        button.accessibilityTraits = UIAccessibilityTraitButton | (isSelected ? UIAccessibilityTraitSelected : 0);
     }
 }
 
@@ -1144,7 +1217,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIView *backgroundTopGlowView;
 @property (nonatomic, strong) UIView *backgroundMidGlowView;
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
-@property (nonatomic, strong) UIView *topChromeContainerView;
+@property (nonatomic, strong) UIView *heroContainerView;
+@property (nonatomic, strong) UIView *heroSurfaceView;
+@property (nonatomic, strong) UILabel *heroEyebrowLabel;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
 @property (nonatomic, strong) PPHubTopTabsView *tabsView;
 @property (nonatomic, strong) UIButton *actionButton;
 @property (nonatomic, strong) UIView *contentContainerView;
@@ -1154,6 +1231,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UserChatsViewController *chatsVC;
 @property (nonatomic, strong) PPNotificationsInboxViewController *notificationsVC;
 @property (nonatomic, assign) NSInteger selectedIndex;
+@property (nonatomic, assign) BOOL didPlayHeroEntrance;
+@property (nonatomic, assign) BOOL hasStoredPreviousNavigationBarHidden;
+@property (nonatomic, assign) BOOL previousNavigationBarHidden;
 @end
 
 @implementation PPNotificationsHubViewController
@@ -1163,6 +1243,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [super viewDidLoad];
 
     self.view.backgroundColor = AppBackgroundClr;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];
@@ -1180,9 +1261,28 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if (!self.hasStoredPreviousNavigationBarHidden) {
+        self.previousNavigationBarHidden = self.navigationController.navigationBarHidden;
+        self.hasStoredPreviousNavigationBarHidden = YES;
+    }
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_setupNavigationChrome];
     [self pp_applyNavigationItems];
     [self pp_refreshActionButtonForIndex:self.selectedIndex];
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self pp_playHeroEntranceIfNeeded];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    if (self.hasStoredPreviousNavigationBarHidden) {
+        [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden animated:animated];
+    }
 }
 
 - (void)viewDidLayoutSubviews
@@ -1192,7 +1292,6 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     CGFloat width = CGRectGetWidth(self.view.bounds);
     CGFloat height = CGRectGetHeight(self.view.bounds);
     CGFloat safeTop = self.view.safeAreaInsets.top;
-    CGFloat safeBottom = self.view.safeAreaInsets.bottom;
 
     CGFloat topSize = MIN(360.0, MAX(248.0, width * 0.74));
     CGFloat midSize = MIN(300.0, MAX(210.0, width * 0.58));
@@ -1223,12 +1322,19 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     }
     self.backgroundMidGlowView.alpha = 0.5;
 
-    CGFloat chromeWidth = floor(width * 0.90);
-    self.topChromeContainerView.frame = CGRectMake(0.0, 0.0, chromeWidth, kPPHubTopBarHeight);
-    self.actionButton.frame = CGRectMake(0.0, 0.0, kPPHubActionButtonSize, kPPHubActionButtonSize);
-    [self pp_applyNavigationItems];
+    CGFloat heroWidth = MAX(0.0, width - (kPPHubHeroHorizontalInset * 2.0));
+    CGFloat heroTop = safeTop + kPPHubHeroTopInset;
+    self.heroContainerView.frame = CGRectMake(kPPHubHeroHorizontalInset,
+                                              heroTop,
+                                              heroWidth,
+                                              kPPHubHeroHeight);
+    self.heroContainerView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroContainerView.bounds
+                                   cornerRadius:28.0].CGPath;
 
-    self.contentContainerView.frame = self.view.bounds;
+    CGFloat contentTop = CGRectGetMaxY(self.heroContainerView.frame) + kPPHubContentTopGap;
+    CGFloat contentHeight = MAX(0.0, height - contentTop);
+    self.contentContainerView.frame = CGRectMake(0.0, contentTop, width, contentHeight);
     self.activeChild.view.frame = self.contentContainerView.bounds;
 }
 
@@ -1330,9 +1436,73 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_setupTopChrome
 {
-    CGFloat initialWidth = floor(CGRectGetWidth(self.view.bounds) * 0.95);
-    self.topChromeContainerView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, initialWidth, kPPHubTopBarHeight)];
-    self.topChromeContainerView.backgroundColor = UIColor.clearColor;
+    if (self.heroContainerView) return;
+
+    self.heroContainerView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.heroContainerView.backgroundColor = UIColor.clearColor;
+    self.heroContainerView.clipsToBounds = NO;
+    self.heroContainerView.layer.cornerRadius = 28.0;
+    [self.heroContainerView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
+    self.heroContainerView.layer.shadowOpacity = 0.10;
+    self.heroContainerView.layer.shadowRadius = 20.0;
+    self.heroContainerView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    if (@available(iOS 13.0, *)) {
+        self.heroContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.view addSubview:self.heroContainerView];
+
+    self.heroSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSurfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
+    self.heroSurfaceView.layer.cornerRadius = 28.0;
+    self.heroSurfaceView.layer.masksToBounds = YES;
+    self.heroSurfaceView.layer.borderWidth = 1.0;
+    [self.heroSurfaceView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.42]];
+    self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    if (@available(iOS 13.0, *)) {
+        self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroContainerView addSubview:self.heroSurfaceView];
+
+    UIView *heroAccentView = [[UIView alloc] initWithFrame:CGRectZero];
+    heroAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    heroAccentView.userInteractionEnabled = NO;
+    heroAccentView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
+    heroAccentView.layer.cornerRadius = 70.0;
+    [heroAccentView pp_setShadowColor:AppPrimaryClr ?: UIColor.systemPinkColor];
+    heroAccentView.layer.shadowOpacity = 0.10;
+    heroAccentView.layer.shadowRadius = 42.0;
+    heroAccentView.layer.shadowOffset = CGSizeZero;
+    [self.heroSurfaceView addSubview:heroAccentView];
+
+    self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroEyebrowLabel.font = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
+    self.heroEyebrowLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.86] ?: [GM appPrimaryColor];
+    self.heroEyebrowLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.heroEyebrowLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroEyebrowLabel.text = kLang(@"notifications_hub_hero_eyebrow");
+    [self.heroSurfaceView addSubview:self.heroEyebrowLabel];
+
+    self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTitleLabel.font = [GM BlackFontWithSize:24.0] ?: [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.heroTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.heroTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroTitleLabel.numberOfLines = 1;
+    self.heroTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.heroTitleLabel.minimumScaleFactor = 0.82;
+    [self.heroSurfaceView addSubview:self.heroTitleLabel];
+
+    self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:13.2] ?: [UIFont systemFontOfSize:13.2 weight:UIFontWeightMedium];
+    self.heroSubtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82] ?: UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.heroSubtitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.heroSubtitleLabel.numberOfLines = 2;
+    [self.heroSurfaceView addSubview:self.heroSubtitleLabel];
 
     NSArray<NSString *> *titles = @[
         (kLang(@"pet_chats_tab") ?: @"Chats"),
@@ -1349,47 +1519,65 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.tabsView.onSelectionChanged = ^(NSInteger index) {
         [weakSelf pp_showChildAtIndex:index animated:YES];
     };
-    [self.topChromeContainerView addSubview:self.tabsView];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.tabsView.topAnchor constraintEqualToAnchor:self.topChromeContainerView.topAnchor],
-        [self.tabsView.leadingAnchor constraintEqualToAnchor:self.topChromeContainerView.leadingAnchor],
-        [self.tabsView.trailingAnchor constraintEqualToAnchor:self.topChromeContainerView.trailingAnchor],
-        [self.tabsView.bottomAnchor constraintEqualToAnchor:self.topChromeContainerView.bottomAnchor],
-    ]];
+    [self.heroSurfaceView addSubview:self.tabsView];
 
-    
-    if (@available(iOS 26.0, *)) {
-        UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
-        
-        self.actionButton = [UIButton buttonWithConfiguration:config primaryAction:nil];
-    } else {
-        self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
-   
-    }
-
-    
-    self.actionButton.frame = CGRectMake(0.0, 0.0, kPPHubActionButtonSize, kPPHubActionButtonSize);
-    self.actionButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.96];
+    self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.actionButton.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.52];
     self.actionButton.tintColor = [GM appPrimaryColor];
     self.actionButton.layer.cornerRadius = kPPHubActionButtonSize * 0.5;
     self.actionButton.clipsToBounds = NO;
     self.actionButton.layer.borderWidth = 1.0;
-    if(!PPIOS26())
-    {
-        [self.actionButton pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
-    }
-    
+    [self.actionButton pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
     [self.actionButton pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
-    self.actionButton.layer.shadowOpacity = 0.10;
-    self.actionButton.layer.shadowRadius = 10.0;
+    self.actionButton.layer.shadowOpacity = 0.06;
+    self.actionButton.layer.shadowRadius = 9.0;
     self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     self.actionButton.accessibilityHint = kLang(@"empty_retry_button") ?: @"";
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.actionButton addTarget:self action:@selector(pp_handleActionButtonTapped) forControlEvents:UIControlEventTouchUpInside];
-    
-    self.actionButton = [self pp_ButtonWithSystemName:@"square.and.pencil" action:@selector(pp_handleActionButtonTapped)];
+    [self.heroSurfaceView addSubview:self.actionButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroSurfaceView.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor],
+        [self.heroSurfaceView.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
+        [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
+        [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
+
+        [heroAccentView.widthAnchor constraintEqualToConstant:140.0],
+        [heroAccentView.heightAnchor constraintEqualToConstant:140.0],
+        [heroAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-58.0],
+        [heroAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:44.0],
+
+        [self.actionButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:16.0],
+        [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-16.0],
+        [self.actionButton.widthAnchor constraintEqualToConstant:kPPHubActionButtonSize],
+        [self.actionButton.heightAnchor constraintEqualToConstant:kPPHubActionButtonSize],
+
+        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:17.0],
+        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.heroEyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.heroEyebrowLabel.bottomAnchor constant:3.0],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:3.0],
+        [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+
+        [self.tabsView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:14.0],
+        [self.tabsView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-14.0],
+        [self.tabsView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-14.0],
+        [self.tabsView.heightAnchor constraintEqualToConstant:kPPHubTopBarHeight],
+    ]];
+
+    self.heroContainerView.alpha = 0.0;
+    self.heroContainerView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+
+    [self pp_refreshHeroTextForIndex:self.selectedIndex animated:NO];
     [self pp_applyNavigationItems];
 }
 
@@ -1403,22 +1591,84 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_applyNavigationItems
 {
-    if (!self.topChromeContainerView || !self.actionButton) return;
-    self.navigationItem.titleView = self.topChromeContainerView;
-   /// UIBarButtonItem *tabsItem = [[UIBarButtonItem alloc] initWithCustomView:self.topChromeContainerView];
-      
-    //UIBarButtonItem *actionItem = [[UIBarButtonItem alloc] initWithCustomView:self.actionButton];
+    self.navigationItem.title = nil;
+    self.navigationItem.titleView = nil;
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+}
 
-    if(!Language.isRTL)
-    {
-       // self.navigationItem.rightBarButtonItem = tabsItem;
-       // self.navigationItem.leftBarButtonItem = actionItem;
+#pragma mark - Hero
+
+- (NSString *)pp_heroTitleForIndex:(NSInteger)index
+{
+    switch (index) {
+        case 0:
+            return kLang(@"pet_chats_tab") ?: @"Chats";
+        case 1:
+            return kLang(@"pet_reminders_tab") ?: @"Reminders";
+        case 2:
+        default:
+            return kLang(@"notifications_inbox_tab") ?: @"Notifications";
     }
-    else
-    {
-       // self.navigationItem.leftBarButtonItem = tabsItem;
-        
+}
+
+- (NSString *)pp_heroSubtitleForIndex:(NSInteger)index
+{
+    switch (index) {
+        case 0:
+            return kLang(@"notifications_hub_hero_chats_subtitle");
+        case 1:
+            return kLang(@"notifications_hub_hero_reminders_subtitle");
+        case 2:
+        default:
+            return kLang(@"notifications_hub_hero_notifications_subtitle");
     }
+}
+
+- (void)pp_refreshHeroTextForIndex:(NSInteger)index animated:(BOOL)animated
+{
+    if (!self.heroTitleLabel || !self.heroSubtitleLabel) return;
+
+    NSString *title = [self pp_heroTitleForIndex:index] ?: @"";
+    NSString *subtitle = [self pp_heroSubtitleForIndex:index] ?: @"";
+
+    void (^updates)(void) = ^{
+        self.heroTitleLabel.text = title;
+        self.heroSubtitleLabel.text = subtitle;
+    };
+
+    if (!animated || self.heroTitleLabel.text.length == 0) {
+        updates();
+        return;
+    }
+
+    [UIView transitionWithView:self.heroSurfaceView
+                      duration:0.18
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
+                    animations:updates
+                    completion:nil];
+}
+
+- (void)pp_playHeroEntranceIfNeeded
+{
+    if (self.didPlayHeroEntrance || !self.heroContainerView) return;
+    self.didPlayHeroEntrance = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.heroContainerView.alpha = 1.0;
+        self.heroContainerView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.42
+                          delay:0.02
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.24
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.heroContainerView.alpha = 1.0;
+        self.heroContainerView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 #pragma mark - Child Flow
@@ -1429,7 +1679,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     UIViewController *nextChild = self.childControllers[index];
     if (self.activeChild == nextChild) {
+        self.selectedIndex = index;
         [self pp_refreshActionButtonForIndex:index];
+        [self pp_refreshHeroTextForIndex:index animated:animated];
         [self.tabsView selectIndex:index animated:animated];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
@@ -1440,6 +1692,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     UIViewController *previousChild = self.activeChild;
     self.selectedIndex = index;
     [self.tabsView selectIndex:index animated:animated];
+    [self pp_refreshHeroTextForIndex:index animated:animated];
 
     if (previousChild) {
         [previousChild willMoveToParentViewController:nil];
@@ -1456,6 +1709,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [nextChild didMoveToParentViewController:self];
         self.activeChild = nextChild;
         [self pp_refreshActionButtonForIndex:index];
+        [self pp_refreshHeroTextForIndex:index animated:animated];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
         }
@@ -1482,6 +1736,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [nextChild didMoveToParentViewController:self];
         self.activeChild = nextChild;
         [self pp_refreshActionButtonForIndex:index];
+        [self pp_refreshHeroTextForIndex:index animated:animated];
         if (index == 2) {
             [self.notificationsVC reloadNotifications];
         }

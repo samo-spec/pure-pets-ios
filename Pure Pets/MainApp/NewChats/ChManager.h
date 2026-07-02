@@ -148,6 +148,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)startGlobalUnreadListenerForUser:(NSString *)userID;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> globalUnreadListener;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *liveUnreadCounts;
+@property (nonatomic, strong, nullable) NSMutableDictionary<NSString *, ChatMessageModel *> *latestUnreadMessages;
 
 + (UIImage *)normalizedImage:(UIImage *)image;
 - (_Nullable id<FIRListenerRegistration>)

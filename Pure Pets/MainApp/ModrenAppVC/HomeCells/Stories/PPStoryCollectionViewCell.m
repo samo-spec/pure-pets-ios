@@ -14,12 +14,12 @@
 #import "UserManager.h"
 #import "UserModel.h"
 
-static const CGFloat PPStoryCardCornerRadius = 24.0;
-static const CGFloat PPStoryRingHostSize   = 82.0;
-static const CGFloat PPStoryAvatarSize     = 68.0;
+static const CGFloat PPStoryCardCornerRadius = 22.0;
+static const CGFloat PPStoryRingHostSize   = 74.0;
+static const CGFloat PPStoryAvatarSize     = 62.0;
 static const CGFloat PPStoryRingLineWidth  = 3.0;
 static const CGFloat PPStoryTrackLineWidth = 2.0;
-static const CGFloat PPStoryGlowRadius     = 12.0;
+static const CGFloat PPStoryGlowRadius     = 10.0;
 static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 @interface PPStoryCollectionViewCell ()
@@ -103,6 +103,9 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
         _nameLabel.textAlignment = NSTextAlignmentCenter;
         _nameLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        _nameLabel.adjustsFontSizeToFitWidth = YES;
+        _nameLabel.minimumScaleFactor = 0.84;
+        _nameLabel.allowsDefaultTighteningForTruncation = YES;
         [self.contentView addSubview:_nameLabel];
 
         // Ring track (subtle background ring)
@@ -148,7 +151,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _addBadgeButton.translatesAutoresizingMaskIntoConstraints = NO;
         _addBadgeButton.hidden = YES;
         _addBadgeButton.backgroundColor = [self pp_appPrimaryColor];
-        _addBadgeButton.layer.cornerRadius = 13.0;
+        _addBadgeButton.layer.cornerRadius = 12.0;
         _addBadgeButton.layer.borderWidth = 2.6;
         [_addBadgeButton pp_setBorderColor:UIColor.systemBackgroundColor];
         [_addBadgeButton pp_setShadowColor:[self pp_appPrimaryColor]];
@@ -186,7 +189,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
             [_glowView.widthAnchor constraintEqualToConstant:PPStoryRingHostSize + PPStoryGlowRadius * 2.0],
             [_glowView.heightAnchor constraintEqualToConstant:PPStoryRingHostSize + PPStoryGlowRadius * 2.0],
 
-            [_ringHostView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16.0],
+            [_ringHostView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
             [_ringHostView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
             [_ringHostView.widthAnchor constraintEqualToConstant:PPStoryRingHostSize],
             [_ringHostView.heightAnchor constraintEqualToConstant:PPStoryRingHostSize],
@@ -196,14 +199,14 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
             [_imageView.widthAnchor constraintEqualToConstant:PPStoryAvatarSize],
             [_imageView.heightAnchor constraintEqualToConstant:PPStoryAvatarSize],
 
-            [_nameLabel.topAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:10.0],
-            [_nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:8.0],
-            [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-8.0],
-            [_nameLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
-            [_nameLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-12.0],
+            [_nameLabel.topAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:8.0],
+            [_nameLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:6.0],
+            [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-6.0],
+            [_nameLabel.heightAnchor constraintGreaterThanOrEqualToConstant:30.0],
+            [_nameLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
 
-            [_addBadgeButton.widthAnchor constraintEqualToConstant:26.0],
-            [_addBadgeButton.heightAnchor constraintEqualToConstant:26.0],
+            [_addBadgeButton.widthAnchor constraintEqualToConstant:24.0],
+            [_addBadgeButton.heightAnchor constraintEqualToConstant:24.0],
             [_addBadgeButton.trailingAnchor constraintEqualToAnchor:_ringHostView.trailingAnchor constant:2.0],
             [_addBadgeButton.bottomAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:2.0]
         ]];

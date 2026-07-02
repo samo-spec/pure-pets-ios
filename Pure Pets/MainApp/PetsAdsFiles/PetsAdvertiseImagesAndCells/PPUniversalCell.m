@@ -20,20 +20,23 @@
 #import "PetAd.h"
 #import "ServiceModel.h"
 #import "VetModel.h"
+#import "CitiesManager.h"
+#import "MainKindsModel.h"
+#import "SubKindModel.h"
 
-static CGFloat const PPUniversalCardCornerRadius = 28.0;
-static CGFloat const PPUniversalImageCornerRadius = 24.0;
+static CGFloat const PPUniversalCardCornerRadius = 32.0;
+static CGFloat const PPUniversalImageCornerRadius = 26.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
-static CGFloat const PPUniversalInnerSpacing = 10.0;
-static CGFloat const PPUniversalButtonHeight = 34.0;
-static CGFloat const PPUniversalPillHeight = 28.0;
+static CGFloat const PPUniversalInnerSpacing = 22.0;
+static CGFloat const PPUniversalButtonHeight = 36.0;
+static CGFloat const PPUniversalPillHeight = 32.0;
 static CGFloat const PPUniversalCompactTitleHeight = 22.0;
 static CGFloat const PPUniversalCompactPriceHeight = 22.0;
-static CGFloat const PPUniversalControlButtonSize = 32.0;
+static CGFloat const PPUniversalControlButtonSize = 36.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.86;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
-static CGFloat const PPUniversalCompactCardVerticalInset = 4.0;
-static CGFloat const PPUniversalCompactTitleToPriceSpacing = 4.0;
+static CGFloat const PPUniversalCompactCardVerticalInset = 6.0;
+static CGFloat const PPUniversalCompactTitleToPriceSpacing = 10.0;
 static CGFloat const PPUniversalCompactPriceToActionSpacing = 6.0;
 static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
 static NSTimeInterval const PPUniversalCardTapPressDuration = 0.11;
@@ -146,6 +149,69 @@ static UIFont *PPUniversalCellBlackFont(CGFloat size)
 static NSString *PPUniversalCellSafeString(NSString *value)
 {
     return value.length > 0 ? value : @"";
+}
+
+static NSString *PPUniversalCellTrimmedString(NSString *value)
+{
+    if (![value isKindOfClass:NSString.class]) {
+        return @"";
+    }
+    return [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+}
+
+static NSString *PPUniversalCellCityOnlyFromLocation(NSString *location)
+{
+    NSString *trimmed = PPUniversalCellTrimmedString(location);
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    NSCharacterSet *separators = [NSCharacterSet characterSetWithCharactersInString:@",،\n|•·"];
+    for (NSString *part in [trimmed componentsSeparatedByCharactersInSet:separators]) {
+        NSString *clean = PPUniversalCellTrimmedString(part);
+        if (clean.length > 0) {
+            [parts addObject:clean];
+        }
+    }
+
+    if (parts.count == 0) {
+        return trimmed;
+    }
+
+    NSString *first = parts.firstObject;
+    NSString *lowerFirst = first.lowercaseString;
+    BOOL firstLooksLikeCountry = [lowerFirst containsString:@"qatar"] ||
+                                 [lowerFirst containsString:@"قطر"];
+    if (firstLooksLikeCountry && parts.count > 1) {
+        return parts[1];
+    }
+
+    return first;
+}
+
+static NSString *PPUniversalCellAdSubkindGenderText(PetAd *ad)
+{
+    if (![ad isKindOfClass:PetAd.class]) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    MainKindsModel *kind = [MainKindsModel mainKindModelForID:ad.category];
+    if (kind && ad.subcategory > 0) {
+        NSString *breedName = [SubKindModel getSubKindName:ad.subcategory
+                                         subKindsArrayLocal:kind.SubKindsArray];
+        if (breedName.length > 0) {
+            [parts addObject:breedName];
+        }
+    }
+
+    NSString *genderText = PPUniversalCellSafeString(ad.genderText);
+    if (genderText.length > 0) {
+        [parts addObject:genderText];
+    }
+
+    return [parts componentsJoinedByString:@" · "];
 }
 
 static NSString *PPUniversalCellFormattedPrice(NSNumber *amount, NSString *currencyCode)
@@ -316,10 +382,11 @@ static CGFloat PPUniversalCellAdsPinterestAspectRatio(PPUniversalCellViewModel *
 }
 
 static CGFloat PPUniversalCellAdsPinterestBodyHeight(CGFloat cellWidth,
-                                                     PPUniversalCellViewModel * _Nullable vm)
+                                                     PPUniversalCellViewModel * _Nullable vm,
+                                                     BOOL isDataViewAdPresentation)
 {
     CGFloat contentWidth = PPUniversalCellAdsPinterestInnerImageWidth(cellWidth);
-    UIFont *titleFont = PPUniversalCellBoldFont(13.0);
+    UIFont *titleFont = PPUniversalCellBoldFont(15.0);
     CGFloat titleHeight = PPUniversalCellMeasuredTitleHeight(vm.title ?: @"",
                                                              titleFont,
                                                              contentWidth,
@@ -330,22 +397,44 @@ static CGFloat PPUniversalCellAdsPinterestBodyHeight(CGFloat cellWidth,
                      vm.finalPrice != nil ||
                      vm.price != nil);
     CGFloat priceHeight = hasPrice ? PPUniversalCompactPriceHeight : 0.0;
-    CGFloat titleToPriceSpacing = hasPrice ? PPUniversalCompactTitleToPriceSpacing : 0.0;
+    BOOL hasAdLocationSubtitle = isDataViewAdPresentation &&
+                                 [vm isKindOfClass:PPUniversalCellViewModel.class] &&
+                                 vm.location.length > 0;
+    CGFloat adLocationSubtitleHeight = hasAdLocationSubtitle
+        ? (2.0 + ceil(PPUniversalCellMediumFont(12.0).lineHeight) + 4.0)
+        : 0.0;
+    CGFloat titleToPriceSpacing = (hasPrice && !hasAdLocationSubtitle)
+        ? PPUniversalCompactTitleToPriceSpacing
+        : 0.0;
     CGFloat priceToActionSpacing = hasPrice ? PPUniversalCompactPriceToActionSpacing : PPUniversalCompactTitleToPriceSpacing;
+    BOOL hasAdBottomBadge = NO;
+    if ([vm isKindOfClass:PPUniversalCellViewModel.class]) {
+        if (isDataViewAdPresentation) {
+            hasAdBottomBadge = vm.subtitle.length > 0;
+        } else if ([vm.ModelObject isKindOfClass:PetAd.class]) {
+            hasAdBottomBadge = PPUniversalCellAdSubkindGenderText((PetAd *)vm.ModelObject).length > 0;
+        }
+    }
+    CGFloat adBottomBadgeHeight = hasAdBottomBadge
+        ? (10.0 + PPUniversalPillHeight)
+        : 0.0;
 
     return ceil(titleHeight +
+                adLocationSubtitleHeight +
                 titleToPriceSpacing +
                 priceHeight +
                 priceToActionSpacing +
-                PPUniversalButtonHeight);
+                PPUniversalButtonHeight +
+                adBottomBadgeHeight);
 }
 
 static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
-                                                 PPUniversalCellViewModel * _Nullable vm)
+                                                 PPUniversalCellViewModel * _Nullable vm,
+                                                 BOOL isDataViewAdPresentation)
 {
     CGFloat imageWidth = PPUniversalCellAdsPinterestInnerImageWidth(cellWidth);
     CGFloat imageHeight = ceil(imageWidth * PPUniversalCellAdsPinterestAspectRatio(vm));
-    CGFloat bodyHeight = PPUniversalCellAdsPinterestBodyHeight(cellWidth, vm);
+    CGFloat bodyHeight = PPUniversalCellAdsPinterestBodyHeight(cellWidth, vm, isDataViewAdPresentation);
     CGFloat verticalChrome = (PPUniversalCompactCardVerticalInset * 2.0) +
                              (PPUniversalOuterInset * 2.0) +
                              (PPUniversalInnerSpacing * 0.5);
@@ -584,16 +673,23 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (NSString *)pp_imageSignatureForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm;
 - (BOOL)pp_isHostedByNovaProductMessageCell;
+- (BOOL)pp_isHostedByDataViewController;
+- (BOOL)pp_usesDataViewAdPresentation;
 - (BOOL)pp_supportsSelectionAccent;
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
 - (void)pp_runContainerTapImpulse;
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
 - (void)pp_applyFavoriteButtonAppearance:(FavoriteFloatingButton *)button;
 - (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown;
+- (void)pp_cartDidUpdate:(NSNotification *)notification;
+- (NSInteger)pp_cartQuantityForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_cityLocationBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_adBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
 
 @end
 
 @implementation PPUniversalCell
+@synthesize delegate = _delegate;
 
 #pragma mark - Lifecycle
 
@@ -625,6 +721,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_applicationDidEnterBackground:)
                                                  name:UIApplicationDidEnterBackgroundNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_cartDidUpdate:)
+                                                 name:kCartUpdatedNotification
                                                object:nil];
     return self;
 }
@@ -662,6 +762,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.oldPriceLabel.attributedText = nil;
     self.oldPriceCollapsedConstraint.active = YES;
     self.availabilityLabel.text = @"";
+    self.availabilityLabel.attributedText = nil;
+    self.availabilityLabel.accessibilityLabel = nil;
     self.serviceMetaLabel.text = @"";
     self.serviceMetaLabel.attributedText = nil;
     self.serviceMetaLabel.hidden = YES;
@@ -727,12 +829,34 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.videoPlayerLayer.frame = self.imageContainer.bounds;
 }
 
+- (void)pp_cartDidUpdate:(NSNotification *)notification
+{
+    (void)notification;
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_cartDidUpdate:notification];
+        });
+        return;
+    }
+
+    if (!self.vm || self.vm.isSkeleton || ![self pp_usesQuantityControl]) {
+        return;
+    }
+
+    NSInteger previousQuantity = self.quantity;
+    NSInteger refreshedQuantity = [self pp_cartQuantityForViewModel:self.vm];
+    self.isEditingQuantity = self.isEditingQuantity && refreshedQuantity > 0;
+    [self setQuantity:refreshedQuantity animated:(self.window != nil && previousQuantity != refreshedQuantity)];
+}
+
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
     UICollectionViewLayoutAttributes *attributes = [super preferredLayoutAttributesFittingAttributes:layoutAttributes];
     if (PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
         CGRect frame = attributes.frame;
-        frame.size.height = PPUniversalCellAdsPinterestHeight(CGRectGetWidth(frame), self.vm);
+        frame.size.height = PPUniversalCellAdsPinterestHeight(CGRectGetWidth(frame),
+                                                              self.vm,
+                                                              [self pp_usesDataViewAdPresentation]);
         attributes.frame = frame;
     }
     return attributes;
@@ -1417,10 +1541,31 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return NO;
 }
 
+- (BOOL)pp_isHostedByDataViewController
+{
+    UIResponder *responder = self.nextResponder;
+    while (responder) {
+        if ([NSStringFromClass(responder.class) isEqualToString:@"PPDataViewVC"]) {
+            return YES;
+        }
+        responder = responder.nextResponder;
+    }
+    return NO;
+}
+
+- (BOOL)pp_usesDataViewAdPresentation
+{
+    return [self pp_isAdContext] && [self pp_isHostedByDataViewController];
+}
+
 - (void)pp_configureTextsWithViewModel:(PPUniversalCellViewModel *)vm
 {
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
-    self.subtitleLabel.text = PPUniversalCellSafeString(vm.subtitle);
+    BOOL isAdContext = [self pp_isAdContext];
+    BOOL usesDataViewAdPresentation = [self pp_usesDataViewAdPresentation];
+    self.subtitleLabel.text = isAdContext
+        ? (usesDataViewAdPresentation ? [self pp_cityLocationBadgeTextForViewModel:vm] : @"")
+        : PPUniversalCellSafeString(vm.subtitle);
 
     BOOL isAccessorySection = (vm.cellSection == CellSectionAccessories);
     BOOL shouldHideTitle = (self.context == PPCellForMarket) && [self pp_isHostedByHomeController] && !isAccessorySection;
@@ -1430,7 +1575,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.hidden = shouldHideTitle;
     self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : PPUniversalCompactTitleHeight;
 
-    BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle || self.subtitleLabel.text.length == 0 || !self.showsSubtitle;
+    BOOL allowsSubtitle = isAdContext ? usesDataViewAdPresentation : self.showsSubtitle;
+    BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle ||
+                              self.subtitleLabel.text.length == 0 ||
+                              !allowsSubtitle;
     if (shouldHideSubtitle) {
         self.subtitleLabel.text = @"";
     }
@@ -1482,9 +1630,6 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_configureBadgesWithViewModel:(PPUniversalCellViewModel *)vm
 {
     NSString *reasonText = @"";
-    if ([self pp_isAdContext]) {
-        reasonText = PPUniversalCellSafeString(vm.location);
-    }
     BOOL marksHiddenOwnerItem = vm.isOwner && !vm.isPubliclyVisible;
     if (marksHiddenOwnerItem) {
         reasonText = PPUniversalCellLocalizedString(@"listing_hidden_badge", @"Hidden");
@@ -1581,8 +1726,17 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     UIColor *foreground = UIColor.whiteColor;
     UIColor *background = [UIColor colorWithRed:0.11 green:0.71 blue:0.43 alpha:0.10];
     UIColor *border = [UIColor colorWithRed:0.11 green:0.71 blue:0.43 alpha:0.18];
+    BOOL isAdContext = [self pp_isAdContext];
 
-    if ([self pp_usesQuantityControl]) {
+    if (isAdContext) {
+        title = [self pp_adBottomBadgeTextForViewModel:vm];
+        foreground = PPUniversalCellDynamicColor([UIColor colorWithRed:0.30 green:0.31 blue:0.36 alpha:1.0],
+                                                 [UIColor colorWithWhite:0.92 alpha:1.0]);
+        background = PPUniversalCellDynamicColor([UIColor colorWithRed:0.94 green:0.95 blue:0.97 alpha:0.92],
+                                                [UIColor colorWithWhite:1.0 alpha:0.08]);
+        border = PPUniversalCellDynamicColor([UIColor colorWithRed:0.22 green:0.23 blue:0.28 alpha:0.10],
+                                            [UIColor colorWithWhite:1.0 alpha:0.12]);
+    } else if ([self pp_usesQuantityControl]) {
         NSInteger stock = [self pp_stockLimitForCurrentItem];
         if (stock <= 0) {
             title = PPUniversalCellLocalizedString(@"Out of stock", @"Out of stock");
@@ -1622,13 +1776,15 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         }
     }
 
-    if ([self pp_isAdContext] || self.context == PPCellForAdopt) {
+    if (!isAdContext && self.context == PPCellForAdopt) {
         title = @"";
     }
 
-    self.availabilityLabel.text = title;
     self.availabilityLabel.font = PPUniversalCellBoldFont(12.0);
     self.availabilityLabel.textColor = foreground;
+    self.availabilityLabel.attributedText = nil;
+    self.availabilityLabel.text = title;
+    self.availabilityLabel.accessibilityLabel = title;
     self.availabilityLabel.backgroundColor = background;
     self.availabilityLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
     self.availabilityLabel.layer.borderWidth = 1.0;
@@ -1669,7 +1825,42 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.availabilityLeadingToMetaConstraint.active = tieAvailabilityToServiceMeta;
 }
 
-- (void)pp_configureQuantityStateWithViewModel:(PPUniversalCellViewModel *)vm
+- (NSString *)pp_cityLocationBadgeTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if ([vm.ModelObject isKindOfClass:[PetAd class]]) {
+        PetAd *ad = (PetAd *)vm.ModelObject;
+        NSString *cityName = ad.adLocation > 0
+            ? [CitiesManager.shared cityNameForID:ad.adLocation]
+            : @"";
+        if (cityName.length > 0) {
+            return cityName;
+        }
+        if (ad.locationName.length > 0) {
+            return PPUniversalCellCityOnlyFromLocation(ad.locationName);
+        }
+    }
+
+    return PPUniversalCellCityOnlyFromLocation(vm.location);
+}
+
+- (NSString *)pp_adBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![self pp_isAdContext]) {
+        return @"";
+    }
+
+    if ([self pp_isHostedByDataViewController]) {
+        return PPUniversalCellSafeString(vm.subtitle);
+    }
+
+    if ([vm.ModelObject isKindOfClass:PetAd.class]) {
+        return PPUniversalCellAdSubkindGenderText((PetAd *)vm.ModelObject);
+    }
+
+    return @"";
+}
+
+- (NSInteger)pp_cartQuantityForViewModel:(PPUniversalCellViewModel *)vm
 {
     NSInteger quantity = 0;
     if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
@@ -1687,6 +1878,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         quantity = MIN(quantity, stock);
     }
 
+    return quantity;
+}
+
+- (void)pp_configureQuantityStateWithViewModel:(PPUniversalCellViewModel *)vm
+{
+    NSInteger quantity = [self pp_cartQuantityForViewModel:vm];
     self.isEditingQuantity = NO;
     [self setQuantity:quantity animated:NO];
 }
@@ -1712,6 +1909,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_applyLayoutMode
 {
+    [self pp_updateInnerPaddingIfNeeded];
     BOOL fullWidth = [self pp_isFullWidthLayout];
     BOOL adsPinterest = PPUniversalCellUsesAdsPinterestLayout(self.context,
                                                               self.layoutMode,
@@ -2953,6 +3151,55 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         view = view.superview;
     }
     return YES;
+}
+
+#pragma mark - Custom Delegate Setter & Padding Adjustments
+
+- (void)setDelegate:(id<PPUniversalCellDelegate>)delegate
+{
+    _delegate = delegate;
+    [self pp_updateInnerPaddingIfNeeded];
+}
+
+- (void)pp_updateInnerPaddingIfNeeded
+{
+    BOOL isDataView = [self.delegate isKindOfClass:NSClassFromString(@"PPDataViewVC")];
+    BOOL isSellerProfileVC = [self.delegate isKindOfClass:NSClassFromString(@"SellerProfileVC")];
+    CGFloat padding = isDataView ? 20.0 : isSellerProfileVC ? 20 : 16.0;
+    
+    // Update compact constraints
+    for (NSLayoutConstraint *c in self.compactLayoutConstraints) {
+        if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeTop) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeLeading) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeTrailing) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeLeading) {
+            c.constant = padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeTrailing) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeBottom) {
+            c.constant = -padding;
+        }
+    }
+    
+    // Update full width constraints
+    for (NSLayoutConstraint *c in self.fullWidthLayoutConstraints) {
+        if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeTop) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeLeading) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeBottom) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeTop) {
+            c.constant = padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeTrailing) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeBottom) {
+            c.constant = -padding;
+        }
+    }
 }
 
 @end

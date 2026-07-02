@@ -13,6 +13,7 @@
 #import "PPAnalytics.h"
 #import "UIViewController+PPNavBar.h"
 #import "PPCommerceFeedbackManager.h"
+#import <Pure_Pets-Swift.h>
 
 // 0.70 means the expanded meta sheet occupies 70% of the screen height.
 static const CGFloat kViewerVcMetaSheetHeight = 0.85;
@@ -1360,6 +1361,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:YES];
     [self pp_setPremiumTabDockHidden:YES animated:animated];
     [self setupNavigation];
     [self initValue];
@@ -2167,6 +2169,8 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] hideNova];
+    [[NovaAmbientAssistantCoordinator sharedCoordinator] setSuppressedForCriticalFlow:NO];
     BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
     if (exiting) {
         [self pp_setPremiumTabDockHidden:NO animated:animated];

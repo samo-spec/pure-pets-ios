@@ -563,8 +563,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.titleRowStackView.alignment = UIStackViewAlignmentCenter;
     self.titleRowStackView.distribution = UIStackViewDistributionFill;
     self.titleRowStackView.spacing = 5.0;
-    self.titleRowStackView.semanticContentAttribute = isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    [self.contentPanelView addSubview:self.titleRowStackView];
+     [self.contentPanelView addSubview:self.titleRowStackView];
 
     self.subtitleLabel = [[UILabel alloc] init];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -739,7 +738,7 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.contentPanelView.bottomAnchor constraintEqualToAnchor:self.imageStageView.bottomAnchor constant:-14.0],
         [self.contentPanelView.heightAnchor constraintGreaterThanOrEqualToConstant:46.0],
 
-        [self.avatarShellView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.avatarShellView.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
         [self.avatarShellView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor],
         [self.avatarShellView.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor],
         [self.avatarShellView.widthAnchor constraintEqualToConstant:46.0],
@@ -758,12 +757,12 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
         [self.avatarVerifiedBadgeIconView.heightAnchor constraintEqualToConstant:17.0],
 
         [self.titleRowStackView.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:2.0],
-        [self.titleRowStackView.leadingAnchor constraintEqualToAnchor:self.avatarShellView.trailingAnchor constant:12.0],
-        [self.titleRowStackView.trailingAnchor constraintLessThanOrEqualToAnchor:contentGuide.trailingAnchor],
+        [self.titleRowStackView.leadingAnchor constraintEqualToAnchor:contentGuide.leadingAnchor],
+        [self.titleRowStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarShellView.leadingAnchor constant:-12.0],
 
         [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleRowStackView.bottomAnchor constant:4.0],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleRowStackView.leadingAnchor],
-        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:contentGuide.trailingAnchor],
+        [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.avatarShellView.leadingAnchor constant:-12.0],
 
         [self.bottomMetaRailStackView.topAnchor constraintEqualToAnchor:self.imageStageView.bottomAnchor constant:10.0],
         [self.bottomMetaRailStackView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16.0],
@@ -961,20 +960,8 @@ static UIImage *PPProviderPremiumInitialsImage(NSString *title, UIColor *accentC
     self.countTitleLabel.textAlignment = NSTextAlignmentCenter;
     self.contactLabel.textAlignment = leading;
     self.metricsRailStackView.alignment = UIStackViewAlignmentCenter;
-    self.semanticContentAttribute = isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    self.cardView.semanticContentAttribute = self.semanticContentAttribute;
-    self.imageStageView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    self.accessoryPocketView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    self.contentPanelView.semanticContentAttribute = self.semanticContentAttribute;
-    self.avatarShellView.semanticContentAttribute = self.semanticContentAttribute;
-    self.titleRowStackView.semanticContentAttribute = self.semanticContentAttribute;
-    self.bottomMetaRailStackView.semanticContentAttribute = self.semanticContentAttribute;
-    self.metricsRailStackView.semanticContentAttribute = self.semanticContentAttribute;
-    self.contactPillView.semanticContentAttribute = self.semanticContentAttribute;
-    self.countPillView.semanticContentAttribute = self.semanticContentAttribute;
-    self.ratingPillView.semanticContentAttribute = self.semanticContentAttribute;
-    self.avatarVerifiedBadgeView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-
+    self.semanticContentAttribute = GM.setSemantic;
+ 
     NSMutableArray<NSString *> *a11yParts = [NSMutableArray array];
     if (title.length) [a11yParts addObject:title];
     if (showsVerifiedBadge) [a11yParts addObject:(kLang(@"verified") ?: @"Verified")];

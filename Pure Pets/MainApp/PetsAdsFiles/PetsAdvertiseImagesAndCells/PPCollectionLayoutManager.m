@@ -22,8 +22,8 @@
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
 
-static CGFloat const PPUniversalAdsPinterestOuterInset = 12.0;
-static CGFloat const PPUniversalAdsPinterestInnerSpacing = 12.0;
+static CGFloat const PPUniversalAdsPinterestOuterInset = 14.0;
+static CGFloat const PPUniversalAdsPinterestInnerSpacing = 14.0;
 static CGFloat const PPUniversalAdsPinterestButtonHeight = 34.0;
 static CGFloat const PPUniversalAdsPinterestCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalAdsPinterestCompactPriceHeight = 26.0;
@@ -189,10 +189,10 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
         NSLog(@"[PPCollectionLayoutManager] ERROR: newLayout is nil for mode");
         return nil;
     }
-    const CGFloat horizontalSpacing = 12.0;
-    const CGFloat verticalSpacing = 12.0;
-    const CGFloat topInset = 12.0;
-    const CGFloat bottomInset = 12.0;
+    const CGFloat horizontalSpacing = 14.0;
+    const CGFloat verticalSpacing = 14.0;
+    const CGFloat topInset = 14.0;
+    const CGFloat bottomInset = 14.0;
     // Create an appropriate layout for the given mode.
     UICollectionViewLayout *layout = nil;
    
@@ -403,9 +403,9 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
                 carousel.orthogonalScrollingBehavior =
                 UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
 
-                carousel.interGroupSpacing = 12;
+                carousel.interGroupSpacing = 14.0;
                 carousel.contentInsets =
-                NSDirectionalEdgeInsetsMake(12, 12, 24, 12);
+                NSDirectionalEdgeInsetsMake(12, 14.0, 24, 14.0);
 
                 return carousel;
             }
@@ -439,7 +439,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
 
             sectionLayout.interGroupSpacing = 10;
             sectionLayout.contentInsets =
-            NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
+            NSDirectionalEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
 
             return sectionLayout;
          }];

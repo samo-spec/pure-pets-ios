@@ -310,6 +310,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
 
 - (void)layoutSubviews
 {
+    [self.contentView layoutIfNeeded];
     [super layoutSubviews];
 
     CGFloat cornerRadius = 22.0;
@@ -321,6 +322,7 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _accentBarView.layer.cornerRadius = CGRectGetHeight(_accentBarView.bounds) * 0.5;
     _ambientOrbView.layer.cornerRadius = CGRectGetWidth(_ambientOrbView.bounds) * 0.5;
     _surfaceGradientLayer.frame = _surfaceView.bounds;
+    _surfaceGradientLayer.opacity = 0.7;
     CGFloat highlightInset = 0.65;
     CGRect highlightBounds = CGRectInset(_surfaceView.bounds, highlightInset, highlightInset);
     _surfaceLiquidBorderLayer.frame = _surfaceView.bounds;

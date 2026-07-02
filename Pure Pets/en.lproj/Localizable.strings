@@ -716,7 +716,14 @@
 "PPCellLayoutFullWidth" = "Full Width";
 "PPCellLayoutSquare" = "Square";
 "PPCellLayoutVertical" = "Vertical";
+"PPCellLayoutPinterest" = "Pinterest";
+"Pintrest" = "Pinterest";
 "PPCellLayout" = "Cell Layout";
+"PPDataViewActionsTitle" = "Browse controls";
+"PPDataViewPrimaryLayouts" = "Featured layouts";
+"PPDataViewMoreLayouts" = "More layouts";
+"PPDataViewSearchMenuA11y" = "Search and layout controls";
+"PPDataViewSearchMenuHint" = "Opens search, filter, and browsing layout actions";
 "searchOnly" = "Search";
 "SearchHeroEyebrow" = "Pure Pets Search";
 "SearchHeroTitle" = "Search the market";
@@ -1276,6 +1283,8 @@
 "Title" = "Title";
 "Description" = "Description";
 "Category" = "Category";
+"data_nav_species" = "Species";
+"data_nav_breed" = "Breed";
 "Breed" = "Breed";
 "Subcategory" = "Subcategory";
 "Price" = "Price";
@@ -2482,6 +2491,10 @@
 "pet_reminders_tab" = "Reminders";
 "pet_chats_tab" = "Chats";
 "notifications_inbox_tab" = "Notifications";
+"notifications_hub_hero_eyebrow" = "Inbox";
+"notifications_hub_hero_chats_subtitle" = "Stories and recent conversations stay ready without noise.";
+"notifications_hub_hero_reminders_subtitle" = "Care reminders, follow-ups, and due items in one calm view.";
+"notifications_hub_hero_notifications_subtitle" = "Order updates and app alerts collected for quick review.";
 "notifications_inbox_empty_title" = "No notifications yet";
 "notifications_inbox_empty_subtitle" = "Order updates and chat alerts will show up here.";
 "notifications_inbox_category_chat" = "Chats";
