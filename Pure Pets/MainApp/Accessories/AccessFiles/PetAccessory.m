@@ -362,6 +362,16 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         });
         _condition = [dict[@"condition"] integerValue];
         _isNew = [dict[@"isNew"] boolValue];
+        
+        // Ensure consistency between isNew and condition
+        if (_condition == AccessConditionsUsed || !_isNew) {
+            _condition = AccessConditionsUsed;
+            _isNew = NO;
+        } else {
+            _condition = AccessConditionsNew;
+            _isNew = YES;
+        }
+        
         _hasOffer = [dict[@"hasOffer"] boolValue];
         _showInAppMarket = [dict[@"showInAppMarket"] boolValue];
         _isBlocked = [dict[@"isBlocked"] boolValue];

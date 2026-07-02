@@ -643,9 +643,18 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.overlayView.layer.cornerRadius = self.surfaceView.layer.cornerRadius;
     self.overlayGradientLayer.frame = self.overlayView.bounds;
     self.overlayGradientLayer.cornerRadius = self.surfaceView.layer.cornerRadius;
-    self.shadowView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.shadowView.bounds
-                                   cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    CGRect shadowBounds = self.shadowView.bounds;
+    CGFloat cornerRadius = self.surfaceView.layer.cornerRadius;
+    if (!CGRectIsEmpty(shadowBounds) &&
+        isfinite((double)CGRectGetWidth(shadowBounds)) &&
+        isfinite((double)CGRectGetHeight(shadowBounds)) &&
+        isfinite((double)cornerRadius)) {
+        self.shadowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:shadowBounds
+                                       cornerRadius:MAX(0.0, cornerRadius)].CGPath;
+    } else {
+        self.shadowView.layer.shadowPath = nil;
+    }
     [self pp_updateProgressFillWidth];
     [self pp_updateCollapsedPreviewLayout];
     [CATransaction commit];
@@ -665,7 +674,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 - (void)pp_updateProgressFillWidth
 {
     CGFloat trackWidth = CGRectGetWidth(self.progressTrackView.bounds);
-    if (trackWidth <= 0.0) {
+    if (!isfinite((double)trackWidth) || trackWidth <= 0.0) {
         trackWidth = PPHomeOrderFallbackProgressWidth;
     }
     self.progressFillWidthConstraint.constant = floor(trackWidth * self.currentProgress);

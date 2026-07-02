@@ -18,6 +18,7 @@
 @property (nonatomic, strong) id authListenerHandle;
 @property (nonatomic, strong) NSDictionary *pendingChatNotification;
 @property (nonatomic, copy) NSString *activeUserScopedListenersUID;
+@property (nonatomic, copy) NSString *pendingUserScopedListenersUID;
 
 @end
 
@@ -81,12 +82,18 @@
         [[ChManager sharedManager] stopListening];
         [[ChManager sharedManager] stopAllThreadMessageListeners];
         self.activeUserScopedListenersUID = nil;
+        self.pendingUserScopedListenersUID = nil;
         return;
     }
 
     if ([self.activeUserScopedListenersUID isEqualToString:uid]) {
         return;
     }
+    if ([self.pendingUserScopedListenersUID isEqualToString:uid]) {
+        NSLog(@"[SceneDelegate] User-scoped listeners already pending for user: %@", uid);
+        return;
+    }
+    self.pendingUserScopedListenersUID = uid;
 
     __weak typeof(self) weakSelf = self;
     [UserManager.sharedManager validateCurrentAuthSessionWithCompletion:^(NSError * _Nullable validationError) {
@@ -95,6 +102,9 @@
 
         NSString *latestUID = [FIRAuth auth].currentUser.uid ?: @"";
         if (![latestUID isEqualToString:uid]) {
+            if ([self.pendingUserScopedListenersUID isEqualToString:uid]) {
+                self.pendingUserScopedListenersUID = nil;
+            }
             return;
         }
 
@@ -105,6 +115,7 @@
             [[ChManager sharedManager] stopListening];
             [[ChManager sharedManager] stopAllThreadMessageListeners];
             self.activeUserScopedListenersUID = nil;
+            self.pendingUserScopedListenersUID = nil;
             return;
         }
 
@@ -114,7 +125,13 @@
             [UserManager.sharedManager restoreSessionOnLaunchWithCompletion:^(NSError * _Nullable error) {
                 if (error) {
                     NSLog(@"[SceneDelegate] Session restore error: %@", error.localizedDescription);
+                    if ([self.pendingUserScopedListenersUID isEqualToString:uid]) {
+                        self.pendingUserScopedListenersUID = nil;
+                    }
                     return;
+                }
+                if ([self.pendingUserScopedListenersUID isEqualToString:uid]) {
+                    self.pendingUserScopedListenersUID = nil;
                 }
                 [self pp_startUserScopedListenersIfPossible];
             }];
@@ -129,6 +146,7 @@
         NSLog(@"👤 Starting app data listeners for user: %@", uid);
         [[AppDataListenerManager shared] startListenersForUser:uid];
         self.activeUserScopedListenersUID = uid;
+        self.pendingUserScopedListenersUID = nil;
     }];
 }
 
@@ -190,7 +208,6 @@ willConnectToSession:(UISceneSession *)session
     self.authListenerHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(FIRAuth * _Nonnull auth, FIRUser * _Nullable user) {
         [weakSelf pp_startUserScopedListenersIfPossible];
     }];
-    [self pp_startUserScopedListenersIfPossible];
     /*
      // ✅ Start chat if logged in
      FIRUser *authUser = [FIRAuth auth].currentUser;
@@ -420,6 +437,7 @@ willConnectToSession:(UISceneSession *)session
     [[ChManager sharedManager] stopListening];
     [[ChManager sharedManager] stopAllThreadMessageListeners];
     self.activeUserScopedListenersUID = nil;
+    self.pendingUserScopedListenersUID = nil;
 }
 
 #pragma mark - Deep links

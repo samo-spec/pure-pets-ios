@@ -124,7 +124,13 @@ static inline BOOL PPPetAdoptIsCompactPhone(CGFloat width)
     _shadowView.layer.shadowOffset = CGSizeMake(0, 2);
     _shadowView.layer.shadowOpacity = 0.081;
     _shadowView.layer.shadowRadius = 3;
-    _shadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_shadowView.bounds cornerRadius:PPCornersMainCell].CGPath;
+    if (!CGRectIsEmpty(_shadowView.bounds) &&
+        isfinite((double)CGRectGetWidth(_shadowView.bounds)) &&
+        isfinite((double)CGRectGetHeight(_shadowView.bounds))) {
+        _shadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:_shadowView.bounds cornerRadius:PPCornersMainCell].CGPath;
+    } else {
+        _shadowView.layer.shadowPath = nil;
+    }
 }
 
 - (void)layoutSubviews {
@@ -137,7 +143,8 @@ static inline BOOL PPPetAdoptIsCompactPhone(CGFloat width)
 
     CGFloat width = CGRectGetWidth(self.bounds);
     CGFloat height = CGRectGetHeight(self.bounds);
-    if (width <= 0.0 || height <= 0.0) {
+    if (!isfinite((double)width) || !isfinite((double)height) || width <= 0.0 || height <= 0.0) {
+        _bgGradientLayer.frame = CGRectZero;
         return;
     }
 

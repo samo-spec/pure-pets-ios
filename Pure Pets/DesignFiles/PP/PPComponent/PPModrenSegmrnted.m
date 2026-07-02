@@ -1,17 +1,26 @@
 #import "PPModrenSegmrnted.h"
 #import <QuartzCore/QuartzCore.h>
+#import <math.h>
 
 static const NSInteger PPModrenSegmrntedNoSelection = -1;
 static const CGFloat PPModrenSegmrntedOuterInset = 3.0;
 static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
 static const CGFloat PPModrenSegmrntedUnderlineHeight = 4.0;
-static const CGFloat PPModrenSegmrntedContainerCornerRadius = 22.0;
-static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 15.0;
+static const CGFloat PPModrenSegmrntedContainerCornerRadius = 24.0;
+static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 24.0;
 static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.36;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {
     return AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+}
+
+static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFloat fallback)
+{
+    if (!isfinite((double)height) || height <= 0.0) {
+        return fallback;
+    }
+    return floor(height * 0.5);
 }
 
 @interface PPModrenSegmrntedItem ()
@@ -341,7 +350,7 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 
     //UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight];
     //self.containerBlurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    self.containerBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
+    self.containerBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
     
     UIButtonConfiguration *config = self.containerBlurView.configuration;
     config.baseBackgroundColor = UIColor.clearColor;
@@ -466,15 +475,23 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {
     [super layoutSubviews];
 
-    CGFloat controlRadius = PPModrenSegmrntedContainerCornerRadius;
-    CGFloat selectionRadius = PPModrenSegmrntedSelectionCornerRadius;
+    CGFloat controlRadius = PPModrenSegmrntedPillRadiusForHeight(CGRectGetHeight(self.bounds),
+                                                                  PPModrenSegmrntedContainerCornerRadius);
+    CGFloat selectionRadius = PPModrenSegmrntedPillRadiusForHeight(CGRectGetHeight(self.selectionOutlineView.bounds),
+                                                                    PPModrenSegmrntedSelectionCornerRadius);
     self.layer.cornerRadius = controlRadius;
     self.containerFillView.layer.cornerRadius = controlRadius;
     self.containerBlurView.layer.cornerRadius = controlRadius;
     self.containerTintOverlay.layer.cornerRadius = controlRadius;
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:controlRadius].CGPath;
+    UIButtonConfiguration *containerConfiguration = self.containerBlurView.configuration;
+    if (containerConfiguration.background.cornerRadius != controlRadius) {
+        containerConfiguration.background.cornerRadius = controlRadius;
+        self.containerBlurView.configuration = containerConfiguration;
+    }
+    self.layer.shadowPath = CGRectIsEmpty(self.bounds)
+        ? nil
+        : [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                     cornerRadius:controlRadius].CGPath;
 
     self.selectionOutlineView.layer.cornerRadius = selectionRadius;
     self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
@@ -487,12 +504,14 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     self.selectionUnderlineLayer.frame = self.selectionUnderlineView.bounds;
     self.selectionUnderlineLayer.cornerRadius = 2.0;
 
-    self.selectionOutlineView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.selectionOutlineView.bounds
-                                   cornerRadius:selectionRadius].CGPath;
-    self.selectionUnderlineView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.selectionUnderlineView.bounds
-                                   cornerRadius:PPModrenSegmrntedUnderlineHeight * 0.5].CGPath;
+    self.selectionOutlineView.layer.shadowPath = CGRectIsEmpty(self.selectionOutlineView.bounds)
+        ? nil
+        : [UIBezierPath bezierPathWithRoundedRect:self.selectionOutlineView.bounds
+                                     cornerRadius:selectionRadius].CGPath;
+    self.selectionUnderlineView.layer.shadowPath = CGRectIsEmpty(self.selectionUnderlineView.bounds)
+        ? nil
+        : [UIBezierPath bezierPathWithRoundedRect:self.selectionUnderlineView.bounds
+                                     cornerRadius:PPModrenSegmrntedUnderlineHeight * 0.5].CGPath;
 
     [self pp_updateSelectionIndicatorMetrics];
 }
@@ -589,6 +608,16 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     [self pp_refreshAppearanceAnimated:NO];
 }
 
+- (void)setHidesContainerChrome:(BOOL)hidesContainerChrome
+{
+    if (_hidesContainerChrome == hidesContainerChrome) {
+        return;
+    }
+    _hidesContainerChrome = hidesContainerChrome;
+    [self pp_updateChromeColors];
+    [self setNeedsLayout];
+}
+
 - (UIColor *)pp_accentColor
 {
     return self.selectedSegmentColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
@@ -607,9 +636,19 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     UIColor *liquidBorderColor = AppForgroundColr ?: surfaceColor;
 
     self.containerFillView.backgroundColor = UIColor.clearColor;
-    self.containerBlurView.alpha = 1.0;
+    self.containerBlurView.alpha = self.hidesContainerChrome ? 0.0 : 1.0;
      
-    if(!PPIOS26())
+    if (self.hidesContainerChrome)
+    {
+        self.containerTintOverlay.backgroundColor = UIColor.clearColor;
+        self.containerFillView.layer.borderWidth = 0.0f;
+        [self.containerFillView pp_setBorderColor:UIColor.clearColor];
+        [self pp_setShadowColor:UIColor.clearColor];
+        self.layer.shadowOpacity = 0.0f;
+        self.layer.shadowRadius = 0.0f;
+        self.layer.shadowOffset = CGSizeZero;
+    }
+    else if(!PPIOS26())
     {
         self.containerTintOverlay.backgroundColor =
             [surfaceColor colorWithAlphaComponent:dark ? 0.28 : 0.14];
@@ -767,6 +806,8 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
         self.selectionUnderlineWidthConstraint.constant = 0.0;
         return;
     }
+
+    [self.segmentsStackView layoutIfNeeded];
 
     _PPModrenSegmrntedSegmentView *selectedSegment = self.segmentViews[self.selectedIndex];
     CGRect selectedFrame = [self convertRect:selectedSegment.frame fromView:self.segmentsStackView];

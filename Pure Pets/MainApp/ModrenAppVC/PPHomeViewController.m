@@ -145,7 +145,7 @@ static NSArray<NSString *> *PPHomeSanitizedGradientHexColors(NSArray<NSString *>
             continue;
         }
 
-        NSString *hex = [((NSString *)color) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *hex = [((NSString *)color) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
         if (hex.length == 0) {
             continue;
         }
@@ -1312,6 +1312,33 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     PPHomeProfileMenuActionLogout
 };
 
+static inline BOOL PPHomeFiniteCGFloat(CGFloat value)
+{
+    return isfinite((double)value);
+}
+
+static inline CGFloat PPHomeClampedFiniteCGFloat(CGFloat value, CGFloat fallback, CGFloat minimum, CGFloat maximum)
+{
+    CGFloat resolved = PPHomeFiniteCGFloat(value) ? value : fallback;
+    if (PPHomeFiniteCGFloat(minimum)) {
+        resolved = MAX(minimum, resolved);
+    }
+    if (PPHomeFiniteCGFloat(maximum)) {
+        resolved = MIN(maximum, resolved);
+    }
+    return resolved;
+}
+
+static inline BOOL PPHomeRectIsFiniteAndNotEmpty(CGRect rect)
+{
+    return !CGRectIsNull(rect) &&
+           !CGRectIsEmpty(rect) &&
+           PPHomeFiniteCGFloat(rect.origin.x) &&
+           PPHomeFiniteCGFloat(rect.origin.y) &&
+           PPHomeFiniteCGFloat(rect.size.width) &&
+           PPHomeFiniteCGFloat(rect.size.height);
+}
+
 @interface PPHomeAmbientGlowView : UIView
 @property (nonatomic, strong) CAGradientLayer *radialLayer;
 @property (nonatomic, assign, getter=isFaded) BOOL faded;
@@ -1352,11 +1379,18 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    CGRect bounds = self.bounds;
+    if (!PPHomeRectIsFiniteAndNotEmpty(bounds)) {
+        self.layer.cornerRadius = 0.0;
+        self.radialLayer.frame = CGRectZero;
+        return;
+    }
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.cornerRadius = MAX(0.0, CGRectGetWidth(bounds) * 0.5);
     self.layer.masksToBounds = !self.isFaded;
-    self.radialLayer.frame = self.bounds;
+    self.radialLayer.frame = bounds;
     [CATransaction commit];
 }
 
@@ -1365,22 +1399,25 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
        middleAlpha:(CGFloat)middleAlpha
 {
     UIColor *safeColor = color ?: UIColor.clearColor;
+    CGFloat safePeakAlpha = PPHomeClampedFiniteCGFloat(peakAlpha, 0.0, 0.0, 1.0);
+    CGFloat safeMiddleAlpha = PPHomeClampedFiniteCGFloat(middleAlpha, 0.0, 0.0, 1.0);
+    CGRect bounds = self.bounds;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.layer.cornerRadius = CGRectGetWidth(self.bounds) * 0.5;
+    self.layer.cornerRadius = PPHomeRectIsFiniteAndNotEmpty(bounds) ? MAX(0.0, CGRectGetWidth(bounds) * 0.5) : 0.0;
     self.layer.masksToBounds = !self.isFaded;
     if (self.isFaded) {
         self.backgroundColor = UIColor.clearColor;
         self.radialLayer.hidden = NO;
         self.radialLayer.locations = @[@0.0, @0.46, @1.0];
         self.radialLayer.colors = @[
-            (id)[safeColor colorWithAlphaComponent:peakAlpha].CGColor,
-            (id)[safeColor colorWithAlphaComponent:middleAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:safePeakAlpha].CGColor,
+            (id)[safeColor colorWithAlphaComponent:safeMiddleAlpha].CGColor,
             (id)[safeColor colorWithAlphaComponent:0.0].CGColor
         ];
     } else {
         self.radialLayer.hidden = YES;
-        self.backgroundColor = [safeColor colorWithAlphaComponent:peakAlpha];
+        self.backgroundColor = [safeColor colorWithAlphaComponent:safePeakAlpha];
     }
     [CATransaction commit];
 }
@@ -1626,6 +1663,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (NSString *)pp_homeShortDateString:(NSDate *)date;
 - (nullable PPOrder *)pp_featuredHomeOrder;
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems;
+- (BOOL)pp_shouldRenderCurrentOrdersSection;
 - (NSArray<PPHomeItem *> *)pp_homeBuyAgainItems;
 - (NSArray<NSNumber *> *)pp_orderedHomeSectionIdentifiers;
 - (NSArray<NSDictionary *> *)pp_mergeHomeConfigSectionsWithCatalog:(NSArray<NSDictionary *> *)stored;
@@ -1676,6 +1714,9 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                                                       section:(PPHomeSection)section;
 - (void)pp_reconfigureHomeItems:(NSArray<PPHomeItem *> *)items
                       inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
+- (void)pp_reloadHomeItems:(NSArray<PPHomeItem *> *)items
+                 inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
+- (BOOL)pp_homeItemRequiresFullReload:(PPHomeItem *)item;
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count;
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
@@ -2246,6 +2287,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return NO;
     }
 
+    if (section == PPHomeSectionCurrentOrders) {
+        return [self pp_shouldRenderCurrentOrdersSection];
+    }
+
     return YES;
 }
 
@@ -2598,9 +2643,17 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSLog(@"[Home] Sections in snapshot (%lu): %@", (unsigned long)sections.count,
           [sections componentsJoinedByString:@", "]);
 
-    void (^safeAppend)(NSArray *, NSNumber *) = ^(NSArray *items, NSNumber *section) {
+    NSDiffableDataSourceSnapshot *existingSnapshot = self.dataSource ? self.dataSource.snapshot : nil;
+    void (^safeAppend)(NSArray *, NSNumber *) = ^(NSArray *newItems, NSNumber *section) {
         if ([sections containsObject:section]) {
-            [snapshot appendItemsWithIdentifiers:items intoSectionWithIdentifier:section];
+            NSArray *existingItems = @[];
+            if (existingSnapshot && [existingSnapshot.sectionIdentifiers containsObject:section]) {
+                existingItems = [existingSnapshot itemIdentifiersInSectionWithIdentifier:section];
+            }
+            NSArray *stableItems = [self pp_homeItemsByReusingExistingItems:existingItems
+                                                                   newItems:newItems
+                                                                    section:(PPHomeSection)section.integerValue];
+            [snapshot appendItemsWithIdentifiers:stableItems intoSectionWithIdentifier:section];
         }
     };
 
@@ -2651,6 +2704,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     // ✅ Carousel
     PPHomeItem *carouselItem = [PPHomeItem new];
+    carouselItem.type = PPHomeItemTypeCarousel;
     NSArray *cards = self.promoCarouselCards;
     if (cards.count == 0) cards = [self pp_homePromoFallbackCards];
     carouselItem.payload = cards.count > 0 ? cards : (id)[NSNull null];
@@ -3565,12 +3619,65 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return;
     }
 
-    if (@available(iOS 15.0, *)) {
-        [snapshot reconfigureItemsWithIdentifiers:items];
-    } else {
-        [snapshot reloadItemsWithIdentifiers:items];
+    NSMutableArray<PPHomeItem *> *fullReloadItems = [NSMutableArray array];
+    NSMutableArray<PPHomeItem *> *reconfigureItems = [NSMutableArray array];
+    for (PPHomeItem *item in items) {
+        if (![item isKindOfClass:PPHomeItem.class]) {
+            continue;
+        }
+        if ([self pp_homeItemRequiresFullReload:item]) {
+            [fullReloadItems addObject:item];
+        } else {
+            [reconfigureItems addObject:item];
+        }
+    }
+
+    if (reconfigureItems.count > 0) {
+        if (@available(iOS 15.0, *)) {
+            [snapshot reconfigureItemsWithIdentifiers:reconfigureItems];
+        } else {
+            [snapshot reloadItemsWithIdentifiers:reconfigureItems];
+        }
+    }
+
+    if (fullReloadItems.count > 0) {
+        [snapshot reloadItemsWithIdentifiers:fullReloadItems];
     }
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+}
+
+- (void)pp_reloadHomeItems:(NSArray<PPHomeItem *> *)items
+                 inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot
+{
+    if (items.count == 0 || !snapshot || !self.dataSource) {
+        return;
+    }
+
+    [snapshot reloadItemsWithIdentifiers:items];
+    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+}
+
+- (BOOL)pp_homeItemRequiresFullReload:(PPHomeItem *)item
+{
+    if (![item isKindOfClass:PPHomeItem.class]) {
+        return NO;
+    }
+
+    if (item.type == PPHomeItemTypeCarousel) {
+        return YES;
+    }
+
+    id payload = item.payload;
+    if (![payload isKindOfClass:NSArray.class]) {
+        return NO;
+    }
+
+    NSArray *payloadArray = (NSArray *)payload;
+    if (payloadArray.count == 0) {
+        return NO;
+    }
+
+    return [payloadArray.firstObject isKindOfClass:PPHomePromoCarouselCard.class];
 }
 
 // 🔒 Safe accessor: returns @[] if the section is not present in the snapshot.
@@ -3875,8 +3982,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [snapshot deleteItemsWithIdentifiers:items];
     }
 
-    if (section == PPHomeSectionBuyAgain) {
-        if (![self pp_shouldRenderHomeSection:PPHomeSectionBuyAgain]) {
+    if (section == PPHomeSectionBuyAgain ||
+        section == PPHomeSectionCurrentOrders) {
+        BOOL shouldRemoveDynamicSection =
+            ![self pp_shouldRenderHomeSection:section] ||
+            (section == PPHomeSectionCurrentOrders && newItems.count == 0);
+        if (shouldRemoveDynamicSection) {
             if (sectionExists) {
                 [snapshot deleteSectionsWithIdentifiers:@[sectionIdentifier]];
                 [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
@@ -5572,16 +5683,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             NSLog(@"[Home][Orders] featured=ACTIVE");
             return order;
         }
-
-        NSDate *createdDate = order.createdAt ?: order.updatedAt;
-        if ([createdDate isKindOfClass:NSDate.class]) {
-            NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:createdDate];
-            if (elapsed <= PPHomeCompletedLastOrderVisibilityInterval) {
-                NSLog(@"[Home][Orders] featured=RECENT (%.0fs ago)", elapsed);
-                return order;
-            }
-        }
-        NSLog(@"[Home][Orders] featured=EXPIRED");
+        NSLog(@"[Home][Orders] featured=INACTIVE");
     } else {
         NSLog(@"[Home][Orders] featured=nil — currentOrders empty or firstObject not PPOrder");
     }
@@ -5589,17 +5691,15 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     return nil;
 }
 
+- (BOOL)pp_shouldRenderCurrentOrdersSection
+{
+    return [self pp_featuredHomeOrder] != nil;
+}
+
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems
 {
     NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
     PPOrder *featuredOrder = [self pp_featuredHomeOrder];
-
-    if (self.currentOrdersLoading && !featuredOrder) {
-        PPHomeItem *placeholderItem =
-            [[PPHomeItem alloc] initWithType:PPHomeItemTypeCurrentOrder payload:[NSNull null]];
-        [items addObject:placeholderItem];
-        return items.copy;
-    }
 
     if (featuredOrder) {
         PPHomeItem *item =
@@ -7157,7 +7257,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         case PPHomeSectionCurrentOrders: {
             cfg.hidden = !self.isCurrentOrdersExpanded ||
-                         !(self.currentOrdersLoading || [self pp_featuredHomeOrder] != nil);
+                         ![self pp_shouldRenderCurrentOrdersSection];
             cfg.title = kLang(@"home_header_most_requested") ?: kLang(@"Home_LastOrderTitle");
             cfg.subtitle = kLang(@"Home_LastOrderSubtitle");
             cfg.actionTitle = kLang(@"OrderHistory");
@@ -7425,7 +7525,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                      fromSnapshot:snapshot];
     if (items.count == 0) return;
 
-    [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
+    [self pp_reloadHomeItems:items inSnapshot:snapshot];
 }
 
 - (void)pp_configureBannerCell:(PPBannerCollectionCell *)cell
@@ -10366,16 +10466,24 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_addRandomizedMiddleBackgroundGlowPositionMotion
 {
     PPHomeAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
-    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+    if (!glowView || !PPHomeRectIsFiniteAndNotEmpty(glowView.bounds) ||
         [glowView.layer animationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey]) {
         return;
     }
 
     CGFloat canvasWidth = CGRectGetWidth(self.pp_premiumBackgroundCanvasView.bounds);
     CGFloat canvasHeight = CGRectGetHeight(self.pp_premiumBackgroundCanvasView.bounds);
+    if (!PPHomeFiniteCGFloat(canvasWidth) || canvasWidth <= 0.0 ||
+        !PPHomeFiniteCGFloat(canvasHeight) || canvasHeight <= 0.0) {
+        return;
+    }
+
     CGFloat maximumXOffset = MIN(92.0, MAX(64.0, canvasWidth * 0.22));
     CGFloat maximumYOffset = MIN(116.0, MAX(78.0, canvasHeight * 0.115));
     CGPoint restingPosition = glowView.layer.position;
+    if (!PPHomeFiniteCGFloat(restingPosition.x) || !PPHomeFiniteCGFloat(restingPosition.y)) {
+        return;
+    }
 
     NSMutableArray<NSValue *> *positions = [NSMutableArray arrayWithObject:[NSValue valueWithCGPoint:restingPosition]];
     NSMutableArray<NSNumber *> *keyTimes = [NSMutableArray arrayWithObject:@0.0];
@@ -10385,6 +10493,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         CGFloat randomYUnit = ((CGFloat)arc4random_uniform(2001) / 1000.0) - 1.0;
         CGPoint waypoint = CGPointMake(restingPosition.x + (randomXUnit * maximumXOffset),
                                        restingPosition.y + (randomYUnit * maximumYOffset));
+        if (!PPHomeFiniteCGFloat(waypoint.x) || !PPHomeFiniteCGFloat(waypoint.y)) {
+            continue;
+        }
         [positions addObject:[NSValue valueWithCGPoint:waypoint]];
         [keyTimes addObject:@((CGFloat)index / (CGFloat)(waypointCount + 1))];
     }
@@ -10392,6 +10503,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [keyTimes addObject:@1.0];
 
     CFTimeInterval duration = 13.0 + ((CGFloat)arc4random_uniform(3501) / 1000.0);
+    if (!isfinite(duration) || duration <= 0.0 || positions.count != keyTimes.count) {
+        return;
+    }
     CAKeyframeAnimation *positionAnimation = [CAKeyframeAnimation animationWithKeyPath:@"position"];
     positionAnimation.values = positions;
     positionAnimation.keyTimes = keyTimes;
@@ -10410,12 +10524,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded
 {
     PPHomeAmbientGlowView *glowView = self.pp_premiumBackgroundGlowViewMid;
-    if (!glowView || CGRectIsEmpty(glowView.bounds) ||
+    if (!glowView || !PPHomeRectIsFiniteAndNotEmpty(glowView.bounds) ||
         [glowView.layer animationForKey:PPHomeMiddleBackgroundGlowPeekMotionKey]) {
         return;
     }
 
     CGFloat travelDistance = MIN(26.0, MAX(16.0, CGRectGetWidth(glowView.bounds) * 0.08));
+    if (!PPHomeFiniteCGFloat(travelDistance) || travelDistance <= 0.0) {
+        return;
+    }
     CGFloat direction = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -1.0 : 1.0;
 
     CABasicAnimation *positionAnimation =
@@ -11479,7 +11596,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGFloat navBarWidth = CGRectGetWidth(navigationBar.bounds);
     if (navBarWidth <= 0.0) {
-        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 160.0;
+        return 160.0;
     }
 
     UIBarButtonItem *leftItem = PPHomeTemporarilyHideLeadingProfileItem
@@ -11494,10 +11611,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
     if (availableWidth <= 0.0) {
-        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 160.0;
+        return 160.0;
     }
 
-    return floor(availableWidth);
+    return floor(MAX(160.0, availableWidth));
 }
 
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback
@@ -11664,9 +11781,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.homeSmartSearchView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeSmartSearchWidthConstraint =
             [self.homeSmartSearchView.widthAnchor constraintEqualToConstant:MAX(width, 220.0)];
-        self.homeSmartSearchWidthConstraint.priority = UILayoutPriorityRequired;
+        self.homeSmartSearchWidthConstraint.priority = UILayoutPriorityDefaultHigh;
         self.homeSmartSearchWidthConstraint.active = YES;
         [self.homeSmartSearchView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+        [self.homeSmartSearchView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                                  forAxis:UILayoutConstraintAxisHorizontal];
+        [self.homeSmartSearchView setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                                    forAxis:UILayoutConstraintAxisHorizontal];
         self.homeSmartSearchView.showSmartPillBackground = NO;
         [self.homeSmartSearchView addTarget:self
                                      action:@selector(pp_openSmartSearch)
@@ -12138,7 +12259,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     // Skip if the payload is already the same array (pointer equality)
     if (existing.payload == (id)promoCards) return;
 
-    // Update payload in-place and reload — NO insert/delete, NO layout shift
+    // Update the existing item's payload in place to preserve its identifier and avoid cell recreation
     existing.payload = promoCards;
     [self pp_reconfigureHomeItems:@[existing] inSnapshot:snapshot];
 }
@@ -12725,13 +12846,16 @@ presentingViewController:self
 - (void)pp_layoutPremiumBackgroundGlowViews
 {
     CGRect bounds = self.view.bounds;
-    if (CGRectIsEmpty(bounds)) {
+    if (!PPHomeRectIsFiniteAndNotEmpty(bounds)) {
         return;
     }
 
     CGFloat width = CGRectGetWidth(bounds);
     CGFloat height = CGRectGetHeight(bounds);
     CGFloat safeTop = self.view.safeAreaInsets.top;
+    if (!PPHomeFiniteCGFloat(width) || !PPHomeFiniteCGFloat(height) || !PPHomeFiniteCGFloat(safeTop)) {
+        return;
+    }
     CGSize canvasSize = bounds.size;
     BOOL motionLayoutChanged = (fabs(canvasSize.width - self.premiumBackgroundGlowMotionCanvasSize.width) > 0.5 ||
                                 fabs(canvasSize.height - self.premiumBackgroundGlowMotionCanvasSize.height) > 0.5);
@@ -12743,6 +12867,9 @@ presentingViewController:self
     CGFloat topSize = MIN(228.0, MAX(176.0, width * 0.72));
     CGFloat midSize = MIN(340.0, MAX(150.0, width * 0.86));
     CGFloat bottomSize = MIN(260.0, MAX(280.0, width * 1.12));
+    if (!PPHomeFiniteCGFloat(topSize) || !PPHomeFiniteCGFloat(midSize) || !PPHomeFiniteCGFloat(bottomSize)) {
+        return;
+    }
     BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
 
     [CATransaction begin];

@@ -57,6 +57,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
 @property (nonatomic, strong) id<FIRListenerRegistration> archiveListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> trashListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> salesListener;
+@property (nonatomic, copy, nullable) NSString *activeListenersUserID;
 
 
 @end
@@ -286,6 +287,36 @@ static NSString *PPListenerSafeIdentifierString(id obj)
 #pragma mark - Start All Listeners Once
 - (void)startListenersForUser:(NSString *)userID {
     //userID = @"HW7N9Hx66qc27VekuUaUr4if9yz1";
+    NSString *resolvedUserID = [userID isKindOfClass:NSString.class]
+        ? [userID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    if (resolvedUserID.length == 0) {
+        [self stopAllListeners];
+        return;
+    }
+
+    BOOL hasActiveListeners = self.cardsListener ||
+                              self.cagesListener ||
+                              self.archiveListener ||
+                              self.trashListener ||
+                              self.salesListener;
+    BOOL hasCompleteListenerSet = self.cardsListener &&
+                                  self.cagesListener &&
+                                  self.archiveListener &&
+                                  self.trashListener &&
+                                  self.salesListener;
+    if (hasActiveListeners &&
+        hasCompleteListenerSet &&
+        [self.activeListenersUserID isEqualToString:resolvedUserID]) {
+        NSLog(@"👤 [AppData] Listeners already active for user: %@", resolvedUserID);
+        return;
+    }
+
+    if (hasActiveListeners) {
+        [self stopAllListeners];
+    }
+    self.activeListenersUserID = resolvedUserID;
+
     FIRFirestore *db = [FIRFirestore firestore];
 
     // --- Generic block for snapshot handling ---
@@ -318,7 +349,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
     // ------------------------------------------------------------
     self.cardsListener =
     [[[db collectionWithPath:@"CardsCol"]
-      queryWhereField:@"UserID" isEqualTo:userID]
+      queryWhereField:@"UserID" isEqualTo:resolvedUserID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error) {
@@ -331,7 +362,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
         if (!all) all = [NSMutableArray array];
         NSMutableArray *filtered =
             [[all filteredArrayUsingPredicate:
-              [NSPredicate predicateWithFormat:@"UserID == %@ AND (isDeleted == 0 OR isDeleted == nil) AND (isSold == 0 OR isSold == nil)", userID]] mutableCopy];
+              [NSPredicate predicateWithFormat:@"UserID == %@ AND (isDeleted == 0 OR isDeleted == nil) AND (isSold == 0 OR isSold == nil)", resolvedUserID]] mutableCopy];
 
         // Invalidate pp_sortDate cache before sorting
         for (NSObject *obj in all) { obj.pp_sortDate = nil; }
@@ -359,7 +390,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
     // ------------------------------------------------------------
     self.cagesListener =
     [[[db collectionWithPath:@"CagesCol"]
-      queryWhereField:@"UserID" isEqualTo:userID]
+      queryWhereField:@"UserID" isEqualTo:resolvedUserID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error) {
@@ -384,7 +415,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
         NSMutableArray<CageModel *> *userCages = [NSMutableArray array];
 
         for (CageModel *cage in allCages) {
-            if (![cage.UserID isEqualToString:userID]) continue;
+            if (![cage.UserID isEqualToString:resolvedUserID]) continue;
             if (cage.isDeleted == 1) continue;
             [userCages addObject:cage];
         }
@@ -431,7 +462,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
 
         // 2️⃣ Filter user archives
         NSPredicate *byUser =
-        [NSPredicate predicateWithFormat:@"archiveOwnerID == %@  AND (isDeleted == 0 OR isDeleted == nil)", userID];// AND (isDeleted == 0 OR isDeleted == nil)
+        [NSPredicate predicateWithFormat:@"archiveOwnerID == %@  AND (isDeleted == 0 OR isDeleted == nil)", resolvedUserID];// AND (isDeleted == 0 OR isDeleted == nil)
 
         NSMutableArray<ArchiveModel *> *userArchives =
         [[allArchives filteredArrayUsingPredicate:byUser] mutableCopy];
@@ -459,7 +490,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
     // ------------------------------------------------------------
     self.trashListener =
     [[[db collectionWithPath:@"TrashCol"]
-      queryWhereField:@"ownerID" isEqualTo:userID]
+      queryWhereField:@"ownerID" isEqualTo:resolvedUserID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error) {
@@ -486,7 +517,7 @@ static NSString *PPListenerSafeIdentifierString(id obj)
     
     self.salesListener =
     [[[db collectionWithPath:@"BuyersCollection"]
-       queryWhereField:@"UserID" isEqualTo:userID]
+       queryWhereField:@"UserID" isEqualTo:resolvedUserID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error)
     {
         if (error) {
@@ -526,6 +557,12 @@ static NSString *PPListenerSafeIdentifierString(id obj)
     [self.archiveListener remove];
     [self.trashListener remove];
     [self.salesListener remove];
+    self.cardsListener = nil;
+    self.cagesListener = nil;
+    self.archiveListener = nil;
+    self.trashListener = nil;
+    self.salesListener = nil;
+    self.activeListenersUserID = nil;
 }
 @end
 

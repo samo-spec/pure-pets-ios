@@ -830,6 +830,10 @@ static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
         }
 
         NSLog(@"[UserManager] Auth state changed: signed in UID=%@.", user.uid);
+        if (strongSelf.isSessionRestoreRunning) {
+            NSLog(@"[UserManager] Auth state change listener ignored because session restore is already running.");
+            return;
+        }
         [strongSelf validateCurrentAuthSessionWithCompletion:^(NSError * _Nullable validationError) {
             if (![strongSelf pp_isAuthStateVersionCurrent:localVersion]) {
                 return;
@@ -3380,6 +3384,11 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     FIRUser *authUser = [FIRAuth auth].currentUser;
     if (!authUser) {
         NSLog(@"[UserManager] ℹ️ No auth user yet — stored PPUserTokenID for later use");
+        return;
+    }
+
+    if (self.currentUser && [self.currentUser.PPUserTokenID isEqualToString:trim]) {
+        NSLog(@"[UserManager] ℹ️ PPUserTokenID matches cached token. Skipping Firestore update.");
         return;
     }
 

@@ -291,19 +291,22 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.titleLabel.text = self.currentTitle;
     self.tapButton.accessibilityLabel = self.currentTitle;
 
+    NSString *safeIconName = [self.currentIconName isKindOfClass:NSString.class]
+        ? [self.currentIconName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
     UIImage *icon = nil;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration =
             [UIImageSymbolConfiguration configurationWithPointSize:14.5
                                                             weight:UIImageSymbolWeightSemibold];
-        icon = [UIImage systemImageNamed:(self.currentIconName.length > 0 ? self.currentIconName : @"sparkles")
+        icon = [UIImage systemImageNamed:(safeIconName.length > 0 ? safeIconName : @"sparkles")
                        withConfiguration:configuration];
         if (!icon) {
             icon = [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
         }
     }
-    if (!icon && self.currentIconName.length > 0) {
-        icon = [UIImage imageNamed:self.currentIconName];
+    if (!icon && safeIconName.length > 0) {
+        icon = [UIImage imageNamed:safeIconName];
     }
     self.iconView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 

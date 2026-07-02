@@ -355,6 +355,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     //_collectionView.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner ;
     [_collectionView registerClass:[UICollectionViewCell class] forCellWithReuseIdentifier:@"ImageCell"];
 
+    UITapGestureRecognizer *galleryTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_galleryTapped:)];
+    [_collectionView addGestureRecognizer:galleryTap];
+
     UIView *emptyView = [[UIView alloc] init];
     emptyView.backgroundColor = UIColor.clearColor;
     UIImageView *emptyIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"]];
@@ -1439,7 +1442,6 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     NSInteger page = [self pp_currentNearestPageIndex];
     [self pp_updateGalleryAccessibilityForPage:page];
-    [self pp_updateThumbnailSelectionForPage:page animated:NO scrollToVisible:NO];
     [self pp_applySwipeMotionToVisibleCells];
 }
 
@@ -1464,6 +1466,14 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) return;
+    
+    // Only update intermediate pages and selection if the scroll was initiated by the user.
+    // This prevents the selection state from jumping/flickering through intermediate items during programmatic scrollToPage: animations.
+    if (!scrollView.isDragging && !scrollView.isDecelerating) {
+        [self pp_applySwipeMotionToVisibleCells];
+        return;
+    }
+    
     NSInteger page = [self pp_currentNearestPageIndex];
     [self pp_setCurrentPageIndex:page
                         animated:YES
@@ -1499,7 +1509,63 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     [self scrollViewDidEndDecelerating:scrollView];
 }
 
+- (void)pp_galleryTapped:(UITapGestureRecognizer *)gesture
+{
+    if (gesture.state != UIGestureRecognizerStateEnded) return;
 
+    CGPoint point = [gesture locationInView:self.collectionView];
+    NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:point];
+    
+    if (indexPath) {
+        PetImageItem *item = indexPath.item < self.imageItems.count ? self.imageItems[indexPath.item] : nil;
+        if (PPReusableVideoMediaEnabled() && item.isVideoMedia) {
+            NSURL *videoURL = [NSURL URLWithString:item.videoURL ?: @""];
+            if (videoURL) {
+                PPPremiumVideoPlayerViewController *playerVC =
+                [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+                UIViewController *presenter = AppMgr.topViewController ?: self.parentViewController;
+                [presenter presentViewController:playerVC animated:YES completion:nil];
+            }
+            return;
+        }
+    }
+
+    CGFloat viewWidth = CGRectGetWidth(self.bounds);
+    if (viewWidth <= 0) return;
+
+    CGPoint pointInBounds = [gesture locationInView:self];
+    CGFloat x = pointInBounds.x;
+
+    BOOL isRTL = Language.isRTL;
+    BOOL isLeftHalf = (x < viewWidth * 0.5);
+
+    NSInteger currentPage = self.currentPagr;
+    NSInteger totalPages = self.imageItems.count;
+    if (totalPages <= 1) return;
+
+    NSInteger targetPage = currentPage;
+    if (isRTL) {
+        if (isLeftHalf) {
+            targetPage = currentPage + 1;
+        } else {
+            targetPage = currentPage - 1;
+        }
+    } else {
+        if (isLeftHalf) {
+            targetPage = currentPage - 1;
+        } else {
+            targetPage = currentPage + 1;
+        }
+    }
+
+    if (targetPage >= totalPages) {
+        targetPage = 0;
+    } else if (targetPage < 0) {
+        targetPage = totalPages - 1;
+    }
+
+    [self scrollToPage:targetPage animated:YES];
+}
 
 -(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {

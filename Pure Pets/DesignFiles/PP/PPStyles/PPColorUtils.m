@@ -542,15 +542,22 @@ static dispatch_queue_t _colorQueue;
            fallbackTint:(UIColor * _Nullable)fallbackTint
          renderOriginal:(BOOL)original
 {
+    NSString *safeName = [name isKindOfClass:NSString.class]
+        ? [name stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    if (safeName.length == 0) {
+        return nil;
+    }
+
     UIImage *base = nil;
 
     // Prefer SF Symbols if available
     if (@available(iOS 13.0, *)) {
-        base = [UIImage systemImageNamed:name];
+        base = [UIImage systemImageNamed:safeName];
     }
     // Fallback to asset catalog
     if (!base) {
-        base = [UIImage imageNamed:name];
+        base = [UIImage imageNamed:safeName];
         if (!base) { return nil; }
     }
 

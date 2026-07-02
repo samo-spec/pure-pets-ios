@@ -22,6 +22,13 @@
 @interface AppDelegate ()
 @property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle notificationV2AuthHandle;
 @property (nonatomic, copy) NSString *pp_apnsTokenHexString;
+@property (nonatomic, assign) BOOL notificationV2RegistrationDebounceScheduled;
+@property (nonatomic, assign) BOOL notificationV2RegistrationInFlight;
+@property (nonatomic, copy) NSString *notificationV2PendingReason;
+@property (nonatomic, copy) NSString *notificationV2InFlightSignature;
+@property (nonatomic, copy) NSString *notificationV2LastSuccessfulSignature;
+
+- (void)pp_flushPendingNotificationV2Registration;
 
 @end
 
@@ -47,6 +54,24 @@ static NSString *PPAppDelegateTrimmedString(id value) {
         return @"";
     }
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *PPAppDelegateMergedNotificationReason(NSString *existing, NSString *incoming) {
+    NSString *safeIncoming = PPAppDelegateTrimmedString(incoming);
+    if (safeIncoming.length == 0) {
+        safeIncoming = @"unknown";
+    }
+
+    NSString *safeExisting = PPAppDelegateTrimmedString(existing);
+    if (safeExisting.length == 0) {
+        return safeIncoming;
+    }
+
+    NSArray<NSString *> *parts = [safeExisting componentsSeparatedByString:@"+"];
+    if ([parts containsObject:safeIncoming]) {
+        return safeExisting;
+    }
+    return [safeExisting stringByAppendingFormat:@"+%@", safeIncoming];
 }
 
 static NSString *PPAppDelegateCurrentDeviceModel(void) {
@@ -653,6 +678,13 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
 - (void)pp_attemptNotificationV2RegistrationForReason:(NSString *)reason
 {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_attemptNotificationV2RegistrationForReason:reason];
+        });
+        return;
+    }
+
     NSString *safeReason = PPAppDelegateTrimmedString(reason);
     NSString *uid = PPAppDelegateTrimmedString([FIRAuth auth].currentUser.uid);
     if (uid.length == 0) {
@@ -660,6 +692,60 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
               safeReason.length > 0 ? safeReason : @"unknown");
         return;
     }
+
+    self.notificationV2PendingReason =
+        PPAppDelegateMergedNotificationReason(self.notificationV2PendingReason, safeReason);
+
+    if (self.notificationV2RegistrationDebounceScheduled) {
+        NSLog(@"[NotificationsV2] Registration coalesced. reason=%@ uid=%@",
+              self.notificationV2PendingReason ?: @"unknown",
+              uid);
+        return;
+    }
+
+    self.notificationV2RegistrationDebounceScheduled = YES;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf pp_flushPendingNotificationV2Registration];
+    });
+}
+
+- (void)pp_flushPendingNotificationV2Registration
+{
+    self.notificationV2RegistrationDebounceScheduled = NO;
+    NSString *safeReason = PPAppDelegateTrimmedString(self.notificationV2PendingReason);
+    self.notificationV2PendingReason = nil;
+
+    NSString *uid = PPAppDelegateTrimmedString([FIRAuth auth].currentUser.uid);
+    if (uid.length == 0) {
+        NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=no",
+              safeReason.length > 0 ? safeReason : @"unknown");
+        return;
+    }
+
+    if (self.notificationV2RegistrationInFlight) {
+        self.notificationV2PendingReason =
+            PPAppDelegateMergedNotificationReason(self.notificationV2PendingReason, safeReason);
+        if (!self.notificationV2RegistrationDebounceScheduled) {
+            self.notificationV2RegistrationDebounceScheduled = YES;
+            __weak typeof(self) weakSelf = self;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                [strongSelf pp_flushPendingNotificationV2Registration];
+            });
+        }
+        NSLog(@"[NotificationsV2] Registration coalesced while in flight. reason=%@ uid=%@",
+              safeReason.length > 0 ? safeReason : @"unknown",
+              uid);
+        return;
+    }
+
+    self.notificationV2RegistrationInFlight = YES;
 
     __weak typeof(self) weakSelf = self;
     [self pp_resolveCurrentFCMTokenWithCompletion:^(NSString * _Nullable token) {
@@ -670,16 +756,21 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         if (safeToken.length == 0) {
             NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=yes hasFCM=no",
                   safeReason.length > 0 ? safeReason : @"unknown");
+            strongSelf.notificationV2RegistrationInFlight = NO;
             return;
         }
 
         [[InstallationManager shared] getInstallationIDWithCompletion:^(NSString * _Nullable installationID, NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+
                 NSString *safeInstallationId = PPAppDelegateTrimmedString(installationID);
                 if (safeInstallationId.length == 0) {
                     NSLog(@"[NotificationsV2] Registration skipped. reason=%@ hasUID=yes hasFCM=yes hasInstallation=no error=%@",
                           safeReason.length > 0 ? safeReason : @"unknown",
                           error.localizedDescription ?: @"unknown");
+                    strongSelf.notificationV2RegistrationInFlight = NO;
                     return;
                 }
 
@@ -718,6 +809,33 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                     payload[@"apnsTokenHash"] = apnsTokenHex;
                 }
 
+                NSString *registrationSignature =
+                    [@[uid,
+                       safeInstallationId,
+                       safeToken,
+                       apnsTokenHex,
+                       bundleId,
+                       PPAppDelegateNotificationEnvironment()] componentsJoinedByString:@"|"];
+
+                if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2LastSuccessfulSignature)]) {
+                    NSLog(@"[NotificationsV2] Registration skipped. reason=%@ duplicateSignature=yes uid=%@",
+                          safeReason.length > 0 ? safeReason : @"unknown",
+                          uid);
+                    strongSelf.notificationV2RegistrationInFlight = NO;
+                    strongSelf.notificationV2InFlightSignature = nil;
+                    return;
+                }
+
+                if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2InFlightSignature)]) {
+                    NSLog(@"[NotificationsV2] Registration skipped. reason=%@ inFlightSignature=yes uid=%@",
+                          safeReason.length > 0 ? safeReason : @"unknown",
+                          uid);
+                    strongSelf.notificationV2RegistrationInFlight = NO;
+                    return;
+                }
+
+                strongSelf.notificationV2InFlightSignature = registrationSignature;
+
                 FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"] HTTPSCallableWithName:@"registerNotificationDeviceV2"];
                 callable.timeoutInterval = 30.0;
 
@@ -730,24 +848,49 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 
                 [callable callWithObject:[payload copy] completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
                     dispatch_async(dispatch_get_main_queue(), ^{
+                        __strong typeof(weakSelf) strongSelf = weakSelf;
+                        if (!strongSelf) return;
+
+                        strongSelf.notificationV2RegistrationInFlight = NO;
+                        strongSelf.notificationV2InFlightSignature = nil;
                         if (error) {
                             NSLog(@"[NotificationsV2] Registration failed. reason=%@ appId=%@ scopes=%lu error=%@",
                                   safeReason.length > 0 ? safeReason : @"unknown",
                                   kPPNotificationV2UserAppID,
                                   (unsigned long)notificationScopes.count,
                                   error.localizedDescription ?: @"unknown");
+                            if (strongSelf.notificationV2PendingReason.length > 0 &&
+                                !strongSelf.notificationV2RegistrationDebounceScheduled) {
+                                strongSelf.notificationV2RegistrationDebounceScheduled = YES;
+                                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)),
+                                               dispatch_get_main_queue(), ^{
+                                    [strongSelf pp_flushPendingNotificationV2Registration];
+                                });
+                            }
                             return;
                         }
 
                         NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
                         BOOL ok = [response[@"ok"] respondsToSelector:@selector(boolValue)] ? [response[@"ok"] boolValue] : NO;
                         NSArray *scopes = [response[@"scopes"] isKindOfClass:NSArray.class] ? response[@"scopes"] : notificationScopes;
+                        if (ok) {
+                            strongSelf.notificationV2LastSuccessfulSignature = registrationSignature;
+                        }
                         NSLog(@"[NotificationsV2] Registration success. reason=%@ ok=%@ appId=%@ scopes=%lu isActive=%@",
                               safeReason.length > 0 ? safeReason : @"unknown",
                               ok ? @"yes" : @"no",
                               PPAppDelegateTrimmedString(response[@"appId"]).length > 0 ? PPAppDelegateTrimmedString(response[@"appId"]) : kPPNotificationV2UserAppID,
                               (unsigned long)scopes.count,
                               [response[@"isActive"] respondsToSelector:@selector(boolValue)] && [response[@"isActive"] boolValue] ? @"yes" : @"no");
+
+                        if (strongSelf.notificationV2PendingReason.length > 0 &&
+                            !strongSelf.notificationV2RegistrationDebounceScheduled) {
+                            strongSelf.notificationV2RegistrationDebounceScheduled = YES;
+                            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)),
+                                           dispatch_get_main_queue(), ^{
+                                [strongSelf pp_flushPendingNotificationV2Registration];
+                            });
+                        }
                     });
                 }];
             });

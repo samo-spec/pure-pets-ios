@@ -32,7 +32,7 @@ static const CGFloat PPHomeSpacingBase    = 12.0;
 static const CGFloat PPInner = 12.0;
 static const CGFloat PPHomeSpacingSection = 16.0;
 static const CGFloat kHeaderHeight     = 64.0;
-static const CGFloat kHeaderHeightMin     = 52.0;
+static const CGFloat kHeaderHeightMin     = 56.0;
 
 
 // Standard card sizes

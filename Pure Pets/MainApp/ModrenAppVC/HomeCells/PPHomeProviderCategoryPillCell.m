@@ -254,18 +254,23 @@ static UIColor *PPHomeProviderCategoryBlend(UIColor *baseColor,
     _button.accessibilityHint = _currentSubtitle;
     _button.accessibilityTraits = UIAccessibilityTraitButton;
 
+    NSString *safeIconName = [item.systemIconName isKindOfClass:NSString.class]
+        ? [item.systemIconName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
     UIImage *image = nil;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration =
             [UIImageSymbolConfiguration configurationWithPointSize:20.0
                                                             weight:UIImageSymbolWeightSemibold];
-        image = [UIImage systemImageNamed:item.systemIconName withConfiguration:configuration];
-        if (!image) {
-            image = [UIImage imageNamed:item.systemIconName];
+        if (safeIconName.length > 0) {
+            image = [UIImage systemImageNamed:safeIconName withConfiguration:configuration];
+        }
+        if (!image && safeIconName.length > 0) {
+            image = [UIImage imageNamed:safeIconName];
         }
     }
-    if (!image) {
-        image = [UIImage imageNamed:item.systemIconName];
+    if (!image && safeIconName.length > 0) {
+        image = [UIImage imageNamed:safeIconName];
     }
     _iconView.image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 

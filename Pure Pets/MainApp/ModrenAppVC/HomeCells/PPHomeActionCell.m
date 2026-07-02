@@ -285,20 +285,23 @@ static UIColor *PPHomeActionBlend(UIColor *baseColor, UIColor *overlayColor, CGF
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.titleLabel.text = self.currentTitle;
 
+    NSString *safeIconName = [self.currentIconName isKindOfClass:NSString.class]
+        ? [self.currentIconName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
     UIImage *icon = nil;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration =
             [UIImageSymbolConfiguration configurationWithPointSize:17.0
                                                            weight:UIImageSymbolWeightSemibold
                                                             scale:UIImageSymbolScaleMedium];
-        NSString *symbolName = self.currentIconName.length > 0 ? self.currentIconName : @"sparkles";
+        NSString *symbolName = safeIconName.length > 0 ? safeIconName : @"sparkles";
         icon = [UIImage systemImageNamed:symbolName withConfiguration:configuration];
         if (!icon) {
             icon = [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
         }
     }
-    if (!icon && self.currentIconName.length > 0) {
-        icon = [UIImage imageNamed:self.currentIconName];
+    if (!icon && safeIconName.length > 0) {
+        icon = [UIImage imageNamed:safeIconName];
     }
     self.iconView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
 

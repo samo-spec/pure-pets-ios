@@ -19,6 +19,8 @@
 #import "PPSearchViewController.h"
 #import "PPHUD.h"
 #import "UIView+Badge.h"
+#import <QuartzCore/QuartzCore.h>
+#import <math.h>
 
 #if DEBUG
 #define PPDataViewLog(...) NSLog(__VA_ARGS__)
@@ -27,16 +29,16 @@
 #endif
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
-static const CGFloat kPPAccessoryFilterHeight = 42.0;
+static const CGFloat kPPAccessoryFilterHeight = 48.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
-static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.00;
+static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.10;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.58;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 130.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 24.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
-static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 22.0;
+static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -49,6 +51,29 @@ typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
 static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     return kPPSectionsTabBarHeight;
+}
+
+static CGFloat PPDataViewPillRadiusForHeight(CGFloat height, CGFloat fallback)
+{
+    if (!isfinite((double)height) || height <= 0.0) {
+        return fallback;
+    }
+    return floor(height * 0.5);
+}
+
+static NSArray<NSNumber *> *PPDataViewSectionPresentationOrder(void)
+{
+    static NSArray<NSNumber *> *order;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        order = @[
+            @(PPDataSectionAccessories),
+            @(PPDataSectionAds),
+            @(PPDataSectionFood),
+            @(PPDataSectionServices)
+        ];
+    });
+    return order;
 }
 
 static UIColor *PPDataViewDynamicColor(UIColor *light, UIColor *dark)
@@ -102,10 +127,166 @@ static UIColor *PPDataViewAccentColor(void)
     return AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
 }
 
+static UIColor *PPDataViewAppForegroundSurfaceColor(void)
+{
+    return AppForgroundColr ?: PPDataViewChromeElevatedSurfaceColor();
+}
+
+@interface PPDataViewControlIslandView : UIView
+- (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated;
+@end
+
+@interface PPDataViewControlIslandView ()
+@property (nonatomic, strong) UIVisualEffectView *blurView;
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, assign) NSInteger activeFilterCount;
+@end
+
+@implementation PPDataViewControlIslandView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
+    self.layer.masksToBounds = NO;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemThickMaterial;
+    }
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.blurView.userInteractionEnabled = NO;
+    self.blurView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:self.blurView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+    ]];
+
+    self.surfaceGradientLayer = [CAGradientLayer layer];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceGradientLayer.masksToBounds = YES;
+    [self.layer insertSublayer:self.surfaceGradientLayer above:self.blurView.layer];
+
+    [self pp_applyActiveFilterCount:0 animated:NO];
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat radius = MIN(PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 24.0), 32.0);
+    self.layer.cornerRadius = radius;
+    self.blurView.layer.cornerRadius = radius;
+    self.surfaceGradientLayer.frame = self.bounds;
+    self.surfaceGradientLayer.cornerRadius = radius;
+
+    UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:radius];
+    self.layer.shadowPath = shadowPath.CGPath;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyActiveFilterCount:self.activeFilterCount animated:NO];
+}
+
+- (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated
+{
+    self.activeFilterCount = MAX(0, count);
+    BOOL hasActiveFilters = self.activeFilterCount > 0;
+    
+    UIColor *baseSurface = PPDataViewAppForegroundSurfaceColor();
+    UIColor *surface = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        UIColor *resolved = [baseSurface resolvedColorWithTraitCollection:traitCollection];
+        CGFloat r, g, b, a;
+        if ([resolved getRed:&r green:&g blue:&b alpha:&a]) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                // Slightly lighter in dark mode
+                return [UIColor colorWithRed:r * 0.88 + 0.12
+                                       green:g * 0.88 + 0.12
+                                        blue:b * 0.88 + 0.12
+                                       alpha:a];
+            } else {
+                // Whiter/lighter in light mode
+                return [UIColor colorWithRed:r * 0.82 + 0.18
+                                       green:g * 0.82 + 0.18
+                                        blue:b * 0.82 + 0.18
+                                       alpha:a];
+            }
+        }
+        return resolved;
+    }];
+
+    UIColor *border = [surface colorWithAlphaComponent:hasActiveFilters ? 0.48 : 0.32];
+
+    void (^updates)(void) = ^{
+        self.blurView.hidden = UIAccessibilityIsReduceTransparencyEnabled();
+        self.backgroundColor = self.blurView.hidden ? [surface colorWithAlphaComponent:0.96] : UIColor.clearColor;
+        self.layer.borderWidth = hasActiveFilters ? 1.0 : 0.75;
+        self.layer.borderColor = border.CGColor;
+        self.layer.shadowColor = PPDataViewChromeShadowColor().CGColor;
+        self.layer.shadowOpacity = hasActiveFilters ? 0.09 : 0.06;
+        self.layer.shadowRadius = hasActiveFilters ? 13.0 : 10.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, hasActiveFilters ? 4.5 : 3.0);
+
+        UIColor *top = [surface colorWithAlphaComponent:hasActiveFilters ? 0.84 : 0.72];
+        UIColor *mid = [surface colorWithAlphaComponent:hasActiveFilters ? 0.64 : 0.48];
+        UIColor *bottom = [surface colorWithAlphaComponent:hasActiveFilters ? 0.44 : 0.32];
+        self.surfaceGradientLayer.colors = @[
+            (__bridge id)top.CGColor,
+            (__bridge id)mid.CGColor,
+            (__bridge id)bottom.CGColor
+        ];
+        self.surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
+        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.48 : 0.32;
+    };
+
+    if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        updates();
+        [CATransaction commit];
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setAnimationDuration:0.22];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    updates();
+    [CATransaction commit];
+}
+
+@end
+
 
 @interface PPDropdownFilterChipButton : UIButton
 @property (nonatomic, copy) NSString *chipIconName;
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active;
+@end
+
+@interface PPDropdownFilterChipButton ()
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, strong) CAShapeLayer *strokeLayer;
+@property (nonatomic, assign, getter=isPPActive) BOOL ppActive;
+- (void)pp_applyPremiumLayerStateAnimated:(BOOL)animated;
 @end
 
 @implementation PPDropdownFilterChipButton
@@ -119,31 +300,101 @@ static UIColor *PPDataViewAccentColor(void)
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.showsMenuAsPrimaryAction = YES;
     self.layer.masksToBounds = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [self setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+    [self setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
-    [self.heightAnchor constraintEqualToConstant:36.0].active = YES;
+    self.surfaceGradientLayer = [CAGradientLayer layer];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceGradientLayer.masksToBounds = YES;
+    [self.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
+
+    self.strokeLayer = [CAShapeLayer layer];
+    self.strokeLayer.fillColor = UIColor.clearColor.CGColor;
+    [self.layer addSublayer:self.strokeLayer];
+
+    [self.heightAnchor constraintEqualToConstant:40.0].active = YES;
     return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 20.0);
+    self.layer.cornerRadius = radius;
+    self.surfaceGradientLayer.frame = self.bounds;
+    self.surfaceGradientLayer.cornerRadius = radius;
+
+    CGRect strokeRect = CGRectInset(self.bounds, 0.5, 0.5);
+    CGFloat strokeRadius = MAX(0.0, radius - 0.5);
+    UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect cornerRadius:strokeRadius];
+    self.strokeLayer.frame = self.bounds;
+    self.strokeLayer.path = strokePath.CGPath;
+    self.layer.shadowPath = strokePath.CGPath;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyPremiumLayerStateAnimated:NO];
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.alpha = highlighted ? 0.82 : 1.0;
+        return;
+    }
+
+    CGFloat scale = highlighted ? 0.975 : 1.0;
+    [UIView animateWithDuration:highlighted ? 0.12 : 0.20
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.transform = CGAffineTransformMakeScale(scale, scale);
+        self.alpha = highlighted ? 0.90 : 1.0;
+    } completion:nil];
 }
 
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active
 {
-    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *fg = active ? brand : UIColor.secondaryLabelColor;
-    UIFont *font = active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13];
+    self.ppActive = active;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    NSString *safeTitle = title.length > 0 ? title : @"";
+    UIColor *brand = PPDataViewAccentColor();
+    UIColor *fg = active ? PPDataViewChromeTextColor() : PPDataViewChromeSecondaryTextColor();
+    UIColor *accentedFG = active ? brand : fg;
+    UIFont *baseFont = active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13];
+    if (!baseFont) {
+        baseFont = [UIFont systemFontOfSize:13.0 weight:(active ? UIFontWeightSemibold : UIFontWeightMedium)];
+    }
+    UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseFont];
     NSDictionary *textAttrs = @{
         NSFontAttributeName            : font,
         NSForegroundColorAttributeName : fg
     };
 
-    // --- Attributed title: [icon] text ---
     NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] init];
 
-    if (self.chipIconName.length > 0) {
+    NSString *iconName = [self.chipIconName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (iconName.length > 0) {
         UIImageSymbolConfiguration *iconCfg =
             [UIImageSymbolConfiguration configurationWithPointSize:11
                                                             weight:UIImageSymbolWeightMedium];
-        UIImage *icon = [[UIImage systemImageNamed:self.chipIconName
+        UIImage *icon = [[UIImage systemImageNamed:iconName
                                  withConfiguration:iconCfg]
-                         imageWithTintColor:fg
+                         imageWithTintColor:accentedFG
                               renderingMode:UIImageRenderingModeAlwaysOriginal];
         if (icon) {
             NSTextAttachment *att = [[NSTextAttachment alloc] init];
@@ -157,41 +408,81 @@ static UIColor *PPDataViewAccentColor(void)
     }
 
     [attrTitle appendAttributedString:
-     [[NSAttributedString alloc] initWithString:title attributes:textAttrs]];
+     [[NSAttributedString alloc] initWithString:safeTitle attributes:textAttrs]];
 
-    // --- Configuration ---
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleLarge;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 14, 6, 11);
-    cfg.baseForegroundColor = fg;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(7, 13, 7, 11);
+    cfg.baseForegroundColor = accentedFG;
     cfg.attributedTitle = attrTitle;
 
-    // Trailing chevron
     UIImageSymbolConfiguration *chevCfg =
         [UIImageSymbolConfiguration configurationWithPointSize:9
                                                         weight:UIImageSymbolWeightSemibold];
     cfg.image = [UIImage systemImageNamed:@"chevron.down" withConfiguration:chevCfg];
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.imagePadding = 5.0;
-
-    // Surface & border
-    cfg.background.backgroundColor = active
-        ? [brand colorWithAlphaComponent:0.12]
-        : UIColor.tertiarySystemFillColor;
-    cfg.background.strokeColor = active
-        ? [brand colorWithAlphaComponent:0.24]
-        : [UIColor.separatorColor colorWithAlphaComponent:0.30];
-    cfg.background.strokeWidth = active ? 1.0 : 0.6;
+    cfg.imagePadding = 6.0;
+    cfg.background.backgroundColor = UIColor.clearColor;
+    cfg.background.strokeColor = UIColor.clearColor;
+    cfg.background.strokeWidth = 0.0;
 
     self.configuration = cfg;
-    self.tintColor = fg;
-    self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.tintColor = accentedFG;
 
-    // Active state: brand-glow shadow
-    [self pp_setShadowColor:[brand colorWithAlphaComponent:0.50]];
-    self.layer.shadowOpacity = active ? 0.22 : 0.0;
-    self.layer.shadowRadius  = active ? 8.0  : 0.0;
-    self.layer.shadowOffset  = active ? CGSizeMake(0, 3) : CGSizeZero;
+    [self pp_applyPremiumLayerStateAnimated:self.window != nil];
+}
+
+- (void)pp_applyPremiumLayerStateAnimated:(BOOL)animated
+{
+    UIColor *brand = PPDataViewAccentColor();
+    UIColor *surface = PPDataViewAppForegroundSurfaceColor();
+    BOOL active = self.isPPActive;
+
+    void (^updates)(void) = ^{
+        UIColor *top = active
+            ? PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+                                     [UIColor colorWithWhite:1.0 alpha:0.14])
+            : [surface colorWithAlphaComponent:0.94];
+        UIColor *middle = active
+            ? [brand colorWithAlphaComponent:0.10]
+            : [surface colorWithAlphaComponent:0.76];
+        UIColor *bottom = active
+            ? PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.48],
+                                     [UIColor colorWithWhite:1.0 alpha:0.06])
+            : [surface colorWithAlphaComponent:0.58];
+
+        self.surfaceGradientLayer.colors = @[
+            (__bridge id)top.CGColor,
+            (__bridge id)middle.CGColor,
+            (__bridge id)bottom.CGColor
+        ];
+        self.surfaceGradientLayer.locations = @[@0.0, @0.54, @1.0];
+        self.surfaceGradientLayer.opacity = active ? 1.0 : 0.84;
+
+        self.strokeLayer.strokeColor = (active
+                                        ? [brand colorWithAlphaComponent:0.22]
+                                        : [surface colorWithAlphaComponent:0.56]).CGColor;
+        self.strokeLayer.lineWidth = active ? 0.8 : 0.75;
+
+        self.layer.shadowColor = PPDataViewChromeShadowColor().CGColor;
+        self.layer.shadowOpacity = active ? 0.09 : 0.06;
+        self.layer.shadowRadius = active ? 7.0 : 6.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, active ? 2.5 : 2.0);
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        updates();
+        [CATransaction commit];
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setAnimationDuration:0.18];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    updates();
+    [CATransaction commit];
 }
 
 @end
@@ -205,6 +496,7 @@ static UIColor *PPDataViewAccentColor(void)
 @property (nonatomic, assign) PPManagerCellLayoutMode cellLayoutMode;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) PPCollectionLayoutManager *layoutManager;
+@property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
@@ -214,7 +506,6 @@ static UIColor *PPDataViewAccentColor(void)
 @property (nonatomic, strong) id imageLoader;
 
 @property (nonatomic, strong) PPModrenSegmrnted *sectionsSegmentedControl;
-@property (nonatomic, strong) UIVisualEffectView *sectionsSegmentedBlurView;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
@@ -226,6 +517,7 @@ static UIColor *PPDataViewAccentColor(void)
 @property (nonatomic, strong) UIButton *navContainerView;
 @property (nonatomic, strong) UIButton *KindsButton;
 @property (nonatomic, strong) UIButton *subKindsButton;
+@property (nonatomic, strong) UIView *navSeparatorLine;
 @property (nonatomic, strong) UIButton *centerCapsuleButton;
 @property (nonatomic, strong) UIButton *cartButton;
 @property (nonatomic, strong, nullable) UIButton *navCartButton;
@@ -235,6 +527,8 @@ static UIColor *PPDataViewAccentColor(void)
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterChipTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterChipBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
@@ -281,11 +575,16 @@ static UIColor *PPDataViewAccentColor(void)
 - (void)persistSectionSelection:(PPDataSection)section;
 - (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section;
 - (void)activateSection:(PPDataSection)section userInitiated:(BOOL)userInitiated;
+- (NSInteger)pp_segmentIndexForSection:(PPDataSection)section;
+- (PPDataSection)pp_sectionForSegmentIndex:(NSInteger)segmentIndex;
 - (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section;
 - (void)syncFilterChipsForCurrentSection;
+- (void)syncFilterChipsForSection:(PPDataSection)section;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (void)refreshFilterChipTitles;
+- (void)refreshFilterChipTitlesForSection:(PPDataSection)section;
+- (PPFilterState *)pp_filterStateForSection:(PPDataSection)section;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
 - (void)pp_openSearchController;
@@ -434,8 +733,9 @@ static UIColor *PPDataViewAccentColor(void)
 {
     [super viewDidAppear:animated];
     [self pp_restoreNavigationOwnership];
-    [self.view bringSubviewToFront:self.sectionsSegmentedControl];
-    [self.view bringSubviewToFront:self.filterChipContainer];
+    if (self.sectionsFiltersContainer) {
+        [self.view bringSubviewToFront:self.sectionsFiltersContainer];
+    }
     [self updateCollectionContentInset];
 }
 
@@ -560,7 +860,7 @@ static UIColor *PPDataViewAccentColor(void)
     }
     self.didFixInitialScroll = NO;
     _didlayout = NO;
-    self.useCapsuleNavigation = YES;
+    self.useCapsuleNavigation = NO;
     self.blurHashCache = [NSCache new];
     self.blurHashCache.countLimit = 200;
     self.blurHashQueue =
@@ -905,19 +1205,19 @@ static UIColor *PPDataViewAccentColor(void)
         configuration.image = nil;
         configuration.imagePadding = 0.0;
     }
-    configuration.background.backgroundColor = emphasized
-        ? PPDataViewDynamicColor([accent colorWithAlphaComponent:0.075], [accent colorWithAlphaComponent:0.16])
-        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.16], [UIColor colorWithWhite:1.0 alpha:0.045]);
-    configuration.background.strokeColor = emphasized
-        ? [accent colorWithAlphaComponent:0.14]
-        : PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.24], [UIColor colorWithWhite:1.0 alpha:0.04]);
-    configuration.background.strokeWidth = emphasized ? 0.65 : 0.45;
+    configuration.background.backgroundColor = UIColor.clearColor;
+    configuration.background.strokeColor = UIColor.clearColor;
+    configuration.background.strokeWidth = 0.0;
     configuration.background.cornerRadius = selectorRadius;
     button.configuration = configuration;
 
     button.tintColor = emphasized ? accent : PPDataViewChromeSecondaryTextColor();
     button.backgroundColor = UIColor.clearColor;
     button.layer.cornerRadius = selectorRadius;
+    button.layer.shadowOpacity = 0.0;
+    button.layer.shadowRadius = 0.0;
+    button.layer.shadowOffset = CGSizeZero;
+    button.layer.shadowColor = nil;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1041,6 +1341,7 @@ static UIColor *PPDataViewAccentColor(void)
     self.centerCapsuleButton.menu = self.subKindsButton.menu ?: [self subKindsMenu];
     self.KindsButton.hidden = showingCapsule;
     self.subKindsButton.hidden = showingCapsule;
+    self.navSeparatorLine.hidden = showingCapsule;
     self.centerCapsuleButton.hidden = !showingCapsule;
 
     self.KindsButton.userInteractionEnabled = !showingCapsule;
@@ -1118,27 +1419,30 @@ static UIColor *PPDataViewAccentColor(void)
         return;
     }
 
-    self.sectionsSegmentedControl.containerBackgroundColor = PPDataViewChromeSurfaceColor();
+    self.sectionsFiltersContainer.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    BOOL showsCurrentFilterRow = [self shouldShowFilterChipBarForSection:self.viewModel.currentSection];
+    NSInteger activeFilterCount = (self.filterStates && showsCurrentFilterRow) ? [self pp_currentFilterState].activeFilterCount : 0;
+    [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:NO];
+
+    self.sectionsSegmentedControl.containerBackgroundColor = UIColor.clearColor;
+    self.sectionsSegmentedControl.hidesContainerChrome = YES;
     self.sectionsSegmentedControl.normalTextColor = PPDataViewChromeSecondaryTextColor();
     self.sectionsSegmentedControl.selectedTextColor = PPDataViewChromeTextColor();
     self.sectionsSegmentedControl.selectedSegmentColor = PPDataViewAccentColor();
     self.sectionsSegmentedControl.normalFont = [GM MidFontWithSize:13.2];
     self.sectionsSegmentedControl.selectedFont = [GM boldFontWithSize:13.6];
-    self.sectionsSegmentedControl.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
+    CGFloat segmentedRadius =
+        PPDataViewPillRadiusForHeight(CGRectGetHeight(self.sectionsSegmentedControl.bounds),
+                                      kPPDataViewSectionsSegmentedCornerRadius);
+    self.sectionsSegmentedControl.layer.cornerRadius = segmentedRadius;
     self.sectionsSegmentedControl.layer.borderWidth = 0.0;
-    [self.sectionsSegmentedControl pp_setBorderColor:PPDataViewChromeStrokeColor()];
-    [self.sectionsSegmentedControl pp_setShadowColor:PPDataViewChromeShadowColor()];
-    self.sectionsSegmentedControl.layer.shadowOpacity = 0.11;
-    self.sectionsSegmentedControl.layer.shadowRadius = 22.0;
-    self.sectionsSegmentedControl.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    [self.sectionsSegmentedControl pp_setBorderColor:UIColor.clearColor];
+    [self.sectionsSegmentedControl pp_setShadowColor:UIColor.clearColor];
+    self.sectionsSegmentedControl.layer.shadowOpacity = 0.0;
+    self.sectionsSegmentedControl.layer.shadowRadius = 0.0;
+    self.sectionsSegmentedControl.layer.shadowOffset = CGSizeZero;
     if (@available(iOS 13.0, *)) {
         self.sectionsSegmentedControl.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-
-    self.sectionsSegmentedBlurView.alpha = 0.76;
-    self.sectionsSegmentedBlurView.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
-    if (@available(iOS 13.0, *)) {
-        self.sectionsSegmentedBlurView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 }
 
@@ -1162,12 +1466,20 @@ static UIColor *PPDataViewAccentColor(void)
                                    cornerRadius:radius].CGPath;
     }
 
+    if (self.sectionsFiltersContainer && !CGRectIsEmpty(self.sectionsFiltersContainer.bounds)) {
+        CGFloat islandRadius =
+            MIN(PPDataViewPillRadiusForHeight(CGRectGetHeight(self.sectionsFiltersContainer.bounds), 24.0), 32.0);
+        self.sectionsFiltersContainer.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.sectionsFiltersContainer.bounds
+                                   cornerRadius:islandRadius].CGPath;
+    }
+
     if (self.sectionsSegmentedControl && !CGRectIsEmpty(self.sectionsSegmentedControl.bounds)) {
-        CGFloat radius = kPPDataViewSectionsSegmentedCornerRadius;
+        CGFloat radius =
+            PPDataViewPillRadiusForHeight(CGRectGetHeight(self.sectionsSegmentedControl.bounds),
+                                          kPPDataViewSectionsSegmentedCornerRadius);
         self.sectionsSegmentedControl.layer.cornerRadius = radius;
-        self.sectionsSegmentedControl.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.sectionsSegmentedControl.bounds
-                                   cornerRadius:radius].CGPath;
+        self.sectionsSegmentedControl.layer.shadowPath = nil;
     }
 
 
@@ -1317,7 +1629,7 @@ static UIColor *PPDataViewAccentColor(void)
 
 - (void)pp_prepareSectionsSegmentedEntranceInitialState
 {
-    if (!self.sectionsSegmentedControl) {
+    if (!self.sectionsFiltersContainer) {
         return;
     }
 
@@ -1325,22 +1637,16 @@ static UIColor *PPDataViewAccentColor(void)
         CGAffineTransformTranslate(CGAffineTransformIdentity, 0.0, -12.0);
     startTransform = CGAffineTransformScale(startTransform, 0.985, 0.985);
 
-    self.sectionsSegmentedControl.alpha = 0.0;
-    self.sectionsSegmentedControl.transform = startTransform;
+    self.sectionsFiltersContainer.alpha = 0.0;
+    self.sectionsFiltersContainer.transform = startTransform;
     self.sectionsSegmentedControl.userInteractionEnabled = NO;
-
-    self.sectionsSegmentedBlurView.alpha = 0.0;
-    self.sectionsSegmentedBlurView.transform = startTransform;
 }
 
 - (void)pp_setSectionsSegmentedEntranceVisibleWithoutAnimation
 {
-    self.sectionsSegmentedControl.alpha = 1.0;
-    self.sectionsSegmentedControl.transform = CGAffineTransformIdentity;
+    self.sectionsFiltersContainer.alpha = 1.0;
+    self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
     self.sectionsSegmentedControl.userInteractionEnabled = YES;
-
-    self.sectionsSegmentedBlurView.alpha = 1.0;
-    self.sectionsSegmentedBlurView.transform = CGAffineTransformIdentity;
 }
 
 - (void)pp_runSectionsSegmentedEntranceIfNeeded
@@ -1352,7 +1658,7 @@ static UIColor *PPDataViewAccentColor(void)
         return;
     }
 
-    if (self.didRunSectionsSegmentedEntrance || !self.sectionsSegmentedControl) {
+    if (self.didRunSectionsSegmentedEntrance || !self.sectionsFiltersContainer) {
         return;
     }
 
@@ -1363,8 +1669,7 @@ static UIColor *PPDataViewAccentColor(void)
         return;
     }
 
-    [self.sectionsSegmentedControl.layer removeAllAnimations];
-    [self.sectionsSegmentedBlurView.layer removeAllAnimations];
+    [self.sectionsFiltersContainer.layer removeAllAnimations];
     self.sectionsSegmentedControl.userInteractionEnabled = NO;
 
     [UIView animateWithDuration:0.46
@@ -1375,10 +1680,8 @@ static UIColor *PPDataViewAccentColor(void)
                                 UIViewAnimationOptionCurveEaseOut |
                                 UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.sectionsSegmentedControl.alpha = 1.0;
-        self.sectionsSegmentedControl.transform = CGAffineTransformIdentity;
-        self.sectionsSegmentedBlurView.alpha = 1.0;
-        self.sectionsSegmentedBlurView.transform = CGAffineTransformIdentity;
+        self.sectionsFiltersContainer.alpha = 1.0;
+        self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
     } completion:^(__unused BOOL finished) {
         self.sectionsSegmentedControl.userInteractionEnabled = YES;
     }];
@@ -2178,23 +2481,11 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
     ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 12.0)
     : (PPCurrentSectionsTabBarHeight() + (PPIOS26() ? 2.0 : 12.0));
-    CGRect sectionsFrame = self.sectionsSegmentedControl.frame;
+    CGRect sectionsFrame = self.sectionsFiltersContainer.frame;
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
 
     if (!CGRectIsEmpty(sectionsFrame) && !CGRectIsEmpty(safeAreaFrame)) {
         CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
-
-        // If filter segmented is visible, push content below it
-        if (self.filterChipContainer &&
-            !self.filterChipContainer.hidden &&
-            self.filterChipContainer.alpha > 0.01) {
-
-            CGRect filterFrame = self.filterChipContainer.frame;
-
-            if (!CGRectIsEmpty(filterFrame)) {
-                maxVisibleY = CGRectGetMaxY(filterFrame);
-            }
-        }
 
         targetTopInset =
         MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 6.0);
@@ -2782,12 +3073,19 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)refreshFilterChipTitles
 {
+    [self refreshFilterChipTitlesForSection:self.viewModel.currentSection];
+}
+
+- (void)refreshFilterChipTitlesForSection:(PPDataSection)section
+{
     UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
     self.filterChipContainer.semanticContentAttribute = semantic;
     self.filterChipStackView.semanticContentAttribute = semantic;
 
-    PPFilterState *state = [self pp_currentFilterState];
+    PPFilterState *state = [self pp_filterStateForSection:section];
     NSArray<PPFilterGroup *> *groups = state.groups;
+    NSInteger activeFilterCount = [self shouldShowFilterChipBarForSection:section] ? state.activeFilterCount : 0;
+    [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:self.view.window != nil];
 
     for (NSInteger i = 0; i < (NSInteger)self.filterChips.count && i < (NSInteger)groups.count; i++) {
         PPDropdownFilterChipButton *chip = self.filterChips[i];
@@ -2795,7 +3093,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         NSString *title = group.isActive ? group.selectedTitle : group.title;
         [chip pp_applyChipTitle:title active:group.isActive];
         chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
+        chip.accessibilityLabel = group.title;
         chip.accessibilityValue = group.selectedTitle;
+        chip.accessibilityTraits = group.isActive
+            ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
+            : UIAccessibilityTraitButton;
     }
 }
 
@@ -2965,15 +3267,34 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self updateSectionsTabBarSelectionForSection:section animated:NO];
 }
 
+- (NSInteger)pp_segmentIndexForSection:(PPDataSection)section
+{
+    NSArray<NSNumber *> *orderedSections = PPDataViewSectionPresentationOrder();
+    NSUInteger index = [orderedSections indexOfObject:@(section)];
+    if (index == NSNotFound) {
+        return 0;
+    }
+    return (NSInteger)index;
+}
+
+- (PPDataSection)pp_sectionForSegmentIndex:(NSInteger)segmentIndex
+{
+    NSArray<NSNumber *> *orderedSections = PPDataViewSectionPresentationOrder();
+    if (segmentIndex < 0 || segmentIndex >= (NSInteger)orderedSections.count) {
+        return PPDataSectionAccessories;
+    }
+    return (PPDataSection)orderedSections[(NSUInteger)segmentIndex].integerValue;
+}
+
 - (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section animated:(BOOL)animated
 {
     if (!self.sectionsSegmentedControl || self.sectionsSegmentedControl.numberOfSegments == 0) {
         return;
     }
 
-    NSInteger selectedIndex = (NSInteger)section;
+    NSInteger selectedIndex = [self pp_segmentIndexForSection:section];
     if (selectedIndex < 0 || selectedIndex >= self.sectionsSegmentedControl.numberOfSegments) {
-        selectedIndex = PPDataSectionAds;
+        selectedIndex = 0;
     }
 
     [self.sectionsSegmentedControl setSelectedIndex:selectedIndex animated:animated];
@@ -3021,32 +3342,40 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section
 {
-    return NO; // Temporarily hidden
+    return (section == PPDataSectionAccessories);
 }
 
 - (void)syncFilterChipsForCurrentSection
 {
-    PPFilterState *state = [self pp_currentFilterState];
+    [self syncFilterChipsForSection:self.viewModel.currentSection];
+}
+
+- (void)syncFilterChipsForSection:(PPDataSection)section
+{
+    PPFilterState *state = [self pp_filterStateForSection:section];
     NSArray<PPFilterGroup *> *groups = state.groups;
 
-    // Remove existing chips
     for (PPDropdownFilterChipButton *chip in self.filterChips) {
+        [self.filterChipStackView removeArrangedSubview:chip];
         [chip removeFromSuperview];
     }
     [self.filterChips removeAllObjects];
 
-    // Create chips dynamically from filter groups
     for (NSInteger i = 0; i < (NSInteger)groups.count; i++) {
         PPFilterGroup *group = groups[i];
         PPDropdownFilterChipButton *chip = [[PPDropdownFilterChipButton alloc] init];
         chip.chipIconName = group.chipIconName;
         chip.tag = i;
         chip.showsMenuAsPrimaryAction = YES;
+        chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
+        if (group.filterID.length > 0) {
+            chip.accessibilityIdentifier = [NSString stringWithFormat:@"pp.dataView.filter.%@", group.filterID];
+        }
         [self.filterChips addObject:chip];
         [self.filterChipStackView addArrangedSubview:chip];
     }
 
-    [self refreshFilterChipTitles];
+    [self refreshFilterChipTitlesForSection:section];
 }
 
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated
@@ -3056,12 +3385,26 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     BOOL shouldShow = [self shouldShowFilterChipBarForSection:section];
-    [self syncFilterChipsForCurrentSection];
+    [self syncFilterChipsForSection:section];
+    PPFilterState *state = [self pp_filterStateForSection:section];
+    NSInteger activeFilterCount = shouldShow ? state.activeFilterCount : 0;
+    [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:animated && self.view.window != nil];
 
     self.filterChipContainer.hidden = NO;
+    if (shouldShow && animated && self.filterChipContainer.alpha <= 0.01 && !UIAccessibilityIsReduceMotionEnabled()) {
+        self.filterChipContainer.transform = CGAffineTransformMakeTranslation(0.0, -5.0);
+    }
+
     void (^layoutChanges)(void) = ^{
+        self.filterChipTopConstraint.constant = shouldShow ? 8.0 : 0.0;
         self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
+        self.filterChipBottomConstraint.constant = shouldShow ? -12.0 : -4.0;
         self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
+        self.filterChipContainer.transform = shouldShow
+            ? CGAffineTransformIdentity
+            : (UIAccessibilityIsReduceMotionEnabled()
+               ? CGAffineTransformIdentity
+               : CGAffineTransformMakeTranslation(0.0, -5.0));
         [self.view layoutIfNeeded];
     };
 
@@ -3072,9 +3415,27 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
-    [UIView animateWithDuration:0.22
+    UIViewAnimationOptions options =
+        UIViewAnimationOptionBeginFromCurrentState |
+        UIViewAnimationOptionAllowUserInteraction |
+        UIViewAnimationOptionCurveEaseInOut;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:options
+                         animations:layoutChanges
+                         completion:^(__unused BOOL finished) {
+            self.filterChipContainer.hidden = !shouldShow;
+            [self updateCollectionContentInset];
+        }];
+        return;
+    }
+
+    [UIView animateWithDuration:0.30
                           delay:0.0
-                        options:UIViewAnimationOptionCurveEaseInOut
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
+                        options:options
                      animations:layoutChanges
                      completion:^(__unused BOOL finished) {
         self.filterChipContainer.hidden = !shouldShow;
@@ -3089,9 +3450,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     __weak typeof(self) weakSelf = self;
     NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
     for (PPFilterOption *opt in group.options) {
+        NSString *optionIconName = [opt.iconName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        UIImage *optionImage = optionIconName.length > 0 ? [UIImage systemImageNamed:optionIconName] : nil;
         UIAction *action =
         [UIAction actionWithTitle:opt.title
-                            image:opt.iconName ? [UIImage systemImageNamed:opt.iconName] : nil
+                            image:optionImage
                        identifier:nil
                           handler:^(__kindof UIAction * _Nonnull act) {
             [weakSelf pp_filterGroupChangedToValue:opt.value forGroupAtIndex:chipIndex];
@@ -3119,7 +3482,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (PPFilterState *)pp_currentFilterState
 {
-    PPDataSection section = self.viewModel.currentSection;
+    return [self pp_filterStateForSection:self.viewModel.currentSection];
+}
+
+- (PPFilterState *)pp_filterStateForSection:(PPDataSection)section
+{
+    if (!self.filterStates) {
+        self.filterStates = [NSMutableDictionary dictionary];
+    }
+
     NSNumber *key = @(section);
     PPFilterState *state = self.filterStates[key];
     if (!state) {
@@ -3238,7 +3609,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 // Modified to add a second navigation button: sectionsButton
 -(void)setupKindsView
 {
-    _navContainerView = [UIButton new];
+    _navContainerView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule];
     self.navContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.navContainerView.isAccessibilityElement = NO;
     self.navContainerView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -3284,11 +3655,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // Configuration (iOS 16+ best practice)
     UIButtonConfiguration *cfg;
     if (@available(iOS 26.0, *)) {
-        cfg = [UIButtonConfiguration glassButtonConfiguration];
+        cfg = [UIButtonConfiguration plainButtonConfiguration];
     } else {
         cfg = [UIButtonConfiguration plainButtonConfiguration];
     }
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(2, 10, 2, 10);
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(3, 10, 2, 10);
     cfg.imagePadding = 2;
     cfg.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
     cfg.baseForegroundColor = UIColor.labelColor;
@@ -3349,7 +3720,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     UIButtonConfiguration *capsuleConfiguration = [UIButtonConfiguration plainButtonConfiguration];
     capsuleConfiguration.background.strokeWidth = 0.0;
     capsuleConfiguration.background.strokeColor = UIColor.clearColor;
-    capsuleConfiguration.background.backgroundColor = [capsuleAccentColor colorWithAlphaComponent:0.08];
+    capsuleConfiguration.background.backgroundColor = [capsuleAccentColor colorWithAlphaComponent:0.00];
     capsuleConfiguration.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
     capsuleConfiguration.imagePadding = 6.0;
     capsuleConfiguration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
@@ -3393,7 +3764,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.navContainerWidthConstraint.active = YES;
     self.centerCapsuleMinWidthConstraint.active = YES;
 
+    self.navSeparatorLine = [UIView new];
+    self.navSeparatorLine.translatesAutoresizingMaskIntoConstraints = NO;
+    self.navSeparatorLine.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.35] ?: [UIColor colorWithWhite:0.5 alpha:0.3];
+    self.navSeparatorLine.hidden = self.useCapsuleNavigation;
+
     [self.navContainerView addSubview:self.KindsButton];
+    [self.navContainerView addSubview:self.navSeparatorLine];
     [self.navContainerView addSubview:self.subKindsButton];
     [self.navContainerView addSubview:self.centerCapsuleButton];
     [self.navContainerView addSubview:self.cartButton];
@@ -3417,10 +3794,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.cartButton.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:inset],
         [self.cartButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-inset],
 
-        // Horizontal (Kinds → SubKinds)
+        // Separator vertical layout in center
+        [self.navSeparatorLine.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:12.0],
+        [self.navSeparatorLine.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-12.0],
+        [self.navSeparatorLine.widthAnchor constraintEqualToConstant:1.0],
+
+        // Horizontal (Kinds → Separator → SubKinds)
         [self.KindsButton.leadingAnchor constraintEqualToAnchor:self.navContainerView.leadingAnchor constant:inset],
         [self.cartButton.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor constant:-inset],
-        [self.KindsButton.trailingAnchor constraintEqualToAnchor:self.subKindsButton.leadingAnchor  constant:-inset],
+        [self.KindsButton.trailingAnchor constraintEqualToAnchor:self.navSeparatorLine.leadingAnchor  constant:-4.0],
+        [self.navSeparatorLine.trailingAnchor constraintEqualToAnchor:self.subKindsButton.leadingAnchor constant:-4.0],
 
         [self.centerCapsuleButton.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:4.0],
         [self.centerCapsuleButton.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-4.0],
@@ -4075,52 +4458,33 @@ presentingViewController:self
 
 - (void)setupSectionsTabBar
 {
-    NSArray<PPModrenSegmrntedItem *> *sectionItems = @[
-        [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionAds]
-                                    iconName:[self iconForSection:PPDataSectionAds]
-                            selectedIconName:[self selectedIconForSection:PPDataSectionAds]],
-        [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionAccessories]
-                                    iconName:[self iconForSection:PPDataSectionAccessories]
-                            selectedIconName:[self selectedIconForSection:PPDataSectionAccessories]],
-        [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionFood]
-                                    iconName:[self iconForSection:PPDataSectionFood]
-                            selectedIconName:[self selectedIconForSection:PPDataSectionFood]],
-        [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionServices]
-                                    iconName:[self iconForSection:PPDataSectionServices]
-                            selectedIconName:[self selectedIconForSection:PPDataSectionServices]]
-    ];
+    NSMutableArray<PPModrenSegmrntedItem *> *sectionItems = [NSMutableArray array];
+    for (NSNumber *sectionNumber in PPDataViewSectionPresentationOrder()) {
+        PPDataSection section = (PPDataSection)sectionNumber.integerValue;
+        [sectionItems addObject:
+            [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:section]
+                                        iconName:[self iconForSection:section]
+                                selectedIconName:[self selectedIconForSection:section]]];
+    }
     PPModrenSegmrnted *sectionsControl = [[PPModrenSegmrnted alloc] initWithItems:sectionItems];
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
-    [sectionsControl setSelectedIndex:PPDataSectionAds animated:NO];
+    [sectionsControl setSelectedIndex:[self pp_segmentIndexForSection:PPDataSectionAds] animated:NO];
     [sectionsControl addTarget:self
                         action:@selector(sectionsSegmentedControlChanged:)
               forControlEvents:UIControlEventValueChanged];
 
     self.sectionsSegmentedControl = sectionsControl;
 
-    [self.view addSubview:sectionsControl];
+    PPDataViewControlIslandView *controlIsland = [[PPDataViewControlIslandView alloc] init];
+    controlIsland.translatesAutoresizingMaskIntoConstraints = NO;
+    controlIsland.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    controlIsland.accessibilityIdentifier = @"pp.data.sectionsFiltersIsland";
+    self.sectionsFiltersContainer = controlIsland;
 
-    if (!PPIOS26()) {
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.userInteractionEnabled = NO;
-        blurView.layer.cornerRadius = kPPDataViewSectionsSegmentedCornerRadius;
-        blurView.clipsToBounds = YES;
-        if (@available(iOS 13.0, *)) {
-            blurView.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        self.sectionsSegmentedBlurView = blurView;
-        [self.view insertSubview:blurView belowSubview:sectionsControl];
-        [NSLayoutConstraint activateConstraints:@[
-            [blurView.topAnchor constraintEqualToAnchor:sectionsControl.topAnchor],
-            [blurView.leadingAnchor constraintEqualToAnchor:sectionsControl.leadingAnchor],
-            [blurView.trailingAnchor constraintEqualToAnchor:sectionsControl.trailingAnchor],
-            [blurView.bottomAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor]
-        ]];
-    }
+    [self.view addSubview:controlIsland];
+    [controlIsland addSubview:sectionsControl];
     [self pp_applyPremiumSectionsSegmentedAppearance];
 
     self.sectionsTabBarHeightConstraint =
@@ -4128,29 +4492,40 @@ presentingViewController:self
     self.sectionsTabBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [sectionsControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 4.0 : 12.0],
-        [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
-        [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0]
+        [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 8.0 : 12.0],
+        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
+        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
+        [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:4.0],
+        [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:4.0],
+        [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-4.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
     
     UIView *filterContainer = [[UIView alloc] init];
     filterContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    filterContainer.backgroundColor = UIColor.clearColor;
+    filterContainer.clipsToBounds = NO;
     filterContainer.hidden = YES;
     filterContainer.alpha = 0.0;
+    filterContainer.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     self.filterChipContainer = filterContainer;
 
-    [self.view addSubview:filterContainer];
+    [controlIsland addSubview:filterContainer];
 
     self.filterChipHeightConstraint =
     [filterContainer.heightAnchor constraintEqualToConstant:0.0];
     self.filterChipHeightConstraint.active = YES;
+    self.filterChipTopConstraint =
+    [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:0.0];
+    self.filterChipTopConstraint.active = YES;
+
+    self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-8.0];
+    self.filterChipBottomConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:12.0],
-        [filterContainer.leadingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.leadingAnchor],
-        [filterContainer.trailingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.trailingAnchor]
+        [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
+        [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0]
     ]];
 
     // Dynamic filter chips — created from PPFilterState for the initial section
@@ -4158,18 +4533,18 @@ presentingViewController:self
     UIStackView *chipsStack = [[UIStackView alloc] init];
     chipsStack.translatesAutoresizingMaskIntoConstraints = NO;
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
-    chipsStack.alignment = UIStackViewAlignmentCenter;
+    chipsStack.alignment = UIStackViewAlignmentFill;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 12.0;
+    chipsStack.spacing = 8.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.filterChipStackView = chipsStack;
     [filterContainer addSubview:chipsStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [chipsStack.topAnchor constraintEqualToAnchor:filterContainer.topAnchor],
+        [chipsStack.topAnchor constraintEqualToAnchor:filterContainer.topAnchor constant:4.0],
         [chipsStack.leadingAnchor constraintEqualToAnchor:filterContainer.leadingAnchor],
         [chipsStack.trailingAnchor constraintEqualToAnchor:filterContainer.trailingAnchor],
-        [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor],
+        [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:-4.0],
     ]];
 
     // Initialize per-section filter state dictionary
@@ -4181,11 +4556,11 @@ presentingViewController:self
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender
 {
     NSInteger selectedIndex = sender.selectedIndex;
-    if (selectedIndex < PPDataSectionAds || selectedIndex > PPDataSectionServices) {
+    if (selectedIndex < 0 || selectedIndex >= sender.numberOfSegments) {
         return;
     }
 
-    [self activateSection:(PPDataSection)selectedIndex userInitiated:YES];
+    [self activateSection:[self pp_sectionForSegmentIndex:selectedIndex] userInitiated:YES];
 }
 
 - (UIMenu *)sectionsMenu
@@ -4193,8 +4568,8 @@ presentingViewController:self
     NSMutableArray *actions = [NSMutableArray array];
 
 
-    for (NSInteger i = PPDataSectionAds; i <= PPDataSectionServices; i++) {
-        PPDataSection section = (PPDataSection)i;
+    for (NSNumber *sectionNumber in PPDataViewSectionPresentationOrder()) {
+        PPDataSection section = (PPDataSection)sectionNumber.integerValue;
 
         UIAction *action =
         [UIAction actionWithTitle:[self titleForSection:section]

@@ -2774,6 +2774,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (BOOL)pp_usesQuantityControl
 {
+    if ([self.vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)self.vm.ModelObject;
+        if (accessory.condition == AccessConditionsUsed) {
+            return NO;
+        }
+    }
     return [self.vm.ModelObject isKindOfClass:[PetAccessory class]] ||
            self.context == PPCellForMarket ||
            self.context == PPCellForFood ||
@@ -2941,6 +2947,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (BOOL)pp_isAdContext
 {
+    if ([self.vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)self.vm.ModelObject;
+        if (accessory.condition == AccessConditionsUsed) {
+            return YES;
+        }
+    }
     return [self.vm.ModelObject isKindOfClass:[PetAd class]] ||
            self.context == PPCellForAds ||
            self.context == PPCellForHomeAds;

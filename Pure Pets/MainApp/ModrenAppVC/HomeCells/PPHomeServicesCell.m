@@ -346,7 +346,10 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
                              pointSize:(CGFloat)pointSize
                                 weight:(UIImageSymbolWeight)weight
                        alwaysTemplate:(BOOL)alwaysTemplate {
-    UIImage *systemImage = [UIImage systemImageNamed:service.systemIconName];
+    NSString *safeIconName = [service.systemIconName isKindOfClass:NSString.class]
+        ? [service.systemIconName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    UIImage *systemImage = safeIconName.length > 0 ? [UIImage systemImageNamed:safeIconName] : nil;
     if (systemImage) {
         UIImageSymbolConfiguration *config =
         [UIImageSymbolConfiguration configurationWithPointSize:pointSize weight:weight];

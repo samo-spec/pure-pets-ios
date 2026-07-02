@@ -32,6 +32,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIColor *selectedTextColor;
 @property (nonatomic, strong) UIFont *normalFont;
 @property (nonatomic, strong) UIFont *selectedFont;
+@property (nonatomic, assign) BOOL hidesContainerChrome;
 
 - (instancetype)initWithItems:(NSArray<PPModrenSegmrntedItem *> *)items;
 - (void)setSelectedIndex:(NSInteger)selectedIndex animated:(BOOL)animated;

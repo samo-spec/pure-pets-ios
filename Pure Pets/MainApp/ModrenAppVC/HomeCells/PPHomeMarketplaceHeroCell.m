@@ -193,25 +193,51 @@ static BOOL PPMarketHeroReduceMotion(void)
     [self pp_updateAdaptiveLayout];
 
     CGRect surfaceBounds = self.surfaceControl.bounds;
+    BOOL hasValidSurfaceBounds = !CGRectIsEmpty(surfaceBounds) &&
+                                 isfinite((double)CGRectGetWidth(surfaceBounds)) &&
+                                 isfinite((double)CGRectGetHeight(surfaceBounds));
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.surfaceGradientLayer.frame = surfaceBounds;
-    self.surfaceTextLightLayer.frame = surfaceBounds;
-    self.surfaceVignetteLayer.frame = surfaceBounds;
-    self.surfaceGradientLayer.cornerRadius = self.surfaceControl.layer.cornerRadius;
-    self.surfaceTextLightLayer.cornerRadius = self.surfaceControl.layer.cornerRadius;
-    self.surfaceVignetteLayer.cornerRadius = self.surfaceControl.layer.cornerRadius;
-    self.ctaGradientLayer.frame = self.ctaView.bounds;
-    self.ctaGradientLayer.cornerRadius = self.ctaView.layer.cornerRadius;
-    self.visualHaloGradientLayer.frame = self.visualHaloView.bounds;
-    self.visualHaloGradientLayer.cornerRadius = CGRectGetWidth(self.visualHaloView.bounds) * 0.5;
-    self.storefrontGradientLayer.frame = self.storefrontPlateView.bounds;
-    self.storefrontGradientLayer.cornerRadius = self.storefrontPlateView.layer.cornerRadius;
+    self.surfaceGradientLayer.frame = hasValidSurfaceBounds ? surfaceBounds : CGRectZero;
+    self.surfaceTextLightLayer.frame = hasValidSurfaceBounds ? surfaceBounds : CGRectZero;
+    self.surfaceVignetteLayer.frame = hasValidSurfaceBounds ? surfaceBounds : CGRectZero;
+    CGFloat surfaceRadius = self.surfaceControl.layer.cornerRadius;
+    surfaceRadius = isfinite((double)surfaceRadius) ? MAX(0.0, surfaceRadius) : 0.0;
+    self.surfaceGradientLayer.cornerRadius = surfaceRadius;
+    self.surfaceTextLightLayer.cornerRadius = surfaceRadius;
+    self.surfaceVignetteLayer.cornerRadius = surfaceRadius;
+    CGRect ctaBounds = self.ctaView.bounds;
+    self.ctaGradientLayer.frame = (!CGRectIsEmpty(ctaBounds) &&
+                                   isfinite((double)CGRectGetWidth(ctaBounds)) &&
+                                   isfinite((double)CGRectGetHeight(ctaBounds))) ? ctaBounds : CGRectZero;
+    CGFloat ctaRadius = self.ctaView.layer.cornerRadius;
+    self.ctaGradientLayer.cornerRadius = isfinite((double)ctaRadius) ? MAX(0.0, ctaRadius) : 0.0;
+    CGRect haloBounds = self.visualHaloView.bounds;
+    self.visualHaloGradientLayer.frame = (!CGRectIsEmpty(haloBounds) &&
+                                          isfinite((double)CGRectGetWidth(haloBounds)) &&
+                                          isfinite((double)CGRectGetHeight(haloBounds))) ? haloBounds : CGRectZero;
+    CGFloat haloWidth = CGRectGetWidth(haloBounds);
+    self.visualHaloGradientLayer.cornerRadius = (isfinite((double)haloWidth) && haloWidth > 0.0) ? haloWidth * 0.5 : 0.0;
+    CGRect plateBounds = self.storefrontPlateView.bounds;
+    self.storefrontGradientLayer.frame = (!CGRectIsEmpty(plateBounds) &&
+                                          isfinite((double)CGRectGetWidth(plateBounds)) &&
+                                          isfinite((double)CGRectGetHeight(plateBounds))) ? plateBounds : CGRectZero;
+    CGFloat plateRadius = self.storefrontPlateView.layer.cornerRadius;
+    self.storefrontGradientLayer.cornerRadius = isfinite((double)plateRadius) ? MAX(0.0, plateRadius) : 0.0;
     [CATransaction commit];
 
-    self.contentView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.surfaceControl.frame
-                                   cornerRadius:self.surfaceControl.layer.cornerRadius].CGPath;
+    CGRect surfaceFrame = self.surfaceControl.frame;
+    if (!CGRectIsEmpty(surfaceFrame) &&
+        isfinite((double)CGRectGetMinX(surfaceFrame)) &&
+        isfinite((double)CGRectGetMinY(surfaceFrame)) &&
+        isfinite((double)CGRectGetWidth(surfaceFrame)) &&
+        isfinite((double)CGRectGetHeight(surfaceFrame))) {
+        self.contentView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:surfaceFrame
+                                       cornerRadius:surfaceRadius].CGPath;
+    } else {
+        self.contentView.layer.shadowPath = nil;
+    }
 
     if (self.window) {
         [self pp_startAmbientMotionIfNeeded];
@@ -296,7 +322,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIColor *ctaEnd = PPMarketHeroColor(0xD91557, 0.82);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
-    self.surfaceGradientLayer.opacity = darkMode ? 0.85 : 0.60;
+    self.surfaceGradientLayer.opacity = darkMode ? 0.90 : 0.72;
     self.surfaceGradientLayer.colors = @[
         (id)PPMarketHeroResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
         (id)PPMarketHeroResolvedColor(surfaceTint, self.traitCollection).CGColor,
@@ -773,7 +799,7 @@ static BOOL PPMarketHeroReduceMotion(void)
                      dark:(BOOL)dark
 {
     UIColor *surfaceBase = UIColor.whiteColor;
-    tile.backgroundColor = [surfaceBase colorWithAlphaComponent:0.90];
+    tile.backgroundColor = [surfaceBase colorWithAlphaComponent:0.80];
     tile.layer.borderColor = PPMarketHeroColor(0xE6CCD4, 0.30).CGColor;
     tile.layer.shadowColor = PPMarketHeroColor(0x29312E, 1.0).CGColor;
     tile.layer.shadowOpacity = 0.08f;

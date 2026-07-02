@@ -123,11 +123,20 @@ static inline UIColor *PPLocationAccentColor(NSString *seed)
 
 static inline CGFloat PPClampUnit(CGFloat value)
 {
+    if (!isfinite((double)value)) {
+        return 0.0;
+    }
     return fmax(0.0, fmin(1.0, value));
 }
 
 static inline CGFloat PPLerpFloat(CGFloat start, CGFloat end, CGFloat progress)
 {
+    if (!isfinite((double)start)) {
+        start = 0.0;
+    }
+    if (!isfinite((double)end)) {
+        end = start;
+    }
     progress = PPClampUnit(progress);
     return start + ((end - start) * progress);
 }
@@ -140,7 +149,7 @@ static inline CGPoint PPLerpPoint(CGPoint start, CGPoint end, CGFloat progress)
 
 static inline CGFloat PPHomeHeroResolvedWidth(CGFloat width)
 {
-    return width > 0.0 ? width : UIScreen.mainScreen.bounds.size.width;
+    return (isfinite((double)width) && width > 0.0) ? width : UIScreen.mainScreen.bounds.size.width;
 }
 
 static inline BOOL PPHomeHeroWidthIsTablet(CGFloat width)
@@ -837,7 +846,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
   
     
     CGRect bounds = self.heroSurfaceView.bounds;
-    if (CGRectIsEmpty(bounds)) return;
+    if (CGRectIsEmpty(bounds) ||
+        !isfinite((double)CGRectGetWidth(bounds)) ||
+        !isfinite((double)CGRectGetHeight(bounds))) return;
 
     self.gradientLayer.frame = bounds;
     self.ambientGlowLayer.frame = bounds;
@@ -845,20 +856,45 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     static CGFloat const kLocationFadeHeight = 16.0;
     CGRect locationBounds = self.locationControl.bounds;
-    self.locationTopFadeLayer.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(locationBounds), MIN(kLocationFadeHeight, CGRectGetHeight(locationBounds) * 0.5));
-    self.locationLiquidBorderLayer.frame = locationBounds;
-    self.locationLiquidBorderMaskLayer.frame = locationBounds;
-    self.locationLiquidBorderMaskLayer.path =
-        [UIBezierPath bezierPathWithRoundedRect:CGRectInset(locationBounds, 0.65, 0.65)
-                                  cornerRadius:MAX(0.0, self.locationControl.layer.cornerRadius - 0.65)].CGPath;
+    BOOL hasValidLocationBounds = !CGRectIsEmpty(locationBounds) &&
+                                  isfinite((double)CGRectGetWidth(locationBounds)) &&
+                                  isfinite((double)CGRectGetHeight(locationBounds));
+    if (hasValidLocationBounds) {
+        self.locationTopFadeLayer.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(locationBounds), MIN(kLocationFadeHeight, CGRectGetHeight(locationBounds) * 0.5));
+        self.locationLiquidBorderLayer.frame = locationBounds;
+        self.locationLiquidBorderMaskLayer.frame = locationBounds;
+        CGFloat borderRadius = self.locationControl.layer.cornerRadius;
+        borderRadius = isfinite((double)borderRadius) ? MAX(0.0, borderRadius - 0.65) : 0.0;
+        self.locationLiquidBorderMaskLayer.path =
+            [UIBezierPath bezierPathWithRoundedRect:CGRectInset(locationBounds, 0.65, 0.65)
+                                      cornerRadius:borderRadius].CGPath;
+    } else {
+        self.locationTopFadeLayer.frame = CGRectZero;
+        self.locationLiquidBorderLayer.frame = CGRectZero;
+        self.locationLiquidBorderMaskLayer.frame = CGRectZero;
+        self.locationLiquidBorderMaskLayer.path = nil;
+    }
 
     self.heroShadowView.layer.cornerRadius = self.heroSurfaceView.layer.cornerRadius;
-    self.heroShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroShadowView.bounds
-                                                                      cornerRadius:self.heroSurfaceView.layer.cornerRadius].CGPath;
-    self.locationIconPlateView.layer.cornerRadius = CGRectGetHeight(self.locationIconPlateView.bounds) * 0.5;
+    CGRect shadowBounds = self.heroShadowView.bounds;
+    CGFloat shadowRadius = self.heroSurfaceView.layer.cornerRadius;
+    if (!CGRectIsEmpty(shadowBounds) &&
+        isfinite((double)CGRectGetWidth(shadowBounds)) &&
+        isfinite((double)CGRectGetHeight(shadowBounds)) &&
+        isfinite((double)shadowRadius)) {
+        self.heroShadowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:shadowBounds
+                                      cornerRadius:MAX(0.0, shadowRadius)].CGPath;
+    } else {
+        self.heroShadowView.layer.shadowPath = nil;
+    }
+    CGFloat iconPlateHeight = CGRectGetHeight(self.locationIconPlateView.bounds);
+    self.locationIconPlateView.layer.cornerRadius = (isfinite((double)iconPlateHeight) && iconPlateHeight > 0.0) ? iconPlateHeight * 0.5 : 0.0;
 
-    self.orbViewA.layer.cornerRadius = CGRectGetWidth(self.orbViewA.bounds) * 0.5;
-    self.orbViewB.layer.cornerRadius = CGRectGetWidth(self.orbViewB.bounds) * 0.5;
+    CGFloat orbAWidth = CGRectGetWidth(self.orbViewA.bounds);
+    CGFloat orbBWidth = CGRectGetWidth(self.orbViewB.bounds);
+    self.orbViewA.layer.cornerRadius = (isfinite((double)orbAWidth) && orbAWidth > 0.0) ? orbAWidth * 0.5 : 0.0;
+    self.orbViewB.layer.cornerRadius = (isfinite((double)orbBWidth) && orbBWidth > 0.0) ? orbBWidth * 0.5 : 0.0;
     self.orderPeekStrip.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
     
     self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;

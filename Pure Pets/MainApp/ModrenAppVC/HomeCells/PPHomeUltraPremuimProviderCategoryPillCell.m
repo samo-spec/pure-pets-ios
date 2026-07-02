@@ -322,7 +322,6 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _accentBarView.layer.cornerRadius = CGRectGetHeight(_accentBarView.bounds) * 0.5;
     _ambientOrbView.layer.cornerRadius = CGRectGetWidth(_ambientOrbView.bounds) * 0.5;
     _surfaceGradientLayer.frame = _surfaceView.bounds;
-    _surfaceGradientLayer.opacity = 0.7;
     CGFloat highlightInset = 0.65;
     CGRect highlightBounds = CGRectInset(_surfaceView.bounds, highlightInset, highlightInset);
     _surfaceLiquidBorderLayer.frame = _surfaceView.bounds;
@@ -372,7 +371,12 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
 
 - (UIImage *)pp_iconImageForItem:(PPHomeProviderCategoryItem *)item
 {
-    NSString *iconName = item.systemIconName ?: @"square.grid.2x2.fill";
+    NSString *iconName = [item.systemIconName isKindOfClass:NSString.class]
+        ? [item.systemIconName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    if (iconName.length == 0) {
+        iconName = @"square.grid.2x2.fill";
+    }
     if ([item.identifier isEqualToString:@"marketplace"]) {
         iconName = @"pet-shop";
     }
@@ -419,31 +423,31 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
 
     UIColor *accent = PPHomeUltraProviderAccentColorForItem(_item ?: [PPHomeProviderCategoryItem new],
                                                             self.traitCollection);
-    UIColor *surfaceBase = AppForgroundColr ?: PPHomeUltraProviderDynamicColor([UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:1.0],
-                                                                               [UIColor colorWithWhite:0.104 alpha:1.0]);
+    UIColor *surfaceBase = PPHomeUltraProviderDynamicColor([UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:0.62],
+                                                           [UIColor colorWithWhite:0.104 alpha:0.28]);
     UIColor *surfaceHighlight = PPHomeUltraProviderBlend(surfaceBase,
                                                          UIColor.whiteColor,
-                                                         darkMode ? 0.08 : 0.20,
+                                                         darkMode ? 0.07 : 0.18,
                                                          self.traitCollection);
     UIColor *surfaceTint = PPHomeUltraProviderBlend(surfaceBase,
                                                     accent,
-                                                    selected ? (darkMode ? 0.18 : 0.10) : (darkMode ? 0.11 : 0.045),
+                                                    selected ? (darkMode ? 0.16 : 0.095) : (darkMode ? 0.10 : 0.048),
                                                     self.traitCollection);
     UIColor *titleColor = AppPrimaryTextClr ?: PPHomeUltraProviderDynamicColor([UIColor colorWithRed:0.110 green:0.110 blue:0.129 alpha:1.0],
                                                                                 [UIColor colorWithWhite:0.965 alpha:1.0]);
     UIColor *subtitleColor = AppSecondaryTextClr ?: PPHomeUltraProviderDynamicColor([UIColor colorWithRed:0.446 green:0.458 blue:0.485 alpha:1.0],
                                                                                      [UIColor colorWithWhite:0.735 alpha:1.0]);
-    UIColor *iconPlateColor = [accent colorWithAlphaComponent:selected ? (darkMode ? 0.28 : 0.16) : (darkMode ? 0.20 : 0.10)];
+    UIColor *iconPlateColor = [accent colorWithAlphaComponent:selected ? (darkMode ? 0.24 : 0.14) : (darkMode ? 0.16 : 0.08)];
     UIColor *chevronPlateColor = PPHomeUltraProviderBlend(surfaceBase,
                                                           accent,
-                                                          selected ? (darkMode ? 0.22 : 0.11) : (darkMode ? 0.14 : 0.05),
+                                                          selected ? (darkMode ? 0.18 : 0.09) : (darkMode ? 0.11 : 0.04),
                                                           self.traitCollection);
-    UIColor *orbColor = [accent colorWithAlphaComponent:selected ? (darkMode ? 0.20 : 0.14) : (darkMode ? 0.15 : 0.10)];
-    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.22 : 0.56];
-    UIColor *liquidBorderHighlight = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.34 : 0.26)
-                                                                                 : (selected ? 0.94 : 0.78)];
-    UIColor *plateLiquidBorder = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.20 : 0.14)
-                                                                             : (selected ? 0.52 : 0.36)];
+
+    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.32];
+    UIColor *liquidBorderHighlight = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.26 : 0.18)
+                                                                                 : (selected ? 0.68 : 0.48)];
+    UIColor *plateLiquidBorder = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.14 : 0.10)
+                                                                             : (selected ? 0.42 : 0.28)];
 
     void (^styleChanges)(void) = ^{
         [CATransaction begin];
@@ -453,17 +457,18 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
             (id)PPHomeUltraProviderResolvedColor(surfaceTint, self.traitCollection).CGColor,
             (id)PPHomeUltraProviderResolvedColor(PPHomeUltraProviderBlend(surfaceTint,
                                                                           accent,
-                                                                          darkMode ? 0.08 : 0.03,
+                                                                          darkMode ? 0.08 : 0.085,
                                                                           self.traitCollection),
                                                 self.traitCollection).CGColor
         ];
-        self->_surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
+        self->_surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
+        self->_surfaceGradientLayer.opacity = selected ? (darkMode ? 0.56f : 0.66f) : (darkMode ? 0.33f : 0.42f);
         self->_surfaceLiquidBorderLayer.strokeColor =
             PPHomeUltraProviderResolvedColor(liquidBorderHighlight, self.traitCollection).CGColor;
         self->_surfaceLiquidBorderLayer.opacity = selected ? 1.0f : 0.92f;
         [CATransaction commit];
 
-        self->_surfaceView.backgroundColor = surfaceTint;
+        self->_surfaceView.backgroundColor = surfaceBase;
         [self->_surfaceView pp_setBorderColor:liquidBorderBase];
 
         self->_iconPlateView.backgroundColor = iconPlateColor;

@@ -12,21 +12,21 @@
 #import <math.h>
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
-static const CGFloat kPPHomeBannerSectionHeight = 168.0;
+static const CGFloat kPPHomeBannerSectionHeight = 188.0;
 static const CGFloat kPPHomeBannerSectionTopInset = 0.0;
 static const CGFloat kPPHomeBannerSectionHorizontalInset = 8.0;
-static const CGFloat kPPHomeBannerSectionBottomInset = 14.0;
+static const CGFloat kPPHomeBannerSectionBottomInset = 24.0;
 static const CGFloat kPPHomeBannerCellVerticalPadding = 0.0;
-static const CGFloat kPPHomePromoCarouselCardWidthFraction = .899;
+static const CGFloat kPPHomePromoCarouselCardWidthFraction = .999;
 static const CGFloat kPPHomePromoCarouselLineSpacing = -94.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
 static const CGFloat kPPHomePromoCarouselMinScale = 0.825;
-static const CGFloat kPPHomePromoCarouselMaxTranslateY = 6.0;
-static const CGFloat kPPHomePromoCarouselMaxDepth = 68.0;
-static const CGFloat kPPHomePromoCarouselMaxRotation = 0.68;
-static const CGFloat kPPHomePromoCarouselPerspective = 100.0;
+static const CGFloat kPPHomePromoCarouselMaxTranslateY = 8.0;
+static const CGFloat kPPHomePromoCarouselMaxDepth = 88.0;
+static const CGFloat kPPHomePromoCarouselMaxRotation = 0.28;
+static const CGFloat kPPHomePromoCarouselPerspective = 780.0;
 
 static CGFloat PPCinematicClamp(CGFloat value, CGFloat lower, CGFloat upper)
 {
@@ -1304,10 +1304,50 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 {
     [self stopAutoScroll];
     [self.collectionView.layer removeAllAnimations];
-    self.cards = cards ?: @[];
+
+    BOOL cardsAreEqual = (self.cards.count == cards.count);
+    if (cardsAreEqual) {
+        for (NSUInteger i = 0; i < cards.count; i++) {
+            PPHomePromoCarouselCard *cardA = self.cards[i];
+            PPHomePromoCarouselCard *cardB = cards[i];
+            if (cardA != cardB) {
+                if (![PPSafeString(cardA.cardID) isEqualToString:PPSafeString(cardB.cardID)] ||
+                    ![PPSafeString(cardA.titleTextAr) isEqualToString:PPSafeString(cardB.titleTextAr)] ||
+                    ![PPSafeString(cardA.titleTextEn) isEqualToString:PPSafeString(cardB.titleTextEn)] ||
+                    ![PPSafeString(cardA.subtitleTextAr) isEqualToString:PPSafeString(cardB.subtitleTextAr)] ||
+                    ![PPSafeString(cardA.subtitleTextEn) isEqualToString:PPSafeString(cardB.subtitleTextEn)] ||
+                    ![PPSafeString(cardA.badgeTextAr) isEqualToString:PPSafeString(cardB.badgeTextAr)] ||
+                    ![PPSafeString(cardA.badgeTextEn) isEqualToString:PPSafeString(cardB.badgeTextEn)] ||
+                    ![PPSafeString(cardA.primaryButtonTitleAr) isEqualToString:PPSafeString(cardB.primaryButtonTitleAr)] ||
+                    ![PPSafeString(cardA.primaryButtonTitleEn) isEqualToString:PPSafeString(cardB.primaryButtonTitleEn)] ||
+                    ![PPSafeString(cardA.secondaryButtonTitleAr) isEqualToString:PPSafeString(cardB.secondaryButtonTitleAr)] ||
+                    ![PPSafeString(cardA.secondaryButtonTitleEn) isEqualToString:PPSafeString(cardB.secondaryButtonTitleEn)] ||
+                    cardA.hidePrimaryButton != cardB.hidePrimaryButton ||
+                    cardA.hideSecondaryButton != cardB.hideSecondaryButton ||
+                    ![PPSafeString(cardA.startColorHex) isEqualToString:PPSafeString(cardB.startColorHex)] ||
+                    ![PPSafeString(cardA.endColorHex) isEqualToString:PPSafeString(cardB.endColorHex)] ||
+                    ![PPSafeString(cardA.accentColorHex) isEqualToString:PPSafeString(cardB.accentColorHex)] ||
+                    cardA.textStyle != cardB.textStyle ||
+                    cardA.autoScrollInterval != cardB.autoScrollInterval ||
+                    (cardA.backgroundImageURL != cardB.backgroundImageURL && ![cardA.backgroundImageURL isEqual:cardB.backgroundImageURL]) ||
+                    (cardA.characterImageURL != cardB.characterImageURL && ![cardA.characterImageURL isEqual:cardB.characterImageURL])) {
+                    cardsAreEqual = NO;
+                    break;
+                }
+            }
+        }
+    }
+
     self.onCardTap = onCardTap;
     self.onPrimaryTap = onPrimaryTap;
     self.onSecondaryTap = onSecondaryTap;
+
+    if (cardsAreEqual && self.cards.count > 0) {
+        [self startAutoScroll];
+        return;
+    }
+
+    self.cards = cards ?: @[];
     self.cachedViewportWidth = 0.0;
 
     self.pageControl.numberOfPages = self.cards.count;
@@ -1776,6 +1816,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (void)configureWithBanners:(NSArray<PPBannerViewModel *> *)banners group:(MainBannerModel *)group delegate:(id<BannerTapsCollectionDelegate>)delegate
 {
+    [self.promoCarouselView stopAutoScroll];
+    self.promoCarouselView.onCardTap = nil;
+    self.promoCarouselView.onPrimaryTap = nil;
+    self.promoCarouselView.onSecondaryTap = nil;
     self.placeholderView.hidden = YES;
     self.promoCarouselView.hidden = YES;
     self.bannersView.hidden = NO;
@@ -1796,6 +1840,9 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
                  onSecondaryTap:(PPHomePromoCarouselTapBlock)onSecondaryTap
 {
     [self.bannersView stopAutoScroll];
+    self.bannersView.delegate = nil;
+    self.bannersView.mainBannerGroup = nil;
+    self.bannersView.banners = @[];
     self.bannersView.hidden = YES;
     self.placeholderView.hidden = YES;
     self.promoCarouselView.hidden = NO;
@@ -1813,6 +1860,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.promoCarouselView.hidden = YES;
     [self.bannersView stopAutoScroll];
     [self.promoCarouselView stopAutoScroll];
+    self.bannersView.delegate = nil;
+    self.bannersView.mainBannerGroup = nil;
+    self.bannersView.banners = @[];
+    self.promoCarouselView.onCardTap = nil;
+    self.promoCarouselView.onPrimaryTap = nil;
+    self.promoCarouselView.onSecondaryTap = nil;
 }
 
 - (void)dealloc {

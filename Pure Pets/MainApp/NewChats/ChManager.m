@@ -140,6 +140,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 @property (nonatomic, strong) NSMutableSet<NSString *> *initialSyncedThreads;
 //@property (nonatomic, strong) id<FIRListenerRegistration> globalDeliveryListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> globalIncomingListener;
+@property (nonatomic, copy, nullable) NSString *globalIncomingListenerUserID;
+@property (nonatomic, copy, nullable) NSString *globalUnreadListenerUserID;
+@property (nonatomic, copy, nullable) NSString *deliverySyncInFlightUserID;
+@property (nonatomic, copy, nullable) NSString *lastDeliverySyncUserID;
+@property (nonatomic, strong, nullable) NSDate *lastDeliverySyncCompletedAt;
 
 - (void)sendChatPushToUserID:(NSString *)toUserID
                        title:(NSString *)title
@@ -781,9 +786,17 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     NSString *resolvedUserID = [self pp_authenticatedUIDForRequestedUID:userID];
     if (!resolvedUserID.length) return;
 
+    if (self.globalIncomingListener &&
+        [self.globalIncomingListenerUserID isEqualToString:resolvedUserID]) {
+        NSLog(@"🔔 [GlobalIncoming] Listener already active for user=%@ — skipping duplicate start", resolvedUserID);
+        return;
+    }
+
     if (self.globalIncomingListener) {
         [self.globalIncomingListener remove];
+        self.globalIncomingListener = nil;
     }
+    self.globalIncomingListenerUserID = resolvedUserID;
 
     // 🔐 Firestore Security Rules (best practices) for this collectionGroup query:
     // The client is querying:
@@ -921,6 +934,25 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
+    if ([self.deliverySyncInFlightUserID isEqualToString:resolvedUserID]) {
+        NSLog(@"🔄 [DeliverySync] Already in flight for receiver=%@ — skipping duplicate request.", resolvedUserID);
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), completion);
+        }
+        return;
+    }
+
+    if ([self.lastDeliverySyncUserID isEqualToString:resolvedUserID] &&
+        self.lastDeliverySyncCompletedAt &&
+        [[NSDate date] timeIntervalSinceDate:self.lastDeliverySyncCompletedAt] < 12.0) {
+        NSLog(@"🔄 [DeliverySync] Recently synced receiver=%@ — skipping duplicate warm-up request.", resolvedUserID);
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), completion);
+        }
+        return;
+    }
+
+    self.deliverySyncInFlightUserID = resolvedUserID;
     NSLog(@"🔄 [DeliverySync] Checking pending deliveries for receiver=%@ ...", resolvedUserID);
 
     // NOTE:
@@ -950,11 +982,15 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             if (completion) {
                 dispatch_async(dispatch_get_main_queue(), completion);
             }
+            self.deliverySyncInFlightUserID = nil;
             return;
         }
 
         if (snapshot.documents.count == 0) {
             NSLog(@"ℹ️ [DeliverySync] No pending deliveries.");
+            self.lastDeliverySyncUserID = resolvedUserID;
+            self.lastDeliverySyncCompletedAt = [NSDate date];
+            self.deliverySyncInFlightUserID = nil;
             if (completion) {
                 dispatch_async(dispatch_get_main_queue(), completion);
             }
@@ -997,6 +1033,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         NSLog(@"✅ [DeliverySync] Marked %ld message(s) as delivered.", (long)updated);
 
+        self.lastDeliverySyncUserID = resolvedUserID;
+        self.lastDeliverySyncCompletedAt = [NSDate date];
+        self.deliverySyncInFlightUserID = nil;
+
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), completion);
         }
@@ -1030,9 +1070,17 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     NSString *resolvedUserID = [self pp_authenticatedUIDForRequestedUID:userID];
     if (!resolvedUserID.length) return;
 
+    if (self.globalUnreadListener &&
+        [self.globalUnreadListenerUserID isEqualToString:resolvedUserID]) {
+        NSLog(@"📡 Global unread listener already active for user=%@ — skipping duplicate start", resolvedUserID);
+        return;
+    }
+
     if (self.globalUnreadListener) {
         [self.globalUnreadListener remove];
+        self.globalUnreadListener = nil;
     }
+    self.globalUnreadListenerUserID = resolvedUserID;
 
     FIRQuery *query =
     [[[[FIRFirestore firestore]
@@ -1242,12 +1290,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     if (self.globalIncomingListener) {
         [self.globalIncomingListener remove];
         self.globalIncomingListener = nil;
+        self.globalIncomingListenerUserID = nil;
         NSLog(@"🛑 [ChManager] GlobalIncomingListener removed");
     }
 
     if (self.globalUnreadListener) {
         [self.globalUnreadListener remove];
         self.globalUnreadListener = nil;
+        self.globalUnreadListenerUserID = nil;
         NSLog(@"🛑 [ChManager] GlobalUnreadListener removed");
     }
 
@@ -1820,11 +1870,13 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     if (self.globalIncomingListener) {
         [self.globalIncomingListener remove];
         self.globalIncomingListener = nil;
+        self.globalIncomingListenerUserID = nil;
     }
 
     if (self.globalUnreadListener) {
         [self.globalUnreadListener remove];
         self.globalUnreadListener = nil;
+        self.globalUnreadListenerUserID = nil;
     }
 
     [self.liveUnreadCounts removeAllObjects];

@@ -1058,20 +1058,27 @@ NS_ASSUME_NONNULL_END
                           scale:(UIImageSymbolScale)scale
                       pointSize:(CGFloat)pointSize
 {
+    NSString *safeImageName = [imageName isKindOfClass:NSString.class]
+        ? [imageName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    if (safeImageName.length == 0) {
+        return nil;
+    }
+
     UIImage *baseImage = nil;
     
     if (@available(iOS 13.0, *)) {
         // Try system symbol first
-        baseImage = [UIImage systemImageNamed:imageName];
+        baseImage = [UIImage systemImageNamed:safeImageName];
     }
     
     // ✅ Fallback to custom image asset if not a system symbol
     if (!baseImage) {
-        baseImage = [[UIImage imageNamed:imageName] resizedImageTo:CGSizeMake(30, 30)];
+        baseImage = [[UIImage imageNamed:safeImageName] resizedImageTo:CGSizeMake(30, 30)];
     }
     
     if (!baseImage) {
-        NSLog(@"⚠️ Image not found: %@", imageName);
+        NSLog(@"⚠️ Image not found: %@", safeImageName);
         return nil;
     }
     
@@ -1103,9 +1110,16 @@ NS_ASSUME_NONNULL_END
                     palette:(NSArray<UIColor *> *)palette
                makeTemplate:(BOOL)makeTemplate
 {
-    UIImage *img = [UIImage imageNamed:name];
+    NSString *safeName = [name isKindOfClass:NSString.class]
+        ? [name stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
+    if (safeName.length == 0) {
+        return nil;
+    }
+
+    UIImage *img = [UIImage imageNamed:safeName];
 #if __IPHONE_13_0
-    if (!img) { img = [UIImage systemImageNamed:name]; } // allow using a real SF symbol name too
+    if (!img) { img = [UIImage systemImageNamed:safeName]; } // allow using a real SF symbol name too
 #endif
     if (!img) { return nil; }
     

@@ -223,8 +223,8 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
            chipIcon:@"arrow.up.arrow.down"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price low to high", @"السعر من الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price high to low", @"السعر من الاعلى للاقل") value:PPFilterSortPriceHighToLow],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
+                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
                 [PPFilterOption optionWithTitle:PPFilterL(@"Newest", @"الاحدث") value:PPFilterSortNewest],
             ]];
 
@@ -262,8 +262,8 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
            chipIcon:@"arrow.up.arrow.down"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price low to high", @"السعر من الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price high to low", @"السعر من الاعلى للاقل") value:PPFilterSortPriceHighToLow],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
+                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
                 [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"الاسم من الالف للياء") value:PPFilterSortNameAZ],
             ]];
 
@@ -300,9 +300,9 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
            chipIcon:@"arrow.up.arrow.down"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price low to high", @"السعر من الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price high to low", @"السعر من الاعلى للاقل") value:PPFilterSortPriceHighToLow],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"الاسم من الالف للياء") value:PPFilterSortNameAZ],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
+                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"من الالف للياء") value:PPFilterSortNameAZ],
             ]];
 
     return [PPFilterState stateWithGroups:@[offer, price, sort]];
@@ -350,8 +350,8 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
            chipIcon:@"arrow.up.arrow.down"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price low to high", @"السعر من الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Price high to low", @"السعر من الاعلى للاقل") value:PPFilterSortPriceHighToLow],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
+                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
                 [PPFilterOption optionWithTitle:PPFilterL(@"Newest", @"الاحدث") value:PPFilterSortNewest],
             ]];
 

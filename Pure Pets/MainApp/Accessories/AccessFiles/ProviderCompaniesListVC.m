@@ -2076,6 +2076,13 @@ static NSString * const PPProviderCompaniesMiddleBackgroundGlowPeekMotionKey = @
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+
+    if (self.heroSearchTextField.isFirstResponder) {
+        [self.heroSearchTextField resignFirstResponder];
+        return;
+    }
+
     if (indexPath.row >= self.visibleEntries.count) {
         return;
     }

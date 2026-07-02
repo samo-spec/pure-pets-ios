@@ -167,12 +167,19 @@
     self.contentStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.surfaceView addSubview:self.contentStackView];
 
+    NSLayoutConstraint *contentTopConstraint =
+        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor constant:7.0];
+    NSLayoutConstraint *contentBottomConstraint =
+        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-7.0];
+    contentTopConstraint.priority = UILayoutPriorityDefaultHigh;
+    contentBottomConstraint.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
         [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:30.0],
         [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-13.0],
         [self.contentStackView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor constant:8.0],
-        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-8.0],
+        contentTopConstraint,
+        contentBottomConstraint,
     ]];
 }
 
@@ -341,9 +348,18 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    self.surfaceView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.surfaceView.bounds
-                                   cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    CGRect surfaceBounds = self.surfaceView.bounds;
+    CGFloat cornerRadius = self.surfaceView.layer.cornerRadius;
+    if (!CGRectIsEmpty(surfaceBounds) &&
+        isfinite(CGRectGetWidth(surfaceBounds)) &&
+        isfinite(CGRectGetHeight(surfaceBounds)) &&
+        isfinite(cornerRadius)) {
+        self.surfaceView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:surfaceBounds
+                                       cornerRadius:MAX(0.0, cornerRadius)].CGPath;
+    } else {
+        self.surfaceView.layer.shadowPath = nil;
+    }
     [self pp_refreshAppearance];
 }
 
@@ -362,7 +378,8 @@
                       withHorizontalFittingPriority:UILayoutPriorityRequired
                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
     CGRect frame = attrs.frame;
-    frame.size.height = MAX(ceil(size.height), layoutAttributes.frame.size.height);
+    CGFloat fittingHeight = isfinite(size.height) ? ceil(size.height) : 0.0;
+    frame.size.height = MAX(fittingHeight, layoutAttributes.frame.size.height);
     attrs.frame = frame;
     return attrs;
 }

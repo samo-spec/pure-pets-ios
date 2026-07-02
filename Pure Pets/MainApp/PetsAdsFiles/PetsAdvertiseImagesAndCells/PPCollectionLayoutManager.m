@@ -126,7 +126,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
     }
     CGFloat contentWidth = MAX(width - 28.0, 96.0);
     CGFloat imageHeight = contentWidth * 0.78;
-    return ceil(14.0 + imageHeight + 12.0 + 66.0 + 10.0 + 44.0 + 10.0 + 28.0 + 16.0);
+    return ceil(14.0 + imageHeight + 14.0 + 66.0 + 10.0 + 44.0 + 10.0 + 28.0 + 16.0);
 }
 
 - (CGFloat)pp_serviceCardHeightForWidth:(CGFloat)width
@@ -432,12 +432,12 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
                                                              count:2];
 
             group.interItemSpacing =
-            [NSCollectionLayoutSpacing fixedSpacing:10];
+            [NSCollectionLayoutSpacing fixedSpacing:12];
 
             NSCollectionLayoutSection *sectionLayout =
             [NSCollectionLayoutSection sectionWithGroup:group];
 
-            sectionLayout.interGroupSpacing = 10;
+            sectionLayout.interGroupSpacing = 12;
             sectionLayout.contentInsets =
             NSDirectionalEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
 
