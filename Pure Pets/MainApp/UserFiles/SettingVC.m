@@ -2081,6 +2081,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     }
     [self saveUserInterfaceStyle:style];
     [self.prefs setObject:legacyKey forKey:@"themePreference"];
+    // Mark that the user made an explicit choice so the system-default migration
+    // in loadUserInterfaceStyle never overwrites a deliberate Light selection.
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"PPThemeUserChoseExplicitly"];
     UIWindow *window = [self pp_keyWindow];
     if (window) {
         [UIView transitionWithView:window

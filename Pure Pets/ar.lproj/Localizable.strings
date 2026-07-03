@@ -1241,11 +1241,18 @@
 /// MARK: - Price
 "form_price_title"                        = "السعر";
 "form_price_placeholder"                  = "أدخل السعر";
+"form_price_positive_error"               = "أدخل سعراً صالحاً";
 
 /// MARK: - Description
 "accessory_form_desc_title"               = "وصف الإكسسوار";
 "food_form_desc_title"                    = "وصف المنتج الغذائي";
 "form_desc_placeholder"                   = "أدخل الوصف";
+
+"form_required_error_format"              = "%@ مطلوب";
+"form_attachment_add_title"               = "إرفاق مستند";
+"form_attachment_add_subtitle"            = "ارفع من الكاميرا أو الصور أو المسح أو الملفات";
+"accessory_categories_unavailable_title"  = "لا توجد فئات متاحة";
+"accessory_categories_unavailable_message" = "اختر نوعاً آخر أو حاول مرة أخرى لاحقاً.";
 
 
 
@@ -3053,6 +3060,7 @@
 "listing_hide_action" = "إخفاء";
 "listing_show_action" = "إظهار";
 "listing_hidden_badge" = "مخفي";
+"used_accessory_badge" = "مستعمل";
 "listing_hidden_success" = "تم إخفاؤه من التصفح العام.";
 "listing_visible_success" = "أصبح ظاهراً في التصفح العام.";
 "listing_visibility_failed" = "تعذر تحديث الظهور. حاول مرة أخرى.";
@@ -3294,3 +3302,14 @@
 "nova_ambient_shake" = "نوفا هنا إذا احتجت مساعدة.";
 "nova_ambient_close_accessibility" = "إخفاء نوفا";
 "nova_ambient_accessibility_hint" = "يفتح محادثة نوفا.";
+
+/* Accessory and City Form Fields */
+"accessory_form_category_title" = "تصنيف المستلزمات";
+"accessory_form_category_placeholder" = "اختر التصنيف";
+"accessory_form_category_selector_title" = "اختر تصنيف المستلزمات";
+"form_city_title" = "المدينة";
+"form_city_placeholder" = "اختر المدينة";
+"form_city_selector_title" = "اختر المدينة";
+"media_upload_failed_default_message" = "تعذر رفع الصور.";
+"max_images_count_error_format" = "الحد الأقصى المسموح به هو %ld صور.";
+"image_prepare_failed_format" = "تعذر تجهيز الصورة رقم %ld.";

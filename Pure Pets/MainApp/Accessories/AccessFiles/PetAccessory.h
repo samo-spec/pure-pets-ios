@@ -42,6 +42,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, assign) NSInteger petMainCategoryID;
 @property (nonatomic, assign) NSInteger petSubCategoryID;
+@property (nonatomic, copy, nullable) NSString *AccessoryCategoryID;
+@property (nonatomic, assign) NSInteger cityID;
 
 @property (nonatomic, strong) NSDate *createdAt;
 @property (nonatomic, strong, nullable) NSDate *expiryDate;

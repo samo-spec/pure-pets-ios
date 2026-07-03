@@ -1722,6 +1722,47 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_configureAvailabilityWithViewModel:(PPUniversalCellViewModel *)vm
 {
+    if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)vm.ModelObject;
+        BOOL isUsedAccessory = accessory.condition == AccessConditionsUsed &&
+                               accessory.accessKindType == AccessTypeAccessory;
+        if (isUsedAccessory) {
+            NSString *usedTitle = PPUniversalCellLocalizedString(@"used_accessory_badge",
+                                                                 PPUniversalCellLocalizedString(@"Used", @"Used"));
+            UIColor *usedForeground = PPUniversalCellDynamicColor(
+                [UIColor colorWithRed:0.18 green:0.32 blue:0.48 alpha:1.0],
+                [UIColor colorWithRed:0.70 green:0.83 blue:1.00 alpha:1.0]);
+            UIColor *usedBackground = PPUniversalCellDynamicColor(
+                [UIColor colorWithRed:0.90 green:0.95 blue:1.00 alpha:0.92],
+                [UIColor colorWithRed:0.10 green:0.18 blue:0.28 alpha:0.72]);
+            UIColor *usedBorder = PPUniversalCellDynamicColor(
+                [UIColor colorWithRed:0.38 green:0.57 blue:0.78 alpha:0.30],
+                [UIColor colorWithRed:0.60 green:0.76 blue:1.00 alpha:0.34]);
+
+            self.availabilityLabel.font = PPUniversalCellBoldFont(12.0);
+            self.availabilityLabel.textColor = usedForeground;
+            self.availabilityLabel.attributedText = nil;
+            self.availabilityLabel.text = usedTitle;
+            self.availabilityLabel.accessibilityLabel = usedTitle;
+            self.availabilityLabel.backgroundColor = usedBackground;
+            self.availabilityLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
+            self.availabilityLabel.layer.borderWidth = 1.0;
+            [self.availabilityLabel pp_setBorderColor:usedBorder];
+            self.availabilityLabel.hidden = NO;
+            self.availabilityTopConstraint.constant = 10.0;
+            self.availabilityHeightConstraint.constant = PPUniversalPillHeight;
+
+            // No service/weight meta alongside used badge
+            self.serviceMetaLabel.text = @"";
+            self.serviceMetaLabel.attributedText = nil;
+            self.serviceMetaLabel.hidden = YES;
+            self.serviceMetaCollapsedConstraint.active = YES;
+            self.availabilityLeadingToBodyConstraint.active = YES;
+            self.availabilityLeadingToMetaConstraint.active = NO;
+            return;
+        }
+    }
+
     NSString *title = @"";
     UIColor *foreground = UIColor.whiteColor;
     UIColor *background = [UIColor colorWithRed:0.11 green:0.71 blue:0.43 alpha:0.10];

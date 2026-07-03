@@ -1254,11 +1254,18 @@
 /// MARK: - Price
 "form_price_title"                        = "Price";
 "form_price_placeholder"                  = "Enter price";
+"form_price_positive_error"               = "Enter a valid price";
 
 /// MARK: - Description
 "accessory_form_desc_title"               = "Accessory description";
 "food_form_desc_title"                    = "Food description";
 "form_desc_placeholder"                   = "Enter description";
+
+"form_required_error_format"              = "%@ is required";
+"form_attachment_add_title"               = "Attach document";
+"form_attachment_add_subtitle"            = "Upload from camera, photos, scan, or files";
+"accessory_categories_unavailable_title"  = "No categories available";
+"accessory_categories_unavailable_message" = "Please choose another species or try again later.";
 
 
 
@@ -3065,6 +3072,7 @@
 "listing_hide_action" = "Hide";
 "listing_show_action" = "Show";
 "listing_hidden_badge" = "Hidden";
+"used_accessory_badge" = "Used";
 "listing_hidden_success" = "Hidden from public browsing.";
 "listing_visible_success" = "Visible in public browsing.";
 "listing_visibility_failed" = "Could not update visibility. Please try again.";
@@ -3306,3 +3314,14 @@
 "nova_ambient_shake" = "Nova is here if you need help.";
 "nova_ambient_close_accessibility" = "Dismiss Nova";
 "nova_ambient_accessibility_hint" = "Opens Nova assistant chat.";
+
+/* Accessory and City Form Fields */
+"accessory_form_category_title" = "Accessory Category";
+"accessory_form_category_placeholder" = "Select Category";
+"accessory_form_category_selector_title" = "Select Category";
+"form_city_title" = "City";
+"form_city_placeholder" = "Select City";
+"form_city_selector_title" = "Select City";
+"media_upload_failed_default_message" = "Failed to upload images.";
+"max_images_count_error_format" = "Maximum %ld images are allowed.";
+"image_prepare_failed_format" = "Failed to prepare image at index %ld.";

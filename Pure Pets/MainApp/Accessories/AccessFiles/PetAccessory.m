@@ -105,6 +105,8 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     // Categories
     dict[@"petMainCategoryID"] = @(self.petMainCategoryID);
     dict[@"petSubCategoryID"] = @(self.petSubCategoryID);
+    if (self.AccessoryCategoryID) dict[@"AccessoryCategoryID"] = self.AccessoryCategoryID;
+    dict[@"cityID"] = @(self.cityID);
     
     // Dates and ownership
     if (self.createdAt) {
@@ -318,6 +320,8 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _imageMeta  = dict[@"imageMeta"] ?: nil;
         _petMainCategoryID = [dict[@"petMainCategoryID"] integerValue];
         _petSubCategoryID = [dict[@"petSubCategoryID"] integerValue];
+        _AccessoryCategoryID = [dict[@"AccessoryCategoryID"] isKindOfClass:NSString.class] ? dict[@"AccessoryCategoryID"] : nil;
+        _cityID = [dict[@"cityID"] ?: @(0) integerValue];
         id createdVal = dict[@"createdAt"];
         if ([createdVal isKindOfClass:[FIRTimestamp class]]) {
             _createdAt = [(FIRTimestamp *)createdVal dateValue];
@@ -407,6 +411,8 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.blurHash = [source.blurHash copy];
     copy.petMainCategoryID = source.petMainCategoryID;
     copy.petSubCategoryID = source.petSubCategoryID;
+    copy.AccessoryCategoryID = [source.AccessoryCategoryID copy];
+    copy.cityID = source.cityID;
     copy.condition = source.condition;
     copy.accessKindType = source.accessKindType;
     copy.imageURLsArray = [source.imageURLsArray copy];

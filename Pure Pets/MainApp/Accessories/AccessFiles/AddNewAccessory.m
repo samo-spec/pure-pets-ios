@@ -1,8 +1,12 @@
 #import "AddNewAccessory.h"
 #import "PPImageCollection.h"
+#import "PPFormEngine.h"
 #import "UserManager.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPSelectOptionViewController.h"
+#import <CoreLocation/CoreLocation.h>
+#import "CitiesManager.h"
+#import "CityModel.h"
 
 static NSString *const PPAddAccessoryLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 static NSString *const PPAddAccessoryErrorDomain = @"PPAddAccessoryErrorDomain";
@@ -16,11 +20,12 @@ static NSString *const PPAddAccessoryFieldPrice = @"price";
 static NSString *const PPAddAccessoryFieldDescription = @"desc";
 static NSString *const PPAddAccessoryFieldMainCategoryID = @"petMainCategoryID";
 static NSString *const PPAddAccessoryFieldSubCategoryID = @"petSubCategoryID";
+static NSString *const PPAddAccessoryFieldAccessoryCategoryID = @"AccessoryCategoryID";
+static NSString *const PPAddAccessoryFieldCityID = @"cityID";
 
 static NSInteger const PPAddAccessoryMaxImageCount = 8;
 static CGFloat const PPAddAccessoryCollectionHeight = 220.0;
 static CGFloat const PPAddAccessoryFooterHeight = 236.0;
-static CGFloat const PPAddAccessoryCollectionHorizontalInset = 16.0;
 static CGFloat const PPAddAccessoryProgressHeight = 4.0;
 static CGFloat const PPAddAccessoryUploadMaxDimension = 2048.0;
 
@@ -29,351 +34,22 @@ static inline NSString *PPAccessorySafeString(id value) {
 }
 
 // ────────────────────────────────────────────────────────────
-#pragma mark - Cell constants & helpers
-// ────────────────────────────────────────────────────────────
-
-static const CGFloat kPPFormCellHorizontalInset = 20.0;
-static const CGFloat kPPFormCellVerticalInset   = 10.0;
-
-static inline UISemanticContentAttribute PPFormCurrentSemanticAttribute(void) {
-    return Language.isRTL
-        ? UISemanticContentAttributeForceRightToLeft
-        : UISemanticContentAttributeForceLeftToRight;
-}
-
-// ────────────────────────────────────────────────────────────
-#pragma mark - Section / Row enumerations
-// ────────────────────────────────────────────────────────────
-
-typedef NS_ENUM(NSInteger, PPAccessoryFormSection) {
-    PPAccessoryFormSectionCategory = 0,
-    PPAccessoryFormSectionDetails,
-    PPAccessoryFormSectionCount
-};
-
-typedef NS_ENUM(NSInteger, PPAccessoryCategoryRow) {
-    PPAccessoryCategoryRowMain = 0,
-    PPAccessoryCategoryRowSub,
-    PPAccessoryCategoryRowCount
-};
-
-typedef NS_ENUM(NSInteger, PPAccessoryDetailRow) {
-    PPAccessoryDetailRowName = 0,
-    PPAccessoryDetailRowPrice,
-    PPAccessoryDetailRowDesc,
-    PPAccessoryDetailRowCount
-};
+#pragma mark - Field identifiers
 
 typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     PPAccessoryFieldKindName = 1,
-    PPAccessoryFieldKindPrice,
-    PPAccessoryFieldKindDesc
+    PPAccessoryFieldKindPrice
 };
 
-// ────────────────────────────────────────────────────────────
-#pragma mark - PPFormBaseCell
-// ────────────────────────────────────────────────────────────
-
-@interface PPFormBaseCell : UITableViewCell
-@end
-
-@implementation PPFormBaseCell
-- (void)setFrame:(CGRect)frame {
-    frame.origin.x = kPPFormCellHorizontalInset;
-    frame.size.width -= kPPFormCellHorizontalInset * 2.0;
-    frame.origin.y += kPPFormCellVerticalInset * 0.5;
-    frame.size.height -= kPPFormCellVerticalInset;
-    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
-    if (frame.size.height < 0.0) frame.size.height = 0.0;
-    [super setFrame:frame];
-}
-@end
-
-// ────────────────────────────────────────────────────────────
-#pragma mark - PPFormTextFieldCell
-// ────────────────────────────────────────────────────────────
-
-@interface PPFormTextFieldCell : PPFormBaseCell
-@property (nonatomic, strong) UILabel     *titleLabel;
-@property (nonatomic, strong) UITextField *textField;
-- (void)configureWithTitle:(NSString *)title text:(NSString *)text placeholder:(NSString *)placeholder
-              keyboardType:(UIKeyboardType)keyboardType fieldKind:(PPAccessoryFieldKind)fieldKind
-                    target:(id)target action:(SEL)action delegate:(id<UITextFieldDelegate>)delegate;
-@end
-
-@implementation PPFormTextFieldCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (!self) return nil;
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-
-    UILabel *tl = [[UILabel alloc] init];
-    tl.translatesAutoresizingMaskIntoConstraints = NO;
-    tl.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    tl.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    tl.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:tl];
-    self.titleLabel = tl;
-
-    UITextField *tf = [[UITextField alloc] init];
-    tf.translatesAutoresizingMaskIntoConstraints = NO;
-    tf.borderStyle = UITextBorderStyleNone;
-    tf.backgroundColor = UIColor.clearColor;
-    tf.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    tf.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    tf.clearButtonMode = UITextFieldViewModeWhileEditing;
-    tf.adjustsFontSizeToFitWidth = NO;
-    tf.autocorrectionType = UITextAutocorrectionTypeNo;
-    tf.textAlignment = Language.alignmentForCurrentLanguage;
-    tf.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    [self.contentView addSubview:tf];
-    self.textField = tf;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
-        [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        
-        
-        [tf.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:6.0],
-        [tf.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
-        [tf.trailingAnchor constraintEqualToAnchor:tl.trailingAnchor],
-        [tf.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-        [tf.heightAnchor constraintGreaterThanOrEqualToConstant:24.0]
-    ]];
-    return self;
-}
-
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
-}
-
-- (void)configureWithTitle:(NSString *)title text:(NSString *)text placeholder:(NSString *)placeholder
-              keyboardType:(UIKeyboardType)keyboardType fieldKind:(PPAccessoryFieldKind)fieldKind
-                    target:(id)target action:(SEL)action delegate:(id<UITextFieldDelegate>)delegate {
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.titleLabel.text = title ?: @"";
-    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textField.text = text ?: @"";
-    self.textField.placeholder = placeholder ?: @"";
-    self.textField.tag = fieldKind;
-    self.textField.delegate = delegate;
-    self.textField.keyboardType = keyboardType;
-    self.textField.returnKeyType = UIReturnKeyNext;
-    self.textField.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textField.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
-    if (target && action) {
-        [self.textField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
-    }
-}
-@end
-
-// ────────────────────────────────────────────────────────────
-#pragma mark - PPFormSelectorCell
-// ────────────────────────────────────────────────────────────
-
-@interface PPFormSelectorCell : PPFormBaseCell
-@property (nonatomic, strong) UILabel     *titleLabel;
-@property (nonatomic, strong) UILabel     *valueLabel;
-@property (nonatomic, strong) UIImageView *chevronView;
-- (void)configureWithTitle:(NSString *)title value:(NSString *)value disabled:(BOOL)disabled;
-@end
-
-@implementation PPFormSelectorCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (!self) return nil;
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-
-    UILabel *tl = [[UILabel alloc] init];
-    tl.translatesAutoresizingMaskIntoConstraints = NO;
-    tl.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    tl.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    tl.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:tl];
-    self.titleLabel = tl;
-
-    UILabel *vl = [[UILabel alloc] init];
-    vl.translatesAutoresizingMaskIntoConstraints = NO;
-    vl.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    vl.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    vl.numberOfLines = 2;
-    vl.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:vl];
-    self.valueLabel = vl;
-
-    UIImageView *cv = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.down"]];
-    cv.translatesAutoresizingMaskIntoConstraints = NO;
-    cv.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.8];
-    cv.contentMode = UIViewContentModeScaleAspectFit;
-    [self.contentView addSubview:cv];
-    self.chevronView = cv;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
-        [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        
-        [cv.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
-        [cv.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [cv.widthAnchor constraintEqualToConstant:14.0],
-        [cv.heightAnchor constraintEqualToConstant:14.0],
-        [vl.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:8.0],
-        [vl.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
-        [vl.trailingAnchor constraintEqualToAnchor:cv.leadingAnchor constant:-12.0],
-        [vl.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0]
-    ]];
-    return self;
-}
-
-- (void)configureWithTitle:(NSString *)title value:(NSString *)value disabled:(BOOL)disabled {
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.titleLabel.text = title ?: @"";
-    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.valueLabel.text = value ?: @"";
-    self.valueLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.userInteractionEnabled = !disabled;
-    CGFloat alpha = disabled ? 0.45 : 1.0;
-    self.titleLabel.alpha = alpha;
-    self.valueLabel.alpha = alpha;
-    self.chevronView.alpha = alpha;
-}
-@end
-
-// ────────────────────────────────────────────────────────────
-#pragma mark - PPFormTextViewCell
-// ────────────────────────────────────────────────────────────
-
-@interface PPFormTextViewCell : PPFormBaseCell
-@property (nonatomic, strong) UILabel    *titleLabel;
-@property (nonatomic, strong) UITextView *textView;
-@property (nonatomic, strong) UILabel    *placeholderLabel;
-@property (nonatomic, strong) NSLayoutConstraint *textViewHeightConstraint;
-- (void)configureWithTitle:(NSString *)title text:(NSString *)text placeholder:(NSString *)placeholder
-                 fieldKind:(PPAccessoryFieldKind)fieldKind delegate:(id<UITextViewDelegate>)delegate;
-- (void)updatePreferredHeight;
-- (void)updatePlaceholderVisibility;
-@end
-
-@implementation PPFormTextViewCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (!self) return nil;
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-
-    UILabel *tl = [[UILabel alloc] init];
-    tl.translatesAutoresizingMaskIntoConstraints = NO;
-    tl.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    tl.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    tl.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:tl];
-    self.titleLabel = tl;
-
-    UITextView *tv = [[UITextView alloc] init];
-    tv.translatesAutoresizingMaskIntoConstraints = NO;
-    tv.backgroundColor = UIColor.clearColor;
-    tv.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    tv.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
-    tv.scrollEnabled = NO;
-    tv.textContainerInset = UIEdgeInsetsZero;
-    tv.textContainer.lineFragmentPadding = 0.0;
-    tv.autocorrectionType = UITextAutocorrectionTypeNo;
-    tv.textAlignment = Language.alignmentForCurrentLanguage;
-    tv.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    [self.contentView addSubview:tv];
-    self.textView = tv;
-
-    UILabel *pl = [[UILabel alloc] init];
-    pl.translatesAutoresizingMaskIntoConstraints = NO;
-    pl.font = tv.font;
-    pl.textColor = UIColor.placeholderTextColor;
-    pl.numberOfLines = 0;
-    pl.userInteractionEnabled = NO;
-    [self.contentView addSubview:pl];
-    self.placeholderLabel = pl;
-
-    NSLayoutConstraint *hc = [tv.heightAnchor constraintGreaterThanOrEqualToConstant:116.0];
-    hc.active = YES;
-    self.textViewHeightConstraint = hc;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
-        [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
-        
-        [tv.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:8.0],
-        [tv.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
-        [tv.trailingAnchor constraintEqualToAnchor:tl.trailingAnchor],
-        [tv.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-        [pl.topAnchor constraintEqualToAnchor:tv.topAnchor],
-        [pl.leadingAnchor constraintEqualToAnchor:tv.leadingAnchor constant:2.0],
-        [pl.trailingAnchor constraintLessThanOrEqualToAnchor:tv.trailingAnchor]
-    ]];
-    return self;
-}
-
-- (void)configureWithTitle:(NSString *)title text:(NSString *)text placeholder:(NSString *)placeholder
-                 fieldKind:(PPAccessoryFieldKind)fieldKind delegate:(id<UITextViewDelegate>)delegate {
-    self.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.titleLabel.text = title ?: @"";
-    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textView.tag = fieldKind;
-    self.textView.delegate = delegate;
-    self.textView.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textView.semanticContentAttribute = PPFormCurrentSemanticAttribute();
-    self.textView.text = text ?: @"";
-    self.placeholderLabel.text = placeholder ?: @"";
-    self.placeholderLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self updatePlaceholderVisibility];
-    [self updatePreferredHeight];
-}
-
-- (void)updatePreferredHeight {
-    CGFloat fw = CGRectGetWidth(self.textView.bounds);
-    if (fw <= 1.0) fw = UIScreen.mainScreen.bounds.size.width - 72.0;
-    CGSize ts = CGSizeMake(MAX(120.0, fw), CGFLOAT_MAX);
-    CGFloat ph = ceil([self.textView sizeThatFits:ts].height);
-    self.textViewHeightConstraint.constant = MAX(116.0, ph);
-}
-
-- (void)updatePlaceholderVisibility {
-    self.placeholderLabel.hidden = self.textView.text.length > 0;
-}
-@end
-
-// ────────────────────────────────────────────────────────────
 #pragma mark - AddNewAccessory  (main controller)
 // ────────────────────────────────────────────────────────────
 
-@interface AddNewAccessory ()<PPImageCollectionDelegate, UITableViewDataSource, UITableViewDelegate,
-                              UITextFieldDelegate, UITextViewDelegate>
+@interface AddNewAccessory ()<PPImageCollectionDelegate, UITextFieldDelegate, CLLocationManagerDelegate>
 
-@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView *contentStack;
+@property (nonatomic, strong) PPFormEngineView *categoryFormView;
+@property (nonatomic, strong) PPFormEngineView *detailsFormView;
 @property (nonatomic, strong) PPImageCollection *imageCollection;
 @property (nonatomic, strong) UIView *imageFooterContainer;
 @property (nonatomic, strong) PetAccessory *accessModel;
@@ -383,6 +59,10 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 // Draft properties (replace XLFormRowDescriptors)
 @property (nonatomic, strong) MainKindsModel *draftMainKind;
 @property (nonatomic, strong) SubKindModel   *draftSubKind;
+@property (nonatomic, strong, nullable) PPAccessoryCategoryModel *draftAccessoryCategory;
+@property (nonatomic, strong, nullable) CityModel *draftCity;
+@property (nonatomic, strong, nullable) NSArray<CityModel *> *citiesList;
+@property (nonatomic, strong, nullable) CLLocationManager *locationManager;
 @property (nonatomic, copy)   NSString       *draftName;
 @property (nonatomic, strong) NSNumber       *draftPrice;
 @property (nonatomic, copy)   NSString       *draftDesc;
@@ -432,8 +112,12 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         self.isHydratingFormData = NO;
     }
 
+    [self pp_setupSmartCityPicker];
+
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleLanguageDidChange:)
                                                  name:PPAddAccessoryLanguageDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleMainKindsUpdated:)
+                                                 name:PPMainKindsUpdatedNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pp_handleBlockedStateNotification:)
                                                  name:PPUserManagerDidUpdateBlockedStateNotification object:UserManager.sharedManager];
     [self pp_refreshMediaLocalizedText];
@@ -527,6 +211,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     NSMutableDictionary *snap = [NSMutableDictionary dictionary];
     if (self.accessModel.petMainCategoryID > 0) snap[PPAddAccessoryFieldMainCategoryID] = @(self.accessModel.petMainCategoryID);
     if (self.accessModel.petSubCategoryID > 0) snap[PPAddAccessoryFieldSubCategoryID] = @(self.accessModel.petSubCategoryID);
+    if (self.accessModel.AccessoryCategoryID.length) snap[PPAddAccessoryFieldAccessoryCategoryID] = self.accessModel.AccessoryCategoryID;
+    if (self.accessModel.cityID > 0) snap[PPAddAccessoryFieldCityID] = @(self.accessModel.cityID);
     NSString *n = [PPAccessorySafeString(self.draftName) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (n.length) snap[PPAddAccessoryFieldName] = n;
     NSNumber *p = [self pp_numberFromValue:self.draftPrice];
@@ -601,6 +287,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     dm.accessKindType = self.accessKindType;
     dm.petMainCategoryID = [stored[PPAddAccessoryFieldMainCategoryID] integerValue];
     dm.petSubCategoryID = [stored[PPAddAccessoryFieldSubCategoryID] integerValue];
+    dm.AccessoryCategoryID = stored[PPAddAccessoryFieldAccessoryCategoryID];
+    dm.cityID = [stored[PPAddAccessoryFieldCityID] integerValue];
     dm.name = PPAccessorySafeString(stored[PPAddAccessoryFieldName]);
     dm.price = [self pp_numberFromValue:stored[PPAddAccessoryFieldPrice]] ?: @0;
     dm.desc = PPAccessorySafeString(stored[PPAddAccessoryFieldDescription]);
@@ -613,7 +301,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     self.isHydratingMedia = NO;
     self.hasUserModifiedForm = NO;
     self.isHydratingFormData = NO;
-    [self.tableView reloadData];
+    [self pp_refreshFormValuesAndStates];
     return YES;
 }
 
@@ -694,31 +382,35 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (void)setupImageCollection {
     self.imageCollection = [[PPImageCollection alloc] initWithFrame:CGRectZero maxImageCount:PPAddAccessoryMaxImageCount useArabic:Language.isRTL];
+    self.imageCollection.translatesAutoresizingMaskIntoConstraints = NO;
     self.imageCollection.delegate = self;
     self.imageCollection.allowsEditing = YES;
     self.imageCollection.allowsVideoSelection = YES;
     self.imageCollection.useArabic = Language.isRTL;
-    UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, PPAddAccessoryFooterHeight)];
+    UIView *footer = [[UIView alloc] init];
+    footer.translatesAutoresizingMaskIntoConstraints = NO;
     footer.backgroundColor = UIColor.clearColor;
     [footer addSubview:self.imageCollection];
     self.imageFooterContainer = footer;
-    self.tableView.tableFooterView = footer;
+    [self.contentStack addArrangedSubview:footer];
+    [NSLayoutConstraint activateConstraints:@[
+        [footer.heightAnchor constraintGreaterThanOrEqualToConstant:PPAddAccessoryFooterHeight],
+        [self.imageCollection.topAnchor constraintEqualToAnchor:footer.topAnchor],
+        [self.imageCollection.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor],
+        [self.imageCollection.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor],
+        [self.imageCollection.heightAnchor constraintEqualToConstant:PPAddAccessoryCollectionHeight],
+        [self.imageCollection.bottomAnchor constraintLessThanOrEqualToAnchor:footer.bottomAnchor]
+    ]];
     [self pp_updateImageFooterLayoutIfNeeded];
     [self pp_refreshMediaLocalizedText];
 }
 
 - (void)pp_updateImageFooterLayoutIfNeeded {
     if (!self.imageFooterContainer || !self.imageCollection) return;
-    CGFloat tw = self.tableView.bounds.size.width;
-    if (tw <= 0) return;
-    CGRect ff = self.imageFooterContainer.frame;
-    if (fabs(ff.size.width - tw) > 0.5 || fabs(ff.size.height - PPAddAccessoryFooterHeight) > 0.5) {
-        ff.size.width = tw; ff.size.height = PPAddAccessoryFooterHeight;
-        self.imageFooterContainer.frame = ff;
-    }
-    CGFloat cw = MAX(0, tw - (PPAddAccessoryCollectionHorizontalInset * 2.0));
-    self.imageCollection.frame = CGRectMake(PPAddAccessoryCollectionHorizontalInset, 0, cw, PPAddAccessoryCollectionHeight);
-    self.tableView.tableFooterView = self.imageFooterContainer;
+    [self.imageFooterContainer setNeedsLayout];
+    [self.imageFooterContainer layoutIfNeeded];
+    [self.imageCollection setNeedsLayout];
+    [self.imageCollection layoutIfNeeded];
 }
 
 #pragma mark - Localization / Titles
@@ -742,7 +434,33 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 }
 
 - (void)pp_handleLanguageDidChange:(NSNotification *)note {
+    [self pp_rebuildFormFields];
+    [self pp_refreshFormValuesAndStates];
     [self pp_refreshMediaLocalizedText]; [self pp_updateNavigationTitle]; [self ios26Bar];
+}
+
+- (void)pp_handleMainKindsUpdated:(NSNotification *)note {
+    NSInteger mainKindID = self.draftMainKind ? self.draftMainKind.ID : self.accessModel.petMainCategoryID;
+    if (mainKindID <= 0) return;
+
+    MainKindsModel *freshKind = [MKM mainKindForID:mainKindID];
+    if (!freshKind) return;
+    self.draftMainKind = freshKind;
+    self.selectedKind = freshKind;
+
+    if (self.accessModel.petSubCategoryID > 0) {
+        self.draftSubKind = [freshKind subKindForID:self.accessModel.petSubCategoryID];
+    }
+
+    if (self.accessModel.AccessoryCategoryID.length > 0) {
+        PPAccessoryCategoryModel *freshCategory = [freshKind accessoryCategoryForID:self.accessModel.AccessoryCategoryID];
+        if (freshCategory) {
+            self.draftAccessoryCategory = freshCategory;
+        } else {
+            [self pp_hydrateAccessoryCategoryForModel:self.accessModel];
+        }
+    }
+    [self pp_refreshFormValuesAndStates];
 }
 
 - (void)pp_updateNavigationTitle {
@@ -881,6 +599,11 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (void)prefillFromModel:(PetAccessory *)model {
     if (!model) return;
+    self.accessModel.petMainCategoryID = model.petMainCategoryID;
+    self.accessModel.petSubCategoryID = model.petSubCategoryID;
+    self.accessModel.AccessoryCategoryID = [model.AccessoryCategoryID copy];
+    self.accessModel.cityID = model.cityID;
+
     self.selectedKind = [MKM mainKindForID:model.petMainCategoryID];
     self.draftMainKind = self.selectedKind;
     if (self.selectedKind) {
@@ -888,41 +611,280 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         for (SubKindModel *sub in self.selectedKind.SubKindsArray) { if (sub.ID == model.petSubCategoryID) { sk = sub; break; } }
         self.draftSubKind = sk;
     } else { self.draftSubKind = nil; }
+
+    if (model.AccessoryCategoryID.length > 0) {
+        [self pp_hydrateAccessoryCategoryForModel:model];
+    } else {
+        self.draftAccessoryCategory = nil;
+    }
+
+    if (model.cityID > 0) {
+        self.draftCity = [CitiesManager.shared cityByID:model.cityID];
+    } else {
+        self.draftCity = nil;
+    }
+
     self.draftName = model.name ?: @"";
     self.draftPrice = model.price ?: @0;
     self.draftDesc = model.desc ?: @"";
     [self pp_syncModelFromDraftProperties];
-    [self.tableView reloadData];
+    [self pp_refreshFormValuesAndStates];
 }
 
-#pragma mark - Form (TableView Setup)
+#pragma mark - Form (PPFormEngine Setup)
 
 - (void)initForm {
     self.view.backgroundColor = AppBackgroundClr;
     self.view.clipsToBounds = YES;
-    UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleGrouped];
-    tv.translatesAutoresizingMaskIntoConstraints = NO;
-    tv.delegate = self; tv.dataSource = self;
-    tv.separatorStyle = UITableViewCellSeparatorStyleNone;
-    tv.showsVerticalScrollIndicator = NO; tv.showsHorizontalScrollIndicator = NO;
-    tv.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    tv.rowHeight = UITableViewAutomaticDimension; tv.estimatedRowHeight = 84.0;
-    tv.backgroundColor = AppClearClr; tv.clipsToBounds = YES;
-    tv.contentInset = UIEdgeInsetsMake(6, 0, 24, 0);
-    tv.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 24, 0);
-    tv.sectionFooterHeight = 0; tv.estimatedSectionFooterHeight = 0;
-    if (@available(iOS 15.0, *)) tv.sectionHeaderTopPadding = 0.0;
-    [tv registerClass:PPFormTextFieldCell.class forCellReuseIdentifier:@"PPFormTextFieldCell"];
-    [tv registerClass:PPFormSelectorCell.class forCellReuseIdentifier:@"PPFormSelectorCell"];
-    [tv registerClass:PPFormTextViewCell.class forCellReuseIdentifier:@"PPFormTextViewCell"];
-    [self.view addSubview:tv];
+
+    UIScrollView *scroll = [[UIScrollView alloc] init];
+    scroll.translatesAutoresizingMaskIntoConstraints = NO;
+    scroll.backgroundColor = UIColor.clearColor;
+    scroll.showsVerticalScrollIndicator = NO;
+    scroll.showsHorizontalScrollIndicator = NO;
+    scroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    scroll.contentInset = UIEdgeInsetsMake(6, 0, 24, 0);
+    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 24, 0);
+    [self.view addSubview:scroll];
+    self.scrollView = scroll;
+
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.distribution = UIStackViewDistributionFill;
+    stack.spacing = 14.0;
+    stack.layoutMarginsRelativeArrangement = YES;
+    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0, 20.0, 0.0, 20.0);
+    [scroll addSubview:stack];
+    self.contentStack = stack;
+
     [NSLayoutConstraint activateConstraints:@[
-        [tv.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
-        [tv.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [tv.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [tv.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        [scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [scroll.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor],
+        [stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor]
     ]];
-    self.tableView = tv;
+
+    NSString *categoryTitle = (self.accessKindType == AccessTypeAccessory)
+        ? [self pp_localizedStringForKey:@"accessory_form_category_section_title" fallback:@"Category"]
+        : [self pp_localizedStringForKey:@"food_form_category_section_title" fallback:@"Category"];
+    NSString *detailsTitle = (self.accessKindType == AccessTypeFood)
+        ? [self pp_localizedStringForKey:@"food_form_details_section_title" fallback:@"Details"]
+        : [self pp_localizedStringForKey:@"accessory_form_details_section_title" fallback:@"Details"];
+
+    [stack addArrangedSubview:[self pp_sectionHeaderViewWithTitle:categoryTitle subtitle:@""]];
+    self.categoryFormView = [[PPFormEngineView alloc] initWithStyle:[self pp_accessoryFormStyle]];
+    [stack addArrangedSubview:self.categoryFormView];
+
+    [stack addArrangedSubview:[self pp_sectionHeaderViewWithTitle:detailsTitle subtitle:@""]];
+    self.detailsFormView = [[PPFormEngineView alloc] initWithStyle:[self pp_accessoryFormStyle]];
+    [stack addArrangedSubview:self.detailsFormView];
+
+    [self pp_rebuildFormFields];
+}
+
+- (PPFormStyle *)pp_accessoryFormStyle {
+    PPFormStyle *style = [PPFormStyle defaultStyle];
+    style.cardBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.16 green:0.16 blue:0.18 alpha:1.0]
+            : UIColor.whiteColor;
+    }];
+    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0]
+            : [UIColor colorWithRed:0.96 green:0.96 blue:0.98 alpha:1.0];
+    }];
+    style.accentColor = AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemTealColor;
+    style.primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    style.secondaryTextColor = UIColor.secondaryLabelColor;
+    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    style.inputFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    style.cardCornerRadius = 24.0;
+    style.fieldCornerRadius = 14.0;
+    style.stackSpacing = 12.0;
+    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.03;
+    style.shadowRadius = 16.0;
+    style.shadowOffset = CGSizeMake(0.0, 6.0);
+    return style;
+}
+
+- (void)pp_rebuildFormFields {
+    __weak typeof(self) ws = self;
+
+    PPFormFieldConfig *species = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldMainCategoryID
+                                                                  title:[self pp_localizedStringForKey:@"form_species_title" fallback:@"Species"]
+                                                            placeholder:[self pp_localizedStringForKey:@"form_species_placeholder" fallback:@"Select species"]
+                                                              inputType:PPFormInputTypePicker];
+    species.value = [self pp_mainKindDisplayText];
+    species.required = YES;
+    species.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        (void)config; (void)row;
+        [ws pp_presentMainCategoryPicker];
+    };
+
+    PPFormFieldConfig *breed = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldSubCategoryID
+                                                                title:[self pp_localizedStringForKey:@"form_breed_title" fallback:@"Breed"]
+                                                          placeholder:[self pp_localizedStringForKey:@"form_breed_placeholder" fallback:@"Select breed"]
+                                                            inputType:PPFormInputTypePicker];
+    breed.value = [self pp_subKindDisplayText];
+    breed.enabled = (self.draftMainKind != nil);
+    breed.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        (void)config; (void)row;
+        [ws pp_presentSubCategoryPicker];
+    };
+
+    [self.categoryFormView setFields:@[species, breed]];
+
+    NSString *nameTitle = (self.accessKindType == AccessTypeFood)
+        ? [self pp_localizedStringForKey:@"food_form_name_title" fallback:@"Food name"]
+        : [self pp_localizedStringForKey:@"accessory_form_name_title" fallback:@"Accessory name"];
+    NSString *namePlaceholder = (self.accessKindType == AccessTypeFood)
+        ? [self pp_localizedStringForKey:@"food_form_name_placeholder" fallback:@"Enter food name"]
+        : [self pp_localizedStringForKey:@"accessory_form_name_placeholder" fallback:@"Enter accessory name"];
+    PPFormFieldConfig *name = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldName
+                                                               title:nameTitle
+                                                         placeholder:namePlaceholder
+                                                           inputType:PPFormInputTypeText];
+    name.value = self.draftName ?: @"";
+    name.required = YES;
+    name.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        (void)config;
+        __strong typeof(ws) s = ws; if (!s) return;
+        s.draftName = value ?: @"";
+        s.accessModel.name = s.draftName;
+        if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
+        [s.detailsFormView setErrorText:nil forIdentifier:PPAddAccessoryFieldName];
+    };
+
+    PPFormFieldConfig *price = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldPrice
+                                                                title:[self pp_localizedStringForKey:@"form_price_title" fallback:@"Price"]
+                                                          placeholder:[self pp_localizedStringForKey:@"form_price_placeholder" fallback:@"Enter price"]
+                                                            inputType:PPFormInputTypeNumber];
+    price.value = (self.draftPrice && [self.draftPrice doubleValue] > 0.0) ? [self.draftPrice stringValue] : @"";
+    price.required = YES;
+    price.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        (void)config;
+        __strong typeof(ws) s = ws; if (!s) return;
+        NSNumber *p = [s pp_numberFromValue:value ?: @""];
+        s.draftPrice = p;
+        s.accessModel.price = p ?: @0;
+        if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
+        [s.detailsFormView setErrorText:nil forIdentifier:PPAddAccessoryFieldPrice];
+    };
+
+    NSString *descTitle = (self.accessKindType == AccessTypeFood)
+        ? [self pp_localizedStringForKey:@"food_form_desc_title" fallback:@"Description"]
+        : [self pp_localizedStringForKey:@"accessory_form_desc_title" fallback:@"Description"];
+    PPFormFieldConfig *desc = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldDescription
+                                                               title:descTitle
+                                                         placeholder:[self pp_localizedStringForKey:@"form_desc_placeholder" fallback:@"Add details"]
+                                                           inputType:PPFormInputTypeTextView];
+    desc.value = self.draftDesc ?: @"";
+    desc.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        (void)config;
+        __strong typeof(ws) s = ws; if (!s) return;
+        s.draftDesc = value ?: @"";
+        s.accessModel.desc = s.draftDesc;
+        if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
+    };
+
+    PPFormFieldConfig *category = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldAccessoryCategoryID
+                                                                   title:[self pp_localizedStringForKey:@"accessory_form_category_title" fallback:@"Accessory Category"]
+                                                             placeholder:[self pp_localizedStringForKey:@"accessory_form_category_placeholder" fallback:@"Select Category"]
+                                                               inputType:PPFormInputTypePicker];
+    category.value = [self pp_accessoryCategoryDisplayText];
+    category.required = YES;
+    category.enabled = (self.draftMainKind != nil);
+    category.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        (void)config; (void)row;
+        [ws pp_presentAccessoryCategoryPicker];
+    };
+
+    PPFormFieldConfig *city = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldCityID
+                                                               title:[self pp_localizedStringForKey:@"form_city_title" fallback:@"City"]
+                                                         placeholder:[self pp_localizedStringForKey:@"form_city_placeholder" fallback:@"Select City"]
+                                                           inputType:PPFormInputTypePicker];
+    city.value = [self pp_cityDisplayText];
+    city.required = YES;
+    city.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        (void)config; (void)row;
+        [ws pp_presentCityPicker];
+    };
+
+    [self.detailsFormView setFields:@[name, price, desc, category, city]];
+
+    PPFormFieldRowView *nameRow = [self pp_rowForIdentifier:PPAddAccessoryFieldName];
+    nameRow.textField.returnKeyType = UIReturnKeyNext;
+    nameRow.textField.tag = PPAccessoryFieldKindName;
+    nameRow.externalTextFieldDelegate = self;
+
+    PPFormFieldRowView *priceRow = [self pp_rowForIdentifier:PPAddAccessoryFieldPrice];
+    priceRow.textField.returnKeyType = UIReturnKeyDone;
+    priceRow.textField.tag = PPAccessoryFieldKindPrice;
+    priceRow.externalTextFieldDelegate = self;
+}
+
+- (void)pp_refreshFormValuesAndStates {
+    if (!self.categoryFormView || !self.detailsFormView) return;
+
+    [self.categoryFormView setValue:[self pp_mainKindDisplayText] forIdentifier:PPAddAccessoryFieldMainCategoryID];
+    [self.categoryFormView setValue:[self pp_subKindDisplayText] forIdentifier:PPAddAccessoryFieldSubCategoryID];
+    [self.categoryFormView setFieldEnabled:(self.draftMainKind != nil) identifier:PPAddAccessoryFieldSubCategoryID];
+
+    [self.detailsFormView setValue:self.draftName ?: @"" forIdentifier:PPAddAccessoryFieldName];
+    NSString *priceText = (self.draftPrice && [self.draftPrice doubleValue] > 0.0) ? [self.draftPrice stringValue] : @"";
+    [self.detailsFormView setValue:priceText forIdentifier:PPAddAccessoryFieldPrice];
+    [self.detailsFormView setValue:self.draftDesc ?: @"" forIdentifier:PPAddAccessoryFieldDescription];
+    [self.detailsFormView setValue:[self pp_accessoryCategoryDisplayText] forIdentifier:PPAddAccessoryFieldAccessoryCategoryID];
+    [self.detailsFormView setFieldEnabled:(self.draftMainKind != nil) identifier:PPAddAccessoryFieldAccessoryCategoryID];
+    [self.detailsFormView setValue:[self pp_cityDisplayText] forIdentifier:PPAddAccessoryFieldCityID];
+}
+
+- (PPFormEngineView *)pp_formViewForIdentifier:(NSString *)identifier {
+    if ([identifier isEqualToString:PPAddAccessoryFieldMainCategoryID] ||
+        [identifier isEqualToString:PPAddAccessoryFieldSubCategoryID]) {
+        return self.categoryFormView;
+    }
+    return self.detailsFormView;
+}
+
+- (PPFormFieldRowView *)pp_rowForIdentifier:(NSString *)identifier {
+    return [[self pp_formViewForIdentifier:identifier] rowForIdentifier:identifier];
+}
+
+- (void)pp_setFieldError:(NSString *)error identifier:(NSString *)identifier {
+    [[self pp_formViewForIdentifier:identifier] setErrorText:error forIdentifier:identifier];
+}
+
+- (NSString *)pp_requiredErrorForTitle:(NSString *)title {
+    NSString *format = [self pp_localizedStringForKey:@"form_required_error_format" fallback:@"%@ is required"];
+    return [NSString stringWithFormat:format, title ?: @""];
+}
+
+- (NSString *)pp_mainKindDisplayText {
+    return self.draftMainKind ? [self pp_displayNameForModel:self.draftMainKind] : @"";
+}
+
+- (NSString *)pp_subKindDisplayText {
+    return self.draftSubKind ? [self pp_displayNameForModel:self.draftSubKind] : @"";
+}
+
+- (NSString *)pp_accessoryCategoryDisplayText {
+    return self.draftAccessoryCategory ? [self.draftAccessoryCategory displayName] : @"";
+}
+
+- (NSString *)pp_cityDisplayText {
+    if (!self.draftCity) return @"";
+    return Language.isRTL ? (self.draftCity.arName ?: @"") : (self.draftCity.enName ?: @"");
 }
 
 - (NSNumber *)pp_numberFromValue:(id)value {
@@ -942,6 +904,10 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     MainKindsModel *mk = self.draftMainKind ?: self.selectedKind;
     self.selectedKind = mk; self.accessModel.petMainCategoryID = mk.ID;
     self.accessModel.petSubCategoryID = self.draftSubKind ? self.draftSubKind.ID : 0;
+    if (self.draftAccessoryCategory) {
+        self.accessModel.AccessoryCategoryID = self.draftAccessoryCategory.categoryID ?: nil;
+    }
+    self.accessModel.cityID = self.draftCity ? self.draftCity.cityID : 0;
     self.accessModel.accessKindType = self.accessKindType;
     if (self.accessModel.condition != AccessConditionsNew && self.accessModel.condition != AccessConditionsUsed)
         self.accessModel.condition = (self.accessKindType == AccessTypeFood) ? AccessConditionsNew : AccessConditionsUsed;
@@ -951,91 +917,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     if (!self.accessModel.createdAt) self.accessModel.createdAt = NSDate.date;
 }
 
-#pragma mark - UITableViewDataSource
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tv { return PPAccessoryFormSectionCount; }
-
-- (NSInteger)tableView:(UITableView *)tv numberOfRowsInSection:(NSInteger)s {
-    switch ((PPAccessoryFormSection)s) {
-        case PPAccessoryFormSectionCategory: return PPAccessoryCategoryRowCount;
-        case PPAccessoryFormSectionDetails:  return PPAccessoryDetailRowCount;
-        default: return 0;
-    }
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tv cellForRowAtIndexPath:(NSIndexPath *)ip {
-    switch ((PPAccessoryFormSection)ip.section) {
-        case PPAccessoryFormSectionCategory: return [self pp_categoryCellForRow:ip.row];
-        case PPAccessoryFormSectionDetails:  return [self pp_detailCellForRow:ip.row];
-        default: return [[UITableViewCell alloc] init];
-    }
-}
-
-- (UITableViewCell *)pp_categoryCellForRow:(NSInteger)row {
-    PPFormSelectorCell *cell = [self.tableView dequeueReusableCellWithIdentifier:@"PPFormSelectorCell"];
-    if (!cell) cell = [[PPFormSelectorCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPFormSelectorCell"];
-    switch ((PPAccessoryCategoryRow)row) {
-        case PPAccessoryCategoryRowMain: {
-            NSString *t = [self pp_localizedStringForKey:@"form_species_title" fallback:@"Species"];
-            NSString *v = self.draftMainKind ? [self pp_displayNameForModel:self.draftMainKind]
-                : [self pp_localizedStringForKey:@"form_species_placeholder" fallback:@"Select species"];
-            [cell configureWithTitle:t value:v disabled:NO];
-            cell.valueLabel.textColor = self.draftMainKind ? (AppPrimaryTextClr ?: UIColor.labelColor) : UIColor.placeholderTextColor;
-            break;
-        }
-        case PPAccessoryCategoryRowSub: {
-            NSString *t = [self pp_localizedStringForKey:@"form_breed_title" fallback:@"Breed"];
-            BOOL dis = (self.draftMainKind == nil);
-            NSString *v = self.draftSubKind ? [self pp_displayNameForModel:self.draftSubKind]
-                : [self pp_localizedStringForKey:@"form_breed_placeholder" fallback:@"Select breed"];
-            [cell configureWithTitle:t value:v disabled:dis];
-            cell.valueLabel.textColor = self.draftSubKind ? (AppPrimaryTextClr ?: UIColor.labelColor) : UIColor.placeholderTextColor;
-            break;
-        }
-        default: break;
-    }
-    return cell;
-}
-
-- (UITableViewCell *)pp_detailCellForRow:(NSInteger)row {
-    switch ((PPAccessoryDetailRow)row) {
-        case PPAccessoryDetailRowName: {
-            PPFormTextFieldCell *c = [self.tableView dequeueReusableCellWithIdentifier:@"PPFormTextFieldCell"];
-            if (!c) c = [[PPFormTextFieldCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPFormTextFieldCell"];
-            NSString *t = (self.accessKindType == AccessTypeFood)
-                ? [self pp_localizedStringForKey:@"food_form_name_title" fallback:@"Food name"]
-                : [self pp_localizedStringForKey:@"accessory_form_name_title" fallback:@"Accessory name"];
-            NSString *p = (self.accessKindType == AccessTypeFood)
-                ? [self pp_localizedStringForKey:@"food_form_name_placeholder" fallback:@"Enter food name"]
-                : [self pp_localizedStringForKey:@"accessory_form_name_placeholder" fallback:@"Enter accessory name"];
-            [c configureWithTitle:t text:self.draftName placeholder:p keyboardType:UIKeyboardTypeDefault
-                        fieldKind:PPAccessoryFieldKindName target:self action:@selector(pp_textFieldEditingChanged:) delegate:self];
-            return c;
-        }
-        case PPAccessoryDetailRowPrice: {
-            PPFormTextFieldCell *c = [self.tableView dequeueReusableCellWithIdentifier:@"PPFormTextFieldCell"];
-            if (!c) c = [[PPFormTextFieldCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPFormTextFieldCell"];
-            NSString *pt = (self.draftPrice && [self.draftPrice integerValue] != 0) ? [self.draftPrice stringValue] : @"";
-            [c configureWithTitle:[self pp_localizedStringForKey:@"form_price_title" fallback:@"Price"]
-                             text:pt placeholder:[self pp_localizedStringForKey:@"form_price_placeholder" fallback:@"Enter price"]
-                     keyboardType:UIKeyboardTypeNumberPad fieldKind:PPAccessoryFieldKindPrice
-                           target:self action:@selector(pp_textFieldEditingChanged:) delegate:self];
-            return c;
-        }
-        case PPAccessoryDetailRowDesc: {
-            PPFormTextViewCell *c = [self.tableView dequeueReusableCellWithIdentifier:@"PPFormTextViewCell"];
-            if (!c) c = [[PPFormTextViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPFormTextViewCell"];
-            NSString *t = (self.accessKindType == AccessTypeFood)
-                ? [self pp_localizedStringForKey:@"food_form_desc_title" fallback:@"Description"]
-                : [self pp_localizedStringForKey:@"accessory_form_desc_title" fallback:@"Description"];
-            [c configureWithTitle:t text:self.draftDesc
-                      placeholder:[self pp_localizedStringForKey:@"form_desc_placeholder" fallback:@"Add details"]
-                        fieldKind:PPAccessoryFieldKindDesc delegate:self];
-            return c;
-        }
-        default: return [[UITableViewCell alloc] init];
-    }
-}
+#pragma mark - Display Helpers
 
 - (NSString *)pp_displayNameForModel:(id)m {
     if ([m isKindOfClass:[MainKindsModel class]]) {
@@ -1053,88 +935,11 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     return @"";
 }
 
-#pragma mark - UITableViewDelegate
-
-- (void)tableView:(UITableView *)tv willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)ip {
-    cell.backgroundColor = UIColor.clearColor;
-    cell.clipsToBounds = NO;
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.contentView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
-        }
-        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
-    }];
-    cell.contentView.layer.cornerRadius = 20.0;
-    cell.contentView.layer.masksToBounds = YES;
-    cell.contentView.layer.borderWidth = 1.0;
-    UIColor *accessBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.85 green:0.80 blue:0.78 alpha:0.10];
-        }
-        return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
-    }];
-    [cell.contentView pp_setBorderColor:[accessBorderColor resolvedColorWithTraitCollection:self.traitCollection]];
-    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
-    cell.layer.shadowRadius = 12.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    cell.layer.masksToBounds = NO;
-}
-
-- (BOOL)tableView:(UITableView *)tv shouldHighlightRowAtIndexPath:(NSIndexPath *)ip {
-    if (ip.section == PPAccessoryFormSectionCategory) {
-        return !(ip.row == PPAccessoryCategoryRowSub && !self.draftMainKind);
-    }
-    return NO;
-}
-
-- (void)tableView:(UITableView *)tv didSelectRowAtIndexPath:(NSIndexPath *)ip {
-    [tv deselectRowAtIndexPath:ip animated:YES];
-    if (ip.section != PPAccessoryFormSectionCategory) return;
-    [self.view endEditing:YES];
-    if (ip.row == PPAccessoryCategoryRowMain) [self pp_presentMainCategoryPicker];
-    else if (ip.row == PPAccessoryCategoryRowSub && self.draftMainKind) [self pp_presentSubCategoryPicker];
-}
-
 #pragma mark - Section Headers
 
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (indexPath.row == 0 || indexPath.row == 1) {
-        return 74.0;
-    }
-    
-    return UITableViewAutomaticDimension;
-}
-
-
-
-- (CGFloat)tableView:(UITableView *)tv heightForHeaderInSection:(NSInteger)s { return 73.0; }
-- (CGFloat)tableView:(UITableView *)tv heightForFooterInSection:(NSInteger)s { return 0.000001; }
-- (UIView *)tableView:(UITableView *)tv viewForFooterInSection:(NSInteger)s { return [UIView new]; }
-
-- (UIView *)tableView:(UITableView *)tv viewForHeaderInSection:(NSInteger)s {
-    NSString *t = @"", *sub = @"";
-    switch ((PPAccessoryFormSection)s) {
-        case PPAccessoryFormSectionCategory:
-            t = (self.accessKindType == AccessTypeAccessory)
-                ? [self pp_localizedStringForKey:@"accessory_form_category_section_title" fallback:@"Category"]
-                : [self pp_localizedStringForKey:@"food_form_category_section_title" fallback:@"Category"];
-            break;
-        case PPAccessoryFormSectionDetails:
-            t = (self.accessKindType == AccessTypeFood)
-                ? [self pp_localizedStringForKey:@"food_form_details_section_title" fallback:@"Details"]
-                : [self pp_localizedStringForKey:@"accessory_form_details_section_title" fallback:@"Details"];
-            break;
-        default: break;
-    }
-    return [self pp_sectionHeaderViewWithTitle:t subtitle:sub];
-}
-
 - (UIView *)pp_sectionHeaderViewWithTitle:(NSString *)title subtitle:(NSString *)subtitle {
-    UIView *c = [[UIView alloc] init]; c.backgroundColor = UIColor.clearColor;
+    UIView *c = [[UIView alloc] init]; c.translatesAutoresizingMaskIntoConstraints = NO; c.backgroundColor = UIColor.clearColor;
+    [c.heightAnchor constraintEqualToConstant:64.0].active = YES;
     UIView *ab = [[UIView alloc] init]; ab.translatesAutoresizingMaskIntoConstraints = NO;
     ab.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor; ab.layer.cornerRadius = 2.0;
     [c addSubview:ab];
@@ -1149,12 +954,12 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     sl.text = subtitle ?: @""; sl.textAlignment = Language.alignmentForCurrentLanguage; sl.numberOfLines = 2;
     [c addSubview:sl];
     [NSLayoutConstraint activateConstraints:@[
-        [ab.leadingAnchor constraintEqualToAnchor:c.leadingAnchor constant:20.0],
+        [ab.leadingAnchor constraintEqualToAnchor:c.leadingAnchor],
         [ab.topAnchor constraintEqualToAnchor:c.topAnchor constant:14.0],
         [ab.widthAnchor constraintEqualToConstant:28.0], [ab.heightAnchor constraintEqualToConstant:4.0],
         [tl.topAnchor constraintEqualToAnchor:ab.bottomAnchor constant:9.0],
         [tl.leadingAnchor constraintEqualToAnchor:ab.leadingAnchor],
-        [tl.trailingAnchor constraintEqualToAnchor:c.trailingAnchor constant:-20.0],
+        [tl.trailingAnchor constraintEqualToAnchor:c.trailingAnchor],
         [sl.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:4.0],
         [sl.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
         [sl.trailingAnchor constraintEqualToAnchor:tl.trailingAnchor],
@@ -1174,6 +979,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
              completion:^(id _Nullable obj) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(ws) s = ws; if (!s) return;
+            s.draftAccessoryCategory = nil;
+            s.accessModel.AccessoryCategoryID = nil;
             if (![obj isKindOfClass:[MainKindsModel class]]) {
                 s.selectedKind = nil; s.draftMainKind = nil;
                 s.accessModel.petMainCategoryID = 0; s.accessModel.petSubCategoryID = 0; s.draftSubKind = nil;
@@ -1182,15 +989,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
                 s.accessModel.petMainCategoryID = s.selectedKind.ID; s.accessModel.petSubCategoryID = 0; s.draftSubKind = nil;
                 if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
             }
-            CGPoint savedOffset = s.tableView.contentOffset;
-            [UIView performWithoutAnimation:^{
-                [s.tableView reloadRowsAtIndexPaths:@[
-                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowMain inSection:PPAccessoryFormSectionCategory],
-                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowSub  inSection:PPAccessoryFormSectionCategory]
-                ] withRowAnimation:UITableViewRowAnimationNone];
-            }];
-            [s.tableView layoutIfNeeded];
-            s.tableView.contentOffset = savedOffset;
+            [s pp_refreshFormValuesAndStates];
         });
     }];
     [self presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
@@ -1200,7 +999,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     if (!self.draftMainKind) return;
     __weak typeof(self) ws = self;
     PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
-        initWithOptions:self.selectedKind.SubKindsArray ?: @[]
+        initWithOptions:self.draftMainKind.SubKindsArray ?: @[]
                   title:[self pp_localizedStringForKey:@"form_breed_selector_title" fallback:@"Select breed"]
                     row:nil presentationStyle:PPSelectOptionPresentationSheet
              completion:^(id _Nullable obj) {
@@ -1210,14 +1009,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
                 s.draftSubKind = obj; s.accessModel.petSubCategoryID = ((SubKindModel *)obj).ID;
             } else { s.draftSubKind = nil; s.accessModel.petSubCategoryID = 0; }
             if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
-            CGPoint savedOffset = s.tableView.contentOffset;
-            [UIView performWithoutAnimation:^{
-                [s.tableView reloadRowsAtIndexPaths:@[
-                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowSub inSection:PPAccessoryFormSectionCategory]
-                ] withRowAnimation:UITableViewRowAnimationNone];
-            }];
-            [s.tableView layoutIfNeeded];
-            s.tableView.contentOffset = savedOffset;
+            [s pp_refreshFormValuesAndStates];
         });
     }];
     [self presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
@@ -1237,30 +1029,20 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (BOOL)textFieldShouldReturn:(UITextField *)tf {
     if (tf.tag == PPAccessoryFieldKindName) {
-        NSIndexPath *ip = [NSIndexPath indexPathForRow:PPAccessoryDetailRowPrice inSection:PPAccessoryFormSectionDetails];
-        PPFormTextFieldCell *pc = [self.tableView cellForRowAtIndexPath:ip];
-        if ([pc isKindOfClass:PPFormTextFieldCell.class]) [pc.textField becomeFirstResponder];
+        PPFormFieldRowView *priceRow = [self pp_rowForIdentifier:PPAddAccessoryFieldPrice];
+        [priceRow.textField becomeFirstResponder];
     } else { [tf resignFirstResponder]; }
     return YES;
-}
-
-#pragma mark - UITextViewDelegate
-
-- (void)textViewDidChange:(UITextView *)tv {
-    if ((PPAccessoryFieldKind)tv.tag == PPAccessoryFieldKindDesc) { self.draftDesc = tv.text ?: @""; self.accessModel.desc = self.draftDesc; }
-    UIView *v = tv;
-    while (v && ![v isKindOfClass:PPFormTextViewCell.class]) v = v.superview;
-    if ([v isKindOfClass:PPFormTextViewCell.class]) { [(PPFormTextViewCell *)v updatePlaceholderVisibility]; [(PPFormTextViewCell *)v updatePreferredHeight]; }
-    [UIView setAnimationsEnabled:NO];
-    [self.tableView beginUpdates]; [self.tableView endUpdates];
-    [UIView setAnimationsEnabled:YES];
-    if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
 }
 
 #pragma mark - Submission
 
 - (NSError *)pp_uploadErrorWithCode:(NSInteger)code description:(NSString *)desc {
-    return [NSError errorWithDomain:PPAddAccessoryErrorDomain code:code userInfo:@{NSLocalizedDescriptionKey: desc.length ? desc : @"Failed to upload images."}];
+    NSString *fallback = [self pp_localizedStringForKey:@"media_upload_failed_default_message"
+                                               fallback:@"Failed to upload images."];
+    return [NSError errorWithDomain:PPAddAccessoryErrorDomain
+                               code:code
+                           userInfo:@{NSLocalizedDescriptionKey: desc.length ? desc : fallback}];
 }
 
 - (UIImage *)pp_normalizedImageForUpload:(UIImage *)img {
@@ -1278,11 +1060,21 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 - (NSArray<UIImage *> *)pp_normalizedImagesForSubmitWithError:(NSError **)error {
     NSArray<UIImage *> *imgs = [self.imageCollection allImages] ?: @[];
     if (imgs.count == 0) { if (error) *error = [self pp_uploadErrorWithCode:100 description:[self pp_localizedStringForKey:@"please_add_photos_before_submit" fallback:@"Please add at least one image before posting."]]; return nil; }
-    if (imgs.count > PPAddAccessoryMaxImageCount) { if (error) *error = [self pp_uploadErrorWithCode:101 description:[NSString stringWithFormat:@"Maximum %ld images are allowed.", (long)PPAddAccessoryMaxImageCount]]; return nil; }
+    if (imgs.count > PPAddAccessoryMaxImageCount) {
+        NSString *format = [self pp_localizedStringForKey:@"max_images_count_error_format"
+                                                 fallback:@"Maximum %ld images are allowed."];
+        if (error) *error = [self pp_uploadErrorWithCode:101 description:[NSString stringWithFormat:format, (long)PPAddAccessoryMaxImageCount]];
+        return nil;
+    }
     NSMutableArray<UIImage *> *out = [NSMutableArray arrayWithCapacity:imgs.count];
     for (NSInteger i = 0; i < imgs.count; i++) {
         UIImage *p = [self pp_normalizedImageForUpload:imgs[i]];
-        if (!p) { if (error) *error = [self pp_uploadErrorWithCode:102 description:[NSString stringWithFormat:@"Failed to prepare image at index %ld.", (long)i+1]]; return nil; }
+        if (!p) {
+            NSString *format = [self pp_localizedStringForKey:@"image_prepare_failed_format"
+                                                     fallback:@"Failed to prepare image at index %ld."];
+            if (error) *error = [self pp_uploadErrorWithCode:102 description:[NSString stringWithFormat:format, (long)i+1]];
+            return nil;
+        }
         [out addObject:p];
     }
     return out.copy;
@@ -1326,30 +1118,66 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (BOOL)pp_validateFormWithShake {
     BOOL ok = YES;
+    NSString *firstInvalidIdentifier = nil;
+    [self.categoryFormView clearErrors];
+    [self.detailsFormView clearErrors];
+
     if (!self.draftMainKind) {
-        UITableViewCell *c = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:PPAccessoryCategoryRowMain inSection:PPAccessoryFormSectionCategory]];
-        if (c) [self pp_shakeCell:c]; ok = NO;
+        NSString *title = [self pp_localizedStringForKey:@"form_species_title" fallback:@"Species"];
+        [self pp_setFieldError:[self pp_requiredErrorForTitle:title] identifier:PPAddAccessoryFieldMainCategoryID];
+        if (!firstInvalidIdentifier) firstInvalidIdentifier = PPAddAccessoryFieldMainCategoryID;
+        ok = NO;
+    }
+    if (!self.draftAccessoryCategory) {
+        NSString *title = [self pp_localizedStringForKey:@"accessory_form_category_title" fallback:@"Accessory Category"];
+        [self pp_setFieldError:[self pp_requiredErrorForTitle:title] identifier:PPAddAccessoryFieldAccessoryCategoryID];
+        if (!firstInvalidIdentifier) firstInvalidIdentifier = PPAddAccessoryFieldAccessoryCategoryID;
+        ok = NO;
     }
     NSString *nm = [PPAccessorySafeString(self.draftName) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (nm.length == 0) {
-        UITableViewCell *c = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:PPAccessoryDetailRowName inSection:PPAccessoryFormSectionDetails]];
-        if (c) [self pp_shakeCell:c]; ok = NO;
+        NSString *title = (self.accessKindType == AccessTypeFood)
+            ? [self pp_localizedStringForKey:@"food_form_name_title" fallback:@"Food name"]
+            : [self pp_localizedStringForKey:@"accessory_form_name_title" fallback:@"Accessory name"];
+        [self pp_setFieldError:[self pp_requiredErrorForTitle:title] identifier:PPAddAccessoryFieldName];
+        if (!firstInvalidIdentifier) firstInvalidIdentifier = PPAddAccessoryFieldName;
+        ok = NO;
     }
     NSNumber *pr = [self pp_numberFromValue:self.draftPrice];
     if (!pr || [pr doubleValue] <= 0) {
-        UITableViewCell *c = [self.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:PPAccessoryDetailRowPrice inSection:PPAccessoryFormSectionDetails]];
-        if (c) [self pp_shakeCell:c]; ok = NO;
+        [self pp_setFieldError:[self pp_localizedStringForKey:@"form_price_positive_error" fallback:@"Enter a valid price"] identifier:PPAddAccessoryFieldPrice];
+        if (!firstInvalidIdentifier) firstInvalidIdentifier = PPAddAccessoryFieldPrice;
+        ok = NO;
+    }
+    if (!self.draftCity) {
+        NSString *title = [self pp_localizedStringForKey:@"form_city_title" fallback:@"City"];
+        [self pp_setFieldError:[self pp_requiredErrorForTitle:title] identifier:PPAddAccessoryFieldCityID];
+        if (!firstInvalidIdentifier) firstInvalidIdentifier = PPAddAccessoryFieldCityID;
+        ok = NO;
+    }
+
+    if (!ok && firstInvalidIdentifier.length > 0) {
+        [self pp_shakeFieldForIdentifier:firstInvalidIdentifier];
     }
     return ok;
 }
 
-- (void)pp_shakeCell:(UITableViewCell *)cell {
+- (void)pp_shakeFieldForIdentifier:(NSString *)identifier {
+    PPFormFieldRowView *row = [self pp_rowForIdentifier:identifier];
+    if (!row) return;
+    CGRect rowRect = [row convertRect:row.bounds toView:self.scrollView];
+    [self.scrollView scrollRectToVisible:CGRectInset(rowRect, 0.0, -24.0) animated:YES];
+    [self pp_shakeView:row];
+}
+
+- (void)pp_shakeView:(UIView *)view {
+    if (!view) return;
     CAKeyframeAnimation *a = [CAKeyframeAnimation animation];
     a.keyPath = @"position.x";
     a.values = @[@0, @20, @-20, @10, @0];
     a.keyTimes = @[@0, @(1/6.0), @(3/6.0), @(5/6.0), @1];
     a.duration = 0.3; a.additive = YES;
-    [cell.layer addAnimation:a forKey:@"shake"];
+    [view.layer addAnimation:a forKey:@"shake"];
 }
 
 #pragma mark - Upload Timeout
@@ -1362,7 +1190,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     dispatch_block_t tb = dispatch_block_create(0, ^{
         __strong typeof(ws) s = ws; if (!s) return; s.uploadTimeoutBlock = nil;
         if (s.isSubmittingAccessory) {
-            s.isSubmittingAccessory = NO; s.tableView.userInteractionEnabled = YES; s.imageCollection.userInteractionEnabled = YES;
+            s.isSubmittingAccessory = NO; s.scrollView.userInteractionEnabled = YES; s.categoryFormView.userInteractionEnabled = YES; s.detailsFormView.userInteractionEnabled = YES; s.imageCollection.userInteractionEnabled = YES;
             [s pp_setSubmitEnabled:YES]; [s pp_hideUploadIndicatorOnNavBar];
             if (s.isProgressAnimating) { [s.uploadProgressView stopAnimating]; s.isProgressAnimating = NO; }
             [s pp_showUploadTimeoutError];
@@ -1385,7 +1213,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.isSubmittingAccessory) return;
         self.isSubmittingAccessory = YES;
-        self.tableView.userInteractionEnabled = NO; self.imageCollection.userInteractionEnabled = NO;
+        self.scrollView.userInteractionEnabled = NO; self.categoryFormView.userInteractionEnabled = NO; self.detailsFormView.userInteractionEnabled = NO; self.imageCollection.userInteractionEnabled = NO;
         [self pp_setSubmitEnabled:NO]; [self pp_showUploadIndicatorOnNavBar];
         if (!self.isProgressAnimating) { [self.uploadProgressView startAnimating]; self.isProgressAnimating = YES; }
         [self pp_scheduleUploadTimeout];
@@ -1397,7 +1225,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [self pp_cancelUploadTimeout];
         if (!self.isSubmittingAccessory && !self.isProgressAnimating) { [self pp_hideUploadIndicatorOnNavBar]; return; }
         self.isSubmittingAccessory = NO;
-        self.tableView.userInteractionEnabled = YES; self.imageCollection.userInteractionEnabled = YES;
+        self.scrollView.userInteractionEnabled = YES; self.categoryFormView.userInteractionEnabled = YES; self.detailsFormView.userInteractionEnabled = YES; self.imageCollection.userInteractionEnabled = YES;
         [self pp_setSubmitEnabled:YES]; [self pp_hideUploadIndicatorOnNavBar];
         if (self.isProgressAnimating) { [self.uploadProgressView stopAnimating]; self.isProgressAnimating = NO; }
     });
@@ -1506,11 +1334,11 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     if (self.didFocusFirstField || self.formMode == AccessFormModeEdit || self.isSubmittingAccessory) return;
     self.didFocusFirstField = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
-        NSIndexPath *ip = [NSIndexPath indexPathForRow:PPAccessoryDetailRowName inSection:PPAccessoryFormSectionDetails];
-        [self.tableView scrollToRowAtIndexPath:ip atScrollPosition:UITableViewScrollPositionMiddle animated:NO];
-        [self.tableView layoutIfNeeded];
-        UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:ip];
-        if ([cell isKindOfClass:PPFormTextFieldCell.class]) [((PPFormTextFieldCell *)cell).textField becomeFirstResponder];
+        PPFormFieldRowView *row = [self pp_rowForIdentifier:PPAddAccessoryFieldName];
+        if (!row) return;
+        CGRect rowRect = [row convertRect:row.bounds toView:self.scrollView];
+        [self.scrollView scrollRectToVisible:CGRectInset(rowRect, 0.0, -24.0) animated:NO];
+        [row.textField becomeFirstResponder];
     });
 }
 
@@ -1520,7 +1348,310 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        [self.tableView reloadData];
+        [self pp_rebuildFormFields];
+        [self pp_refreshFormValuesAndStates];
+    }
+}
+
+#pragma mark - Premium Selector Pickers & Location Detection Helper Methods
+
+- (void)pp_fetchAccessoryCategoriesForMainKind:(MainKindsModel *)mainKind completion:(void (^)(NSArray<PPAccessoryCategoryModel *> *categories))completion {
+    if (!mainKind) {
+        if (completion) completion(@[]);
+        return;
+    }
+
+    NSArray<PPAccessoryCategoryModel *> *cached = mainKind.accessoryCategories ?: @[];
+    if (cached.count > 0 || mainKind.didSeedAccessoryCategories) {
+        if (completion) completion(cached);
+        return;
+    }
+
+    __weak typeof(self) ws = self;
+    [[MainKindsArrayManager shared] loadAccessoryCategoriesForMainKind:mainKind completion:^(NSArray<PPAccessoryCategoryModel *> *categories, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(ws) s = ws; if (!s) return;
+            if (error) {
+                NSLog(@"❌ Failed to load accessory categories for main kind %ld: %@", (long)mainKind.ID, error.localizedDescription);
+            }
+            [s pp_refreshFormValuesAndStates];
+            if (completion) completion(categories ?: @[]);
+        });
+    }];
+}
+
+- (void)pp_presentAccessoryCategoryPicker {
+    if (!self.draftMainKind) return;
+
+    __weak typeof(self) ws = self;
+    [self pp_fetchAccessoryCategoriesForMainKind:self.draftMainKind completion:^(NSArray<PPAccessoryCategoryModel *> *categories) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(ws) s = ws; if (!s) return;
+            if (categories.count == 0) {
+                [PPAlertHelper showWarningIn:s
+                                       title:[s pp_localizedStringForKey:@"accessory_categories_unavailable_title" fallback:@"No categories available"]
+                                    subtitle:[s pp_localizedStringForKey:@"accessory_categories_unavailable_message" fallback:@"Please choose another species or try again later."]
+                                  completion:nil];
+                return;
+            }
+
+            PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+                initWithOptions:categories
+                          title:[s pp_localizedStringForKey:@"accessory_form_category_selector_title" fallback:@"Select Category"]
+                            row:nil presentationStyle:PPSelectOptionPresentationSheet
+                     completion:^(id _Nullable obj) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(ws) s2 = ws; if (!s2) return;
+                    if ([obj isKindOfClass:[PPAccessoryCategoryModel class]]) {
+                        s2.draftAccessoryCategory = obj;
+                        s2.accessModel.AccessoryCategoryID = ((PPAccessoryCategoryModel *)obj).categoryID;
+                    } else {
+                        s2.draftAccessoryCategory = nil;
+                        s2.accessModel.AccessoryCategoryID = nil;
+                    }
+                    s2.hasUserModifiedForm = YES;
+                    [s2 pp_refreshFormValuesAndStates];
+                });
+            }];
+            [s presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
+        });
+    }];
+}
+
+- (void)pp_hydrateAccessoryCategoryForModel:(PetAccessory *)model {
+    if (model.AccessoryCategoryID.length == 0 || model.petMainCategoryID <= 0) return;
+    MainKindsModel *mainKind = self.draftMainKind ?: [MKM mainKindForID:model.petMainCategoryID];
+    PPAccessoryCategoryModel *cached = [mainKind accessoryCategoryForID:model.AccessoryCategoryID];
+    if (cached) {
+        self.draftAccessoryCategory = cached;
+        [self pp_refreshFormValuesAndStates];
+        return;
+    }
+    __weak typeof(self) ws = self;
+    [self pp_fetchAccessoryCategoriesForMainKind:mainKind completion:^(NSArray<PPAccessoryCategoryModel *> *categories) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(ws) s = ws; if (!s) return;
+            for (PPAccessoryCategoryModel *cat in categories) {
+                if ([cat.categoryID isEqualToString:model.AccessoryCategoryID] || [cat.documentID isEqualToString:model.AccessoryCategoryID]) {
+                    s.draftAccessoryCategory = cat;
+                    [s pp_refreshFormValuesAndStates];
+                    break;
+                }
+            }
+        });
+    }];
+}
+
+- (void)pp_presentCityPicker {
+    if (self.citiesList.count == 0) return;
+
+    __weak typeof(self) ws = self;
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:self.citiesList
+                  title:[self pp_localizedStringForKey:@"form_city_selector_title" fallback:@"Select City"]
+                    row:nil presentationStyle:PPSelectOptionPresentationSheet
+             completion:^(id _Nullable obj) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(ws) s = ws; if (!s) return;
+            if ([obj isKindOfClass:[CityModel class]]) {
+                s.draftCity = obj;
+                s.accessModel.cityID = ((CityModel *)obj).cityID;
+            } else {
+                s.draftCity = nil;
+                s.accessModel.cityID = 0;
+            }
+            s.hasUserModifiedForm = YES;
+            [s pp_refreshFormValuesAndStates];
+        });
+    }];
+    [self presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
+}
+
+- (void)pp_setupSmartCityPicker {
+    if (CitiesManager.shared.countries.count == 0) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(pp_citiesDidUpdate:)
+                                                     name:CitiesManagerDidUpdateNotification
+                                                   object:nil];
+        [CitiesManager.shared loadData];
+    } else {
+        [self pp_initializeCitiesDataAndDetect];
+    }
+}
+
+- (void)pp_citiesDidUpdate:(NSNotification *)note {
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:CitiesManagerDidUpdateNotification object:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_initializeCitiesDataAndDetect];
+    });
+}
+
+- (void)pp_initializeCitiesDataAndDetect {
+    CountryModel *detectedCountry = CitiesManager.shared.CurrentCountry;
+    if (!detectedCountry) {
+        detectedCountry = [CitiesManager.shared qatarCountry];
+    }
+
+    self.citiesList = detectedCountry.cities ?: @[];
+
+    // 1. If form has editing/existing model city, use it
+    if (self.accessModel.cityID > 0) {
+        self.draftCity = [CitiesManager.shared cityByID:self.accessModel.cityID];
+    }
+
+    // 2. If draftCity is still nil, check if user profile addresses have a cityID
+    if (!self.draftCity) {
+        UserModel *cu = [UserManager sharedManager].currentUser;
+        if (cu.addresses.count > 0) {
+            for (PPAddressModel *addr in cu.addresses) {
+                if (addr.cityID > 0) {
+                    self.draftCity = [CitiesManager.shared cityByID:addr.cityID];
+                    if (self.draftCity) {
+                        self.accessModel.cityID = self.draftCity.cityID;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. If draftCity is still nil, request/detect location
+    if (!self.draftCity) {
+        [self pp_requestLocationAndDetectCity];
+    } else {
+        [self pp_refreshFormValuesAndStates];
+    }
+}
+
+- (void)pp_requestLocationAndDetectCity {
+    if (!self.locationManager) {
+        self.locationManager = [[CLLocationManager alloc] init];
+        self.locationManager.delegate = self;
+        self.locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters;
+    }
+
+    CLAuthorizationStatus status;
+    if (@available(iOS 14.0, *)) {
+        status = self.locationManager.authorizationStatus;
+    } else {
+        status = [CLLocationManager authorizationStatus];
+    }
+
+    if (status == kCLAuthorizationStatusNotDetermined) {
+        [self.locationManager requestWhenInUseAuthorization];
+    } else if (status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
+        CLLocation *cachedLocation = self.locationManager.location;
+        if (cachedLocation && CLLocationCoordinate2DIsValid(cachedLocation.coordinate)) {
+            [self pp_detectCityFromCoordinate:cachedLocation.coordinate];
+        } else {
+            [self.locationManager startUpdatingLocation];
+        }
+    } else {
+        [self pp_applyDefaultCityFallback];
+    }
+}
+
+- (void)pp_applyDefaultCityFallback {
+    if (!self.draftCity && self.citiesList.count > 0) {
+        CountryModel *detectedCountry = CitiesManager.shared.CurrentCountry ?: [CitiesManager.shared qatarCountry];
+        CityModel *defaultCity = [CitiesManager.shared defaultCityForCountry:detectedCountry];
+        if (defaultCity) {
+            self.draftCity = defaultCity;
+            self.accessModel.cityID = defaultCity.cityID;
+        } else {
+            self.draftCity = self.citiesList.firstObject;
+            self.accessModel.cityID = self.draftCity.cityID;
+        }
+        [self pp_refreshFormValuesAndStates];
+    }
+}
+
+- (void)pp_detectCityFromCoordinate:(CLLocationCoordinate2D)coordinate {
+    if (!CLLocationCoordinate2DIsValid(coordinate)) {
+        [self pp_applyDefaultCityFallback];
+        return;
+    }
+
+    __weak typeof(self) ws = self;
+    CLGeocoder *geocoder = [[CLGeocoder alloc] init];
+    CLLocation *loc = [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
+    [geocoder reverseGeocodeLocation:loc completionHandler:^(NSArray<CLPlacemark *> * _Nullable placemarks, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(ws) s = ws; if (!s) return;
+            CityModel *matchedCity = nil;
+            CLPlacemark *placemark = placemarks.firstObject;
+
+            if (placemark) {
+                NSArray<NSString *> *candidateNames = @[
+                    placemark.locality ?: @"",
+                    placemark.subAdministrativeArea ?: @"",
+                    placemark.administrativeArea ?: @"",
+                ];
+
+                for (NSString *candidateName in candidateNames) {
+                    if (candidateName.length == 0) continue;
+                    NSString *normalizedCandidate = [candidateName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].lowercaseString;
+
+                    for (CityModel *city in s.citiesList) {
+                        NSString *en = city.enName.lowercaseString;
+                        NSString *ar = city.arName.lowercaseString;
+                        if ([normalizedCandidate isEqualToString:en] || [normalizedCandidate isEqualToString:ar] ||
+                            [en containsString:normalizedCandidate] || [ar containsString:normalizedCandidate]) {
+                            matchedCity = city;
+                            break;
+                        }
+                    }
+                    if (matchedCity) break;
+                }
+            }
+
+            if (!matchedCity && s.citiesList.count > 0) {
+                CLLocation *target = [[CLLocation alloc] initWithLatitude:coordinate.latitude longitude:coordinate.longitude];
+                CLLocationDistance bestDistance = DBL_MAX;
+
+                for (CityModel *city in s.citiesList) {
+                    if (city.latitude == 0 && city.longitude == 0) continue;
+                    CLLocation *cityLoc = [[CLLocation alloc] initWithLatitude:city.latitude longitude:city.longitude];
+                    CLLocationDistance distance = [target distanceFromLocation:cityLoc];
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        matchedCity = city;
+                    }
+                }
+            }
+
+            if (matchedCity) {
+                s.draftCity = matchedCity;
+                s.accessModel.cityID = matchedCity.cityID;
+            } else {
+                [s pp_applyDefaultCityFallback];
+            }
+            [s pp_refreshFormValuesAndStates];
+        });
+    }];
+}
+
+#pragma mark - CLLocationManagerDelegate
+
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations {
+    CLLocation *location = locations.lastObject;
+    if (location && CLLocationCoordinate2DIsValid(location.coordinate)) {
+        [manager stopUpdatingLocation];
+        [self pp_detectCityFromCoordinate:location.coordinate];
+    }
+}
+
+- (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error {
+    [manager stopUpdatingLocation];
+    NSLog(@"❌ Location detection failed: %@", error.localizedDescription);
+    [self pp_applyDefaultCityFallback];
+}
+
+- (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status {
+    if (status == kCLAuthorizationStatusAuthorizedAlways || status == kCLAuthorizationStatusAuthorizedWhenInUse) {
+        [manager startUpdatingLocation];
+    } else if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
+        [self pp_applyDefaultCityFallback];
     }
 }
 

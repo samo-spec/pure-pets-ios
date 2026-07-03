@@ -1256,6 +1256,22 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
 - (UIUserInterfaceStyle)loadUserInterfaceStyle {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
+    // One-time migration: older builds auto-defaulted to Light on first launch,
+    // locking the app to Light even when the user never explicitly picked it.
+    // If the user has never made an explicit theme choice (PPThemeUserChoseExplicitly
+    // flag is absent), reset any forced Light back to System so the app follows iOS.
+    static NSString * const PPThemeUserChoseExplicitly = @"PPThemeUserChoseExplicitly";
+    if (![defaults boolForKey:PPThemeUserChoseExplicitly]) {
+        NSInteger storedRaw = [defaults integerForKey:kUserInterfaceStyleKey];
+        // If defaulted to Light without an explicit user choice, promote to System.
+        if (storedRaw == UIUserInterfaceStyleLight) {
+            [defaults setInteger:UIUserInterfaceStyleUnspecified forKey:kUserInterfaceStyleKey];
+            [defaults setObject:@"system" forKey:PPLegacyThemePreferenceKey];
+            NSLog(@"🌗 [ThemeMigration] Upgraded auto-Light to System (follows iOS appearance).");
+        }
+        [defaults setBool:YES forKey:PPThemeUserChoseExplicitly];
+    }
+
     if ([defaults objectForKey:kUserInterfaceStyleKey] != nil) {
         return (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
     }
@@ -1269,8 +1285,8 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
         return UIUserInterfaceStyleUnspecified;
     }
 
-    // Default to light for first launch
-    UIUserInterfaceStyle fallback = UIUserInterfaceStyleLight;
+    // Default to system for first launch — follow iOS dark/light mode automatically
+    UIUserInterfaceStyle fallback = UIUserInterfaceStyleUnspecified;
     [self saveUserInterfaceStyle:fallback];
     return fallback;
 }

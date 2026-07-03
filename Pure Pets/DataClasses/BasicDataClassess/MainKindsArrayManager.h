@@ -10,6 +10,7 @@
 NS_ASSUME_NONNULL_BEGIN
 static NSString * const PPMainKindsUpdatedNotification = @"MainKindsUpdatedNotification";
 @class MainKindsModel;
+@class PPAccessoryCategoryModel;
 
 
 
@@ -35,6 +36,9 @@ FOUNDATION_EXPORT NSArray<MainKindsModel *> * PPMainKindsArray;
 -(NSArray<SubKindModel *> *)getSubKindArray:(NSInteger)MainKindID;
 @property (strong, nonatomic) NSMutableArray<SubKindModel *> *subKindsArrayForFilter;
 - (MainKindsModel *)mainKindForID:(NSInteger)kindID ;
+- (NSArray<PPAccessoryCategoryModel *> *)accessoryCategoriesForMainKindID:(NSInteger)mainKindID;
+- (void)loadAccessoryCategoriesForMainKind:(MainKindsModel *)mainKind
+                                completion:(void (^)(NSArray<PPAccessoryCategoryModel *> *categories, NSError * _Nullable error))completion;
 
 - (void)listenForMainKindsChangesWithBlock:(void (^)(NSArray<MainKindsModel *> *mainKinds, NSError *error))block ;
 

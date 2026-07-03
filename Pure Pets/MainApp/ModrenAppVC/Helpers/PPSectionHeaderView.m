@@ -1,6 +1,21 @@
 #import "PPSectionHeaderView.h"
 #import <QuartzCore/QuartzCore.h>
 
+static CGFloat PPSectionHeaderPixel(void) {
+    return 1.0 / UIScreen.mainScreen.scale;
+}
+
+static const CGFloat PPSectionHeaderSurfaceRadius = 22.0;
+static const CGFloat PPSectionHeaderOuterVerticalInset = 3.0;
+static const CGFloat PPSectionHeaderContentLeading = 28.0;
+static const CGFloat PPSectionHeaderContentTrailing = 14.0;
+static const CGFloat PPSectionHeaderContentVerticalInset = 10.0;
+static const CGFloat PPSectionHeaderAccentWidth = 3.5;
+static const CGFloat PPSectionHeaderAccentHeight = 30.0;
+static const CGFloat PPSectionHeaderActionMinHeight = 40.0;
+static const CGFloat PPSectionHeaderActionMinWidth = 44.0;
+static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
+
 @interface PPSectionHeaderView () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong, readwrite) UILabel *titleLabel;
@@ -8,9 +23,15 @@
 @property (nonatomic, strong, readwrite) UIButton *actionButton;
 
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *materialWashView;
+@property (nonatomic, strong) UIView *topSheenView;
+@property (nonatomic, strong) UIView *tapHighlightView;
 @property (nonatomic, strong) UIView *accentRailView;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIStackView *textStackView;
+
+@property (nonatomic, strong) NSLayoutConstraint *accentRailWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *accentRailHeightConstraint;
 
 @property (nonatomic, assign) BOOL isExpanded;
 @property (nonatomic, assign) BOOL surfaceDecorationActive;
@@ -58,32 +79,74 @@
     self.surfaceView.userInteractionEnabled = YES;
     self.surfaceView.clipsToBounds = NO;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.surfaceView.layer.cornerRadius = 20.0;
-    self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.surfaceView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    self.surfaceView.layer.borderWidth = PPSectionHeaderPixel();
     self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = 0.055;
-    self.surfaceView.layer.shadowRadius = 12.0;
-    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    self.surfaceView.layer.shadowOpacity = 0.05;
+    self.surfaceView.layer.shadowRadius = 16.0;
+    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self addSubview:self.surfaceView];
+
+    self.materialWashView = [[UIView alloc] init];
+    self.materialWashView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.materialWashView.userInteractionEnabled = NO;
+    self.materialWashView.clipsToBounds = YES;
+    self.materialWashView.layer.cornerCurve = kCACornerCurveContinuous;
+    self.materialWashView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    [self.surfaceView addSubview:self.materialWashView];
+
+    self.topSheenView = [[UIView alloc] init];
+    self.topSheenView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.topSheenView.userInteractionEnabled = NO;
+    [self.surfaceView addSubview:self.topSheenView];
+
+    self.tapHighlightView = [[UIView alloc] init];
+    self.tapHighlightView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tapHighlightView.userInteractionEnabled = NO;
+    self.tapHighlightView.alpha = 0.0;
+    self.tapHighlightView.clipsToBounds = YES;
+    self.tapHighlightView.layer.cornerCurve = kCACornerCurveContinuous;
+    self.tapHighlightView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    [self.surfaceView addSubview:self.tapHighlightView];
 
     self.accentRailView = [[UIView alloc] init];
     self.accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
     self.accentRailView.userInteractionEnabled = NO;
-    self.accentRailView.layer.cornerRadius = 1.5;
+    self.accentRailView.layer.cornerRadius = PPSectionHeaderAccentWidth * 0.5;
     self.accentRailView.layer.cornerCurve = kCACornerCurveContinuous;
     [self.surfaceView addSubview:self.accentRailView];
+
+    self.accentRailWidthConstraint =
+        [self.accentRailView.widthAnchor constraintEqualToConstant:PPSectionHeaderAccentWidth];
+    self.accentRailHeightConstraint =
+        [self.accentRailView.heightAnchor constraintEqualToConstant:PPSectionHeaderAccentHeight];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:0.0],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-0.0],
-        [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor constant:2.0],
-        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2.0],
+        [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPSectionHeaderOuterVerticalInset],
+        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSectionHeaderOuterVerticalInset],
 
-        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:20.0],
-        [self.accentRailView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
-        [self.accentRailView.widthAnchor constraintEqualToConstant:44.0],
-        [self.accentRailView.heightAnchor constraintEqualToConstant:3.0],
+        [self.materialWashView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.materialWashView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.materialWashView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.materialWashView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+
+        [self.topSheenView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
+        [self.topSheenView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
+        [self.topSheenView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.topSheenView.heightAnchor constraintEqualToConstant:PPSectionHeaderPixel()],
+
+        [self.tapHighlightView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.tapHighlightView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.tapHighlightView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.tapHighlightView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+
+        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:17.0],
+        [self.accentRailView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        self.accentRailWidthConstraint,
+        self.accentRailHeightConstraint,
     ]];
 }
 
@@ -94,12 +157,14 @@
     self.titleLabel.font = [self pp_titleFont];
     self.titleLabel.textColor = [self pp_titleColor];
     self.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
-    self.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.titleLabel.minimumScaleFactor = 0.86;
+    self.titleLabel.adjustsFontSizeToFitWidth = NO;
+    self.titleLabel.allowsDefaultTighteningForTruncation = YES;
     self.titleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+    [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                     forAxis:UILayoutConstraintAxisVertical];
 
     self.subtitleLabel = [[UILabel alloc] init];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -110,6 +175,8 @@
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.subtitleLabel.hidden = YES;
+    [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                        forAxis:UILayoutConstraintAxisVertical];
 
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -126,7 +193,7 @@
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     self.actionButton.clipsToBounds = YES;
     self.actionButton.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.actionButton.titleLabel.minimumScaleFactor = 0.84;
+    self.actionButton.titleLabel.minimumScaleFactor = 0.88;
     self.actionButton.accessibilityTraits = UIAccessibilityTraitButton;
     [self.actionButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.actionButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -135,9 +202,9 @@
                 forControlEvents:UIControlEventTouchUpInside];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:34.0],
-        [self.actionButton.widthAnchor constraintGreaterThanOrEqualToConstant:38.0],
-        [self.actionButton.widthAnchor constraintLessThanOrEqualToConstant:152.0],
+        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinHeight],
+        [self.actionButton.widthAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinWidth],
+        [self.actionButton.widthAnchor constraintLessThanOrEqualToConstant:PPSectionHeaderActionMaxWidth],
     ]];
 }
 
@@ -151,7 +218,7 @@
     self.textStackView.axis = UILayoutConstraintAxisVertical;
     self.textStackView.alignment = UIStackViewAlignmentFill;
     self.textStackView.distribution = UIStackViewDistributionFill;
-    self.textStackView.spacing = 2.0;
+    self.textStackView.spacing = 3.0;
     self.textStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.textStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
@@ -163,20 +230,20 @@
     self.contentStackView.axis = UILayoutConstraintAxisHorizontal;
     self.contentStackView.alignment = UIStackViewAlignmentCenter;
     self.contentStackView.distribution = UIStackViewDistributionFill;
-    self.contentStackView.spacing = 12.0;
+    self.contentStackView.spacing = 14.0;
     self.contentStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.surfaceView addSubview:self.contentStackView];
 
     NSLayoutConstraint *contentTopConstraint =
-        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor constant:7.0];
+        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.surfaceView.topAnchor constant:PPSectionHeaderContentVerticalInset];
     NSLayoutConstraint *contentBottomConstraint =
-        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-7.0];
+        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSectionHeaderContentVerticalInset];
     contentTopConstraint.priority = UILayoutPriorityDefaultHigh;
     contentBottomConstraint.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:30.0],
-        [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-13.0],
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSectionHeaderContentLeading],
+        [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSectionHeaderContentTrailing],
         [self.contentStackView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         contentTopConstraint,
         contentBottomConstraint,
@@ -198,16 +265,16 @@
 {
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
     cfg.imagePadding = 6.0;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.baseForegroundColor = [self pp_accentColor];
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = 8.0;
-    //background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.0];
-    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
+    background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    background.strokeWidth = PPSectionHeaderPixel();
+    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.24 : 0.10];
+    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.14 : 0.075];
     cfg.background = background;
 
     UIImageSymbolConfiguration *symbolConfig =
@@ -226,8 +293,8 @@
     ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
         __strong typeof(weakSelf) self = weakSelf;
         NSMutableDictionary *values = attrs.mutableCopy ?: [NSMutableDictionary dictionary];
-        values[NSFontAttributeName] = [self pp_actionFont];
-        values[NSForegroundColorAttributeName] = [self pp_accentColor];
+        values[NSFontAttributeName] = self ? [self pp_actionFont] : [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+        values[NSForegroundColorAttributeName] = self ? [self pp_accentColor] : UIColor.systemTealColor;
         return values;
     };
 
@@ -237,49 +304,37 @@
 - (void)pp_refreshAppearance
 {
     BOOL decorationActive = self.surfaceDecorationActive;
-    self.surfaceView.backgroundColor =  [self pp_surfaceFillColor];
-    self.surfaceView.layer.borderColor =  [self pp_surfaceBorderColor].CGColor;
-    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.1;
-    self.surfaceView.layer.shadowRadius =  12.0;  //decorationActive ? 12.0 : 0.0;
-    self.surfaceView.layer.shadowOffset =  CGSizeMake(0.0, 4.0);  //decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
+    BOOL darkMode = [self pp_isDarkMode];
+    UIColor *accentColor = [self pp_accentColor];
 
-    self.accentRailView.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:0.5];
-    self.accentRailView.alpha = 1.0;  //decorationActive ? 1.0 : 0.0;
+    self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
+    self.surfaceView.layer.borderColor = [self pp_surfaceBorderColor].CGColor;
+    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.surfaceView.layer.shadowOpacity = (decorationActive && !darkMode) ? 0.05 : 0.0;
+    self.surfaceView.layer.shadowRadius = decorationActive ? 16.0 : 0.0;
+    self.surfaceView.layer.shadowOffset = decorationActive ? CGSizeMake(0.0, 6.0) : CGSizeZero;
+
+    self.materialWashView.backgroundColor =
+        [accentColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.055 : 0.032) : 0.014];
+    self.topSheenView.backgroundColor =
+        [UIColor.whiteColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.08 : 0.55) : (darkMode ? 0.05 : 0.22)];
+    self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.16 : 0.10];
+
+    CGFloat accentAlpha = self.currentSection == PPHomeSectionMainKinds ? 0.82 : 0.58;
+    self.accentRailView.backgroundColor = [accentColor colorWithAlphaComponent:accentAlpha];
+    self.accentRailView.alpha = decorationActive ? 1.0 : 0.64;
     self.titleLabel.textColor = [self pp_titleColor];
     self.subtitleLabel.textColor = [self pp_subtitleColor];
 
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.08];
-    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
+    background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    background.strokeWidth = PPSectionHeaderPixel();
+    background.strokeColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10];
+    background.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.075];
     cfg.background = background;
-    cfg.baseForegroundColor = [self pp_accentColor];
+    cfg.baseForegroundColor = accentColor;
     self.actionButton.configuration = cfg;
-    
-    
-    
-    /*
-     self.surfaceView.backgroundColor = decorationActive ? [self pp_surfaceFillColor] : UIColor.clearColor;
-     self.surfaceView.layer.borderColor = (decorationActive ? [self pp_surfaceBorderColor] : UIColor.clearColor).CGColor;
-     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-     self.surfaceView.layer.shadowOpacity = (decorationActive && ![self pp_isDarkMode]) ? 0.055 : 0.1;
-     self.surfaceView.layer.shadowRadius =  12.0;  //decorationActive ? 12.0 : 0.0;
-     self.surfaceView.layer.shadowOffset =  CGSizeMake(0.0, 2.0);  //decorationActive ? CGSizeMake(0.0, 2.0) : CGSizeZero;
-
-     self.accentRailView.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:0.5];
-     self.accentRailView.alpha = 1.0;  //decorationActive ? 1.0 : 0.0;
-     self.titleLabel.textColor = [self pp_titleColor];
-     self.subtitleLabel.textColor = [self pp_subtitleColor];
-
-     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
-     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.08];
-     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
-     cfg.background = background;
-     cfg.baseForegroundColor = [self pp_accentColor];
-     self.actionButton.configuration = cfg;
-     */
 }
 
 - (UIColor *)pp_accentColor
@@ -300,12 +355,11 @@
 - (UIColor *)pp_surfaceFillColor
 {
     if ([self pp_isDarkMode]) {
-        return [UIColor colorWithWhite:1.0 alpha:0.045];
+        return [UIColor colorWithWhite:1.0 alpha:self.surfaceDecorationActive ? 0.055 : 0.04];
     }
-   
-    
+
     UIColor *baseColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.75];
+    return [baseColor colorWithAlphaComponent:self.surfaceDecorationActive ? 0.78 : 0.66];
 }
 
 - (UIColor *)pp_surfaceBorderColor
@@ -313,28 +367,25 @@
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.08];
     }
-    UIColor *accent = AppForgroundColr;
-    //if (self.currentSection == PPHomeSectionMainKinds) {
-    //    return [accent colorWithAlphaComponent:1.0];
-    //}
-    return [accent colorWithAlphaComponent:0.85];
+    UIColor *accent = AppForgroundColr ?: UIColor.separatorColor;
+    return [accent colorWithAlphaComponent:self.surfaceDecorationActive ? 0.42 : 0.22];
 }
 
 - (UIFont *)pp_titleFont
 {
-    UIFont *font = [GM boldFontWithSize:17.5] ?: [UIFont systemFontOfSize:18.5 weight:UIFontWeightBold];
+    UIFont *font = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:18.5 weight:UIFontWeightBold];
     return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:font];
 }
 
 - (UIFont *)pp_subtitleFont
 {
-    UIFont *font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    UIFont *font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:font];
 }
 
 - (UIFont *)pp_actionFont
 {
-    UIFont *font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    UIFont *font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:font];
 }
 
@@ -350,6 +401,10 @@
     [super layoutSubviews];
     CGRect surfaceBounds = self.surfaceView.bounds;
     CGFloat cornerRadius = self.surfaceView.layer.cornerRadius;
+    self.materialWashView.layer.cornerRadius = cornerRadius;
+    self.tapHighlightView.layer.cornerRadius = cornerRadius;
+    self.accentRailView.layer.cornerRadius = PPSectionHeaderAccentWidth * 0.5;
+
     if (!CGRectIsEmpty(surfaceBounds) &&
         isfinite(CGRectGetWidth(surfaceBounds)) &&
         isfinite(CGRectGetHeight(surfaceBounds)) &&
@@ -407,6 +462,7 @@
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         [self pp_refreshAppearance];
+        [self layoutIfNeeded];
     } completion:nil];
 }
 
@@ -422,6 +478,10 @@
     self.titleLabel.text = title;
     self.subtitleLabel.text = nil;
     self.subtitleLabel.hidden = YES;
+    if (ppHomeSection != PPHomeSectionMainKinds) {
+        self.isExpanded = NO;
+        self.accentRailView.transform = CGAffineTransformIdentity;
+    }
     [self pp_applySemanticDirection];
 
     self.actionButton.configuration = [self pp_baseActionButtonConfiguration];
@@ -549,6 +609,9 @@
     self.actionButton.configuration = [self pp_baseActionButtonConfiguration];
     self.actionButton.imageView.transform = CGAffineTransformIdentity;
     self.surfaceView.transform = CGAffineTransformIdentity;
+    self.actionButton.transform = CGAffineTransformIdentity;
+    self.accentRailView.transform = CGAffineTransformIdentity;
+    self.tapHighlightView.alpha = 0.0;
     self.surfaceDecorationActive = NO;
     self.onTap = nil;
     self.onTapMenu = nil;
@@ -595,11 +658,30 @@
 
 - (void)pp_animatePressFeedback
 {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:0.12
+                              delay:0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.tapHighlightView.alpha = 1.0;
+        } completion:^(BOOL finished) {
+            [UIView animateWithDuration:0.18
+                                  delay:0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                self.tapHighlightView.alpha = 0.0;
+            } completion:nil];
+        }];
+        return;
+    }
+
     [UIView animateWithDuration:0.08
                           delay:0
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.surfaceView.transform = CGAffineTransformMakeScale(0.992, 0.992);
+        self.tapHighlightView.alpha = 1.0;
+        self.surfaceView.transform = CGAffineTransformMakeScale(0.988, 0.988);
+        self.actionButton.transform = CGAffineTransformMakeScale(0.97, 0.97);
     } completion:^(BOOL finished) {
         [UIView animateWithDuration:0.22
                               delay:0
@@ -607,7 +689,9 @@
               initialSpringVelocity:0.35
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
+            self.tapHighlightView.alpha = 0.0;
             self.surfaceView.transform = CGAffineTransformIdentity;
+            self.actionButton.transform = CGAffineTransformIdentity;
         } completion:nil];
     }];
 }
@@ -634,15 +718,19 @@
 
     if (self.currentSection != PPHomeSectionMainKinds) {
         self.actionButton.imageView.transform = CGAffineTransformIdentity;
+        self.accentRailView.transform = CGAffineTransformIdentity;
         return;
     }
 
     CGFloat angle = expanded ? M_PI : 0.0;
     void (^updates)(void) = ^{
         self.actionButton.imageView.transform = CGAffineTransformMakeRotation(angle);
+        self.accentRailView.transform = expanded
+            ? CGAffineTransformMakeScale(1.0, 1.14)
+            : CGAffineTransformIdentity;
     };
 
-    if (animated) {
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
         [UIView animateWithDuration:0.34
                               delay:0
              usingSpringWithDamping:0.76

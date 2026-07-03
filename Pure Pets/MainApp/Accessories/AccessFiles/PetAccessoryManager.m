@@ -874,7 +874,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                       @((NSInteger)[[NSDate date] timeIntervalSince1970])];
 
                 // Upload to Firebase Storage
-                NSString *storagePath = [NSString stringWithFormat:@"petAccessories/%@", fileName];
+                NSString *storagePath = [NSString stringWithFormat:@"used-accessories/%@/images/%@",accessory.accessoryID, fileName];
                 FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
 
                 // Prepare metadata

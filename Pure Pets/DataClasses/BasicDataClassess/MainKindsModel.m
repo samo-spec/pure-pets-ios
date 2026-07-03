@@ -7,6 +7,69 @@
 
 
 #import "MainKindsModel.h"
+static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCategoriesSubCollection";
+
+@implementation PPAccessoryCategoryModel
+
+- (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot mainKindID:(NSInteger)mainKindID {
+    NSMutableDictionary *data = [NSMutableDictionary dictionaryWithDictionary:snapshot.data ?: @{}];
+    data[@"documentID"] = snapshot.documentID ?: @"";
+    if (!data[@"id"]) data[@"id"] = snapshot.documentID ?: @"";
+    return [self initWithDict:data mainKindID:mainKindID];
+}
+
+- (instancetype)initWithDict:(NSDictionary *)dict mainKindID:(NSInteger)mainKindID {
+    self = [super init];
+    if (self) {
+        NSString *docID = [dict[@"documentID"] isKindOfClass:NSString.class] ? dict[@"documentID"] : @"";
+        NSString *catID = [dict[@"id"] isKindOfClass:NSString.class] ? dict[@"id"] : nil;
+        if (catID.length == 0 && [dict[@"categoryID"] isKindOfClass:NSString.class]) catID = dict[@"categoryID"];
+        if (catID.length == 0) catID = docID;
+
+        self.categoryID = catID ?: @"";
+        self.documentID = docID.length ? docID : self.categoryID;
+        self.nameAr = [dict[@"nameAr"] isKindOfClass:NSString.class] ? dict[@"nameAr"] : ([dict[@"name_ar"] isKindOfClass:NSString.class] ? dict[@"name_ar"] : @"");
+        self.nameEn = [dict[@"nameEn"] isKindOfClass:NSString.class] ? dict[@"nameEn"] : ([dict[@"name_en"] isKindOfClass:NSString.class] ? dict[@"name_en"] : @"");
+        self.mainKindID = mainKindID;
+        self.sortingKey = dict[@"sortingKey"] ? [dict[@"sortingKey"] integerValue] : [dict[@"order"] integerValue];
+        id enabledValue = dict[@"enabled"];
+        self.enabled = enabledValue == nil ? YES : [enabledValue boolValue];
+    }
+    return self;
+}
+
+- (NSDictionary *)toCacheDictionary {
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    dict[@"id"] = self.categoryID ?: @"";
+    dict[@"documentID"] = self.documentID ?: self.categoryID ?: @"";
+    dict[@"nameAr"] = self.nameAr ?: @"";
+    dict[@"nameEn"] = self.nameEn ?: @"";
+    dict[@"mainKindID"] = @(self.mainKindID);
+    dict[@"sortingKey"] = @(self.sortingKey);
+    dict[@"enabled"] = @(self.enabled);
+    return dict.copy;
+}
+
+- (NSString *)displayName {
+    NSString *primary = [Language languageVal] == 0 ? self.nameEn : self.nameAr;
+    NSString *fallback = [Language languageVal] == 0 ? self.nameAr : self.nameEn;
+    return primary.length ? primary : (fallback ?: @"");
+}
+
+- (id)formValue {
+    return self.categoryID ?: @"";
+}
+
+- (NSString *)formDisplayText {
+    return [self displayName];
+}
+
+- (NSString *)description {
+    return [self displayName];
+}
+
+@end
+
 @implementation MainKindsModel
 
 + (NSString *)kindNameForID:(NSInteger)kindID inArray:(NSArray<MainKindsModel *> *)kindsArray {
@@ -52,6 +115,30 @@
     return nil; // Return empty string if not found
 }
 
+- (void)pp_loadAccessoryCategoriesFromArray:(id)rawCategories {
+    self.accessoryCategories = [NSMutableArray array];
+    if (![rawCategories isKindOfClass:NSArray.class]) {
+        self.didSeedAccessoryCategories = NO;
+        return;
+    }
+
+    for (NSDictionary *dict in (NSArray *)rawCategories) {
+        if (![dict isKindOfClass:NSDictionary.class]) continue;
+        PPAccessoryCategoryModel *category = [[PPAccessoryCategoryModel alloc] initWithDict:dict mainKindID:self.ID];
+        if (category.categoryID.length > 0 && category.enabled) {
+            [self.accessoryCategories addObject:category];
+        }
+    }
+
+    [self.accessoryCategories sortUsingComparator:^NSComparisonResult(PPAccessoryCategoryModel *a, PPAccessoryCategoryModel *b) {
+        if (a.sortingKey != b.sortingKey) {
+            return a.sortingKey < b.sortingKey ? NSOrderedAscending : NSOrderedDescending;
+        }
+        return [[a displayName] localizedCaseInsensitiveCompare:[b displayName]];
+    }];
+    self.didSeedAccessoryCategories = self.accessoryCategories.count > 0;
+}
+
 -(NSString *)KindName
 {
     return [Language languageVal] == 0 ? self.KindNameEn : self.KindNameAr;
@@ -71,11 +158,11 @@
     self = [super init];
     if (self) {
         id visibleInUserApp = dictionary[@"is_visible_in_user_app"];
-        self.documentID = dictionary[@"documentID"];
+        self.documentID = [dictionary[@"documentID"] isKindOfClass:NSString.class] ? dictionary[@"documentID"] : mainKindID;
         self.ID = [mainKindID integerValue];
         self.sortingKey = [dictionary[@"sortingKey"]  integerValue];
         self.isVisibleInUserApp = visibleInUserApp == nil ? YES : [visibleInUserApp boolValue];
-        
+
         self.LightenAmount = [dictionary[@"LightenAmount"] floatValue];
         self.professionalAngle = [dictionary[@"professionalAngle"] floatValue];
         self.KindNameAr = dictionary[@"KindNameAr"];
@@ -87,12 +174,13 @@
         self.KindImageUrl = dictionary[@"KindImageUrl"];
         self.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
         NSMutableDictionary *dic =dictionary[@"SubKindsArray"];
-        
+
         for (NSDictionary *SubKind in dic) {
             // NSLog(@"subSubKind: %@", SubKind);
             SubKindModel *subKind = [[SubKindModel alloc] initWithDict:SubKind];
             [self.SubKindsArray addObject:subKind];
         }
+        [self pp_loadAccessoryCategoriesFromArray:dictionary[PPMainKindAccessoryCategoriesCacheKey]];
     }
     return self;
 }
@@ -113,20 +201,21 @@
         self.KindIconName = snapshot.data[@"KindIconName"];
         self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
-        
+
         // ✅ Correct type conversion
         self.LightenAmount = [snapshot.data[@"LightenAmount"] floatValue];
         self.professionalAngle = [snapshot.data[@"professionalAngle"] floatValue];
         //NSLog(@"LightenAmount ----- >>>> %.2f", self.LightenAmount);
-        
+
         self.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
         NSMutableDictionary *dic = snapshot.data[@"SubKindsArray"];
         for (NSDictionary *subKind in dic) {
             SubKindModel *subKindModel = [[SubKindModel alloc] initWithDict:subKind];
             [self.SubKindsArray addObject:subKindModel];
         }
-        
-        
+        [self pp_loadAccessoryCategoriesFromArray:snapshot.data[PPMainKindAccessoryCategoriesCacheKey]];
+
+
     }
     return self;
 }
@@ -139,7 +228,7 @@
         self.sortingKey = [data[@"sortingKey"] integerValue];
         self.isVisibleInUserApp = visibleInUserApp == nil ? YES : [visibleInUserApp boolValue];
         self.KindNameAr = data[@"KindNameAr"];
-        self.documentID = [NSString stringWithFormat:@"%ld",[data[@"ID"] integerValue]];
+        self.documentID = [data[@"documentID"] isKindOfClass:NSString.class] ? data[@"documentID"] : [NSString stringWithFormat:@"%ld",[data[@"ID"] integerValue]];
         self.KindNameEn = data[@"KindNameEn"];
         self.PetColor = data[@"PetColor"];
         self.KindImageNamed = data[@"KindImageNamed"];
@@ -147,20 +236,21 @@
         self.KindImageUrl = data[@"KindImageUrl"];
         self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
-        
+
         // ✅ Correct type conversion
         self.LightenAmount = [data[@"LightenAmount"] floatValue];
         self.professionalAngle = [data[@"professionalAngle"] floatValue];
         //NSLog(@"LightenAmount ----- >>>> %.2f", self.LightenAmount);
-        
+
         self.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
         NSMutableDictionary *dic = data[@"SubKindsArray"];
         for (NSDictionary *subKind in dic) {
             SubKindModel *subKindModel = [[SubKindModel alloc] initWithDict:subKind];
             [self.SubKindsArray addObject:subKindModel];
         }
-        
-        
+        [self pp_loadAccessoryCategoriesFromArray:data[PPMainKindAccessoryCategoriesCacheKey]];
+
+
     }
     return self;
 }
@@ -169,7 +259,7 @@
     if (!self.SubKindsArray) {
         self.SubKindsArray = [NSMutableArray array];
     }
-    
+
     // Prevent duplicates
     for (SubKindModel *existingSubKind in self.SubKindsArray) {
         if (existingSubKind.ID == subKind.ID) {
@@ -177,7 +267,7 @@
             return;
         }
     }
-    
+
     subKind.MainKindID = self.ID;  // Ensure correct reference
     [self.SubKindsArray addObject:subKind];
 }
@@ -197,7 +287,7 @@
     dict[@"LightenAmount"] = @(self.LightenAmount);
     dict[@"professionalAngle"] = @(self.professionalAngle);
     dict[@"is_visible_in_user_app"] = @(self.isVisibleInUserApp);
-    
+
     // Convert SubKindsArray to an array of dictionaries
     NSMutableArray *subKindsData = [NSMutableArray array];
     for (SubKindModel *subKind in self.SubKindsArray) {
@@ -214,8 +304,18 @@
         }];
     }
     dict[@"SubKindsArray"] = subKindsData;
-    
+
     return dict;
+}
+
+- (NSDictionary *)toCacheDictionary {
+    NSMutableDictionary *dict = [[self toFirestoreDictionary] mutableCopy];
+    NSMutableArray *categoryData = [NSMutableArray array];
+    for (PPAccessoryCategoryModel *category in self.accessoryCategories ?: @[]) {
+        [categoryData addObject:[category toCacheDictionary]];
+    }
+    dict[PPMainKindAccessoryCategoriesCacheKey] = categoryData.copy;
+    return dict.copy;
 }
 
 
@@ -226,11 +326,21 @@
     return nil;
 }
 
+- (PPAccessoryCategoryModel *)accessoryCategoryForID:(NSString *)categoryID {
+    if (categoryID.length == 0) return nil;
+    for (PPAccessoryCategoryModel *category in self.accessoryCategories ?: @[]) {
+        if ([category.categoryID isEqualToString:categoryID] || [category.documentID isEqualToString:categoryID]) {
+            return category;
+        }
+    }
+    return nil;
+}
+
 
 + (MainKindsModel *)allKind
 {
     MainKindsModel *model = [[MainKindsModel alloc]init];
-    
+
     model.documentID = @"-1";
     model.ID = -1;
     model.KindNameAr = @"الكل";
@@ -240,6 +350,7 @@
     model.isVisibleInUserApp = YES;
     model.KindImageFile = [UIImage imageNamed:@"square-layout"];
     model.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
+    model.accessoryCategories = [NSMutableArray array];
     return  model;
 }
 
@@ -273,7 +384,7 @@
     if (self.PetColor && self.PetColor.length > 0) {
         return [UIColor colorWithHexString:self.PetColor];
     }
-    
+
     if(self.ID == 1)        return [UIColor colorWithRed:0.30 green:0.75 blue:0.55 alpha:1.0]; //[UIColor colorWithHexString:@"#E55B46"];
     else if(self.ID == 2)    return [UIColor colorWithHexString:@"#D57E3C"];
     else if(self.ID == 3)    return [UIColor colorWithHexString:@"#491708"];
@@ -286,7 +397,7 @@
     else if(self.ID == 10)    return [UIColor colorWithHexString:@"#B49F80"];
     else if(self.ID == 11)    return [UIColor colorWithHexString:@"#A4937B"];
     else  return [UIColor colorWithHexString:@"#"];
-    
+
 }
 
 
@@ -307,11 +418,11 @@
     else if(self.ID == 10)    return [UIColor colorWithHexString:@"#B49F80"];
     else if(self.ID == 11)    return [UIColor colorWithHexString:@"#A4937B"];
     else  return [UIColor colorWithHexString:@"#"];
-    
+
 }
- 
- 
- 
+
+
+
  -(UIColor *)kindColor
  {
      switch (self.ID) {
@@ -344,8 +455,8 @@
              return [UIColor colorWithHexString:@"#6C757D"]; // Neutral fallback
      }
  }
- 
+
  */
 @end
 
- 
+
