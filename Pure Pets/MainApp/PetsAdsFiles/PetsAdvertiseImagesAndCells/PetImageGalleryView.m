@@ -1559,9 +1559,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     }
 
     if (targetPage >= totalPages) {
-        targetPage = 0;
-    } else if (targetPage < 0) {
         targetPage = totalPages - 1;
+    } else if (targetPage < 0) {
+        targetPage = 0;
     }
 
     [self scrollToPage:targetPage animated:YES];

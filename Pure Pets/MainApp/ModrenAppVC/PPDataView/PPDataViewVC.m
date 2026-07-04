@@ -3722,7 +3722,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     self.subKindsButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.centerCapsuleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.centerCapsuleButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.centerCapsuleButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.centerCapsuleButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.centerCapsuleButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
@@ -4311,7 +4311,7 @@ presentingViewController:self
     [self pp_applyPremiumNavigationChromeAppearance];
     self.navigationItem.titleView = self.navContainerView;
 
-    UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
     [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
     cartNavBtn.accessibilityLabel = kLang(@"Cart");
@@ -4322,7 +4322,7 @@ presentingViewController:self
     self.navCartButton = cartNavBtn;
     [self pp_applyTemporaryHiddenCartButtonState];
 
-    UIButton *searchNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *searchNavBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     searchNavBtn.translatesAutoresizingMaskIntoConstraints = NO;
     searchNavBtn.clipsToBounds = NO;
     [searchNavBtn.widthAnchor constraintEqualToConstant:42.0].active = YES;

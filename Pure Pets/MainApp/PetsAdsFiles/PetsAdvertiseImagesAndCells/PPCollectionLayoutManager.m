@@ -22,8 +22,8 @@
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
 
-static CGFloat const PPUniversalAdsPinterestOuterInset = 14.0;
-static CGFloat const PPUniversalAdsPinterestInnerSpacing = 14.0;
+static CGFloat const PPUniversalAdsPinterestOuterInset = 16.0;
+static CGFloat const PPUniversalAdsPinterestInnerSpacing = 16.0;
 static CGFloat const PPUniversalAdsPinterestButtonHeight = 34.0;
 static CGFloat const PPUniversalAdsPinterestCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalAdsPinterestCompactPriceHeight = 26.0;
@@ -126,7 +126,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
     }
     CGFloat contentWidth = MAX(width - 28.0, 96.0);
     CGFloat imageHeight = contentWidth * 0.78;
-    return ceil(14.0 + imageHeight + 14.0 + 66.0 + 10.0 + 44.0 + 10.0 + 28.0 + 16.0);
+    return ceil(16.0 + imageHeight + 16.0 + 66.0 + 10.0 + 44.0 + 10.0 + 28.0 + 16.0);
 }
 
 - (CGFloat)pp_serviceCardHeightForWidth:(CGFloat)width
@@ -189,10 +189,10 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
         NSLog(@"[PPCollectionLayoutManager] ERROR: newLayout is nil for mode");
         return nil;
     }
-    const CGFloat horizontalSpacing = 14.0;
-    const CGFloat verticalSpacing = 14.0;
-    const CGFloat topInset = 14.0;
-    const CGFloat bottomInset = 14.0;
+    const CGFloat horizontalSpacing = 16.0;
+    const CGFloat verticalSpacing = 16.0;
+    const CGFloat topInset = 16.0;
+    const CGFloat bottomInset = 16.0;
     // Create an appropriate layout for the given mode.
     UICollectionViewLayout *layout = nil;
    
@@ -403,9 +403,9 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
                 carousel.orthogonalScrollingBehavior =
                 UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
 
-                carousel.interGroupSpacing = 14.0;
+                carousel.interGroupSpacing = 16.0;
                 carousel.contentInsets =
-                NSDirectionalEdgeInsetsMake(12, 14.0, 24, 14.0);
+                NSDirectionalEdgeInsetsMake(12, 16.0, 24, 16.0);
 
                 return carousel;
             }
@@ -439,7 +439,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
 
             sectionLayout.interGroupSpacing = 12;
             sectionLayout.contentInsets =
-            NSDirectionalEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
+            NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
 
             return sectionLayout;
          }];

@@ -688,11 +688,17 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutBoundarySupplementaryItem *)sectionHeaderWithHeight:(float)height
                                                                    pinned:(BOOL)pinned
  {
+     NSCollectionLayoutDimension *heightDim;
+     if (height <= 58.0) {
+         heightDim = [NSCollectionLayoutDimension absoluteDimension:height];
+     } else {
+         heightDim = [NSCollectionLayoutDimension estimatedDimension:height];
+     }
+     
      NSCollectionLayoutSize *size =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
-                                      heightDimension:
-       [NSCollectionLayoutDimension estimatedDimension:height]];
+                                      heightDimension:heightDim];
 
     NSCollectionLayoutBoundarySupplementaryItem *header =
         [NSCollectionLayoutBoundarySupplementaryItem

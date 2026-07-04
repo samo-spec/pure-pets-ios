@@ -80,7 +80,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     self.surfaceView.clipsToBounds = NO;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     self.surfaceView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
-    self.surfaceView.layer.borderWidth = PPSectionHeaderPixel();
+    self.surfaceView.layer.borderWidth = 0;//PPSectionHeaderPixel();
     self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.surfaceView.layer.shadowOpacity = 0.05;
@@ -201,8 +201,10 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
                           action:@selector(pp_actionTapped)
                 forControlEvents:UIControlEventTouchUpInside];
 
+    NSLayoutConstraint *actionHeight = [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinHeight];
+    actionHeight.priority = UILayoutPriorityDefaultHigh;
     [NSLayoutConstraint activateConstraints:@[
-        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinHeight],
+        actionHeight,
         [self.actionButton.widthAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinWidth],
         [self.actionButton.widthAnchor constraintLessThanOrEqualToConstant:PPSectionHeaderActionMaxWidth],
     ]];
@@ -308,7 +310,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     UIColor *accentColor = [self pp_accentColor];
 
     self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
-    self.surfaceView.layer.borderColor = [self pp_surfaceBorderColor].CGColor;
+    self.surfaceView.layer.borderColor = AppClearClr.CGColor;//[self pp_surfaceBorderColor].CGColor;
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.surfaceView.layer.shadowOpacity = (decorationActive && !darkMode) ? 0.05 : 0.0;
     self.surfaceView.layer.shadowRadius = decorationActive ? 16.0 : 0.0;
@@ -359,8 +361,8 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
         return [UIColor colorWithWhite:1.0 alpha:self.surfaceDecorationActive ? 0.055 : 0.04];
     }
 
-    UIColor *foregroundSurface = AppForgroundColr ?: UIColor.whiteColor;
-    return [foregroundSurface colorWithAlphaComponent:self.surfaceDecorationActive ? 0.32 : 0.24];
+    UIColor *foregroundSurface = AppBackgroundClr ?: UIColor.whiteColor;
+    return [foregroundSurface colorWithAlphaComponent:self.surfaceDecorationActive ? 0.32 : 0.22];
 }
 
 - (UIColor *)pp_surfaceBorderColor
@@ -368,8 +370,8 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.08];
     }
-    UIColor *accent = AppForgroundColr ?: UIColor.separatorColor;
-    return [accent colorWithAlphaComponent:self.surfaceDecorationActive ? 0.42 : 0.22];
+    UIColor *accent = AppBackgroundClr ?: UIColor.separatorColor;
+    return [accent colorWithAlphaComponent:self.surfaceDecorationActive ? 0.42 : 0.72];
 }
 
 - (UIFont *)pp_titleFont
@@ -430,6 +432,10 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
     UICollectionViewLayoutAttributes *attrs = [layoutAttributes copy];
+    if (layoutAttributes.frame.size.height <= 45.0) {
+        attrs.frame = layoutAttributes.frame;
+        return attrs;
+    }
     CGSize size = [self systemLayoutSizeFittingSize:CGSizeMake(attrs.size.width, UIViewNoIntrinsicMetric)
                       withHorizontalFittingPriority:UILayoutPriorityRequired
                             verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
