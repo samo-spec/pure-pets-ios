@@ -3049,7 +3049,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         vc.sheetPresentationController.delegate = self;
     }
     [self pp_prepareSelectorSheetPresentationForField:config.identifier];
-    [self presentViewController:vc animated:YES completion:nil];
+    
+    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80];
+   // [self presentViewController:vc animated:YES completion:nil];
 }
 
 - (void)pp_presentSubCategoryPickerForConfig:(PPFormFieldConfig *)config {

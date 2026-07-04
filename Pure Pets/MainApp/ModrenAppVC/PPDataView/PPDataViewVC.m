@@ -3650,7 +3650,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [blurView.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor]
         ]];
     }
-    self.KindsButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.KindsButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.KindsButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.KindsButton.showsMenuAsPrimaryAction = YES;
     self.KindsButton.semanticContentAttribute = UISemanticContentAttributeUnspecified;
@@ -3667,7 +3667,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     };
  
  
-    UIButton *sectionsBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButton *sectionsBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     sectionsBtn.translatesAutoresizingMaskIntoConstraints = NO;
 
     // Configuration (iOS 16+ best practice)
