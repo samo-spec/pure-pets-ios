@@ -3078,6 +3078,8 @@
 "listing_show_action" = "Show";
 "listing_hidden_badge" = "Hidden";
 "used_accessory_badge" = "Used";
+"used_accessories_disabled_title" = "Used accessories unavailable";
+"used_accessories_disabled_message" = "Used accessory listings are currently unavailable.";
 "listing_hidden_success" = "Hidden from public browsing.";
 "listing_visible_success" = "Visible in public browsing.";
 "listing_visibility_failed" = "Could not update visibility. Please try again.";

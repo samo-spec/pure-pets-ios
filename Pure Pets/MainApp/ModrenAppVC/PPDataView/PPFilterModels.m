@@ -6,9 +6,11 @@
 //
 
 #import "PPFilterModels.h"
+#import "MainKindsModel.h"
 
 // ─── Filter group ID constants ───────────────────────────────────────
 NSString * const PPFilterIDCondition   = @"condition";
+NSString * const PPFilterIDAccessoryCategory = @"accessoryCategory";
 NSString * const PPFilterIDGender      = @"gender";
 NSString * const PPFilterIDServiceType = @"serviceType";
 NSString * const PPFilterIDPrice       = @"price";
@@ -33,10 +35,19 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 + (instancetype)optionWithTitle:(NSString *)title value:(NSInteger)value icon:(nullable NSString *)iconName
 {
+    return [self optionWithTitle:title value:value identifierValue:nil icon:iconName];
+}
+
++ (instancetype)optionWithTitle:(NSString *)title
+                          value:(NSInteger)value
+                identifierValue:(nullable NSString *)identifierValue
+                           icon:(nullable NSString *)iconName
+{
     PPFilterOption *o = [[PPFilterOption alloc] init];
     o.title    = title;
     o.value    = value;
     o.iconName = iconName;
+    o.identifierValue = identifierValue;
     return o;
 }
 
@@ -74,12 +85,21 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 - (nullable NSString *)selectedTitle
 {
-    for (PPFilterOption *o in self.options) {
-        if (o.value == self.selectedValue) {
-            return o.title;
-        }
+    PPFilterOption *selected = [self selectedOption];
+    if (selected) {
+        return selected.title;
     }
     return self.options.firstObject.title;
+}
+
+- (nullable PPFilterOption *)selectedOption
+{
+    for (PPFilterOption *o in self.options) {
+        if (o.value == self.selectedValue) {
+            return o;
+        }
+    }
+    return self.options.firstObject;
 }
 
 - (void)reset
@@ -97,7 +117,10 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
     NSMutableArray *opts = [NSMutableArray arrayWithCapacity:self.options.count];
     for (PPFilterOption *o in self.options) {
-        PPFilterOption *oc = [PPFilterOption optionWithTitle:o.title value:o.value icon:o.iconName];
+        PPFilterOption *oc = [PPFilterOption optionWithTitle:o.title
+                                                       value:o.value
+                                             identifierValue:o.identifierValue
+                                                        icon:o.iconName];
         [opts addObject:oc];
     }
     copy.options = opts;
@@ -235,26 +258,39 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 + (PPFilterState *)pp_accessoriesFilterState
 {
-    PPFilterGroup *condition = [PPFilterGroup
-        groupWithID:PPFilterIDCondition
-              title:PPFilterL(@"Condition", @"الحالة")
-           chipIcon:@"checkmark.seal"
-            options:@[
-                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterAccessoryAll],
-                [PPFilterOption optionWithTitle:PPFilterL(@"New", @"جديد") value:PPFilterAccessoryNew],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Used", @"مستعمل") value:PPFilterAccessoryUsed],
-            ]];
+    return [self accessoriesFilterStateWithCategories:@[]];
+}
 
-    PPFilterGroup *price = [PPFilterGroup
-        groupWithID:PPFilterIDPrice
-              title:PPFilterL(@"Price", @"السعر")
-           chipIcon:@"tag"
-            options:@[
-                [PPFilterOption optionWithTitle:PPFilterL(@"All prices", @"كل الاسعار") value:PPFilterPriceAll],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Under 250", @"اقل من 250") value:PPFilterPriceTier1],
-                [PPFilterOption optionWithTitle:@"250 - 750" value:PPFilterPriceTier2],
-                [PPFilterOption optionWithTitle:PPFilterL(@"750+", @"750+") value:PPFilterPriceTier3],
-            ]];
++ (PPFilterState *)accessoriesFilterStateWithCategories:(NSArray<PPAccessoryCategoryModel *> *)categories
+{
+    NSMutableArray<PPFilterOption *> *categoryOptions = [NSMutableArray array];
+    [categoryOptions addObject:[PPFilterOption optionWithTitle:PPFilterL(@"All categories", @"كل التصنيفات")
+                                                         value:0
+                                                           icon:@"square.grid.2x2"]];
+
+    NSMutableSet<NSString *> *usedCategoryIDs = [NSMutableSet set];
+    NSInteger nextValue = 1;
+    for (PPAccessoryCategoryModel *category in categories ?: @[]) {
+        if (![category isKindOfClass:PPAccessoryCategoryModel.class] || !category.enabled) {
+            continue;
+        }
+        NSString *categoryID = category.categoryID.length > 0 ? category.categoryID : category.documentID;
+        if (categoryID.length == 0 || [usedCategoryIDs containsObject:categoryID]) {
+            continue;
+        }
+        [usedCategoryIDs addObject:categoryID];
+        [categoryOptions addObject:[PPFilterOption optionWithTitle:[category displayName]
+                                                             value:nextValue
+                                                   identifierValue:categoryID
+                                                              icon:@"tag"]];
+        nextValue += 1;
+    }
+
+    PPFilterGroup *category = [PPFilterGroup
+        groupWithID:PPFilterIDAccessoryCategory
+              title:PPFilterL(@"Accessory Category", @"تصنيف المستلزمات")
+           chipIcon:@"square.grid.2x2"
+            options:categoryOptions.copy];
 
     PPFilterGroup *sort = [PPFilterGroup
         groupWithID:PPFilterIDSort
@@ -267,7 +303,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
                 [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"الاسم من الالف للياء") value:PPFilterSortNameAZ],
             ]];
 
-    return [PPFilterState stateWithGroups:@[condition, price, sort]];
+    return [PPFilterState stateWithGroups:@[category, sort]];
 }
 
 #pragma mark — Food

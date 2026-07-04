@@ -31,7 +31,7 @@ static UIColor *PPFilterSheetAccentColor(void)
 
 static UIColor *PPFilterSheetCanvasColor(void)
 {
-    return AppBackgroundClrLigter;
+    return [AppBackgroundClrLigter colorWithAlphaComponent:0.72];
 }
 
 static CGFloat PPFilterSheetHairline(void)
@@ -71,7 +71,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 {
     self = [super init];
     if (self) {
-        _contentInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
+        _contentInsets = UIEdgeInsetsMake(3.0, 10.0, 3.0, 10.0);
     }
     return self;
 }
@@ -373,6 +373,8 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 @property (nonatomic, strong) UILabel *summaryLabel;
 @property (nonatomic, strong) PPFilterCapsuleLabel *stateLabel;
 @property (nonatomic, strong) PPFilterWrapView *wrapView;
+@property (nonatomic, strong) UIScrollView *horizontalScrollView;
+@property (nonatomic, strong) UIStackView *horizontalStackView;
 @property (nonatomic, strong, readwrite) PPFilterGroup *group;
 @property (nonatomic, copy, readwrite) NSArray<PPFilterOptionPill *> *pills;
 @end
@@ -484,11 +486,39 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     }
     self.pills = [pills copy];
 
-    PPFilterWrapView *wrapView = [[PPFilterWrapView alloc] initWithPills:self.pills];
-    [surfaceView addSubview:wrapView];
-    self.wrapView = wrapView;
+    BOOL isHorizontalScroll = [self.group.filterID isEqualToString:PPFilterIDAccessoryCategory];
 
-    [NSLayoutConstraint activateConstraints:@[
+    if (isHorizontalScroll) {
+        UIScrollView *scrollView = [[UIScrollView alloc] init];
+        scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+        scrollView.showsHorizontalScrollIndicator = NO;
+        scrollView.alwaysBounceHorizontal = YES;
+        scrollView.clipsToBounds = NO;
+        scrollView.contentInset = UIEdgeInsetsMake(0, 18.0, 0, 18.0);
+        scrollView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        [surfaceView addSubview:scrollView];
+        self.horizontalScrollView = scrollView;
+
+        UIStackView *stackView = [[UIStackView alloc] init];
+        stackView.translatesAutoresizingMaskIntoConstraints = NO;
+        stackView.axis = UILayoutConstraintAxisHorizontal;
+        stackView.spacing = 10.0;
+        stackView.alignment = UIStackViewAlignmentCenter;
+        stackView.distribution = UIStackViewDistributionFill;
+        stackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        [scrollView addSubview:stackView];
+        self.horizontalStackView = stackView;
+
+        for (PPFilterOptionPill *pill in self.pills) {
+            [stackView addArrangedSubview:pill];
+        }
+    } else {
+        PPFilterWrapView *wrapView = [[PPFilterWrapView alloc] initWithPills:self.pills];
+        [surfaceView addSubview:wrapView];
+        self.wrapView = wrapView;
+    }
+
+    NSMutableArray<NSLayoutConstraint *> *layoutConstraints = [NSMutableArray arrayWithArray:@[
         [surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
         [surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
@@ -519,12 +549,32 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         [summaryLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [summaryLabel.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-18.0],
         [summaryLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
-
-        [wrapView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:18.0],
-        [wrapView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-18.0],
-        [wrapView.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:16.0],
-        [wrapView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-18.0]
     ]];
+
+    if (isHorizontalScroll) {
+        [layoutConstraints addObjectsFromArray:@[
+            [self.horizontalScrollView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor],
+            [self.horizontalScrollView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor],
+            [self.horizontalScrollView.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:16.0],
+            [self.horizontalScrollView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-18.0],
+            [self.horizontalScrollView.heightAnchor constraintEqualToConstant:54.0],
+
+            [self.horizontalStackView.topAnchor constraintEqualToAnchor:self.horizontalScrollView.contentLayoutGuide.topAnchor],
+            [self.horizontalStackView.bottomAnchor constraintEqualToAnchor:self.horizontalScrollView.contentLayoutGuide.bottomAnchor],
+            [self.horizontalStackView.leadingAnchor constraintEqualToAnchor:self.horizontalScrollView.contentLayoutGuide.leadingAnchor],
+            [self.horizontalStackView.trailingAnchor constraintEqualToAnchor:self.horizontalScrollView.contentLayoutGuide.trailingAnchor],
+            [self.horizontalStackView.heightAnchor constraintEqualToAnchor:self.horizontalScrollView.frameLayoutGuide.heightAnchor]
+        ]];
+    } else {
+        [layoutConstraints addObjectsFromArray:@[
+            [self.wrapView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:18.0],
+            [self.wrapView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-18.0],
+            [self.wrapView.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:16.0],
+            [self.wrapView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-18.0]
+        ]];
+    }
+
+    [NSLayoutConstraint activateConstraints:layoutConstraints];
 }
 
 - (void)pp_applyGroupStateWithAccentColor:(UIColor *)accentColor
@@ -551,8 +601,10 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     for (PPFilterOptionPill *pill in self.pills) {
         [pill pp_applySelected:(pill.optionValue == self.group.selectedValue) accentColor:accent];
     }
-    [self.wrapView invalidateIntrinsicContentSize];
-    [self.wrapView setNeedsLayout];
+    if (self.wrapView) {
+        [self.wrapView invalidateIntrinsicContentSize];
+        [self.wrapView setNeedsLayout];
+    }
 }
 
 @end
@@ -703,13 +755,13 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [footerShell.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [footerShell.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-        [footerShell.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0],
+        [footerShell.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-12.0],
 
         [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [scrollView.bottomAnchor constraintEqualToAnchor:footerShell.topAnchor constant:-14.0],
 
-        [contentStack.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor constant:6.0],
+        [contentStack.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor constant:12.0],
         [contentStack.leadingAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.leadingAnchor constant:16.0],
         [contentStack.trailingAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.trailingAnchor constant:-16.0],
         [contentStack.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0]
@@ -724,7 +776,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
             [scrollView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:16.0]
         ]];
     } else {
-        [constraints addObject:[scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0]];
+        [constraints addObject:[scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0.0]];
     }
 
     [NSLayoutConstraint activateConstraints:constraints];
@@ -1122,7 +1174,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 {
     switch (self.currentSection) {
         case PPDataSectionAccessories:
-            return PPFilterSheetL(@"Adjust condition, price, and sort so the list opens on the items that fit your intent first.", @"عدّل الحالة والسعر والترتيب حتى تبدأ القائمة بالعناصر الأنسب لك أولاً.");
+            return PPFilterSheetL(@"Choose an accessory category and sort order so the list opens on the items that fit your intent first.", @"اختر تصنيف المستلزمات والترتيب حتى تبدأ القائمة بالعناصر الأنسب لك أولاً.");
         case PPDataSectionFood:
             return PPFilterSheetL(@"Choose offers, price range, and order before refreshing the food feed.", @"اختر العروض ونطاق السعر والترتيب قبل تحديث قائمة الطعام.");
         case PPDataSectionServices:

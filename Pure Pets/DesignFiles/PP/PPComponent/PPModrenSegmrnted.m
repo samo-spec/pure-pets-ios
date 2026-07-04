@@ -633,7 +633,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     UIColor *accent = [self pp_accentColor];
     BOOL dark = [self pp_isDarkMode];
     UIColor *surfaceColor = self.containerBackgroundColor ?: AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
-    UIColor *liquidBorderColor = AppForgroundColr ?: surfaceColor;
+    UIColor *liquidBorderColor = AppPrimaryClrShiner ?: surfaceColor;
 
     self.containerFillView.backgroundColor = UIColor.clearColor;
     self.containerBlurView.alpha = self.hidesContainerChrome ? 0.0 : 1.0;

@@ -3792,7 +3792,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                              desc:kLang(@"addPetForAdoption_desc")];
     adopt.sortOrder = 2;
 
-    return @[newAd, addUsed, adopt];
+    NSMutableArray<OptionModel *> *options = [NSMutableArray arrayWithObject:newAd];
+    if (PPAllwedUsedAccessoriesEnabled()) {
+        [options addObject:addUsed];
+    }
+    [options addObject:adopt];
+    return options.copy;
 }
 
 - (void)presentBottomSheet {
@@ -3875,6 +3880,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [PPAlertHelper showErrorIn:self
                              title:kLang(@"Account blocked")
                           subtitle:kLang(@"Your account is blocked. You can't add accessories right now.")];
+        return;
+    }
+
+    if (!PPAllwedUsedAccessoriesEnabled()) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"used_accessories_disabled_title")
+                            subtitle:kLang(@"used_accessories_disabled_message")
+                          completion:nil];
         return;
     }
 

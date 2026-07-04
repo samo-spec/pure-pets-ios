@@ -3066,6 +3066,8 @@
 "listing_show_action" = "إظهار";
 "listing_hidden_badge" = "مخفي";
 "used_accessory_badge" = "مستعمل";
+"used_accessories_disabled_title" = "الإكسسوارات المستعملة غير متاحة";
+"used_accessories_disabled_message" = "إعلانات الإكسسوارات المستعملة غير متاحة حالياً.";
 "listing_hidden_success" = "تم إخفاؤه من التصفح العام.";
 "listing_visible_success" = "أصبح ظاهراً في التصفح العام.";
 "listing_visibility_failed" = "تعذر تحديث الظهور. حاول مرة أخرى.";

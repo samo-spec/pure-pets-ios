@@ -54,6 +54,25 @@
     return requestToken == self.requestVersion;
 }
 
+- (NSArray *)pp_resultsRespectingUsedAccessoryFlag:(NSArray *)results
+{
+    if (PPAllwedUsedAccessoriesEnabled() || self.currentSection != PPDataSectionAccessories) {
+        return results ?: @[];
+    }
+
+    return [(results ?: @[]) filteredArrayUsingPredicate:
+        [NSPredicate predicateWithBlock:^BOOL(id obj, __unused NSDictionary *bindings) {
+            if (![obj isKindOfClass:PetAccessory.class]) {
+                return YES;
+            }
+            PetAccessory *accessory = (PetAccessory *)obj;
+            if (accessory.accessKindType != AccessTypeAccessory) {
+                return YES;
+            }
+            return accessory.condition == AccessConditionsNew;
+        }]];
+}
+
 #pragma mark - Init
 
 - (instancetype)initWithMainKind:(MainKindsModel *)mainKind
@@ -574,19 +593,34 @@
 
 - (NSArray *)pp_applyFiltersToResults:(NSArray *)results filterState:(PPFilterState *)state
 {
-    if (!state || !state.hasActiveFilters) {
-        return results;
-    }
+    NSArray *filtered = [self pp_resultsRespectingUsedAccessoryFlag:results];
 
-    NSArray *filtered = results;
+    if (!state || !state.hasActiveFilters) {
+        return filtered;
+    }
 
     // ── Condition filter (Accessories / Food) ──
     NSInteger condVal = [state valueForFilterID:PPFilterIDCondition];
-    if (condVal != 0) { // 0 = All
+    if (PPAllwedUsedAccessoriesEnabled() && condVal != 0) { // 0 = All
         BOOL wantNew = (condVal == PPFilterAccessoryNew);
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
                 return [obj respondsToSelector:@selector(isNew)] && ([obj isNew] == wantNew);
+            }]];
+    }
+
+    // ── Accessory category filter ──
+    PPFilterGroup *accessoryCategoryGroup = [state groupForID:PPFilterIDAccessoryCategory];
+    NSString *selectedAccessoryCategoryID = accessoryCategoryGroup.selectedOption.identifierValue ?: @"";
+    if (selectedAccessoryCategoryID.length > 0) {
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, __unused NSDictionary *bindings) {
+                if (![obj isKindOfClass:PetAccessory.class]) {
+                    return YES;
+                }
+                PetAccessory *accessory = (PetAccessory *)obj;
+                NSString *categoryID = accessory.AccessoryCategoryID ?: @"";
+                return [categoryID isEqualToString:selectedAccessoryCategoryID];
             }]];
     }
 

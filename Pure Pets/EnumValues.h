@@ -82,6 +82,17 @@ static NSString * const PPHomeSectionHeaderKind = @"PPHomeSectionHeaderKind";
 static NSString * const kPPLayoutModeKey = @"PPUserPreferredLayoutMode";
 static NSString * const kPPAllKindsSectionKey = @"pp.lastSection.allKinds";
 
+// Global marketplace flag. Keep the requested name as the public switch:
+// YES = preserve existing new + used accessory behavior.
+// NO  = user-facing accessory browsing and creation surfaces use new accessories only.
+#ifndef AllwedUsedAccessories
+#define AllwedUsedAccessories NO
+#endif
+
+static inline BOOL PPAllwedUsedAccessoriesEnabled(void) {
+    return (BOOL)AllwedUsedAccessories;
+}
+
 static NSString * const PPShowSystemTabBarNotification = @"PPShowSystemTabBarNotification";
 static NSString * const PPHideSystemTabBarNotification = @"PPHideSystemTabBarNotification";
 
@@ -393,7 +404,8 @@ typedef NS_ENUM(NSUInteger, PPSheetDetentStyle) {
     PPSheetDetentStyleLargeOnly,
     PPSheetDetentStyleMediumAndLarge,
     PPSheetDetentStyleSemiLargAndLarge,
-    PPSheetDetentStyleProfile
+    PPSheetDetentStyleProfile,
+    PPSheetDetentStyleFull
 };
  
 

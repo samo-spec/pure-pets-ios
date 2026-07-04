@@ -370,7 +370,7 @@
 #define PPIsUserLoggedIn UserManager.sharedManager.isUserLoggedIn
 #define PPShowLoginPrompt [UserManager showPromptOnTopController]
 
-/// Home Pet Care presentation switch.
+ 
 /// YES uses PPHomeUltraPremuimPetCareCell; NO preserves PPHomePremiumCareCell.
 static BOOL const PPULTRA_CARE_IS_ACTIVATED = YES;
 

@@ -29,7 +29,7 @@
 #endif
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
-static const CGFloat kPPAccessoryFilterHeight = 48.0;
+static const CGFloat kPPAccessoryFilterHeight = 52.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -67,8 +67,8 @@ static NSArray<NSNumber *> *PPDataViewSectionPresentationOrder(void)
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
         order = @[
-            @(PPDataSectionAccessories),
             @(PPDataSectionAds),
+            @(PPDataSectionAccessories),
             @(PPDataSectionFood),
             @(PPDataSectionServices)
         ];
@@ -256,7 +256,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
         BOOL isRTL = Language.isRTL;
         self.surfaceGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
         self.surfaceGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-        self.blurView.hidden = UIAccessibilityIsReduceTransparencyEnabled();
+        self.blurView.hidden = YES;//UIAccessibilityIsReduceTransparencyEnabled();
         self.backgroundColor = self.blurView.hidden ? [surface colorWithAlphaComponent:0.96] : UIColor.clearColor;
         self.layer.borderWidth = hasActiveFilters ? 1.0 : 0.75;
         self.layer.borderColor = border.CGColor;
@@ -297,10 +297,13 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 
 @interface PPDropdownFilterChipButton : UIButton
 @property (nonatomic, copy) NSString *chipIconName;
+@property (nonatomic, assign) BOOL ppHidesTrailingChevron;
+@property (nonatomic, assign) BOOL ppUsesActionSurface;
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active;
 @end
 
 @interface PPDropdownFilterChipButton ()
+@property (nonatomic, strong) UIView *materialView;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) CAShapeLayer *strokeLayer;
 @property (nonatomic, assign, getter=isPPActive) BOOL ppActive;
@@ -322,23 +325,38 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.titleLabel.alpha = 1.0;
+    self.imageView.alpha = 1.0;
     [self setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
     [self setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
+    self.materialView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.materialView.userInteractionEnabled = NO;
+    self.materialView.clipsToBounds = YES;
+    self.materialView.backgroundColor = UIColor.clearColor;
+    [self insertSubview:self.materialView atIndex:0];
+
     self.surfaceGradientLayer = [CAGradientLayer layer];
     self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
     self.surfaceGradientLayer.masksToBounds = YES;
-    [self.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
+    [self.materialView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
 
     self.strokeLayer = [CAShapeLayer layer];
     self.strokeLayer.fillColor = UIColor.clearColor.CGColor;
-    [self.layer addSublayer:self.strokeLayer];
+    self.strokeLayer.lineWidth = 1.0;
+    [self.materialView.layer addSublayer:self.strokeLayer];
 
-    [self.heightAnchor constraintEqualToConstant:40.0].active = YES;
+    self.layer.shadowRadius = 12.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    self.layer.shadowOpacity = 0.10;
+    self.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:0.18].CGColor;
+
+    [self.heightAnchor constraintEqualToConstant:44.0].active = YES;
     return self;
 }
 
@@ -346,15 +364,19 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 {
     [super layoutSubviews];
 
-    CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 20.0);
+    CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 22.0));
     self.layer.cornerRadius = radius;
-    self.surfaceGradientLayer.frame = self.bounds;
+    self.materialView.frame = self.bounds;
+    self.materialView.layer.cornerRadius = radius;
+    [self sendSubviewToBack:self.materialView];
+
+    self.surfaceGradientLayer.frame = self.materialView.bounds;
     self.surfaceGradientLayer.cornerRadius = radius;
 
-    CGRect strokeRect = CGRectInset(self.bounds, 0.5, 0.5);
-    CGFloat strokeRadius = MAX(0.0, radius - 0.5);
+    CGRect strokeRect = CGRectInset(self.materialView.bounds, 0.7, 0.7);
+    CGFloat strokeRadius = MAX(0.0, radius - 0.7);
     UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect cornerRadius:strokeRadius];
-    self.strokeLayer.frame = self.bounds;
+    self.strokeLayer.frame = self.materialView.bounds;
     self.strokeLayer.path = strokePath.CGPath;
     self.layer.shadowPath = strokePath.CGPath;
 }
@@ -370,17 +392,17 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     [super setHighlighted:highlighted];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.alpha = highlighted ? 0.82 : 1.0;
+        self.alpha = highlighted ? 0.96 : 1.0;
         return;
     }
 
-    CGFloat scale = highlighted ? 0.975 : 1.0;
+    CGFloat scale = highlighted ? 0.972 : 1.0;
     [UIView animateWithDuration:highlighted ? 0.12 : 0.20
                           delay:0.0
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
                      animations:^{
         self.transform = CGAffineTransformMakeScale(scale, scale);
-        self.alpha = highlighted ? 0.90 : 1.0;
+        self.alpha = highlighted ? 0.98 : 1.0;
     } completion:nil];
 }
 
@@ -388,19 +410,27 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 {
     self.ppActive = active;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.alpha = 1.0;
 
     NSString *safeTitle = title.length > 0 ? title : @"";
     UIColor *brand = PPDataViewAccentColor();
-    UIColor *fg = active ? PPDataViewChromeTextColor() : PPDataViewChromeSecondaryTextColor();
-    UIColor *accentedFG = active ? brand : fg;
-    UIFont *baseFont = active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13];
+    BOOL action = self.ppUsesActionSurface;
+    UIColor *premiumText = PPDataViewDynamicColor([UIColor colorWithRed:0.105 green:0.104 blue:0.132 alpha:1.0],
+                                                  [UIColor colorWithWhite:0.94 alpha:1.0]);
+    UIColor *quietText = PPDataViewDynamicColor([UIColor colorWithRed:0.215 green:0.212 blue:0.252 alpha:1.0],
+                                                [UIColor colorWithWhite:0.86 alpha:1.0]);
+    UIColor *accentedFG = action ? brand : (active ? premiumText : quietText);
+    UIColor *symbolFG = action ? brand : (active ? brand : PPDataViewDynamicColor([UIColor colorWithRed:0.37 green:0.36 blue:0.43 alpha:1.0],
+                                                                                  [UIColor colorWithWhite:0.78 alpha:1.0]));
+    UIFont *baseFont = (active || action) ? [GM boldFontWithSize:13.2] : [GM MidFontWithSize:13.0];
     if (!baseFont) {
-        baseFont = [UIFont systemFontOfSize:13.0 weight:(active ? UIFontWeightSemibold : UIFontWeightMedium)];
+        baseFont = [UIFont systemFontOfSize:(action ? 13.2 : 13.0)
+                                      weight:((active || action) ? UIFontWeightSemibold : UIFontWeightMedium)];
     }
     UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseFont];
     NSDictionary *textAttrs = @{
         NSFontAttributeName            : font,
-        NSForegroundColorAttributeName : fg
+        NSForegroundColorAttributeName : accentedFG
     };
 
     NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] init];
@@ -408,16 +438,18 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     NSString *iconName = [self.chipIconName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (iconName.length > 0) {
         UIImageSymbolConfiguration *iconCfg =
-            [UIImageSymbolConfiguration configurationWithPointSize:11
-                                                            weight:UIImageSymbolWeightMedium];
+            [UIImageSymbolConfiguration configurationWithPointSize:(action ? 14.0 : 12.8)
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleSmall];
         UIImage *icon = [[UIImage systemImageNamed:iconName
                                  withConfiguration:iconCfg]
-                         imageWithTintColor:accentedFG
+                         imageWithTintColor:symbolFG
                               renderingMode:UIImageRenderingModeAlwaysOriginal];
         if (icon) {
             NSTextAttachment *att = [[NSTextAttachment alloc] init];
             att.image = icon;
-            att.bounds = CGRectMake(0, -1.5, 14, 14);
+            CGFloat symbolSize = action ? 15.0 : 14.0;
+            att.bounds = CGRectMake(0.0, -2.0, symbolSize, symbolSize);
             [attrTitle appendAttributedString:
              [NSAttributedString attributedStringWithAttachment:att]];
             [attrTitle appendAttributedString:
@@ -428,24 +460,60 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     [attrTitle appendAttributedString:
      [[NSAttributedString alloc] initWithString:safeTitle attributes:textAttrs]];
 
-    UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(7, 13, 7, 11);
-    cfg.baseForegroundColor = accentedFG;
-    cfg.attributedTitle = attrTitle;
+    if (!self.ppHidesTrailingChevron) {
+        UIImageSymbolConfiguration *chevCfg =
+            [UIImageSymbolConfiguration configurationWithPointSize:12
+                                                            weight:UIImageSymbolWeightSemibold];
+        UIImage *chevron = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:chevCfg]
+                            imageWithTintColor:symbolFG
+                            renderingMode:UIImageRenderingModeAlwaysTemplate];
+        if (chevron) {
+            NSTextAttachment *chevronAttachment = [[NSTextAttachment alloc] init];
+            chevronAttachment.image = chevron;
+            //chevronAttachment.bounds = CGRectMake(0.0, -1.2, 9.0, 9.0);
+            [attrTitle appendAttributedString:[[NSAttributedString alloc] initWithString:@"  " attributes:textAttrs]];
+            [attrTitle appendAttributedString:[NSAttributedString attributedStringWithAttachment:chevronAttachment]];
+        }
+    }
 
-    UIImageSymbolConfiguration *chevCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:9
-                                                        weight:UIImageSymbolWeightSemibold];
-    cfg.image = [UIImage systemImageNamed:@"chevron.down" withConfiguration:chevCfg];
-    cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.imagePadding = 6.0;
-    cfg.background.backgroundColor = UIColor.clearColor;
-    cfg.background.strokeColor = UIColor.clearColor;
-    cfg.background.strokeWidth = 0.0;
+    // ─── iOS 26+ non-active: clear glass + capsule ───
+    if (@available(iOS 26.0, *)) {
+        if (!active && !action) {
+            UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
+            config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            config.attributedTitle = attrTitle;
+            config.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 18.0, 8.0, 16.0);
+            config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+            config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+            self.configuration = config;
+            self.materialView.hidden = YES;
+            self.tintColor = accentedFG;
 
-    self.configuration = cfg;
+            self.layer.shadowOpacity = 0.0;
+            self.layer.shadowRadius = 0.0;
+
+            [self setNeedsLayout];
+            return;
+        }
+        
+    }
+    else
+    {
+        self.materialView.hidden = NO;
+    }
+
+    // ─── Active / iOS < 26: existing custom rendering ───
+    //self.configuration = nil;
+    self.contentEdgeInsets = action ? UIEdgeInsetsMake(8.0, 15.0, 8.0, 15.0) : UIEdgeInsetsMake(8.0, 18.0, 8.0, 16.0);
+    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.tintColor = accentedFG;
+    [self setAttributedTitle:attrTitle forState:UIControlStateNormal];
+    [self setAttributedTitle:attrTitle forState:UIControlStateHighlighted];
+    [self setAttributedTitle:attrTitle forState:UIControlStateSelected];
+    [self setTitleColor:accentedFG forState:UIControlStateNormal];
+    [self setTitleColor:accentedFG forState:UIControlStateHighlighted];
+    [self setTitleColor:accentedFG forState:UIControlStateSelected];
 
     [self pp_applyPremiumLayerStateAnimated:self.window != nil];
 }
@@ -453,39 +521,80 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 - (void)pp_applyPremiumLayerStateAnimated:(BOOL)animated
 {
     UIColor *brand = PPDataViewAccentColor();
-    UIColor *surface = PPDataViewAppForegroundSurfaceColor();
     BOOL active = self.isPPActive;
 
+    // ─── iOS 26+ non-active: glass handles all visuals ───
+    if (@available(iOS 26.0, *)) {
+        if (!active && !self.ppUsesActionSurface) {
+            self.materialView.hidden = YES;
+            self.layer.shadowOpacity = 0.0;
+            self.layer.shadowRadius = 0.0;
+            return;
+        }
+        self.materialView.hidden = NO;
+    }
+
     void (^updates)(void) = ^{
-        UIColor *top = active
-            ? PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
-                                     [UIColor colorWithWhite:1.0 alpha:0.14])
-            : [surface colorWithAlphaComponent:0.94];
-        UIColor *middle = active
-            ? [brand colorWithAlphaComponent:0.10]
-            : [surface colorWithAlphaComponent:0.76];
-        UIColor *bottom = active
-            ? PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.48],
-                                     [UIColor colorWithWhite:1.0 alpha:0.06])
-            : [surface colorWithAlphaComponent:0.58];
+        BOOL action = self.ppUsesActionSurface;
+        UIColor *top;
+        UIColor *middle;
+        UIColor *bottom;
+        UIColor *stroke;
+        if (action) {
+            top = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.972 blue:0.984 alpha:1.0],
+                                         [UIColor colorWithRed:0.205 green:0.082 blue:0.124 alpha:1.0]);
+            middle = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.935 blue:0.960 alpha:1.0],
+                                            [UIColor colorWithRed:0.155 green:0.064 blue:0.096 alpha:1.0]);
+            bottom = PPDataViewDynamicColor([UIColor colorWithRed:0.992 green:0.946 blue:0.965 alpha:1.0],
+                                            [UIColor colorWithRed:0.096 green:0.055 blue:0.070 alpha:1.0]);
+            stroke = [brand colorWithAlphaComponent:active ? 0.42 : 0.30];
+        } else {
+            top = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.998 blue:0.996 alpha:1.0],
+                                         [UIColor colorWithWhite:0.205 alpha:1.0]);
+            middle = PPDataViewDynamicColor([UIColor colorWithRed:0.996 green:0.982 blue:0.988 alpha:1.0],
+                                            [UIColor colorWithWhite:0.165 alpha:1.0]);
+            bottom = PPDataViewDynamicColor([UIColor colorWithRed:0.968 green:0.958 blue:0.966 alpha:1.0],
+                                            [UIColor colorWithWhite:0.115 alpha:1.0]);
+            stroke = active
+                ? [brand colorWithAlphaComponent:0.38]
+                : PPDataViewDynamicColor([UIColor colorWithRed:0.730 green:0.680 blue:0.710 alpha:0.44],
+                                         [UIColor colorWithWhite:1.0 alpha:0.14]);
+        }
+        
+        
+        if (@available(iOS 26.0, *)) {
+             
+            self.surfaceGradientLayer.colors = @[
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.02].CGColor,
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.05].CGColor,
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.08].CGColor
+            ];
+             
+            self.configuration.background.strokeColor = stroke;
+            self.configuration.background.strokeWidth = (active || action) ? 1.15 : 1.0;
+        }
+        else
+        {
+            self.surfaceGradientLayer.colors = @[
+                (__bridge id)top.CGColor,
+                (__bridge id)middle.CGColor,
+                (__bridge id)bottom.CGColor
+            ];
+            
 
-        self.surfaceGradientLayer.colors = @[
-            (__bridge id)top.CGColor,
-            (__bridge id)middle.CGColor,
-            (__bridge id)bottom.CGColor
-        ];
-        self.surfaceGradientLayer.locations = @[@0.0, @0.54, @1.0];
-        self.surfaceGradientLayer.opacity = active ? 1.0 : 0.84;
+            self.strokeLayer.strokeColor = stroke.CGColor;
+            self.strokeLayer.lineWidth = (active || action) ? 1.15 : 1.0;
 
-        self.strokeLayer.strokeColor = (active
-                                        ? [brand colorWithAlphaComponent:0.22]
-                                        : [surface colorWithAlphaComponent:0.56]).CGColor;
-        self.strokeLayer.lineWidth = active ? 0.8 : 0.75;
-
-        self.layer.shadowColor = PPDataViewChromeShadowColor().CGColor;
-        self.layer.shadowOpacity = active ? 0.09 : 0.06;
-        self.layer.shadowRadius = active ? 7.0 : 6.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, active ? 2.5 : 2.0);
+            self.layer.shadowColor = (action || active)
+                ? [brand colorWithAlphaComponent:0.26].CGColor
+                : [UIColor colorWithWhite:0.0 alpha:0.18].CGColor;
+            self.layer.shadowOpacity = active ? 0.15 : (action ? 0.12 : 0.10);
+            self.layer.shadowRadius = active ? 14.0 : (action ? 12.0 : 11.0);
+            self.layer.shadowOffset = CGSizeMake(0.0, active ? 6.0 : 5.0);
+        }
+        self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
+        self.surfaceGradientLayer.opacity = 1.0;
+        
     };
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
@@ -602,7 +711,10 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (void)refreshFilterChipTitles;
 - (void)refreshFilterChipTitlesForSection:(PPDataSection)section;
+- (void)openFilters;
 - (PPFilterState *)pp_filterStateForSection:(PPDataSection)section;
+- (PPFilterState *)pp_freshFilterStateForSection:(PPDataSection)section;
+- (NSArray<PPAccessoryCategoryModel *> *)pp_accessoryFilterCategoriesForCurrentContext;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
 - (void)pp_openSearchController;
@@ -2846,7 +2958,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         [strongSelf refreshPresentedItemsAnimated:YES scrollToTop:YES];
 
     };
-    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80 ];
+    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleFull ];
 
 }
  
@@ -3108,10 +3220,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     for (NSInteger i = 0; i < (NSInteger)self.filterChips.count && i < (NSInteger)groups.count; i++) {
         PPDropdownFilterChipButton *chip = self.filterChips[i];
         PPFilterGroup *group = groups[i];
-        NSString *title = group.isActive ? group.selectedTitle : group.title;
+        BOOL opensFilterSheet =
+            (section == PPDataSectionAccessories) && [group.filterID isEqualToString:PPFilterIDSort];
+        NSString *title = opensFilterSheet
+            ? (kLang(@"filterPPAction") ?: @"Filter")
+            : (group.isActive ? group.selectedTitle : group.title);
         [chip pp_applyChipTitle:title active:group.isActive];
-        chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
-        chip.accessibilityLabel = group.title;
+        chip.menu = opensFilterSheet ? nil : [self pp_menuForFilterGroup:group chipIndex:i];
+        chip.accessibilityLabel = opensFilterSheet ? (kLang(@"filterPPAction") ?: @"Filter") : group.title;
         chip.accessibilityValue = group.selectedTitle;
         chip.accessibilityTraits = group.isActive
             ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
@@ -3372,20 +3488,40 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     PPFilterState *state = [self pp_filterStateForSection:section];
     NSArray<PPFilterGroup *> *groups = state.groups;
+    BOOL usesAccessoryFilterRow = (section == PPDataSectionAccessories);
 
     for (PPDropdownFilterChipButton *chip in self.filterChips) {
         [self.filterChipStackView removeArrangedSubview:chip];
         [chip removeFromSuperview];
     }
     [self.filterChips removeAllObjects];
+    self.filterChipStackView.distribution = usesAccessoryFilterRow
+        ? UIStackViewDistributionFill
+        : UIStackViewDistributionFillEqually;
 
     for (NSInteger i = 0; i < (NSInteger)groups.count; i++) {
         PPFilterGroup *group = groups[i];
+        BOOL opensFilterSheet =
+            usesAccessoryFilterRow && [group.filterID isEqualToString:PPFilterIDSort];
         PPDropdownFilterChipButton *chip = [[PPDropdownFilterChipButton alloc] init];
-        chip.chipIconName = group.chipIconName;
+        chip.chipIconName = opensFilterSheet ? @"line.3.horizontal.decrease.circle.fill" : group.chipIconName;
+        chip.ppHidesTrailingChevron = opensFilterSheet;
+        chip.ppUsesActionSurface = opensFilterSheet;
         chip.tag = i;
-        chip.showsMenuAsPrimaryAction = YES;
-        chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
+        chip.enabled = YES;
+        chip.alpha = 1.0;
+        chip.showsMenuAsPrimaryAction = !opensFilterSheet;
+        if (opensFilterSheet) {
+            chip.menu = nil;
+            [chip addTarget:self action:@selector(openFilters) forControlEvents:UIControlEventTouchUpInside];
+            [chip.widthAnchor constraintEqualToConstant:122.0].active = YES;
+            [chip setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+            [chip setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        } else {
+            chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
+            [chip setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+            [chip setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+        }
         if (group.filterID.length > 0) {
             chip.accessibilityIdentifier = [NSString stringWithFormat:@"pp.dataView.filter.%@", group.filterID];
         }
@@ -3512,10 +3648,60 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSNumber *key = @(section);
     PPFilterState *state = self.filterStates[key];
     if (!state) {
-        state = [PPFilterConfigProvider defaultFilterStateForSection:section];
+        state = [self pp_freshFilterStateForSection:section];
         self.filterStates[key] = state;
+    } else if (section == PPDataSectionAccessories) {
+        PPFilterGroup *categoryGroup = [state groupForID:PPFilterIDAccessoryCategory];
+        PPFilterGroup *legacyPriceGroup = [state groupForID:PPFilterIDPrice];
+        if ((!categoryGroup || categoryGroup.options.count <= 1) &&
+            [self pp_accessoryFilterCategoriesForCurrentContext].count > 0) {
+            state = [self pp_freshFilterStateForSection:section];
+            self.filterStates[key] = state;
+        } else if (legacyPriceGroup) {
+            state = [self pp_freshFilterStateForSection:section];
+            self.filterStates[key] = state;
+        }
     }
     return state;
+}
+
+- (PPFilterState *)pp_freshFilterStateForSection:(PPDataSection)section
+{
+    if (section == PPDataSectionAccessories) {
+        return [PPFilterConfigProvider accessoriesFilterStateWithCategories:[self pp_accessoryFilterCategoriesForCurrentContext]];
+    }
+    return [PPFilterConfigProvider defaultFilterStateForSection:section];
+}
+
+- (NSArray<PPAccessoryCategoryModel *> *)pp_accessoryFilterCategoriesForCurrentContext
+{
+    NSMutableArray<PPAccessoryCategoryModel *> *categories = [NSMutableArray array];
+    MainKindsModel *mainKind = self.input.mainKind;
+
+    if (mainKind && self.input.sourceTarget != PPDeepLinkTargetAllCategories) {
+        NSArray<PPAccessoryCategoryModel *> *cachedCategories =
+            [[MainKindsArrayManager shared] accessoryCategoriesForMainKindID:mainKind.ID] ?: @[];
+        [categories addObjectsFromArray:cachedCategories.count > 0 ? cachedCategories : (mainKind.accessoryCategories ?: @[])];
+    } else {
+        NSArray<MainKindsModel *> *sourceKinds = [MainKindsArrayManager shared].MainKindsArray.count > 0
+            ? [MainKindsArrayManager shared].MainKindsArray
+            : (self.input.mainKindsArr ?: @[]);
+        for (MainKindsModel *kind in sourceKinds) {
+            [categories addObjectsFromArray:kind.accessoryCategories ?: @[]];
+        }
+    }
+
+    NSMutableArray<PPAccessoryCategoryModel *> *uniqueCategories = [NSMutableArray arrayWithCapacity:categories.count];
+    NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+    for (PPAccessoryCategoryModel *category in categories) {
+        NSString *categoryID = category.categoryID.length > 0 ? category.categoryID : category.documentID;
+        if (categoryID.length == 0 || [seenIDs containsObject:categoryID]) {
+            continue;
+        }
+        [seenIDs addObject:categoryID];
+        [uniqueCategories addObject:category];
+    }
+    return uniqueCategories.copy;
 }
 
 #pragma mark - Custom Navigation Center View
@@ -3582,6 +3768,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }
 
         self.input.mainKind = model;
+        [self.filterStates removeObjectForKey:@(PPDataSectionAccessories)];
         self.KindsButton.menu = [self mainMenu];
 
         [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
@@ -4511,8 +4698,8 @@ presentingViewController:self
 
     [NSLayoutConstraint activateConstraints:@[
         [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 8.0 : 12.0],
-        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
-        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
+        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
         [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:4.0],
         [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:4.0],
         [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-4.0]
@@ -4553,7 +4740,7 @@ presentingViewController:self
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.alignment = UIStackViewAlignmentFill;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 8.0;
+    chipsStack.spacing = 10.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.filterChipStackView = chipsStack;
     [filterContainer addSubview:chipsStack];

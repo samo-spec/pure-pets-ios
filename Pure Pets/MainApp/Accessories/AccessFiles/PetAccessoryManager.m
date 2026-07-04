@@ -64,6 +64,13 @@ static FIRQuery *PPAccessoryRequirePublicMarketVisibility(FIRQuery *query) {
     return [query queryWhereField:@"showInAppMarket" isEqualTo:@(YES)];
 }
 
+static BOOL PPAccessoryItemPassesUsedAccessoryFlag(PetAccessory *item, AccessKindType normalizedKind) {
+    if (PPAllwedUsedAccessoriesEnabled() || normalizedKind != AccessTypeAccessory) {
+        return YES;
+    }
+    return item.condition == AccessConditionsNew;
+}
+
 + (void)pp_loadExpiryThresholdIfNeeded {
     if (_pp_thresholdLoaded) return;
     _pp_thresholdLoaded = YES;
@@ -117,6 +124,9 @@ static FIRQuery *PPAccessoryRequirePublicMarketVisibility(FIRQuery *query) {
 
     for (PetAccessory *item in items) {
         if (item.accessKindType != normalizedKind) {
+            continue;
+        }
+        if (!PPAccessoryItemPassesUsedAccessoryFlag(item, normalizedKind)) {
             continue;
         }
         if ([self pp_itemPassesVisibilityAndExpiry:item
@@ -235,6 +245,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
     if (currentUser.isBlocked || [userManager isCurrentUserBlocked]) {
         return PPAccessoryCreatePermissionError(@"Your account is blocked. You can't add new items right now.");
+    }
+
+    if (accessory.accessKindType == AccessTypeAccessory &&
+        !PPAllwedUsedAccessoriesEnabled() &&
+        accessory.condition == AccessConditionsUsed) {
+        return PPAccessoryCreatePermissionError(kLang(@"used_accessories_disabled_message"));
     }
 
     NSArray<NSString *> *candidateKeys;
@@ -1998,6 +2014,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 item.accessoryID = doc.documentID;
+                if (!PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
+                    continue;
+                }
                 [accessories addObject:item];
             }
             completion(accessories);
@@ -2018,7 +2037,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 item.accessoryID = doc.documentID;
-                if (item.accessKindType == accessKindType) {
+                if (item.accessKindType == accessKindType &&
+                    PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
                     [accessories addObject:item];
                 }
 
@@ -2044,7 +2064,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (doc.exists && doc.data) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    [results addObject:item];
+                    if (PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
+                        [results addObject:item];
+                    }
                 }
                 dispatch_group_leave(group);
             }];
@@ -2074,7 +2096,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
 
-                    if(item.accessKindType == AccessTypeAccessory)
+                    if(item.accessKindType == AccessTypeAccessory &&
+                       PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType))
                         [results addObject:item];
                 }
                 dispatch_group_leave(group);
@@ -2276,6 +2299,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                   requiresAppMarketVisibility:requiresAppMarketVisibility]) {
                     continue;
                 }
+                if (!PPAccessoryItemPassesUsedAccessoryFlag(item, item.accessKindType)) {
+                    continue;
+                }
                 [results addObject:item];
             }
 
@@ -2319,7 +2345,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 accessory.accessoryID = doc.documentID;
-                if (accessory.accessKindType == ad.accessKindType) {
+                if (accessory.accessKindType == ad.accessKindType &&
+                    PPAccessoryItemPassesUsedAccessoryFlag(accessory, accessory.accessKindType)) {
                     [results addObject:accessory];
                 }
             }
@@ -2346,6 +2373,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
     /// Filter loaded accessories by condition enum (new/used)
     - (NSArray<PetAccessory *> *)filterAccessoriesWithCondition:(AccessConditions)condition {
+        if (!PPAllwedUsedAccessoriesEnabled() && condition == AccessConditionsUsed) {
+            return @[];
+        }
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"condition == %ld", (long)condition];
         return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
     }
@@ -2354,6 +2384,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     - (NSArray<PetAccessory *> *)filterAccessoriesWithMainCategory:(NSInteger)mainCategoryID
     subCategory:(NSInteger)subCategoryID
     condition:(AccessConditions)condition {
+        if (!PPAllwedUsedAccessoriesEnabled() && condition == AccessConditionsUsed) {
+            return @[];
+        }
         NSPredicate *predicate = [NSPredicate predicateWithFormat:
                                       @"petMainCategoryID == %ld AND petSubCategoryID == %ld AND condition == %ld",
                                   mainCategoryID, subCategoryID, (long)condition
@@ -2397,6 +2430,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [strongSelf.accessoriesArray removeAllObjects];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (!PPAccessoryItemPassesUsedAccessoryFlag(accessory, AccessTypeAccessory)) {
+                    continue;
+                }
                 [strongSelf.accessoriesArray addObject:accessory];
 
                 // NSLog(@"PetAccessory: %@", accessory.accessoryID);
@@ -2410,7 +2446,13 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
     - (NSArray<PetAccessory *> *)filterAccessoriesByKind:(AccessKindType)kind {
         NSPredicate *predicate = [NSPredicate predicateWithFormat:@"accessKindType == %ld", kind];
-        return [self.accessoriesArray filteredArrayUsingPredicate:predicate];
+        NSArray<PetAccessory *> *items = [self.accessoriesArray filteredArrayUsingPredicate:predicate];
+        if (PPAllwedUsedAccessoriesEnabled() || kind != AccessTypeAccessory) {
+            return items;
+        }
+        return [items filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(PetAccessory *item, __unused NSDictionary *bindings) {
+            return PPAccessoryItemPassesUsedAccessoryFlag(item, AccessTypeAccessory);
+        }]];
     }
 
 
@@ -2694,15 +2736,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
      [self.collectionView reloadData];
  }];
  */
-
-
-
-
-
-
-
-
-
 
 
 

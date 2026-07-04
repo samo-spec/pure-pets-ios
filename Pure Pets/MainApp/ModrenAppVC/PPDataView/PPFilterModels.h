@@ -12,8 +12,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class PPAccessoryCategoryModel;
+
 // ─── Filter group identifiers ────────────────────────────────────────
 extern NSString * const PPFilterIDCondition;   // New / Used
+extern NSString * const PPFilterIDAccessoryCategory; // AccessoryCategoryID
 extern NSString * const PPFilterIDGender;      // Male / Female
 extern NSString * const PPFilterIDServiceType; // Training / Grooming / Walking
 extern NSString * const PPFilterIDPrice;       // Price range tiers
@@ -61,9 +64,14 @@ typedef NS_ENUM(NSInteger, PPFilterAvailability) {
 @property (nonatomic, copy)   NSString *title;
 @property (nonatomic, assign) NSInteger value;
 @property (nonatomic, copy, nullable) NSString *iconName;
+@property (nonatomic, copy, nullable) NSString *identifierValue;
 
 + (instancetype)optionWithTitle:(NSString *)title value:(NSInteger)value;
 + (instancetype)optionWithTitle:(NSString *)title value:(NSInteger)value icon:(nullable NSString *)iconName;
++ (instancetype)optionWithTitle:(NSString *)title
+                          value:(NSInteger)value
+                identifierValue:(nullable NSString *)identifierValue
+                           icon:(nullable NSString *)iconName;
 @end
 
 // ─── PPFilterGroup ───────────────────────────────────────────────────
@@ -78,6 +86,7 @@ typedef NS_ENUM(NSInteger, PPFilterAvailability) {
 - (NSInteger)defaultValue;
 - (BOOL)isActive;
 - (nullable NSString *)selectedTitle;
+- (nullable PPFilterOption *)selectedOption;
 - (void)reset;
 
 + (instancetype)groupWithID:(NSString *)filterID
@@ -105,6 +114,7 @@ typedef NS_ENUM(NSInteger, PPFilterAvailability) {
 
 @interface PPFilterConfigProvider : NSObject
 + (PPFilterState *)defaultFilterStateForSection:(PPDataSection)section;
++ (PPFilterState *)accessoriesFilterStateWithCategories:(NSArray<PPAccessoryCategoryModel *> *)categories;
 @end
 
 NS_ASSUME_NONNULL_END

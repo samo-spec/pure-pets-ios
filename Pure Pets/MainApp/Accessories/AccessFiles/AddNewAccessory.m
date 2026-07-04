@@ -354,7 +354,9 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         self.formMode = AccessFormModeCreate;
         self.accessModel = [[PetAccessory alloc] init];
         self.accessModel.accessKindType = self.accessKindType;
-        self.accessModel.condition = (self.accessKindType == AccessTypeFood) ? AccessConditionsNew : AccessConditionsUsed;
+        self.accessModel.condition = (self.accessKindType == AccessTypeFood || !PPAllwedUsedAccessoriesEnabled())
+            ? AccessConditionsNew
+            : AccessConditionsUsed;
         self.accessModel.quantity = 1;
         self.accessModel.hasOffer = NO;
         self.accessModel.showInAppMarket = YES;
@@ -479,7 +481,11 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         title = self.accessKindType == AccessTypeFood
             ? [self pp_localizedStringForKey:@"New Food" fallback:@"New Food"]
             : [self pp_localizedStringForKey:@"Add Accessory" fallback:@"Add Accessory"];
-        subtitle = [self pp_localizedStringForKey:@"used" fallback:@"Used"];
+        if (self.accessKindType == AccessTypeAccessory) {
+            subtitle = self.accessModel.condition == AccessConditionsUsed
+                ? [self pp_localizedStringForKey:@"used" fallback:@"Used"]
+                : [self pp_localizedStringForKey:@"New" fallback:@"New"];
+        }
     }
     [self pp_navBarSetTitleViewCenteredSmallWidth:[self pp_modernBlurTitleViewWithTitle:title subtitle:subtitle ?: nil]];
 }
@@ -921,8 +927,11 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     }
     self.accessModel.cityID = self.draftCity ? self.draftCity.cityID : 0;
     self.accessModel.accessKindType = self.accessKindType;
-    if (self.accessModel.condition != AccessConditionsNew && self.accessModel.condition != AccessConditionsUsed)
+    if (self.accessKindType == AccessTypeAccessory && !PPAllwedUsedAccessoriesEnabled()) {
+        self.accessModel.condition = AccessConditionsNew;
+    } else if (self.accessModel.condition != AccessConditionsNew && self.accessModel.condition != AccessConditionsUsed) {
         self.accessModel.condition = (self.accessKindType == AccessTypeFood) ? AccessConditionsNew : AccessConditionsUsed;
+    }
     if (self.accessModel.quantity <= 0) self.accessModel.quantity = 1;
     self.accessModel.isNew = (self.accessModel.condition == AccessConditionsNew);
     if (!self.accessModel.ownerID.length) self.accessModel.ownerID = UserManager.sharedManager.currentUser.ID ?: @"";

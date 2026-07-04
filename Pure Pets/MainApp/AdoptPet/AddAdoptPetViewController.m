@@ -31,7 +31,7 @@ static NSString * const kAdoptDraftFormDataKey      = @"formData";
 static NSString * const kAdoptDraftImagePathsKey    = @"imagePaths";
 
 static CGFloat const kAdoptMediaFooterHeight = 236.0;
-static CGFloat const kAdoptMediaInset        = 16.0;
+static CGFloat const kAdoptMediaInset        = 20.0;
 
 static inline NSString *PPAdoptSafeString(id value) {
     return [value isKindOfClass:NSString.class] ? (NSString *)value : @"";
@@ -53,7 +53,10 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIStackView *contentStack;
-@property (nonatomic, strong) PPFormEngineView *formView;
+@property (nonatomic, strong) PPFormEngineView *infoFormView;
+@property (nonatomic, strong) PPFormEngineView *detailsFormView;
+@property (nonatomic, strong) UIView *backgroundGlowTopView;
+@property (nonatomic, strong) UIView *backgroundGlowBottomView;
 @property (nonatomic, strong) UIView *formHeroView;
 @property (nonatomic, strong) UILabel *formHeroEyebrowLabel;
 @property (nonatomic, strong) UILabel *formHeroTitleLabel;
@@ -78,12 +81,15 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 @property (nonatomic, strong) PPImageCollection      *imageCollection;
 @property (nonatomic, strong) UIView                 *imageFooterContainer;
+@property (nonatomic, strong) UIView                 *bottomSpacerView;
 @property (nonatomic, strong) UIView                 *prefillLoadingView;
 @property (nonatomic, strong) UIActivityIndicatorView *prefillLoadingSpinner;
 @property (nonatomic, strong) UILabel                *prefillLoadingLabel;
 @property (nonatomic, strong) UIBarButtonItem        *saveBarButton;
 @property (nonatomic, strong) UIButton               *saveButtonView;
 @property (nonatomic, strong) UIActivityIndicatorView *saveActivityIndicator;
+@property (nonatomic, strong) NSLayoutConstraint     *imageFooterHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint     *bottomSpacerHeightConstraint;
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
 @property (nonatomic, copy, nullable) dispatch_block_t saveTimeoutBlock;
@@ -95,6 +101,11 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)pp_presentCityPicker;
 - (NSArray<CityModel *> *)pp_availableCitiesForPicker;
 - (void)pp_citiesDidUpdate:(NSNotification *)note;
+- (void)pp_updateScrollLayoutMetrics;
+- (NSString *)pp_formNavigationTitle;
+- (NSString *)pp_formHeroTitle;
+- (NSString *)pp_formHeroSubtitle;
+- (NSString *)pp_formHeroEyebrow;
 - (void)pp_cancelSaveTimeout;
 @end
 
@@ -163,6 +174,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self pp_updateImageFooterLayoutIfNeeded];
+    [self pp_updateScrollLayoutMetrics];
 }
 
 - (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
@@ -191,6 +203,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)pp_buildTableView {
     self.view.backgroundColor = AppBackgroundClr;
+    [self pp_installBackgroundGlowsIfNeeded];
 
     UIScrollView *scroll = [[UIScrollView alloc] init];
     scroll.translatesAutoresizingMaskIntoConstraints = NO;
@@ -198,8 +211,8 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     scroll.showsVerticalScrollIndicator = NO;
     scroll.showsHorizontalScrollIndicator = NO;
     scroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    scroll.contentInset = UIEdgeInsetsMake(6, 0, 24, 0);
-    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 24, 0);
+    scroll.contentInset = UIEdgeInsetsMake(12.0, 0.0, 132.0, 0.0);
+    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(12.0, 0.0, 132.0, 0.0);
     [self.view addSubview:scroll];
     self.scrollView = scroll;
 
@@ -210,7 +223,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     stack.distribution = UIStackViewDistributionFill;
     stack.spacing = 14.0;
     stack.layoutMarginsRelativeArrangement = YES;
-    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0, 20.0, 0.0, 20.0);
+    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0, PPScreenMargin, 0.0, PPScreenMargin);
     [scroll addSubview:stack];
     self.contentStack = stack;
 
@@ -233,6 +246,46 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     [self pp_rebuildFormFields];
 }
 
+- (void)pp_installBackgroundGlowsIfNeeded {
+    if (self.backgroundGlowTopView || self.backgroundGlowBottomView) {
+        return;
+    }
+
+    UIColor *glowColor = [UIColor colorNamed:@"AppPrimaryColor 2"] ?: GM.appPrimaryColor ?: AppPrimaryClr;
+
+    UIView *topGlow = [[UIView alloc] init];
+    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlow.userInteractionEnabled = NO;
+    topGlow.backgroundColor = [glowColor colorWithAlphaComponent:0.085];
+    topGlow.layer.cornerRadius = 126.0;
+    topGlow.layer.masksToBounds = YES;
+    [self.view addSubview:topGlow];
+    [self.view sendSubviewToBack:topGlow];
+    self.backgroundGlowTopView = topGlow;
+
+    UIView *bottomGlow = [[UIView alloc] init];
+    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlow.userInteractionEnabled = NO;
+    bottomGlow.backgroundColor = [glowColor colorWithAlphaComponent:0.060];
+    bottomGlow.layer.cornerRadius = 168.0;
+    bottomGlow.layer.masksToBounds = YES;
+    [self.view addSubview:bottomGlow];
+    [self.view sendSubviewToBack:bottomGlow];
+    self.backgroundGlowBottomView = bottomGlow;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [topGlow.widthAnchor constraintEqualToConstant:252.0],
+        [topGlow.heightAnchor constraintEqualToConstant:252.0],
+        [topGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-88.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:54.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:336.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:336.0],
+        [bottomGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:112.0],
+        [bottomGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:348.0]
+    ]];
+}
+
 - (void)pp_setupFormHeroHeader {
     self.formHeroView = [[UIView alloc] init];
     self.formHeroView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -245,6 +298,26 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     self.formHeroView.layer.shadowOpacity = 0.045;
     self.formHeroView.layer.shadowRadius = 18.0;
     self.formHeroView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
+    UIView *glowCircle = [[UIView alloc] init];
+    glowCircle.translatesAutoresizingMaskIntoConstraints = NO;
+    glowCircle.userInteractionEnabled = NO;
+    UIColor *glowColor = [UIColor colorNamed:@"AppPrimaryColor 2"] ?: GM.appPrimaryColor;
+    glowCircle.backgroundColor = [glowColor colorWithAlphaComponent:0.085];
+    glowCircle.layer.cornerRadius = 64.0;
+    glowCircle.layer.masksToBounds = YES;
+    glowCircle.layer.shadowColor = glowColor.CGColor;
+    glowCircle.layer.shadowOpacity = 0.15f;
+    glowCircle.layer.shadowRadius = 18.0f;
+    glowCircle.layer.shadowOffset = CGSizeZero;
+    [self.formHeroView insertSubview:glowCircle atIndex:0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [glowCircle.widthAnchor constraintEqualToConstant:128.0],
+        [glowCircle.heightAnchor constraintEqualToConstant:128.0],
+        [glowCircle.topAnchor constraintEqualToAnchor:self.formHeroView.topAnchor constant:-24.0],
+        [glowCircle.trailingAnchor constraintEqualToAnchor:self.formHeroView.trailingAnchor constant:24.0]
+    ]];
 
     UIView *iconPlate = [[UIView alloc] init];
     iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
@@ -326,13 +399,14 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         [self.formHeroProgressLabel.heightAnchor constraintEqualToConstant:30.0],
         [self.formHeroProgressLabel.widthAnchor constraintGreaterThanOrEqualToConstant:82.0]
     ]];
-}
-
-- (void)pp_rebuildFormFields {
+}- (void)pp_rebuildFormFields {
     if (!self.contentStack) return;
 
-    if (self.formView) {
-        [self.formView removeFromSuperview];
+    if (self.infoFormView) {
+        [self.infoFormView removeFromSuperview];
+    }
+    if (self.detailsFormView) {
+        [self.detailsFormView removeFromSuperview];
     }
 
     __weak typeof(self) weakSelf = self;
@@ -365,8 +439,10 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     style.shadowRadius = 16.0;
     style.shadowOffset = CGSizeMake(0.0, 6.0);
 
-    self.formView = [[PPFormEngineView alloc] initWithStyle:style];
-    [self.contentStack insertArrangedSubview:self.formView atIndex:1];
+    self.infoFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    self.detailsFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    [self.contentStack insertArrangedSubview:self.infoFormView atIndex:1];
+    [self.contentStack insertArrangedSubview:self.detailsFormView atIndex:2];
 
     PPFormFieldConfig *nameField = [PPFormFieldConfig fieldWithIdentifier:kRowName
                                                                     title:kLang(@"name")
@@ -442,7 +518,8 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
     };
 
-    [self.formView setFields:@[nameField, speciesField, breedField, ageField, genderField, cityField, detailsField]];
+    [self.infoFormView setFields:@[nameField, speciesField, breedField, ageField, genderField]];
+    [self.detailsFormView setFields:@[cityField, detailsField]];
 }
 
 #pragma mark - Draft Storage
@@ -668,17 +745,13 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 #pragma mark - UI
 
 - (void)pp_refreshTitle {
-    BOOL isEditing = (self.editingPet != nil);
-    self.title = isEditing ? kLang(@"editAdoptPet") : kLang(@"addAdoptPet");
+    self.title = [self pp_formNavigationTitle];
 }
 
 - (void)pp_refreshFormHero {
-    BOOL isEditing = (self.editingPet != nil);
-    self.formHeroEyebrowLabel.text = isEditing ? kLang(@"adopt_form_edit_eyebrow") : kLang(@"adopt_form_eyebrow");
-    self.formHeroTitleLabel.text   = isEditing ? kLang(@"adopt_form_edit_title")   : kLang(@"adopt_form_title");
-
-    NSString *subtitle = isEditing ? kLang(@"adopt_form_edit_subtitle") : kLang(@"adopt_form_subtitle");
-    self.formHeroSubtitleLabel.text = subtitle;
+    self.formHeroEyebrowLabel.text = [self pp_formHeroEyebrow];
+    self.formHeroTitleLabel.text = [self pp_formHeroTitle];
+    self.formHeroSubtitleLabel.text = [self pp_formHeroSubtitle];
 
     NSInteger filledFields = 0;
     NSInteger totalFields  = 7;
@@ -691,7 +764,11 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     if (self.draftCity)            filledFields++;
     if (self.draftDetails.length > 0) filledFields++;
 
-    self.formHeroProgressLabel.text = [NSString stringWithFormat:@"%ld / %ld", (long)filledFields, (long)totalFields];
+    NSString *progressFormat = kLang(@"adopt_form_progress_format");
+    if (progressFormat.length == 0 || [progressFormat isEqualToString:@"adopt_form_progress_format"]) {
+        progressFormat = @"%ld/%ld";
+    }
+    self.formHeroProgressLabel.text = [NSString stringWithFormat:progressFormat, (long)filledFields, (long)totalFields];
 }
 
 - (void)pp_prepareFormEntranceStateIfNeeded {
@@ -799,10 +876,22 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     [self.imageCollection setTitle:kLang(@"photos") icon:nil];
 
     UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, kAdoptMediaFooterHeight)];
+    footer.translatesAutoresizingMaskIntoConstraints = NO;
     footer.backgroundColor = UIColor.clearColor;
     [footer addSubview:self.imageCollection];
     self.imageFooterContainer = footer;
     [self.contentStack addArrangedSubview:self.imageFooterContainer];
+    self.imageFooterHeightConstraint = [footer.heightAnchor constraintEqualToConstant:kAdoptMediaFooterHeight];
+    self.imageFooterHeightConstraint.active = YES;
+
+    UIView *bottomSpacer = [[UIView alloc] init];
+    bottomSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomSpacer.backgroundColor = UIColor.clearColor;
+    self.bottomSpacerView = bottomSpacer;
+    [self.contentStack addArrangedSubview:bottomSpacer];
+    self.bottomSpacerHeightConstraint = [bottomSpacer.heightAnchor constraintEqualToConstant:132.0];
+    self.bottomSpacerHeightConstraint.active = YES;
+
     [self pp_updateImageFooterLayoutIfNeeded];
 }
 
@@ -818,6 +907,52 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
     CGFloat collectionWidth = MAX(0, tableWidth - (kAdoptMediaInset * 2.0));
     self.imageCollection.frame = CGRectMake(kAdoptMediaInset, 10, collectionWidth, kAdoptMediaFooterHeight - 16);
+}
+
+- (void)pp_updateScrollLayoutMetrics {
+    if (!self.scrollView) return;
+
+    CGFloat safeBottom = self.view.safeAreaInsets.bottom;
+    CGFloat tabBarHeight = (self.tabBarController && !self.tabBarController.tabBar.hidden)
+        ? CGRectGetHeight(self.tabBarController.tabBar.bounds)
+        : 0.0;
+    CGFloat bottomAllowance = MAX(118.0, safeBottom + tabBarHeight + 34.0);
+
+    self.scrollView.contentInset = UIEdgeInsetsMake(12.0, 0.0, bottomAllowance, 0.0);
+    self.scrollView.scrollIndicatorInsets = UIEdgeInsetsMake(12.0, 0.0, bottomAllowance - 12.0, 0.0);
+    self.bottomSpacerHeightConstraint.constant = bottomAllowance;
+    self.imageFooterHeightConstraint.constant = kAdoptMediaFooterHeight;
+}
+
+- (NSString *)pp_formNavigationTitle {
+    if (self.editingPet != nil) {
+        return kLang(@"editAdoptPet");
+    }
+
+    NSString *title = kLang(@"addPetForAdoption");
+    if (title.length == 0 || [title isEqualToString:@"addPetForAdoption"]) {
+        title = kLang(@"adopt_form_create_title");
+    }
+    return title;
+}
+
+- (NSString *)pp_formHeroEyebrow {
+    NSString *eyebrow = kLang(@"adopt_form_eyebrow");
+    return eyebrow.length > 0 ? eyebrow : @"";
+}
+
+- (NSString *)pp_formHeroTitle {
+    BOOL isEditing = (self.editingPet != nil);
+    NSString *key = isEditing ? @"adopt_form_edit_title" : @"adopt_form_create_title";
+    NSString *title = kLang(key);
+    return title.length > 0 ? title : @"";
+}
+
+- (NSString *)pp_formHeroSubtitle {
+    BOOL isEditing = (self.editingPet != nil);
+    NSString *key = isEditing ? @"adopt_form_edit_subtitle" : @"adopt_form_create_subtitle";
+    NSString *subtitle = kLang(key);
+    return subtitle.length > 0 ? subtitle : @"";
 }
 
 #pragma mark - Prefill Loading UI
@@ -1193,7 +1328,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
     if (firstInvalidId) {
         [self pp_resetSaveButton];
-        PPFormFieldRowView *row = [self.formView rowForIdentifier:firstInvalidId];
+        PPFormFieldRowView *row = [self.infoFormView rowForIdentifier:firstInvalidId] ?: [self.detailsFormView rowForIdentifier:firstInvalidId];
         if (row) {
             [self pp_shakeCell:row];
         }
