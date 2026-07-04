@@ -72,6 +72,8 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     self = [super init];
     if (self) {
         _contentInsets = UIEdgeInsetsMake(3.0, 10.0, 3.0, 10.0);
+        self.numberOfLines = 1;
+        self.lineBreakMode = NSLineBreakByTruncatingTail;
     }
     return self;
 }
@@ -486,7 +488,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     }
     self.pills = [pills copy];
 
-    BOOL isHorizontalScroll = [self.group.filterID isEqualToString:PPFilterIDAccessoryCategory];
+    BOOL isHorizontalScroll = NO;
 
     if (isHorizontalScroll) {
         UIScrollView *scrollView = [[UIScrollView alloc] init];
@@ -725,7 +727,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     self.contentStack = contentStack;
 
     UIView *heroView = [self pp_buildHeroView];
-    [contentStack addArrangedSubview:heroView];
+    [self.view addSubview:heroView];
     [entranceViews addObject:heroView];
 
     if (self.filterState.groups.count == 0) {
@@ -764,7 +766,10 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         [contentStack.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor constant:12.0],
         [contentStack.leadingAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.leadingAnchor constant:16.0],
         [contentStack.trailingAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.trailingAnchor constant:-16.0],
-        [contentStack.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0]
+        [contentStack.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0],
+
+        [heroView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [heroView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0]
     ]];
 
     if (handle) {
@@ -773,11 +778,13 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
             [handle.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
             [handle.widthAnchor constraintEqualToConstant:42.0],
             [handle.heightAnchor constraintEqualToConstant:5.0],
-            [scrollView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:16.0]
+            [heroView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:16.0]
         ]];
     } else {
-        [constraints addObject:[scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0.0]];
+        [constraints addObject:[heroView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16.0]];
     }
+
+    [constraints addObject:[scrollView.topAnchor constraintEqualToAnchor:heroView.bottomAnchor constant:14.0]];
 
     [NSLayoutConstraint activateConstraints:constraints];
 }

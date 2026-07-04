@@ -431,7 +431,11 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 {
     self = [self initWithMode:mode];
     if (self) {
-        _viewType = viewType;
+        if (viewType == ViewTypeAccess || viewType == ViewTypeFood) {
+            _viewType = ViewTypeAds;
+        } else {
+            _viewType = viewType;
+        }
         _showsAllFavoriteCategories = NO;
     }
     return self;
@@ -725,7 +729,10 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 
 - (void)setupSegmentedControl
 {
-    NSArray *titles = [GM getAdsAccessSegmentedTitleForLanguage:[Language languageVal]];
+    NSMutableArray *titles = [NSMutableArray array];
+    [titles addObject:kLang(@"Ads")];
+    [titles addObject:kLang(@"For Adoption")];
+    
     self.segmentedControl = [[UISegmentedControl alloc] initWithItems:titles];
     self.segmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
     self.segmentedControl.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -755,12 +762,11 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
             case ViewTypeAds:
                 self.segmentedControl.selectedSegmentIndex = 0;
                 break;
-            case ViewTypeAccess:
-            case ViewTypeFood:
+            case ViewTypeAdopt:
                 self.segmentedControl.selectedSegmentIndex = 1;
                 break;
-            case ViewTypeAdopt:
-                self.segmentedControl.selectedSegmentIndex = 2;
+            default:
+                self.segmentedControl.selectedSegmentIndex = 0;
                 break;
         }
     }
@@ -1014,9 +1020,6 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
             self.viewType = ViewTypeAds;
             break;
         case 1:
-            self.viewType = ViewTypeAccess;
-            break;
-        case 2:
             self.viewType = ViewTypeAdopt;
             break;
         default:

@@ -859,12 +859,12 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         ? [UIColor colorWithWhite:1.0 alpha:0.68]
         : [UIColor colorWithWhite:0.0 alpha:0.58];
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *baseSurfaceColor = isDark
+    UIColor *baseSurfaceColor = AppSurfColor ?: (isDark
         ? [UIColor colorWithRed:0.075 green:0.080 blue:0.095 alpha:1.0]
-        : UIColor.systemBackgroundColor;
-    UIColor *secondarySurfaceColor = isDark
+        : UIColor.systemBackgroundColor);
+    UIColor *secondarySurfaceColor = AppSurfSecColor ?: (isDark
         ? [UIColor colorWithRed:0.105 green:0.115 blue:0.135 alpha:1.0]
-        : UIColor.secondarySystemBackgroundColor;
+        : UIColor.secondarySystemBackgroundColor);
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     UIImage *avatarPlaceholder = nil;
     NSString *primaryIconName = @"cross.case.fill";
@@ -872,7 +872,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     BOOL showsEmptyProfileAnimation = NO;
 
     if (isLoading) {
-        accentColor = AppSecondaryTextClr ?: UIColor.systemGrayColor;
+        accentColor = AppPrimaryClr ?: [UIColor colorNamed:@"AppPrimaryColor"] ?: UIColor.systemPinkColor;
         _eyebrowLabel.text = kLang(@"please_wait") ?: @"Loading";
         _titleLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _subtitleLabel.text = kLang(@"pet_profiles_loading_home_subtitle") ?: @"Syncing your companion card and care details for the home feed.";
@@ -923,7 +923,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
             : [PPModernAvatarRenderer avatarImageForName:(defaultPet.name ?: @"") size:84.0];
         _avatarImageView.tintColor = UIColor.whiteColor;
     } else if (hasProfiles) {
-        accentColor = UIColor.systemIndigoColor;
+        accentColor = AppPrimaryClr ?: [UIColor colorNamed:@"AppPrimaryColor"] ?: UIColor.systemPinkColor;
         _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _titleLabel.text = kLang(@"home_pet_profile_choose_default_title") ?: @"Choose your default pet";
         _subtitleLabel.text = kLang(@"home_pet_profile_choose_default_subtitle") ?: @"Pin one companion here for quick home access to care details, vaccines, and reminders.";
@@ -942,7 +942,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
                               imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.88];
     } else {
-        accentColor = UIColor.systemTealColor;
+        accentColor = AppPrimaryClr ?: [UIColor colorNamed:@"AppPrimaryColor"] ?: UIColor.systemPinkColor;
         _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
         _titleLabel.text = kLang(@"home_pet_profile_empty_title") ?: @"Create your pet profile";
         _subtitleLabel.text = kLang(@"home_pet_profile_empty_subtitle") ?: @"Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
@@ -5133,8 +5133,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
 
     return [self pp_homeStatusKey:statusKey
-                 matchesAnyKeywords:@[@"pending",
-                                      @"preparing_for_shipment",
+                 matchesAnyKeywords:@[@"preparing_for_shipment",
                                       @"ready_for_delivery",
                                       @"delivery_partner_assigned",
                                       @"on_the_way"]];

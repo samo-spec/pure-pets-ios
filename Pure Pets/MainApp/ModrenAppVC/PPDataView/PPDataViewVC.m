@@ -36,7 +36,7 @@ static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
 static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.10;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.58;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 130.0;
-static const CGFloat kPPDataViewNavigationChromeCornerRadius = 24.0;
+static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
 
@@ -364,7 +364,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 {
     [super layoutSubviews];
 
-    CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 22.0));
+    CGFloat radius = 18.0; //MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 22.0));
     self.layer.cornerRadius = radius;
     self.materialView.frame = self.bounds;
     self.materialView.layer.cornerRadius = radius;
@@ -374,7 +374,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     self.surfaceGradientLayer.cornerRadius = radius;
 
     CGRect strokeRect = CGRectInset(self.materialView.bounds, 0.7, 0.7);
-    CGFloat strokeRadius = MAX(0.0, radius - 0.7);
+    CGFloat strokeRadius = 18.0;
     UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect cornerRadius:strokeRadius];
     self.strokeLayer.frame = self.materialView.bounds;
     self.strokeLayer.path = strokePath.CGPath;
@@ -479,12 +479,13 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     // ─── iOS 26+ non-active: clear glass + capsule ───
     if (@available(iOS 26.0, *)) {
         if (!active && !action) {
-            UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
-            config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+            UIButtonConfiguration *config = [UIButtonConfiguration prominentGlassButtonConfiguration];
+            config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
             config.attributedTitle = attrTitle;
             config.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 18.0, 8.0, 16.0);
             config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
             config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+            config.background.cornerRadius = 18.0;
             self.configuration = config;
             self.materialView.hidden = YES;
             self.tintColor = accentedFG;
@@ -565,13 +566,18 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
         if (@available(iOS 26.0, *)) {
              
             self.surfaceGradientLayer.colors = @[
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.02].CGColor,
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.05].CGColor,
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.08].CGColor
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.18].CGColor,
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.04].CGColor,
+                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.18].CGColor
             ];
-             
-            self.configuration.background.strokeColor = stroke;
-            self.configuration.background.strokeWidth = (active || action) ? 1.15 : 1.0;
+            
+            UIButtonConfiguration *config = self.configuration;
+            config.background.cornerRadius = 18;
+            config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+            config.background.strokeWidth =  (active || action) ? 0.75 : 0.25;
+            self.configuration = config;
+            
+    
         }
         else
         {
@@ -610,6 +616,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
     updates();
     [CATransaction commit];
+    self.layer.cornerRadius = 18.0;
 }
 
 @end
@@ -3814,12 +3821,21 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 // Modified to add a second navigation button: sectionsButton
 -(void)setupKindsView
 {
-    _navContainerView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule];
+    _navContainerView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed];
     self.navContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.navContainerView.isAccessibilityElement = NO;
     self.navContainerView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     
-    if (!PPIOS26()) {
+    if (!PPIOS26())
+    {
+        UIButtonConfiguration *config = _navContainerView.configuration;
+        config.background.cornerRadius = 18;
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        
+        self.navContainerView.configuration = config;
+    }
+    else
+    {
         UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
