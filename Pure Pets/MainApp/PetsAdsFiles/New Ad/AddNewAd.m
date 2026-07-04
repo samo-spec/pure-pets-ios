@@ -2634,13 +2634,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 {
     __weak typeof(self) weakSelf = self;
     [PPAlertHelper showThreeActionConfirmationIn:self
-                                           title:@"Save your progress?"
-                                        subtitle:@"You can save your current progress and come back later, or leave now without keeping these changes."
-                                   primaryButton:@"Save and close"
+                                           title:kLang(@"form_draft_prompt_title")
+                                        subtitle:kLang(@"form_draft_prompt_message")
+                                   primaryButton:kLang(@"form_draft_save_and_close")
                                     primaryStyle:UIAlertActionStyleDefault
-                                 secondaryButton:@"Exit without saving"
+                                 secondaryButton:kLang(@"form_draft_discard")
                                   secondaryStyle:UIAlertActionStyleDestructive
-                                  tertiaryButton:@"Keep editing"
+                                  tertiaryButton:kLang(@"form_draft_keep_editing")
                                    tertiaryStyle:UIAlertActionStyleCancel
                                     primaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;

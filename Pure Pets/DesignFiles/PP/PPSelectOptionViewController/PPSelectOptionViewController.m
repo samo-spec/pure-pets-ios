@@ -1032,7 +1032,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     PPOptionCell *cell = [self makeCellForTable:tableView reuseId:@"PPOptionCell"];
     BOOL premiumPicker = [self pp_usesPremiumPickerPresentation];
     cell.premiumCardStyleEnabled = premiumPicker;
-    cell.preferredHorizontalInset = premiumPicker ? [self pp_premiumPickerSideInset] : 0.0;
+    cell.preferredHorizontalInset = 0.0;
     if (!option) return cell;
 
     // --- Extract title, subtitle, and image safely ---

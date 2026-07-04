@@ -7269,9 +7269,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories");
-            //cfg.actionTitle = self.isMainKindsExpanded
-             //   ? kLang(@"ShowLess")
-             //   : kLang(@"ShowAll");
+            cfg.actionTitle = self.isMainKindsExpanded
+                ? kLang(@"ShowLess")
+                : kLang(@"ShowAll");
 
             cfg.iconName = self.isMainKindsExpanded
                 ? @"chevron.up"
