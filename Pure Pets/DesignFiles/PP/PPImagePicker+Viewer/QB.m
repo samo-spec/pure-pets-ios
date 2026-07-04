@@ -13,6 +13,41 @@
 
 @implementation AddButtonCell
 
+- (UIFont *)pp_addButtonFont
+{
+    UIFont *baseFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote] scaledFontForFont:baseFont];
+}
+
+- (void)pp_applyTitleAttributesToConfiguration:(UIButtonConfiguration *)configuration
+{
+    if (!configuration) return;
+    UIFont *font = [self pp_addButtonFont];
+    UIColor *titleColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+    paragraph.alignment = NSTextAlignmentCenter;
+    paragraph.lineBreakMode = NSLineBreakByWordWrapping;
+    configuration.titleTextAttributesTransformer =
+    ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *incoming) {
+        NSMutableDictionary *values = incoming.mutableCopy ?: [NSMutableDictionary dictionary];
+        values[NSFontAttributeName] = font;
+        values[NSForegroundColorAttributeName] = titleColor;
+        values[NSParagraphStyleAttributeName] = paragraph;
+        return values;
+    };
+}
+
+- (void)pp_applyAddButtonLabelStyle
+{
+    self.addButton.titleLabel.font = [self pp_addButtonFont];
+    self.addButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.addButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.addButton.titleLabel.minimumScaleFactor = 0.82;
+    self.addButton.titleLabel.numberOfLines = 2;
+    self.addButton.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
@@ -77,8 +112,8 @@
     config.baseBackgroundColor = [PPColorUtils pp_selectedCellColorFromPrimary];
     config.baseForegroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
     config.image = [UIImage systemImageNamed:@"photo.badge.plus"];
-    config.imagePadding = 6;
-    config.contentInsets = NSDirectionalEdgeInsetsMake(18.0, 20.0, 18.0, 20.0);
+    config.imagePadding = 5.0;
+    config.contentInsets = NSDirectionalEdgeInsetsMake(12.0, 14.0, 12.0, 14.0);
     UIImageSymbolConfiguration *palette =
         [UIImageSymbolConfiguration configurationWithPaletteColors:@[
             AppPrimaryTextClr,
@@ -86,13 +121,14 @@
         ]];
 
     UIImageSymbolConfiguration *size =
-        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+        [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
 
     // Combine configurations
     UIImageSymbolConfiguration *finalConfig =
         [palette configurationByApplyingConfiguration:size];
 
     config.preferredSymbolConfigurationForImage = finalConfig;
+    [self pp_applyTitleAttributesToConfiguration:config];
     if(!self.addButton)
     {
         self.addButton = [UIButton buttonWithConfiguration:config primaryAction:nil];
@@ -115,9 +151,7 @@
         ? UISemanticContentAttributeForceRightToLeft
         : UISemanticContentAttributeForceLeftToRight;
     self.addButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    self.addButton.titleLabel.numberOfLines = 2;
-    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
+    [self pp_applyAddButtonLabelStyle];
     
 
     [NSLayoutConstraint activateConstraints:@[
@@ -134,20 +168,18 @@
     if (!title) return;
     UIButtonConfiguration *cfg = self.addButton.configuration;
     cfg.title = title;
+    [self pp_applyTitleAttributesToConfiguration:cfg];
     self.addButton.configuration = cfg;
-    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    self.addButton.titleLabel.numberOfLines = 2;
-    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
+    [self pp_applyAddButtonLabelStyle];
 }
 
 - (void)setButtonSymbol:(NSString *)symbol {
     if (!symbol) return;
     UIButtonConfiguration *cfg = self.addButton.configuration;
     cfg.image = [UIImage systemImageNamed:symbol];
+    [self pp_applyTitleAttributesToConfiguration:cfg];
     self.addButton.configuration = cfg;
-    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    self.addButton.titleLabel.numberOfLines = 2;
-    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
+    [self pp_applyAddButtonLabelStyle];
 }
 
 #pragma mark - Tap
@@ -304,5 +336,4 @@
 }
 
 @end
-
 

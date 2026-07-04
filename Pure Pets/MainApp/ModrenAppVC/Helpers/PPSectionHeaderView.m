@@ -314,8 +314,9 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     self.surfaceView.layer.shadowRadius = decorationActive ? 16.0 : 0.0;
     self.surfaceView.layer.shadowOffset = decorationActive ? CGSizeMake(0.0, 6.0) : CGSizeZero;
 
+    UIColor *foregroundWash = AppForgroundColr ?: UIColor.whiteColor;
     self.materialWashView.backgroundColor =
-        [accentColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.055 : 0.032) : 0.014];
+        [foregroundWash colorWithAlphaComponent:decorationActive ? (darkMode ? 0.045 : 0.16) : (darkMode ? 0.025 : 0.09)];
     self.topSheenView.backgroundColor =
         [UIColor.whiteColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.08 : 0.55) : (darkMode ? 0.05 : 0.22)];
     self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.16 : 0.10];
@@ -358,8 +359,8 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
         return [UIColor colorWithWhite:1.0 alpha:self.surfaceDecorationActive ? 0.055 : 0.04];
     }
 
-    UIColor *baseColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
-    return [baseColor colorWithAlphaComponent:self.surfaceDecorationActive ? 0.78 : 0.66];
+    UIColor *foregroundSurface = AppForgroundColr ?: UIColor.whiteColor;
+    return [foregroundSurface colorWithAlphaComponent:self.surfaceDecorationActive ? 0.32 : 0.24];
 }
 
 - (UIColor *)pp_surfaceBorderColor

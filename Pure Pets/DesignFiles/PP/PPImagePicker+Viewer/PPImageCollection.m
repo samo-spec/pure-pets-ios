@@ -2721,7 +2721,8 @@ static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
     BOOL shouldShowAddButton = (imageCount < self.maxImageCount);
     BOOL isEmptyStateAddButton = (imageCount == 0 && shouldShowAddButton && indexPath.item == 0);
     if (isEmptyStateAddButton) {
-        CGFloat emptyWidth = MAX(156.0, collectionWidth - horizontalInsets);
+        CGFloat availableWidth = MAX(92.0, collectionWidth - horizontalInsets);
+        CGFloat emptyWidth = MIN(MAX(168.0, availableHeight * 1.18), availableWidth);
         return CGSizeMake(emptyWidth, availableHeight);
     }
     CGFloat itemWidth = MAX(92.0, availableHeight);

@@ -26,6 +26,8 @@
 
 static CGFloat const PPUniversalCardCornerRadius = 32.0;
 static CGFloat const PPUniversalImageCornerRadius = 26.0;
+static CGFloat const PPUniversalLiquidCardBorderWidth = 1.05;
+static CGFloat const PPUniversalLiquidImageBorderWidth = 0.88;
 static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 22.0;
 static CGFloat const PPUniversalButtonHeight = 36.0;
@@ -73,13 +75,34 @@ static UIColor *PPUniversalCellSoftSurfaceColor(void)
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return [[UIColor colorNamed:@"AppBageGlows"]  colorWithAlphaComponent:0.94];
+    return [[UIColor colorNamed:@"AppBageGlows"] colorWithAlphaComponent:0.94];
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
     return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
                                        [UIColor colorWithWhite:1.0 alpha:0.12]);
+}
+
+static NSArray<id> *PPUniversalCellLiquidBorderColors(BOOL isDark, BOOL selected, BOOL imageBorder)
+{
+    CGFloat bright = imageBorder ? (isDark ? 0.34 : 0.94) : (isDark ? 0.30 : 0.88);
+    CGFloat quiet = imageBorder ? (isDark ? 0.08 : 0.28) : (isDark ? 0.07 : 0.24);
+    CGFloat mid = imageBorder ? (isDark ? 0.16 : 0.52) : (isDark ? 0.13 : 0.42);
+    if (selected) {
+        bright += isDark ? 0.10 : 0.04;
+        mid += isDark ? 0.06 : 0.04;
+    }
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
+    CGFloat accentAlpha = selected ? (isDark ? 0.20 : 0.14) : (isDark ? 0.07 : 0.045);
+    return @[
+        (id)[UIColor colorWithWhite:1.0 alpha:bright].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:quiet].CGColor,
+        (id)[accent colorWithAlphaComponent:accentAlpha].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:mid].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:quiet].CGColor
+    ];
 }
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
@@ -641,6 +664,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, copy) NSString *activeVideoURL;
 @property (nonatomic, strong) PPUniversalSkeletonView *skeletonView;
 @property (nonatomic, strong) CAGradientLayer *cardGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *cardLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *cardLiquidBorderMaskLayer;
+@property (nonatomic, strong) CAGradientLayer *imageLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *imageLiquidBorderMaskLayer;
 
 @property (nonatomic, strong) NSLayoutConstraint *imageAspectConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *fullWidthImageWidthConstraint;
@@ -679,6 +706,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
 - (void)pp_runContainerTapImpulse;
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
+- (void)pp_installLiquidBorderLayersIfNeeded;
+- (void)pp_layoutLiquidBorderLayers;
+- (void)pp_removeLiquidBorderLayers;
+- (void)pp_updateLiquidBordersSelected:(BOOL)selected isDark:(BOOL)isDark;
+- (void)pp_applyBorderAppearanceSelected:(BOOL)selected isDark:(BOOL)isDark;
+- (void)pp_applyLegacyBordersSelected:(BOOL)selected isDark:(BOOL)isDark;
+- (void)pp_scheduleLiquidBorderLayoutSync;
 - (void)pp_applyFavoriteButtonAppearance:(FavoriteFloatingButton *)button;
 - (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown;
 - (void)pp_cartDidUpdate:(NSNotification *)notification;
@@ -712,6 +746,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.context = PPCellForAds;
     self.layoutMode = PPCellLayoutModeSquare;
     self.discountStyle = PPDiscountStyleBadge;
+    _userBordersV2 = YES;
     _quantity = 0;
 
     [self pp_buildViewHierarchy];
@@ -800,6 +835,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [super didMoveToWindow];
     if (!self.window) {
         [self pp_stopVideoPlaybackAndTearDown:YES];
+    } else {
+        [self pp_scheduleLiquidBorderLayoutSync];
     }
 }
 
@@ -826,6 +863,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.cardView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds
                                    cornerRadius:self.cardView.layer.cornerRadius].CGPath;
+    [self pp_layoutLiquidBorderLayers];
     self.videoPlayerLayer.frame = self.imageContainer.bounds;
 }
 
@@ -862,6 +900,16 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return attributes;
 }
 
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    CGSize previousSize = self.bounds.size;
+    [super applyLayoutAttributes:layoutAttributes];
+
+    if (self.userBordersV2 && !CGSizeEqualToSize(previousSize, self.bounds.size)) {
+        [self pp_scheduleLiquidBorderLayoutSync];
+    }
+}
+
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
@@ -887,6 +935,18 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     [super setHighlighted:highlighted];
     [self pp_applyContainerTapTransformPressed:highlighted animated:YES];
+}
+
+- (void)setUserBordersV2:(BOOL)userBordersV2
+{
+    if (_userBordersV2 == userBordersV2) {
+        return;
+    }
+
+    _userBordersV2 = userBordersV2;
+    [self pp_applySelectionAppearanceAnimated:NO];
+    [self setNeedsLayout];
+    [self pp_scheduleLiquidBorderLayoutSync];
 }
 
 - (void)pp_resetReusableVisualState
@@ -1107,6 +1167,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleCardTap)];
     tap.delegate = self;
     [self.cardView addGestureRecognizer:tap];
+
+    [self pp_installLiquidBorderLayersIfNeeded];
 }
 
 - (void)pp_buildConstraints
@@ -1272,6 +1334,190 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 }
 
+- (void)pp_installLiquidBorderLayersIfNeeded
+{
+    if (!self.userBordersV2) {
+        [self pp_removeLiquidBorderLayers];
+        return;
+    }
+
+    if (!self.cardLiquidBorderLayer) {
+        CAGradientLayer *borderLayer = [CAGradientLayer layer];
+        borderLayer.startPoint = CGPointMake(0.0, 0.0);
+        borderLayer.endPoint = CGPointMake(1.0, 1.0);
+        borderLayer.locations = @[@0.0, @0.20, @0.48, @0.76, @1.0];
+        borderLayer.zPosition = 900.0;
+        borderLayer.needsDisplayOnBoundsChange = YES;
+
+        CAShapeLayer *maskLayer = [CAShapeLayer layer];
+        maskLayer.fillColor = UIColor.clearColor.CGColor;
+        maskLayer.strokeColor = UIColor.blackColor.CGColor;
+        maskLayer.lineWidth = PPUniversalLiquidCardBorderWidth;
+        maskLayer.contentsScale = UIScreen.mainScreen.scale;
+        maskLayer.needsDisplayOnBoundsChange = YES;
+        borderLayer.mask = maskLayer;
+
+        [self.cardView.layer addSublayer:borderLayer];
+        self.cardLiquidBorderLayer = borderLayer;
+        self.cardLiquidBorderMaskLayer = maskLayer;
+    }
+
+    if (!self.imageLiquidBorderLayer) {
+        CAGradientLayer *borderLayer = [CAGradientLayer layer];
+        borderLayer.startPoint = CGPointMake(0.05, 0.0);
+        borderLayer.endPoint = CGPointMake(1.0, 0.95);
+        borderLayer.locations = @[@0.0, @0.22, @0.50, @0.78, @1.0];
+        borderLayer.zPosition = 900.0;
+        borderLayer.needsDisplayOnBoundsChange = YES;
+
+        CAShapeLayer *maskLayer = [CAShapeLayer layer];
+        maskLayer.fillColor = UIColor.clearColor.CGColor;
+        maskLayer.strokeColor = UIColor.blackColor.CGColor;
+        maskLayer.lineWidth = PPUniversalLiquidImageBorderWidth;
+        maskLayer.contentsScale = UIScreen.mainScreen.scale;
+        maskLayer.needsDisplayOnBoundsChange = YES;
+        borderLayer.mask = maskLayer;
+
+        [self.imageContainer.layer addSublayer:borderLayer];
+        self.imageLiquidBorderLayer = borderLayer;
+        self.imageLiquidBorderMaskLayer = maskLayer;
+    }
+}
+
+- (void)pp_removeLiquidBorderLayers
+{
+    [self.cardLiquidBorderLayer removeFromSuperlayer];
+    self.cardLiquidBorderLayer = nil;
+    self.cardLiquidBorderMaskLayer = nil;
+
+    [self.imageLiquidBorderLayer removeFromSuperlayer];
+    self.imageLiquidBorderLayer = nil;
+    self.imageLiquidBorderMaskLayer = nil;
+}
+
+- (void)pp_layoutLiquidBorderLayers
+{
+    if (!self.userBordersV2) {
+        [self pp_removeLiquidBorderLayers];
+        return;
+    }
+
+    if (!self.cardLiquidBorderLayer || !self.imageLiquidBorderLayer) {
+        [self pp_installLiquidBorderLayersIfNeeded];
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    CGRect cardBounds = self.cardView.bounds;
+    self.cardLiquidBorderLayer.frame = cardBounds;
+    self.cardLiquidBorderMaskLayer.frame = cardBounds;
+    if (CGRectGetWidth(cardBounds) > 1.0 && CGRectGetHeight(cardBounds) > 1.0) {
+        CGFloat cardInset = PPUniversalLiquidCardBorderWidth / 2.0;
+        CGFloat cardRadius = MAX(1.0, self.cardView.layer.cornerRadius - cardInset);
+        UIBezierPath *cardPath =
+            [UIBezierPath bezierPathWithRoundedRect:CGRectInset(cardBounds, cardInset, cardInset)
+                                       cornerRadius:cardRadius];
+        self.cardLiquidBorderMaskLayer.path = cardPath.CGPath;
+    } else {
+        self.cardLiquidBorderMaskLayer.path = nil;
+    }
+
+    CGRect imageBounds = self.imageContainer.bounds;
+    self.imageLiquidBorderLayer.frame = imageBounds;
+    self.imageLiquidBorderMaskLayer.frame = imageBounds;
+    if (CGRectGetWidth(imageBounds) > 1.0 && CGRectGetHeight(imageBounds) > 1.0) {
+        CGFloat imageInset = PPUniversalLiquidImageBorderWidth / 2.0;
+        CGFloat imageRadius = MAX(1.0, self.imageContainer.layer.cornerRadius - imageInset);
+        UIBezierPath *imagePath =
+            [UIBezierPath bezierPathWithRoundedRect:CGRectInset(imageBounds, imageInset, imageInset)
+                                       cornerRadius:imageRadius];
+        self.imageLiquidBorderMaskLayer.path = imagePath.CGPath;
+    } else {
+        self.imageLiquidBorderMaskLayer.path = nil;
+    }
+
+    [CATransaction commit];
+}
+
+- (void)pp_updateLiquidBordersSelected:(BOOL)selected isDark:(BOOL)isDark
+{
+    if (!self.userBordersV2) {
+        [self pp_applyLegacyBordersSelected:selected isDark:isDark];
+        return;
+    }
+
+    [self pp_installLiquidBorderLayersIfNeeded];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.cardLiquidBorderLayer.colors = PPUniversalCellLiquidBorderColors(isDark, selected, NO);
+    self.cardLiquidBorderLayer.opacity = selected ? 1.0 : 0.92;
+    self.cardLiquidBorderMaskLayer.lineWidth = selected ? 1.18 : PPUniversalLiquidCardBorderWidth;
+
+    self.imageLiquidBorderLayer.colors = PPUniversalCellLiquidBorderColors(isDark, selected, YES);
+    self.imageLiquidBorderLayer.opacity = selected ? 1.0 : 0.94;
+    self.imageLiquidBorderMaskLayer.lineWidth = selected ? 1.0 : PPUniversalLiquidImageBorderWidth;
+    [CATransaction commit];
+
+    [self pp_layoutLiquidBorderLayers];
+}
+
+- (void)pp_applyLegacyBordersSelected:(BOOL)selected isDark:(BOOL)isDark
+{
+    [self pp_removeLiquidBorderLayers];
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIColor *baseCardBorder = PPUniversalCellSoftCardBorderColor();
+    UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
+    CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
+    CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
+
+    self.cardView.layer.borderWidth = selected ? (isDark ? 1.0 : 1.04) : baseCardBorderWidth;
+    [self.cardView pp_setBorderColor:selected
+     ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.22]
+     : baseCardBorder];
+
+    self.imageContainer.layer.borderWidth = selected ? (isDark ? 0.84 : 0.92) : baseImageBorderWidth;
+    [self.imageContainer pp_setBorderColor:selected
+     ? [accent colorWithAlphaComponent:isDark ? 0.28 : 0.20]
+     : baseImageBorder];
+}
+
+- (void)pp_applyBorderAppearanceSelected:(BOOL)selected isDark:(BOOL)isDark
+{
+    if (self.userBordersV2) {
+        self.cardView.layer.borderWidth = 0.0;
+        [self.cardView pp_setBorderColor:UIColor.clearColor];
+        self.imageContainer.layer.borderWidth = 0.0;
+        [self.imageContainer pp_setBorderColor:UIColor.clearColor];
+        [self pp_updateLiquidBordersSelected:selected isDark:isDark];
+    } else {
+        [self pp_applyLegacyBordersSelected:selected isDark:isDark];
+    }
+}
+
+- (void)pp_scheduleLiquidBorderLayoutSync
+{
+    if (!self.userBordersV2) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.userBordersV2) {
+            return;
+        }
+
+        [self.contentView setNeedsLayout];
+        [self.contentView layoutIfNeeded];
+        [self.cardView layoutIfNeeded];
+        [self.imageContainer layoutIfNeeded];
+        [self pp_layoutLiquidBorderLayers];
+    });
+}
+
 - (void)pp_applyBaseStyling
 {
     BOOL isDark = NO;
@@ -1283,8 +1529,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.4]
         : PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
-    self.cardView.layer.borderWidth = isDark ? 0.72 : 0.88;
-    [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
+    self.cardView.layer.borderWidth = 0.0;
+    [self.cardView pp_setBorderColor:UIColor.clearColor];
     [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
     self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, NO);
     self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, NO);
@@ -1293,8 +1539,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.imageContainer.layer.borderWidth = isDark ? 0.56 : 0.72;
-    [self.imageContainer pp_setBorderColor:PPUniversalCellSoftImageBorderColor()];
+    [self pp_applyBorderAppearanceSelected:NO isDark:isDark];
     self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
 
     self.titleLabel.font = PPUniversalCellBoldFont(14.0);
@@ -1364,6 +1609,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     dispatch_async(dispatch_get_main_queue(), ^{
         [self layoutIfNeeded];
         [self.skeletonView layoutIfNeeded];
+        [self pp_layoutLiquidBorderLayers];
     });
 }
 
@@ -1399,6 +1645,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.lastConfiguredImageSignature = nil;
         self.videoPlayButton.hidden = YES;
         self.videoPlayButton.alpha = 0.0;
+        [self pp_scheduleLiquidBorderLayoutSync];
         return;
     }
 
@@ -1408,6 +1655,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_configureControlsWithViewModel:vm];
     [self pp_configureAvailabilityWithViewModel:vm];
     [self pp_configureQuantityStateWithViewModel:vm];
+    [self pp_scheduleLiquidBorderLayoutSync];
 }
 
 - (void)setQuantity:(NSInteger)quantity animated:(BOOL)animated
@@ -1730,14 +1978,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             NSString *usedTitle = PPUniversalCellLocalizedString(@"used_accessory_badge",
                                                                  PPUniversalCellLocalizedString(@"Used", @"Used"));
             UIColor *usedForeground = PPUniversalCellDynamicColor(
-                [UIColor colorWithRed:0.18 green:0.32 blue:0.48 alpha:1.0],
-                [UIColor colorWithRed:0.70 green:0.83 blue:1.00 alpha:1.0]);
+                [UIColor colorWithRed:0.16 green:0.33 blue:0.36 alpha:1.0],
+                [UIColor colorWithRed:0.72 green:0.91 blue:0.88 alpha:1.0]);
             UIColor *usedBackground = PPUniversalCellDynamicColor(
-                [UIColor colorWithRed:0.90 green:0.95 blue:1.00 alpha:0.92],
-                [UIColor colorWithRed:0.10 green:0.18 blue:0.28 alpha:0.72]);
+                [UIColor colorWithRed:0.90 green:0.97 blue:0.96 alpha:0.94],
+                [UIColor colorWithRed:0.08 green:0.20 blue:0.21 alpha:0.76]);
             UIColor *usedBorder = PPUniversalCellDynamicColor(
-                [UIColor colorWithRed:0.38 green:0.57 blue:0.78 alpha:0.30],
-                [UIColor colorWithRed:0.60 green:0.76 blue:1.00 alpha:0.34]);
+                [UIColor colorWithRed:0.42 green:0.70 blue:0.68 alpha:0.32],
+                [UIColor colorWithRed:0.53 green:0.82 blue:0.78 alpha:0.34]);
 
             self.availabilityLabel.font = PPUniversalCellBoldFont(12.0);
             self.availabilityLabel.textColor = usedForeground;
@@ -1976,6 +2224,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceHeightConstraint.active = !fullWidth;
     self.availabilityHeightConstraint.active = !fullWidth;
     self.skeletonView.compactLayout = !fullWidth;
+    [self setNeedsLayout];
+    [self pp_scheduleLiquidBorderLayoutSync];
 }
 
 - (CGFloat)pp_imageAspectRatioForCurrentContent
@@ -2913,28 +3163,16 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     BOOL showsSelection = [self pp_supportsSelectionAccent] && self.isSelected;
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIColor *baseCardBorder = PPUniversalCellSoftCardBorderColor();
-    UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
-    CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
-    CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
 
     void (^changes)(void) = ^{
-        self.cardView.layer.borderWidth = showsSelection ? (isDark ? 1.0 : 1.04) : baseCardBorderWidth;
-        [self.cardView pp_setBorderColor:showsSelection
-         ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.22]
-         : baseCardBorder];
         [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
         self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, showsSelection);
         self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, showsSelection);
         self.cardView.layer.shadowOffset = PPUniversalCellOuterShadowOffset(isDark, showsSelection);
 
-        self.imageContainer.layer.borderWidth = showsSelection ? (isDark ? 0.84 : 0.92) : baseImageBorderWidth;
-        [self.imageContainer pp_setBorderColor:showsSelection
-         ? [accent colorWithAlphaComponent:isDark ? 0.28 : 0.20]
-         : baseImageBorder];
+        [self pp_applyBorderAppearanceSelected:showsSelection isDark:isDark];
         self.imageScrimView.backgroundColor = showsSelection
-            ? [accent colorWithAlphaComponent:isDark ? 0.10 : 0.05]
+            ? [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:isDark ? 0.10 : 0.05]
             : PPUniversalCellSoftImageScrimColor();
     };
 

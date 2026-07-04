@@ -95,7 +95,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
 @property (nonatomic, strong, nullable) NSTimer *phoneCooldownTimer;
 @property (nonatomic, strong, nullable) NSArray *savedSheetDetents;
 @property (nonatomic, strong) CAGradientLayer *layer;
-@property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didStartAmbientGlowAnimation;
 @end
 
@@ -134,7 +133,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
     [super viewDidAppear:animated];
     [self.view layoutSubviews];
     [self startAmbientGlowAnimationsIfNeeded];
-    [self animateAuthEntranceIfNeeded];
     if (self.shouldFocusPhoneFieldOnAppear) {
         self.shouldFocusPhoneFieldOnAppear = NO;
         //[self.phoneNumberField becomeFirstResponder];
@@ -2409,39 +2407,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
 }
 
 #pragma mark - Utility Methods
-
-- (void)animateAuthEntranceIfNeeded {
-    if (self.didRunEntranceAnimation) {
-        return;
-    }
-    self.didRunEntranceAnimation = YES;
-
-    NSArray<UIView *> *views = @[
-        self.heroBadgeView ?: UIView.new,
-        self.titleLabel ?: UIView.new,
-        self.subtitleLabel ?: UIView.new,
-        self.stepIndicatorView ?: UIView.new,
-        self.phoneSectionCard ?: UIView.new,
-        self.separatorView ?: UIView.new,
-        self.socialSectionCard ?: UIView.new,
-        self.closeButton ?: UIView.new
-    ];
-
-    [views enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
-        [UIView animateWithDuration:0.56
-                              delay:0.04 * idx
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.18
-                            options:UIViewAnimationOptionCurveEaseOut
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-        (void)stop;
-    }];
-}
 
 - (void)startAmbientGlowAnimationsIfNeeded {
     if (self.didStartAmbientGlowAnimation) {

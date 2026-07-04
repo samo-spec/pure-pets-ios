@@ -92,18 +92,21 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
 
 
 - (void)setBanners:(NSArray<PPBannerViewModel *> *)banners {
-    _banners = [banners copy];
-    self.pageControl.numberOfPages = _banners.count;
-    self.pageControl.currentPage = 0;
-    // Reset position & reload
-    [self.collectionView setContentOffset:CGPointZero animated:NO];
-    [self.collectionView reloadData];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_banners = [banners copy];
+        self.pageControl.numberOfPages = self->_banners.count;
+        self.pageControl.currentPage = 0;
+        // Reset position & reload
+        [self.collectionView setContentOffset:CGPointZero animated:NO];
+        [self.collectionView reloadData];
+        [self.collectionView layoutIfNeeded];
 
-    // If you auto-scroll, restart so timing aligns with new data
-    [self startAutoScroll];
+        // If you auto-scroll, restart so timing aligns with new data
+        [self startAutoScroll];
 
-    // Make sure the dots are on top
-    [self bringSubviewToFront:self.pageControl];
+        // Make sure the dots are on top
+        [self bringSubviewToFront:self.pageControl];
+    });
 }
 
 
@@ -173,6 +176,9 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _collectionView.pagingEnabled = YES;
     _collectionView.showsHorizontalScrollIndicator = NO;
+    _collectionView.showsVerticalScrollIndicator = NO;
+    _collectionView.alwaysBounceVertical = NO;
+    _collectionView.directionalLockEnabled = YES;
     _collectionView.delegate = self;
     _collectionView.dataSource = self;
     //_collectionView.backgroundColor = GM.AppForegroundColor;

@@ -1824,14 +1824,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.promoCarouselView.hidden = YES;
     self.bannersView.hidden = NO;
 
-    self.bannersView.banners = banners ?: @[];
     self.bannersView.mainBannerGroup = group;
     self.bannersView.delegate = delegate;
     self.bannersView.autoScrollAnimationDuration = 0.6;
     self.bannersView.autoScrollInterval = 5.0;
     self.bannersView.autoScrollStyle = PPBannersAutoScrollStyleFade;
-    [self.bannersView startAutoScroll];
-    [self.bannersView.collectionView reloadData];
+    self.bannersView.banners = banners ?: @[];
 }
 
 - (void)configureWithPromoCards:(NSArray<PPHomePromoCarouselCard *> *)cards

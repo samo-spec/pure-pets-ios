@@ -1,5 +1,5 @@
 "AI" = "AI";
-"AccessPostPhotosSection" = "Add pictures of the accessory";
+"AccessPostPhotosSection" = "Add accessory photos";
 "Accessories" = "Accessories";
 "AdDescPlace" = "Enter bird description";
 "Add Accessory" = "Add Accessory";
@@ -555,6 +555,11 @@
 "newAd_desc" = "Create a brand-new listing to sell or rehome your pet.";
 "addUsedButton_desc" = "List pre-owned pet accessories for sale or giveaway.";
 "addPetForAdoption_desc" = "Share details of a pet looking for a loving new home.";
+"create_picker_eyebrow" = "New action";
+"create_picker_title" = "What would you like to add?";
+"create_picker_subtitle" = "Choose the right publishing path and we will open the matching form.";
+"create_picker_count_single" = "1 option";
+"create_picker_count_format" = "%ld options";
 "UserAboutEmpty" = "No information has been added";
 // En
 "addPetForAdoption" = "Add Pet for Adoption";
@@ -3325,3 +3330,9 @@
 "media_upload_failed_default_message" = "Failed to upload images.";
 "max_images_count_error_format" = "Maximum %ld images are allowed.";
 "image_prepare_failed_format" = "Failed to prepare image at index %ld.";
+
+/* Premium Option Picker */
+"option_picker_species_subtitle" = "Choose the main category that fits this ad.";
+"option_picker_breed_subtitle" = "Choose the breed or family closest to the pet.";
+"option_picker_gender_subtitle" = "Choose the value that will appear in the ad details.";
+"option_picker_default_subtitle" = "Pick one option to continue.";

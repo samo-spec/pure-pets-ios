@@ -10063,7 +10063,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     vc.mode = AdEditorModeCreate;
     vc.FromVC = @"HomeVC";
     vc.pp_transitionStyle = PPTransitionStyleNone;
-    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:nav animated:YES completion:nil];
 }
 
 - (void)pp_openAdoptFlow
@@ -12648,7 +12650,9 @@ presentingViewController:self
         vc.mode = AdEditorModeEdit;
         vc.editingAd = (PetAd *)universalModel.ModelObject;                 // the existing PetAd you want to edit
         //vc.delegate = self;                // optional to get callbacks
-         [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [self presentViewController:nav animated:YES completion:nil];
     }
     else  if(universalModel.cellSection == CellSectionAccessories && [universalModel.ModelObject isKindOfClass:[PetAccessory class]])
     {
@@ -12660,7 +12664,9 @@ presentingViewController:self
             [AppClasses reloadThisCollectionView:self.collectionView completion:^(BOOL finished) { }];
 
         };
-        [PPHomeHelper pushViewControllerSafely:editVC from:self animated:YES];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:editVC];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [self presentViewController:nav animated:YES completion:nil];
     }
 }
 

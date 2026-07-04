@@ -1,5 +1,5 @@
 "AI" = "AI";
-"AccessPostPhotosSection" = "اضف صور للاكسسوار";
+"AccessPostPhotosSection" = "أضف صور الإكسسوار";
 "Accessories" = "إكسسوارات";
 "AdDescPlace" = "ادخل وصف الطير";
 "Add Accessory" = "إضافة إكسسوار";
@@ -554,6 +554,11 @@
 "newAd_desc" = "أنشئ إعلانًا جديدًا لبيع حيوانك الأليف";
 "addUsedButton_desc" = "اعرض إكسسوارات الحيوانات الأليفة المستعملة للبيع أو الإهداء.";
 "addPetForAdoption_desc" = "شارك تفاصيل حيوان أليف يبحث عن منزل محب.";
+"create_picker_eyebrow" = "إجراء جديد";
+"create_picker_title" = "ماذا تريد أن تضيف؟";
+"create_picker_subtitle" = "اختر نوع النشر المناسب، وسنفتح النموذج الصحيح مباشرة.";
+"create_picker_count_single" = "خيار واحد";
+"create_picker_count_format" = "%ld خيارات";
 "UserAboutEmpty" = "لم تتم إضافة معلومات اخري";
 // Ar
 "addPetForAdoption" = "إضافة حيوان للتبني";
@@ -3313,3 +3318,9 @@
 "media_upload_failed_default_message" = "تعذر رفع الصور.";
 "max_images_count_error_format" = "الحد الأقصى المسموح به هو %ld صور.";
 "image_prepare_failed_format" = "تعذر تجهيز الصورة رقم %ld.";
+
+/* Premium Option Picker */
+"option_picker_species_subtitle" = "اختر الفئة الأساسية المناسبة للإعلان.";
+"option_picker_breed_subtitle" = "اختر السلالة أو العائلة الأقرب للحيوان.";
+"option_picker_gender_subtitle" = "اختر القيمة التي ستظهر في تفاصيل الإعلان.";
+"option_picker_default_subtitle" = "اختر خياراً واحداً للمتابعة.";

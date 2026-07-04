@@ -132,6 +132,41 @@ static UIColor *PPDataViewAppForegroundSurfaceColor(void)
     return AppForgroundColr ?: PPDataViewChromeElevatedSurfaceColor();
 }
 
+static UIColor *PPDataViewFilterIslandSurfaceColor(void)
+{
+    BOOL isRTL = Language.isRTL;
+    UIColor *light = isRTL
+        ? [UIColor colorWithRed:1.00 green:0.965 blue:0.972 alpha:0.94]
+        : [UIColor colorWithRed:0.970 green:0.978 blue:0.988 alpha:0.94];
+    UIColor *dark = isRTL
+        ? [UIColor colorWithRed:0.145 green:0.118 blue:0.132 alpha:0.82]
+        : [UIColor colorWithRed:0.115 green:0.122 blue:0.145 alpha:0.82];
+    return PPDataViewDynamicColor(light, dark);
+}
+
+static UIColor *PPDataViewFilterIslandWashColor(void)
+{
+    BOOL isRTL = Language.isRTL;
+    UIColor *light = isRTL
+        ? [UIColor colorWithRed:1.00 green:0.885 blue:0.915 alpha:0.78]
+        : [UIColor colorWithRed:0.900 green:0.940 blue:1.000 alpha:0.70];
+    UIColor *dark = isRTL
+        ? [UIColor colorWithRed:0.270 green:0.135 blue:0.180 alpha:0.56]
+        : [UIColor colorWithRed:0.120 green:0.180 blue:0.265 alpha:0.54];
+    return PPDataViewDynamicColor(light, dark);
+}
+
+static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
+{
+    UIColor *light = hasActiveFilters
+        ? [UIColor colorWithRed:0.95 green:0.70 blue:0.78 alpha:0.40]
+        : [UIColor colorWithRed:0.82 green:0.76 blue:0.78 alpha:0.24];
+    UIColor *dark = hasActiveFilters
+        ? [UIColor colorWithRed:1.00 green:0.72 blue:0.84 alpha:0.26]
+        : [UIColor colorWithWhite:1.0 alpha:0.10];
+    return PPDataViewDynamicColor(light, dark);
+}
+
 @interface PPDataViewControlIslandView : UIView
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated;
 @end
@@ -213,31 +248,14 @@ static UIColor *PPDataViewAppForegroundSurfaceColor(void)
     self.activeFilterCount = MAX(0, count);
     BOOL hasActiveFilters = self.activeFilterCount > 0;
     
-    UIColor *baseSurface = PPDataViewAppForegroundSurfaceColor();
-    UIColor *surface = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        UIColor *resolved = [baseSurface resolvedColorWithTraitCollection:traitCollection];
-        CGFloat r, g, b, a;
-        if ([resolved getRed:&r green:&g blue:&b alpha:&a]) {
-            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-                // Slightly lighter in dark mode
-                return [UIColor colorWithRed:r * 0.88 + 0.12
-                                       green:g * 0.88 + 0.12
-                                        blue:b * 0.88 + 0.12
-                                       alpha:a];
-            } else {
-                // Whiter/lighter in light mode
-                return [UIColor colorWithRed:r * 0.82 + 0.18
-                                       green:g * 0.82 + 0.18
-                                        blue:b * 0.82 + 0.18
-                                       alpha:a];
-            }
-        }
-        return resolved;
-    }];
-
-    UIColor *border = [surface colorWithAlphaComponent:hasActiveFilters ? 0.48 : 0.32];
+    UIColor *surface = PPDataViewFilterIslandSurfaceColor();
+    UIColor *wash = PPDataViewFilterIslandWashColor();
+    UIColor *border = PPDataViewFilterIslandStrokeColor(hasActiveFilters);
 
     void (^updates)(void) = ^{
+        BOOL isRTL = Language.isRTL;
+        self.surfaceGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+        self.surfaceGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
         self.blurView.hidden = UIAccessibilityIsReduceTransparencyEnabled();
         self.backgroundColor = self.blurView.hidden ? [surface colorWithAlphaComponent:0.96] : UIColor.clearColor;
         self.layer.borderWidth = hasActiveFilters ? 1.0 : 0.75;
@@ -247,16 +265,16 @@ static UIColor *PPDataViewAppForegroundSurfaceColor(void)
         self.layer.shadowRadius = hasActiveFilters ? 13.0 : 10.0;
         self.layer.shadowOffset = CGSizeMake(0.0, hasActiveFilters ? 4.5 : 3.0);
 
-        UIColor *top = [surface colorWithAlphaComponent:hasActiveFilters ? 0.84 : 0.72];
-        UIColor *mid = [surface colorWithAlphaComponent:hasActiveFilters ? 0.64 : 0.48];
-        UIColor *bottom = [surface colorWithAlphaComponent:hasActiveFilters ? 0.44 : 0.32];
+        UIColor *top = [surface colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.86];
+        UIColor *mid = [wash colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
+        UIColor *bottom = [surface colorWithAlphaComponent:hasActiveFilters ? 0.74 : 0.60];
         self.surfaceGradientLayer.colors = @[
             (__bridge id)top.CGColor,
             (__bridge id)mid.CGColor,
             (__bridge id)bottom.CGColor
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
-        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.48 : 0.32;
+        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.62 : 0.48;
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -4790,7 +4808,9 @@ presentingViewController:self
         vc.mode = AdEditorModeEdit;
         vc.editingAd = (PetAd *)universalModel.ModelObject;                 // the existing PetAd you want to edit
         //vc.delegate = self;                // optional to get callbacks
-         [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [self presentViewController:nav animated:YES completion:nil];
     }
     else  if(universalModel.cellSection == CellSectionAccessories && [universalModel.ModelObject isKindOfClass:[PetAccessory class]])
     {
@@ -4802,7 +4822,9 @@ presentingViewController:self
             [AppClasses reloadThisCollectionView:self.collectionView completion:^(BOOL finished) { }];
             
         };
-        [PPHomeHelper pushViewControllerSafely:editVC from:self animated:YES];
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:editVC];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [self presentViewController:nav animated:YES completion:nil];
     }
 }
 

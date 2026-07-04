@@ -123,6 +123,9 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     dict[@"isNew"] = @(self.isNew);
     dict[@"hasOffer"] = @(self.hasOffer);
     dict[@"showInAppMarket"] = @(self.showInAppMarket);
+    dict[@"isBlocked"] = @(self.isBlocked);
+    dict[@"isDeleted"] = @(self.isDeleted);
+    dict[@"isDisabled"] = @(self.isDisabled);
     
     // Calculate and include final price
     NSNumber *finalPrice = [self calculateFinalPrice];

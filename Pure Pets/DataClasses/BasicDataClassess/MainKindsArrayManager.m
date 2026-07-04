@@ -446,24 +446,22 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         return;
     }
 
-    NSString *docID = mainKind.documentID.length ? mainKind.documentID : [NSString stringWithFormat:@"%ld", (long)mainKind.ID];
-    if (docID.length == 0) {
-        if (completion) completion(@[], [NSError errorWithDomain:@"arg" code:400 userInfo:@{NSLocalizedDescriptionKey:@"MainKind documentID is missing"}]);
-        return;
-    }
-
     FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *mainDoc = [[db collectionWithPath:@"MainKindsCollection"] documentWithPath:docID];
-    FIRCollectionReference *collection = [mainDoc collectionWithPath:@"accessoryCategoriesSubCollection"];
+    NSString *numericDocID = mainKind.ID > 0 ? [NSString stringWithFormat:@"%ld", (long)mainKind.ID] : @"";
+    NSMutableArray<NSString *> *candidateDocIDs = [NSMutableArray array];
+    void (^addCandidateDocID)(NSString *) = ^(NSString *docID) {
+        if (docID.length == 0) return;
+        if ([candidateDocIDs containsObject:docID]) return;
+        [candidateDocIDs addObject:docID];
+    };
+    addCandidateDocID(mainKind.documentID);
+    addCandidateDocID(numericDocID);
 
-    [collection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(mainKind.accessoryCategories ?: @[], error);
-            return;
-        }
-
-        NSMutableArray<PPAccessoryCategoryModel *> *categories = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
-        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+    NSArray<PPAccessoryCategoryModel *> *(^categoriesFromSnapshot)(FIRQuerySnapshot *) =
+    ^NSArray<PPAccessoryCategoryModel *> *(FIRQuerySnapshot *snapshot) {
+        NSArray<FIRDocumentSnapshot *> *documents = snapshot.documents ?: @[];
+        NSMutableArray<PPAccessoryCategoryModel *> *categories = [NSMutableArray arrayWithCapacity:documents.count];
+        for (FIRDocumentSnapshot *doc in documents) {
             PPAccessoryCategoryModel *category = [[PPAccessoryCategoryModel alloc] initWithSnapshot:doc mainKindID:mainKind.ID];
             if (category.categoryID.length > 0 && category.enabled) {
                 [categories addObject:category];
@@ -477,10 +475,94 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
             return [[a displayName] localizedCaseInsensitiveCompare:[b displayName]];
         }];
 
-        mainKind.accessoryCategories = categories.mutableCopy;
-        mainKind.didSeedAccessoryCategories = YES;
-        if (completion) completion(categories.copy, nil);
-    }];
+        return categories.copy;
+    };
+
+    void (^completeWithCategories)(NSString *, NSArray<PPAccessoryCategoryModel *> *, NSError *) =
+    ^(NSString *documentID, NSArray<PPAccessoryCategoryModel *> *categories, NSError *error) {
+        if (!error) {
+            if (categories.count > 0 && documentID.length > 0) {
+                mainKind.documentID = documentID;
+            }
+            mainKind.accessoryCategories = (categories ?: @[]).mutableCopy;
+            mainKind.didSeedAccessoryCategories = YES;
+        }
+        if (completion) completion(categories ?: (mainKind.accessoryCategories ?: @[]), error);
+    };
+
+    __block NSError *lastReadError = nil;
+    __block void (^finishAfterDocumentAttempts)(void);
+    __block void (^attemptDocumentAtIndex)(NSUInteger);
+
+    void (^completeEmptyOrError)(void) = ^{
+        if (lastReadError) {
+            completeWithCategories(nil, mainKind.accessoryCategories ?: @[], lastReadError);
+            return;
+        }
+        completeWithCategories(nil, @[], nil);
+    };
+
+    finishAfterDocumentAttempts = ^{
+        if (mainKind.ID <= 0) {
+            completeEmptyOrError();
+            return;
+        }
+
+        FIRQuery *query = [[[[db collectionWithPath:@"MainKindsCollection"]
+                             queryWhereField:@"ID" isEqualTo:@(mainKind.ID)]
+                            queryWhereField:@"is_visible_in_user_app" isEqualTo:@YES]
+                           queryLimitedTo:3];
+        [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error) {
+                lastReadError = error;
+                completeEmptyOrError();
+                return;
+            }
+
+            NSUInteger originalCount = candidateDocIDs.count;
+            for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+                addCandidateDocID(doc.documentID);
+            }
+
+            if (candidateDocIDs.count > originalCount) {
+                attemptDocumentAtIndex(originalCount);
+            } else {
+                completeEmptyOrError();
+            }
+        }];
+    };
+
+    attemptDocumentAtIndex = ^(NSUInteger index) {
+        if (index >= candidateDocIDs.count) {
+            finishAfterDocumentAttempts();
+            return;
+        }
+
+        NSString *documentID = candidateDocIDs[index];
+        FIRDocumentReference *mainDoc = [[db collectionWithPath:@"MainKindsCollection"] documentWithPath:documentID];
+        FIRCollectionReference *collection = [mainDoc collectionWithPath:@"accessoryCategoriesSubCollection"];
+        [collection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error) {
+                lastReadError = error;
+                attemptDocumentAtIndex(index + 1);
+                return;
+            }
+
+            NSArray<PPAccessoryCategoryModel *> *categories = categoriesFromSnapshot(snapshot);
+            if (categories.count > 0) {
+                completeWithCategories(documentID, categories, nil);
+                return;
+            }
+
+            attemptDocumentAtIndex(index + 1);
+        }];
+    };
+
+    if (candidateDocIDs.count == 0) {
+        finishAfterDocumentAttempts();
+        return;
+    }
+    attemptDocumentAtIndex(0);
 }
 
 - (void)pp_fillAccessoryCategoriesForMainKinds:(NSArray<MainKindsModel *> *)mainKinds completion:(dispatch_block_t)completion {

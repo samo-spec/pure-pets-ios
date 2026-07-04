@@ -1,11 +1,13 @@
 #import "AddNewAd.h"
 #import "PPImageCollection.h"
 #import "PPMenuHelper.h"
+#import "PPFormEngine.h"
 #import "LocationPickerViewController.h"
 #import "ZYCircleProgressView.h"
 #import "PPSelectOptionViewController.h"
 #import <Pure_Pets-Swift.h>
 #import <ImageIO/ImageIO.h>
+#import <QuartzCore/QuartzCore.h>
 #import <math.h>
 #import <float.h>
 #import "Lottie.h"
@@ -806,7 +808,12 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 @interface AddNewAd ()<UISheetPresentationControllerDelegate,UIAdaptivePresentationControllerDelegate,UITextFieldDelegate,PPImageCollectionDelegate>
 // form + data
-@property (nonatomic, strong) NSMutableArray<NSMutableArray<PPAdFormField *> *> *formSections;
+@property (nonatomic, strong) PPFormEngineView *basicFormView;
+@property (nonatomic, strong) PPFormEngineView *petFormView;
+@property (nonatomic, strong) PPFormEngineView *listingFormView;
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView *contentStack;
+@property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 @property (nonatomic, strong) FileUploadManager *uploadManager;
 
 @property (nonatomic, strong) PetAd *adModel;
@@ -848,10 +855,57 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderWidth;
 @property (nonatomic, assign) CGFloat lastAppliedImageCollectionFooterWidth;
 @property (nonatomic, assign) BOOL selectorSheetFocusActive;
+- (void)initBase;
+- (NSArray<PPAdGenderOption *> *)pp_genderSelectorOptions;
+- (nullable PPAdGenderOption *)pp_genderOptionFromValue:(id _Nullable)value;
+- (nullable PPAdGenderOption *)pp_genderOptionForAdModel;
+- (void)pp_applyGenderSelectionToAdModel:(id _Nullable)value;
+- (void)pp_animateInvalidFormRow:(PPFormFieldRowView *)row;
 @end
 
 
 @implementation AddNewAd
+
+- (void)initBase {
+    if (!self.editingAd && self.initialAd) {
+        self.editingAd = self.initialAd;
+    }
+
+    if (self.editingAd) {
+        self.mode = AdEditorModeEdit;
+    }
+
+    if (!self.adModel) {
+        if (self.mode == AdEditorModeEdit && self.editingAd) {
+            self.adModel = [[PetAd alloc] initWithDictionary:[self.editingAd toFirestoreDictionary]
+                                                  documentID:self.editingAd.adID];
+            self.adModel.adID = self.editingAd.adID;
+            self.adModel.ownerID = self.editingAd.ownerID;
+            self.adModel.postedDate = self.editingAd.postedDate;
+            if (self.adModel.status == 0) {
+                self.adModel.status = self.editingAd.status;
+            }
+            if (self.adModel.visibility == 0) {
+                self.adModel.visibility = self.editingAd.visibility;
+            }
+        } else {
+            self.adModel = [[PetAd alloc] init];
+            self.adModel.gender = PPAdGenderValueUndefined;
+        }
+    }
+
+    if (self.selectedMainKind) {
+        self.selectedKind = self.selectedMainKind;
+        self.adModel.category = self.selectedMainKind.ID;
+    } else if (!self.selectedKind && self.adModel.category > 0) {
+        self.selectedKind = [MKM mainKindForID:self.adModel.category];
+    }
+
+    if (!self.uploadManager) {
+        self.uploadManager = [[FileUploadManager alloc] init];
+    }
+    [self setBackAndCorners];
+}
 
 - (UIColor *)pp_adCanvasColor
 {
@@ -875,17 +929,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.view.opaque = YES;
     self.navigationController.view.backgroundColor = canvasColor;
 
-    self.tableView.backgroundColor = UIColor.clearColor;
-    self.tableView.opaque = NO;
-    self.tableView.alwaysBounceVertical = YES;
-
-    UIView *backgroundView = self.tableView.backgroundView;
-    if (!backgroundView) {
-        backgroundView = [[UIView alloc] initWithFrame:self.tableView.bounds];
-        backgroundView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        self.tableView.backgroundView = backgroundView;
-    }
-    backgroundView.backgroundColor = canvasColor;
+    self.scrollView.backgroundColor = UIColor.clearColor;
+    self.scrollView.opaque = NO;
 }
 
 
@@ -914,7 +959,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 
 - (instancetype)initWithCoordinator:(id)coordinator {
-      self = [super initWithStyle:UITableViewStyleGrouped];
+      self = [super init];
       if (self) {
           _coordinator = coordinator;
       }
@@ -940,15 +985,15 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
 
     [self initBase];
+    [self setupImageCollection];
     [self initForm];
     [self setBackAndCorners];
     [self pp_applyAdCanvasBackground];
-    [self setupImageCollection];
     [self setupPrefillLoadingUI];
     [self setupUploadProgressUI];
     [self setupModernBackdrop];
-    [self setupFormHeroHeader];
-    [self pp_updateFormHeroHeaderLayoutIfNeeded];
+    // [self setupFormHeroHeader];
+    // [self pp_updateFormHeroHeaderLayoutIfNeeded];
     self.photoBrowserBridge = [PPPhotoBrowserBridge new];
     self.photoBrowserBridge.useArabic = Language.isRTL;
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -1025,12 +1070,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 {
     (void)note;
     self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
-    self.tableView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.scrollView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentStack.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.imageCollectionFooterContainerView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     [self pp_refreshMediaLocalizedText];
     self.uploadProgressTitleLabel.text = [self pp_localizedStringForKey:@"uploading_images" fallback:@"Uploading images..."];
     [self pp_refreshFormHeroContent];
-    [self.tableView reloadData];
+    [self pp_rebuildFormFields];
     [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
@@ -1081,11 +1127,12 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     [self.prefillLoadingView addSubview:self.prefillLoadingSpinner];
     [self.prefillLoadingView addSubview:self.prefillLoadingLabel];
-    [self.view addSubview:self.prefillLoadingView];
+    UIView *loadingHostView = self.imageCollectionFooterContainerView ?: self.view;
+    [loadingHostView addSubview:self.prefillLoadingView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.prefillLoadingView.centerXAnchor constraintEqualToAnchor:self.imageCollection.centerXAnchor],
-        [self.prefillLoadingView.centerYAnchor constraintEqualToAnchor:self.imageCollection.centerYAnchor],
+        [self.prefillLoadingView.centerXAnchor constraintEqualToAnchor:loadingHostView.centerXAnchor],
+        [self.prefillLoadingView.centerYAnchor constraintEqualToAnchor:loadingHostView.centerYAnchor],
         [self.prefillLoadingSpinner.leadingAnchor constraintEqualToAnchor:self.prefillLoadingView.leadingAnchor constant:10],
         [self.prefillLoadingSpinner.centerYAnchor constraintEqualToAnchor:self.prefillLoadingView.centerYAnchor],
         [self.prefillLoadingLabel.leadingAnchor constraintEqualToAnchor:self.prefillLoadingSpinner.trailingAnchor constant:8],
@@ -1198,8 +1245,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
 
-    [self.view insertSubview:topGlow belowSubview:self.tableView];
-    [self.view insertSubview:bottomGlow belowSubview:self.tableView];
+    [self.view insertSubview:topGlow belowSubview:self.scrollView];
+    [self.view insertSubview:bottomGlow belowSubview:self.scrollView];
 
     [NSLayoutConstraint activateConstraints:@[
         [topGlow.widthAnchor constraintEqualToConstant:0.0],
@@ -1462,7 +1509,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.formHeroMetaLabel = metaLabel;
 
     heroRoot.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 252.0);
-    self.tableView.tableHeaderView = heroRoot;
+    // Hero is now managed by contentStack in pp_rebuildFormFields
 }
 
 - (void)pp_refreshFormHeroContent
@@ -2352,20 +2399,123 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [prefs synchronize];
 }
 
-- (void)applyDraftValue:(id)value
-               toRowTag:(NSString *)tag
-           triggerBlock:(BOOL)triggerBlock
+- (nullable PPAdGenderOption *)pp_genderOptionForStorageValue:(NSString *)storageValue
 {
-    PPAdFormField *field = [self fieldForTag:tag];
-    if (!field || !value || value == [NSNull null]) return;
-
-    id oldValue = field.value;
-    field.value = value;
-    [self pp_reloadFieldWithTag:tag];
-
-    if (triggerBlock && field.onChangeBlock) {
-        field.onChangeBlock(oldValue, value);
+    NSArray<PPAdGenderOption *> *options = [self pp_genderSelectorOptions];
+    NSString *normalized = [[PPSafeString(storageValue) lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (normalized.length == 0) return nil;
+    for (PPAdGenderOption *option in options) {
+        if ([option.storageValue isEqualToString:normalized]) {
+            return option;
+        }
     }
+    return nil;
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionForLegacyFemaleValue:(BOOL)isFemale
+{
+    return [self pp_genderOptionForStorageValue:(isFemale ? PPAdGenderValueFemale : PPAdGenderValueMale)];
+}
+
+- (NSArray<PPAdGenderOption *> *)pp_genderSelectorOptions
+{
+    return @[
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
+                                  localizedTitle:kLang(@"Male")
+                                 systemImageName:@"person.fill"],
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
+                                  localizedTitle:kLang(@"Female")
+                                 systemImageName:@"person.crop.circle.fill"],
+        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
+                                  localizedTitle:kLang(@"no_value")
+                                 systemImageName:@"questionmark.circle.fill"]
+    ];
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionFromValue:(id)value
+{
+    if ([value isKindOfClass:PPAdGenderOption.class]) {
+        return value;
+    }
+
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [self pp_genderOptionForLegacyFemaleValue:[value boolValue]];
+    }
+
+    if ([value isKindOfClass:NSString.class]) {
+        NSString *normalized =
+            [[[PPSafeString(value) lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+                stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+        PPAdGenderOption *storageOption = [self pp_genderOptionForStorageValue:normalized];
+        if (storageOption) return storageOption;
+
+        NSString *raw = PPSafeString(value);
+        for (PPAdGenderOption *option in [self pp_genderSelectorOptions]) {
+            if ([raw isEqualToString:option.localizedTitle] ||
+                [normalized isEqualToString:[[option.localizedTitle lowercaseString] stringByReplacingOccurrencesOfString:@" " withString:@"_"]]) {
+                return option;
+            }
+        }
+    }
+
+    if ([value respondsToSelector:@selector(formDisplayText)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        NSString *display = [value performSelector:@selector(formDisplayText)];
+#pragma clang diagnostic pop
+        return [self pp_genderOptionFromValue:display];
+    }
+
+    return nil;
+}
+
+- (nullable PPAdGenderOption *)pp_genderOptionForAdModel
+{
+    PPAdGenderOption *stored = [self pp_genderOptionForStorageValue:self.adModel.gender];
+    if (stored) return stored;
+
+    if (self.mode == AdEditorModeEdit || self.editingAd) {
+        return [self pp_genderOptionForLegacyFemaleValue:self.adModel.isFemale];
+    }
+
+    return nil;
+}
+
+- (void)pp_applyGenderSelectionToAdModel:(id)value
+{
+    PPAdGenderOption *option = [self pp_genderOptionFromValue:value];
+    if (!option) return;
+
+    self.adModel.gender = option.storageValue;
+    if ([option.storageValue isEqualToString:PPAdGenderValueFemale]) {
+        self.adModel.isFemale = YES;
+    } else {
+        self.adModel.isFemale = NO;
+    }
+}
+
+- (nullable PPAdFormField *)fieldForTag:(NSString *)tag
+{
+    PPAdFormField *f = [PPAdFormField new];
+    f.tag = tag;
+    if ([tag isEqualToString:@"adTitle"]) {
+        f.value = self.adModel.adTitle;
+    } else if ([tag isEqualToString:kcategory]) {
+        f.value = self.selectedKind;
+    } else if ([tag isEqualToString:ksubcategory]) {
+        f.value = [self.selectedKind subKindForID:self.adModel.subcategory];
+    } else if ([tag isEqualToString:kpetAge]) {
+        f.value = self.adModel.petAgeMonths;
+    } else if ([tag isEqualToString:@"isFemale"]) {
+        f.value = [self pp_genderOptionForAdModel];
+    } else if ([tag isEqualToString:kprice]) {
+        f.value = self.adModel.price;
+    } else if ([tag isEqualToString:kadLocation]) {
+        f.value = self.selectedAdLocationName;
+    } else if ([tag isEqualToString:kdesc]) {
+        f.value = self.adModel.adDescription;
+    }
+    return f;
 }
 
 - (BOOL)restoreDraftIfNeeded
@@ -2385,7 +2535,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     NSString *title = PPSafeString(storedValues[@"adTitle"]);
     if (title.length) {
-        [self applyDraftValue:title toRowTag:@"adTitle" triggerBlock:YES];
+        self.adModel.adTitle = title;
     }
 
     MainKindsModel *mainKind = self.selectedMainKind;
@@ -2397,13 +2547,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (mainKind) {
         self.selectedKind = mainKind;
         self.adModel.category = mainKind.ID;
-        if (!self.selectedMainKind) {
-            [self applyDraftValue:mainKind toRowTag:kcategory triggerBlock:YES];
-        }
-        PPAdFormField *subF = [self fieldForTag:ksubcategory];
-        subF.disabled = NO;
-        subF.selectorOptions = mainKind.SubKindsArray ?: @[];
-        [self pp_reloadFieldWithTag:ksubcategory];
     }
 
     NSNumber *subKindID = storedValues[@"subcategoryID"];
@@ -2416,35 +2559,31 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             }
         }
         if (subKind) {
-            [self applyDraftValue:subKind toRowTag:ksubcategory triggerBlock:YES];
+            self.adModel.subcategory = subKind.ID;
         }
     }
 
-    PPAdFormField *genderField = [self fieldForTag:@"isFemale"];
-    PPAdGenderOption *storedGenderOption = [self pp_genderOptionForStorageValue:storedValues[PPAdGenderDraftKey]
-                                                                      fromField:genderField];
+    PPAdGenderOption *storedGenderOption = [self pp_genderOptionForStorageValue:storedValues[PPAdGenderDraftKey]];
     if (storedGenderOption) {
-        [self applyDraftValue:storedGenderOption toRowTag:@"isFemale" triggerBlock:YES];
+        [self pp_applyGenderSelectionToAdModel:storedGenderOption];
     } else if (storedValues[@"isFemale"] != nil) {
-        PPAdGenderOption *legacyGenderOption =
-            [self pp_genderOptionForLegacyFemaleValue:[storedValues[@"isFemale"] boolValue]
-                                            fromField:genderField];
+        PPAdGenderOption *legacyGenderOption = [self pp_genderOptionForLegacyFemaleValue:[storedValues[@"isFemale"] boolValue]];
         if (legacyGenderOption) {
-            [self applyDraftValue:legacyGenderOption toRowTag:@"isFemale" triggerBlock:YES];
+            [self pp_applyGenderSelectionToAdModel:legacyGenderOption];
         }
     }
 
     if ([storedValues[@"petAgeMonths"] respondsToSelector:@selector(integerValue)]) {
-        [self applyDraftValue:storedValues[@"petAgeMonths"] toRowTag:kpetAge triggerBlock:YES];
+        self.adModel.petAgeMonths = storedValues[@"petAgeMonths"];
     }
 
     if ([storedValues[@"price"] respondsToSelector:@selector(integerValue)]) {
-        [self applyDraftValue:storedValues[@"price"] toRowTag:kprice triggerBlock:YES];
+        self.adModel.price = storedValues[@"price"];
     }
 
     NSString *desc = PPSafeString(storedValues[@"desc"]);
     if (desc.length) {
-        [self applyDraftValue:desc toRowTag:kdesc triggerBlock:YES];
+        self.adModel.adDescription = desc;
     }
 
     NSString *locationName = PPSafeString(storedValues[@"locationName"]);
@@ -2453,7 +2592,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (locationName.length) {
         self.selectedAdLocationName = locationName;
         self.adModel.locationName = locationName;
-        [self applyDraftValue:locationName toRowTag:kadLocation triggerBlock:NO];
     }
     if ([latitude respondsToSelector:@selector(doubleValue)] &&
         [longitude respondsToSelector:@selector(doubleValue)]) {
@@ -2471,7 +2609,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.hasUserModifiedForm = NO;
     self.isHydratingFormData = NO;
     [self pp_restoreDraftImagesFromPaths:payload[PPAddNewAdDraftImagePathsKey]];
-    [self.tableView reloadData];
+    [self pp_rebuildFormFields];
     return YES;
 }
 
@@ -2496,13 +2634,13 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 {
     __weak typeof(self) weakSelf = self;
     [PPAlertHelper showThreeActionConfirmationIn:self
-                                           title:kLang(@"form_draft_prompt_title")
-                                        subtitle:kLang(@"form_draft_prompt_message")
-                                   primaryButton:kLang(@"form_draft_save_and_close")
+                                           title:@"Save your progress?"
+                                        subtitle:@"You can save your current progress and come back later, or leave now without keeping these changes."
+                                   primaryButton:@"Save and close"
                                     primaryStyle:UIAlertActionStyleDefault
-                                 secondaryButton:kLang(@"form_draft_discard")
+                                 secondaryButton:@"Exit without saving"
                                   secondaryStyle:UIAlertActionStyleDestructive
-                                  tertiaryButton:kLang(@"form_draft_keep_editing")
+                                  tertiaryButton:@"Keep editing"
                                    tertiaryStyle:UIAlertActionStyleCancel
                                     primaryBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -2572,7 +2710,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         return;
     }
 
-    CGFloat footerWidth = CGRectGetWidth(self.tableView.bounds);
+    CGFloat footerWidth = CGRectGetWidth(self.scrollView.bounds);
     if (footerWidth <= 0.0) {
         footerWidth = CGRectGetWidth(self.view.bounds);
     }
@@ -2588,7 +2726,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     self.lastAppliedImageCollectionFooterWidth = footerWidth;
     self.imageCollectionFooterContainerView.frame = CGRectMake(0.0, 0.0, footerWidth, footerHeight);
-    self.tableView.tableFooterView = self.imageCollectionFooterContainerView;
+    // Footer is now managed by contentStack in pp_rebuildFormFields
 }
 
 - (void)setupImageCollection {
@@ -2622,11 +2760,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [self.imageCollection.heightAnchor constraintEqualToConstant:height]
     ]];
 
-    self.tableView.tableFooterView = footerContainer;
-    self.tableView.scrollEnabled = YES;
-    self.tableView.backgroundColor = UIColor.clearColor;
-    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
     [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
@@ -2654,11 +2787,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         self.adModel.longitude = coordinate.longitude;
         self.adModel.locationName = self.selectedAdLocationName;
 
-        PPAdFormField *locField = [weakSelf fieldForTag:kadLocation];
-        locField.value = self.selectedAdLocationName.length
-            ? self.selectedAdLocationName
-            : kLang(@"select_location");
-        [weakSelf pp_reloadFieldWithTag:kadLocation];
+        [self.listingFormView setValue:(self.selectedAdLocationName.length ? self.selectedAdLocationName : kLang(@"select_location")) forIdentifier:kadLocation];
         if (!self.isHydratingFormData) {
             self.hasUserModifiedForm = YES;
         }
@@ -2687,8 +2816,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     };
     [self.navigationController pushViewController:picker animated:YES];
 }
-
-// didSelectFormRow removed — replaced by tableView:didSelectRowAtIndexPath: above
 
 - (NSArray<NSString *> *)pp_sectionHeaderContentForSection:(NSInteger)section
 {
@@ -2759,204 +2886,17 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return container;
 }
 
-- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
+- (void)pp_animateSelectorTouchForField:(NSString *)tag
 {
-    NSArray<NSString *> *content = [self pp_sectionHeaderContentForSection:section];
-    return [self pp_sectionHeaderViewForTitle:content.firstObject subtitle:content.lastObject];
-}
-
- 
-
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    if (indexPath.section >= 0 && indexPath.section < (NSInteger)self.formSections.count) {
-        NSMutableArray<PPAdFormField *> *section = self.formSections[indexPath.section];
-        if (indexPath.row >= 0 && indexPath.row < (NSInteger)section.count) {
-            PPAdFormField *field = section[indexPath.row];
-            if (field.pairedField) {
-                return MAX(field.height, 88.0);
-            }
-        }
+    PPFormFieldRowView *row = nil;
+    if (self.basicFormView.rowsByIdentifier[tag]) {
+        row = self.basicFormView.rowsByIdentifier[tag];
+    } else if (self.petFormView.rowsByIdentifier[tag]) {
+        row = self.petFormView.rowsByIdentifier[tag];
+    } else if (self.listingFormView.rowsByIdentifier[tag]) {
+        row = self.listingFormView.rowsByIdentifier[tag];
     }
-
-    if (indexPath.row == 1 || indexPath.row == 2) {
-        return 74.0;
-    }
-    
-    return UITableViewAutomaticDimension;
-}
-
-
-
-- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
-{
-    return [self tableView:tableView heightForHeaderInSection:section];
-}
-
-- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
-{
-    return 0.000001;
-}
-
-- (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
-{
-    return [UIView new];
-}
-
-- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section
-{
-    return 0.000001;
-}
-
-// Style cell before display and after creation
-- (void)tableView:(UITableView *)tableView
-  willDisplayCell:(UITableViewCell *)cell
-forRowAtIndexPath:(NSIndexPath *)indexPath
-{
-    cell.backgroundColor = UIColor.clearColor;
-    cell.clipsToBounds = NO;
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    if ([cell isKindOfClass:PPAdPairFieldCell.class]) {
-        cell.contentView.backgroundColor = UIColor.clearColor;
-        cell.contentView.layer.cornerRadius = 0.0;
-        cell.contentView.layer.masksToBounds = NO;
-        cell.contentView.layer.borderWidth = 0.0;
-        [cell.contentView pp_setBorderColor:UIColor.clearColor];
-        cell.layer.shadowOpacity = 0.0;
-        cell.layer.shadowRadius = 0.0;
-        cell.layer.shadowOffset = CGSizeZero;
-        cell.layer.masksToBounds = NO;
-        return;
-    }
-    cell.contentView.backgroundColor = [self pp_adSurfaceColor];
-    cell.contentView.layer.cornerRadius = 20.0;
-    cell.contentView.layer.masksToBounds = YES;
-    cell.contentView.layer.borderWidth = 1.0;
-    [cell.contentView pp_setBorderColor:[self pp_adSurfaceBorderColor]];
-    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    cell.layer.shadowOpacity = 0.05;
-    cell.layer.shadowRadius = 12.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    cell.layer.masksToBounds = NO;
-}
-
-// cellForRowAtIndexPath moved to Form Field Helpers section above
- 
-
-// Removed didHighlightItemAtIndexPath to fix out-of-bounds and confusion with image index.
-
-- (void)initBase {
-    self.uploadManager = [FileUploadManager new];
-    self.formSections = [NSMutableArray array];
-    self.selectedAdCoordinate = kCLLocationCoordinate2DInvalid;
-    self.hasSelectedAdCoordinate = NO;
-    self.selectedAdLocationName = nil;
-    self.formDisabled = NO;
-    
-    
-    // Auto-detect edit mode if editingAd was set but mode was not
-    if (self.editingAd && self.mode == AdEditorModeCreate) {
-        self.mode = AdEditorModeEdit;
-    }
-
-    if (self.mode == AdEditorModeCreate) {
-        self.adModel = [PetAd new];
-    } else {
-        if (self.editingAd) {
-            self.adModel =
-            [[PetAd alloc] initWithDictionary:[self.editingAd toFirestoreDictionary]
-                                    documentID:self.editingAd.adID];
-            self.adModel.adID = self.editingAd.adID;
-            self.adModel.ownerID = self.editingAd.ownerID;
-            self.adModel.postedDate = self.editingAd.postedDate;
-            if (self.adModel.status == 0) {
-                self.adModel.status = self.editingAd.status;
-            }
-        } else {
-            self.adModel = [PetAd new];
-        }
-    }
-    
-}
-
-#pragma mark - Form Field Helpers
-
-- (NSArray<PPAdGenderOption *> *)pp_genderSelectorOptions
-{
-    return @[
-        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueMale
-                                  localizedTitle:kLang(@"Male")
-                                 systemImageName:@"male_icon"],
-        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueFemale
-                                  localizedTitle:kLang(@"Female")
-                                 systemImageName:@"female_icon"],
-        [PPAdGenderOption optionWithStorageValue:PPAdGenderValueUndefined
-                                  localizedTitle:kLang(@"no_value")
-                                 systemImageName:@"question-mark"]
-    ];
-}
-
-- (nullable PPAdGenderOption *)pp_genderOptionFromValue:(id)value
-{
-    return [value isKindOfClass:PPAdGenderOption.class] ? (PPAdGenderOption *)value : nil;
-}
-
-- (nullable PPAdGenderOption *)pp_genderOptionForStorageValue:(NSString *)storageValue
-                                                    fromField:(PPAdFormField *)field
-{
-    NSString *normalized = [[PPSafeString(storageValue) lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (normalized.length == 0) return nil;
-    for (PPAdGenderOption *option in field.selectorOptions) {
-        if (![option isKindOfClass:PPAdGenderOption.class]) continue;
-        if ([option.storageValue isEqualToString:normalized]) {
-            return option;
-        }
-    }
-    return nil;
-}
-
-- (nullable PPAdGenderOption *)pp_genderOptionForLegacyFemaleValue:(BOOL)isFemale
-                                                        fromField:(PPAdFormField *)field
-{
-    return [self pp_genderOptionForStorageValue:(isFemale ? PPAdGenderValueFemale : PPAdGenderValueMale)
-                                      fromField:field];
-}
-
-- (void)pp_applyGenderSelectionToAdModel:(id)value
-{
-    PPAdGenderOption *option = [self pp_genderOptionFromValue:value];
-    if (!option) {
-        self.adModel.gender = nil;
-        return;
-    }
-
-    self.adModel.gender = option.storageValue;
-    if ([option.storageValue isEqualToString:PPAdGenderValueFemale]) {
-        self.adModel.isFemale = YES;
-    } else if ([option.storageValue isEqualToString:PPAdGenderValueMale] ||
-               [option.storageValue isEqualToString:PPAdGenderValueUndefined]) {
-        self.adModel.isFemale = NO;
-    }
-}
-
-- (void)pp_applyAdModelGenderToField:(PPAdFormField *)field
-{
-    if (!field) return;
-    PPAdGenderOption *option = [self pp_genderOptionForStorageValue:self.adModel.gender
-                                                          fromField:field];
-    if (!option && self.mode == AdEditorModeEdit) {
-        option = [self pp_genderOptionForLegacyFemaleValue:self.adModel.isFemale
-                                                 fromField:field];
-    }
-    field.value = option;
-    [self pp_applyGenderSelectionToAdModel:option];
-}
-
-- (void)pp_animateSelectorTouchForField:(PPAdFormField *)field
-{
-    NSIndexPath *indexPath = [self indexPathForFieldTag:field.tag];
-    UITableViewCell *cell = indexPath ? [self.tableView cellForRowAtIndexPath:indexPath] : nil;
-    if (!cell) return;
+    if (!row) return;
 
     if (!UIAccessibilityIsReduceMotionEnabled()) {
         UIImpactFeedbackGenerator *feedback =
@@ -2965,7 +2905,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         [feedback impactOccurred];
     }
 
-    UIView *targetView = cell.contentView;
+    UIView *targetView = row;
     [UIView animateWithDuration:0.09
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
@@ -2987,7 +2927,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 }
 
 - (void)pp_setSelectorSheetFocusActive:(BOOL)active
-                              forField:(PPAdFormField *)field
+                              forField:(NSString *)tag
                               animated:(BOOL)animated
 {
     if (self.selectorSheetFocusActive == active && active) {
@@ -2996,8 +2936,16 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.selectorSheetFocusActive = active;
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    NSIndexPath *selectedIndexPath = field ? [self indexPathForFieldTag:field.tag] : nil;
-    UITableViewCell *selectedCell = selectedIndexPath ? [self.tableView cellForRowAtIndexPath:selectedIndexPath] : nil;
+    PPFormFieldRowView *selectedRow = nil;
+    if (tag) {
+        if (self.basicFormView.rowsByIdentifier[tag]) {
+            selectedRow = self.basicFormView.rowsByIdentifier[tag];
+        } else if (self.petFormView.rowsByIdentifier[tag]) {
+            selectedRow = self.petFormView.rowsByIdentifier[tag];
+        } else if (self.listingFormView.rowsByIdentifier[tag]) {
+            selectedRow = self.listingFormView.rowsByIdentifier[tag];
+        }
+    }
 
     void (^changes)(void) = ^{
         self.formHeroCardView.alpha = active ? 0.86 : 1.0;
@@ -3012,17 +2960,21 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         self.backgroundGlowViewTop.alpha = active ? 0.68 : 1.0;
         self.backgroundGlowViewBottom.alpha = active ? 0.66 : 1.0;
 
-        for (UITableViewCell *cell in self.tableView.visibleCells) {
-            BOOL selected = (selectedCell && cell == selectedCell);
-            cell.contentView.alpha = active ? (selected ? 1.0 : 0.74) : 1.0;
-            if (reduceMotion) {
-                cell.contentView.transform = CGAffineTransformIdentity;
-            } else if (active) {
-                cell.contentView.transform = selected
-                    ? CGAffineTransformMakeScale(0.995, 0.995)
-                    : CGAffineTransformMakeTranslation(0.0, -3.0);
-            } else {
-                cell.contentView.transform = CGAffineTransformIdentity;
+        NSArray<PPFormEngineView *> *forms = @[self.basicFormView, self.petFormView, self.listingFormView];
+        for (PPFormEngineView *form in forms) {
+            for (NSString *key in form.rowsByIdentifier) {
+                PPFormFieldRowView *row = form.rowsByIdentifier[key];
+                BOOL selected = (selectedRow && row == selectedRow);
+                row.alpha = active ? (selected ? 1.0 : 0.74) : 1.0;
+                if (reduceMotion) {
+                    row.transform = CGAffineTransformIdentity;
+                } else if (active) {
+                    row.transform = selected
+                        ? CGAffineTransformMakeScale(0.995, 0.995)
+                        : CGAffineTransformMakeTranslation(0.0, -3.0);
+                } else {
+                    row.transform = CGAffineTransformIdentity;
+                }
             }
         }
     };
@@ -3052,11 +3004,11 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                      completion:nil];
 }
 
-- (void)pp_prepareSelectorSheetPresentationForField:(PPAdFormField *)field
+- (void)pp_prepareSelectorSheetPresentationForField:(NSString *)tag
 {
     [self.view endEditing:YES];
-    [self pp_animateSelectorTouchForField:field];
-    [self pp_setSelectorSheetFocusActive:YES forField:field animated:YES];
+    [self pp_animateSelectorTouchForField:tag];
+    [self pp_setSelectorSheetFocusActive:YES forField:tag animated:YES];
 }
 
 - (void)pp_restoreSelectorSheetPresentationFocusAnimated:(BOOL)animated
@@ -3064,459 +3016,391 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_setSelectorSheetFocusActive:NO forField:nil animated:animated];
 }
 
-- (PPAdFormField *)fieldForTag:(NSString *)tag {
-    for (NSMutableArray<PPAdFormField *> *section in self.formSections) {
-        for (PPAdFormField *field in section) {
-            if ([field.tag isEqualToString:tag]) return field;
-            if ([field.pairedField.tag isEqualToString:tag]) return field.pairedField;
-        }
-    }
-    return nil;
-}
-
-- (NSIndexPath *)indexPathForFieldTag:(NSString *)tag {
-    for (NSInteger s = 0; s < (NSInteger)self.formSections.count; s++) {
-        NSMutableArray<PPAdFormField *> *section = self.formSections[s];
-        for (NSInteger r = 0; r < (NSInteger)section.count; r++) {
-            PPAdFormField *field = section[r];
-            if ([field.tag isEqualToString:tag] ||
-                [field.pairedField.tag isEqualToString:tag]) {
-                return [NSIndexPath indexPathForRow:r inSection:s];
-            }
-        }
-    }
-    return nil;
-}
-
-- (void)pp_reloadFieldWithTag:(NSString *)tag {
-    NSIndexPath *ip = [self indexPathForFieldTag:tag];
-    if (ip) {
-        CGPoint savedOffset = self.tableView.contentOffset;
-        [UIView performWithoutAnimation:^{
-            [self.tableView reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
-        }];
-        [self.tableView layoutIfNeeded];
-        self.tableView.contentOffset = savedOffset;
-    }
-}
-
-- (void)pp_presentSelectorForField:(PPAdFormField *)field {
-    if (!field.selectorOptions.count) return;
+- (void)pp_presentMainCategoryPickerForConfig:(PPFormFieldConfig *)config {
     __weak typeof(self) weakSelf = self;
     PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
-        initWithOptions:field.selectorOptions
-                  title:field.selectorTitle ?: field.title
+        initWithOptions:MKM.MainKindsArray
+                  title:config.title
                     row:nil
        presentationStyle:PPSelectOptionPresentationSheet
              completion:^(id _Nullable selectedObject) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            id oldValue = field.value;
-            field.value = selectedObject;
-            if (field.onChangeBlock) field.onChangeBlock(oldValue, selectedObject);
-            [weakSelf pp_reloadFieldWithTag:field.tag];
+            [weakSelf pp_restoreSelectorSheetPresentationFocusAnimated:YES];
+            if (![selectedObject isKindOfClass:[MainKindsModel class]]) {
+                weakSelf.selectedKind = nil;
+                weakSelf.adModel.category = 0;
+                [weakSelf pp_rebuildFormFields];
+                return;
+            }
+            MainKindsModel *kind = selectedObject;
+            weakSelf.selectedKind = kind;
+            weakSelf.adModel.category = kind.ID;
+            weakSelf.adModel.subcategory = 0;
+            [weakSelf pp_rebuildFormFields];
             if (!weakSelf.isHydratingFormData) {
                 weakSelf.hasUserModifiedForm = YES;
             }
         });
     }];
-    vc.selectedOption = field.value;
-    if ([field.tag isEqualToString:@"isFemale"]) {
-        vc.showSearchBar = NO;
-        vc.isGenderSelector = YES;
-    }
+    vc.selectedOption = self.selectedKind;
     vc.modalPresentationStyle = UIModalPresentationPageSheet;
     vc.presentationController.delegate = self;
     if (@available(iOS 15.0, *)) {
         vc.sheetPresentationController.delegate = self;
     }
-    [self pp_prepareSelectorSheetPresentationForField:field];
+    [self pp_prepareSelectorSheetPresentationForField:config.identifier];
     [self presentViewController:vc animated:YES completion:nil];
 }
 
-#pragma mark - UIAdaptivePresentationControllerDelegate
-
-- (void)presentationControllerWillDismiss:(UIPresentationController *)presentationController
-{
-    (void)presentationController;
-    [self pp_restoreSelectorSheetPresentationFocusAnimated:YES];
-}
-
-- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController
-{
-    (void)presentationController;
-    [self pp_restoreSelectorSheetPresentationFocusAnimated:NO];
-}
-
-- (void)pp_applyText:(NSString *)text toField:(PPAdFormField *)field
-{
-    if (!field) return;
-    id oldValue = field.value;
-    if (field.fieldType == PPAdFieldTypeInteger) {
-        field.value = text.length > 0 ? @(text.integerValue) : nil;
-    } else {
-        field.value = text ?: @"";
-    }
-    if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
-    if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
-}
-
-- (void)pp_applySwitchValue:(BOOL)isOn toField:(PPAdFormField *)field
-{
-    if (!field) return;
-    id oldValue = field.value;
-    field.value = @(isOn);
-    if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
-    if (!self.isHydratingFormData) self.hasUserModifiedForm = YES;
-}
-
-#pragma mark - UITableViewDataSource
-
-- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
-    return self.formSections.count;
-}
-
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    if (section < 0 || section >= (NSInteger)self.formSections.count) return 0;
-    return self.formSections[section].count;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    PPAdFormField *field = self.formSections[indexPath.section][indexPath.row];
+- (void)pp_presentSubCategoryPickerForConfig:(PPFormFieldConfig *)config {
+    if (!self.selectedKind.SubKindsArray.count) return;
     __weak typeof(self) weakSelf = self;
-    BOOL effectiveDisabled = field.disabled || self.formDisabled;
-
-    if (field.pairedField) {
-        PPAdPairFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdPairFieldCellID forIndexPath:indexPath];
-        PPAdFormField *secondaryField = field.pairedField;
-        BOOL secondaryDisabled = secondaryField.disabled || self.formDisabled;
-        [cell configureWithPrimaryField:field
-                         secondaryField:secondaryField
-                        primaryDisabled:effectiveDisabled
-                      secondaryDisabled:secondaryDisabled];
-        [cell applyDisabledState:self.formDisabled];
-        cell.onSelectField = ^(PPAdFormField *selectedField) {
-            if (!selectedField || selectedField.disabled || weakSelf.formDisabled) return;
-            if ([selectedField.tag isEqualToString:kadLocation]) {
-                [weakSelf pp_presentAdLocationPicker];
-                return;
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:self.selectedKind.SubKindsArray
+                  title:config.title
+                    row:nil
+       presentationStyle:PPSelectOptionPresentationSheet
+             completion:^(id _Nullable selectedObject) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf pp_restoreSelectorSheetPresentationFocusAnimated:YES];
+            if (![selectedObject isKindOfClass:[SubKindModel class]]) return;
+            SubKindModel *sub = selectedObject;
+            weakSelf.adModel.subcategory = sub.ID;
+            [weakSelf pp_rebuildFormFields];
+            if (!weakSelf.isHydratingFormData) {
+                weakSelf.hasUserModifiedForm = YES;
             }
-            if (selectedField.fieldType == PPAdFieldTypeSelector) {
-                [weakSelf pp_presentSelectorForField:selectedField];
-            }
-        };
-        cell.onTextChanged = ^(PPAdFormField *changedField, NSString *text) {
-            [weakSelf pp_applyText:text toField:changedField];
-        };
-        cell.onSwitchChanged = ^(PPAdFormField *changedField, BOOL isOn) {
-            [weakSelf pp_applySwitchValue:isOn toField:changedField];
-        };
-        return cell;
+        });
+    }];
+    SubKindModel *currentSub = nil;
+    if (self.adModel.subcategory > 0) {
+        currentSub = [self.selectedKind subKindForID:self.adModel.subcategory];
     }
-
-    switch (field.fieldType) {
-        case PPAdFieldTypeText:
-        case PPAdFieldTypeInteger: {
-            PPAdTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdTextFieldCellID forIndexPath:indexPath];
-            [cell configureWithField:field];
-            cell.textField.enabled = !effectiveDisabled;
-            [cell applyDisabledState:effectiveDisabled];
-            cell.onValueChanged = ^(NSString *text) {
-                id oldValue = field.value;
-                if (field.fieldType == PPAdFieldTypeInteger) {
-                    field.value = text.length > 0 ? @(text.integerValue) : nil;
-                } else {
-                    field.value = text;
-                }
-                if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
-                if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
-            };
-            return cell;
-        }
-        case PPAdFieldTypeSelector: {
-            PPAdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdSelectorCellID forIndexPath:indexPath];
-            [cell configureWithField:field];
-            cell.userInteractionEnabled = !effectiveDisabled;
-            [cell applyDisabledState:effectiveDisabled];
-            return cell;
-        }
-        case PPAdFieldTypeSwitch: {
-            PPAdSwitchCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdSwitchCellID forIndexPath:indexPath];
-            [cell configureWithField:field];
-            cell.toggleSwitch.enabled = !effectiveDisabled;
-            [cell applyDisabledState:effectiveDisabled];
-            cell.onSwitchChanged = ^(BOOL isOn) {
-                id oldValue = field.value;
-                field.value = @(isOn);
-                if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
-                if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
-            };
-            return cell;
-        }
-        case PPAdFieldTypeTextView: {
-            PPAdTextViewCell *cell = [tableView dequeueReusableCellWithIdentifier:PPAdTextViewCellID forIndexPath:indexPath];
-            [cell configureWithField:field];
-            cell.textView.editable = !effectiveDisabled;
-            [cell applyDisabledState:effectiveDisabled];
-            cell.onTextChanged = ^(NSString *text) {
-                id oldValue = field.value;
-                field.value = text;
-                if (field.onChangeBlock) field.onChangeBlock(oldValue, text);
-                if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
-            };
-            return cell;
-        }
+    vc.selectedOption = currentSub;
+    vc.modalPresentationStyle = UIModalPresentationPageSheet;
+    vc.presentationController.delegate = self;
+    if (@available(iOS 15.0, *)) {
+        vc.sheetPresentationController.delegate = self;
     }
-    return [UITableViewCell new];
+    [self pp_prepareSelectorSheetPresentationForField:config.identifier];
+    [self presentViewController:vc animated:YES completion:nil];
 }
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    [tableView deselectRowAtIndexPath:indexPath animated:YES];
-    if (self.formDisabled) return;
-    PPAdFormField *field = self.formSections[indexPath.section][indexPath.row];
-    if (field.pairedField) return;
-    
-    if ([field.tag isEqualToString:kadLocation]) {
-        [self pp_presentAdLocationPicker];
-        return;
+- (void)pp_presentGenderPickerForConfig:(PPFormFieldConfig *)config {
+    __weak typeof(self) weakSelf = self;
+    NSArray *options = [self pp_genderSelectorOptions];
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:options
+                  title:config.title
+                    row:nil
+       presentationStyle:PPSelectOptionPresentationSheet
+             completion:^(id _Nullable selectedObject) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf pp_restoreSelectorSheetPresentationFocusAnimated:YES];
+            PPAdGenderOption *option = [weakSelf pp_genderOptionFromValue:selectedObject];
+            [weakSelf pp_applyGenderSelectionToAdModel:option];
+            [weakSelf pp_rebuildFormFields];
+            if (!weakSelf.isHydratingFormData) {
+                weakSelf.hasUserModifiedForm = YES;
+            }
+        });
+    }];
+    vc.selectedOption = [self pp_genderOptionForAdModel];
+    vc.showSearchBar = NO;
+    vc.isGenderSelector = YES;
+    vc.modalPresentationStyle = UIModalPresentationPageSheet;
+    vc.presentationController.delegate = self;
+    if (@available(iOS 15.0, *)) {
+        vc.sheetPresentationController.delegate = self;
     }
-    if (field.fieldType == PPAdFieldTypeSelector && !field.disabled) {
-        [self pp_presentSelectorForField:field];
-    }
+    [self pp_prepareSelectorSheetPresentationForField:config.identifier];
+    [self presentViewController:vc animated:YES completion:nil];
 }
 
 #pragma mark - Build Form
 - (void)initForm {
-    
+    self.view.backgroundColor = [self pp_adCanvasColor];
+    self.view.clipsToBounds = YES;
+
+    UIScrollView *scroll = [[UIScrollView alloc] init];
+    scroll.translatesAutoresizingMaskIntoConstraints = NO;
+    scroll.backgroundColor = UIColor.clearColor;
+    scroll.showsVerticalScrollIndicator = NO;
+    scroll.showsHorizontalScrollIndicator = NO;
+    scroll.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    scroll.contentInset = UIEdgeInsetsMake(6, 0, 24, 0);
+    scroll.scrollIndicatorInsets = UIEdgeInsetsMake(6, 0, 24, 0);
+    [self.view addSubview:scroll];
+    self.scrollView = scroll;
+
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisVertical;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.distribution = UIStackViewDistributionFill;
+    stack.spacing = 14.0;
+    stack.layoutMarginsRelativeArrangement = YES;
+    stack.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0, 20.0, 0.0, 20.0);
+    [scroll addSubview:stack];
+    self.contentStack = stack;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [scroll.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [scroll.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [scroll.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [scroll.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [stack.topAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:scroll.contentLayoutGuide.bottomAnchor],
+        [stack.widthAnchor constraintEqualToAnchor:scroll.frameLayoutGuide.widthAnchor]
+    ]];
+
+    [self pp_rebuildFormFields];
+}
+
+- (PPFormStyle *)pp_adFormStyle {
+    PPFormStyle *style = [PPFormStyle defaultStyle];
+    style.cardBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.16 green:0.16 blue:0.18 alpha:1.0]
+            : UIColor.whiteColor;
+    }];
+    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithRed:0.12 green:0.12 blue:0.13 alpha:1.0]
+            : [UIColor colorWithRed:0.973 green:0.974 blue:0.978 alpha:1.0];
+    }];
+    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithRed:0.42 green:0.43 blue:0.46 alpha:0.055];
+    }];
+    style.accentColor = PPAdFormAccentColor();
+    style.primaryTextColor = PPAdFormPrimaryTextColor();
+    style.secondaryTextColor = UIColor.secondaryLabelColor;
+    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    style.inputFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    style.cardCornerRadius = 24.0;
+    style.fieldCornerRadius = 14.0;
+    style.stackSpacing = 12.0;
+    style.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.01 : 0.03;
+    style.shadowRadius = 16.0;
+    style.shadowOffset = CGSizeMake(0.0, 6.0);
+    return style;
+}
+
+- (void)pp_rebuildFormFields {
+    if (!self.contentStack) return;
+
+    for (UIView *v in self.contentStack.arrangedSubviews) {
+        [v removeFromSuperview];
+    }
+
+    if (self.formHeroContainerView) {
+        [self.contentStack addArrangedSubview:self.formHeroContainerView];
+    }
+
     __weak typeof(self) weakSelf = self;
-    CGFloat rowHeight = 64;
+    PPFormStyle *style = [self pp_adFormStyle];
 
-    // Section 0: Basic Info
-    NSMutableArray<PPAdFormField *> *basicSection = [NSMutableArray array];
+    // Section 0: Ad basics
+    NSArray<NSString *> *content0 = [self pp_sectionHeaderContentForSection:0];
+    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content0.firstObject subtitle:content0.lastObject]];
 
-    PPAdFormField *titleField = [PPAdFormField new];
-    titleField.tag = @"adTitle";
-    titleField.title = kLang(@"adTitle");
-    titleField.placeholder = kLang(@"enter_title");
-    titleField.fieldType = PPAdFieldTypeText;
+    self.basicFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    [self.contentStack addArrangedSubview:self.basicFormView];
+
+    PPFormFieldConfig *titleField = [PPFormFieldConfig fieldWithIdentifier:@"adTitle"
+                                                                    title:kLang(@"adTitle")
+                                                              placeholder:kLang(@"enter_title")
+                                                                inputType:PPFormInputTypeText];
     titleField.required = YES;
-    titleField.height = rowHeight;
-    titleField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.adTitle = newValue;
+    titleField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        weakSelf.adModel.adTitle = value;
+        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
     };
-    [basicSection addObject:titleField];
 
-    PPAdFormField *catField = [PPAdFormField new];
-    catField.tag = kcategory;
-    catField.title = kLang(@"Species");
-    catField.selectorTitle = kLang(@"Species");
-    catField.fieldType = PPAdFieldTypeSelector;
+    PPFormFieldConfig *catField = [PPFormFieldConfig fieldWithIdentifier:kcategory
+                                                                  title:kLang(@"Species")
+                                                            placeholder:kLang(@"Species")
+                                                              inputType:PPFormInputTypePicker];
     catField.required = YES;
-    catField.height = 88.0;
+    catField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        [weakSelf pp_presentMainCategoryPickerForConfig:config];
+    };
 
-    PPAdFormField *subField = [PPAdFormField new];
-    subField.tag = ksubcategory;
-    subField.title = kLang(@"Breed");
-    subField.selectorTitle = kLang(@"Breed");
-    subField.fieldType = PPAdFieldTypeSelector;
+    PPFormFieldConfig *subField = [PPFormFieldConfig fieldWithIdentifier:ksubcategory
+                                                                  title:kLang(@"Breed")
+                                                            placeholder:kLang(@"Breed")
+                                                              inputType:PPFormInputTypePicker];
     subField.required = YES;
-    subField.height = rowHeight;
-    subField.onChangeBlock = ^(id oldValue, id newValue) {
-        if (![newValue isKindOfClass:[SubKindModel class]]) return;
-        weakSelf.adModel.subcategory = ((SubKindModel *)newValue).ID;
+    subField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        [weakSelf pp_presentSubCategoryPickerForConfig:config];
     };
 
     if (self.selectedMainKind) {
         weakSelf.selectedKind = self.selectedMainKind;
         weakSelf.adModel.category = self.selectedMainKind.ID;
-        catField.value = self.selectedMainKind;
-        catField.selectorOptions = @[self.selectedMainKind];
-        catField.disabled = YES;
-        subField.disabled = NO;
-        subField.selectorOptions = self.selectedMainKind.SubKindsArray ?: @[];
+        catField.value = self.selectedMainKind.KindName;
+        catField.enabled = NO;
+        subField.enabled = YES;
+    } else if (self.selectedKind) {
+        catField.value = self.selectedKind.KindName;
+        subField.enabled = YES;
     } else {
-        catField.selectorOptions = MKM.MainKindsArray;
-        subField.disabled = YES;
-        catField.onChangeBlock = ^(id oldValue, id newValue) {
-            if (![newValue isKindOfClass:[MainKindsModel class]]) {
-                weakSelf.selectedKind = nil;
-                weakSelf.adModel.category = 0;
-                subField.disabled = YES; subField.selectorOptions = @[]; subField.value = nil;
-                [weakSelf pp_reloadFieldWithTag:ksubcategory];
-                return;
-            }
-            MainKindsModel *kind = newValue;
-            weakSelf.selectedKind = kind;
-            weakSelf.adModel.category = kind.ID;
-            subField.disabled = NO;
-            subField.selectorOptions = kind.SubKindsArray ?: @[];
-            [weakSelf pp_reloadFieldWithTag:ksubcategory];
-        };
+        subField.enabled = NO;
     }
-    catField.pairedField = subField;
-    [basicSection addObject:catField];
-    [self.formSections addObject:basicSection];
 
-    // Section 1: Pet Details
-    NSMutableArray<PPAdFormField *> *petSection = [NSMutableArray array];
-
-    PPAdFormField *ageField = [PPAdFormField new];
-    ageField.tag = kpetAge;
-    ageField.title = kLang(@"age_months");
-    ageField.placeholder = kLang(@"enter_pet_age_in_months");
-    ageField.fieldType = PPAdFieldTypeInteger;
-    ageField.required = YES;
-    ageField.height = 88.0;
-    ageField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.petAgeMonths = newValue;
-    };
-
-    PPAdFormField *genderField = [PPAdFormField new];
-    genderField.tag = @"isFemale";
-    genderField.title = kLang(@"Gender");
-    genderField.placeholder = kLang(@"selectGender");
-    genderField.selectorTitle = kLang(@"selectGender");
-    genderField.fieldType = PPAdFieldTypeSelector;
-    genderField.selectorOptions = [self pp_genderSelectorOptions];
-    genderField.value = nil;
-    genderField.required = YES;
-    genderField.height = rowHeight;
-    genderField.onChangeBlock = ^(id oldValue, id newValue) {
-        [weakSelf pp_applyGenderSelectionToAdModel:newValue];
-    };
-    ageField.pairedField = genderField;
-    [petSection addObject:ageField];
-    [self.formSections addObject:petSection];
-
-    // Section 2: Listing Details
-    NSMutableArray<PPAdFormField *> *listingSection = [NSMutableArray array];
-
-    PPAdFormField *priceField = [PPAdFormField new];
-    priceField.tag = kprice;
-    priceField.title = kLang(@"price");
-    priceField.placeholder = kLang(@"enter_price");
-    priceField.fieldType = PPAdFieldTypeInteger;
-    priceField.required = YES;
-    priceField.height = rowHeight;
-    priceField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.price = newValue;
-    };
-    [listingSection addObject:priceField];
-
-    PPAdFormField *locationField = [PPAdFormField new];
-    locationField.tag = kadLocation;
-    locationField.title = kLang(@"adLocation");
-    locationField.selectorTitle = kLang(@"select_location");
-    locationField.placeholder = kLang(@"select_location");
-    locationField.fieldType = PPAdFieldTypeSelector;
-    locationField.required = YES;
-    locationField.height = rowHeight + 6;
-    locationField.onChangeBlock = ^(id oldValue, id newValue) {
-        if (newValue && [newValue isKindOfClass:NSString.class]) {
-            weakSelf.adModel.locationName = (NSString *)newValue;
+    if (self.adModel.subcategory > 0 && self.selectedKind) {
+        SubKindModel *sub = [self.selectedKind subKindForID:self.adModel.subcategory];
+        if (!sub) {
+            for (SubKindModel *s in self.selectedKind.SubKindsArray) {
+                if (s.ID == self.adModel.subcategory) { sub = s; break; }
+            }
         }
-    };
-    [listingSection addObject:locationField];
+        if (sub) {
+            subField.value = sub.SubKindName;
+        }
+    }
 
-    PPAdFormField *descField = [PPAdFormField new];
-    descField.tag = kdesc;
-    descField.title = nil;
-    descField.placeholder = kLang(@"enter_description");
-    descField.fieldType = PPAdFieldTypeTextView;
-    descField.height = 116;
+    [self.basicFormView setFields:@[titleField, catField, subField]];
+
+    // Section 1: Pet details
+    NSArray<NSString *> *content1 = [self pp_sectionHeaderContentForSection:1];
+    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content1.firstObject subtitle:content1.lastObject]];
+
+    self.petFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    [self.contentStack addArrangedSubview:self.petFormView];
+
+    PPFormFieldConfig *ageField = [PPFormFieldConfig fieldWithIdentifier:kpetAge
+                                                                   title:kLang(@"age_months")
+                                                             placeholder:kLang(@"enter_pet_age_in_months")
+                                                               inputType:PPFormInputTypeNumber];
+    ageField.required = YES;
+    ageField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        weakSelf.adModel.petAgeMonths = value.length > 0 ? @(value.integerValue) : nil;
+        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+    };
+
+    PPFormFieldConfig *genderField = [PPFormFieldConfig fieldWithIdentifier:@"isFemale"
+                                                                     title:kLang(@"Gender")
+                                                               placeholder:kLang(@"selectGender")
+                                                                 inputType:PPFormInputTypePicker];
+    genderField.required = YES;
+    genderField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        [weakSelf pp_presentGenderPickerForConfig:config];
+    };
+
+    if (self.adModel.petAgeMonths) {
+        ageField.value = [NSString stringWithFormat:@"%@", self.adModel.petAgeMonths];
+    }
+
+    PPAdGenderOption *genderOpt = [self pp_genderOptionForAdModel];
+    if (genderOpt) {
+        genderField.value = genderOpt.formDisplayText;
+    }
+
+    [self.petFormView setFields:@[ageField, genderField]];
+
+    // Section 2: Listing details
+    NSArray<NSString *> *content2 = [self pp_sectionHeaderContentForSection:2];
+    [self.contentStack addArrangedSubview:[self pp_sectionHeaderViewForTitle:content2.firstObject subtitle:content2.lastObject]];
+
+    self.listingFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    [self.contentStack addArrangedSubview:self.listingFormView];
+
+    PPFormFieldConfig *priceField = [PPFormFieldConfig fieldWithIdentifier:kprice
+                                                                    title:kLang(@"price")
+                                                              placeholder:kLang(@"enter_price")
+                                                                inputType:PPFormInputTypeNumber];
+    priceField.required = YES;
+    priceField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        weakSelf.adModel.price = value.length > 0 ? @(value.integerValue) : nil;
+        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
+    };
+
+    PPFormFieldConfig *locationField = [PPFormFieldConfig fieldWithIdentifier:kadLocation
+                                                                       title:kLang(@"adLocation")
+                                                                 placeholder:kLang(@"select_location")
+                                                                   inputType:PPFormInputTypePicker];
+    locationField.required = YES;
+    locationField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        [weakSelf pp_presentAdLocationPicker];
+    };
+
+    PPFormFieldConfig *descField = [PPFormFieldConfig fieldWithIdentifier:kdesc
+                                                                   title:kLang(@"enter_description")
+                                                             placeholder:kLang(@"enter_description")
+                                                               inputType:PPFormInputTypeTextView];
     descField.required = YES;
-    descField.onChangeBlock = ^(id oldValue, id newValue) {
-        weakSelf.adModel.adDescription = newValue;
+    descField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        weakSelf.adModel.adDescription = value;
+        if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
     };
-    [listingSection addObject:descField];
-    [self.formSections addObject:listingSection];
 
-    [self.tableView registerClass:[PPAdTextFieldCell class] forCellReuseIdentifier:PPAdTextFieldCellID];
-    [self.tableView registerClass:[PPAdSelectorCell class] forCellReuseIdentifier:PPAdSelectorCellID];
-    [self.tableView registerClass:[PPAdSwitchCell class] forCellReuseIdentifier:PPAdSwitchCellID];
-    [self.tableView registerClass:[PPAdTextViewCell class] forCellReuseIdentifier:PPAdTextViewCellID];
-    [self.tableView registerClass:[PPAdPairFieldCell class] forCellReuseIdentifier:PPAdPairFieldCellID];
+    if (self.adModel.price) {
+        priceField.value = [NSString stringWithFormat:@"%@", self.adModel.price];
+    }
+    if (self.selectedAdLocationName.length > 0) {
+        locationField.value = self.selectedAdLocationName;
+    }
+    if (self.adModel.adDescription.length > 0) {
+        descField.value = self.adModel.adDescription;
+    }
 
-    self.tableView.estimatedSectionFooterHeight = 0.000001;
-    self.tableView.sectionFooterHeight = 0.000001;
-    self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 68.0;
+    [self.listingFormView setFields:@[priceField, locationField, descField]];
+    
+    if (self.imageCollectionFooterContainerView) {
+        [self.contentStack addArrangedSubview:self.imageCollectionFooterContainerView];
+    }
 }
-
 
 #pragma mark - Prefill when Editing
 
 - (void)configureForEditingIfNeeded {
     if (self.mode != AdEditorModeEdit || !self.editingAd) return;
-    
-    // Use the passed model as source-of-truth
-    //self.adModel = self.editingAd;
+
     self.adModel =
     [[PetAd alloc] initWithDictionary:[self.editingAd toFirestoreDictionary]
                             documentID:self.editingAd.adID];
-    // 🔒 Protect immutable fields
     self.adModel.adID = self.editingAd.adID;
     self.adModel.ownerID = self.editingAd.ownerID;
     self.adModel.postedDate = self.editingAd.postedDate;
 
-    // Editing does NOT reset status unless explicitly changed
     if (self.adModel.status == 0) {
         self.adModel.status = self.editingAd.status;
     }
-    
-    // Prefill category + subcategory
+
     MainKindsModel *kind = [MKM mainKindForID:self.adModel.category];
     if (kind) {
         self.selectedKind = kind;
-        [self fieldForTag:kcategory].value = kind;
-        [self fieldForTag:ksubcategory].disabled = NO;
-        [self fieldForTag:ksubcategory].selectorOptions = kind.SubKindsArray;
-        
-        SubKindModel *sub = [kind subKindForID:self.adModel.subcategory];
-        if (!sub) {
-            // fallback: find in array by ID
-            for (SubKindModel *s in kind.SubKindsArray) if (s.ID == self.adModel.subcategory) { sub = s; break; }
-        }
-        [self fieldForTag:ksubcategory].value = sub;
-        [self pp_reloadFieldWithTag:kcategory];
-        [self pp_reloadFieldWithTag:ksubcategory];
     }
-    
-    // Prefill scalar fields
-    [self fieldForTag:kpetAge].value = self.adModel.petAgeMonths;
-    [self fieldForTag:kprice].value  = self.adModel.price;
-    [self fieldForTag:kdesc].value   = self.adModel.adDescription;
-    [self fieldForTag:@"adTitle"].value   = self.adModel.adTitle;
-    [self pp_applyAdModelGenderToField:[self fieldForTag:@"isFemale"]];
+
     NSString *prefillLocation = self.adModel.locationName;
     if (prefillLocation.length == 0 && self.adModel.adLocation > 0) {
         prefillLocation = [CitiesManager.shared cityNameForID:self.adModel.adLocation];
     }
-    [self fieldForTag:kadLocation].value = prefillLocation;
     self.selectedAdLocationName = prefillLocation;
     self.selectedAdCoordinate = CLLocationCoordinate2DMake(self.adModel.latitude, self.adModel.longitude);
     self.hasSelectedAdCoordinate = PPIsValidAdCoordinate(self.selectedAdCoordinate);
-    
-    [self.tableView reloadData];
-    
+
+    [self pp_rebuildFormFields];
+
     self.didMutateMediaAfterPrefill = NO;
     [self pp_setSubmitEnabled:NO];
     [self prefillPhotosForEdit];
-    
-}
-//self.assetArray
-- (void)showPopupPreview:(UIImage *)image {
-    
 }
 
+- (void)showPopupPreview:(UIImage *)image {
+}
 
 #pragma mark - Search Metadata
 
 - (void)prepareSearchMetadataForAd:(PetAd *)ad {
-
-    // Title lowercase index
     ad.name_lowercase = ad.adTitle.lowercaseString ?: @"";
-
-    // Keywords (very important)
     NSMutableSet *keys = [NSMutableSet set];
 
     if (ad.adTitle.length) {
@@ -3526,18 +3410,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             if (obj.length > 1) [keys addObject:obj];
         }];
     }
-    
-    
-    PPAdFormField *subField = [self fieldForTag:ksubcategory];
-    if (subField.value &&
-        [subField.value respondsToSelector:@selector(SubKindName)]) {
 
-        NSString *sub =
-        [[subField.value SubKindName] lowercaseString];
+    SubKindModel *subKind = [self.selectedKind subKindForID:self.adModel.subcategory];
+    if (subKind.SubKindName.length) {
+        NSString *sub = [subKind.SubKindName lowercaseString];
         if (sub.length) [keys addObject:sub];
     }
-    
-    
 
     if (self.selectedKind.KindName.length) {
         [keys addObject:self.selectedKind.KindName.lowercaseString];
@@ -3551,15 +3429,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.view.layer.cornerRadius = 0.0;
     self.view.clipsToBounds = NO;
     self.view.backgroundColor = [self pp_adCanvasColor];
-    self.tableView.backgroundColor = UIColor.clearColor;
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
-    self.tableView.layer.cornerRadius = 0.0;
-    self.tableView.clipsToBounds = NO;
-    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    if (@available(iOS 15.0, *)) {
-        self.tableView.sectionHeaderTopPadding = 0.0;
-    }
+    self.scrollView.backgroundColor = UIColor.clearColor;
 }
 
 - (void)viewWillLayoutSubviews {
@@ -3586,7 +3456,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [super viewDidLayoutSubviews];
 
-    self.tableView.alpha = 1;
+    self.scrollView.alpha = 1;
 
     self.imageCollection.layer.cornerRadius = 0.0;
     self.imageCollection.layer.borderWidth = 0.0;
@@ -3602,7 +3472,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             [UIBezierPath bezierPathWithRoundedRect:self.formHeroCardView.bounds
                                        cornerRadius:self.formHeroCardView.layer.cornerRadius].CGPath;
     }
-    [self.view bringSubviewToFront:self.tableView];
+    [self.view bringSubviewToFront:self.scrollView];
     if (self.imageCollection.superview == self.view) {
         [self.view bringSubviewToFront:self.imageCollection];
     }
@@ -3615,7 +3485,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    CGFloat fullWidth = CGRectGetWidth(self.tableView.bounds);
+    CGFloat fullWidth = CGRectGetWidth(self.scrollView.bounds);
     if (fullWidth <= 0.0) {
         fullWidth = CGRectGetWidth(self.view.bounds);
     }
@@ -3635,7 +3505,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         headerFrame.origin.y = 0.0;
         headerFrame.size.width = fullWidth;
         self.formHeroContainerView.frame = headerFrame;
-        self.tableView.tableHeaderView = self.formHeroContainerView;
+        // Hero is now managed by contentStack in pp_rebuildFormFields
     }
 }
 
@@ -3677,47 +3547,34 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    // 1️⃣ Validate user form
-    NSMutableArray *errors = [NSMutableArray array];
-    for (NSMutableArray<PPAdFormField *> *section in self.formSections) {
-        for (PPAdFormField *f in section) {
-            NSArray<PPAdFormField *> *fieldsToValidate = f.pairedField ? @[f, f.pairedField] : @[f];
-            for (PPAdFormField *candidate in fieldsToValidate) {
-                if (candidate.required &&
-                    (candidate.value == nil ||
-                     ([candidate.value isKindOfClass:NSString.class] && [candidate.value length] == 0))) {
-                    [errors addObject:candidate];
-                }
-            }
-        }
-    }
-    if (errors.count > 0) {
-        [self highlightErrors:errors];
+    BOOL basicValid = [self.basicFormView validate];
+    BOOL petValid = [self.petFormView validate];
+    BOOL listingValid = [self.listingFormView validate];
+    if (!(basicValid && petValid && listingValid)) {
+        [self highlightErrors:@[]];
         return;
     }
 
     // 1b – Custom field-level validation
-    PPAdFormField *priceF = [self fieldForTag:kprice];
-    PPAdFormField *ageF = [self fieldForTag:kpetAge];
+    NSString *priceVal = [self.listingFormView valueForIdentifier:kprice];
+    NSString *ageVal = [self.petFormView valueForIdentifier:kpetAge];
 
-    if ([priceF.value respondsToSelector:@selector(integerValue)] &&
-        [priceF.value integerValue] <= 0) {
+    if (priceVal.length > 0 && priceVal.integerValue <= 0) {
         NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
         NSString *subtitle = [self pp_localizedStringForKey:@"validation_price_invalid"
                                                     fallback:@"Please enter a valid price greater than zero."];
-        UITableViewCell *priceCell = [self.tableView cellForRowAtIndexPath:[self indexPathForFieldTag:kprice]];
-        [GM animateCell:priceCell];
+        PPFormFieldRowView *priceRow = [self.listingFormView rowForIdentifier:kprice];
+        [self pp_animateInvalidFormRow:priceRow];
         [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
         return;
     }
 
-    if ([ageF.value respondsToSelector:@selector(integerValue)] &&
-        [ageF.value integerValue] <= 0) {
+    if (ageVal.length > 0 && ageVal.integerValue <= 0) {
         NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
         NSString *subtitle = [self pp_localizedStringForKey:@"validation_age_invalid"
                                                     fallback:@"Please enter a valid age in months."];
-        UITableViewCell *ageCell = [self.tableView cellForRowAtIndexPath:[self indexPathForFieldTag:kpetAge]];
-        [GM animateCell:ageCell];
+        PPFormFieldRowView *ageRow = [self.petFormView rowForIdentifier:kpetAge];
+        [self pp_animateInvalidFormRow:ageRow];
         [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
         return;
     }
@@ -3780,17 +3637,32 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 
 - (void)highlightErrors:(NSArray *)errors {
-    for (PPAdFormField *field in errors) {
-        NSIndexPath *ip = [self indexPathForFieldTag:field.tag];
-        if (ip) {
-            UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:ip];
-            [GM animateCell:cell];
-        }
-    }
+    // Use PPFormEngineView validation highlighting
+    [self.basicFormView validate];
+    [self.petFormView validate];
+    [self.listingFormView validate];
     NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
     NSString *subtitle = [self pp_localizedStringForKey:@"validation_fill_required"
                                                 fallback:@"Please fill in all required fields."];
     [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
+}
+
+- (void)pp_animateInvalidFormRow:(PPFormFieldRowView *)row
+{
+    if (!row) return;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        row.alpha = 0.72;
+        [UIView animateWithDuration:0.18 animations:^{
+            row.alpha = 1.0;
+        }];
+        return;
+    }
+
+    CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+    shake.values = @[@0, @-8, @7, @-5, @4, @0];
+    shake.duration = 0.32;
+    shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [row.layer addAnimation:shake forKey:@"pp.invalidFieldShake"];
 }
 
 - (BOOL)pp_validateAdLocationBeforeSubmit
@@ -3828,7 +3700,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
     dispatch_async(dispatch_get_main_queue(), ^{
         self.formDisabled = YES;
-        [self.tableView reloadData];
+        self.scrollView.userInteractionEnabled = NO;
         self.imageCollection.userInteractionEnabled = NO;
     });
 
@@ -4135,7 +4007,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         self.isSubmittingAd = NO;
         self.formDisabled = NO;
         [self pp_refreshFormHeroContent];
-        [self.tableView reloadData];
+        self.scrollView.userInteractionEnabled = YES;
         self.imageCollection.userInteractionEnabled = !self.isPrefillInProgress;
         [self pp_setCircularUploadProgressVisible:NO];
 
@@ -4206,7 +4078,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_setPremiumTabDockHidden:YES animated:animated];
     //[PPBarMgr hide];
     self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
-    self.tableView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.scrollView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.imageCollectionFooterContainerView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     [self pp_refreshMediaLocalizedText];
     [self pp_updateImageCollectionFooterLayoutIfNeeded];

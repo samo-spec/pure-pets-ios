@@ -53,7 +53,9 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
 - (NSString *)displayName {
     NSString *primary = [Language languageVal] == 0 ? self.nameEn : self.nameAr;
     NSString *fallback = [Language languageVal] == 0 ? self.nameAr : self.nameEn;
-    return primary.length ? primary : (fallback ?: @"");
+    if (primary.length) return primary;
+    if (fallback.length) return fallback;
+    return self.categoryID.length ? self.categoryID : (self.documentID ?: @"");
 }
 
 - (id)formValue {
@@ -458,5 +460,4 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
 
  */
 @end
-
 

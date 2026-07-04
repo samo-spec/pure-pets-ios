@@ -315,10 +315,15 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (void)presentUnsavedChangesPrompt {
     __weak typeof(self) ws = self;
-    [PPAlertHelper showThreeActionConfirmationIn:self title:kLang(@"form_draft_prompt_title") subtitle:kLang(@"form_draft_prompt_message")
-        primaryButton:kLang(@"form_draft_save_and_close") primaryStyle:UIAlertActionStyleDefault
-        secondaryButton:kLang(@"form_draft_discard") secondaryStyle:UIAlertActionStyleDestructive
-        tertiaryButton:kLang(@"form_draft_keep_editing") tertiaryStyle:UIAlertActionStyleCancel
+    [PPAlertHelper showThreeActionConfirmationIn:self
+                                           title:@"Save your progress?"
+                                        subtitle:@"You can save your current progress and come back later, or leave now without keeping these changes."
+                                   primaryButton:@"Save and close"
+                                    primaryStyle:UIAlertActionStyleDefault
+                                 secondaryButton:@"Exit without saving"
+                                  secondaryStyle:UIAlertActionStyleDestructive
+                                  tertiaryButton:@"Keep editing"
+                                   tertiaryStyle:UIAlertActionStyleCancel
         primaryBlock:^{ __strong typeof(ws) s = ws; if (!s) return; [s saveDraftForLater]; [s pp_dismissForm]; }
         secondaryBlock:^{ __strong typeof(ws) s = ws; if (!s) return; [s clearSavedDraft]; [s pp_dismissForm]; }
         tertiaryBlock:^{}];
@@ -352,6 +357,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         self.accessModel.condition = (self.accessKindType == AccessTypeFood) ? AccessConditionsNew : AccessConditionsUsed;
         self.accessModel.quantity = 1;
         self.accessModel.hasOffer = NO;
+        self.accessModel.showInAppMarket = YES;
         self.accessModel.isNew = (self.accessModel.condition == AccessConditionsNew);
     }
 }
@@ -699,8 +705,13 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     }];
     style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0]
-            : [UIColor colorWithRed:0.96 green:0.96 blue:0.98 alpha:1.0];
+            ? [UIColor colorWithRed:0.12 green:0.12 blue:0.13 alpha:1.0]
+            : [UIColor colorWithRed:0.973 green:0.974 blue:0.978 alpha:1.0];
+    }];
+    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithRed:0.42 green:0.43 blue:0.46 alpha:0.055];
     }];
     style.accentColor = AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemTealColor;
     style.primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
@@ -742,7 +753,19 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [ws pp_presentSubCategoryPicker];
     };
 
-    [self.categoryFormView setFields:@[species, breed]];
+    PPFormFieldConfig *category = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldAccessoryCategoryID
+                                                                   title:[self pp_localizedStringForKey:@"accessory_form_category_title" fallback:@"Accessory Category"]
+                                                             placeholder:[self pp_localizedStringForKey:@"accessory_form_category_placeholder" fallback:@"Select Category"]
+                                                               inputType:PPFormInputTypePicker];
+    category.value = [self pp_accessoryCategoryDisplayText];
+    category.required = YES;
+    category.enabled = (self.draftMainKind != nil);
+    category.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        (void)config; (void)row;
+        [ws pp_presentAccessoryCategoryPicker];
+    };
+
+    [self.categoryFormView setFields:@[species, breed, category]];
 
     NSString *nameTitle = (self.accessKindType == AccessTypeFood)
         ? [self pp_localizedStringForKey:@"food_form_name_title" fallback:@"Food name"]
@@ -797,18 +820,6 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
     };
 
-    PPFormFieldConfig *category = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldAccessoryCategoryID
-                                                                   title:[self pp_localizedStringForKey:@"accessory_form_category_title" fallback:@"Accessory Category"]
-                                                             placeholder:[self pp_localizedStringForKey:@"accessory_form_category_placeholder" fallback:@"Select Category"]
-                                                               inputType:PPFormInputTypePicker];
-    category.value = [self pp_accessoryCategoryDisplayText];
-    category.required = YES;
-    category.enabled = (self.draftMainKind != nil);
-    category.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
-        (void)config; (void)row;
-        [ws pp_presentAccessoryCategoryPicker];
-    };
-
     PPFormFieldConfig *city = [PPFormFieldConfig fieldWithIdentifier:PPAddAccessoryFieldCityID
                                                                title:[self pp_localizedStringForKey:@"form_city_title" fallback:@"City"]
                                                          placeholder:[self pp_localizedStringForKey:@"form_city_placeholder" fallback:@"Select City"]
@@ -820,7 +831,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [ws pp_presentCityPicker];
     };
 
-    [self.detailsFormView setFields:@[name, price, desc, category, city]];
+    [self.detailsFormView setFields:@[name, price, desc, city]];
 
     PPFormFieldRowView *nameRow = [self pp_rowForIdentifier:PPAddAccessoryFieldName];
     nameRow.textField.returnKeyType = UIReturnKeyNext;
@@ -839,19 +850,20 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     [self.categoryFormView setValue:[self pp_mainKindDisplayText] forIdentifier:PPAddAccessoryFieldMainCategoryID];
     [self.categoryFormView setValue:[self pp_subKindDisplayText] forIdentifier:PPAddAccessoryFieldSubCategoryID];
     [self.categoryFormView setFieldEnabled:(self.draftMainKind != nil) identifier:PPAddAccessoryFieldSubCategoryID];
+    [self.categoryFormView setValue:[self pp_accessoryCategoryDisplayText] forIdentifier:PPAddAccessoryFieldAccessoryCategoryID];
+    [self.categoryFormView setFieldEnabled:(self.draftMainKind != nil) identifier:PPAddAccessoryFieldAccessoryCategoryID];
 
     [self.detailsFormView setValue:self.draftName ?: @"" forIdentifier:PPAddAccessoryFieldName];
     NSString *priceText = (self.draftPrice && [self.draftPrice doubleValue] > 0.0) ? [self.draftPrice stringValue] : @"";
     [self.detailsFormView setValue:priceText forIdentifier:PPAddAccessoryFieldPrice];
     [self.detailsFormView setValue:self.draftDesc ?: @"" forIdentifier:PPAddAccessoryFieldDescription];
-    [self.detailsFormView setValue:[self pp_accessoryCategoryDisplayText] forIdentifier:PPAddAccessoryFieldAccessoryCategoryID];
-    [self.detailsFormView setFieldEnabled:(self.draftMainKind != nil) identifier:PPAddAccessoryFieldAccessoryCategoryID];
     [self.detailsFormView setValue:[self pp_cityDisplayText] forIdentifier:PPAddAccessoryFieldCityID];
 }
 
 - (PPFormEngineView *)pp_formViewForIdentifier:(NSString *)identifier {
     if ([identifier isEqualToString:PPAddAccessoryFieldMainCategoryID] ||
-        [identifier isEqualToString:PPAddAccessoryFieldSubCategoryID]) {
+        [identifier isEqualToString:PPAddAccessoryFieldSubCategoryID] ||
+        [identifier isEqualToString:PPAddAccessoryFieldAccessoryCategoryID]) {
         return self.categoryFormView;
     }
     return self.detailsFormView;
@@ -1331,15 +1343,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 #pragma mark - First Responder UX
 
 - (void)pp_focusFirstFieldIfNeeded {
-    if (self.didFocusFirstField || self.formMode == AccessFormModeEdit || self.isSubmittingAccessory) return;
-    self.didFocusFirstField = YES;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        PPFormFieldRowView *row = [self pp_rowForIdentifier:PPAddAccessoryFieldName];
-        if (!row) return;
-        CGRect rowRect = [row convertRect:row.bounds toView:self.scrollView];
-        [self.scrollView scrollRectToVisible:CGRectInset(rowRect, 0.0, -24.0) animated:NO];
-        [row.textField becomeFirstResponder];
-    });
+    // Disabled as per user request to stop auto show keyboard/focus on load
 }
 
 - (void)onBack { [self pp_handleBackNavigation]; }
@@ -1362,7 +1366,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     }
 
     NSArray<PPAccessoryCategoryModel *> *cached = mainKind.accessoryCategories ?: @[];
-    if (cached.count > 0 || mainKind.didSeedAccessoryCategories) {
+    if (cached.count > 0) {
         if (completion) completion(cached);
         return;
     }
@@ -1413,6 +1417,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
                     [s2 pp_refreshFormValuesAndStates];
                 });
             }];
+            vc.selectedOption = s.draftAccessoryCategory;
             [s presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
         });
     }];

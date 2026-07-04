@@ -29,7 +29,7 @@ typedef NS_ENUM(NSUInteger, AdEditorMode) {
 
 @protocol AddNewAdDelegate;
 
-@interface AddNewAd : UITableViewController
+@interface AddNewAd : UIViewController
 
 @property (nonatomic, weak) CreateAdCoordinator *coordinator;
 @property (nonatomic, assign) AdEditorMode mode;

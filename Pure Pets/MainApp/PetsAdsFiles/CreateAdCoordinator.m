@@ -87,6 +87,7 @@
     self.navigationController =
     [[UINavigationController alloc]
      initWithRootViewController:self.viewController];
+    self.navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
 
     return self.navigationController;
 }

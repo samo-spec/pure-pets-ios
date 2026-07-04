@@ -20,6 +20,14 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
     return value;
 }
 
+static UISemanticContentAttribute PPFormEngineSemanticAttribute(void) {
+    return Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+}
+
+static NSTextAlignment PPFormEngineTextAlignment(void) {
+    return Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+}
+
 @implementation PPFormStyle
 
 + (instancetype)defaultStyle {
@@ -227,7 +235,7 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         _style = [style ?: [PPFormStyle defaultStyle] copy];
 
         self.translatesAutoresizingMaskIntoConstraints = NO;
-        self.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+        self.semanticContentAttribute = PPFormEngineSemanticAttribute();
 
         [self pp_build];
         [self applyConfig:config];
@@ -238,6 +246,7 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 - (void)pp_build {
     self.cardView = [[UIView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cardView.semanticContentAttribute = PPFormEngineSemanticAttribute();
     self.cardView.backgroundColor = self.style.cardBackgroundColor;
     self.cardView.layer.cornerRadius = self.style.cardCornerRadius;
     if (@available(iOS 13.0, *)) self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -260,7 +269,8 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.font = self.style.titleFont;
     self.titleLabel.textColor = [self.style.primaryTextColor colorWithAlphaComponent:0.82];
-    self.titleLabel.textAlignment = NSTextAlignmentNatural;
+    self.titleLabel.semanticContentAttribute = PPFormEngineSemanticAttribute();
+    self.titleLabel.textAlignment = PPFormEngineTextAlignment();
     self.titleLabel.numberOfLines = 1;
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
     self.titleLabel.minimumScaleFactor = 0.88;
@@ -268,6 +278,7 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 
     self.fieldSurface = [[UIView alloc] init];
     self.fieldSurface.translatesAutoresizingMaskIntoConstraints = NO;
+    self.fieldSurface.semanticContentAttribute = PPFormEngineSemanticAttribute();
     self.fieldSurface.backgroundColor = self.style.fieldBackgroundColor;
     self.fieldSurface.layer.cornerRadius = self.style.fieldCornerRadius;
     if (@available(iOS 13.0, *)) self.fieldSurface.layer.cornerCurve = kCACornerCurveContinuous;
@@ -282,7 +293,8 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
     self.errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.errorLabel.font = self.style.errorFont;
     self.errorLabel.textColor = self.style.errorColor;
-    self.errorLabel.textAlignment = NSTextAlignmentNatural;
+    self.errorLabel.semanticContentAttribute = PPFormEngineSemanticAttribute();
+    self.errorLabel.textAlignment = PPFormEngineTextAlignment();
     self.errorLabel.numberOfLines = 2;
     self.errorLabel.hidden = YES;
     [self.cardView addSubview:self.errorLabel];
@@ -354,7 +366,8 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         self.textView.textColor = self.style.primaryTextColor;
         self.textView.font = self.style.inputFont;
         self.textView.delegate = self;
-        self.textView.textAlignment = NSTextAlignmentNatural;
+        self.textView.semanticContentAttribute = PPFormEngineSemanticAttribute();
+        self.textView.textAlignment = PPFormEngineTextAlignment();
         self.textView.textContainerInset = UIEdgeInsetsZero;
         self.textView.textContainer.lineFragmentPadding = 0.0;
 
@@ -362,7 +375,8 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         self.textViewPlaceholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
         self.textViewPlaceholderLabel.font = self.style.placeholderFont;
         self.textViewPlaceholderLabel.textColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.66];
-        self.textViewPlaceholderLabel.textAlignment = NSTextAlignmentNatural;
+        self.textViewPlaceholderLabel.semanticContentAttribute = PPFormEngineSemanticAttribute();
+        self.textViewPlaceholderLabel.textAlignment = PPFormEngineTextAlignment();
         self.textViewPlaceholderLabel.numberOfLines = 0;
         [self.textView addSubview:self.textViewPlaceholderLabel];
         [NSLayoutConstraint activateConstraints:@[
@@ -379,7 +393,8 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
     self.textField.textColor = self.style.primaryTextColor;
     self.textField.tintColor = self.style.accentColor;
     self.textField.font = self.style.inputFont;
-    self.textField.textAlignment = NSTextAlignmentNatural;
+    self.textField.semanticContentAttribute = PPFormEngineSemanticAttribute();
+    self.textField.textAlignment = PPFormEngineTextAlignment();
     self.textField.delegate = self;
     [self.textField addTarget:self action:@selector(pp_textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
 
@@ -390,6 +405,7 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         self.pickerButton = [UIButton buttonWithType:UIButtonTypeCustom];
         self.pickerButton.translatesAutoresizingMaskIntoConstraints = NO;
         self.pickerButton.backgroundColor = UIColor.clearColor;
+        self.pickerButton.semanticContentAttribute = PPFormEngineSemanticAttribute();
         [self.pickerButton addTarget:self action:@selector(pp_pickerTapped) forControlEvents:UIControlEventTouchUpInside];
         [self.fieldSurface addSubview:self.pickerButton];
 
@@ -681,6 +697,13 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 }
 
 - (void)setFields:(NSArray<PPFormFieldConfig *> *)fields {
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self setFields:fields];
+        });
+        return;
+    }
+
     for (UIView *view in self.stackView.arrangedSubviews.copy) {
         [self.stackView removeArrangedSubview:view];
         [view removeFromSuperview];
@@ -697,10 +720,13 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         if (config.identifier.length == 0) continue;
 
         PPFormFieldRowView *row = [[PPFormFieldRowView alloc] initWithConfig:config style:self.style];
+        if (!row) continue;
 
         row.textChangeHandler = ^(PPFormFieldRowView *rowView, NSString *value) {
             __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
             PPFormFieldConfig *liveConfig = self.mutableConfigsByIdentifier[config.identifier];
+            if (!liveConfig) return;
             liveConfig.value = value ?: @"";
             if (self.validatesOnChange) {
                 [self validate];
@@ -712,7 +738,9 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 
         row.pickerTapHandler = ^(PPFormFieldRowView *rowView) {
             __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
             PPFormFieldConfig *liveConfig = self.mutableConfigsByIdentifier[config.identifier];
+            if (!liveConfig) return;
             if (liveConfig.pickerTapBlock) {
                 liveConfig.pickerTapBlock(liveConfig, rowView);
             }
@@ -720,7 +748,9 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 
         row.attachmentTapHandler = ^(PPFormFieldRowView *rowView) {
             __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
             PPFormFieldConfig *liveConfig = self.mutableConfigsByIdentifier[config.identifier];
+            if (!liveConfig) return;
             if (liveConfig.attachmentTapBlock) {
                 liveConfig.attachmentTapBlock(liveConfig, rowView);
             }
@@ -728,7 +758,9 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
 
         row.attachmentRemoveTapHandler = ^(PPFormFieldRowView *rowView) {
             __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
             PPFormFieldConfig *liveConfig = self.mutableConfigsByIdentifier[config.identifier];
+            if (!liveConfig) return;
             if (liveConfig.attachmentRemoveBlock) {
                 liveConfig.attachmentRemoveBlock(liveConfig, rowView);
             }
@@ -741,9 +773,9 @@ static NSString *PPFormEngineLocalizedString(NSString *key, NSString *fallback) 
         configs[config.identifier] = config;
     }
 
-    self.fields = copiedFields.copy;
-    self.rowsByIdentifier = rows.copy;
-    self.mutableConfigsByIdentifier = configs.mutableCopy;
+    _fields = copiedFields.copy;
+    _rowsByIdentifier = rows.copy;
+    _mutableConfigsByIdentifier = configs.mutableCopy;
     [self.errorsByIdentifier removeAllObjects];
 }
 

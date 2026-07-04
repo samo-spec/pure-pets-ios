@@ -3756,6 +3756,45 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 
 
+- (NSString *)pp_addActionPickerBadgeTextForCount:(NSUInteger)count
+{
+    NSString *format =
+        count == 1 ? kLang(@"create_picker_count_single") : kLang(@"create_picker_count_format");
+    if (count == 1 && ![format containsString:@"%"]) {
+        return format;
+    }
+    return [NSString stringWithFormat:format, (long)count];
+}
+
+- (NSArray<OptionModel *> *)pp_addActionPickerOptions
+{
+    OptionModel *newAd =
+        [OptionModel optionWithID:@"newAd"
+                            title:kLang(@"newAd")
+                        imageName:nil
+                      systemImage:@"pawprint.fill"
+                             desc:kLang(@"newAd_desc")];
+    newAd.sortOrder = 0;
+
+    OptionModel *addUsed =
+        [OptionModel optionWithID:@"addUsedButton"
+                            title:kLang(@"addUsedButton")
+                        imageName:nil
+                      systemImage:@"tag.fill"
+                             desc:kLang(@"addUsedButton_desc")];
+    addUsed.sortOrder = 1;
+
+    OptionModel *adopt =
+        [OptionModel optionWithID:@"addPetForAdoption"
+                            title:kLang(@"addPetForAdoption")
+                        imageName:nil
+                      systemImage:@"heart.circle.fill"
+                             desc:kLang(@"addPetForAdoption_desc")];
+    adopt.sortOrder = 2;
+
+    return @[newAd, addUsed, adopt];
+}
+
 - (void)presentBottomSheet {
     if (@available(iOS 10.0, *)) {
         UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
@@ -3767,30 +3806,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_applyBlockedState:YES animated:YES];
         return;
     }
-    
-    
-    // Build options
-    NSMutableArray<OptionModel *> *options = [NSMutableArray new];
-
-    OptionModel *newAd   = [OptionModel optionWithID:@"newAd"
-                                               title:kLang(@"newAd")
-                                           imageName:@"new_adColor"
-                                         systemImage:nil
-                                               desc:kLang(@"newAd_desc")];
-
-    OptionModel *addUsed = [OptionModel optionWithID:@"addUsedButton"
-                                               title:kLang(@"addUsedButton")
-                                           imageName:@"AccessIconNew.selected"
-                                         systemImage:nil
-                                               desc:kLang(@"addUsedButton_desc")];
-
-    OptionModel *adopt   = [OptionModel optionWithID:@"addPetForAdoption"
-                                               title:kLang(@"addPetForAdoption")
-                                           imageName:@"blindColor.selected"
-                                         systemImage:nil
-                                               desc:kLang(@"addPetForAdoption_desc")];
-
-    [options addObjectsFromArray:@[newAd, addUsed, adopt]];
+    NSArray<OptionModel *> *options = [self pp_addActionPickerOptions];
 
     PPSelectOptionViewController *vc =
     [[PPSelectOptionViewController alloc] initWithOptions:options
@@ -3811,6 +3827,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             [self openAdoptionEditor];
         }
     }];
+    vc.usesCompactOptionIcons = YES;
+    vc.usesCompactPremiumHero = NO;
+    vc.preferredMainDetentHeight = 520.0;
+    vc.premiumHeroAccentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    [vc configurePremiumHeroWithEyebrow:kLang(@"create_picker_eyebrow")
+                                  title:kLang(@"create_picker_title")
+                               subtitle:kLang(@"create_picker_subtitle")
+                             symbolName:@"plus.app.fill"
+                              badgeText:[self pp_addActionPickerBadgeTextForCount:options.count]];
     
     [PPFunc presentFloatingSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle35];
 
@@ -3839,7 +3864,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     vc.FromVC = @"AppVC";
     vc.pp_transitionStyle = PPTransitionStyleNone;
 
-    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:nav animated:YES completion:nil];
 }
 
 
@@ -3862,7 +3889,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     vc.FromVC = @"AppVC";
     vc.accessKindType = AccessTypeAccessory;
     vc.pp_transitionStyle = PPTransitionStyleNone;
-    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:nav animated:YES completion:nil];
 }
 
 - (void)openAdoptionEditor {

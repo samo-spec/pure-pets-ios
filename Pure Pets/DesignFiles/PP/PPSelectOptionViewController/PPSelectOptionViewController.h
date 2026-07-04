@@ -39,6 +39,16 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
 @property (nonatomic, strong) UIView *searchContainer;
 @property (nonatomic, strong, nullable) UIColor *optionCellBackgroundColor;
 @property (nonatomic, assign) BOOL isGenderSelector; // for smaller icon size
+@property (nonatomic, assign) BOOL usesCompactOptionIcons;
+@property (nonatomic, assign) BOOL usesCompactPremiumHero;
+@property (nonatomic, assign) CGFloat preferredMainDetentHeight;
+@property (nonatomic, assign) CGFloat preferredPremiumDetentFraction;
+@property (nonatomic, copy, nullable) NSString *premiumHeroEyebrow;
+@property (nonatomic, copy, nullable) NSString *premiumHeroTitle;
+@property (nonatomic, copy, nullable) NSString *premiumHeroSubtitle;
+@property (nonatomic, copy, nullable) NSString *premiumHeroSymbolName;
+@property (nonatomic, copy, nullable) NSString *premiumHeroBadgeText;
+@property (nonatomic, strong, nullable) UIColor *premiumHeroAccentColor;
 
 /// Callback when a row is picked (returns your original model)
 @property (nonatomic, copy) PPSelectOptionBlock onSelectOption;
@@ -58,5 +68,10 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
                presentationStyle:(PPSelectOptionPresentationStyle)style
                   showSearchBar:(BOOL)showSearchBar
                      completion:(PPSelectOptionBlock)completion;
+- (void)configurePremiumHeroWithEyebrow:(nullable NSString *)eyebrow
+                                  title:(nullable NSString *)title
+                               subtitle:(nullable NSString *)subtitle
+                             symbolName:(nullable NSString *)symbolName
+                              badgeText:(nullable NSString *)badgeText;
 @end
 NS_ASSUME_NONNULL_END

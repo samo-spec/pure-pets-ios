@@ -1549,12 +1549,13 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
     if ([universalModel.ModelObject isKindOfClass:PetAd.class]) {
         PetAd *ad = (PetAd *)universalModel.ModelObject;
         AddNewAd *viewController =
-            [[AddNewAd alloc] initWithStyle:UITableViewStyleGrouped];
+        [[AddNewAd alloc] init];
         viewController.mode = AdEditorModeEdit;
         viewController.editingAd = ad;
         viewController.delegate = self;
         UINavigationController *navigationController =
             [[UINavigationController alloc] initWithRootViewController:viewController];
+        navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
         [self presentViewController:navigationController animated:YES completion:nil];
     } else if ([universalModel.ModelObject isKindOfClass:PetAccessory.class]) {
         AddNewAccessory *viewController = [AddNewAccessory new];
@@ -1562,6 +1563,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
             (PetAccessory *)universalModel.ModelObject;
         UINavigationController *navigationController =
             [[UINavigationController alloc] initWithRootViewController:viewController];
+        navigationController.modalPresentationStyle = UIModalPresentationFullScreen;
         [self presentViewController:navigationController animated:YES completion:nil];
     }
 }
