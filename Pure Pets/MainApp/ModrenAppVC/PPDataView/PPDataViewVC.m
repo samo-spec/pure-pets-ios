@@ -30,6 +30,8 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
 static const CGFloat kPPAccessoryFilterHeight = 52.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 24.0;
+static const CGFloat kPPFilterExpandedBottomInset = 24.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -127,6 +129,27 @@ static UIColor *PPDataViewAccentColor(void)
     return AppPrimaryClr ?: [GM appPrimaryColor] ?: UIColor.systemPinkColor;
 }
 
+static UIImage *PPDataViewFilterIconImage(NSString *iconName, UIImageSymbolConfiguration *symbolConfiguration, UIColor *tintColor)
+{
+    NSString *trimmedIconName = [iconName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedIconName.length == 0) {
+        return nil;
+    }
+
+    UIImage *image = [UIImage imageNamed:trimmedIconName];
+    if (!image) {
+        image = [UIImage systemImageNamed:trimmedIconName withConfiguration:symbolConfiguration];
+    }
+    if (!image) {
+        return nil;
+    }
+
+    if (tintColor) {
+        return [image imageWithTintColor:tintColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
+    return [image imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
 static UIColor *PPDataViewAppForegroundSurfaceColor(void)
 {
     return AppForgroundColr ?: PPDataViewChromeElevatedSurfaceColor();
@@ -195,7 +218,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
     if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemThickMaterial;
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
     }
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -214,8 +237,8 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     ]];
 
     self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.surfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
     self.surfaceGradientLayer.masksToBounds = YES;
     [self.layer insertSublayer:self.surfaceGradientLayer above:self.blurView.layer];
 
@@ -259,22 +282,38 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
         self.blurView.hidden = YES;//UIAccessibilityIsReduceTransparencyEnabled();
         self.backgroundColor = self.blurView.hidden ? [surface colorWithAlphaComponent:0.96] : UIColor.clearColor;
         self.layer.borderWidth = hasActiveFilters ? 1.0 : 0.75;
-        self.layer.borderColor = border.CGColor;
+        self.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.55].CGColor;
         self.layer.shadowColor = PPDataViewChromeShadowColor().CGColor;
         self.layer.shadowOpacity = hasActiveFilters ? 0.09 : 0.06;
         self.layer.shadowRadius = hasActiveFilters ? 13.0 : 10.0;
         self.layer.shadowOffset = CGSizeMake(0.0, hasActiveFilters ? 4.5 : 3.0);
+        
+        if(hasActiveFilters)
+        {
+            UIColor *top = [AppForgroundColr colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.66];
+            UIColor *mid = [AppBackgroundClrLigter colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
+            UIColor *bottom = [AppPrimaryClr colorWithAlphaComponent:0.32];
+            self.surfaceGradientLayer.colors = @[
+                (__bridge id)top.CGColor,
+                (__bridge id)mid.CGColor,
+                (__bridge id)bottom.CGColor
+            ];
+        }
+        else
+        {
+            UIColor *top = [AppForgroundColr colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.86];
+            UIColor *mid = [AppBackgroundClrLigter colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
+            UIColor *bottom = [AppBackgroundClrDarker colorWithAlphaComponent:0.60];
+            self.surfaceGradientLayer.colors = @[
+                (__bridge id)top.CGColor,
+                (__bridge id)mid.CGColor,
+                (__bridge id)bottom.CGColor
+            ];
+        }
 
-        UIColor *top = [surface colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.86];
-        UIColor *mid = [wash colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
-        UIColor *bottom = [surface colorWithAlphaComponent:hasActiveFilters ? 0.74 : 0.60];
-        self.surfaceGradientLayer.colors = @[
-            (__bridge id)top.CGColor,
-            (__bridge id)mid.CGColor,
-            (__bridge id)bottom.CGColor
-        ];
+        
         self.surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
-        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.62 : 0.48;
+        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.52 : 0.42;
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -441,10 +480,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
             [UIImageSymbolConfiguration configurationWithPointSize:(action ? 14.0 : 12.8)
                                                             weight:UIImageSymbolWeightSemibold
                                                              scale:UIImageSymbolScaleSmall];
-        UIImage *icon = [[UIImage systemImageNamed:iconName
-                                 withConfiguration:iconCfg]
-                         imageWithTintColor:symbolFG
-                              renderingMode:UIImageRenderingModeAlwaysOriginal];
+        UIImage *icon = PPDataViewFilterIconImage(iconName, iconCfg, symbolFG);
         if (icon) {
             NSTextAttachment *att = [[NSTextAttachment alloc] init];
             att.image = icon;
@@ -633,6 +669,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 @property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
+@property (nonatomic, strong) UIButton *filterCollapseButton;
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
 // Scroll restore
@@ -663,6 +700,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 @property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterCollapseButtonBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
@@ -672,6 +710,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 @property (nonatomic, assign) BOOL isCartButtonVisible;
 @property (nonatomic, assign) BOOL isSubKindsChevronHidden;
 @property (nonatomic, assign) BOOL useCapsuleNavigation;
+@property (nonatomic, assign) BOOL filterBadgesCollapsed;
 // Skeleton loading stateAppForgroundColr
 @property (nonatomic, assign) BOOL isShowingSkeleton;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
@@ -711,10 +750,13 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 - (void)activateSection:(PPDataSection)section userInitiated:(BOOL)userInitiated;
 - (NSInteger)pp_segmentIndexForSection:(PPDataSection)section;
 - (PPDataSection)pp_sectionForSegmentIndex:(NSInteger)segmentIndex;
+- (BOOL)sectionHasFilterChipBarForSection:(PPDataSection)section;
 - (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section;
 - (void)syncFilterChipsForCurrentSection;
 - (void)syncFilterChipsForSection:(PPDataSection)section;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
+- (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)toggleFilterBadgesCollapsed:(UIButton *)sender;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (void)refreshFilterChipTitles;
 - (void)refreshFilterChipTitlesForSection:(PPDataSection)section;
@@ -1557,8 +1599,8 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     }
 
     self.sectionsFiltersContainer.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    BOOL showsCurrentFilterRow = [self shouldShowFilterChipBarForSection:self.viewModel.currentSection];
-    NSInteger activeFilterCount = (self.filterStates && showsCurrentFilterRow) ? [self pp_currentFilterState].activeFilterCount : 0;
+    BOOL currentSectionHasFilters = [self sectionHasFilterChipBarForSection:self.viewModel.currentSection];
+    NSInteger activeFilterCount = (self.filterStates && currentSectionHasFilters) ? [self pp_currentFilterState].activeFilterCount : 0;
     [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:NO];
 
     self.sectionsSegmentedControl.containerBackgroundColor = UIColor.clearColor;
@@ -2616,8 +2658,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGFloat targetTopInset =
     [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
-    ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 12.0)
-    : (PPCurrentSectionsTabBarHeight() + (PPIOS26() ? 2.0 : 12.0));
+    ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + kPPFilterCollapseHandleHeight + 18.0)
+    : (PPCurrentSectionsTabBarHeight()
+       + ([self sectionHasFilterChipBarForSection:self.viewModel.currentSection] ? kPPFilterCollapseHandleHeight : 0.0)
+       + (PPIOS26() ? 2.0 : 12.0));
     CGRect sectionsFrame = self.sectionsFiltersContainer.frame;
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
 
@@ -3221,7 +3265,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     PPFilterState *state = [self pp_filterStateForSection:section];
     NSArray<PPFilterGroup *> *groups = state.groups;
-    NSInteger activeFilterCount = [self shouldShowFilterChipBarForSection:section] ? state.activeFilterCount : 0;
+    NSInteger activeFilterCount = [self sectionHasFilterChipBarForSection:section] ? state.activeFilterCount : 0;
     [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:self.view.window != nil];
 
     for (NSInteger i = 0; i < (NSInteger)self.filterChips.count && i < (NSInteger)groups.count; i++) {
@@ -3478,12 +3522,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self persistSectionSelection:section];
     [self updateCartButtonVisibilityForSection:section animated:NO];
     [self updateFilterChipVisibilityForSection:section animated:userInitiated];
+    [self.viewModel setFilterState:[self pp_filterStateForSection:section] forSection:section];
     [self.viewModel switchToSection:section];
+}
+
+- (BOOL)sectionHasFilterChipBarForSection:(PPDataSection)section
+{
+    return [self pp_filterStateForSection:section].groups.count > 0;
 }
 
 - (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section
 {
-    return (section == PPDataSectionAccessories);
+    return [self sectionHasFilterChipBarForSection:section] && !self.filterBadgesCollapsed;
 }
 
 - (void)syncFilterChipsForCurrentSection
@@ -3545,11 +3595,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
+    BOOL canShowFilters = [self sectionHasFilterChipBarForSection:section];
     BOOL shouldShow = [self shouldShowFilterChipBarForSection:section];
     [self syncFilterChipsForSection:section];
     PPFilterState *state = [self pp_filterStateForSection:section];
-    NSInteger activeFilterCount = shouldShow ? state.activeFilterCount : 0;
+    NSInteger activeFilterCount = canShowFilters ? state.activeFilterCount : 0;
     [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:animated && self.view.window != nil];
+    [self updateFilterCollapseButtonForSection:section expanded:shouldShow animated:animated];
 
     self.filterChipContainer.hidden = NO;
     if (shouldShow && animated && self.filterChipContainer.alpha <= 0.01 && !UIAccessibilityIsReduceMotionEnabled()) {
@@ -3559,7 +3611,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     void (^layoutChanges)(void) = ^{
         self.filterChipTopConstraint.constant = shouldShow ? 8.0 : 0.0;
         self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
-        self.filterChipBottomConstraint.constant = shouldShow ? -12.0 : -4.0;
+        self.filterChipBottomConstraint.constant = canShowFilters ? -kPPFilterExpandedBottomInset : -4.0;
         self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
         self.filterChipContainer.transform = shouldShow
             ? CGAffineTransformIdentity
@@ -3604,6 +3656,64 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }];
 }
 
+- (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated
+{
+    if (!self.filterCollapseButton) {
+        return;
+    }
+
+    BOOL hasFilters = [self sectionHasFilterChipBarForSection:section];
+    NSString *labelKey = expanded
+        ? @"dataview_filters_collapse_accessibility"
+        : @"dataview_filters_expand_accessibility";
+    self.filterCollapseButton.accessibilityLabel = kLang(labelKey);
+    self.filterCollapseButton.enabled = hasFilters;
+    self.filterCollapseButton.userInteractionEnabled = hasFilters;
+    if (hasFilters) {
+        self.filterCollapseButton.hidden = NO;
+    }
+
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.5
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    UIImage *chevron = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolConfig]
+                        imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [self.filterCollapseButton setImage:chevron forState:UIControlStateNormal];
+
+    void (^updates)(void) = ^{
+        self.filterCollapseButton.alpha = hasFilters ? 1.0 : 0.0;
+        self.filterCollapseButton.transform = expanded
+            ? CGAffineTransformMakeRotation((CGFloat)M_PI)
+            : CGAffineTransformIdentity;
+    };
+
+    if (!animated || self.view.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
+        updates();
+        self.filterCollapseButton.hidden = !hasFilters;
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut
+                     animations:updates
+                     completion:^(__unused BOOL finished) {
+        self.filterCollapseButton.hidden = !hasFilters;
+    }];
+}
+
+- (void)toggleFilterBadgesCollapsed:(UIButton *)sender
+{
+    if (![self sectionHasFilterChipBarForSection:self.viewModel.currentSection]) {
+        return;
+    }
+
+    self.filterBadgesCollapsed = !self.filterBadgesCollapsed;
+    [PPFunc triggerLightHaptic];
+    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:YES];
+}
+
 // ---------- Dynamic filter menu builder ----------
 
 - (UIMenu *)pp_menuForFilterGroup:(PPFilterGroup *)group chipIndex:(NSInteger)chipIndex
@@ -3612,7 +3722,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
     for (PPFilterOption *opt in group.options) {
         NSString *optionIconName = [opt.iconName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        UIImage *optionImage = optionIconName.length > 0 ? [UIImage systemImageNamed:optionIconName] : nil;
+        UIImageSymbolConfiguration *optionIconConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleSmall];
+        UIImage *optionImage = PPDataViewFilterIconImage(optionIconName, optionIconConfig, nil);
         UIAction *action =
         [UIAction actionWithTitle:opt.title
                             image:optionImage
@@ -3643,7 +3757,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (PPFilterState *)pp_currentFilterState
 {
-    return [self pp_filterStateForSection:self.viewModel.currentSection];
+    PPDataSection section = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
+    return [self pp_filterStateForSection:section];
 }
 
 - (PPFilterState *)pp_filterStateForSection:(PPDataSection)section
@@ -4734,6 +4849,33 @@ presentingViewController:self
 
     [controlIsland addSubview:filterContainer];
 
+    UIButton *collapseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    collapseButton.translatesAutoresizingMaskIntoConstraints = NO;
+    collapseButton.backgroundColor = UIColor.clearColor;
+    collapseButton.tintColor = PPDataViewAccentColor();
+    collapseButton.alpha = 0.0;
+    collapseButton.hidden = YES;
+    collapseButton.accessibilityIdentifier = @"pp.data.filters.collapseToggle";
+    collapseButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [collapseButton addTarget:self
+                       action:@selector(toggleFilterBadgesCollapsed:)
+             forControlEvents:UIControlEventTouchUpInside];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 16.0, 2.0, 16.0);
+        configuration.baseForegroundColor = UIColor.lightGrayColor;// PPDataViewAccentColor();
+        configuration.background.backgroundColor = UIColor.clearColor;
+        configuration.background.strokeColor = UIColor.clearColor;
+        configuration.background.strokeWidth = 0.0;
+        collapseButton.configuration = configuration;
+    } else {
+        collapseButton.contentEdgeInsets = UIEdgeInsetsMake(2.0, 16.0, 2.0, 16.0);
+    }
+    collapseButton.layer.borderWidth = 0.0;
+    collapseButton.layer.borderColor = [UIColor clearColor].CGColor;
+    self.filterCollapseButton = collapseButton;
+    [controlIsland addSubview:collapseButton];
+
     self.filterChipHeightConstraint =
     [filterContainer.heightAnchor constraintEqualToConstant:0.0];
     self.filterChipHeightConstraint.active = YES;
@@ -4743,10 +4885,16 @@ presentingViewController:self
 
     self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-8.0];
     self.filterChipBottomConstraint.active = YES;
+    self.filterCollapseButtonBottomConstraint =
+    [collapseButton.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-3.0];
+    self.filterCollapseButtonBottomConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
-        [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0]
+        [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
+        [collapseButton.centerXAnchor constraintEqualToAnchor:controlIsland.centerXAnchor],
+        [collapseButton.widthAnchor constraintEqualToConstant:48.0],
+        [collapseButton.heightAnchor constraintEqualToConstant:kPPFilterCollapseHandleHeight]
     ]];
 
     // Dynamic filter chips — created from PPFilterState for the initial section
@@ -4771,7 +4919,9 @@ presentingViewController:self
     // Initialize per-section filter state dictionary
     self.filterStates = [NSMutableDictionary dictionary];
 
-    [self syncFilterChipsForCurrentSection];
+    PPDataSection initialFilterSection = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
+    [self syncFilterChipsForSection:initialFilterSection];
+    [self updateFilterChipVisibilityForSection:initialFilterSection animated:NO];
 }
 
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender

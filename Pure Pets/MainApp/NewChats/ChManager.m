@@ -20,6 +20,9 @@ static NSString * const kPPConversationTypeSupport = @"support";
 static NSString * const kPPConversationTypeProviderChat = @"provider_chat";
 static NSString * const kPPThreadTypeSupport = @"support";
 static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
+static NSString * const kPPSupportOfficialActorKey = @"support:official";
+static NSString * const kPPSupportContextType = @"user_support";
+static NSInteger const kPPChatV2SchemaVersion = 2;
 static NSString * const kPPChatNotificationsPreferenceKey = @"notificationsSet";
 static NSString * const kPPMessagesPrivacyPreferenceKey = @"messagesPrivacyValue";
 
@@ -82,6 +85,56 @@ static UserModel *PPSupportUserFromConfig(NSDictionary *config) {
     supportUser.UserName = kLang(@"Support") ?: @"Support";
     supportUser.UserImageUrl = [NSURL URLWithString:kPPSupportAvatarToken];
     return supportUser;
+}
+
+static NSString *PPSupportUserActorKey(NSString *uid) {
+    NSString *safeUID = PPSupportTrimmedString(uid);
+    return safeUID.length > 0 ? [NSString stringWithFormat:@"user:%@", safeUID] : @"";
+}
+
+static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) {
+    NSMutableOrderedSet<NSString *> *set = [NSMutableOrderedSet orderedSet];
+    for (NSString *value in values) {
+        NSString *safeValue = PPSupportTrimmedString(value);
+        if (safeValue.length > 0) {
+            [set addObject:safeValue];
+        }
+    }
+    return set.array ?: @[];
+}
+
+static NSDictionary *PPSupportThreadV2Metadata(NSString *threadID,
+                                               NSString *customerID,
+                                               NSString *supportUserID,
+                                               NSString *updatedByUID) {
+    NSString *safeThreadID = PPSupportTrimmedString(threadID);
+    NSString *safeCustomerID = PPSupportTrimmedString(customerID);
+    NSString *safeSupportUserID = PPSupportTrimmedString(supportUserID).length > 0
+        ? PPSupportTrimmedString(supportUserID)
+        : PURE_PETS_OFFICIAL_USER_ID;
+    NSString *customerActorKey = PPSupportUserActorKey(safeCustomerID);
+    NSString *safeUpdatedByUID = PPSupportTrimmedString(updatedByUID).length > 0
+        ? PPSupportTrimmedString(updatedByUID)
+        : safeCustomerID;
+
+    return @{
+        @"schemaVersion": @(kPPChatV2SchemaVersion),
+        @"conversationId": safeThreadID,
+        @"contextType": kPPSupportContextType,
+        @"contextId": safeThreadID,
+        @"threadId": safeThreadID,
+        @"threadID": safeThreadID,
+        @"supportActorKey": kPPSupportOfficialActorKey,
+        @"customerActorKey": customerActorKey,
+        @"participantKeys": PPSupportUniqueStrings(@[kPPSupportOfficialActorKey, customerActorKey]),
+        @"participantUids": PPSupportUniqueStrings(@[safeSupportUserID, safeCustomerID]),
+        @"targetUid": safeSupportUserID,
+        @"targetActorKey": kPPSupportOfficialActorKey,
+        @"route": @"chat",
+        @"notificationType": @"chat",
+        @"updatedByActorKey": PPSupportUserActorKey(safeUpdatedByUID),
+        @"updatedByUid": safeUpdatedByUID
+    };
 }
 
 static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSString *message) {
@@ -317,7 +370,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     FIRDocumentReference *threadRef = [[db collectionWithPath:@"Chats"] documentWithPath:threadID];
     NSArray<NSString *> *members = @[resolvedCustomerID, supportUserID];
 
-    NSDictionary *canonicalMetadata = @{
+    NSMutableDictionary *canonicalMetadata = [@{
         @"members": members,
         @"conversationType": kPPConversationTypeSupport,
         @"threadType": kPPThreadTypeSupport,
@@ -331,7 +384,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         @"sourceScreen": @"support_chat",
         @"sourceType": @"general",
         @"sourceEntityId": @""
-    };
+    } mutableCopy];
+    [canonicalMetadata addEntriesFromDictionary:PPSupportThreadV2Metadata(threadID,
+                                                                          resolvedCustomerID,
+                                                                          supportUserID,
+                                                                          resolvedCustomerID)];
 
     NSDictionary *(^supportCreatePayload)(void) = ^NSDictionary *{
         NSMutableDictionary *data = [canonicalMetadata mutableCopy];
@@ -339,6 +396,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"members": members,
             @"lastMessage": @"",
             @"lastUpdated": [FIRFieldValue fieldValueForServerTimestamp],
+            @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
             @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
             @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
             @"mutedBy": @[],
@@ -351,7 +409,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     };
 
     void (^finishWithSnapshot)(FIRDocumentSnapshot * _Nullable) = ^(FIRDocumentSnapshot * _Nullable snapshot) {
-        NSDictionary *threadData = snapshot.exists ? (snapshot.data ?: @{}) : @{
+        NSMutableDictionary *threadData = [snapshot.exists ? (snapshot.data ?: @{}) : @{
             @"members": members,
             @"conversationType": kPPConversationTypeSupport,
             @"threadType": kPPThreadTypeSupport,
@@ -361,7 +419,11 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"supportDisplayName": @"Pure Pets",
             @"supportPhotoUrl": @"",
             @"supportStatus": @"waiting_for_agent"
-        };
+        } mutableCopy];
+        [threadData addEntriesFromDictionary:PPSupportThreadV2Metadata(threadID,
+                                                                       resolvedCustomerID,
+                                                                       supportUserID,
+                                                                       resolvedCustomerID)];
 
         ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:threadData];
         thread.ID = threadID;

@@ -157,8 +157,7 @@
     [NSLayoutConstraint activateConstraints:@[
         [self.addButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.addButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.addButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.addButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor]
+        [self.addButton.widthAnchor constraintEqualToAnchor:self.contentView.heightAnchor],
      ]];
 }
 

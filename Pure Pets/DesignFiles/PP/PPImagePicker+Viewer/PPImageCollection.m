@@ -2705,8 +2705,7 @@ static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat collectionHeight = CGRectGetHeight(collectionView.bounds);
-    CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
-    UIEdgeInsets sectionInset = UIEdgeInsetsZero;
+     UIEdgeInsets sectionInset = UIEdgeInsetsZero;
     CGFloat minimumLineSpacing = 10.0;
     if ([collectionViewLayout isKindOfClass:UICollectionViewFlowLayout.class]) {
         UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)collectionViewLayout;
@@ -2720,15 +2719,9 @@ static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
     NSInteger imageCount = [self imageCount];
     BOOL shouldShowAddButton = (imageCount < self.maxImageCount);
     BOOL isEmptyStateAddButton = (imageCount == 0 && shouldShowAddButton && indexPath.item == 0);
-    if (isEmptyStateAddButton) {
-        CGFloat availableWidth = MAX(92.0, collectionWidth - horizontalInsets);
-        CGFloat emptyWidth = MIN(MAX(168.0, availableHeight * 1.18), availableWidth);
-        return CGSizeMake(emptyWidth, availableHeight);
-    }
+    
     CGFloat itemWidth = MAX(92.0, availableHeight);
-    CGFloat maxAllowed = MAX(92.0, collectionWidth - horizontalInsets - minimumLineSpacing);
-    itemWidth = MIN(itemWidth, maxAllowed);
-    return CGSizeMake(itemWidth, itemWidth);
+     return CGSizeMake(itemWidth, itemWidth);
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView canMoveItemAtIndexPath:(NSIndexPath *)indexPath

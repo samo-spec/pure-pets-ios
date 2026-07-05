@@ -2084,33 +2084,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     // Mark that the user made an explicit choice so the system-default migration
     // in loadUserInterfaceStyle never overwrites a deliberate Light selection.
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"PPThemeUserChoseExplicitly"];
-    UIWindow *window = [self pp_keyWindow];
-    if (window) {
-        [UIView transitionWithView:window
-                          duration:0.35
-                           options:UIViewAnimationOptionTransitionCrossDissolve
-                        animations:^{
-            window.overrideUserInterfaceStyle = style;
-            [window setNeedsLayout];
-            [window layoutIfNeeded];
-            [window.rootViewController.view setNeedsLayout];
-            [window.rootViewController.view layoutIfNeeded];
-        } completion:^(__unused BOOL finished) {
-            [window setNeedsLayout];
-            [window layoutIfNeeded];
-            [window.rootViewController.view setNeedsLayout];
-            [window.rootViewController.view layoutIfNeeded];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [window setNeedsLayout];
-                [window layoutIfNeeded];
-                [window.rootViewController.view setNeedsLayout];
-                [window.rootViewController.view layoutIfNeeded];
-                [[NSNotificationCenter defaultCenter] postNotificationName:PPThemePreferenceDidChangeNotification object:nil];
-            });
-        }];
-    } else {
+    [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:style];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
         [[NSNotificationCenter defaultCenter] postNotificationName:PPThemePreferenceDidChangeNotification object:nil];
-    }
+    });
+    
     [self pp_buildSections];
     [self.tableView reloadData];
     [PPHUD showSuccess:[self pp_themeFeedbackMessageForIndex:index]];

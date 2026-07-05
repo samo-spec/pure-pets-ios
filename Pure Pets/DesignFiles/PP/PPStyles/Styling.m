@@ -1331,24 +1331,27 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
     }];
 }
 
-- (void)applyInterfaceStyle:(UIUserInterfaceStyle)style toWindow:(UIWindow *)window {
-    if (!window) return;
-
-    window.overrideUserInterfaceStyle = style;
+- (void)applyInterfaceStyleGlobally:(UIUserInterfaceStyle)style {
     [self saveUserInterfaceStyle:style];
 
-    [UIView transitionWithView:window
-                      duration:0.35
-                       options:UIViewAnimationOptionTransitionCrossDissolve
-                    animations:^{
-        [window pp_resolveLayerColorsRecursively];
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if ([scene isKindOfClass:[UIWindowScene class]]) {
+            for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+                window.overrideUserInterfaceStyle = style;
+                [UIView transitionWithView:window
+                                  duration:0.35
+                                   options:UIViewAnimationOptionTransitionCrossDissolve
+                                animations:^{
+                    [window pp_resolveLayerColorsRecursively];
+                } completion:nil];
+            }
+        }
     }
-                    completion:^(BOOL finished) {
-        [[NSNotificationCenter defaultCenter]
-            postNotificationName:PPThemeDidChangeNotification
-                          object:self
-                        userInfo:@{@"style": @(style)}];
-    }];
+    
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:PPThemeDidChangeNotification
+                      object:self
+                    userInfo:@{@"style": @(style)}];
 }
 
 

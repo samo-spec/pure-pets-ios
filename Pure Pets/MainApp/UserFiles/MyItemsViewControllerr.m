@@ -586,6 +586,22 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     [iconPlate addSubview:iconView];
     self.modeIconView = iconView;
 
+    LOTAnimationView *iconLottie = [[LOTAnimationView alloc] init];
+    iconLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    iconLottie.contentMode = UIViewContentModeScaleAspectFit;
+    iconLottie.loopAnimation = YES;
+    iconLottie.alpha = 0.0;
+    [iconPlate addSubview:iconLottie];
+    
+    [Styling setAnimationNamed:@"Speaker.lottie" toView:iconLottie withSpeed:0.8 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
+        if (success) {
+            iconView.alpha = 0.0;
+            [UIView animateWithDuration:0.3 animations:^{
+                iconLottie.alpha = 1.0;
+            }];
+        }
+    }];
+
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrow.font =
@@ -709,6 +725,11 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         [iconView.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
         [iconView.widthAnchor constraintEqualToConstant:24.0],
         [iconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [iconLottie.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
+        [iconLottie.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+        [iconLottie.widthAnchor constraintEqualToConstant:36.0],
+        [iconLottie.heightAnchor constraintEqualToConstant:36.0],
 
         [statusPill.topAnchor constraintEqualToAnchor:identityRow.bottomAnchor constant:PPSpaceMD],
         [statusPill.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG],

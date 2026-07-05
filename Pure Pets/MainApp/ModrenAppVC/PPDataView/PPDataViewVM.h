@@ -36,6 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Filters — data-driven
 - (void)applyFilterState:(PPFilterState *)state;
+- (void)setFilterState:(nullable PPFilterState *)state forSection:(PPDataSection)section;
 - (NSInteger)previewResultCountForFilterState:(PPFilterState *)state;
 
 - (NSString *)subKindKeyForMainKind:(MainKindsModel *)mainKind;

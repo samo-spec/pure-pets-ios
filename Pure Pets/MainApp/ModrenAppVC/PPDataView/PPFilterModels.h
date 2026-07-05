@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 // ─── Filter group identifiers ────────────────────────────────────────
 extern NSString * const PPFilterIDCondition;   // New / Used
 extern NSString * const PPFilterIDAccessoryCategory; // AccessoryCategoryID
-extern NSString * const PPFilterIDGender;      // Male / Female
+extern NSString * const PPFilterIDGender;      // Male / Female / Undefined
 extern NSString * const PPFilterIDServiceType; // Training / Grooming / Walking
 extern NSString * const PPFilterIDPrice;       // Price range tiers
 extern NSString * const PPFilterIDSort;        // Sort order
@@ -45,6 +45,7 @@ typedef NS_ENUM(NSInteger, PPFilterGender) {
     PPFilterGenderAll = 0,
     PPFilterGenderMale,
     PPFilterGenderFemale,
+    PPFilterGenderUndefined,
 };
 
 typedef NS_ENUM(NSInteger, PPFilterHasOffer) {

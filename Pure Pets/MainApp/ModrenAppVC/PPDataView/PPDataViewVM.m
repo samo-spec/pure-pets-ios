@@ -18,6 +18,7 @@
 @property (nonatomic, assign) BOOL hasMore;
 // Filters — data-driven
 @property (nonatomic, strong, nullable) PPFilterState *filterState;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStatesBySection;
 // Section
 //@property (nonatomic, assign) PPDataSection currentSection;
 
@@ -83,6 +84,7 @@
 
     _mainKind = mainKind;
     _mutableItems = [NSMutableArray new];
+    _filterStatesBySection = [NSMutableDictionary dictionary];
 
     _currentPage = 1;
     _hasMore = YES;
@@ -133,6 +135,11 @@
     return self.mutableItems[index];
 }
 
+- (void)pp_useStoredFilterStateForCurrentSection
+{
+    self.filterState = self.filterStatesBySection[@(self.currentSection)];
+}
+
 - (void)switchToSection:(PPDataSection)section
 {
     BOOL isInitialLoad = (self.items.count == 0);
@@ -143,6 +150,7 @@
     }
 
     _currentSection = section;
+    [self pp_useStoredFilterStateForCurrentSection];
     [self pp_beginRequest];
 
     // Reset data
@@ -283,6 +291,7 @@
 
     // Reset filters
     self.filterState = nil;
+    [self.filterStatesBySection removeAllObjects];
     self.currentSubKindID = 0;
 
     // Clear current items
@@ -339,9 +348,27 @@
 
 #pragma mark - Filters
 
+- (void)setFilterState:(PPFilterState *)state forSection:(PPDataSection)section
+{
+    if (!self.filterStatesBySection) {
+        self.filterStatesBySection = [NSMutableDictionary dictionary];
+    }
+
+    NSNumber *key = @(section);
+    if (state) {
+        self.filterStatesBySection[key] = state;
+    } else {
+        [self.filterStatesBySection removeObjectForKey:key];
+    }
+
+    if (self.currentSection == section) {
+        self.filterState = state;
+    }
+}
+
 - (void)applyFilterState:(PPFilterState *)state
 {
-    self.filterState = state;
+    [self setFilterState:state forSection:self.currentSection];
     [self pp_beginRequest];
     [self refreshCurrentSection];
 }
@@ -599,9 +626,16 @@
         return filtered;
     }
 
+    BOOL isAdsSection = (self.currentSection == PPDataSectionAds);
+    BOOL isAccessoriesSection = (self.currentSection == PPDataSectionAccessories);
+    BOOL isFoodSection = (self.currentSection == PPDataSectionFood);
+    BOOL isServicesSection = (self.currentSection == PPDataSectionServices);
+
     // ── Condition filter (Accessories / Food) ──
     NSInteger condVal = [state valueForFilterID:PPFilterIDCondition];
-    if (PPAllwedUsedAccessoriesEnabled() && condVal != 0) { // 0 = All
+    if ((isAccessoriesSection || isFoodSection) &&
+        PPAllwedUsedAccessoriesEnabled() &&
+        condVal != 0) { // 0 = All
         BOOL wantNew = (condVal == PPFilterAccessoryNew);
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
@@ -612,7 +646,7 @@
     // ── Accessory category filter ──
     PPFilterGroup *accessoryCategoryGroup = [state groupForID:PPFilterIDAccessoryCategory];
     NSString *selectedAccessoryCategoryID = accessoryCategoryGroup.selectedOption.identifierValue ?: @"";
-    if (selectedAccessoryCategoryID.length > 0) {
+    if (isAccessoriesSection && selectedAccessoryCategoryID.length > 0) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, __unused NSDictionary *bindings) {
                 if (![obj isKindOfClass:PetAccessory.class]) {
@@ -626,17 +660,42 @@
 
     // ── Gender filter (Ads) ──
     NSInteger genderVal = [state valueForFilterID:PPFilterIDGender];
-    if (genderVal != PPFilterGenderAll) {
-        BOOL wantFemale = (genderVal == PPFilterGenderFemale);
+    if (isAdsSection && genderVal != PPFilterGenderAll) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
-                return [obj respondsToSelector:@selector(isFemale)] && ([obj isFemale] == wantFemale);
+                NSString *gender = @"";
+                if ([obj respondsToSelector:@selector(gender)]) {
+                    id rawGender = [obj valueForKey:@"gender"];
+                    if ([rawGender isKindOfClass:NSString.class]) {
+                        gender = [[(NSString *)rawGender lowercaseString]
+                                  stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+                    }
+                }
+
+                if (genderVal == PPFilterGenderUndefined) {
+                    return [gender isEqualToString:@"undefined"];
+                }
+                if ([gender isEqualToString:@"female"]) {
+                    return genderVal == PPFilterGenderFemale;
+                }
+                if ([gender isEqualToString:@"male"]) {
+                    return genderVal == PPFilterGenderMale;
+                }
+                if ([gender isEqualToString:@"undefined"]) {
+                    return NO;
+                }
+                if (![obj respondsToSelector:@selector(isFemale)]) {
+                    return NO;
+                }
+
+                BOOL isFemale = [obj isFemale];
+                return (genderVal == PPFilterGenderFemale) ? isFemale : !isFemale;
             }]];
     }
 
     // ── Service type filter (uses category string — covers Training/Grooming/Walking) ──
     NSInteger svcVal = [state valueForFilterID:PPFilterIDServiceType];
-    if (svcVal != PPFilterServiceAll) {
+    if (isServicesSection && svcVal != PPFilterServiceAll) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
                 if (![obj isKindOfClass:[ServiceModel class]]) return NO;
@@ -665,7 +724,7 @@
 
     // ── Availability filter (Services — based on availableDate) ──
     NSInteger availVal = [state valueForFilterID:PPFilterIDAvailability];
-    if (availVal != PPFilterAvailabilityAll) {
+    if (isServicesSection && availVal != PPFilterAvailabilityAll) {
         NSDate *today = [NSDate date];
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
@@ -684,7 +743,7 @@
 
     // ── HasOffer filter (Accessories / Food) ──
     NSInteger offerVal = [state valueForFilterID:PPFilterIDHasOffer];
-    if (offerVal == PPFilterHasOfferYes) {
+    if ((isAccessoriesSection || isFoodSection) && offerVal == PPFilterHasOfferYes) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
                 return [obj respondsToSelector:@selector(hasOffer)] && [obj hasOffer];
@@ -693,7 +752,7 @@
 
     // ── Price filter ──
     NSInteger priceVal = [state valueForFilterID:PPFilterIDPrice];
-    if (priceVal != PPFilterPriceAll) {
+    if ((isAdsSection || isFoodSection || isServicesSection) && priceVal != PPFilterPriceAll) {
         // Determine thresholds based on current section
         double lowCeiling = 0, midFloor = 0, midCeiling = 0;
         switch (self.currentSection) {
@@ -719,7 +778,11 @@
     }
 
     // ── Sort ──
-    NSInteger sortVal = [state valueForFilterID:PPFilterIDSort];
+    BOOL sectionUsesSort = (isAdsSection || isAccessoriesSection || isFoodSection);
+    PPFilterGroup *sortGroup = [state groupForID:PPFilterIDSort];
+    NSInteger sortVal = (sectionUsesSort && sortGroup)
+        ? [state valueForFilterID:PPFilterIDSort]
+        : PPFilterSortRecommended;
     if (sortVal != PPFilterSortRecommended) {
         filtered = [filtered sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
             switch (sortVal) {

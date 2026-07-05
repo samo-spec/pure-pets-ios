@@ -3352,6 +3352,12 @@
 "max_images_count_error_format" = "الحد الأقصى المسموح به هو %ld صور.";
 "image_prepare_failed_format" = "تعذر تجهيز الصورة رقم %ld.";
 
+/* DataView Filter Badges */
+"dataview_filter_service_badge" = "الخدمة";
+"dataview_filter_service_when_badge" = "الموعد";
+"dataview_filters_collapse_accessibility" = "إخفاء الفلاتر";
+"dataview_filters_expand_accessibility" = "إظهار الفلاتر";
+
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "اختر الفئة الأساسية المناسبة للإعلان.";
 "option_picker_breed_subtitle" = "اختر السلالة أو العائلة الأقرب للحيوان.";

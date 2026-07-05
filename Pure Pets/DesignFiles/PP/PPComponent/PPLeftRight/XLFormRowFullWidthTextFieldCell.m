@@ -601,8 +601,7 @@ NSString * const XLFormRowButtonKey = @"XLFormRowButton";
         
         // Configure SF Symbol appearance (iOS 15+)
         if (@available(iOS 26.0, *)) {
-            UIButtonConfiguration *cfg;
-         cfg = [UIButtonConfiguration prominentGlassButtonConfiguration];
+            UIButtonConfiguration *cfg= [UIButtonConfiguration prominentGlassButtonConfiguration];
             cfg.baseForegroundColor = AppPrimaryClr;
             cfg.baseBackgroundColor = AppClearClr;
             cfg.background.backgroundColor = AppClearClr;

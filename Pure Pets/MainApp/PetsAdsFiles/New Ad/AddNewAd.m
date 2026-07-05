@@ -2754,8 +2754,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     [NSLayoutConstraint activateConstraints:@[
         [self.imageCollection.topAnchor constraintEqualToAnchor:footerContainer.topAnchor constant:8.0],
-        [self.imageCollection.leadingAnchor constraintEqualToAnchor:footerContainer.leadingAnchor constant:16.0],
-        [self.imageCollection.trailingAnchor constraintEqualToAnchor:footerContainer.trailingAnchor constant:-16.0],
+        [self.imageCollection.leadingAnchor constraintEqualToAnchor:footerContainer.leadingAnchor constant:0.0],
+        [self.imageCollection.trailingAnchor constraintEqualToAnchor:footerContainer.trailingAnchor constant:-0.0],
         [self.imageCollection.bottomAnchor constraintEqualToAnchor:footerContainer.bottomAnchor constant:-16.0],
         [self.imageCollection.heightAnchor constraintEqualToConstant:height]
     ]];

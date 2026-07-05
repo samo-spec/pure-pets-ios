@@ -57,6 +57,12 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 #pragma mark - PPFilterGroup
 // ═════════════════════════════════════════════════════════════════════
 
+@interface PPFilterGroup ()
+@property (nonatomic, assign) BOOL pp_hasDefaultValueOverride;
+@property (nonatomic, assign) NSInteger pp_defaultValueOverride;
+- (void)pp_setDefaultSelectedValue:(NSInteger)defaultValue;
+@end
+
 @implementation PPFilterGroup
 
 + (instancetype)groupWithID:(NSString *)filterID
@@ -75,7 +81,17 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 - (NSInteger)defaultValue
 {
+    if (self.pp_hasDefaultValueOverride) {
+        return self.pp_defaultValueOverride;
+    }
     return self.options.firstObject.value;
+}
+
+- (void)pp_setDefaultSelectedValue:(NSInteger)defaultValue
+{
+    self.pp_hasDefaultValueOverride = YES;
+    self.pp_defaultValueOverride = defaultValue;
+    self.selectedValue = defaultValue;
 }
 
 - (BOOL)isActive
@@ -89,6 +105,9 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
     if (selected) {
         return selected.title;
     }
+    if (self.selectedValue == [self defaultValue]) {
+        return self.title;
+    }
     return self.options.firstObject.title;
 }
 
@@ -99,7 +118,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
             return o;
         }
     }
-    return self.options.firstObject;
+    return nil;
 }
 
 - (void)reset
@@ -114,6 +133,8 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
     copy.title         = self.title;
     copy.chipIconName  = self.chipIconName;
     copy.selectedValue = self.selectedValue;
+    copy.pp_hasDefaultValueOverride = self.pp_hasDefaultValueOverride;
+    copy.pp_defaultValueOverride = self.pp_defaultValueOverride;
 
     NSMutableArray *opts = [NSMutableArray arrayWithCapacity:self.options.count];
     for (PPFilterOption *o in self.options) {
@@ -221,13 +242,14 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 {
     PPFilterGroup *gender = [PPFilterGroup
         groupWithID:PPFilterIDGender
-              title:PPFilterL(@"Gender", @"الجنس")
-           chipIcon:@"figure.2"
+              title:kLang(@"Gender")
+           chipIcon:@"gender"
             options:@[
-                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterGenderAll],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Male", @"ذكر") value:PPFilterGenderMale icon:@"figure.stand"],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Female", @"انثى") value:PPFilterGenderFemale icon:@"figure.stand.dress"],
+                [PPFilterOption optionWithTitle:kLang(@"Male") value:PPFilterGenderMale icon:@"male"],
+                [PPFilterOption optionWithTitle:kLang(@"Female") value:PPFilterGenderFemale icon:@"female"],
+                [PPFilterOption optionWithTitle:kLang(@"no_value") value:PPFilterGenderUndefined icon:@"gender"],
             ]];
+    [gender pp_setDefaultSelectedValue:PPFilterGenderAll];
 
     PPFilterGroup *price = [PPFilterGroup
         groupWithID:PPFilterIDPrice
@@ -350,7 +372,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 {
     PPFilterGroup *type = [PPFilterGroup
         groupWithID:PPFilterIDServiceType
-              title:PPFilterL(@"Type", @"النوع")
+              title:kLang(@"dataview_filter_service_badge")
            chipIcon:@"list.bullet"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterServiceAll],
@@ -361,7 +383,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
     PPFilterGroup *availability = [PPFilterGroup
         groupWithID:PPFilterIDAvailability
-              title:PPFilterL(@"Availability", @"التوفر")
+              title:kLang(@"dataview_filter_service_when_badge")
            chipIcon:@"calendar.badge.clock"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterAvailabilityAll],
@@ -380,18 +402,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
                 [PPFilterOption optionWithTitle:PPFilterL(@"500+", @"500+") value:PPFilterPriceTier3],
             ]];
 
-    PPFilterGroup *sort = [PPFilterGroup
-        groupWithID:PPFilterIDSort
-              title:PPFilterL(@"Sort", @"الترتيب")
-           chipIcon:@"arrow.up.arrow.down"
-            options:@[
-                [PPFilterOption optionWithTitle:PPFilterL(@"Recommended", @"الافتراضي") value:PPFilterSortRecommended],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Low to high", @"الاقل للاعلى") value:PPFilterSortPriceLowToHigh],
-                [PPFilterOption optionWithTitle:PPFilterL(@"High to low", @"الاعلى للاقل") value:PPFilterSortPriceHighToLow],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Newest", @"الاحدث") value:PPFilterSortNewest],
-            ]];
-
-    return [PPFilterState stateWithGroups:@[type, availability, price, sort]];
+    return [PPFilterState stateWithGroups:@[type, availability, price]];
 }
 
 @end

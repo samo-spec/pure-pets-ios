@@ -6,6 +6,7 @@
 //
 
 #import "CompanyLocationVC.h"
+#import "UIViewController+PPBottomSurface.h"
 #import <CoreLocation/CoreLocation.h>
 #import <GoogleMaps/GoogleMaps.h>
 
@@ -13,6 +14,7 @@ static CLLocationCoordinate2D const kPPCompanyCoordinate = {25.168900, 51.608612
 static NSString * const kPPCompanyPhoneNumber = @"+97459997720";
 static CGFloat const kPPLocationHorizontalInset = 18.0;
 static CGFloat const kPPLocationSheetRadius = 30.0;
+static CGFloat const kPPLocationButtonCornerRadius = 18.0;
 
 static inline UIColor *PPLocationAccentColor(void)
 {
@@ -21,7 +23,7 @@ static inline UIColor *PPLocationAccentColor(void)
 
 static inline UIColor *PPLocationSurfaceColor(void)
 {
-    return [UIColor colorWithRed:0.98 green:0.97 blue:0.95 alpha:1.0];
+    return [UIColor colorWithRed:0.98 green:0.97 blue:0.95 alpha:0.42];
 }
 
 static inline UIColor *PPLocationPrimaryTextColor(void)
@@ -45,6 +47,29 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     return font;
 }
 
+static inline void PPLocationApplyCornerRadius(UIView *view, CGFloat radius)
+{
+    if (!view) {
+        return;
+    }
+
+    view.layer.cornerRadius = radius;
+    if (@available(iOS 13.0, *)) {
+        view.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    if (@available(iOS 15.0, *)) {
+        if ([view isKindOfClass:UIButton.class]) {
+            UIButton *button = (UIButton *)view;
+            UIButtonConfiguration *configuration = button.configuration;
+            if (configuration) {
+                configuration.background.cornerRadius = radius;
+                configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+                button.configuration = configuration;
+            }
+        }
+    }
+}
+
 @interface CompanyLocationVC () <CLLocationManagerDelegate>
 
 @property (nonatomic, strong) GMSMapView *mapView;
@@ -63,10 +88,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 @property (nonatomic, strong) CAGradientLayer *topScrimLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomScrimLayer;
 
-@property (nonatomic, strong) UIView *titleChipView;
-@property (nonatomic, strong) UILabel *titleChipEyebrowLabel;
-@property (nonatomic, strong) UILabel *titleChipValueLabel;
-
 @property (nonatomic, strong) UIView *sheetView;
 @property (nonatomic, strong) UILabel *sheetTitleLabel;
 @property (nonatomic, strong) UILabel *sheetSubtitleLabel;
@@ -84,11 +105,13 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 @property (nonatomic, strong) NSArray<UIView *> *heroEntranceViews;
 @property (nonatomic, strong) NSArray<UIView *> *sheetEntranceViews;
 @property (nonatomic, strong) UIView *markerView;
+@property (nonatomic, strong) UIView *markerCalloutView;
+@property (nonatomic, strong) UILabel *markerEyebrowLabel;
+@property (nonatomic, strong) UILabel *markerTitleLabel;
 
 @property (nonatomic, assign) BOOL isLoadingRoute;
 @property (nonatomic, assign) BOOL didPrepareEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
-@property (nonatomic, assign) BOOL wantsBottomNavigationHidden;
 
 @end
 
@@ -106,7 +129,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
     [self pp_setupMap];
     [self pp_setupAmbientBackground];
-    [self pp_setupTitleChip];
     [self pp_setupBottomSheet];
     [self pp_updateLocalizedCopy];
     [self pp_registerButtonFeedback];
@@ -127,8 +149,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
                       button:nil
                        title:@""
                     showBack:YES];
-    self.wantsBottomNavigationHidden = YES;
-    [self pp_setRootBottomNavigationHidden:YES animated:animated];
+    [self pp_applyBottomSurfaceAnimated:animated];
     [self pp_prepareEntranceStateIfNeeded];
     [self pp_startLocationUpdatesIfNeeded];
     [self pp_applyAmbientMotionIfNeeded];
@@ -137,7 +158,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self pp_setRootBottomNavigationHidden:YES animated:NO];
+    [self pp_applyBottomSurfaceAnimated:animated];
     [self pp_runEntranceIfNeeded];
 }
 
@@ -153,59 +174,25 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     }
 }
 
-- (void)viewWillDisappear:(BOOL)animated
-{
-    [super viewWillDisappear:animated];
-
-    BOOL leavingScreen = self.isMovingFromParentViewController ||
-    self.isBeingDismissed ||
-    self.navigationController.isBeingDismissed;
-    if (!leavingScreen) {
-        return;
-    }
-
-    self.wantsBottomNavigationHidden = NO;
-    [self pp_setRootBottomNavigationHidden:NO animated:animated];
-
-    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
-    if (coordinator) {
-        __weak typeof(self) weakSelf = self;
-        [coordinator animateAlongsideTransition:nil
-                                     completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
-            if (!context.isCancelled) {
-                return;
-            }
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) {
-                return;
-            }
-            strongSelf.wantsBottomNavigationHidden = YES;
-            [strongSelf pp_setRootBottomNavigationHidden:YES animated:YES];
-        }];
-    }
-}
-
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
 
-    self.topGlowLayer.frame = self.topGlowView.bounds;
+    if (self.topGlowView) {
+        self.topGlowLayer.frame = self.topGlowView.bounds;
+    }
     self.bottomGlowLayer.frame = self.bottomGlowView.bounds;
     self.topScrimLayer.frame = self.topScrimView.bounds;
     self.bottomScrimLayer.frame = self.bottomScrimView.bounds;
 
-    self.titleChipView.layer.shadowPath =
-    [UIBezierPath bezierPathWithRoundedRect:self.titleChipView.bounds cornerRadius:self.titleChipView.layer.cornerRadius].CGPath;
     self.sheetView.layer.shadowPath =
     [UIBezierPath bezierPathWithRoundedRect:self.sheetView.bounds cornerRadius:self.sheetView.layer.cornerRadius].CGPath;
+    self.markerCalloutView.layer.shadowPath =
+    [UIBezierPath bezierPathWithRoundedRect:self.markerCalloutView.bounds cornerRadius:self.markerCalloutView.layer.cornerRadius].CGPath;
 
-    CGFloat topInset = CGRectGetMaxY(self.titleChipView.frame) + 18.0;
+    CGFloat topInset = self.view.safeAreaInsets.top + 24.0;
     CGFloat bottomInset = MAX(CGRectGetHeight(self.view.bounds) - CGRectGetMinY(self.sheetView.frame) + 30.0, 250.0);
     self.mapView.padding = UIEdgeInsetsMake(topInset, 24.0, bottomInset, 24.0);
-
-    if (self.wantsBottomNavigationHidden) {
-        [self pp_setRootBottomNavigationHidden:YES animated:NO];
-    }
 }
 
 #pragma mark - Setup
@@ -240,6 +227,9 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     self.companyMarker.position = self.companyLocation;
     self.companyMarker.title = @"Pure Pets";
     self.companyMarker.iconView = [self pp_makeMarkerView];
+    self.companyMarker.groundAnchor = CGPointMake(0.5, 0.91);
+    self.companyMarker.zIndex = 12;
+    self.companyMarker.tracksViewChanges = YES;
     self.companyMarker.appearAnimation = kGMSMarkerAnimationPop;
     self.companyMarker.map = self.mapView;
 }
@@ -268,21 +258,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
 - (void)pp_setupAmbientBackground
 {
-    self.topGlowView = [[UIView alloc] init];
-    self.topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.topGlowView.userInteractionEnabled = NO;
-    [self.view addSubview:self.topGlowView];
-
-    self.topGlowLayer = [CAGradientLayer layer];
-    self.topGlowLayer.type = kCAGradientLayerRadial;
-    self.topGlowLayer.colors = @[
-        (__bridge id)[[PPLocationAccentColor() colorWithAlphaComponent:0.18] CGColor],
-        (__bridge id)[[[UIColor colorWithRed:0.99 green:0.82 blue:0.88 alpha:1.0] colorWithAlphaComponent:0.15] CGColor],
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    self.topGlowLayer.locations = @[@0.0, @0.52, @1.0];
-    [self.topGlowView.layer addSublayer:self.topGlowLayer];
-
     self.bottomGlowView = [[UIView alloc] init];
     self.bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomGlowView.userInteractionEnabled = NO;
@@ -327,11 +302,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     [self.bottomScrimView.layer addSublayer:self.bottomScrimLayer];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.topGlowView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-30.0],
-        [self.topGlowView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-34.0],
-        [self.topGlowView.widthAnchor constraintEqualToConstant:220.0],
-        [self.topGlowView.heightAnchor constraintEqualToConstant:220.0],
-
         [self.bottomGlowView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:34.0],
         [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:20.0],
         [self.bottomGlowView.widthAnchor constraintEqualToConstant:260.0],
@@ -349,50 +319,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     ]];
 }
 
-- (void)pp_setupTitleChip
-{
-    UIView *contentView = nil;
-    self.titleChipView = [self pp_makePanelWithCornerRadius:24.0
-                                                  tintColor:[[UIColor whiteColor] colorWithAlphaComponent:0.52]
-                                                borderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.68]
-                                              shadowOpacity:0.08
-                                                contentView:&contentView];
-    [self.view addSubview:self.titleChipView];
-
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
-    [NSLayoutConstraint activateConstraints:@[
-        [self.titleChipView.topAnchor constraintEqualToAnchor:safe.topAnchor constant:14.0],
-        [self.titleChipView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [self.titleChipView.widthAnchor constraintLessThanOrEqualToAnchor:self.view.widthAnchor multiplier:0.62]
-    ]];
-
-    self.titleChipEyebrowLabel = [[UILabel alloc] init];
-    self.titleChipEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleChipEyebrowLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-    self.titleChipEyebrowLabel.textColor = [PPLocationSecondaryTextColor() colorWithAlphaComponent:0.90];
-    self.titleChipEyebrowLabel.textAlignment = NSTextAlignmentCenter;
-
-    self.titleChipValueLabel = [[UILabel alloc] init];
-    self.titleChipValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleChipValueLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
-    self.titleChipValueLabel.textColor = PPLocationPrimaryTextColor();
-    self.titleChipValueLabel.textAlignment = NSTextAlignmentCenter;
-
-    [contentView addSubview:self.titleChipEyebrowLabel];
-    [contentView addSubview:self.titleChipValueLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.titleChipEyebrowLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:10.0],
-        [self.titleChipEyebrowLabel.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
-        [self.titleChipEyebrowLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-16.0],
-
-        [self.titleChipValueLabel.topAnchor constraintEqualToAnchor:self.titleChipEyebrowLabel.bottomAnchor constant:2.0],
-        [self.titleChipValueLabel.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
-        [self.titleChipValueLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-16.0],
-        [self.titleChipValueLabel.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-10.0]
-    ]];
-}
-
 - (void)pp_setupBottomSheet
 {
     UIView *contentView = nil;
@@ -403,11 +329,10 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
                                             contentView:&contentView];
     [self.view addSubview:self.sheetView];
 
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
         [self.sheetView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kPPLocationHorizontalInset],
         [self.sheetView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kPPLocationHorizontalInset],
-        [self.sheetView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-14.0]
+        [self.sheetView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-16.0]
     ]];
 
     UIStackView *stack = [[UIStackView alloc] init];
@@ -519,7 +444,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     [self.openMapsButton.heightAnchor constraintEqualToConstant:58.0].active = YES;
     [stack addArrangedSubview:self.openMapsButton];
 
-    self.heroEntranceViews = @[self.titleChipView];
+    self.heroEntranceViews = self.markerView ? @[self.markerView] : @[];
     self.sheetEntranceViews = @[self.sheetView];
 }
 
@@ -535,8 +460,9 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
 - (void)pp_updateLocalizedCopy
 {
-    self.titleChipEyebrowLabel.text = kLang(@"company_location_nav_title");
-    self.titleChipValueLabel.text = kLang(@"company_location_chip_title");
+    self.markerEyebrowLabel.text = kLang(@"company_location_nav_title");
+    self.markerTitleLabel.text = kLang(@"company_location_chip_title");
+    self.companyMarker.tracksViewChanges = YES;
 
     self.sheetTitleLabel.text = kLang(@"companyLocate");
     self.sheetSubtitleLabel.text = kLang(@"company_location_subtitle");
@@ -577,24 +503,50 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
 #pragma mark - Location
 
-- (void)pp_startLocationUpdatesIfNeeded
+- (BOOL)pp_locationAuthorizationAllowsUpdates:(CLAuthorizationStatus)status
 {
-    CLAuthorizationStatus status;
-    if (@available(iOS 14.0, *)) {
-        status = self.locationManager.authorizationStatus;
-    } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        status = [CLLocationManager authorizationStatus];
-#pragma clang diagnostic pop
-    }
+    return status == kCLAuthorizationStatusAuthorizedWhenInUse ||
+    status == kCLAuthorizationStatusAuthorizedAlways;
+}
 
+- (void)pp_handleLocationAuthorizationStatus:(CLAuthorizationStatus)status
+{
     if (status == kCLAuthorizationStatusNotDetermined) {
         [self.locationManager requestWhenInUseAuthorization];
+        [self pp_refreshActionAvailability];
+        return;
     }
-    if ([CLLocationManager locationServicesEnabled]) {
+
+    if ([self pp_locationAuthorizationAllowsUpdates:status]) {
         [self.locationManager startUpdatingLocation];
+    } else {
+        [self.locationManager stopUpdatingLocation];
     }
+
+    [self pp_refreshActionAvailability];
+}
+
+- (void)pp_startLocationUpdatesIfNeeded
+{
+    if (@available(iOS 14.0, *)) {
+        [self pp_handleLocationAuthorizationStatus:self.locationManager.authorizationStatus];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        CLAuthorizationStatus status = [CLLocationManager authorizationStatus];
+#pragma clang diagnostic pop
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
+            [strongSelf pp_handleLocationAuthorizationStatus:status];
+        });
+    });
 }
 
 - (void)pp_refreshActionAvailability
@@ -627,13 +579,14 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
 - (void)locationManagerDidChangeAuthorization:(CLLocationManager *)manager API_AVAILABLE(ios(14.0))
 {
-    [self pp_refreshActionAvailability];
+    (void)manager;
+    [self pp_startLocationUpdatesIfNeeded];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
-    (void)status;
-    [self pp_refreshActionAvailability];
+    (void)manager;
+    [self pp_handleLocationAuthorizationStatus:status];
 }
 
 #pragma mark - Actions
@@ -893,8 +846,6 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
     self.topGlowView.alpha = [self pp_reduceMotionEnabled] ? 1.0 : 0.0;
     self.bottomGlowView.alpha = [self pp_reduceMotionEnabled] ? 1.0 : 0.0;
-    self.markerView.alpha = [self pp_reduceMotionEnabled] ? 1.0 : 0.0;
-    self.markerView.transform = [self pp_reduceMotionEnabled] ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.92, 0.92);
 }
 
 - (void)pp_runEntranceIfNeeded
@@ -907,9 +858,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     [self.view layoutIfNeeded];
 
     if ([self pp_reduceMotionEnabled]) {
-        self.titleChipView.alpha = 1.0;
         self.sheetView.alpha = 1.0;
-        self.markerView.alpha = 1.0;
         self.topGlowView.alpha = 1.0;
         self.bottomGlowView.alpha = 1.0;
         return;
@@ -921,16 +870,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
                      animations:^{
         self.topGlowView.alpha = 1.0;
         self.bottomGlowView.alpha = 1.0;
-        self.markerView.alpha = 1.0;
-        self.markerView.transform = CGAffineTransformIdentity;
-    } completion:nil];
 
-    [UIView animateWithDuration:0.34
-                          delay:0.03
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.titleChipView.alpha = 1.0;
-        self.titleChipView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.46
@@ -949,7 +889,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     if ([self pp_reduceMotionEnabled]) {
         [self.topGlowView.layer removeAnimationForKey:@"pp.location.glow.top"];
         [self.bottomGlowView.layer removeAnimationForKey:@"pp.location.glow.bottom"];
-        [self.markerView.layer removeAnimationForKey:@"pp.location.marker.float"];
+
         return;
     }
 
@@ -975,16 +915,7 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
         [self.bottomGlowView.layer addAnimation:floatAnimation forKey:@"pp.location.glow.bottom"];
     }
 
-    if (self.markerView && ![self.markerView.layer animationForKey:@"pp.location.marker.float"]) {
-        CABasicAnimation *markerFloat = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        markerFloat.fromValue = @0.0;
-        markerFloat.toValue = @(-5.0);
-        markerFloat.duration = 3.2;
-        markerFloat.autoreverses = YES;
-        markerFloat.repeatCount = HUGE_VALF;
-        markerFloat.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.markerView.layer addAnimation:markerFloat forKey:@"pp.location.marker.float"];
-    }
+
 }
 
 #pragma mark - UI Builders
@@ -995,64 +926,52 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
                            shadowOpacity:(CGFloat)shadowOpacity
                              contentView:(UIView * __autoreleasing *)contentViewOut
 {
-    UIView *container = [[UIView alloc] init];
+    UIView *container = (UIView *)[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
-    container.layer.cornerRadius = cornerRadius;
-    if (@available(iOS 13.0, *)) {
-        container.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPLocationApplyCornerRadius(container, cornerRadius);
     container.layer.shadowColor = [UIColor colorWithWhite:0.10 alpha:1.0].CGColor;
     container.layer.shadowOpacity = shadowOpacity;
     container.layer.shadowRadius = 24.0;
     container.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-
-    UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemThinMaterialLight;
-    if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemThinMaterialLight;
+    container.layer.borderWidth = 1.0;
+    if (@available(iOS 26.0, *)) {
+        container.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.20].CGColor;
+    } else {
+        container.layer.borderColor = borderColor.CGColor;
     }
-
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.clipsToBounds = YES;
-    blurView.layer.cornerRadius = cornerRadius;
-    blurView.layer.borderWidth = 1.0;
-    blurView.layer.borderColor = borderColor.CGColor;
-    if (@available(iOS 13.0, *)) {
-        blurView.layer.cornerCurve = kCACornerCurveContinuous;
-        blurView.contentView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    blurView.contentView.layer.cornerRadius = cornerRadius;
-    blurView.contentView.clipsToBounds = YES;
-    [container addSubview:blurView];
+    container.clipsToBounds = NO;
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = tintColor;
+    if (@available(iOS 26.0, *)) {
+        tintView.backgroundColor = UIColor.clearColor;
+    } else {
+        tintView.backgroundColor = tintColor;
+    }
     tintView.userInteractionEnabled = NO;
-    [blurView.contentView addSubview:tintView];
+    PPLocationApplyCornerRadius(tintView, cornerRadius);
+    tintView.layer.masksToBounds = YES;
+    [container addSubview:tintView];
 
     UIView *contentView = [[UIView alloc] init];
     contentView.translatesAutoresizingMaskIntoConstraints = NO;
     contentView.backgroundColor = UIColor.clearColor;
     contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [blurView.contentView addSubview:contentView];
+    PPLocationApplyCornerRadius(contentView, cornerRadius);
+    contentView.layer.masksToBounds = YES;
+    [container addSubview:contentView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [blurView.topAnchor constraintEqualToAnchor:container.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+        [tintView.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [tintView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [tintView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [tintView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
 
-        [tintView.topAnchor constraintEqualToAnchor:blurView.contentView.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:blurView.contentView.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:blurView.contentView.bottomAnchor],
-
-        [contentView.topAnchor constraintEqualToAnchor:blurView.contentView.topAnchor],
-        [contentView.leadingAnchor constraintEqualToAnchor:blurView.contentView.leadingAnchor],
-        [contentView.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor],
-        [contentView.bottomAnchor constraintEqualToAnchor:blurView.contentView.bottomAnchor]
+        [contentView.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [contentView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [contentView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [contentView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor]
     ]];
 
     if (contentViewOut) {
@@ -1078,15 +997,21 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
 - (UIView *)pp_makeSoftCard
 {
-    UIView *card = [[UIView alloc] init];
+    UIView *card = (UIView *)[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed];
     card.translatesAutoresizingMaskIntoConstraints = NO;
-    card.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.76];
-    card.layer.cornerRadius = 21.0;
-    if (@available(iOS 13.0, *)) {
-        card.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 26.0, *)) {
+        card.backgroundColor = UIColor.clearColor;
+    } else {
+        card.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.76];
+    }
+    PPLocationApplyCornerRadius(card, kPPLocationButtonCornerRadius);
+    CGFloat borderAlpha = 0.70;
+    if (@available(iOS 26.0, *)) {
+        borderAlpha = 0.30;
     }
     card.layer.borderWidth = 1.0;
-    card.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.70].CGColor;
+    card.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:borderAlpha].CGColor;
+    card.clipsToBounds = YES;
     return card;
 }
 
@@ -1107,11 +1032,12 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
     UIView *iconPlate = [[UIView alloc] init];
     iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
-    iconPlate.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.12];
-    iconPlate.layer.cornerRadius = 16.0;
-    if (@available(iOS 13.0, *)) {
-        iconPlate.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 26.0, *)) {
+        iconPlate.backgroundColor = UIColor.clearColor;
+    } else {
+        iconPlate.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.12];
     }
+    PPLocationApplyCornerRadius(iconPlate, 16.0);
     [row addSubview:iconPlate];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbolName]];
@@ -1169,11 +1095,12 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 
     self.routeStatusIconPlateView = [[UIView alloc] init];
     self.routeStatusIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.routeStatusIconPlateView.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.14];
-    self.routeStatusIconPlateView.layer.cornerRadius = 18.0;
-    if (@available(iOS 13.0, *)) {
-        self.routeStatusIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    if (@available(iOS 26.0, *)) {
+        self.routeStatusIconPlateView.backgroundColor = UIColor.clearColor;
+    } else {
+        self.routeStatusIconPlateView.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.14];
     }
+    PPLocationApplyCornerRadius(self.routeStatusIconPlateView, kPPLocationButtonCornerRadius);
     [card addSubview:self.routeStatusIconPlateView];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"sparkles"]];
@@ -1227,11 +1154,12 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = 20.0;
-    if (@available(iOS 13.0, *)) {
-        button.layer.cornerCurve = kCACornerCurveContinuous;
+    PPLocationApplyCornerRadius(button, kPPLocationButtonCornerRadius);
+    if (@available(iOS 26.0, *)) {
+        button.backgroundColor = UIColor.clearColor;
+    } else {
+        button.backgroundColor = PPLocationAccentColor();
     }
-    button.backgroundColor = PPLocationAccentColor();
     button.tintColor = UIColor.whiteColor;
     button.titleLabel.font = [GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
     button.titleLabel.numberOfLines = 1;
@@ -1248,19 +1176,24 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = 18.0;
-    if (@available(iOS 13.0, *)) {
-        button.layer.cornerCurve = kCACornerCurveContinuous;
+    PPLocationApplyCornerRadius(button, kPPLocationButtonCornerRadius);
+    if (@available(iOS 26.0, *)) {
+        button.backgroundColor = UIColor.clearColor;
+    } else {
+        button.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
     }
-    button.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
     button.tintColor = PPLocationPrimaryTextColor();
     button.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     button.titleLabel.numberOfLines = 1;
     button.titleLabel.adjustsFontSizeToFitWidth = YES;
     button.titleLabel.minimumScaleFactor = 0.78;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [[PPLocationPrimaryTextColor() colorWithAlphaComponent:0.06] CGColor];
+    if (@available(iOS 26.0, *)) {
+        button.layer.borderWidth = 0.0;
+    } else {
+        button.layer.borderWidth = 1.0;
+        button.layer.borderColor = [[PPLocationPrimaryTextColor() colorWithAlphaComponent:0.06] CGColor];
+    }
     button.layer.shadowColor = [UIColor colorWithWhite:0.10 alpha:1.0].CGColor;
     button.layer.shadowOpacity = 0.05;
     button.layer.shadowRadius = 12.0;
@@ -1315,7 +1248,12 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
     if (@available(iOS 15.0, *)) {
-        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        UIButtonConfiguration *configuration = nil;
+        if (@available(iOS 26.0, *)) {
+            configuration = primary ? [UIButtonConfiguration prominentGlassButtonConfiguration] : [UIButtonConfiguration glassButtonConfiguration];
+        } else {
+            configuration = [UIButtonConfiguration plainButtonConfiguration];
+        }
         configuration.attributedTitle = attributedTitle;
         configuration.image = image;
         configuration.imagePlacement = vertical ? NSDirectionalRectEdgeTop : NSDirectionalRectEdgeLeading;
@@ -1325,7 +1263,12 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
         ? NSDirectionalEdgeInsetsMake(8.0, 5.0, 8.0, 5.0)
         : NSDirectionalEdgeInsetsMake(14.0, 16.0, 14.0, 16.0);
         configuration.baseForegroundColor = foreground;
-        configuration.background.backgroundColor = UIColor.clearColor;
+        if (@available(iOS 26.0, *)) {
+            configuration.background.backgroundColor = UIColor.clearColor;
+        } else {
+            configuration.background.backgroundColor = primary ? PPLocationAccentColor() : [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+        }
+        configuration.background.cornerRadius = kPPLocationButtonCornerRadius;
         configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         button.configuration = configuration;
     } else {
@@ -1337,41 +1280,112 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
         button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
         button.titleEdgeInsets = UIEdgeInsetsMake(0.0, 8.0, 0.0, -8.0);
     }
+    PPLocationApplyCornerRadius(button, kPPLocationButtonCornerRadius);
     button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     button.accessibilityLabel = title;
 }
 
 - (UIView *)pp_makeMarkerView
 {
-    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 64.0, 78.0)];
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 154.0, 112.0)];
     container.backgroundColor = UIColor.clearColor;
+    container.userInteractionEnabled = NO;
     self.markerView = container;
 
-    UIView *glowView = [[UIView alloc] initWithFrame:CGRectMake(10.0, 14.0, 44.0, 44.0)];
-    glowView.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.16];
-    glowView.layer.cornerRadius = 22.0;
-    [container addSubview:glowView];
+    UIView *callout = (UIView *)[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed];
+    callout.frame = CGRectMake(4.0, 0.0, 146.0, 50.0);
+    if (@available(iOS 26.0, *)) {
+        callout.backgroundColor = UIColor.clearColor;
+    } else {
+        callout.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }
+    PPLocationApplyCornerRadius(callout, kPPLocationButtonCornerRadius);
+    callout.layer.borderWidth = 1.0;
+    callout.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.42].CGColor;
+    callout.layer.shadowColor = [UIColor colorWithWhite:0.08 alpha:1.0].CGColor;
+    callout.layer.shadowOpacity = 0.10;
+    callout.layer.shadowRadius = 16.0;
+    callout.layer.shadowOffset = CGSizeMake(0.0, 9.0);
+    self.markerCalloutView = callout;
+    [container addSubview:callout];
 
-    UIView *pinBody = [[UIView alloc] initWithFrame:CGRectMake(18.0, 6.0, 28.0, 40.0)];
-    pinBody.backgroundColor = UIColor.whiteColor;
-    pinBody.layer.cornerRadius = 14.0;
+    BOOL isRTL = Language.alignmentForCurrentLanguage == NSTextAlignmentRight;
+    CGFloat iconX = isRTL ? 106.0 : 12.0;
+    CGFloat labelX = isRTL ? 14.0 : 48.0;
+
+    UIView *iconPlate = [[UIView alloc] initWithFrame:CGRectMake(iconX, 10.0, 30.0, 30.0)];
+    if (@available(iOS 26.0, *)) {
+        iconPlate.backgroundColor = UIColor.clearColor;
+    } else {
+        iconPlate.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.12];
+    }
+    PPLocationApplyCornerRadius(iconPlate, 15.0);
+    [callout addSubview:iconPlate];
+
+    UIImageView *locationIcon = [[UIImageView alloc] initWithFrame:CGRectMake(7.0, 7.0, 16.0, 16.0)];
+    locationIcon.image = [UIImage systemImageNamed:@"mappin.and.ellipse"];
+    locationIcon.tintColor = PPLocationAccentColor();
+    locationIcon.contentMode = UIViewContentModeScaleAspectFit;
+    [iconPlate addSubview:locationIcon];
+
+    self.markerEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectMake(labelX, 8.0, 90.0, 14.0)];
+    self.markerEyebrowLabel.text = kLang(@"company_location_nav_title");
+    self.markerEyebrowLabel.font = [GM MidFontWithSize:10.0] ?: [UIFont systemFontOfSize:10.0 weight:UIFontWeightMedium];
+    self.markerEyebrowLabel.textColor = [PPLocationSecondaryTextColor() colorWithAlphaComponent:0.90];
+    self.markerEyebrowLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.markerEyebrowLabel.adjustsFontSizeToFitWidth = YES;
+    self.markerEyebrowLabel.minimumScaleFactor = 0.80;
+    [callout addSubview:self.markerEyebrowLabel];
+
+    self.markerTitleLabel = [[UILabel alloc] initWithFrame:CGRectMake(labelX, 21.0, 90.0, 21.0)];
+    self.markerTitleLabel.text = kLang(@"company_location_chip_title");
+    self.markerTitleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
+    self.markerTitleLabel.textColor = PPLocationPrimaryTextColor();
+    self.markerTitleLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.markerTitleLabel.adjustsFontSizeToFitWidth = YES;
+    self.markerTitleLabel.minimumScaleFactor = 0.74;
+    [callout addSubview:self.markerTitleLabel];
+
+    UIView *connector = [[UIView alloc] initWithFrame:CGRectMake(69.0, 47.0, 16.0, 16.0)];
+    if (@available(iOS 26.0, *)) {
+        connector.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.20];
+    } else {
+        connector.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }
+    connector.transform = CGAffineTransformMakeRotation((CGFloat)M_PI_4);
+    PPLocationApplyCornerRadius(connector, 4.0);
+    [container addSubview:connector];
+
+    UIView *pinTail = [[UIView alloc] initWithFrame:CGRectMake(68.5, 85.0, 17.0, 17.0)];
+    pinTail.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.92];
+    PPLocationApplyCornerRadius(pinTail, 5.0);
+    pinTail.transform = CGAffineTransformMakeRotation((CGFloat)M_PI_4);
+    [container addSubview:pinTail];
+
+    UIView *pinBody = [[UIView alloc] initWithFrame:CGRectMake(56.0, 54.0, 42.0, 42.0)];
+    pinBody.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    PPLocationApplyCornerRadius(pinBody, 21.0);
     pinBody.layer.shadowColor = [PPLocationAccentColor() colorWithAlphaComponent:0.36].CGColor;
-    pinBody.layer.shadowOpacity = 0.18;
-    pinBody.layer.shadowRadius = 12.0;
-    pinBody.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    pinBody.layer.shadowOpacity = 0.22;
+    pinBody.layer.shadowRadius = 16.0;
+    pinBody.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     [container addSubview:pinBody];
 
-    UIImageView *pawView = [[UIImageView alloc] initWithFrame:CGRectMake(7.0, 7.0, 14.0, 14.0)];
+    UIView *innerPlate = [[UIView alloc] initWithFrame:CGRectMake(8.0, 8.0, 26.0, 26.0)];
+    innerPlate.backgroundColor = [PPLocationAccentColor() colorWithAlphaComponent:0.12];
+    PPLocationApplyCornerRadius(innerPlate, 13.0);
+    [pinBody addSubview:innerPlate];
+
+    UIImageView *pawView = [[UIImageView alloc] initWithFrame:CGRectMake(6.0, 6.0, 14.0, 14.0)];
     pawView.image = [UIImage systemImageNamed:@"pawprint.fill"];
     pawView.tintColor = PPLocationAccentColor();
     pawView.contentMode = UIViewContentModeScaleAspectFit;
-    [pinBody addSubview:pawView];
+    [innerPlate addSubview:pawView];
 
-    UIView *pinTail = [[UIView alloc] initWithFrame:CGRectMake(11.0, 22.0, 6.0, 13.0)];
-    pinTail.backgroundColor = PPLocationAccentColor();
-    pinTail.layer.cornerRadius = 3.0;
-    pinTail.transform = CGAffineTransformMakeRotation((CGFloat)M_PI_4);
-    [pinBody addSubview:pinTail];
+    UIView *shadowDot = [[UIView alloc] initWithFrame:CGRectMake(60.0, 103.0, 34.0, 7.0)];
+    shadowDot.backgroundColor = [[UIColor colorWithWhite:0.08 alpha:1.0] colorWithAlphaComponent:0.12];
+    PPLocationApplyCornerRadius(shadowDot, 3.5);
+    [container insertSubview:shadowDot atIndex:0];
 
     return container;
 }
@@ -1433,7 +1447,11 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
 {
     self.routeStatusTitleLabel.text = titleKey.length > 0 ? kLang(titleKey) : @"";
     self.routeStatusValueLabel.text = detailOverride.length > 0 ? detailOverride : (detailTextKey.length > 0 ? kLang(detailTextKey) : @"");
-    self.routeStatusIconPlateView.backgroundColor = accentTint;
+    if (@available(iOS 26.0, *)) {
+        self.routeStatusIconPlateView.backgroundColor = UIColor.clearColor;
+    } else {
+        self.routeStatusIconPlateView.backgroundColor = accentTint;
+    }
 
     if (self.didRunEntrance && ![self pp_reduceMotionEnabled]) {
         self.routeStatusTitleLabel.superview.transform = CGAffineTransformMakeScale(0.988, 0.988);
@@ -1459,43 +1477,11 @@ static inline UIFont *PPLocationScaledFont(UIFont *font, UIFontTextStyle textSty
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-#pragma mark - Bottom Navigation
+#pragma mark - PPBottomSurface
 
-- (void)pp_setRootBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+- (PPBottomSurfaceKind)pp_preferredBottomSurfaceKind
 {
-    UITabBarController *tabBarController = self.tabBarController;
-    if ([tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
-        [(id)tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
-    } else if ([tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
-        [(id)tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
-    }
-
-    UITabBar *tabBar = tabBarController.tabBar;
-    if (!tabBar) {
-        return;
-    }
-    if (!hidden) {
-        tabBar.hidden = NO;
-    }
-
-    void (^changes)(void) = ^{
-        tabBar.alpha = hidden ? 0.0 : 1.0;
-    };
-    void (^completion)(BOOL) = ^(__unused BOOL finished) {
-        tabBar.hidden = hidden;
-    };
-
-    if (!animated) {
-        changes();
-        completion(YES);
-        return;
-    }
-
-    [UIView animateWithDuration:0.22
-                          delay:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
-                     animations:changes
-                     completion:completion];
+    return PPBottomSurfaceKindNone;
 }
 
 @end

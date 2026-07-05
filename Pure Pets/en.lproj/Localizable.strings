@@ -3364,6 +3364,12 @@
 "max_images_count_error_format" = "Maximum %ld images are allowed.";
 "image_prepare_failed_format" = "Failed to prepare image at index %ld.";
 
+/* DataView Filter Badges */
+"dataview_filter_service_badge" = "Service";
+"dataview_filter_service_when_badge" = "When";
+"dataview_filters_collapse_accessibility" = "Hide filters";
+"dataview_filters_expand_accessibility" = "Show filters";
+
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "Choose the main category that fits this ad.";
 "option_picker_breed_subtitle" = "Choose the breed or family closest to the pet.";
