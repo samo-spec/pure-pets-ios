@@ -860,10 +860,10 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         : [UIColor colorWithWhite:0.0 alpha:0.58];
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     UIColor *baseSurfaceColor = AppSurfColor ?: (isDark
-        ? [UIColor colorWithRed:0.075 green:0.080 blue:0.095 alpha:1.0]
+        ? [UIColor colorWithRed:0.16 green:0.17 blue:0.19 alpha:1.0]
         : UIColor.systemBackgroundColor);
     UIColor *secondarySurfaceColor = AppSurfSecColor ?: (isDark
-        ? [UIColor colorWithRed:0.105 green:0.115 blue:0.135 alpha:1.0]
+        ? [UIColor colorWithRed:0.20 green:0.21 blue:0.23 alpha:1.0]
         : UIColor.secondarySystemBackgroundColor);
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     UIImage *avatarPlaceholder = nil;
@@ -7847,7 +7847,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
             [cell applyViewModel:vm
                             context:PPCellForVets
-                        layoutMode:PPCellLayoutModeSquare
+                        layoutMode:PPCellLayoutModeHorizontalRow
                     discountMode:PPDiscountStylePlain
                         imageLoader:^(UIImageView *iv, NSString *url, UIImage *ph, UIView *card) {
                 [GM pp_setImageURL:url imageView:iv placeholder:@"placeholder"];
@@ -7930,7 +7930,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
             [cell applyViewModel:vm
                          context:vm.modelContext
-                      layoutMode:PPCellLayoutModeSquare
+                      layoutMode:PPCellLayoutModeHorizontalRow
                     discountMode:PPDiscountStyleBadge
                      imageLoader:^(UIImageView *iv,
                                    NSString *url,
@@ -8104,7 +8104,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             vm.indexPath = indexPath;
             [cell applyViewModel:vm
                          context:vm.modelContext
-                      layoutMode:PPCellLayoutModeSquare
+                      layoutMode:PPCellLayoutModeHorizontalRow
                     discountMode:PPDiscountStyleBadge
                      imageLoader:^(UIImageView *iv,
                                    NSString *url,

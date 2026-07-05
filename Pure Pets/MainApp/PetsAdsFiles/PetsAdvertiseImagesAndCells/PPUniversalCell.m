@@ -30,16 +30,20 @@ static CGFloat const PPUniversalLiquidCardBorderWidth = 1.05;
 static CGFloat const PPUniversalLiquidImageBorderWidth = 0.88;
 static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 22.0;
-static CGFloat const PPUniversalButtonHeight = 36.0;
-static CGFloat const PPUniversalPillHeight = 32.0;
+static CGFloat const PPUniversalButtonHeight = 34.0;
+static CGFloat const PPUniversalPillHeight = 28.0;
 static CGFloat const PPUniversalCompactTitleHeight = 22.0;
-static CGFloat const PPUniversalCompactPriceHeight = 22.0;
-static CGFloat const PPUniversalControlButtonSize = 36.0;
-static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.86;
+static CGFloat const PPUniversalCompactPriceHeight = 26.0;
+static CGFloat const PPUniversalControlButtonSize = 32.0;
+static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.84;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
 static CGFloat const PPUniversalCompactCardVerticalInset = 6.0;
 static CGFloat const PPUniversalCompactTitleToPriceSpacing = 10.0;
 static CGFloat const PPUniversalCompactPriceToActionSpacing = 6.0;
+static CGFloat const PPUniversalHorizontalRowMediaSpacing = 14.0;
+static CGFloat const PPUniversalHorizontalRowImageWidthMin = 112.0;
+static CGFloat const PPUniversalHorizontalRowImageWidthMax = 150.0;
+static CGFloat const PPUniversalHorizontalRowBadgeHeight = 26.0;
 static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
 static NSTimeInterval const PPUniversalCardTapPressDuration = 0.11;
 static NSTimeInterval const PPUniversalCardTapReleaseDuration = 0.28;
@@ -69,8 +73,7 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:1.0],
-                                      [UIColor colorWithWhite:0.12 alpha:0.82]);
+    return [AppForgroundColr colorWithAlphaComponent:0.42];
 }
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
@@ -182,6 +185,22 @@ static NSString *PPUniversalCellTrimmedString(NSString *value)
     return [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
 }
 
+static NSString *PPUniversalCellLocalizedPair(NSString *english, NSString *arabic)
+{
+    NSString *fallbackEnglish = english ?: @"";
+    NSString *fallbackArabic = arabic ?: fallbackEnglish;
+    return Language.isRTL ? fallbackArabic : fallbackEnglish;
+}
+
+static BOOL PPUniversalCellIsPlaceholderText(NSString *value)
+{
+    NSString *trimmed = PPUniversalCellTrimmedString(value).lowercaseString;
+    return trimmed.length == 0 ||
+           [trimmed isEqualToString:@"no_value"] ||
+           [trimmed isEqualToString:@"null"] ||
+           [trimmed isEqualToString:@"(null)"];
+}
+
 static NSString *PPUniversalCellCityOnlyFromLocation(NSString *location)
 {
     NSString *trimmed = PPUniversalCellTrimmedString(location);
@@ -213,6 +232,36 @@ static NSString *PPUniversalCellCityOnlyFromLocation(NSString *location)
     return first;
 }
 
+static NSString *PPUniversalCellShortAgeText(NSNumber * _Nullable ageInMonths)
+{
+    NSInteger months = MAX(ageInMonths.integerValue, 0);
+    if (months <= 0) {
+        return @"";
+    }
+
+    if (months < 12) {
+        return [NSString stringWithFormat:@"%ld %@", (long)months, PPUniversalCellLocalizedPair(@"m", @"ش")];
+    }
+
+    NSInteger years = months / 12;
+    NSInteger remainingMonths = months % 12;
+    NSString *yearText = [NSString stringWithFormat:@"%ld %@", (long)years, PPUniversalCellLocalizedPair(@"y", @"س")];
+    if (remainingMonths == 0) {
+        return yearText;
+    }
+
+    NSString *monthText = [NSString stringWithFormat:@"%ld %@", (long)remainingMonths, PPUniversalCellLocalizedPair(@"m", @"ش")];
+    return [NSString stringWithFormat:@"%@ · %@", yearText, monthText];
+}
+
+static NSString *PPUniversalCellAdDescriptionText(PetAd *ad)
+{
+    if (![ad isKindOfClass:PetAd.class] || PPUniversalCellIsPlaceholderText(ad.adDescription)) {
+        return @"";
+    }
+    return PPUniversalCellTrimmedString(ad.adDescription);
+}
+
 static NSString *PPUniversalCellAdSubkindGenderText(PetAd *ad)
 {
     if (![ad isKindOfClass:PetAd.class]) {
@@ -235,6 +284,36 @@ static NSString *PPUniversalCellAdSubkindGenderText(PetAd *ad)
     }
 
     return [parts componentsJoinedByString:@" · "];
+}
+
+static NSString *PPUniversalCellAdSubkindGenderAgeText(PetAd *ad)
+{
+    if (![ad isKindOfClass:PetAd.class]) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    MainKindsModel *kind = [MainKindsModel mainKindModelForID:ad.category];
+    if (kind && ad.subcategory > 0) {
+        NSString *breedName = [SubKindModel getSubKindName:ad.subcategory
+                                         subKindsArrayLocal:kind.SubKindsArray];
+        if (breedName.length > 0) {
+            [parts addObject:breedName];
+        }
+    }
+
+    NSString *genderText = PPUniversalCellSafeString(ad.genderText);
+    if (genderText.length > 0) {
+        [parts addObject:genderText];
+    }
+
+    NSString *ageText = PPUniversalCellShortAgeText(ad.petAgeMonths);
+    if (ageText.length > 0) {
+        [parts addObject:ageText];
+    }
+
+    NSString *separator = Language.isRTL ? @"، " : @" · ";
+    return [parts componentsJoinedByString:separator];
 }
 
 static NSString *PPUniversalCellFormattedPrice(NSNumber *amount, NSString *currencyCode)
@@ -538,6 +617,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 @interface PPUniversalSkeletonView : UIView
 @property (nonatomic, assign, getter=isCompactLayout) BOOL compactLayout;
+@property (nonatomic, assign) BOOL mediaOnTrailingEdge;
 @property (nonatomic, strong) NSArray<UIView *> *bars;
 - (void)startAnimating;
 - (void)stopAnimating;
@@ -583,13 +663,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     UIView *imageBar = self.bars[0];
+    CGFloat horizontalImageX = self.mediaOnTrailingEdge
+        ? width - inset - imageHeight
+        : inset;
     imageBar.frame = self.isCompactLayout
         ? CGRectMake(inset, inset, width - (inset * 2.0), MIN(MAX(width * 0.78, 116.0), 220.0))
-        : CGRectMake(inset, inset, imageHeight, CGRectGetHeight(self.bounds) - (inset * 2.0));
+        : CGRectMake(horizontalImageX, inset, imageHeight, CGRectGetHeight(self.bounds) - (inset * 2.0));
     imageBar.layer.cornerRadius = 20.0;
 
-    CGFloat contentX = self.isCompactLayout ? inset : CGRectGetMaxX(imageBar.frame) + 14.0;
-    CGFloat contentWidth = width - contentX - inset;
+    CGFloat contentX = self.isCompactLayout ? inset : (self.mediaOnTrailingEdge ? inset : CGRectGetMaxX(imageBar.frame) + 14.0);
+    CGFloat contentWidth = self.isCompactLayout
+        ? width - contentX - inset
+        : (self.mediaOnTrailingEdge ? CGRectGetMinX(imageBar.frame) - 14.0 - inset : width - contentX - inset);
+    contentWidth = MAX(contentWidth, 1.0);
     CGFloat currentY = self.isCompactLayout ? CGRectGetMaxY(imageBar.frame) + 14.0 : inset + 10.0;
 
     self.bars[1].frame = CGRectMake(contentX, currentY, MIN(112.0, contentWidth * 0.45), 20.0);
@@ -688,7 +774,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, strong) NSLayoutConstraint *priceContainerTrailingToFavConstraint;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *compactLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *fullWidthLayoutConstraints;
+@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *horizontalRowLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *dynamicBadgeConstraints;
+@property (nonatomic, strong) NSLayoutConstraint *horizontalRowImageWidthConstraint;
 @property (nonatomic, strong) PPUniversalCellViewModel *vm;
 @property (nonatomic, copy) PPImageLoader imageLoader;
 @property (nonatomic, copy) NSString *lastConfiguredImageSignature;
@@ -718,7 +806,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_cartDidUpdate:(NSNotification *)notification;
 - (NSInteger)pp_cartQuantityForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_cityLocationBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_horizontalRowDescriptionSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_horizontalRowAdBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_adBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (BOOL)pp_prefersContainedProductImageForViewModel:(PPUniversalCellViewModel *)vm;
+- (BOOL)pp_usesQuantityControl;
+- (BOOL)pp_usesHorizontalRowPresentation;
 
 @end
 
@@ -744,7 +837,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
     self.context = PPCellForAds;
-    self.layoutMode = PPCellLayoutModeSquare;
+    self.layoutMode = PPCellLayoutModeHorizontalRow;
     self.discountStyle = PPDiscountStyleBadge;
     _userBordersV2 = YES;
     _quantity = 0;
@@ -788,6 +881,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
     self.imageView.image = [UIImage imageNamed:@"placeholder"];
+    self.imageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.imageView.backgroundColor = UIColor.clearColor;
     self.priceLabel.attributedText = nil;
     self.priceContainerView.hidden = NO;
     self.priceHeightConstraint.constant = PPUniversalCompactPriceHeight;
@@ -1196,11 +1291,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     ]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.favoriteButton.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor constant:10.0],
-        [self.favoriteButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:10.0],
+        [self.favoriteButton.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor constant:8.0],
+        [self.favoriteButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:8.0],
 
         [self.shareButton.centerYAnchor constraintEqualToAnchor:self.favoriteButton.centerYAnchor],
-        [self.shareButton.leadingAnchor constraintEqualToAnchor:self.favoriteButton.trailingAnchor constant:8.0],
+        [self.shareButton.leadingAnchor constraintEqualToAnchor:self.favoriteButton.trailingAnchor constant:6.0],
 
         [self.menuButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:10.0],
         [self.menuButton.trailingAnchor constraintEqualToAnchor:self.imageContainer.trailingAnchor constant:-10.0],
@@ -1318,6 +1413,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.imageContainer.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPUniversalOuterInset],
         [self.bodyContainer.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:PPUniversalOuterInset],
         [self.bodyContainer.leadingAnchor constraintEqualToAnchor:self.imageContainer.trailingAnchor constant:14.0],
+        [self.bodyContainer.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-PPUniversalOuterInset],
+        [self.bodyContainer.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPUniversalOuterInset]
+    ];
+
+    self.horizontalRowImageWidthConstraint =
+        [self.imageContainer.widthAnchor constraintEqualToConstant:136.0];
+
+    self.horizontalRowLayoutConstraints = @[
+        [self.imageContainer.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:PPUniversalOuterInset],
+        [self.imageContainer.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:PPUniversalOuterInset],
+        [self.imageContainer.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPUniversalOuterInset],
+        [self.bodyContainer.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:PPUniversalOuterInset],
+        [self.bodyContainer.leadingAnchor constraintEqualToAnchor:self.imageContainer.trailingAnchor constant:PPUniversalHorizontalRowMediaSpacing],
         [self.bodyContainer.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-PPUniversalOuterInset],
         [self.bodyContainer.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPUniversalOuterInset]
     ];
@@ -1524,21 +1632,23 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     if (@available(iOS 13.0, *)) {
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
 
     self.cardView.backgroundColor = [self pp_isHostedByNovaProductMessageCell]
         ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.4]
-        : PPUniversalCellSoftSurfaceColor();
-    self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
+    : [AppForgroundColr colorWithAlphaComponent:0.74];//PPUniversalCellSoftSurfaceColor();
+    self.cardView.layer.cornerRadius = horizontalRow ? 30.0 : PPUniversalCardCornerRadius;
     self.cardView.layer.borderWidth = 0.0;
     [self.cardView pp_setBorderColor:UIColor.clearColor];
     [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
-    self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, NO);
-    self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, NO);
-    self.cardView.layer.shadowOffset = PPUniversalCellOuterShadowOffset(isDark, NO);
+    self.cardView.layer.shadowOpacity = horizontalRow ? (isDark ? 0.16 : 0.08) : PPUniversalCellOuterShadowOpacity(isDark, NO);
+    self.cardView.layer.shadowRadius = horizontalRow ? (isDark ? 18.0 : 22.0) : PPUniversalCellOuterShadowRadius(isDark, NO);
+    self.cardView.layer.shadowOffset = horizontalRow ? CGSizeMake(0.0, isDark ? 8.0 : 10.0) : PPUniversalCellOuterShadowOffset(isDark, NO);
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
+    self.imageContainer.layer.cornerRadius = horizontalRow ? 26.0 : PPUniversalImageCornerRadius;
     [self pp_applyBorderAppearanceSelected:NO isDark:isDark];
     self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
 
@@ -1629,7 +1739,28 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     self.vm = vm;
     self.context = context;
-    self.layoutMode = layout;
+
+    PPManagerCellLayoutMode resolvedLayout = layout;
+    
+    if (resolvedLayout == PPCellLayoutModeHorizontalRow) {
+        if (![self pp_isHostedByDataViewController]) {
+            if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+                resolvedLayout = PPCellLayoutModeMarket;
+            } else if ([vm.ModelObject isKindOfClass:[PetAd class]]) {
+                resolvedLayout = PPCellLayoutModePinterest;
+            } else {
+                resolvedLayout = PPCellLayoutModeMarket;
+            }
+        }
+    } else {
+        if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+            resolvedLayout = PPCellLayoutModeMarket;
+        } else if ([vm.ModelObject isKindOfClass:[PetAd class]]) {
+            resolvedLayout = PPCellLayoutModePinterest;
+        }
+    }
+
+    self.layoutMode = resolvedLayout;
     self.discountStyle = discountStyle;
     self.imageLoader = loader;
 
@@ -1688,7 +1819,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_configureSkeleton:(BOOL)isSkeleton
 {
     self.skeletonView.hidden = !isSkeleton;
-    self.skeletonView.compactLayout = ![self pp_isFullWidthLayout];
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    BOOL expandedRow = [self pp_isFullWidthLayout] || horizontalRow;
+    self.skeletonView.compactLayout = !expandedRow;
+    self.skeletonView.mediaOnTrailingEdge = horizontalRow &&
+        self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
     self.imageContainer.alpha = isSkeleton ? 0.0 : 1.0;
     self.bodyContainer.alpha = isSkeleton ? 0.0 : 1.0;
     self.favoriteButton.hidden = isSkeleton;
@@ -1716,6 +1851,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     if (!showsVideo) {
         [self pp_stopVideoPlaybackAndTearDown:YES];
     }
+
+    BOOL containedProductImage = [self pp_prefersContainedProductImageForViewModel:vm];
+    self.imageView.contentMode = containedProductImage ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
+    self.imageView.backgroundColor = containedProductImage
+        ? PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.16],
+                                      [UIColor colorWithWhite:1.0 alpha:0.05])
+        : UIColor.clearColor;
 
     NSString *imageSignature = [self pp_imageSignatureForViewModel:vm];
     if (imageSignature.length > 0 &&
@@ -1746,6 +1888,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                                    url:url
                                            placeholder:placeholder
                                             complation:nil];
+}
+
+- (BOOL)pp_prefersContainedProductImageForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![vm isKindOfClass:PPUniversalCellViewModel.class]) {
+        return NO;
+    }
+    if ([vm.ModelObject isKindOfClass:PetAccessory.class]) {
+        return YES;
+    }
+    return self.context == PPCellForMarket ||
+           vm.cellSection == CellSectionAccessories ||
+           vm.cellSection == CellSectionFood;
 }
 
 - (NSString *)pp_imageSignatureForViewModel:(PPUniversalCellViewModel *)vm
@@ -1811,9 +1966,18 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
     BOOL isAdContext = [self pp_isAdContext];
     BOOL usesDataViewAdPresentation = [self pp_usesDataViewAdPresentation];
-    self.subtitleLabel.text = isAdContext
-        ? (usesDataViewAdPresentation ? [self pp_cityLocationBadgeTextForViewModel:vm] : @"")
-        : PPUniversalCellSafeString(vm.subtitle);
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    if (horizontalRow) {
+        self.subtitleLabel.text = [self pp_horizontalRowDescriptionSubtitleTextForViewModel:vm];
+    } else if (isAdContext) {
+        if (usesDataViewAdPresentation) {
+            self.subtitleLabel.text = [self pp_cityLocationBadgeTextForViewModel:vm];
+        } else {
+            self.subtitleLabel.text = @"";
+        }
+    } else {
+        self.subtitleLabel.text = PPUniversalCellSafeString(vm.subtitle);
+    }
 
     BOOL isAccessorySection = (vm.cellSection == CellSectionAccessories);
     BOOL shouldHideTitle = (self.context == PPCellForMarket) && [self pp_isHostedByHomeController] && !isAccessorySection;
@@ -1823,7 +1987,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.hidden = shouldHideTitle;
     self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : PPUniversalCompactTitleHeight;
 
-    BOOL allowsSubtitle = isAdContext ? usesDataViewAdPresentation : self.showsSubtitle;
+    BOOL allowsSubtitle = horizontalRow ? YES : (isAdContext ? usesDataViewAdPresentation : self.showsSubtitle);
     BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle ||
                               self.subtitleLabel.text.length == 0 ||
                               !allowsSubtitle;
@@ -1864,10 +2028,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     BOOL fullWidth = [self pp_isFullWidthLayout];
-    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 23.0 : 25.0;
-    self.titleLabel.font = fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0);
-    self.subtitleLabel.font = fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0);
-    self.priceLabel.font = fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize);
+    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 22.5 : 24.0;
+    self.titleLabel.font = horizontalRow ? PPUniversalCellBoldFont(15.0) : (fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0));
+    self.subtitleLabel.font = horizontalRow ? PPUniversalCellMediumFont(12.0) : (fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0));
+    self.priceLabel.font = horizontalRow ? PPUniversalCellBlackFont(20.0) : (fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize));
     if (hasPrice) {
         self.priceLabel.attributedText = [self pp_attributedPriceForViewModel:vm];
     }
@@ -1970,6 +2134,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_configureAvailabilityWithViewModel:(PPUniversalCellViewModel *)vm
 {
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
     if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
         PetAccessory *accessory = (PetAccessory *)vm.ModelObject;
         BOOL isUsedAccessory = accessory.condition == AccessConditionsUsed &&
@@ -1987,18 +2152,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                 [UIColor colorWithRed:0.42 green:0.70 blue:0.68 alpha:0.32],
                 [UIColor colorWithRed:0.53 green:0.82 blue:0.78 alpha:0.34]);
 
-            self.availabilityLabel.font = PPUniversalCellBoldFont(12.0);
+            CGFloat usedPillHeight = horizontalRow ? PPUniversalHorizontalRowBadgeHeight : PPUniversalPillHeight;
+            self.availabilityLabel.font = PPUniversalCellBoldFont(horizontalRow ? 10.8 : 11.2);
             self.availabilityLabel.textColor = usedForeground;
             self.availabilityLabel.attributedText = nil;
             self.availabilityLabel.text = usedTitle;
             self.availabilityLabel.accessibilityLabel = usedTitle;
             self.availabilityLabel.backgroundColor = usedBackground;
-            self.availabilityLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
-            self.availabilityLabel.layer.borderWidth = 1.0;
+            self.availabilityLabel.textInsets = horizontalRow
+                ? UIEdgeInsetsMake(3.0, 9.0, 3.0, 9.0)
+                : UIEdgeInsetsMake(4.0, 10.0, 4.0, 10.0);
+            self.availabilityLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+            self.availabilityLabel.layer.cornerRadius = usedPillHeight / 2.0;
+            if (@available(iOS 13.0, *)) {
+                self.availabilityLabel.layer.cornerCurve = kCACornerCurveContinuous;
+            }
+            self.availabilityLabel.layer.borderWidth = 0.75;
             [self.availabilityLabel pp_setBorderColor:usedBorder];
             self.availabilityLabel.hidden = NO;
-            self.availabilityTopConstraint.constant = 10.0;
-            self.availabilityHeightConstraint.constant = PPUniversalPillHeight;
+            self.availabilityTopConstraint.constant = horizontalRow ? 7.0 : 8.0;
+            self.availabilityHeightConstraint.constant = usedPillHeight;
 
             // No service/weight meta alongside used badge
             self.serviceMetaLabel.text = @"";
@@ -2025,6 +2198,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                                 [UIColor colorWithWhite:1.0 alpha:0.08]);
         border = PPUniversalCellDynamicColor([UIColor colorWithRed:0.22 green:0.23 blue:0.28 alpha:0.10],
                                             [UIColor colorWithWhite:1.0 alpha:0.12]);
+        if (horizontalRow) {
+            foreground = PPUniversalCellDynamicColor([UIColor colorWithRed:0.31 green:0.32 blue:0.38 alpha:0.92],
+                                                     [UIColor colorWithWhite:0.90 alpha:0.92]);
+            background = PPUniversalCellDynamicColor([UIColor colorWithRed:0.95 green:0.955 blue:0.972 alpha:0.66],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.065]);
+            border = PPUniversalCellDynamicColor([UIColor colorWithRed:0.22 green:0.23 blue:0.28 alpha:0.065],
+                                                [UIColor colorWithWhite:1.0 alpha:0.09]);
+        }
     } else if ([self pp_usesQuantityControl]) {
         NSInteger stock = [self pp_stockLimitForCurrentItem];
         if (stock <= 0) {
@@ -2069,19 +2250,27 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         title = @"";
     }
 
-    self.availabilityLabel.font = PPUniversalCellBoldFont(12.0);
+    self.availabilityLabel.font = PPUniversalCellBoldFont(horizontalRow ? 10.8 : 11.2);
     self.availabilityLabel.textColor = foreground;
     self.availabilityLabel.attributedText = nil;
     self.availabilityLabel.text = title;
     self.availabilityLabel.accessibilityLabel = title;
     self.availabilityLabel.backgroundColor = background;
-    self.availabilityLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
-    self.availabilityLabel.layer.borderWidth = 1.0;
+    self.availabilityLabel.textInsets = horizontalRow
+        ? UIEdgeInsetsMake(3.0, 9.0, 3.0, 9.0)
+        : UIEdgeInsetsMake(4.0, 10.0, 4.0, 10.0);
+    self.availabilityLabel.lineBreakMode = horizontalRow ? NSLineBreakByTruncatingMiddle : NSLineBreakByTruncatingTail;
+    CGFloat availabilityPillHeight = horizontalRow ? PPUniversalHorizontalRowBadgeHeight : PPUniversalPillHeight;
+    self.availabilityLabel.layer.cornerRadius = availabilityPillHeight / 2.0;
+    if (@available(iOS 13.0, *)) {
+        self.availabilityLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.availabilityLabel.layer.borderWidth = 0.75;
     [self.availabilityLabel pp_setBorderColor:border];
     BOOL shouldHideAvailability = title.length == 0;
     self.availabilityLabel.hidden = shouldHideAvailability;
-    self.availabilityTopConstraint.constant = shouldHideAvailability ? 0.0 : 10.0;
-    self.availabilityHeightConstraint.constant = shouldHideAvailability ? 0.0 : PPUniversalPillHeight;
+    self.availabilityTopConstraint.constant = shouldHideAvailability ? 0.0 : (horizontalRow ? 7.0 : 8.0);
+    self.availabilityHeightConstraint.constant = shouldHideAvailability ? 0.0 : availabilityPillHeight;
 
     ServiceModel *service = [vm.ModelObject isKindOfClass:[ServiceModel class]]
         ? (ServiceModel *)vm.ModelObject
@@ -2132,10 +2321,51 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return PPUniversalCellCityOnlyFromLocation(vm.location);
 }
 
+- (NSString *)pp_horizontalRowDescriptionSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    id model = vm.ModelObject;
+    NSString *descriptionText = @"";
+    if ([model isKindOfClass:PetAd.class]) {
+        descriptionText = PPUniversalCellAdDescriptionText((PetAd *)model);
+    } else if ([model isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)model;
+        if (!PPUniversalCellIsPlaceholderText(accessory.desc)) {
+            descriptionText = PPUniversalCellTrimmedString(accessory.desc);
+        }
+    } else if ([model isKindOfClass:ServiceModel.class]) {
+        ServiceModel *service = (ServiceModel *)model;
+        if (!PPUniversalCellIsPlaceholderText(service.descriptionText)) {
+            descriptionText = PPUniversalCellTrimmedString(service.descriptionText);
+        }
+    }
+
+    return descriptionText.length > 0 ? descriptionText : PPUniversalCellSafeString(vm.subtitle);
+}
+
+- (NSString *)pp_horizontalRowAdBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![vm.ModelObject isKindOfClass:PetAd.class]) {
+        return @"";
+    }
+
+    PetAd *ad = (PetAd *)vm.ModelObject;
+    NSString *identityText = PPUniversalCellAdSubkindGenderAgeText(ad);
+    NSString *locationText = [self pp_cityLocationBadgeTextForViewModel:vm];
+
+    if (identityText.length > 0 && locationText.length > 0) {
+        return [NSString stringWithFormat:@"%@ - %@", identityText, locationText];
+    }
+    return identityText.length > 0 ? identityText : locationText;
+}
+
 - (NSString *)pp_adBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm
 {
     if (![self pp_isAdContext]) {
         return @"";
+    }
+
+    if ([self pp_usesHorizontalRowPresentation]) {
+        return [self pp_horizontalRowAdBottomBadgeTextForViewModel:vm];
     }
 
     if ([self pp_isHostedByDataViewController]) {
@@ -2200,15 +2430,27 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     [self pp_updateInnerPaddingIfNeeded];
     BOOL fullWidth = [self pp_isFullWidthLayout];
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    BOOL expandedRow = fullWidth || horizontalRow;
     BOOL adsPinterest = PPUniversalCellUsesAdsPinterestLayout(self.context,
                                                               self.layoutMode,
                                                               self.vm.ModelObject);
     [NSLayoutConstraint deactivateConstraints:self.compactLayoutConstraints];
     [NSLayoutConstraint deactivateConstraints:self.fullWidthLayoutConstraints];
-    [NSLayoutConstraint activateConstraints:fullWidth ? self.fullWidthLayoutConstraints : self.compactLayoutConstraints];
+    [NSLayoutConstraint deactivateConstraints:self.horizontalRowLayoutConstraints];
+
+    if (horizontalRow) {
+        [NSLayoutConstraint activateConstraints:self.horizontalRowLayoutConstraints];
+    } else {
+        [NSLayoutConstraint activateConstraints:fullWidth ? self.fullWidthLayoutConstraints : self.compactLayoutConstraints];
+    }
 
     self.fullWidthImageWidthConstraint.active = fullWidth;
+    self.horizontalRowImageWidthConstraint.active = horizontalRow;
     self.fullWidthImageWidthConstraint.constant = MIN(164.0, MAX(126.0, UIScreen.mainScreen.bounds.size.width * 0.30));
+    self.horizontalRowImageWidthConstraint.constant =
+        MIN(PPUniversalHorizontalRowImageWidthMax,
+            MAX(PPUniversalHorizontalRowImageWidthMin, UIScreen.mainScreen.bounds.size.width * 0.34));
 
     self.imageAspectConstraint.active = NO;
     if (!fullWidth && PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
@@ -2218,12 +2460,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.imageAspectConstraint.active = YES;
     }
 
-    self.titleLabel.numberOfLines = fullWidth ? 2 : (adsPinterest ? 2 : 1);
-    self.subtitleLabel.numberOfLines = fullWidth ? 2 : 1;
-    self.titleHeightConstraint.active = !fullWidth && !adsPinterest;
-    self.priceHeightConstraint.active = !fullWidth;
-    self.availabilityHeightConstraint.active = !fullWidth;
-    self.skeletonView.compactLayout = !fullWidth;
+    self.titleLabel.numberOfLines = expandedRow ? 2 : (adsPinterest ? 2 : 1);
+    self.subtitleLabel.numberOfLines = expandedRow ? 2 : 1;
+    self.titleHeightConstraint.active = !expandedRow && !adsPinterest;
+    self.priceHeightConstraint.active = !expandedRow;
+    self.availabilityHeightConstraint.active = horizontalRow || !expandedRow;
+    self.skeletonView.compactLayout = !expandedRow;
+    self.skeletonView.mediaOnTrailingEdge = horizontalRow &&
+        self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
     [self setNeedsLayout];
     [self pp_scheduleLiquidBorderLayoutSync];
 }
@@ -2290,13 +2534,15 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_configurePrimaryActionButton
 {
     BOOL usesQuantity = [self pp_usesQuantityControl];
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
     BOOL isOutOfStock = usesQuantity && [self pp_stockLimitForCurrentItem] <= 0;
     BOOL isInCart = usesQuantity && self.quantity > 0;
 
     NSString *title = nil;
     NSString *imageName = nil;
     UIColor *foreground = UIColor.whiteColor;
-    UIColor *background = AppPrimaryClr;
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *background = brand;
     UIColor *border = [UIColor clearColor];
 
     if (usesQuantity) {
@@ -2311,9 +2557,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                      PPUniversalCellLocalizedString(@"InCart", @"In cart"),
                      (long)self.quantity];
             imageName = @"cart.fill";
-            foreground = AppPrimaryClr;
-            background = [AppPrimaryClr colorWithAlphaComponent:0.09];
-            border = [AppPrimaryClr colorWithAlphaComponent:0.14];
+            foreground = brand;
+            background = [brand colorWithAlphaComponent:0.09];
+            border = [brand colorWithAlphaComponent:0.14];
         } else {
             title = PPUniversalCellLocalizedString(@"addToCart", @"Add to cart");
             imageName = @"plus.cart.fill";
@@ -2323,20 +2569,28 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         imageName = [self pp_isServiceLikeContext] ? @"sparkles" : @"arrow.up.right";
     }
 
+    if (horizontalRow && !usesQuantity) {
+        background = [brand colorWithAlphaComponent:0.88];
+    }
+
+    CGFloat actionCornerRadius = PPUniversalButtonHeight / 2.0;
+
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         config.baseBackgroundColor = background;
         config.baseForegroundColor = foreground;
-        config.background.cornerRadius = 16.0;
+        config.background.cornerRadius = actionCornerRadius;
         config.background.strokeWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
         config.background.strokeColor = border;
         config.image = [UIImage systemImageNamed:imageName];
         config.imagePlacement = NSDirectionalRectEdgeLeading;
-        config.imagePadding = 8.0;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(11.0, 14.0, 11.0, 14.0);
+        config.imagePadding = horizontalRow ? 5.0 : 7.0;
+        config.contentInsets = horizontalRow
+            ? NSDirectionalEdgeInsetsMake(8.0, 11.0, 8.0, 11.0)
+            : NSDirectionalEdgeInsetsMake(9.0, 14.0, 9.0, 14.0);
         config.title = title;
-        UIFont *font = PPUniversalCellBoldFont(14.0);
+        UIFont *font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];
@@ -2350,17 +2604,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.addButton setTitleColor:foreground forState:UIControlStateNormal];
         [self.addButton setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
         self.addButton.backgroundColor = background;
-        self.addButton.titleLabel.font = PPUniversalCellBoldFont(14.0);
-        self.addButton.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
+        self.addButton.titleLabel.font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
+        self.addButton.contentEdgeInsets = horizontalRow
+            ? UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0)
+            : UIEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
         self.addButton.layer.borderWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
         [self.addButton pp_setBorderColor:border];
     }
 
-    self.addButton.layer.cornerRadius = 18.0;
-    [self.addButton pp_setShadowColor:AppPrimaryClr];
-    self.addButton.layer.shadowOpacity = (usesQuantity && (isOutOfStock || isInCart)) ? 0.0 : 0.10;
-    self.addButton.layer.shadowRadius = 12.0;
-    self.addButton.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.addButton.layer.cornerRadius = actionCornerRadius;
+    [self.addButton pp_setShadowColor:brand];
+    self.addButton.layer.shadowOpacity = (usesQuantity && (isOutOfStock || isInCart)) ? 0.0 : (horizontalRow ? 0.045 : 0.075);
+    self.addButton.layer.shadowRadius = horizontalRow ? 7.0 : 9.0;
+    self.addButton.layer.shadowOffset = CGSizeMake(0.0, horizontalRow ? 3.0 : 4.5);
     self.addButton.enabled = !isOutOfStock;
 }
 
@@ -3250,6 +3506,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return self.layoutMode == PPCellLayoutModeFullWidth;
 }
 
+- (BOOL)pp_usesHorizontalRowPresentation
+{
+    if (self.layoutMode != PPCellLayoutModeHorizontalRow || self.vm == nil) {
+        return NO;
+    }
+    return YES;
+}
+
 - (void)pp_showOutOfStockFeedback
 {
     [PPHUD showError:PPUniversalCellLocalizedString(@"Out of stock", @"Out of stock")];
@@ -3456,7 +3720,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     BOOL isDataView = [self.delegate isKindOfClass:NSClassFromString(@"PPDataViewVC")];
     BOOL isSellerProfileVC = [self.delegate isKindOfClass:NSClassFromString(@"SellerProfileVC")];
-    CGFloat padding = isDataView ? 20.0 : isSellerProfileVC ? 20 : 16.0;
+    BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    CGFloat padding = horizontalRow ? 16.0 : (isDataView ? 20.0 : isSellerProfileVC ? 20 : 16.0);
     
     // Update compact constraints
     for (NSLayoutConstraint *c in self.compactLayoutConstraints) {
@@ -3489,6 +3754,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             c.constant = -padding;
         } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeBottom) {
             c.constant = -padding;
+        }
+    }
+
+    for (NSLayoutConstraint *c in self.horizontalRowLayoutConstraints) {
+        if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeTop) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeLeading) {
+            c.constant = padding;
+        } else if (c.firstItem == self.imageContainer && c.firstAttribute == NSLayoutAttributeBottom) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeTop) {
+            c.constant = padding + 1.0;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeTrailing) {
+            c.constant = -padding;
+        } else if (c.firstItem == self.bodyContainer &&
+                   c.firstAttribute == NSLayoutAttributeLeading &&
+                   c.secondItem == self.imageContainer) {
+            c.constant = PPUniversalHorizontalRowMediaSpacing;
+        } else if (c.firstItem == self.bodyContainer && c.firstAttribute == NSLayoutAttributeBottom) {
+            c.constant = -(padding + 1.0);
         }
     }
 }

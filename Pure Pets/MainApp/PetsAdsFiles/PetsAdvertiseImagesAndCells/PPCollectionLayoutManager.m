@@ -137,6 +137,25 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
     return ceil((width * 0.74) + 170.0);
 }
 
+- (CGFloat)pp_horizontalRowHeightForWidth:(CGFloat)width
+                                viewModel:(PPUniversalCellViewModel *)vm
+{
+    CGFloat baseHeight = width >= 390.0 ? 206.0 : 198.0;
+    if (width <= 350.0) {
+        baseHeight = 210.0;
+    }
+
+    if ([self pp_isServiceContextForViewModel:vm]) {
+        baseHeight += 10.0;
+    } else if ([self pp_isCatalogCommerceContextForViewModel:vm]) {
+        baseHeight += 4.0;
+    } else if ([self pp_isAdsContextForViewModel:vm] && vm.subtitle.length > 0) {
+        baseHeight += 6.0;
+    }
+
+    return ceil(MIN(MAX(baseHeight, 184.0), 224.0));
+}
+
 - (CGFloat)pp_adsCardHeightForWidth:(CGFloat)width
                           viewModel:(PPUniversalCellViewModel *)vm
 {
@@ -220,27 +239,19 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
                 layout = flow;
                 break;
             }
-            case PPCellLayoutModeSquare: {
-                // Flow layout for square grid (e.g., 2 columns by default on phone).
+            case PPCellLayoutModeHorizontalRow: {
+                // Full-width row for the premium horizontal DataView layout.
                 UICollectionViewFlowLayout *flow = [[UICollectionViewFlowLayout alloc] init];
                 flow.scrollDirection = UICollectionViewScrollDirectionVertical;
                 CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
-                 UIEdgeInsets insets = UIEdgeInsetsMake(topInset, horizontalSpacing, bottomInset, horizontalSpacing);
-                NSUInteger columns = 2;
-                // Adjust columns for larger screens (simple heuristic).
-                if (screenWidth > 500) { columns = 3; }
-                CGFloat contentWidth = screenWidth - insets.left - insets.right;
-                if (columns > 1) {
-                    contentWidth -= (columns - 1) * horizontalSpacing;
-                }
-                CGFloat itemWidth = floor(contentWidth / columns);
+                UIEdgeInsets insets = UIEdgeInsetsMake(topInset, 16.0, bottomInset, 16.0);
+                CGFloat itemWidth = MAX(1.0, floor(screenWidth - insets.left - insets.right));
                 PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
-                CGFloat itemHeight = [self pp_preferredHeightForViewModel:firstVM
-                                                                   width:itemWidth
-                                                           defaultHeight:itemWidth];
+                CGFloat itemHeight = [self pp_horizontalRowHeightForWidth:itemWidth
+                                                                 viewModel:firstVM];
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
-                flow.minimumInteritemSpacing = horizontalSpacing;
-                flow.minimumLineSpacing = verticalSpacing;
+                flow.minimumInteritemSpacing = 0.0;
+                flow.minimumLineSpacing = 12.0;
                 flow.sectionInset = insets;
                 layout = flow;
                 break;
@@ -316,8 +327,8 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
     return [self layoutForMode:PPCellLayoutModeFullWidth];
 }
 
-- (UICollectionViewLayout *)squareLayout {
-    return [self layoutForMode:PPCellLayoutModeSquare];
+- (UICollectionViewLayout *)horizontalRowLayout {
+    return [self layoutForMode:PPCellLayoutModeHorizontalRow];
 }
 
 - (UICollectionViewLayout *)verticalLayout {
@@ -340,24 +351,84 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
     }
     
     
+    NSArray<NSIndexPath *> *visibleIndexPaths =
+        [collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
+            if (obj1.section != obj2.section) {
+                return obj1.section < obj2.section ? NSOrderedAscending : NSOrderedDescending;
+            }
+            if (obj1.item == obj2.item) {
+                return NSOrderedSame;
+            }
+            return obj1.item < obj2.item ? NSOrderedAscending : NSOrderedDescending;
+        }];
+    NSIndexPath *anchorIndexPath = visibleIndexPaths.firstObject;
+    CGFloat anchorDeltaY = 0.0;
+    if (anchorIndexPath) {
+        UICollectionViewLayoutAttributes *anchorAttributes =
+            [collectionView layoutAttributesForItemAtIndexPath:anchorIndexPath];
+        anchorDeltaY = collectionView.contentOffset.y - CGRectGetMinY(anchorAttributes.frame);
+    }
+
     self.currentLayoutMode = mode;
-    
+
     UICollectionViewLayout *newLayout = [self layoutForMode:mode];
     // Log the layout switch (for debugging).
     NSString *modeName;
     switch (mode) {
         case PPCellLayoutModeFullWidth:  modeName = @"FullWidth"; break;
-        case PPCellLayoutModeSquare:    modeName = @"Square"; break;
+        case PPCellLayoutModeHorizontalRow: modeName = @"HorizontalRow"; break;
         case PPCellLayoutModeVertical:  modeName = @"Vertical"; break;
         case PPCellLayoutModePinterest: modeName = @"Pinterest"; break;
         default: modeName = @"Pinterest"; break;
     }
     NSLog(@"[PPCollectionLayoutManager] Switching to %@ mode using layout class: %@",
           modeName, NSStringFromClass([newLayout class]));
-    // Apply the new layout to the collection view.
-    [collectionView setCollectionViewLayout:newLayout animated:animated];
-    [newLayout invalidateLayout];
-    [collectionView reloadData];
+
+    void (^restoreAnchor)(void) = ^{
+        if (!anchorIndexPath) {
+            return;
+        }
+        [collectionView layoutIfNeeded];
+        UICollectionViewLayoutAttributes *newAttributes =
+            [collectionView.collectionViewLayout layoutAttributesForItemAtIndexPath:anchorIndexPath];
+        if (!newAttributes) {
+            return;
+        }
+        UIEdgeInsets inset = collectionView.contentInset;
+        if (@available(iOS 11.0, *)) {
+            inset = collectionView.adjustedContentInset;
+        }
+        CGFloat minY = -inset.top;
+        CGFloat maxY = MAX(minY, collectionView.contentSize.height - CGRectGetHeight(collectionView.bounds) + inset.bottom);
+        CGFloat targetY = CGRectGetMinY(newAttributes.frame) + anchorDeltaY;
+        targetY = MIN(MAX(targetY, minY), maxY);
+        [collectionView setContentOffset:CGPointMake(collectionView.contentOffset.x, targetY) animated:NO];
+    };
+
+    void (^reloadAndRestore)(void) = ^{
+        [collectionView reloadData];
+        [newLayout invalidateLayout];
+        restoreAnchor();
+    };
+
+    BOOL shouldAnimate = animated && collectionView.window != nil && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        [collectionView setCollectionViewLayout:newLayout
+                                       animated:YES
+                                     completion:^(__unused BOOL finished) {
+            [UIView transitionWithView:collectionView
+                              duration:0.16
+                               options:UIViewAnimationOptionTransitionCrossDissolve |
+                                       UIViewAnimationOptionAllowUserInteraction |
+                                       UIViewAnimationOptionBeginFromCurrentState
+                            animations:reloadAndRestore
+                            completion:nil];
+        }];
+    } else {
+        [collectionView setCollectionViewLayout:newLayout animated:NO];
+        reloadAndRestore();
+    }
+
     NSLog(@"[Layout] Applying mode: %@", modeName);
     self.currentLayoutMode = mode;
 }
@@ -480,26 +551,20 @@ API_AVAILABLE(ios(13.0))
             sectionLayout.contentInsets = *(NSDirectionalEdgeInsets *)&sectionInsets;
             break;
         }
-        case PPCellLayoutModeSquare: {
-            // Grid of square cells.
-            // Determine number of columns based on width (aim for ~150pt cells).
-            NSUInteger columns = MAX(2,
-                                     floor((containerWidth - sectionInsets.leading - sectionInsets.trailing + spacing) / (150.0 + spacing)));
-            // Item width = 1/columns of container, item height = same as width.
-            itemSize = [NSCollectionLayoutSize sizeWithWidthDimension:FRAC_WIDTH(1.0/columns)
-                                                      heightDimension:FRAC_WIDTH(1.0/columns)]; // use fractional width for height to get square
+        case PPCellLayoutModeHorizontalRow: {
+            CGFloat itemHeight = [self pp_horizontalRowHeightForWidth:(containerWidth - sectionInsets.leading - sectionInsets.trailing)
+                                                            viewModel:[self pp_firstUniversalViewModel]];
+            itemSize = [NSCollectionLayoutSize sizeWithWidthDimension:FRAC_WIDTH(1.0)
+                                                      heightDimension:ABSOLUTE(itemHeight)];
             item = [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
             item.contentInsets = NSDirectionalEdgeInsetsZero;
-            // Group in horizontal direction with 'columns' items, each item fills group's height.
             NSCollectionLayoutSize *groupSize = [NSCollectionLayoutSize sizeWithWidthDimension:FRAC_WIDTH(1.0)
-                                                                               heightDimension:FRAC_WIDTH(1.0/columns)];
-            group = [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
-                                                                    subitem:item
-                                                                     count:columns];
-            //group = [NSCollectionLayoutGroup verticalGroupWithLayoutSize:itemSize subitems:@[item]];
-            NSCollectionLayoutSection *sectionLayout = [NSCollectionLayoutSection sectionWithGroup:group];
+                                                                               heightDimension:ABSOLUTE(itemHeight)];
+            group = [NSCollectionLayoutGroup verticalGroupWithLayoutSize:groupSize
+                                                                 subitems:@[item]];
+            sectionLayout = [NSCollectionLayoutSection sectionWithGroup:group];
 
-            sectionLayout.interGroupSpacing = spacing;
+            sectionLayout.interGroupSpacing = 12.0;
             sectionLayout.contentInsets = *(NSDirectionalEdgeInsets *)&sectionInsets; // convert UIEdgeInsets to NSDirectionalEdgeInsets
             break;
         }

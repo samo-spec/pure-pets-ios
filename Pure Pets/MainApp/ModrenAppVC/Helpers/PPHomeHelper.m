@@ -95,12 +95,12 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
     /// ------------------------------------------------------------------------------------------------------------------------------------------------------------------
     
     
-    UIAction *layoutSquirePPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutSquare")
-                                                     systemImageName:@"widget.small"
-                                                                font:[GM MidFontWithSize:16]
-                                                               color:AppPrimaryTextClr
-                                                             handler:^(UIAction * _Nonnull action)  {
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeSquare; // or FullWidth, Square, Vertical
+    UIAction *layoutHorizontalRowPPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutHorizontalRow")
+                                                            systemImageName:@"rectangle.grid.1x2.fill"
+                                                                       font:[GM MidFontWithSize:16]
+                                                                      color:AppPrimaryTextClr
+                                                                    handler:^(UIAction * _Nonnull action)  {
+        PPManagerCellLayoutMode newMode = PPCellLayoutModeHorizontalRow;
         [layoutManager applyLayoutMode:newMode toCollectionView:collectionView animated:YES];
         [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
@@ -112,7 +112,7 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
                                                               font:[GM MidFontWithSize:16]
                                                              color:AppPrimaryTextClr
                                                            handler:^(UIAction * _Nonnull action) {
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeFullWidth; // or FullWidth, Square, Vertical
+        PPManagerCellLayoutMode newMode = PPCellLayoutModeFullWidth;
         [layoutManager applyLayoutMode:newMode toCollectionView:collectionView animated:YES];
         [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
@@ -125,7 +125,7 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
                                                               color:AppPrimaryTextClr
                                                             handler:^(UIAction * _Nonnull action) {
         
-        PPManagerCellLayoutMode newMode = PPCellLayoutModeVertical; // or FullWidth, Square, Vertical
+        PPManagerCellLayoutMode newMode = PPCellLayoutModeVertical;
         [layoutManager applyLayoutMode:newMode toCollectionView:collectionView animated:YES];
         [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
@@ -138,7 +138,7 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
                                                               color:AppPrimaryTextClr
                                                             handler:^(UIAction * _Nonnull action) {
         
-        PPManagerCellLayoutMode newMode = PPCellLayoutModePinterest; // or FullWidth, Square, Vertical
+        PPManagerCellLayoutMode newMode = PPCellLayoutModePinterest;
         [layoutManager applyLayoutMode:newMode toCollectionView:collectionView animated:YES];
         [[NSUserDefaults standardUserDefaults] setInteger:newMode forKey:kPPLayoutModeKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
@@ -147,7 +147,7 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
     [searchGroup addObject:searchPPAction];
     [filterGroup addObject:filterPPAction];
     
-    [layoutGroup addObject:layoutSquirePPAction];
+    [layoutGroup addObject:layoutHorizontalRowPPAction];
     [layoutGroup addObject:layoutFullPPAction];
     [layoutGroup addObject:layoutLargePPAction];
     [layoutGroup addObject:layoutPintrestPPAction];

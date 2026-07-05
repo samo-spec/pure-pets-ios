@@ -145,7 +145,7 @@ static const CGFloat PPImageGalleryThumbnailSpacing = 10.0;
 
 - (void)applySelected:(BOOL)selected animated:(BOOL)animated accentColor:(UIColor *)accentColor
 {
-    UIColor *resolvedAccent = accentColor ?: AppPrimaryClr ?: UIColor.labelColor;
+    UIColor *resolvedAccent = accentColor ?: [AppBackgroundClrLigter colorWithAlphaComponent:1.0] ?: UIColor.labelColor;
     self.selected = selected;
     self.accessibilityTraits = selected
         ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
@@ -159,7 +159,7 @@ static const CGFloat PPImageGalleryThumbnailSpacing = 10.0;
         self.selectionRingView.layer.shadowOpacity = selected ? 0.04 : 0.0;
         self.selectionRingView.layer.shadowRadius = selected ? 2.0 : 0.0;
         self.thumbnailImageView.alpha = selected ? 1.0 : 0.66;
-        self.thumbnailImageView.layer.borderWidth = selected ? 2.0 : 0.5;
+        self.thumbnailImageView.layer.borderWidth = selected ? 1.25 : 0.5;
         self.thumbnailImageView.layer.borderColor = selected
             ? [resolvedAccent colorWithAlphaComponent:0.94].CGColor
             : [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
@@ -545,9 +545,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.containerB.translatesAutoresizingMaskIntoConstraints = NO;
     self.containerB.backgroundColor = UIColor.clearColor;
     self.containerB.isAccessibilityElement = NO;
-    self.containerB.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.containerB.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     self.containerB.clipsToBounds = NO;
-    self.containerB.layer.cornerRadius = 22.0;
+    self.containerB.layer.cornerRadius = 18.0;
     self.containerB.layer.shadowColor = UIColor.blackColor.CGColor;
     self.containerB.layer.shadowOpacity = 0.12;
     self.containerB.layer.shadowRadius = 18.0;
@@ -566,8 +566,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.thumbnailRailMaterialView = [[UIVisualEffectView alloc] initWithEffect:railBlur];
     self.thumbnailRailMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.thumbnailRailMaterialView.userInteractionEnabled = NO;
-    self.thumbnailRailMaterialView.layer.cornerRadius = 22.0;
+    self.thumbnailRailMaterialView.layer.cornerRadius = 18.0;
     self.thumbnailRailMaterialView.layer.masksToBounds = YES;
+    self.thumbnailRailMaterialView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+
     if (@available(iOS 13.0, *)) {
         self.thumbnailRailMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -583,6 +585,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if (@available(iOS 11.0, *)) {
         self.thumbnailRailScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     }
+    self.thumbnailRailScrollView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [self.containerB addSubview:self.thumbnailRailScrollView];
 
     self.thumbnailRailStackView = [[UIStackView alloc] init];
@@ -591,12 +594,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.thumbnailRailStackView.alignment = UIStackViewAlignmentCenter;
     self.thumbnailRailStackView.distribution = UIStackViewDistributionFill;
     self.thumbnailRailStackView.spacing = PPImageGalleryThumbnailSpacing;
-    self.thumbnailRailStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.thumbnailRailStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [self.thumbnailRailScrollView addSubview:self.thumbnailRailStackView];
 
-    BOOL isRTL =
-    [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage] ==
-    UIUserInterfaceLayoutDirectionRightToLeft;
+    BOOL isRTL  = NO;
     NSLayoutConstraint *sideConstraint = isRTL
         ? [self.containerB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPImageGalleryThumbnailRailHorizontalInset]
         : [self.containerB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPImageGalleryThumbnailRailHorizontalInset];
@@ -626,7 +627,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         [self.thumbnailRailScrollView.topAnchor constraintEqualToAnchor:self.containerB.topAnchor constant:6.0],
         [self.thumbnailRailScrollView.leadingAnchor constraintEqualToAnchor:self.containerB.leadingAnchor],
         [self.thumbnailRailScrollView.trailingAnchor constraintEqualToAnchor:self.containerB.trailingAnchor],
-        [self.thumbnailRailScrollView.bottomAnchor constraintEqualToAnchor:self.containerB.bottomAnchor constant:-6.0]
+        [self.thumbnailRailScrollView.bottomAnchor constraintEqualToAnchor:self.containerB.bottomAnchor constant:-0.0]
     ]];
 
     if (@available(iOS 11.0, *)) {
@@ -795,6 +796,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         self.thumbnailRailScrollView.contentInset = inset;
     }
     self.thumbnailRailScrollView.alwaysBounceVertical = contentHeight > visibleHeight;
+    
 }
 
 - (void)pp_updateThumbnailSelectionForPage:(NSInteger)page animated:(BOOL)animated scrollToVisible:(BOOL)scrollToVisible

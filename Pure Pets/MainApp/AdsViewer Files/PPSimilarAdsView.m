@@ -233,7 +233,7 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
     vm.indexPath = indexPath;
     [cell applyViewModel:vm
                  context:vm.modelContext
-              layoutMode:PPCellLayoutModeSquare
+              layoutMode:PPCellLayoutModeHorizontalRow
             discountMode:PPDiscountStyleBadge
              imageLoader:^(UIImageView *iv,
                            NSString *url,

@@ -4689,22 +4689,28 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if ([self.novaHeaderChromeView isKindOfClass:UIVisualEffectView.class]) {
         ((UIVisualEffectView *)self.novaHeaderChromeView).effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
     }
-    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.0],
-                                                                   [surface colorWithAlphaComponent:0.0]);
-    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.0].CGColor;
+    self.novaHeaderChromeView.alpha = 1.0;
+    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
+                                                                   [surface colorWithAlphaComponent:0.34]);
+    UIColor *chromeBorder = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.66],
+                                               [UIColor.whiteColor colorWithAlphaComponent:0.22]);
+    if (@available(iOS 13.0, *)) {
+        chromeBorder = [chromeBorder resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    self.novaHeaderChromeView.layer.borderColor = chromeBorder.CGColor;
     if (!self.novaAmbientThinkingPaletteActive) {
         self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
                                                                         [brand colorWithAlphaComponent:0.26]);
         self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
     }
-    self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.18],
-                                                                       [UIColor.whiteColor colorWithAlphaComponent:0.045]);
+    self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.16],
+                                                                       [UIColor.whiteColor colorWithAlphaComponent:0.055]);
  
     [self pp_installNovaHeaderLiquidBorderIfNeeded];
-    UIColor *liquidBorder = PPNovaDynamicColor([brand colorWithAlphaComponent:0.14],
-                                               [UIColor.whiteColor colorWithAlphaComponent:0.12]);
-    UIColor *liquidHighlight = PPNovaDynamicColor([brand colorWithAlphaComponent:0.42],
-                                                  [UIColor.whiteColor colorWithAlphaComponent:0.34]);
+    UIColor *liquidBorder = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.56],
+                                               [UIColor.whiteColor colorWithAlphaComponent:0.20]);
+    UIColor *liquidHighlight = PPNovaDynamicColor([brand colorWithAlphaComponent:0.36],
+                                                  [UIColor.whiteColor colorWithAlphaComponent:0.42]);
     if (@available(iOS 13.0, *)) {
         liquidBorder = [liquidBorder resolvedColorWithTraitCollection:self.traitCollection];
         liquidHighlight = [liquidHighlight resolvedColorWithTraitCollection:self.traitCollection];
@@ -4712,25 +4718,63 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaHeaderLiquidBorderLayer.strokeColor = liquidBorder.CGColor;
     self.novaHeaderLiquidHighlightLayer.strokeColor = liquidHighlight.CGColor;
     self.novaHeaderLiquidHighlightLayer.shadowColor = liquidHighlight.CGColor;
-    self.headerHairlineHost.backgroundColor = UIColor.clearColor;
+    self.headerHairlineHost.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.20],
+                                                                 [UIColor.whiteColor colorWithAlphaComponent:0.07]);
     self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.10],
                                                                   [AppForgroundColr colorWithAlphaComponent:0.18]);
     self.headerBrandHaloView.layer.shadowColor = brand.CGColor;
-    self.statusDot.backgroundColor = AppBackgroundClr;
+    self.statusDot.backgroundColor = brand;
     self.statusDot.layer.shadowColor = brand.CGColor;
-    self.headerLiveCapsule.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.headerLiveCapsule.layer.borderColor = [brand colorWithAlphaComponent:0.18].CGColor;
-    self.headerBrandRingView.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.headerBrandRingView.layer.borderColor = [brand colorWithAlphaComponent:0.24].CGColor;
-    self.headerBrandMarkView.backgroundColor = surface;
-    self.headerBrandMarkView.layer.borderColor = [brand colorWithAlphaComponent:0.14].CGColor;
+    self.headerLiveCapsule.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.58],
+                                                                [surface colorWithAlphaComponent:0.30]);
+    self.headerLiveCapsule.layer.borderColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.22],
+                                                                  [UIColor.whiteColor colorWithAlphaComponent:0.14]).CGColor;
+    self.headerBrandRingView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.40],
+                                                                  [UIColor.whiteColor colorWithAlphaComponent:0.08]);
+    self.headerBrandRingView.layer.borderColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.62],
+                                                                    [UIColor.whiteColor colorWithAlphaComponent:0.20]).CGColor;
+    self.headerBrandMarkView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.82],
+                                                                  [surface colorWithAlphaComponent:0.46]);
+    self.headerBrandMarkView.layer.borderColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.70],
+                                                                    [UIColor.whiteColor colorWithAlphaComponent:0.18]).CGColor;
     self.headerNameLabel.textColor = primaryText;
-    self.headerSubtitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.92];
-    self.statusLabel.textColor = [primaryText colorWithAlphaComponent:0.78];
-    self.closeButton.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.82],
-                                                          [surface colorWithAlphaComponent:0.58]);
-    self.closeButton.layer.borderColor = [brand colorWithAlphaComponent:0.08].CGColor;
-    self.closeButton.tintColor = [primaryText colorWithAlphaComponent:0.82];
+    self.headerSubtitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.94];
+    self.statusLabel.textColor = [primaryText colorWithAlphaComponent:0.76];
+
+    UIColor *actionFill = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.66],
+                                             [UIColor.whiteColor colorWithAlphaComponent:0.12]);
+    UIColor *actionBorder = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.74],
+                                               [UIColor.whiteColor colorWithAlphaComponent:0.16]);
+    UIColor *actionTint = [primaryText colorWithAlphaComponent:0.82];
+    NSMutableArray<UIButton *> *headerActionButtons = [NSMutableArray arrayWithCapacity:2];
+    if (self.closeButton) {
+        [headerActionButtons addObject:self.closeButton];
+    }
+    if (self.historyButton) {
+        [headerActionButtons addObject:self.historyButton];
+    }
+    for (UIButton *button in headerActionButtons) {
+        if (!button.superview) {
+            continue;
+        }
+        button.backgroundColor = actionFill;
+        button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        button.layer.borderColor = actionBorder.CGColor;
+        button.layer.shadowColor = UIColor.blackColor.CGColor;
+        button.layer.shadowOpacity = 0.08;
+        button.layer.shadowRadius = 10.0;
+        button.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+        button.tintColor = actionTint;
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *configuration = button.configuration;
+            if (configuration) {
+                configuration.baseForegroundColor = actionTint;
+                configuration.background.backgroundColor = actionFill;
+                configuration.background.cornerRadius = 19.0;
+                button.configuration = configuration;
+            }
+        }
+    }
 
     [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
         dot.backgroundColor = idx % 2 == 0 ? brand : PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.92],
@@ -4877,7 +4921,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                            layer:self.novaChatCenterRightGlowView.layer
                                              key:PPNovaThinkingCenterRightGlowBreathKey];
         
-        self.novaHeaderChromeView.alpha=0.5;
+        self.novaHeaderChromeView.alpha = 1.0;
     } else {
         [self pp_addNovaAmbientOpacityBreathFrom:@0.78 to:@1.0 duration:5.4
                                            layer:self.novaHeaderTopGlowView.layer
@@ -4889,7 +4933,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                            layer:self.novaChatCenterRightGlowView.layer
                                              key:@"pp_novaCenterRightGlowBreath"];
         
-        self.novaHeaderChromeView.alpha=0.9;
+        self.novaHeaderChromeView.alpha = 1.0;
     }
 }
 
@@ -5209,11 +5253,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (CGFloat)pp_novaHeaderBackgroundAlphaForCurrentState {
-    return self.novaHeaderCollapsed ? 0.55 : 0.65;
+    return self.novaHeaderCollapsed ? 0.34 : 0.44;
 }
 
 - (CGFloat)pp_novaHeaderSheenAlphaForCurrentState {
-    return self.novaHeaderCollapsed ? 0.42 : 0.72;
+    return self.novaHeaderCollapsed ? 0.28 : 0.48;
 }
 
 - (void)pp_loadBundledNovaLoaderIntoView:(LOTAnimationView *)animationView {
@@ -5410,20 +5454,20 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     header.backgroundColor = UIColor.clearColor;
     header.clipsToBounds = NO;
     header.layer.shadowColor = UIColor.blackColor.CGColor;
-    header.layer.shadowOpacity = 0.07;
-    header.layer.shadowRadius = 30.0;
-    header.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    header.layer.shadowOpacity = 0.055;
+    header.layer.shadowRadius = 24.0;
+    header.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     [self.view addSubview:header];
     self.novaHeaderView = header;
 
     UIVisualEffectView *chromeView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]]];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.clipsToBounds = YES;
-    chromeView.alpha=0.5;
-    chromeView.backgroundColor = [[self pp_novaHeaderSurfaceColor] colorWithAlphaComponent:0.0];
-    chromeView.layer.cornerRadius = 32.0;
+    chromeView.alpha = 1.0;
+    chromeView.backgroundColor = [[self pp_novaHeaderSurfaceColor] colorWithAlphaComponent:0.42];
+    chromeView.layer.cornerRadius = 36.0;
     chromeView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    chromeView.layer.borderColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.12].CGColor;
+    chromeView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.64].CGColor;
     chromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     chromeView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
@@ -5435,7 +5479,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *contentView = [[UIView alloc] init];
     contentView.translatesAutoresizingMaskIntoConstraints = NO;
     contentView.clipsToBounds = YES;
+    contentView.backgroundColor = UIColor.clearColor;
+    contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    contentView.layer.cornerRadius = 36.0;
+    if (@available(iOS 13.0, *)) {
+        contentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [header addSubview:contentView];
+    self.novaHeaderContentView = contentView;
     
     [NSLayoutConstraint activateConstraints:@[
         [contentView.topAnchor constraintEqualToAnchor:header.topAnchor constant:PPStatusBarHeight + 16],
@@ -5452,11 +5503,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *topGlowView = [[UIView alloc] init];
     topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     topGlowView.userInteractionEnabled = NO;
-    topGlowView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.16];
+    topGlowView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.13];
     topGlowView.layer.cornerRadius = 150.0;
     topGlowView.layer.shadowColor = [self pp_novaHeaderAccentColor].CGColor;
-    topGlowView.layer.shadowOpacity = 0.22;
-    topGlowView.layer.shadowRadius = 36.0;
+    topGlowView.layer.shadowOpacity = 0.18;
+    topGlowView.layer.shadowRadius = 32.0;
     topGlowView.layer.shadowOffset = CGSizeZero;
     topGlowView.alpha = 0.0;
     if (@available(iOS 13.0, *)) {
@@ -5468,12 +5519,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *bottomGlowView = [[UIView alloc] init];
     bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlowView.userInteractionEnabled = NO;
-    bottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.32],
-                                                       [UIColor.whiteColor colorWithAlphaComponent:0.05]);
+    bottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.22],
+                                                       [UIColor.whiteColor colorWithAlphaComponent:0.055]);
     bottomGlowView.layer.cornerRadius = 76.0;
     bottomGlowView.layer.shadowColor = UIColor.whiteColor.CGColor;
-    bottomGlowView.layer.shadowOpacity = 0.12;
-    bottomGlowView.layer.shadowRadius = 18.0;
+    bottomGlowView.layer.shadowOpacity = 0.10;
+    bottomGlowView.layer.shadowRadius = 16.0;
     bottomGlowView.layer.shadowOffset = CGSizeZero;
     if (@available(iOS 13.0, *)) {
         bottomGlowView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -5486,7 +5537,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     backgroundLottie.userInteractionEnabled = NO;
     backgroundLottie.contentMode = UIViewContentModeScaleAspectFill;
     backgroundLottie.loopAnimation = YES;
-    backgroundLottie.animationSpeed = 0.92;
+    backgroundLottie.animationSpeed = 0.72;
     backgroundLottie.alpha = 0.0;
     backgroundLottie.clipsToBounds = YES;
     backgroundLottie.layer.masksToBounds = YES;
@@ -5513,18 +5564,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
  
 
     NSArray<NSDictionary<NSString *, NSNumber *> *> *dotSpecs = @[
-        @{@"x": @22.0,  @"y": @20.0, @"s": @5.0},
-        @{@"x": @70.0,  @"y": @72.0, @"s": @4.0},
-        @{@"x": @126.0, @"y": @34.0, @"s": @5.0},
-        @{@"x": @202.0, @"y": @112.0, @"s": @4.0},
-        @{@"x": @248.0, @"y": @62.0, @"s": @5.0}
+        @{@"x": @24.0,  @"y": @24.0, @"s": @3.5},
+        @{@"x": @80.0,  @"y": @82.0, @"s": @3.0},
+        @{@"x": @142.0, @"y": @38.0, @"s": @3.5},
+        @{@"x": @214.0, @"y": @116.0, @"s": @3.0},
+        @{@"x": @266.0, @"y": @66.0, @"s": @3.5}
     ];
     NSMutableArray<UIView *> *motionDots = [NSMutableArray arrayWithCapacity:dotSpecs.count];
     for (NSDictionary<NSString *, NSNumber *> *spec in dotSpecs) {
         UIView *dot = [[UIView alloc] init];
         dot.translatesAutoresizingMaskIntoConstraints = NO;
         dot.userInteractionEnabled = NO;
-        dot.alpha = 0.26;
+        dot.alpha = 0.16;
         CGFloat size = spec[@"s"].doubleValue;
         dot.layer.cornerRadius = size / 2.0;
         dot.layer.shadowOpacity = 0.10;
@@ -5549,7 +5600,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     brandHalo.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.10];
     brandHalo.layer.cornerRadius = 30.0;
     brandHalo.layer.shadowColor = accentColor.CGColor;
-    brandHalo.layer.shadowOpacity = 0.16;
+    brandHalo.layer.shadowOpacity = 0.14;
     brandHalo.layer.shadowRadius = 18.0;
     brandHalo.layer.shadowOffset = CGSizeZero;
     if (@available(iOS 13.0, *)) {
@@ -5573,12 +5624,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
-    brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.0];
+    brandRing.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.36];
     brandRing.layer.cornerRadius = 29.0;
-    brandRing.layer.borderWidth = 1.2 / UIScreen.mainScreen.scale;
-    brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.0].CGColor;
+    brandRing.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    brandRing.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.62].CGColor;
     brandRing.layer.shadowColor = UIColor.blackColor.CGColor;
-    brandRing.layer.shadowOpacity = 0.07;
+    brandRing.layer.shadowOpacity = 0.08;
     brandRing.layer.shadowRadius = 17.0;
     brandRing.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     if (@available(iOS 13.0, *)) {
@@ -5589,13 +5640,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     UIView *brandMark = [[UIView alloc] init];
     brandMark.translatesAutoresizingMaskIntoConstraints = NO;
-    brandMark.backgroundColor = AppClearClr;
+    brandMark.backgroundColor = [[self pp_novaHeaderSurfaceColor] colorWithAlphaComponent:0.82];
     brandMark.clipsToBounds = YES;
     brandMark.layer.cornerRadius = 31.0;
     brandMark.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     brandMark.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
     brandMark.layer.shadowColor = UIColor.blackColor.CGColor;
-    brandMark.layer.shadowOpacity = 0.08;
+    brandMark.layer.shadowOpacity = 0.07;
     brandMark.layer.shadowRadius = 12.0;
     brandMark.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     if (@available(iOS 13.0, *)) {
@@ -5624,6 +5675,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     nameLabel.textColor = UIColor.whiteColor;
     nameLabel.text = kLang(@"nova_title");
     nameLabel.textAlignment = NSTextAlignmentCenter;
+    nameLabel.adjustsFontForContentSizeCategory = YES;
     nameLabel.adjustsFontSizeToFitWidth = YES;
     nameLabel.minimumScaleFactor = 0.82;
     if (!Language.isRTL) {
@@ -5642,6 +5694,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     subtitleLabel.textColor = [UIColor.whiteColor colorWithAlphaComponent:0.82]; // Off-white
     subtitleLabel.text = kLang(@"nova_subtitle");
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.numberOfLines = 1;
+    subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
     subtitleLabel.adjustsFontSizeToFitWidth = YES;
     subtitleLabel.minimumScaleFactor = 0.86;
     [contentView addSubview:subtitleLabel];
@@ -5650,14 +5705,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     contentView.clipsToBounds = YES;
     UIView *liveCapsule = [[UIView alloc] init];
     liveCapsule.translatesAutoresizingMaskIntoConstraints = NO;
-    liveCapsule.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
-    liveCapsule.layer.cornerRadius = 13.0;
+    liveCapsule.backgroundColor = [[self pp_novaHeaderSurfaceColor] colorWithAlphaComponent:0.58];
+    liveCapsule.layer.cornerRadius = 15.0;
     liveCapsule.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         liveCapsule.layer.cornerCurve = kCACornerCurveContinuous;
     }
     liveCapsule.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
-    liveCapsule.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.55].CGColor;
+    liveCapsule.layer.borderColor = [accentColor colorWithAlphaComponent:0.22].CGColor;
     [contentView addSubview:liveCapsule];
     self.headerLiveCapsule = liveCapsule;
 
@@ -5679,6 +5734,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     statusLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     statusLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
     statusLabel.text = kLang(@"nova_status_online");
+    statusLabel.adjustsFontForContentSizeCategory = YES;
     [liveContent addSubview:statusLabel];
     self.statusLabel = statusLabel;
 
@@ -5686,7 +5742,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     closeButton.translatesAutoresizingMaskIntoConstraints = NO;
     
     closeButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.82];
-     if (@available(iOS 13.0, *)) {
+    closeButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    closeButton.layer.shadowOpacity = 0.08;
+    closeButton.layer.shadowRadius = 10.0;
+    closeButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    if (@available(iOS 13.0, *)) {
         closeButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     closeButton.accessibilityLabel = kLang(@"nova_close_accessibility");
@@ -5704,13 +5764,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.closeButton = closeButton;
 
     // History button starts on the leading edge, then joins the trailing action cluster when collapsed.
- 
     UIButton *historyButton = [self pp_ButtonWithSystemName:@"clock.arrow.circlepath" action:nil];
-
-    
     historyButton.translatesAutoresizingMaskIntoConstraints = NO;
-    
     historyButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.85];
+    historyButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    historyButton.layer.shadowOpacity = 0.08;
+    historyButton.layer.shadowRadius = 10.0;
+    historyButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     if (@available(iOS 13.0, *)) {
         historyButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -5736,7 +5796,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
-    CGFloat topOffset = 20.0; // Sheet grabber clearance inside the Pro-login style host.
+    CGFloat topOffset = 18.0;
 
     // Expanded bottom constraint (online status capsule)
     self.novaHeaderExpandedBottomConstraint = [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0];
@@ -5819,7 +5879,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
         [liveCapsule.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
         [liveCapsule.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
-        [liveCapsule.heightAnchor constraintEqualToConstant:26.0],
+        [liveCapsule.heightAnchor constraintEqualToConstant:30.0],
         self.novaHeaderExpandedBottomConstraint,
 
         [accentDot.leadingAnchor constraintEqualToAnchor:liveContent.leadingAnchor constant:10.0],
@@ -5839,14 +5899,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         // Close button: top-trailing of header, auto-flips for RTL via semantic attribute.
         self.closeButtonTopConstraint,
         [closeButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
-        [closeButton.widthAnchor constraintEqualToConstant:36.0],
-        [closeButton.heightAnchor constraintEqualToConstant:36.0],
 
         // History button: expanded on leading side; collapsed beside trailing close action.
         self.historyButtonTopConstraint,
-        self.historyButtonLeadingConstraint,
-        [historyButton.widthAnchor constraintEqualToConstant:36.0],
-        [historyButton.heightAnchor constraintEqualToConstant:36.0]
+        self.historyButtonLeadingConstraint
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleNovaHeaderTap:)];
@@ -5874,8 +5930,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     borderLayer.fillColor = UIColor.clearColor.CGColor;
     borderLayer.lineCap = kCALineCapRound;
     borderLayer.lineJoin = kCALineJoinRound;
-    borderLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
-    borderLayer.opacity = 0.72;
+    borderLayer.lineWidth = 0.75 / UIScreen.mainScreen.scale;
+    borderLayer.opacity = 0.50;
     borderLayer.zPosition = 60.0;
     [host addSublayer:borderLayer];
     self.novaHeaderLiquidBorderLayer = borderLayer;
@@ -5884,10 +5940,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     highlightLayer.fillColor = UIColor.clearColor.CGColor;
     highlightLayer.lineCap = kCALineCapRound;
     highlightLayer.lineJoin = kCALineJoinRound;
-    highlightLayer.lineWidth = 1.55 / UIScreen.mainScreen.scale;
-    highlightLayer.opacity = 0.36;
-    highlightLayer.shadowOpacity = 0.32;
-    highlightLayer.shadowRadius = 6.0;
+    highlightLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
+    highlightLayer.opacity = 0.24;
+    highlightLayer.shadowOpacity = 0.22;
+    highlightLayer.shadowRadius = 5.0;
     highlightLayer.shadowOffset = CGSizeZero;
     highlightLayer.zPosition = 61.0;
     [host addSublayer:highlightLayer];
@@ -5899,12 +5955,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (CGFloat)pp_novaHeaderChromeCornerRadiusForBounds:(CGRect)bounds {
     CGFloat height = CGRectGetHeight(bounds);
     if (height <= 0.0) {
-        return self.novaHeaderCollapsed ? 28.0 : 32.0;
+        return self.novaHeaderCollapsed ? 30.0 : 36.0;
     }
     if (self.novaHeaderCollapsed) {
         return height / 2.0;
     }
-    return MIN(32.0, MAX(18.0, height * 0.24));
+    return MIN(36.0, MAX(20.0, height * 0.26));
 }
 
 - (void)pp_updateNovaHeaderCollapsedGeometry {
@@ -5916,6 +5972,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (!CGRectIsEmpty(chromeBounds)) {
         CGFloat chromeRadius = [self pp_novaHeaderChromeCornerRadiusForBounds:chromeBounds];
         self.novaHeaderChromeView.layer.cornerRadius = chromeRadius;
+        self.novaHeaderContentView.layer.cornerRadius = chromeRadius;
         if (!CGRectIsEmpty(self.novaHeaderChromeView.frame)) {
             self.novaHeaderView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.novaHeaderChromeView.frame
                                                                              cornerRadius:chromeRadius].CGPath;
@@ -5958,7 +6015,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CGFloat radius = [self pp_novaHeaderChromeCornerRadiusForBounds:pathRect];
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:pathRect cornerRadius:radius];
     CGFloat perimeter = MAX(1.0, ((CGRectGetWidth(pathRect) + CGRectGetHeight(pathRect)) * 2.0) - (8.0 * radius) + ((CGFloat)M_PI * 2.0 * radius));
-    CGFloat dashLength = MAX(44.0, MIN(86.0, perimeter * 0.13));
+    CGFloat dashLength = MAX(36.0, MIN(68.0, perimeter * 0.09));
     CGFloat gapLength = MAX(120.0, perimeter - dashLength);
 
     [CATransaction begin];
@@ -6057,13 +6114,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
         self.novaHeaderView.layer.shadowOpacity = collapsed ? 0.045 : 0.07;
         [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
-            dot.alpha = collapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
+            dot.alpha = collapsed ? 0.08 : (idx % 2 == 0 ? 0.16 : 0.12);
             dot.transform = collapsed ? CGAffineTransformMakeScale(0.82, 0.82) : CGAffineTransformIdentity;
         }];
 
         // Close button: collapse to trailing edge with reduced scale/opacity
-        CGFloat closeAlpha = collapsed ? 0.45 : 1.0;
-        CGAffineTransform closeTransform = collapsed ? CGAffineTransformMakeScale(0.82, 0.82) : CGAffineTransformIdentity;
+        CGFloat closeAlpha = collapsed ? 0.76 : 1.0;
+        CGAffineTransform closeTransform = collapsed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
         self.closeButton.alpha = closeAlpha;
         self.closeButton.transform = closeTransform;
 
@@ -6235,8 +6292,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CGAffineTransform targetTransform = CGAffineTransformIdentity;
     if (self.novaHeaderCollapsed) {
         if (sender == self.closeButton) {
-            targetAlpha = 0.45;
-            targetTransform = CGAffineTransformMakeScale(0.82, 0.82);
+            targetAlpha = 0.76;
+            targetTransform = CGAffineTransformMakeScale(0.90, 0.90);
         } else if (sender == self.historyButton) {
             targetAlpha = 0.90;
             targetTransform = CGAffineTransformMakeScale(0.90, 0.90);
@@ -6307,7 +6364,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     [self.statusDot.layer removeAllAnimations];
     [self.novaHeaderBottomGlowView.layer removeAllAnimations];
-     [self.headerBrandHaloView.layer removeAllAnimations];
+    [self.headerBrandHaloView.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
     [self.novaHeaderLiquidBorderLayer removeAllAnimations];
@@ -6317,12 +6374,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     [self pp_updateNovaHeaderLiquidBorderPath];
     if (reduceMotion) {
-        self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.52 : 0.68;
-        self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.18 : 0.28;
+        self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.38 : 0.46;
+        self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.12 : 0.18;
         self.statusDot.alpha = 1.0;
         self.statusDot.transform = CGAffineTransformIdentity;
         self.novaHeaderBottomGlowView.transform = CGAffineTransformIdentity;
-         self.headerBrandHaloView.alpha = self.novaHeaderCollapsed ? 0.56 : 1.0;
+        self.headerBrandHaloView.alpha = self.novaHeaderCollapsed ? 0.56 : 1.0;
         self.headerBrandHaloView.transform = self.novaHeaderCollapsed ? CGAffineTransformMakeScale(0.78, 0.78) : CGAffineTransformIdentity;
         self.headerBrandRingView.alpha = 1.0;
         self.headerBrandRingView.transform = self.novaHeaderCollapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
@@ -6331,7 +6388,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.novaHeaderBackgroundLottie.alpha = shouldPlayHeaderBackground ? [self pp_novaHeaderBackgroundAlphaForCurrentState] : 0.0;
         [self.novaRingBackgroundLottie stop];
         [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
-            dot.alpha = self.novaHeaderCollapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
+            dot.alpha = self.novaHeaderCollapsed ? 0.08 : (idx % 2 == 0 ? 0.16 : 0.12);
             dot.transform = CGAffineTransformIdentity;
         }];
         return;
@@ -6349,7 +6406,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
     scale.fromValue = @0.88;
     scale.toValue = @1.08;
-    scale.duration = 2.4;
+    scale.duration = 3.8;
     scale.autoreverses = YES;
     scale.repeatCount = HUGE_VALF;
     scale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6358,7 +6415,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
     opacity.fromValue = @0.62;
     opacity.toValue = @1.0;
-    opacity.duration = 2.4;
+    opacity.duration = 3.8;
     opacity.autoreverses = YES;
     opacity.repeatCount = HUGE_VALF;
     opacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6367,7 +6424,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CABasicAnimation *bottomGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
     bottomGlowDrift.fromValue = @(10.0);
     bottomGlowDrift.toValue = @(-2.0);
-    bottomGlowDrift.duration = 5.8;
+    bottomGlowDrift.duration = 8.8;
     bottomGlowDrift.autoreverses = YES;
     bottomGlowDrift.repeatCount = HUGE_VALF;
     bottomGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6377,9 +6434,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CFTimeInterval baseTime = CACurrentMediaTime();
     [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
         CAKeyframeAnimation *dotScale = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
-        dotScale.values = @[@0.82, @1.28, @0.92];
+        dotScale.values = @[@0.88, @1.12, @0.94];
         dotScale.keyTimes = @[@0.0, @0.48, @1.0];
-        dotScale.duration = 4.6 + (idx * 0.35);
+        dotScale.duration = 8.4 + (idx * 0.55);
         dotScale.repeatCount = HUGE_VALF;
         dotScale.autoreverses = YES;
         dotScale.beginTime = baseTime + (idx * 0.18);
@@ -6390,8 +6447,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [dot.layer addAnimation:dotScale forKey:@"pp_novaHeaderDotScale"];
 
         CAKeyframeAnimation *dotOpacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
-        CGFloat baseAlpha = self.novaHeaderCollapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
-        dotOpacity.values = @[@(baseAlpha * 0.62), @(MIN(baseAlpha + 0.18, 0.48)), @(baseAlpha)];
+        CGFloat baseAlpha = self.novaHeaderCollapsed ? 0.08 : (idx % 2 == 0 ? 0.16 : 0.12);
+        dotOpacity.values = @[@(baseAlpha * 0.68), @(MIN(baseAlpha + 0.08, 0.28)), @(baseAlpha)];
         dotOpacity.keyTimes = @[@0.0, @0.50, @1.0];
         dotOpacity.duration = dotScale.duration;
         dotOpacity.repeatCount = HUGE_VALF;
@@ -6401,18 +6458,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }];
 
     CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    haloOpacity.fromValue = @(self.novaHeaderCollapsed ? 0.36 : 0.58);
-    haloOpacity.toValue = @(self.novaHeaderCollapsed ? 0.62 : 1.0);
-    haloOpacity.duration = 6.2;
+    haloOpacity.fromValue = @(self.novaHeaderCollapsed ? 0.34 : 0.56);
+    haloOpacity.toValue = @(self.novaHeaderCollapsed ? 0.50 : 0.82);
+    haloOpacity.duration = 10.4;
     haloOpacity.autoreverses = YES;
     haloOpacity.repeatCount = HUGE_VALF;
     haloOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.headerBrandHaloView.layer addAnimation:haloOpacity forKey:@"pp_novaBrandHaloOpacity"];
 
     CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    haloScale.fromValue = @(self.novaHeaderCollapsed ? 0.78 : 0.96);
-    haloScale.toValue = @(self.novaHeaderCollapsed ? 0.86 : 1.055);
-    haloScale.duration = 6.2;
+    haloScale.fromValue = @(self.novaHeaderCollapsed ? 0.78 : 0.97);
+    haloScale.toValue = @(self.novaHeaderCollapsed ? 0.83 : 1.035);
+    haloScale.duration = 10.4;
     haloScale.autoreverses = YES;
     haloScale.repeatCount = HUGE_VALF;
     haloScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6421,7 +6478,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CABasicAnimation *ringOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
     ringOpacity.fromValue = @0.62;
     ringOpacity.toValue = @1.0;
-    ringOpacity.duration = 5.6;
+    ringOpacity.duration = 9.6;
     ringOpacity.autoreverses = YES;
     ringOpacity.repeatCount = HUGE_VALF;
     ringOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6429,20 +6486,20 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     CABasicAnimation *ringScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
     ringScale.fromValue = @(self.novaHeaderCollapsed ? 0.94 : 0.992);
-    ringScale.toValue = @(self.novaHeaderCollapsed ? 0.98 : 1.022);
-    ringScale.duration = 5.6;
+    ringScale.toValue = @(self.novaHeaderCollapsed ? 0.975 : 1.014);
+    ringScale.duration = 9.6;
     ringScale.autoreverses = YES;
     ringScale.repeatCount = HUGE_VALF;
     ringScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.headerBrandRingView.layer addAnimation:ringScale forKey:@"pp_novaBrandRingScale"];
 
-    self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.54 : 0.72;
-    self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.24 : 0.36;
+    self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.40 : 0.50;
+    self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.14 : 0.22;
 
     CABasicAnimation *borderPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    borderPulse.fromValue = @(self.novaHeaderCollapsed ? 0.42 : 0.58);
-    borderPulse.toValue = @(self.novaHeaderCollapsed ? 0.58 : 0.78);
-    borderPulse.duration = 5.8;
+    borderPulse.fromValue = @(self.novaHeaderCollapsed ? 0.32 : 0.42);
+    borderPulse.toValue = @(self.novaHeaderCollapsed ? 0.44 : 0.56);
+    borderPulse.duration = 12.8;
     borderPulse.autoreverses = YES;
     borderPulse.repeatCount = HUGE_VALF;
     borderPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -6450,16 +6507,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     CABasicAnimation *liquidFlow = [CABasicAnimation animationWithKeyPath:@"lineDashPhase"];
     liquidFlow.fromValue = @0.0;
-    liquidFlow.toValue = @(-260.0);
-    liquidFlow.duration = self.novaHeaderCollapsed ? 9.6 : 7.8;
+    liquidFlow.toValue = @(-160.0);
+    liquidFlow.duration = self.novaHeaderCollapsed ? 24.0 : 20.0;
     liquidFlow.repeatCount = HUGE_VALF;
     liquidFlow.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
     [self.novaHeaderLiquidHighlightLayer addAnimation:liquidFlow forKey:@"pp_novaHeaderLiquidBorderFlow"];
 
     CABasicAnimation *highlightPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    highlightPulse.fromValue = @(self.novaHeaderCollapsed ? 0.16 : 0.24);
-    highlightPulse.toValue = @(self.novaHeaderCollapsed ? 0.30 : 0.46);
-    highlightPulse.duration = 4.9;
+    highlightPulse.fromValue = @(self.novaHeaderCollapsed ? 0.10 : 0.16);
+    highlightPulse.toValue = @(self.novaHeaderCollapsed ? 0.20 : 0.28);
+    highlightPulse.duration = 11.6;
     highlightPulse.autoreverses = YES;
     highlightPulse.repeatCount = HUGE_VALF;
     highlightPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];

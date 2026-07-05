@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, PPManagerCellLayoutMode) {
     PPCellLayoutModeNil,
     PPCellLayoutModeFullWidth,
-    PPCellLayoutModeSquare,
+    PPCellLayoutModeHorizontalRow,
     PPCellLayoutModeVertical,
     PPCellLayoutModePinterest,
     PPCellLayoutModeMarket,
@@ -27,7 +27,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 /**
  * PPCollectionLayoutManager is responsible for providing appropriate collection view layouts
  * for different cell layout modes and managing layout switches. It uses UICollectionViewCompositionalLayout
- * for iOS 13+ (FullWidth, Square, Vertical modes) and a custom PPPinterestLayout for Pinterest mode
+ * for iOS 13+ (FullWidth, HorizontalRow, Vertical modes) and a custom PPPinterestLayout for Pinterest mode
  * or legacy iOS fallback.
  *
  * It also implements PPPinterestLayoutDelegate to supply item heights based on model aspect ratios.
@@ -43,14 +43,14 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
 /**
  * Returns a UICollectionViewLayout configured for the given layout mode.
- * On iOS 13+, uses compositional layouts for FullWidth, Square, Vertical modes and custom Pinterest layout for Pinterest mode.
- * On iOS 12 and below, uses flow layouts for FullWidth, Square, Vertical, and the custom Pinterest layout for Pinterest.
+ * On iOS 13+, uses compositional layouts for FullWidth, HorizontalRow, Vertical modes and custom Pinterest layout for Pinterest mode.
+ * On iOS 12 and below, uses flow layouts for FullWidth, HorizontalRow, Vertical, and the custom Pinterest layout for Pinterest.
  */
 - (UICollectionViewLayout *)layoutForMode:(PPManagerCellLayoutMode)mode;
 
 /** Convenience methods for each layout mode (for completeness). */
 - (UICollectionViewLayout *)listLayout;     /// FullWidth mode layout (single column list).
-- (UICollectionViewLayout *)squareLayout;   /// Square grid mode layout.
+- (UICollectionViewLayout *)horizontalRowLayout; /// Full-width horizontal row layout.
 - (UICollectionViewLayout *)verticalLayout; /// Vertical grid mode layout.
 - (UICollectionViewLayout *)pinterestLayout;/// Pinterest mode layout (staggered/masonry).
 

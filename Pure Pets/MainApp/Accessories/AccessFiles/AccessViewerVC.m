@@ -2933,7 +2933,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     cell.hideTopBadge = NO;
     [cell applyViewModel:vm
                  context:context
-              layoutMode:PPCellLayoutModeSquare
+              layoutMode:PPCellLayoutModeHorizontalRow
             discountMode:PPDiscountStyleBadge
              imageLoader:^(UIImageView *imageView,
                            NSString *url,

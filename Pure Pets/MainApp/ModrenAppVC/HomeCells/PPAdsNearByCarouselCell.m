@@ -215,7 +215,7 @@ forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
 
     [cell applyViewModel:vm
                  context:vm.modelContext
-              layoutMode:PPCellLayoutModeSquare
+              layoutMode:PPCellLayoutModeHorizontalRow
             discountMode:PPDiscountStyleBadge
              imageLoader:^(UIImageView *iv,
                            NSString *url,

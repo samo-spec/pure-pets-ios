@@ -196,22 +196,12 @@
     /// ------------------------------------------------------------------------------------------------------------------------------------------------------------------
     
     
-    UIAction *layoutSquirePPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutSquare")
-                                                     systemImageName:@"widget.small"
-                                                                font:[GM MidFontWithSize:16]
-                                                               color:AppSecondaryTextClr
-                                                             handler:^(UIAction * _Nonnull action)  {
+    UIAction *layoutHorizontalRowPPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutHorizontalRow")
+                                                            systemImageName:@"rectangle.grid.1x2.fill"
+                                                                       font:[GM MidFontWithSize:16]
+                                                                      color:AppSecondaryTextClr
+                                                                    handler:^(UIAction * _Nonnull action)  {
         
-    }];
-    
-    
-    UIAction *layoutFullPPAction = [PPActionButton actionWithTitle:kLang(@"PPCellLayoutFullWidth")
-                                                   systemImageName:@"widget.medium"
-                                                              font:[GM MidFontWithSize:16]
-                                                             color:AppSecondaryTextClr
-                                                           handler:^(UIAction * _Nonnull action) {
-        //PPManagerCellLayoutMode newMode = PPCellLayoutModeFullWidth; // or FullWidth, Square, Vertical
-      
     }];
     
     
@@ -236,10 +226,9 @@
     [searchGroup addObject:searchPPAction];
     [filterGroup addObject:filterPPAction];
     
-    [layoutGroup addObject:layoutSquirePPAction];
-    [layoutGroup addObject:layoutFullPPAction];
-    [layoutGroup addObject:layoutLargePPAction];
+    [layoutGroup addObject:layoutHorizontalRowPPAction];
     [layoutGroup addObject:layoutPintrestPPAction];
+    [layoutGroup addObject:layoutLargePPAction];
     
     UIMenu *menu;
     

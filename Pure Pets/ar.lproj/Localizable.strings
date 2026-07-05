@@ -774,14 +774,12 @@
 "adLocation" = "موقع الاعلان";
 "filterPPAction" = "تصفية";
 "PPCellLayoutFullWidth" = "العرض الكامل";
-"PPCellLayoutSquare" = "مربع";
+"PPCellLayoutHorizontalRow" = "صف بعرض كامل";
 "PPCellLayoutVertical" = "عموديًا";
 "PPCellLayoutPinterest" = "بنترست";
 "Pintrest" = "بنترست";
 "PPCellLayout" = "تخطيط الخلية";
 "PPDataViewActionsTitle" = "أدوات التصفح";
-"PPDataViewPrimaryLayouts" = "تخطيطات مميزة";
-"PPDataViewMoreLayouts" = "تخطيطات أخرى";
 "PPDataViewSearchMenuA11y" = "أدوات البحث والتخطيط";
 "PPDataViewSearchMenuHint" = "يفتح إجراءات البحث والتصفية وتخطيط التصفح";
 

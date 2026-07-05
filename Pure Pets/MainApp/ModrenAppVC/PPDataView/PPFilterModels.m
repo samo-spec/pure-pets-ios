@@ -245,6 +245,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
               title:kLang(@"Gender")
            chipIcon:@"gender"
             options:@[
+                [PPFilterOption optionWithTitle:kLang(@"all") value:PPFilterGenderAll icon:nil],
                 [PPFilterOption optionWithTitle:kLang(@"Male") value:PPFilterGenderMale icon:@"male"],
                 [PPFilterOption optionWithTitle:kLang(@"Female") value:PPFilterGenderFemale icon:@"female"],
                 [PPFilterOption optionWithTitle:kLang(@"no_value") value:PPFilterGenderUndefined icon:@"gender"],

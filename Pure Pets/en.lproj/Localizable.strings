@@ -750,14 +750,12 @@
 "adLocation" = "Ad site";
 "filterPPAction" = "Filter";
 "PPCellLayoutFullWidth" = "Full Width";
-"PPCellLayoutSquare" = "Square";
+"PPCellLayoutHorizontalRow" = "Full Width Row";
 "PPCellLayoutVertical" = "Vertical";
 "PPCellLayoutPinterest" = "Pinterest";
 "Pintrest" = "Pinterest";
 "PPCellLayout" = "Cell Layout";
 "PPDataViewActionsTitle" = "Browse controls";
-"PPDataViewPrimaryLayouts" = "Featured layouts";
-"PPDataViewMoreLayouts" = "More layouts";
 "PPDataViewSearchMenuA11y" = "Search and layout controls";
 "PPDataViewSearchMenuHint" = "Opens search, filter, and browsing layout actions";
 "searchOnly" = "Search";

@@ -35,10 +35,11 @@ static const CGFloat kPPFilterExpandedBottomInset = 24.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
-static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.10;
+static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 1.90;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.58;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 130.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
+static const CGFloat kPPDataViewSectionsIslandCornerRadius = 30.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
 
@@ -155,40 +156,297 @@ static UIColor *PPDataViewAppForegroundSurfaceColor(void)
     return AppForgroundColr ?: PPDataViewChromeElevatedSurfaceColor();
 }
 
-static UIColor *PPDataViewFilterIslandSurfaceColor(void)
+static id PPDataViewResolvedLayerColor(UIColor *color, UITraitCollection *traitCollection)
 {
-    BOOL isRTL = Language.isRTL;
-    UIColor *light = isRTL
-        ? [UIColor colorWithRed:1.00 green:0.965 blue:0.972 alpha:0.94]
-        : [UIColor colorWithRed:0.970 green:0.978 blue:0.988 alpha:0.94];
-    UIColor *dark = isRTL
-        ? [UIColor colorWithRed:0.145 green:0.118 blue:0.132 alpha:0.82]
-        : [UIColor colorWithRed:0.115 green:0.122 blue:0.145 alpha:0.82];
-    return PPDataViewDynamicColor(light, dark);
+    UIColor *resolvedColor = color ?: UIColor.clearColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [resolvedColor resolvedColorWithTraitCollection:traitCollection];
+    }
+    return (__bridge id)resolvedColor.CGColor;
 }
 
-static UIColor *PPDataViewFilterIslandWashColor(void)
+static UIColor *PPDataViewResolvedColor(UIColor *color, UITraitCollection *traitCollection)
 {
-    BOOL isRTL = Language.isRTL;
-    UIColor *light = isRTL
-        ? [UIColor colorWithRed:1.00 green:0.885 blue:0.915 alpha:0.78]
-        : [UIColor colorWithRed:0.900 green:0.940 blue:1.000 alpha:0.70];
-    UIColor *dark = isRTL
-        ? [UIColor colorWithRed:0.270 green:0.135 blue:0.180 alpha:0.56]
-        : [UIColor colorWithRed:0.120 green:0.180 blue:0.265 alpha:0.54];
-    return PPDataViewDynamicColor(light, dark);
+    UIColor *resolvedColor = color ?: UIColor.clearColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [resolvedColor resolvedColorWithTraitCollection:traitCollection];
+    }
+    return resolvedColor;
 }
 
-static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
+static UIColor *PPDataViewBlendColor(UIColor *baseColor,
+                                     UIColor *overlayColor,
+                                     CGFloat amount,
+                                     UITraitCollection *traitCollection)
 {
-    UIColor *light = hasActiveFilters
-        ? [UIColor colorWithRed:0.95 green:0.70 blue:0.78 alpha:0.40]
-        : [UIColor colorWithRed:0.82 green:0.76 blue:0.78 alpha:0.24];
-    UIColor *dark = hasActiveFilters
-        ? [UIColor colorWithRed:1.00 green:0.72 blue:0.84 alpha:0.26]
-        : [UIColor colorWithWhite:1.0 alpha:0.10];
-    return PPDataViewDynamicColor(light, dark);
+    UIColor *base = PPDataViewResolvedColor(baseColor, traitCollection);
+    UIColor *overlay = PPDataViewResolvedColor(overlayColor, traitCollection);
+
+    CGFloat baseRed = 0.0, baseGreen = 0.0, baseBlue = 0.0, baseAlpha = 0.0;
+    CGFloat overlayRed = 0.0, overlayGreen = 0.0, overlayBlue = 0.0, overlayAlpha = 0.0;
+    if (![base getRed:&baseRed green:&baseGreen blue:&baseBlue alpha:&baseAlpha] ||
+        ![overlay getRed:&overlayRed green:&overlayGreen blue:&overlayBlue alpha:&overlayAlpha]) {
+        return baseColor ?: overlayColor ?: UIColor.clearColor;
+    }
+
+    CGFloat t = MIN(MAX(amount, 0.0), 1.0);
+    return [UIColor colorWithRed:(baseRed * (1.0 - t)) + (overlayRed * t)
+                           green:(baseGreen * (1.0 - t)) + (overlayGreen * t)
+                            blue:(baseBlue * (1.0 - t)) + (overlayBlue * t)
+                           alpha:(baseAlpha * (1.0 - t)) + (overlayAlpha * t)];
 }
+
+static UIColor *PPDataViewProviderPillAccentColor(UITraitCollection *traitCollection)
+{
+    UIColor *brand = PPDataViewAccentColor();
+    UIColor *warmProviderAccent =
+        PPDataViewDynamicColor([UIColor colorWithRed:0.996 green:0.655 blue:0.404 alpha:1.0],
+                               [UIColor colorWithRed:0.996 green:0.765 blue:0.518 alpha:1.0]);
+    return PPDataViewBlendColor(brand, warmProviderAccent, 0.06, traitCollection);
+}
+
+static UIUserInterfaceStyle PPDataViewCurrentAppInterfaceStyle(UITraitCollection *traitCollection)
+{
+    if (@available(iOS 13.0, *)) {
+        UIUserInterfaceStyle savedStyle = [[PPThemeManager sharedManager] loadUserInterfaceStyle];
+        if (savedStyle == UIUserInterfaceStyleDark || savedStyle == UIUserInterfaceStyleLight) {
+            return savedStyle;
+        }
+
+        UIUserInterfaceStyle resolvedStyle = traitCollection.userInterfaceStyle;
+        if (resolvedStyle == UIUserInterfaceStyleDark) {
+            return UIUserInterfaceStyleDark;
+        }
+    }
+
+    return UIUserInterfaceStyleLight;
+}
+
+static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollection)
+{
+    return PPDataViewCurrentAppInterfaceStyle(traitCollection) == UIUserInterfaceStyleDark;
+}
+
+@interface PPDataViewNavigationMaterialView : UIView
+- (void)pp_applyPremiumMaterialAnimated:(BOOL)animated;
+@end
+
+@interface PPDataViewNavigationMaterialView ()
+@property (nonatomic, strong) UIVisualEffectView *blurView;
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *liquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *liquidBorderMaskLayer;
+@property (nonatomic, strong) CAGradientLayer *liquidShineLayer;
+@property (nonatomic, strong) CAShapeLayer *liquidShineMaskLayer;
+@end
+
+@implementation PPDataViewNavigationMaterialView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
+    self.layer.masksToBounds = NO;
+    self.isAccessibilityElement = NO;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
+    }
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.blurView.userInteractionEnabled = NO;
+    self.blurView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:self.blurView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+    ]];
+
+    self.surfaceGradientLayer = [CAGradientLayer layer];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.surfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.surfaceGradientLayer.masksToBounds = YES;
+    [self.layer insertSublayer:self.surfaceGradientLayer above:self.blurView.layer];
+
+    self.liquidBorderLayer = [CAGradientLayer layer];
+    self.liquidBorderLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.liquidBorderLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.liquidBorderMaskLayer = [CAShapeLayer layer];
+    self.liquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.liquidBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.liquidBorderMaskLayer.lineCap = kCALineCapRound;
+    self.liquidBorderMaskLayer.lineJoin = kCALineJoinRound;
+    self.liquidBorderLayer.mask = self.liquidBorderMaskLayer;
+    [self.layer addSublayer:self.liquidBorderLayer];
+
+    self.liquidShineLayer = [CAGradientLayer layer];
+    self.liquidShineLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.liquidShineLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.liquidShineMaskLayer = [CAShapeLayer layer];
+    self.liquidShineMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.liquidShineMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.liquidShineMaskLayer.lineCap = kCALineCapRound;
+    self.liquidShineMaskLayer.lineJoin = kCALineJoinRound;
+    self.liquidShineLayer.mask = self.liquidShineMaskLayer;
+    [self.layer addSublayer:self.liquidShineLayer];
+
+    [self pp_applyPremiumMaterialAnimated:NO];
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds),
+                                                   kPPDataViewNavigationChromeCornerRadius);
+    self.layer.cornerRadius = radius;
+    self.blurView.layer.cornerRadius = radius;
+
+    self.surfaceGradientLayer.frame = self.bounds;
+    self.surfaceGradientLayer.cornerRadius = radius;
+    self.liquidBorderLayer.frame = self.bounds;
+    self.liquidShineLayer.frame = self.bounds;
+
+    CGRect strokeRect = CGRectInset(self.bounds, 0.5, 0.5);
+    CGFloat strokeRadius = MAX(radius - 0.5, 0.0);
+    UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect
+                                                          cornerRadius:strokeRadius];
+    self.liquidBorderMaskLayer.frame = self.bounds;
+    self.liquidBorderMaskLayer.path = strokePath.CGPath;
+    self.liquidBorderMaskLayer.lineWidth = 0.45;
+
+    CGRect shineRect = CGRectInset(self.bounds, 0.5, 0.5);
+    CGFloat shineRadius = MAX(radius - 0.5, 0.0);
+    UIBezierPath *shinePath = [UIBezierPath bezierPathWithRoundedRect:shineRect
+                                                         cornerRadius:shineRadius];
+    self.liquidShineMaskLayer.frame = self.bounds;
+    self.liquidShineMaskLayer.path = shinePath.CGPath;
+    self.liquidShineMaskLayer.lineWidth = 0.5;
+
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                                       cornerRadius:radius].CGPath;
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    [self pp_updateLiquidMotion];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyPremiumMaterialAnimated:NO];
+    [self pp_updateLiquidMotion];
+}
+
+- (void)pp_applyPremiumMaterialAnimated:(BOOL)animated
+{
+    BOOL isDark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+
+    UIColor *foregroundSurface = PPDataViewAppForegroundSurfaceColor();
+    UIColor *surface = PPDataViewChromeSurfaceColor();
+    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.78],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.16]);
+    UIColor *surfaceTop = [foregroundSurface colorWithAlphaComponent:isDark ? 0.30 : 0.72];
+    UIColor *surfaceMid = [surface colorWithAlphaComponent:isDark ? 0.86 : 0.96];
+    UIColor *surfaceBottom = [AppBackgroundClrLigter colorWithAlphaComponent:isDark ? 0.22 : 0.20];
+    UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.96],
+                                                 [UIColor colorWithWhite:1.0 alpha:0.70]);
+    UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+                                                [UIColor colorWithWhite:1.0 alpha:0.54]);
+    UIColor *borderAccent = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.64]);
+
+    void (^updates)(void) = ^{
+        self.blurView.hidden = YES;
+        self.blurView.alpha = 0.0;
+        self.backgroundColor = [surface colorWithAlphaComponent:isDark ? 0.82 : 0.94];
+
+        self.surfaceGradientLayer.colors = @[
+            PPDataViewResolvedLayerColor(surfaceTop, self.traitCollection),
+            PPDataViewResolvedLayerColor(surfaceMid, self.traitCollection),
+            PPDataViewResolvedLayerColor(surfaceBottom, self.traitCollection)
+        ];
+        self.surfaceGradientLayer.locations = @[@0.0, @0.48, @1.0];
+        self.surfaceGradientLayer.opacity = isDark ? 0.82 : 0.78;
+
+        self.liquidBorderLayer.colors = @[
+            PPDataViewResolvedLayerColor(borderLead, self.traitCollection),
+            PPDataViewResolvedLayerColor(borderMid, self.traitCollection),
+            PPDataViewResolvedLayerColor(borderAccent, self.traitCollection),
+            PPDataViewResolvedLayerColor(borderLead, self.traitCollection)
+        ];
+        self.liquidBorderLayer.locations = @[@0.0, @0.34, @0.68, @1.0];
+        self.liquidBorderLayer.opacity = isDark ? 0.92 : 0.90;
+
+        self.liquidShineLayer.colors = @[
+            PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection),
+            PPDataViewResolvedLayerColor(softHighlight, self.traitCollection),
+            PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection)
+        ];
+        self.liquidShineLayer.locations = @[@0.08, @0.18, @0.30];
+        self.liquidShineLayer.opacity = isDark ? 0.34 : 0.38;
+
+        UIColor *shadowColor = PPDataViewChromeShadowColor();
+        if (@available(iOS 13.0, *)) {
+            shadowColor = [shadowColor resolvedColorWithTraitCollection:self.traitCollection];
+        }
+        self.layer.shadowColor = shadowColor.CGColor;
+        self.layer.shadowOpacity = isDark ? 0.20 : 0.125;
+        self.layer.shadowRadius = isDark ? 20.0 : 18.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, isDark ? 9.0 : 8.0);
+    };
+
+    if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        updates();
+        [CATransaction commit];
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setAnimationDuration:1.65];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    updates();
+    [CATransaction commit];
+}
+
+- (void)pp_updateLiquidMotion
+{
+    [self.liquidShineLayer removeAnimationForKey:@"pp.nav.liquid.shine"];
+    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    CABasicAnimation *shine = [CABasicAnimation animationWithKeyPath:@"locations"];
+    shine.fromValue = @[@-0.34, @-0.22, @-0.08];
+    shine.toValue = @[@1.08, @1.22, @1.36];
+    shine.duration = 22.0;
+    shine.repeatCount = HUGE_VALF;
+    shine.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    shine.removedOnCompletion = NO;
+    [self.liquidShineLayer addAnimation:shine forKey:@"pp.nav.liquid.shine"];
+}
+
+@end
 
 @interface PPDataViewControlIslandView : UIView
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated;
@@ -197,6 +455,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 @interface PPDataViewControlIslandView ()
 @property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, strong) CAShapeLayer *surfaceLiquidBorderLayer;
 @property (nonatomic, assign) NSInteger activeFilterCount;
 @end
 
@@ -237,10 +496,15 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     ]];
 
     self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.surfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     self.surfaceGradientLayer.masksToBounds = YES;
     [self.layer insertSublayer:self.surfaceGradientLayer above:self.blurView.layer];
+
+    self.surfaceLiquidBorderLayer = [CAShapeLayer layer];
+    self.surfaceLiquidBorderLayer.fillColor = UIColor.clearColor.CGColor;
+    self.surfaceLiquidBorderLayer.lineWidth = 0.85;
+    [self.layer addSublayer:self.surfaceLiquidBorderLayer];
 
     [self pp_applyActiveFilterCount:0 animated:NO];
     return self;
@@ -250,13 +514,20 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 {
     [super layoutSubviews];
 
-    CGFloat radius = MIN(PPDataViewPillRadiusForHeight(CGRectGetHeight(self.bounds), 24.0), 32.0);
-    self.layer.cornerRadius = radius;
-    self.blurView.layer.cornerRadius = radius;
+    CGFloat cornerRadius = kPPDataViewSectionsIslandCornerRadius;
+    self.layer.cornerRadius = cornerRadius;
+    self.blurView.layer.cornerRadius = cornerRadius;
     self.surfaceGradientLayer.frame = self.bounds;
-    self.surfaceGradientLayer.cornerRadius = radius;
+    self.surfaceGradientLayer.cornerRadius = cornerRadius;
 
-    UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:radius];
+    CGFloat highlightInset = 0.65;
+    CGRect highlightBounds = CGRectInset(self.bounds, highlightInset, highlightInset);
+    self.surfaceLiquidBorderLayer.frame = self.bounds;
+    self.surfaceLiquidBorderLayer.path =
+        [UIBezierPath bezierPathWithRoundedRect:highlightBounds
+                                   cornerRadius:MAX(0.0, cornerRadius - highlightInset)].CGPath;
+
+    UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:cornerRadius];
     self.layer.shadowPath = shadowPath.CGPath;
 }
 
@@ -269,51 +540,51 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated
 {
     self.activeFilterCount = MAX(0, count);
-    BOOL hasActiveFilters = self.activeFilterCount > 0;
-    
-    UIColor *surface = PPDataViewFilterIslandSurfaceColor();
-    UIColor *wash = PPDataViewFilterIslandWashColor();
-    UIColor *border = PPDataViewFilterIslandStrokeColor(hasActiveFilters);
+    BOOL selected = self.activeFilterCount > 0;
+
+    BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+
+    UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
+    UIColor *surfaceBase = PPDataViewDynamicColor([UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:0.88],
+                                                  [UIColor colorWithWhite:0.104 alpha:0.72]);
+    UIColor *surfaceHighlight = PPDataViewBlendColor(surfaceBase,
+                                                     UIColor.whiteColor,
+                                                     darkMode ? 0.10 : 0.22,
+                                                     self.traitCollection);
+    UIColor *surfaceTint = PPDataViewBlendColor(surfaceBase,
+                                                accent,
+                                                selected ? (darkMode ? 0.20 : 0.125) : (darkMode ? 0.13 : 0.070),
+                                                self.traitCollection);
+    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.20 : 0.48];
+    UIColor *liquidBorderHighlight = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.34 : 0.26)
+                                                                             : (selected ? 0.78 : 0.62)];
 
     void (^updates)(void) = ^{
-        BOOL isRTL = Language.isRTL;
-        self.surfaceGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-        self.surfaceGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-        self.blurView.hidden = YES;//UIAccessibilityIsReduceTransparencyEnabled();
-        self.backgroundColor = self.blurView.hidden ? [surface colorWithAlphaComponent:0.96] : UIColor.clearColor;
-        self.layer.borderWidth = hasActiveFilters ? 1.0 : 0.75;
-        self.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.55].CGColor;
-        self.layer.shadowColor = PPDataViewChromeShadowColor().CGColor;
-        self.layer.shadowOpacity = hasActiveFilters ? 0.09 : 0.06;
-        self.layer.shadowRadius = hasActiveFilters ? 13.0 : 10.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, hasActiveFilters ? 4.5 : 3.0);
-        
-        if(hasActiveFilters)
-        {
-            UIColor *top = [AppForgroundColr colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.66];
-            UIColor *mid = [AppBackgroundClrLigter colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
-            UIColor *bottom = [AppPrimaryClr colorWithAlphaComponent:0.32];
-            self.surfaceGradientLayer.colors = @[
-                (__bridge id)top.CGColor,
-                (__bridge id)mid.CGColor,
-                (__bridge id)bottom.CGColor
-            ];
-        }
-        else
-        {
-            UIColor *top = [AppForgroundColr colorWithAlphaComponent:hasActiveFilters ? 0.94 : 0.86];
-            UIColor *mid = [AppBackgroundClrLigter colorWithAlphaComponent:hasActiveFilters ? 0.56 : 0.42];
-            UIColor *bottom = [AppBackgroundClrDarker colorWithAlphaComponent:0.60];
-            self.surfaceGradientLayer.colors = @[
-                (__bridge id)top.CGColor,
-                (__bridge id)mid.CGColor,
-                (__bridge id)bottom.CGColor
-            ];
-        }
-
-        
+        self.blurView.hidden = YES;
+        self.blurView.alpha = 0.0;
+        self.backgroundColor = surfaceBase;
+        self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.layer.borderColor = PPDataViewResolvedColor(liquidBorderBase, self.traitCollection).CGColor;
+        self.layer.shadowColor = UIColor.blackColor.CGColor;
+        self.layer.shadowOpacity = darkMode ? (selected ? 0.18 : 0.12) : (selected ? 0.12 : 0.075);
+        self.layer.shadowRadius = selected ? 20.0 : 16.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, selected ? 11.0 : 8.5);
+        self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+        self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+        self.surfaceGradientLayer.colors = @[
+            PPDataViewResolvedLayerColor(surfaceHighlight, self.traitCollection),
+            PPDataViewResolvedLayerColor(surfaceTint, self.traitCollection),
+            PPDataViewResolvedLayerColor(PPDataViewBlendColor(surfaceTint,
+                                                              accent,
+                                                              darkMode ? 0.08 : 0.085,
+                                                              self.traitCollection),
+                                         self.traitCollection)
+        ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
-        self.surfaceGradientLayer.opacity = hasActiveFilters ? 0.52 : 0.42;
+        self.surfaceGradientLayer.opacity = selected ? (darkMode ? 0.70f : 0.82f) : (darkMode ? 0.52f : 0.68f);
+        self.surfaceLiquidBorderLayer.strokeColor =
+            PPDataViewResolvedColor(liquidBorderHighlight, self.traitCollection).CGColor;
+        self.surfaceLiquidBorderLayer.opacity = 1.0f;
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -685,7 +956,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 @property (nonatomic, assign) CGFloat lastContentOffsetY;
 @property (nonatomic, assign) BOOL isRestoringScrollOffset;
 // Custom navigation bar center view
-@property (nonatomic, strong) UIButton *navContainerView;
+@property (nonatomic, strong) PPDataViewNavigationMaterialView *navContainerView;
 @property (nonatomic, strong) UIButton *KindsButton;
 @property (nonatomic, strong) UIButton *subKindsButton;
 @property (nonatomic, strong) UIView *navSeparatorLine;
@@ -770,6 +1041,8 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
 - (void)pp_applyTemporaryHiddenCartButtonState;
 - (void)pp_refreshSearchActionsMenu;
 - (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode;
+- (PPManagerCellLayoutMode)pp_sanitizedDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
+- (BOOL)pp_isDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
 - (CGFloat)preferredNavigationCenterViewWidth;
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (PPFilterState *)pp_currentFilterState;
@@ -1212,6 +1485,8 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
         return;
     }
 
+    navigationBar.prefersLargeTitles = NO;
+    self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
     navigationBar.translucent = YES;
     navigationBar.tintColor = PPDataViewChromeTextColor();
 
@@ -1229,6 +1504,12 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     navigationBar.compactAppearance = appearance;
     if (@available(iOS 15.0, *)) {
         navigationBar.compactScrollEdgeAppearance = appearance;
+    }
+    self.navigationItem.standardAppearance = [appearance copy];
+    self.navigationItem.scrollEdgeAppearance = [appearance copy];
+    self.navigationItem.compactAppearance = [appearance copy];
+    if (@available(iOS 15.0, *)) {
+        self.navigationItem.compactScrollEdgeAppearance = [appearance copy];
     }
 }
 
@@ -1291,7 +1572,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
                                                     weight:UIImageSymbolWeightSemibold
                                                      scale:UIImageSymbolScaleMedium];
     UIButtonConfiguration *configuration = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
-    configuration.image = [UIImage systemImageNamed:@"magnifyingglass" withConfiguration:symbolConfiguration];
+    configuration.image = [UIImage imageNamed:@"optimization"];
     configuration.imagePadding = 0.0;
     configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 7.0, 2.0, 7.0);
     configuration.baseForegroundColor = PPDataViewChromeTextColor();
@@ -1547,6 +1828,11 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     self.navContainerView.backgroundColor = UIColor.clearColor;
     self.navContainerView.clipsToBounds = NO;
     self.navContainerView.layer.masksToBounds = NO;
+    self.navContainerView.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
+    if (@available(iOS 13.0, *)) {
+        self.navContainerView.overrideUserInterfaceStyle =
+            PPDataViewCurrentAppInterfaceStyle(self.traitCollection);
+    }
     CGFloat chromeRadius = CGRectGetHeight(self.navContainerView.bounds) > 0.0
         ? CGRectGetHeight(self.navContainerView.bounds) * 0.5
         : kPPDataViewNavigationChromeCornerRadius;
@@ -1562,27 +1848,9 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
             }
         }
     }
-    self.navContainerView.layer.borderWidth = 0.65;
-    [self.navContainerView pp_setBorderColor:PPDataViewChromeStrokeColor()];
-    [self.navContainerView pp_setShadowColor:PPDataViewChromeShadowColor()];
-    self.navContainerView.layer.shadowOpacity = 0.075;
-    self.navContainerView.layer.shadowRadius = 14.0;
-    self.navContainerView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-
-    UIButtonConfiguration *configuration = self.navContainerView.configuration;
-    if (!configuration) {
-        configuration = [UIButtonConfiguration plainButtonConfiguration];
-    }
-    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    configuration.background.cornerRadius = chromeRadius;
-    configuration.contentInsets = NSDirectionalEdgeInsetsZero;
-    configuration.baseForegroundColor = PPDataViewChromeTextColor();
-    configuration.background.backgroundColor = PPDataViewChromeSurfaceColor();
-    configuration.background.strokeColor = PPDataViewChromeStrokeColor();
-    configuration.background.strokeWidth = 0.65;
-
-    self.navContainerView.configuration = configuration;
+    self.navContainerView.layer.borderWidth = 0.0;
     self.navContainerView.isAccessibilityElement = NO;
+    [self.navContainerView pp_applyPremiumMaterialAnimated:NO];
 
     [self pp_applyPremiumMainKindsButtonSurface];
     [self pp_applyPremiumSubKindsButtonSurface];
@@ -1646,8 +1914,9 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     }
 
     if (self.sectionsFiltersContainer && !CGRectIsEmpty(self.sectionsFiltersContainer.bounds)) {
-        CGFloat islandRadius =
-            MIN(PPDataViewPillRadiusForHeight(CGRectGetHeight(self.sectionsFiltersContainer.bounds), 24.0), 32.0);
+        CGFloat islandRadius = self.sectionsFiltersContainer.layer.cornerRadius > 0.0
+            ? self.sectionsFiltersContainer.layer.cornerRadius
+            : kPPDataViewSectionsIslandCornerRadius;
         self.sectionsFiltersContainer.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.sectionsFiltersContainer.bounds
                                    cornerRadius:islandRadius].CGPath;
@@ -2233,12 +2502,7 @@ static UIColor *PPDataViewFilterIslandStrokeColor(BOOL hasActiveFilters)
     (PPManagerCellLayoutMode)[[NSUserDefaults standardUserDefaults]
                               integerForKey:kPPLayoutModeKey];
 
-    if (savedMode >= PPCellLayoutModeSquare &&
-        savedMode <= PPCellLayoutModePinterest) {
-        self.layoutManager.currentLayoutMode = savedMode;
-    } else {
-        self.layoutManager.currentLayoutMode = PPCellLayoutModePinterest;
-    }
+    self.layoutManager.currentLayoutMode = [self pp_sanitizedDataViewLayoutMode:savedMode];
     
     UICollectionViewLayout *layout = [self.layoutManager layoutForMode:self.layoutManager.currentLayoutMode];
 
@@ -2421,21 +2685,21 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
                             color:primaryColor
-                     surfaceAlpha:isDark ? 0.12 : 0.070
-                    shadowOpacity:isDark ? 0.15f : 0.095f
-                     shadowRadius:isDark ? 80.0 : 72.0];
+                     surfaceAlpha:isDark ? 0.085 : 0.044
+                    shadowOpacity:isDark ? 0.10f : 0.055f
+                     shadowRadius:isDark ? 68.0 : 58.0];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
                             color:secondaryColor
-                     surfaceAlpha:isDark ? 0.095 : 0.052
-                    shadowOpacity:isDark ? 0.12f : 0.070f
-                     shadowRadius:isDark ? 70.0 : 62.0];
+                     surfaceAlpha:isDark ? 0.070 : 0.032
+                    shadowOpacity:isDark ? 0.082f : 0.038f
+                     shadowRadius:isDark ? 58.0 : 48.0];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
                             color:ambientColor
-                     surfaceAlpha:isDark ? 0.045 : 0.024
-                    shadowOpacity:isDark ? 0.075f : 0.040f
-                     shadowRadius:isDark ? 60.0 : 52.0];
+                     surfaceAlpha:isDark ? 0.034 : 0.014
+                    shadowOpacity:isDark ? 0.052f : 0.024f
+                     shadowRadius:isDark ? 50.0 : 42.0];
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews
@@ -2449,9 +2713,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     CGFloat height = CGRectGetHeight(bounds);
     CGFloat safeTop = self.view.safeAreaInsets.top;
 
-    CGFloat topSize = MIN(340.0, MAX(236.0, width * 0.70));
-    CGFloat midSize = MIN(288.0, MAX(204.0, width * 0.56));
-    CGFloat bottomSize = MIN(324.0, MAX(216.0, width * 0.64));
+    CGFloat topSize = MIN(306.0, MAX(216.0, width * 0.62));
+    CGFloat midSize = MIN(252.0, MAX(184.0, width * 0.49));
+    CGFloat bottomSize = MIN(288.0, MAX(196.0, width * 0.56));
 
     self.pp_premiumBackgroundGlowViewTop.frame =
         CGRectMake(width - (topSize * 0.60),
@@ -3041,6 +3305,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         vm.indexPath = indexPath;
 
         BOOL isAdContext = (vm.modelContext == PPCellForAds || vm.modelContext == PPCellForHomeAds);
+        cell.delegate = weakSelf;
         cell.hideTopBadge = isAdContext;
         cell.showsSubtitle = YES;
 
@@ -3102,8 +3367,6 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
                     transitionStyle:PPImageTransitionStyleNone
                        complation:nil];
         }];
-
-        cell.delegate = weakSelf;
 
         return cell;
     }];
@@ -3936,38 +4199,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 // Modified to add a second navigation button: sectionsButton
 -(void)setupKindsView
 {
-    _navContainerView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed];
+    _navContainerView = [PPDataViewNavigationMaterialView new];
     self.navContainerView.translatesAutoresizingMaskIntoConstraints = NO;
     self.navContainerView.isAccessibilityElement = NO;
     self.navContainerView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    
-    if (!PPIOS26())
-    {
-        UIButtonConfiguration *config = _navContainerView.configuration;
-        config.background.cornerRadius = 18;
-        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        
-        self.navContainerView.configuration = config;
-    }
-    else
-    {
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.layer.cornerRadius = kPPDataViewNavigationChromeCornerRadius;
-        blurView.clipsToBounds = YES;
-        if (@available(iOS 13.0, *)) {
-            blurView.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        blurView.userInteractionEnabled = NO;
-        [self.navContainerView insertSubview:blurView atIndex:0];
-        [NSLayoutConstraint activateConstraints:@[
-            [blurView.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor],
-            [blurView.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor],
-            [blurView.leadingAnchor constraintEqualToAnchor:self.navContainerView.leadingAnchor],
-            [blurView.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor]
-        ]];
-    }
+
     self.KindsButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.KindsButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.KindsButton.showsMenuAsPrimaryAction = YES;
@@ -4563,18 +4799,35 @@ presentingViewController:self
 - (PPManagerCellLayoutMode)pp_currentActionsMenuLayoutMode
 {
     PPManagerCellLayoutMode currentMode = self.layoutManager.currentLayoutMode;
-    if (currentMode >= PPCellLayoutModeSquare &&
-        currentMode <= PPCellLayoutModePinterest) {
+    if ([self pp_isDataViewLayoutMode:currentMode]) {
         return currentMode;
     }
 
     PPManagerCellLayoutMode savedMode =
     (PPManagerCellLayoutMode)[[NSUserDefaults standardUserDefaults] integerForKey:kPPLayoutModeKey];
-    if (savedMode >= PPCellLayoutModeSquare &&
-        savedMode <= PPCellLayoutModePinterest) {
-        return savedMode;
+    PPManagerCellLayoutMode sanitizedMode = [self pp_sanitizedDataViewLayoutMode:savedMode];
+    if ([self pp_isDataViewLayoutMode:sanitizedMode]) {
+        return sanitizedMode;
     }
 
+    return PPCellLayoutModePinterest;
+}
+
+- (BOOL)pp_isDataViewLayoutMode:(PPManagerCellLayoutMode)mode
+{
+    return mode == PPCellLayoutModeHorizontalRow ||
+           mode == PPCellLayoutModeVertical ||
+           mode == PPCellLayoutModePinterest;
+}
+
+- (PPManagerCellLayoutMode)pp_sanitizedDataViewLayoutMode:(PPManagerCellLayoutMode)mode
+{
+    if (mode == PPCellLayoutModeFullWidth || mode == PPCellLayoutModeHorizontalRow) {
+        return PPCellLayoutModeHorizontalRow;
+    }
+    if ([self pp_isDataViewLayoutMode:mode]) {
+        return mode;
+    }
     return PPCellLayoutModePinterest;
 }
 
@@ -4590,7 +4843,8 @@ presentingViewController:self
 
 - (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode
 {
-    if (mode < PPCellLayoutModeSquare || mode > PPCellLayoutModePinterest) {
+    mode = [self pp_sanitizedDataViewLayoutMode:mode];
+    if (![self pp_isDataViewLayoutMode:mode]) {
         return;
     }
 
@@ -4613,7 +4867,8 @@ presentingViewController:self
                        toCollectionView:self.collectionView
                                animated:YES];
     [self pp_installPinterestHeightGuardIfNeeded];
-    [self performCrossFadeReload];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self pp_refreshVisibleUniversalCellsAppearance];
     [self pp_refreshSearchActionsMenu];
 }
 
@@ -4716,29 +4971,11 @@ presentingViewController:self
                  PPCellLayoutModeVertical,
                  YES);
 
-    UIAction *layoutSquirePPAction =
-    layoutAction(kLang(@"PPCellLayoutSquare"),
-                 @"square.fill",
-                 PPCellLayoutModeSquare,
-                 NO);
-
-    UIAction *layoutFullPPAction =
-    layoutAction(kLang(@"PPCellLayoutFullWidth"),
-                 @"rectangle.fill",
-                 PPCellLayoutModeFullWidth,
-                 NO);
-
-    UIMenuOptions primaryLayoutOptions = UIMenuOptionsDisplayInline;
-    if (@available(iOS 17.0, *)) {
-        primaryLayoutOptions = UIMenuOptionsDisplayAsPalette;
-    }
-
-    UIMenu *primaryLayoutMenu =
-    [UIMenu menuWithTitle:(kLang(@"PPDataViewPrimaryLayouts") ?: @"")
-                   image:[UIImage systemImageNamed:@"rectangle.grid.1x2"]
-              identifier:nil
-                 options:primaryLayoutOptions
-                children:@[layoutPintrestPPAction, layoutLargePPAction]];
+    UIAction *layoutHorizontalRowPPAction =
+    layoutAction(kLang(@"PPCellLayoutHorizontalRow"),
+                 @"rectangle.grid.1x2.fill",
+                 PPCellLayoutModeHorizontalRow,
+                 YES);
 
     UIMenu *utilityMenu =
     [UIMenu menuWithTitle:@""
@@ -4747,18 +4984,14 @@ presentingViewController:self
                  options:UIMenuOptionsDisplayInline
                 children:@[searchPPAction, filterPPAction]];
 
-    UIMenu *secondaryLayoutMenu =
-    [UIMenu menuWithTitle:(kLang(@"PPDataViewMoreLayouts") ?: @"")
-                   image:nil
-              identifier:nil
-                 options:UIMenuOptionsDisplayInline
-                children:@[layoutSquirePPAction, layoutFullPPAction]];
-
     return [UIMenu menuWithTitle:(kLang(@"PPDataViewActionsTitle") ?: @"")
                            image:nil
                       identifier:nil
                          options:0
-                        children:@[primaryLayoutMenu, utilityMenu, secondaryLayoutMenu]];
+                        children:@[layoutHorizontalRowPPAction,
+                                   layoutPintrestPPAction,
+                                   layoutLargePPAction,
+                                   utilityMenu]];
 }
 
 - (PPDataSection)sectionFromDeepLinkTarget:(PPDeepLinkTarget)target
