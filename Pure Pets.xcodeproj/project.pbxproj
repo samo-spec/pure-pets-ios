@@ -27,6 +27,7 @@
 		A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */; };
 		A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */; };
 		A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */; };
+		A11CE2502FEB500000000003 /* PPHomeProviderUnifiedCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */; };
 		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
@@ -892,6 +893,8 @@
 		A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeUltraPremuimProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeMarketplaceHeroCell.h; sourceTree = "<group>"; };
 		A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeMarketplaceHeroCell.m; sourceTree = "<group>"; };
+		A11CE2502FEB500000000001 /* PPHomeProviderUnifiedCategoryCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderUnifiedCategoryCardCell.h; sourceTree = "<group>"; };
+		A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderUnifiedCategoryCardCell.m; sourceTree = "<group>"; };
 		A11D00022FFD100000000002 /* PPBottomSurfaceCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomSurfaceCoordinator.h; sourceTree = "<group>"; };
 		A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomSurfaceCoordinator.m; sourceTree = "<group>"; };
 		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
@@ -2470,6 +2473,8 @@
 				F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */,
 				A11CE2302FEB200000000001 /* PPHomeUltraPremuimProviderCategoryPillCell.h */,
 				A11CE2302FEB200000000002 /* PPHomeUltraPremuimProviderCategoryPillCell.m */,
+				A11CE2502FEB500000000001 /* PPHomeProviderUnifiedCategoryCardCell.h */,
+				A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */,
 				F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */,
 				F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */,
 				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
@@ -5635,6 +5640,7 @@
 				F271467D2CCE6B5300F7F3BA /* XLFormLeftRightSelectorCell.m in Sources */,
 				F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */,
 				A11CE2402FEB400000000003 /* PPHomeMarketplaceHeroCell.m in Sources */,
+				A11CE2502FEB500000000003 /* PPHomeProviderUnifiedCategoryCardCell.m in Sources */,
 				F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */,
 				F271467E2CCE6B5300F7F3BA /* NSObject+XLFormAdditions.m in Sources */,
 				F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */,

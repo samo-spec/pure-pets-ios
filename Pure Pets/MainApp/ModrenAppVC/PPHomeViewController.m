@@ -68,6 +68,7 @@
 #import "ProviderCompaniesListVC.h"
 #import "PPHomeProviderCategoryPillCell.h"
 #import "PPHomeUltraPremuimProviderCategoryPillCell.h"
+#import "PPHomeProviderUnifiedCategoryCardCell.h"
 
 // Forward declaration so PPHomePrepareProfileMenuButton can call pp_buildProfileMenuElements
 @class PPHomeViewController;
@@ -1556,6 +1557,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (void)pp_applySimulatedNearbyLocationAndRefreshWithReason:(NSString *)reason;
 - (NSArray<PPHomeQuickActionModel *> *)pp_homeQuickActions;
 - (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderCategoryItems;
+- (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderUnifiedCategoryItems;
 - (void)pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item;
 - (void)pp_openMarketplaceProvidersListFromHero;
 - (void)pp_refreshProviderCategoryNavigationSection;
@@ -3724,10 +3726,16 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         }
 
         case PPHomeSectionProviderCategoryNav:
-            for (PPHomeProviderCategoryItem *category in [self pp_homeProviderCategoryItems]) {
+            if (PPHomeUseUnifiedProviderCategoryCard) {
                 PPHomeItem *item = [[PPHomeItem alloc] initWithType:PPHomeItemTypeProviderCategoryNav
-                                                            payload:category];
+                                                            payload:[self pp_homeProviderUnifiedCategoryItems]];
                 [items addObject:item];
+            } else {
+                for (PPHomeProviderCategoryItem *category in [self pp_homeProviderCategoryItems]) {
+                    PPHomeItem *item = [[PPHomeItem alloc] initWithType:PPHomeItemTypeProviderCategoryNav
+                                                                payload:category];
+                    [items addObject:item];
+                }
             }
             break;
 
@@ -7498,6 +7506,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeUltraPremuimProviderCategoryPillCell.class
             forCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomeProviderUnifiedCategoryCardCell.class
+            forCellWithReuseIdentifier:PPHomeProviderUnifiedCategoryCardCell.reuseIdentifier];
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
@@ -7757,6 +7767,28 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         if (section == PPHomeSectionProviderCategoryNav) {
+            if (PPHomeUseUnifiedProviderCategoryCard) {
+                PPHomeProviderUnifiedCategoryCardCell *cell =
+                    [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeProviderUnifiedCategoryCardCell.reuseIdentifier
+                                                              forIndexPath:indexPath];
+                NSArray<PPHomeProviderCategoryItem *> *providerItems =
+                    [item.payload isKindOfClass:NSArray.class]
+                    ? (NSArray<PPHomeProviderCategoryItem *> *)item.payload
+                    : [strongSelf pp_homeProviderUnifiedCategoryItems];
+                PPHomeProviderCategoryItem *leftItem = providerItems.count > 0 ? providerItems[0] : nil;
+                PPHomeProviderCategoryItem *rightItem = providerItems.count > 1 ? providerItems[1] : nil;
+                [cell configureWithLeftItem:leftItem rightItem:rightItem];
+
+                __weak typeof(strongSelf) weakHome = strongSelf;
+                cell.onTap = ^(PPHomeProviderCategoryItem *selectedItem) {
+                    __strong typeof(weakHome) self = weakHome;
+                    if (!self) return;
+                    [self pp_handleProviderCategorySelection:selectedItem];
+                };
+
+                pp_stageCell(cell); return cell;
+            }
+
             PPHomeUltraPremuimProviderCategoryPillCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimProviderCategoryPillCell.reuseIdentifier
                                                           forIndexPath:indexPath];
@@ -9947,6 +9979,38 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         ];
     });
     return items;
+}
+
+- (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderUnifiedCategoryItems
+{
+    NSArray<PPHomeProviderCategoryItem *> *items = [self pp_homeProviderCategoryItems];
+    PPHomeProviderCategoryItem *pharmacyItem = nil;
+    PPHomeProviderCategoryItem *doctorsItem = nil;
+
+    for (PPHomeProviderCategoryItem *item in items) {
+        NSString *identifier = PPSafeString(item.identifier);
+        if ([identifier isEqualToString:@"pharmacy"]) {
+            pharmacyItem = item;
+        } else if ([identifier isEqualToString:@"veterinarians"]) {
+            doctorsItem = item;
+        }
+    }
+
+    if (!pharmacyItem && items.count > 1) {
+        pharmacyItem = items[1];
+    }
+    if (!doctorsItem && items.count > 0) {
+        doctorsItem = items[0];
+    }
+
+    NSMutableArray<PPHomeProviderCategoryItem *> *orderedItems = [NSMutableArray arrayWithCapacity:2];
+    if (pharmacyItem) {
+        [orderedItems addObject:pharmacyItem];
+    }
+    if (doctorsItem) {
+        [orderedItems addObject:doctorsItem];
+    }
+    return orderedItems.copy;
 }
 
 - (PPHomeProviderCategoryItem *)pp_marketplaceProviderCategoryItem

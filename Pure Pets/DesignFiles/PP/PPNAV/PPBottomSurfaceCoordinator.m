@@ -186,6 +186,13 @@
 
 - (BOOL)pp_isFloatingCartEligibleController:(UIViewController *)controller
 {
+    if ([controller respondsToSelector:@selector(pp_isFloatingCartEligible)]) {
+        BOOL (*eligibleFunc)(id, SEL) = (BOOL (*)(id, SEL))[controller methodForSelector:@selector(pp_isFloatingCartEligible)];
+        if (eligibleFunc) {
+            return eligibleFunc(controller, @selector(pp_isFloatingCartEligible));
+        }
+    }
+
     for (Class candidateClass = controller.class;
          candidateClass && candidateClass != UIViewController.class;
          candidateClass = class_getSuperclass(candidateClass)) {
@@ -441,6 +448,16 @@
 - (nullable UIView *)pp_controllerOwnedSurfaceViewForController:(UIViewController *)controller
                                                            kind:(PPBottomSurfaceKind)kind
 {
+    if ([controller respondsToSelector:@selector(pp_bottomSurfaceView)]) {
+        UIView * (*surfaceFunc)(id, SEL) = (UIView * (*)(id, SEL))[controller methodForSelector:@selector(pp_bottomSurfaceView)];
+        if (surfaceFunc) {
+            UIView *customView = surfaceFunc(controller, @selector(pp_bottomSurfaceView));
+            if ([customView isKindOfClass:UIView.class]) {
+                return customView;
+            }
+        }
+    }
+
     NSString *key = nil;
     switch (kind) {
         case PPBottomSurfaceKindViewerCartBottomBar:

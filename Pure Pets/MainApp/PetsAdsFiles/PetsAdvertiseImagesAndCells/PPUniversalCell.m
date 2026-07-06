@@ -545,6 +545,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 
 
+@interface PPUniversalGradientView ()
+@property (nonatomic, copy, nullable) void (^layoutSubviewsCallback)(UIView *view);
+@end
+
 @implementation PPUniversalGradientView
 
 + (Class)layerClass
@@ -568,6 +572,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return self;
 }
 
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (self.layoutSubviewsCallback) {
+        self.layoutSubviewsCallback(self);
+    }
+}
+
 - (void)applyContextPaletteForContext:(PPCellContext)context
 {
     self.backgroundColor = [UIColor clearColor];
@@ -575,6 +587,20 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     layer.colors = @[(id)[UIColor clearColor].CGColor, (id)[UIColor clearColor].CGColor];
 }
 
+@end
+
+@interface PPUniversalCardView : UIView
+@property (nonatomic, copy, nullable) void (^layoutSubviewsCallback)(UIView *view);
+@end
+
+@implementation PPUniversalCardView
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (self.layoutSubviewsCallback) {
+        self.layoutSubviewsCallback(self);
+    }
+}
 @end
 
 @interface PPUniversalInsetLabel : UILabel
@@ -717,9 +743,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 @end
 
+@class PPUniversalCardView;
+
 @interface PPUniversalCell () <UIGestureRecognizerDelegate>
 
-@property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) PPUniversalCardView *cardView;
 
 
 @property (nonatomic, strong) UIView *imageScrimView;
@@ -1091,13 +1119,39 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_buildViewHierarchy
 {
-    self.cardView = [[UIView alloc] init];
+    self.cardView = [[PPUniversalCardView alloc] init];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.cardView];
+
+    __weak typeof(self) weakSelf = self;
+    self.cardView.layoutSubviewsCallback = ^(UIView *view) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        strongSelf.cardView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:view.bounds
+                                       cornerRadius:view.layer.cornerRadius].CGPath;
+        if (strongSelf.cardGradientLayer) {
+            strongSelf.cardGradientLayer.frame = view.bounds;
+            strongSelf.cardGradientLayer.cornerRadius = view.layer.cornerRadius;
+        }
+        [CATransaction commit];
+        [strongSelf pp_layoutLiquidBorderLayers];
+    };
 
     self.imageContainer = [[PPUniversalGradientView alloc] init];
     self.imageContainer.layer.cornerRadius = PPUniversalImageCornerRadius;
     self.imageContainer.clipsToBounds = YES;
+    self.imageContainer.layoutSubviewsCallback = ^(UIView *view) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        strongSelf.videoPlayerLayer.frame = view.bounds;
+        [CATransaction commit];
+        [strongSelf pp_layoutLiquidBorderLayers];
+    };
     [self.cardView addSubview:self.imageContainer];
 
     self.imageView = [[UIImageView alloc] init];

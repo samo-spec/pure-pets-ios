@@ -7,6 +7,7 @@
 
 #import "PPHomeFunc.h"
 #import "PPBannerCollectionCell.h"
+#import "PPHomeProviderUnifiedCategoryCardCell.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -234,6 +235,14 @@ static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
 
 static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
 {
+    if (PPHomeUseUnifiedProviderCategoryCard) {
+        BOOL accessibilityText =
+            UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+        if (accessibilityText) {
+            return  83.0;
+        }
+        return   72.0;
+    }
     if (PPHomeWidthIsTablet(width)) {
         return 72.0;
     }
@@ -798,9 +807,40 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)providerCategoryNavigationSectionForWidth:(CGFloat)availableWidth
  {
      CGFloat resolvedWidth = PPHomeResolvedWidth(availableWidth);
+     CGFloat itemHeight = PPHomeProviderCategoryNavHeight(availableWidth);
+
+     if (PPHomeUseUnifiedProviderCategoryCard) {
+         NSCollectionLayoutSize *itemSize =
+         [NSCollectionLayoutSize sizeWithWidthDimension:
+          [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+                                          heightDimension:
+          [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
+
+         NSCollectionLayoutItem *item =
+         [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
+
+         NSCollectionLayoutSize *groupSize =
+         [NSCollectionLayoutSize sizeWithWidthDimension:
+          [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+                                          heightDimension:
+          [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
+
+         NSCollectionLayoutGroup *group =
+         [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
+                                                       subitems:@[item]];
+
+         NSCollectionLayoutSection *section =
+         [NSCollectionLayoutSection sectionWithGroup:group];
+         section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
+         section.contentInsets = NSDirectionalEdgeInsetsMake(6.0,
+                                                            PPHomeEdgeSpacing+3,
+                                                            PPHomeEdgeSpacing,
+                                                            PPHomeEdgeSpacing+3);
+         return section;
+     }
+
      CGFloat middleSpacing = 12.0;
      CGFloat contentWidth = MAX(0.0, resolvedWidth - (PPHomeEdgeSpacing * 2.0));
-     CGFloat itemHeight = PPHomeProviderCategoryNavHeight(availableWidth);
      CGFloat itemWidth = MAX(0.0, (contentWidth - middleSpacing) / 2.0);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
