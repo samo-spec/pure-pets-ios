@@ -37,6 +37,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong, nullable) NSTimer *tokenRefreshTimer;
 @property (nonatomic, assign) BOOL requireVerifiedEmail;
 @property (nonatomic, assign) BOOL enforceFirestoreBlockedFlag;
+- (void)pp_syncPublicProfileForUID:(NSString *)uid
+                            fields:(NSDictionary<NSString *, id> *)fields
+                        completion:(FUCompletion _Nullable)completion;
 @end
 
 @implementation UserManager
@@ -168,6 +171,25 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
 
     BOOL hasPlus = [trimmed hasPrefix:@"+"];
     return hasPlus ? [NSString stringWithFormat:@"+%@", digits] : digits;
+}
+
+static void PPUserManagerSetPublicString(NSMutableDictionary<NSString *, id> *payload,
+                                         NSString *key,
+                                         id value)
+{
+    NSString *string = PPUserManagerTrimmedString(value);
+    if (string.length > 0) {
+        payload[key] = string;
+    }
+}
+
+static void PPUserManagerSetPublicNumber(NSMutableDictionary<NSString *, id> *payload,
+                                         NSString *key,
+                                         id value)
+{
+    if ([value isKindOfClass:NSNumber.class]) {
+        payload[key] = value;
+    }
 }
 
 static NSString * const PPUserNotificationV2DeactivateReasonLogout = @"logout";
@@ -2019,6 +2041,13 @@ static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
             [docRef setData:safeUpdateData merge:YES completion:^(NSError * _Nullable mergeError) {
                 if (mergeError) {
                     NSLog(@"[UserManager] Failed to merge existing user document: %@", mergeError);
+                } else {
+                    [self pp_syncPublicProfileForUID:userUID fields:safeUpdateData completion:^(NSError * _Nullable publicProfileError) {
+                        if (publicProfileError) {
+                            NSLog(@"[UserManager] Public profile mirror update failed for UID %@: %@",
+                                  userUID, publicProfileError.localizedDescription ?: @"unknown");
+                        }
+                    }];
                 }
                 if (completion) completion(mergeError);
             }];
@@ -2031,10 +2060,108 @@ static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
                 NSLog(@"[UserManager] Failed to create user document: %@", createError);
             } else {
                 NSLog(@"[UserManager] User document created for UID: %@", userUID);
+                [self pp_syncPublicProfileForUID:userUID fields:safeData completion:^(NSError * _Nullable publicProfileError) {
+                    if (publicProfileError) {
+                        NSLog(@"[UserManager] Public profile mirror create failed for UID %@: %@",
+                              userUID, publicProfileError.localizedDescription ?: @"unknown");
+                    }
+                }];
             }
             if (completion) completion(createError);
         }];
     }];
+}
+
+- (NSDictionary<NSString *, id> *)pp_publicProfilePayloadForUID:(NSString *)uid
+                                                         fields:(NSDictionary<NSString *, id> *)fields
+                                                   fallbackUser:(UserModel *)fallbackUser
+{
+    NSString *safeUID = PPUserManagerTrimmedString(uid);
+    if (safeUID.length == 0) {
+        return @{};
+    }
+
+    NSMutableDictionary<NSString *, id> *payload = [NSMutableDictionary dictionary];
+    payload[@"uid"] = safeUID;
+    payload[@"ID"] = safeUID;
+
+    NSString *firstName = PPUserManagerTrimmedString(fields[@"FirstName"]);
+    if (firstName.length == 0) firstName = PPUserManagerTrimmedString(fallbackUser.FirstName);
+    NSString *lastName = PPUserManagerTrimmedString(fields[@"LastName"]);
+    if (lastName.length == 0) lastName = PPUserManagerTrimmedString(fallbackUser.LastName);
+    NSString *displayName = PPUserManagerTrimmedString(fields[@"UserName"]);
+    if (displayName.length == 0) displayName = PPUserManagerTrimmedString(fields[FUUpdateKeyDisplayName]);
+    if (displayName.length == 0) displayName = PPUserManagerTrimmedString(fallbackUser.UserName);
+    if (displayName.length == 0) {
+        NSMutableArray<NSString *> *nameParts = [NSMutableArray array];
+        if (firstName.length > 0) [nameParts addObject:firstName];
+        if (lastName.length > 0) [nameParts addObject:lastName];
+        displayName = [nameParts componentsJoinedByString:@" "];
+    }
+    if (displayName.length == 0) {
+        return @{};
+    }
+
+    PPUserManagerSetPublicString(payload, @"UserName", displayName);
+    PPUserManagerSetPublicString(payload, @"displayName", displayName);
+    PPUserManagerSetPublicString(payload, @"FirstName", firstName);
+    PPUserManagerSetPublicString(payload, @"LastName", lastName);
+    PPUserManagerSetPublicString(payload, @"UserAbout", fields[@"UserAbout"] ?: fallbackUser.UserAbout);
+
+    NSString *photoURL = PPUserManagerTrimmedString(fields[@"UserImageUrl"]);
+    if (photoURL.length == 0) photoURL = PPUserManagerTrimmedString(fields[FUUpdateKeyPhotoURL]);
+    if (photoURL.length == 0) photoURL = PPUserManagerTrimmedString(fields[@"photoURL"]);
+    if (photoURL.length == 0) photoURL = PPUserManagerTrimmedString(fallbackUser.UserImageUrl.absoluteString);
+    PPUserManagerSetPublicString(payload, @"UserImageUrl", photoURL);
+    PPUserManagerSetPublicString(payload, @"photoURL", photoURL);
+    PPUserManagerSetPublicString(payload, @"photoUrl", photoURL);
+
+    id countryIDValue = fields[@"CountryID"];
+    if (![countryIDValue isKindOfClass:NSNumber.class] && fallbackUser.CountryID > 0) {
+        countryIDValue = @(fallbackUser.CountryID);
+    }
+    PPUserManagerSetPublicNumber(payload, @"CountryID", countryIDValue);
+    PPUserManagerSetPublicString(payload, @"CountryName", fields[@"CountryName"]);
+    PPUserManagerSetPublicString(payload, @"CountryIsoCode", fields[@"CountryIsoCode"]);
+
+    BOOL canReceiveMessages = fallbackUser ? fallbackUser.canUseChatFeature : YES;
+    id rawCanUseChat = fields[@"canUseChat"];
+    if ([rawCanUseChat respondsToSelector:@selector(boolValue)]) {
+        canReceiveMessages = [rawCanUseChat boolValue];
+    }
+    id rawChatBlocked = fields[@"chatBlocked"];
+    BOOL chatBlocked = [rawChatBlocked respondsToSelector:@selector(boolValue)] ? [rawChatBlocked boolValue] : fallbackUser.chatBlocked;
+    payload[@"canReceiveMessages"] = @(!chatBlocked && canReceiveMessages);
+    payload[@"isChatEnabled"] = payload[@"canReceiveMessages"];
+    payload[@"updatedAt"] = [NSDate date];
+
+    return payload.copy;
+}
+
+- (void)pp_syncPublicProfileForUID:(NSString *)uid
+                            fields:(NSDictionary<NSString *, id> *)fields
+                        completion:(FUCompletion _Nullable)completion
+{
+    NSString *safeUID = PPUserManagerTrimmedString(uid);
+    FIRUser *authUser = [FIRAuth auth].currentUser;
+    if (safeUID.length == 0 ||
+        authUser.uid.length == 0 ||
+        ![authUser.uid isEqualToString:safeUID]) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    UserModel *fallbackUser = [self.currentUser.ID isEqualToString:safeUID] ? self.currentUser : nil;
+    NSDictionary<NSString *, id> *payload =
+        [self pp_publicProfilePayloadForUID:safeUID fields:fields ?: @{} fallbackUser:fallbackUser];
+    if (payload.count <= 2) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    FIRDocumentReference *publicRef =
+        [[[FIRFirestore firestore] collectionWithPath:@"PublicUserProfiles"] documentWithPath:safeUID];
+    [publicRef setData:payload merge:YES completion:completion];
 }
 
 - (void)updateUserDocumentForUID:(NSString * _Nullable)userUID fields:(NSDictionary<NSString *,id> * _Nullable)fields completion:(FUCompletion _Nullable)completion {
@@ -2171,6 +2298,12 @@ static NSTimeInterval const PPUserNotificationV2DeactivateTimeout = 3.0;
                 NSLog(@"[UserManager] Failed to update document for UID %@: %@", userUID, error);
             } else {
                 NSLog(@"[UserManager] User document updated for UID %@ with fields: %@", userUID, safeFields);
+                [strongSelf pp_syncPublicProfileForUID:userUID fields:safeFields completion:^(NSError * _Nullable publicProfileError) {
+                    if (publicProfileError) {
+                        NSLog(@"[UserManager] Public profile mirror update failed for UID %@: %@",
+                              userUID, publicProfileError.localizedDescription ?: @"unknown");
+                    }
+                }];
             }
             if (completion) completion(error);
         }];
@@ -3349,6 +3482,12 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
             return;
         }
         NSLog(@"[UserManager] ✅ addUser Firestore created for UID=%@", uid);
+        [strongSelf pp_syncPublicProfileForUID:uid fields:doc completion:^(NSError * _Nullable publicProfileError) {
+            if (publicProfileError) {
+                NSLog(@"[UserManager] Public profile mirror update failed after addUser for UID %@: %@",
+                      uid, publicProfileError.localizedDescription ?: @"unknown");
+            }
+        }];
 
         // If this is the signed-in user, refresh currentUser cache
         FIRUser *authUser = [FIRAuth auth].currentUser;

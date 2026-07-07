@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (UIUserInterfaceStyle)loadUserInterfaceStyle;
 - (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style;
+- (void)pp_presentSettingsLocationOptions;
 @property IBOutlet  UILabel *mTitleLabel;
 @end
 NS_ASSUME_NONNULL_END

@@ -453,7 +453,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.sectionTitleLocalizationKey.length > 0) {
         resolvedTitle = kLang(self.sectionTitleLocalizationKey);
     }
-
+    resolvedTitle = nil;
     self.hasSectionTitle = resolvedTitle.length > 0;
     self.sectionTitleLabel.text = resolvedTitle;
     self.sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];

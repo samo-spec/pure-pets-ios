@@ -408,10 +408,6 @@ static NSInteger loadingCardFlag = 0;
             didFireInitialCompletion = YES;
             completionHandler(DataLoadingResultSuccess);
         }
-
-        // Keep cached public profiles instead of attaching a broad listener that can
-        // be invalidated by one legacy malformed document.
-        return;
     }
     
     // 2) attach Firestore listener

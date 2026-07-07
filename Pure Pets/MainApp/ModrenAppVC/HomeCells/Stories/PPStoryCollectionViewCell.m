@@ -50,7 +50,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _cardBackdropView.layer.cornerRadius = PPStoryCardCornerRadius;
         _cardBackdropView.layer.masksToBounds = YES;
         _cardBackdropView.clipsToBounds = YES;
-        _cardBackdropView.layer.borderWidth = 1.0;
+        _cardBackdropView.layer.borderWidth = 0.0;
         [_cardBackdropView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.16]];
         [_cardBackdropView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.10]];
         _cardBackdropView.layer.shadowOpacity = 1.0;

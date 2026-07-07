@@ -519,6 +519,8 @@
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
 		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
+		F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */; };
+		F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
 		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
@@ -1818,6 +1820,10 @@
 		F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewInput.m; sourceTree = "<group>"; };
 		F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewVC.h; sourceTree = "<group>"; };
 		F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewVC.m; sourceTree = "<group>"; };
+		F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsCell.h; sourceTree = "<group>"; };
+		F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsCell.m; sourceTree = "<group>"; };
+		F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsLayout.h; sourceTree = "<group>"; };
+		F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsLayout.m; sourceTree = "<group>"; };
 		F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFilterSheetVC.h; sourceTree = "<group>"; };
 		F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFilterSheetVC.m; sourceTree = "<group>"; };
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
@@ -4143,6 +4149,10 @@
 				F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */,
 				F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */,
 				F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */,
+				F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */,
+				F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */,
+				F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */,
+				F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */,
 				F28DD5A42F04CC5D00FF2671 /* PPDataViewInput.h */,
 				F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */,
 				F28DD5A02F049BFE00FF2671 /* PPDataViewVM.h */,
@@ -5581,6 +5591,8 @@
 				F271466E2CCE6B5300F7F3BA /* XLForm.m in Sources */,
 				F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */,
 				F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */,
+				F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */,
+				F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */,
 				F28A0A0E2EEA3C3F00EE5055 /* AppDataListenerManager.m in Sources */,
 				F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */,
 				F2B641B72F4A7F860092C2BF /* PPSelectAddressVC.m in Sources */,
@@ -6446,7 +6458,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6556,7 +6568,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6662,7 +6674,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6680,7 +6692,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6697,7 +6709,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6714,7 +6726,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 193;
+				CURRENT_PROJECT_VERSION = 194;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

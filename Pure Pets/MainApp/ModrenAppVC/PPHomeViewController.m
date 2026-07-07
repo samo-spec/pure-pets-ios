@@ -10629,6 +10629,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [self pp_shouldReduceHomeMotion] ||
         !self.isHomeScreenVisible ||
         self.view.window == nil ||
+        self.pp_premiumBackgroundGlowViewMid.hidden ||
         CGRectIsEmpty(self.pp_premiumBackgroundGlowViewMid.bounds)) {
         return;
     }
@@ -12874,23 +12875,16 @@ presentingViewController:self
     BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
-    UIColor *signatureColor = AppPrimaryClrShiner ?: UIColor.systemPurpleColor;
-    UIColor *supportingColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: signatureColor;
-    UIColor *topAtmosphereColor = AppPrimaryClrShiner;
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:topAtmosphereColor
-                        peakAlpha:(isDark ? 0.118 : 0.028) * accessibilityScale
-                      middleAlpha:(isDark ? 0.054 : 0.048) * accessibilityScale];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:supportingColor
-                        peakAlpha:(isDark ? 0.075 : 0.035) * accessibilityScale
-                      middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.018)) * accessibilityScale];
+    UIColor *signatureColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.pp_premiumBackgroundGlowViewTop.hidden = YES;
+    self.pp_premiumBackgroundGlowViewMid.hidden = YES;
+    self.pp_premiumBackgroundGlowViewBottom.hidden = NO;
+    [self pp_stopPremiumBackgroundGlowMotion];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
                             color:signatureColor
-                        peakAlpha:(isDark ? 0.27 : 0.041) * accessibilityScale
-                      middleAlpha:(isDark ? 0.095 : 0.072) * accessibilityScale];
+                        peakAlpha:(isDark ? 0.16 : 0.040) * accessibilityScale
+                      middleAlpha:(isDark ? 0.052 : 0.030) * accessibilityScale];
     /*
 
 [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
@@ -12961,7 +12955,7 @@ presentingViewController:self
 
     self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
     self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
-        isRTL ? bottomSize * 0.34 : width - (bottomSize * 0.34),
+        isRTL ? width - (bottomSize * 0.34) : bottomSize * 0.34,
         height - (bottomSize * 0.07)
     );
 

@@ -14,7 +14,10 @@
 #import "LeaveFeedbackViewController.h"
 #import "MainController.h"
 #import "PPUserSigningManager.h"
+#import "Language.h"
 #import <SDWebImage/UIImageView+WebCache.h>
+#import <UserNotifications/UserNotifications.h>
+#import "PPHUD.h"
 
 typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionProfile = 0,
@@ -27,7 +30,15 @@ typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionProduction,
     PPUserMenuActionSettings,
     PPUserMenuActionSupport,
-    PPUserMenuActionLogout
+    PPUserMenuActionLogout,
+
+    // Quick Access Actions
+    PPUserMenuActionQuickAccessLightAppearance,
+    PPUserMenuActionQuickAccessDarkAppearance,
+    PPUserMenuActionQuickAccessSwitchToArabic,
+    PPUserMenuActionQuickAccessSwitchToEnglish,
+    PPUserMenuActionQuickAccessEnableNotifications,
+    PPUserMenuActionQuickAccessEnableLocation
 };
 
 static NSString * const PPUserMenuCellIdentifier = @"PPUserMenuCell";
@@ -282,6 +293,180 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 
 @end
 
+#pragma mark - Quick Access Cell
+
+static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickAccessCell";
+
+@interface PPUserMenuQuickAccessCell : UITableViewCell
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView *stackView;
+@property (nonatomic, strong) NSArray *quickAccessItems;
+@property (nonatomic, copy) void (^actionHandler)(PPUserMenuAction action);
+- (void)configureWithItems:(NSArray *)items actionHandler:(void (^)(PPUserMenuAction action))actionHandler;
+@end
+
+@implementation PPUserMenuQuickAccessCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.contentView.backgroundColor = UIColor.clearColor;
+        self.selectionStyle = UITableViewCellSelectionStyleNone;
+        self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+        UIScrollView *scrollView = [UIScrollView new];
+        scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+        scrollView.showsHorizontalScrollIndicator = NO;
+        scrollView.alwaysBounceHorizontal = NO;
+        [self.contentView addSubview:scrollView];
+        self.scrollView = scrollView;
+
+        UIStackView *stackView = [[UIStackView alloc] init];
+        stackView.translatesAutoresizingMaskIntoConstraints = NO;
+        stackView.axis = UILayoutConstraintAxisHorizontal;
+        stackView.alignment = UIStackViewAlignmentCenter;
+        stackView.spacing = PPSpaceBase;
+        stackView.distribution = UIStackViewDistributionFillEqually;
+        [scrollView addSubview:stackView];
+        self.stackView = stackView;
+
+        [NSLayoutConstraint activateConstraints:@[
+            [scrollView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+            [scrollView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+            [scrollView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+            [scrollView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+            [scrollView.heightAnchor constraintGreaterThanOrEqualToConstant:60.0],
+
+            [stackView.topAnchor constraintEqualToAnchor:scrollView.topAnchor constant:8.0],
+            [stackView.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor constant:PPScreenMargin],
+            [stackView.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor constant:-PPScreenMargin],
+            [stackView.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor constant:-8.0],
+            [stackView.heightAnchor constraintEqualToConstant:48.0],
+            [stackView.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor constant:-(PPScreenMargin * 2)]
+        ]];
+    }
+    return self;
+}
+
+- (void)configureWithItems:(NSArray *)items actionHandler:(void (^)(PPUserMenuAction action))actionHandler
+{
+    self.quickAccessItems = items;
+    self.actionHandler = actionHandler;
+
+    // Clear existing views
+    for (UIView *view in self.stackView.arrangedSubviews) {
+        [self.stackView removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+
+    // Add new buttons for each quick access item
+    for (PPUserMenuItem *item in items) {
+        UIButton *button = [self pp_createQuickAccessButtonWithItem:item];
+        [self.stackView addArrangedSubview:button];
+    }
+}
+
+- (UIButton *)pp_createQuickAccessButtonWithItem:(PPUserMenuItem *)item
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+
+    // Use the existing PPUserMenuCell styling as inspiration
+    UIView *surface = [UIView new];
+    surface.translatesAutoresizingMaskIntoConstraints = NO;
+    surface.userInteractionEnabled = NO;
+    surface.backgroundColor = PPUserMenuSurfaceColor();
+    surface.layer.borderWidth = 1.0;
+    [surface pp_setBorderColor:PPUserMenuBorderColor()];
+    PPApplyContinuousCorners(surface, 20.0);
+    PPApplyCardShadow(surface);
+    surface.layer.shadowOpacity = 0.045;
+    [button addSubview:surface];
+
+    UIImageView *iconView = [UIImageView new];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    UIColor *tint = PPUserMenuColor(item.tintColor, AppPrimaryClr);
+    iconView.image = PPUserMenuSymbol(item.iconName, tint, 18.0, UIImageSymbolWeightSemibold);
+    [surface addSubview:iconView];
+
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                       scaledFontForFont:([GM boldFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold])];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.7;
+    titleLabel.textColor = PPUserMenuColor(item.tintColor, AppPrimaryClr);
+    titleLabel.numberOfLines = 1;
+    titleLabel.text = PPUserMenuLocalized(item.titleKey);
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    [surface addSubview:titleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [surface.topAnchor constraintEqualToAnchor:button.topAnchor ],
+        [surface.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
+        [surface.trailingAnchor constraintEqualToAnchor:button.trailingAnchor],
+        [surface.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
+        [surface.heightAnchor constraintEqualToConstant:48.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:surface.centerXAnchor],
+        [iconView.topAnchor constraintEqualToAnchor:surface.topAnchor constant:8.0],
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:4.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:6.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-6.0],
+        [titleLabel.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-6.0]
+    ]];
+
+    button.tag = item.action;
+    [button addTarget:self action:@selector(pp_buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    button.accessibilityLabel = titleLabel.text;
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+
+    // Add pressed state styling
+    [button addTarget:self action:@selector(pp_buttonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_buttonTouchUp:) forControlEvents:UIControlEventTouchDragExit];
+
+    return button;
+}
+
+- (void)pp_buttonTapped:(UIButton *)sender
+{
+    if (self.actionHandler) {
+        self.actionHandler((PPUserMenuAction)sender.tag);
+    }
+}
+
+- (void)pp_buttonTouchDown:(UIButton *)sender
+{
+    UIView *surface = sender.subviews.firstObject;
+    if ([surface isKindOfClass:UIView.class]) {
+        [UIView animateWithDuration:0.10 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+            surface.transform = CGAffineTransformMakeScale(0.96, 0.96);
+            surface.alpha = 0.86;
+        } completion:nil];
+    }
+}
+
+- (void)pp_buttonTouchUp:(UIButton *)sender
+{
+    UIView *surface = sender.subviews.firstObject;
+    if ([surface isKindOfClass:UIView.class]) {
+        [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+            surface.transform = CGAffineTransformIdentity;
+            surface.alpha = 1.0;
+        } completion:nil];
+    }
+}
+
+@end
+
 #pragma mark - View Controller
 
 @interface PPUserMenuViewController () <UITableViewDataSource, UITableViewDelegate>
@@ -372,6 +557,7 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
         tableView.sectionHeaderTopPadding = 0.0;
     }
     [tableView registerClass:PPUserMenuCell.class forCellReuseIdentifier:PPUserMenuCellIdentifier];
+    [tableView registerClass:PPUserMenuQuickAccessCell.class forCellReuseIdentifier:PPUserMenuQuickAccessCellIdentifier];
     [self.view addSubview:tableView];
     self.tableView = tableView;
 
@@ -499,6 +685,84 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
     return section;
 }
 
+- (NSArray<PPUserMenuItem *> *)pp_buildQuickAccessItems
+{
+    NSMutableArray<PPUserMenuItem *> *items = [NSMutableArray array];
+
+    // Detect current theme
+    UIUserInterfaceStyle currentTheme = [[PPThemeManager sharedManager] loadUserInterfaceStyle];
+    BOOL isDarkMode = (currentTheme == UIUserInterfaceStyleDark);
+
+    // Detect current language
+    NSInteger currentLanguage = [Language languageVal];
+    BOOL isArabic = (currentLanguage == 1);
+
+    // Theme quick access
+    if (isDarkMode) {
+        // Currently dark, suggest light
+        [items addObject:[self pp_itemWithTitleKey:@"Light Appearance"
+                                          subtitleKey:@""
+                                             iconName:@"sun.max.fill"
+                                            tintColor:UIColor.systemYellowColor
+                                               action:PPUserMenuActionQuickAccessLightAppearance
+                                          destructive:NO]];
+    } else {
+        // Currently light or system, suggest dark
+        [items addObject:[self pp_itemWithTitleKey:@"Dark Appearance"
+                                          subtitleKey:@""
+                                             iconName:@"moon.fill"
+                                            tintColor:UIColor.systemIndigoColor
+                                               action:PPUserMenuActionQuickAccessDarkAppearance
+                                          destructive:NO]];
+    }
+
+    // Language quick access
+    if (isArabic) {
+        // Currently Arabic, suggest English
+        [items addObject:[self pp_itemWithTitleKey:@"English"
+                                          subtitleKey:@""
+                                             iconName:@"globe.central.south.asia"
+                                            tintColor:UIColor.systemBlueColor
+                                               action:PPUserMenuActionQuickAccessSwitchToEnglish
+                                          destructive:NO]];
+    } else {
+        // Currently English, suggest Arabic
+        [items addObject:[self pp_itemWithTitleKey:@"Arabic"
+                                          subtitleKey:@""
+                                             iconName:@"globe.central.south.asia"
+                                            tintColor:UIColor.systemGreenColor
+                                               action:PPUserMenuActionQuickAccessSwitchToArabic
+                                          destructive:NO]];
+    }
+
+    // Notifications quick access
+    [items addObject:[self pp_itemWithTitleKey:@"Notifications"
+                                      subtitleKey:@""
+                                         iconName:@"bell.fill"
+                                        tintColor:UIColor.systemRedColor
+                                           action:PPUserMenuActionQuickAccessEnableNotifications
+                                      destructive:NO]];
+
+    // Location quick access
+    [items addObject:[self pp_itemWithTitleKey:@"Location"
+                                      subtitleKey:@""
+                                         iconName:@"location.fill"
+                                        tintColor:UIColor.systemTealColor
+                                           action:PPUserMenuActionQuickAccessEnableLocation
+                                      destructive:NO]];
+
+    return items.copy;
+}
+
+- (PPUserMenuSection *)pp_buildQuickAccessSection
+{
+    NSArray<PPUserMenuItem *> *items = [self pp_buildQuickAccessItems];
+    if (items.count == 0) {
+        return nil;
+    }
+    return [self pp_sectionWithTitleKey:@"quick_access_settings_section" items:items];
+}
+
 - (void)pp_rebuildSections
 {
     NSMutableArray<PPUserMenuSection *> *sections = [NSMutableArray array];
@@ -519,6 +783,12 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
                              action:PPUserMenuActionLogin
                         destructive:NO];
     [sections addObject:[self pp_sectionWithTitleKey:@"user_menu_account_section" items:@[accountItem]]];
+
+    // Add Quick Access Settings section
+    PPUserMenuSection *quickAccessSection = [self pp_buildQuickAccessSection];
+    if (quickAccessSection) {
+        [sections addObject:quickAccessSection];
+    }
 
     NSMutableArray<PPUserMenuItem *> *activity = [NSMutableArray array];
     [activity addObject:[self pp_itemWithTitleKey:@"showfav"
@@ -699,11 +969,28 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
     if (section < 0 || section >= (NSInteger)self.sections.count) {
         return 0;
     }
-    return self.sections[section].items.count;
+    PPUserMenuSection *menuSection = self.sections[section];
+    if ([menuSection.titleKey isEqualToString:@"quick_access_settings_section"]) {
+        return 1;
+    }
+    return menuSection.items.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
+    PPUserMenuSection *section = self.sections[indexPath.section];
+
+    // Check if this is the quick access section
+    if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
+        PPUserMenuQuickAccessCell *cell = [tableView dequeueReusableCellWithIdentifier:PPUserMenuQuickAccessCellIdentifier forIndexPath:indexPath];
+        __weak typeof(self) weakSelf = self;
+        [cell configureWithItems:section.items actionHandler:^(PPUserMenuAction action) {
+            [weakSelf pp_handleAction:action];
+        }];
+        return cell;
+    }
+
+    // Regular menu cell
     PPUserMenuCell *cell = [tableView dequeueReusableCellWithIdentifier:PPUserMenuCellIdentifier forIndexPath:indexPath];
     PPUserMenuItem *item = [self pp_itemAtIndexPath:indexPath];
     [cell configureWithItem:item];
@@ -711,6 +998,15 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 }
 
 #pragma mark - UITableViewDelegate
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPUserMenuSection *section = self.sections[indexPath.section];
+    if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
+        return 60.0; // Fixed height for quick access rail
+    }
+    return UITableViewAutomaticDimension;
+}
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
@@ -752,6 +1048,13 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    PPUserMenuSection *section = self.sections[indexPath.section];
+
+    // Quick access section buttons handle their own taps
+    if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
+        return;
+    }
+
     PPUserMenuItem *item = [self pp_itemAtIndexPath:indexPath];
     if (!item) {
         return;
@@ -838,6 +1141,58 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
         case PPUserMenuActionLogout:
             [self pp_presentLogoutFlow];
             break;
+
+        // Quick Access Actions
+        case PPUserMenuActionQuickAccessLightAppearance: {
+            [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleLight];
+            [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleLight];
+            [PPFunc triggerLightHaptic];
+            [self pp_rebuildSections];
+            [self.tableView reloadData];
+            break;
+        }
+        case PPUserMenuActionQuickAccessDarkAppearance: {
+            [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleDark];
+            [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleDark];
+            [PPFunc triggerLightHaptic];
+            [self pp_rebuildSections];
+            [self.tableView reloadData];
+            break;
+        }
+        case PPUserMenuActionQuickAccessSwitchToArabic: {
+            [Language userSelectedLanguage:@"ar"];
+            [PPFunc triggerLightHaptic];
+            [self pp_rebuildSections];
+            [self.tableView reloadData];
+            break;
+        }
+        case PPUserMenuActionQuickAccessSwitchToEnglish: {
+            [Language userSelectedLanguage:@"en"];
+            [PPFunc triggerLightHaptic];
+            [self pp_rebuildSections];
+            [self.tableView reloadData];
+            break;
+        }
+        case PPUserMenuActionQuickAccessEnableNotifications: {
+            [PPFunc triggerLightHaptic];
+            UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+            [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge)
+                                  completionHandler:^(BOOL granted, NSError * _Nullable error) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (granted) {
+                        [[UIApplication sharedApplication] registerForRemoteNotifications];
+                    } else {
+                        [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
+                    }
+                });
+            }];
+            break;
+        }
+        case PPUserMenuActionQuickAccessEnableLocation: {
+            [PPFunc triggerLightHaptic];
+            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
+            break;
+        }
     }
 }
 

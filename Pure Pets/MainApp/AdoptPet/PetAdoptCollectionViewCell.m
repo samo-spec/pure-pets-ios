@@ -71,6 +71,9 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.ambientRoseView.transform = CGAffineTransformIdentity;
     self.ambientMintView.transform = CGAffineTransformIdentity;
     self.ambientPeachView.transform = CGAffineTransformIdentity;
+    self.ambientRoseView.hidden = YES;
+    self.ambientPeachView.hidden = YES;
+    self.ambientMintView.hidden = NO;
     self.alpha = 1.0;
     [self pp_applyCurrentDirection];
 }
@@ -395,14 +398,14 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.layer.shadowRadius = isDark ? 22.0 : 26.0;
     self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
 
-    UIColor *surfaceA = isDark ? [UIColor hx_colorWithHexStr:@"#1C2025"] : [UIColor colorWithWhite:1.0 alpha:0.98];
-    UIColor *surfaceB = isDark ? [UIColor hx_colorWithHexStr:@"#14171C"] : [UIColor hx_colorWithHexStr:@"#F7FAF7"];
-    UIColor *surfaceC = isDark ? [UIColor hx_colorWithHexStr:@"#211A20"] : [UIColor hx_colorWithHexStr:@"#FFF3F7"];
+    UIColor *surfaceA = isDark ? [UIColor hx_colorWithHexStr:@"#181A20"] : [UIColor colorWithWhite:1.0 alpha:0.98];
+    UIColor *surfaceB = isDark ? [UIColor hx_colorWithHexStr:@"#111318"] : [UIColor hx_colorWithHexStr:@"#F8FAF8"];
+    UIColor *surfaceC = isDark ? [UIColor hx_colorWithHexStr:@"#1B151B"] : [UIColor hx_colorWithHexStr:@"#FFF5F8"];
     self.surfaceGradientLayer.colors = @[(id)surfaceA.CGColor, (id)surfaceB.CGColor, (id)surfaceC.CGColor];
     self.surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
 
     UIColor *ink = isDark ? [UIColor colorWithWhite:0.96 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#14181F"];
-    UIColor *muted = isDark ? [UIColor colorWithWhite:0.78 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#66717D"];
+    UIColor *muted = isDark ? [UIColor colorWithWhite:0.76 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#66717D"];
     UIColor *rose = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
 
     self.titleLabel.textColor = ink;
@@ -432,6 +435,19 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
         (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
     ];
     self.hairlineGradientLayer.locations = @[@0.0, @0.50, @1.0];
+
+    self.ambientRoseView.hidden = YES;
+    self.ambientRoseView.alpha = 0.0;
+    self.ambientRoseView.layer.shadowOpacity = 0.0f;
+    self.ambientPeachView.hidden = YES;
+    self.ambientPeachView.alpha = 0.0;
+    self.ambientPeachView.layer.shadowOpacity = 0.0f;
+    self.ambientMintView.hidden = NO;
+    self.ambientMintView.alpha = 1.0;
+    self.ambientMintView.backgroundColor = [rose colorWithAlphaComponent:isDark ? 0.105 : 0.070];
+    [self.ambientMintView pp_setShadowColor:rose];
+    self.ambientMintView.layer.shadowOpacity = isDark ? 0.10f : 0.07f;
+    self.ambientMintView.layer.shadowRadius = isDark ? 28.0 : 24.0;
 
     [self pp_applyCurrentDirection];
 }
@@ -668,18 +684,10 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
                                  key:PPAdoptBreathingAnimationKey
                             duration:5.6
                          translation:CGPointMake(0.0, -2.0)];
-    [self pp_addFloatAnimationToView:self.ambientRoseView
-                                 key:PPAdoptGlowAnimationKey
-                            duration:7.4
-                         translation:CGPointMake(-8.0, 5.0)];
     [self pp_addFloatAnimationToView:self.ambientMintView
                                  key:PPAdoptGlowAnimationKey
-                            duration:8.2
-                         translation:CGPointMake(6.0, -6.0)];
-    [self pp_addFloatAnimationToView:self.ambientPeachView
-                                 key:PPAdoptGlowAnimationKey
-                            duration:9.0
-                         translation:CGPointMake(5.0, 4.0)];
+                            duration:8.4
+                         translation:CGPointMake(4.0, -4.0)];
 }
 
 - (void)pp_stopLivingMotion {

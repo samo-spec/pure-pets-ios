@@ -97,32 +97,17 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (UIColor *)pp_profileCanvasColor
 {
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
-        }
-        return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
-    }];
+    return AppBackgroundClr;
 }
 
 - (UIColor *)pp_profileSurfaceColor
 {
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
-        }
-        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
-    }];
+    return [AppForgroundColr colorWithAlphaComponent:0.82];
 }
 
 - (UIColor *)pp_profileSurfaceBorderColor
 {
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.85 green:0.80 blue:0.78 alpha:0.10];
-        }
-        return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
-    }];
+    return [AppPrimaryClr colorWithAlphaComponent:0.08];
 }
 
 - (void)pp_applyProfileCanvasBackground
@@ -293,7 +278,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     UIColor *editBadgeBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:1.0];
+            return AppBackgroundClrDarker;
         }
         return UIColor.whiteColor;
     }];
@@ -921,7 +906,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     editBadge.layer.borderWidth = 2.5;
     [editBadge pp_setBorderColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:1.0];
+            return AppBackgroundClrDarker;
         }
         return UIColor.whiteColor;
     }]];

@@ -7,6 +7,8 @@
 #import "PPUniversalCell.h"
 #import "PPCollectionLayoutManager.h"
 #import "PPImageLoaderManager.h"
+#import "BBDataViewFullDetailsCell.h"
+#import "BBDataViewFullDetailsLayout.h"
 #import "PPFilterSheetVC.h"
 #import "PPAdSharingHelper.h"
 #import "PPAnalytics.h"
@@ -42,6 +44,7 @@ static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsIslandCornerRadius = 30.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
+static const PPManagerCellLayoutMode PPCellLayoutModeDataViewFullDetails = (PPManagerCellLayoutMode)9001;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -545,19 +548,19 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
 
     UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
-    UIColor *surfaceBase = PPDataViewDynamicColor([UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:0.88],
-                                                  [UIColor colorWithWhite:0.104 alpha:0.72]);
+    UIColor *surfaceBase = PPDataViewDynamicColor([UIColor colorWithRed:0.998 green:0.996 blue:0.998 alpha:0.62],
+                                                  [UIColor colorWithWhite:0.104 alpha:0.58]);
     UIColor *surfaceHighlight = PPDataViewBlendColor(surfaceBase,
                                                      UIColor.whiteColor,
-                                                     darkMode ? 0.10 : 0.22,
+                                                     darkMode ? 0.08 : 0.14,
                                                      self.traitCollection);
     UIColor *surfaceTint = PPDataViewBlendColor(surfaceBase,
                                                 accent,
-                                                selected ? (darkMode ? 0.20 : 0.125) : (darkMode ? 0.13 : 0.070),
+                                                selected ? (darkMode ? 0.14 : 0.075) : (darkMode ? 0.08 : 0.038),
                                                 self.traitCollection);
-    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.20 : 0.48];
+    UIColor *liquidBorderBase = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.66];
     UIColor *liquidBorderHighlight = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (selected ? 0.34 : 0.26)
-                                                                             : (selected ? 0.78 : 0.62)];
+                                                                             : (selected ? 0.92 : 0.82)];
 
     void (^updates)(void) = ^{
         self.blurView.hidden = YES;
@@ -566,9 +569,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.layer.borderColor = PPDataViewResolvedColor(liquidBorderBase, self.traitCollection).CGColor;
         self.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.layer.shadowOpacity = darkMode ? (selected ? 0.18 : 0.12) : (selected ? 0.12 : 0.075);
-        self.layer.shadowRadius = selected ? 20.0 : 16.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, selected ? 11.0 : 8.5);
+        self.layer.shadowOpacity = darkMode ? (selected ? 0.14 : 0.095) : (selected ? 0.075 : 0.045);
+        self.layer.shadowRadius = selected ? 16.0 : 12.0;
+        self.layer.shadowOffset = CGSizeMake(0.0, selected ? 8.0 : 6.0);
         self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
         self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
         self.surfaceGradientLayer.colors = @[
@@ -581,7 +584,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                          self.traitCollection)
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.52, @1.0];
-        self.surfaceGradientLayer.opacity = selected ? (darkMode ? 0.70f : 0.82f) : (darkMode ? 0.52f : 0.68f);
+        self.surfaceGradientLayer.opacity = selected ? (darkMode ? 0.54f : 0.58f) : (darkMode ? 0.38f : 0.42f);
         self.surfaceLiquidBorderLayer.strokeColor =
             PPDataViewResolvedColor(liquidBorderHighlight, self.traitCollection).CGColor;
         self.surfaceLiquidBorderLayer.opacity = 1.0f;
@@ -928,7 +931,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 @end
 
-@interface PPDataViewVC () <PPUniversalCellDelegate,UITabBarDelegate,UIGestureRecognizerDelegate,UICollectionViewDataSourcePrefetching, PPPinterestLayoutDelegate>//UITabBarDelegate
+@interface PPDataViewVC () <PPUniversalCellDelegate,UITabBarDelegate,UIGestureRecognizerDelegate,UICollectionViewDataSourcePrefetching, PPPinterestLayoutDelegate, BBDataViewFullDetailsCellDelegate>//UITabBarDelegate
  // Input
 @property (nonatomic, strong) PPDataViewInput *input;
 @property (nonatomic, assign) BOOL didInitialReload;
@@ -1043,6 +1046,16 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode;
 - (PPManagerCellLayoutMode)pp_sanitizedDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
 - (BOOL)pp_isDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
+- (BOOL)pp_isFullDetailsLayoutMode;
+- (UICollectionViewLayout *)pp_collectionLayoutForDataViewMode:(PPManagerCellLayoutMode)mode;
+- (void)pp_applyCollectionBehaviorForLayoutMode:(PPManagerCellLayoutMode)mode;
+- (NSIndexPath *)pp_centerAnchorIndexPathForLayoutSwitch;
+- (void)pp_scrollToAnchorIndexPath:(NSIndexPath *)indexPath
+                         fullDetails:(BOOL)fullDetails
+                            animated:(BOOL)animated;
+- (CGPoint)pp_fullDetailsCenteredOffsetForProposedOffset:(CGPoint)proposedOffset
+                                                velocity:(CGPoint)velocity;
+- (void)pp_settleFullDetailsCarouselIfNeededAnimated:(BOOL)animated;
 - (CGFloat)preferredNavigationCenterViewWidth;
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (PPFilterState *)pp_currentFilterState;
@@ -2197,6 +2210,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 - (void)pp_animateCellIfNeeded:(UICollectionViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
 {
+    if ([self pp_isFullDetailsLayoutMode]) {
+        return;
+    }
     if (!cell || !indexPath || self.pendingCellEntranceAnimationLimit <= 0) {
         return;
     }
@@ -2504,7 +2520,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     self.layoutManager.currentLayoutMode = [self pp_sanitizedDataViewLayoutMode:savedMode];
     
-    UICollectionViewLayout *layout = [self.layoutManager layoutForMode:self.layoutManager.currentLayoutMode];
+    UICollectionViewLayout *layout =
+    [self pp_collectionLayoutForDataViewMode:self.layoutManager.currentLayoutMode];
 
     self.collectionView =
     [[UICollectionView alloc] initWithFrame:CGRectZero
@@ -2516,14 +2533,15 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.collectionView.delegate = self;
     self.collectionView.showsHorizontalScrollIndicator = NO;
     self.collectionView.showsVerticalScrollIndicator = NO;
-    self.collectionView.alwaysBounceVertical = YES;
     self.collectionView.prefetchingEnabled = YES;
     self.collectionView.prefetchDataSource = self;
-    self.collectionView.decelerationRate = UIScrollViewDecelerationRateNormal;
+    [self pp_applyCollectionBehaviorForLayoutMode:self.layoutManager.currentLayoutMode];
     if (@available(iOS 13.0, *)) {
        // self.collectionView.automaticallyAdjustsScrollIndicatorInsets = NO;
     }
     [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [self.collectionView registerClass:[BBDataViewFullDetailsCell class]
+            forCellWithReuseIdentifier:[BBDataViewFullDetailsCell reuseIdentifier]];
     [self configureDataSource];
     [self.view insertSubview:self.collectionView atIndex:0];
 
@@ -2766,6 +2784,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [self updateCollectionContentInset];
     [self updateSectionsTabBarSelectionIndicatorIfNeeded];
     [self reloadNavigationCenterViewLayout];
+    if ([self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
+        [(BBDataViewFullDetailsLayout *)self.collectionView.collectionViewLayout invalidateForViewportChange];
+    }
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -2784,6 +2805,13 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     dispatch_async(dispatch_get_main_queue(), ^{
         // Force layout pass (CRITICAL for Pinterest)
         [cv layoutIfNeeded];
+
+        if ([self pp_isFullDetailsLayoutMode]) {
+            CGPoint leadingOffset = CGPointMake(-cv.adjustedContentInset.left,
+                                                -cv.adjustedContentInset.top);
+            [cv setContentOffset:leadingOffset animated:animated];
+            return;
+        }
 
         if (cv.contentSize.height <= cv.bounds.size.height) {
             return; // nothing to scroll
@@ -2834,6 +2862,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             weakSelf.viewModel.items.count == 0;
 
         if (isTransitionResetPhase) {
+            [weakSelf showSkeleton];
             [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
             [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
             [weakSelf syncFilterChipsForCurrentSection];
@@ -2931,9 +2960,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     if (!CGRectIsEmpty(sectionsFrame) && !CGRectIsEmpty(safeAreaFrame)) {
         CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
+        CGFloat filtersToContentGap = [self pp_isFullDetailsLayoutMode] ? 26.0 : 6.0;
 
         targetTopInset =
-        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 6.0);
+        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + filtersToContentGap);
     }
 
     CGFloat targetBottomInset = 16.0;
@@ -2976,6 +3006,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)saveCurrentSectionScrollOffset
 {
     if (!self.collectionView) { return; }
+    if ([self pp_isFullDetailsLayoutMode]) { return; }
     CGPoint currentOffset = self.collectionView.contentOffset;
     CGFloat preferredTopY = [self preferredTopContentOffsetY];
     if (currentOffset.y < preferredTopY) {
@@ -2988,6 +3019,12 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)restoreScrollOffsetForCurrentSection
 {
     if (!self.collectionView) { return; }
+    if ([self pp_isFullDetailsLayoutMode]) {
+        [self pp_scrollToAnchorIndexPath:[NSIndexPath indexPathForItem:0 inSection:0]
+                             fullDetails:YES
+                                animated:NO];
+        return;
+    }
 
     NSValue *savedOffset =
     self.scrollOffsetsBySection[@(self.viewModel.currentSection)];
@@ -3036,6 +3073,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
     if (self.isRestoringScrollOffset) { return; }
     if (self.layoutManager.items.count == 0) { return; }
+    if ([self pp_isFullDetailsLayoutMode]) { return; }
     if (!scrollView.isTracking && !scrollView.isDragging && !scrollView.isDecelerating) { return; }
     CGFloat y = scrollView.contentOffset.y;
     if (ABS(y - self.lastContentOffsetY) < 6.0) { return; }
@@ -3043,9 +3081,23 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [self saveCurrentSectionScrollOffset];
 }
 
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                      withVelocity:(CGPoint)velocity
+               targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+    if (scrollView != self.collectionView || ![self pp_isFullDetailsLayoutMode] || !targetContentOffset) {
+        return;
+    }
+    *targetContentOffset = [self pp_fullDetailsCenteredOffsetForProposedOffset:*targetContentOffset
+                                                                      velocity:velocity];
+}
+
 - (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
 {
     if (scrollView == self.collectionView && !decelerate) {
+        if ([self pp_isFullDetailsLayoutMode]) {
+            [self pp_settleFullDetailsCarouselIfNeededAnimated:YES];
+        }
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -3053,6 +3105,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
     if (scrollView == self.collectionView) {
+        if ([self pp_isFullDetailsLayoutMode]) {
+            [self pp_settleFullDetailsCarouselIfNeededAnimated:YES];
+        }
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -3291,6 +3346,38 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
      (UICollectionView *collectionView,
       NSIndexPath *indexPath,
       PPUniversalCellViewModel *vm) {
+
+        if (weakSelf.layoutManager.currentLayoutMode == PPCellLayoutModeDataViewFullDetails) {
+            BBDataViewFullDetailsCell *fullDetailsCell =
+            [collectionView dequeueReusableCellWithReuseIdentifier:[BBDataViewFullDetailsCell reuseIdentifier]
+                                                      forIndexPath:indexPath];
+
+            if (!vm) {
+                fullDetailsCell.hidden = YES;
+                return fullDetailsCell;
+            }
+
+            fullDetailsCell.hidden = NO;
+            vm.indexPath = indexPath;
+            [fullDetailsCell configureWithViewModel:vm
+                                        imageLoader:^(UIImageView *iv,
+                                                      NSString *url,
+                                                      UIImage *placeholder,
+                                                      UIView *card) {
+                (void)card;
+                UIImage *fallback = placeholder ?: vm.placeholder ?: [UIImage imageNamed:@"placeholder"];
+                iv.contentMode = UIViewContentModeScaleAspectFill;
+                iv.clipsToBounds = YES;
+                iv.image = fallback;
+                [[PPImageLoaderManager shared] setImageOnImageView:iv
+                                                               url:url
+                                                       placeholder:fallback
+                                                   transitionStyle:PPImageTransitionStyleNone
+                                                        complation:nil];
+            }
+                                           delegate:weakSelf];
+            return fullDetailsCell;
+        }
 
         PPUniversalCell *cell =
         [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
@@ -4627,9 +4714,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)resetLayoutForSectionChange
 {
-    [self.layoutManager applyLayoutMode:self.layoutManager.currentLayoutMode
-                       toCollectionView:self.collectionView
-                               animated:NO];
+    PPManagerCellLayoutMode mode = self.layoutManager.currentLayoutMode;
+    [self pp_applyCollectionBehaviorForLayoutMode:mode];
+    if (mode == PPCellLayoutModeDataViewFullDetails) {
+        [self.collectionView setCollectionViewLayout:[self pp_collectionLayoutForDataViewMode:mode]
+                                            animated:NO];
+    } else {
+        [self.layoutManager applyLayoutMode:mode
+                           toCollectionView:self.collectionView
+                                   animated:NO];
+    }
     [self pp_installPinterestHeightGuardIfNeeded];
 }
 
@@ -4795,6 +4889,129 @@ presentingViewController:self
     return [NSString stringWithFormat:@"pp.lastSection.%ld",
             (long)mainKind.ID];
 }
+
+- (BOOL)pp_isFullDetailsLayoutMode
+{
+    return self.layoutManager.currentLayoutMode == PPCellLayoutModeDataViewFullDetails;
+}
+
+- (UICollectionViewLayout *)pp_collectionLayoutForDataViewMode:(PPManagerCellLayoutMode)mode
+{
+    if (mode == PPCellLayoutModeDataViewFullDetails) {
+        return [[BBDataViewFullDetailsLayout alloc] init];
+    }
+    return [self.layoutManager layoutForMode:mode];
+}
+
+- (void)pp_applyCollectionBehaviorForLayoutMode:(PPManagerCellLayoutMode)mode
+{
+    if (!self.collectionView) { return; }
+
+    BOOL fullDetails = (mode == PPCellLayoutModeDataViewFullDetails);
+    self.collectionView.alwaysBounceVertical = !fullDetails;
+    self.collectionView.alwaysBounceHorizontal = fullDetails;
+    self.collectionView.directionalLockEnabled = fullDetails;
+    self.collectionView.pagingEnabled = NO;
+    self.collectionView.showsHorizontalScrollIndicator = NO;
+    self.collectionView.showsVerticalScrollIndicator = !fullDetails;
+    self.collectionView.decelerationRate = fullDetails
+        ? UIScrollViewDecelerationRateFast
+        : UIScrollViewDecelerationRateNormal;
+    self.collectionView.scrollsToTop = !fullDetails;
+}
+
+- (NSIndexPath *)pp_centerAnchorIndexPathForLayoutSwitch
+{
+    if (!self.collectionView || self.presentedItems.count == 0) {
+        return [NSIndexPath indexPathForItem:0 inSection:0];
+    }
+
+    CGPoint visibleCenter = CGPointMake(self.collectionView.contentOffset.x + CGRectGetWidth(self.collectionView.bounds) * 0.5,
+                                        self.collectionView.contentOffset.y + CGRectGetHeight(self.collectionView.bounds) * 0.5);
+    NSIndexPath *bestIndexPath = nil;
+    CGFloat bestDistance = CGFLOAT_MAX;
+
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        if (indexPath.item < 0 || indexPath.item >= (NSInteger)self.presentedItems.count) {
+            continue;
+        }
+        UICollectionViewLayoutAttributes *attributes =
+            [self.collectionView.collectionViewLayout layoutAttributesForItemAtIndexPath:indexPath];
+        if (!attributes) { continue; }
+        CGFloat dx = attributes.center.x - visibleCenter.x;
+        CGFloat dy = attributes.center.y - visibleCenter.y;
+        CGFloat distance = (dx * dx) + (dy * dy);
+        if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndexPath = indexPath;
+        }
+    }
+
+    if (bestIndexPath) {
+        return bestIndexPath;
+    }
+    return [NSIndexPath indexPathForItem:0 inSection:0];
+}
+
+- (void)pp_scrollToAnchorIndexPath:(NSIndexPath *)indexPath
+                         fullDetails:(BOOL)fullDetails
+                            animated:(BOOL)animated
+{
+    if (!self.collectionView || !indexPath) { return; }
+    if (indexPath.item < 0 || indexPath.item >= (NSInteger)self.presentedItems.count) { return; }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.collectionView layoutIfNeeded];
+        UICollectionViewScrollPosition position = fullDetails
+            ? UICollectionViewScrollPositionCenteredHorizontally
+            : UICollectionViewScrollPositionTop;
+        [self.collectionView scrollToItemAtIndexPath:indexPath
+                                    atScrollPosition:position
+                                            animated:animated];
+    });
+}
+
+- (CGPoint)pp_fullDetailsCenteredOffsetForProposedOffset:(CGPoint)proposedOffset
+                                                velocity:(CGPoint)velocity
+{
+    UICollectionViewLayout *layout = self.collectionView.collectionViewLayout;
+    if (![layout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
+        return proposedOffset;
+    }
+    return [(BBDataViewFullDetailsLayout *)layout targetContentOffsetForProposedContentOffset:proposedOffset
+                                                                        withScrollingVelocity:velocity];
+}
+
+- (void)pp_settleFullDetailsCarouselIfNeededAnimated:(BOOL)animated
+{
+    if (![self pp_isFullDetailsLayoutMode] || !self.collectionView) {
+        return;
+    }
+
+    CGPoint targetOffset = [self pp_fullDetailsCenteredOffsetForProposedOffset:self.collectionView.contentOffset
+                                                                      velocity:CGPointZero];
+    CGFloat distance = hypot(targetOffset.x - self.collectionView.contentOffset.x,
+                             targetOffset.y - self.collectionView.contentOffset.y);
+    if (distance < 0.5) {
+        return;
+    }
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    if (!animated || reduceMotion) {
+        [self.collectionView setContentOffset:targetOffset animated:NO];
+        return;
+    }
+
+    [UIView animateWithDuration:0.34
+                          delay:0.0
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        [self.collectionView setContentOffset:targetOffset];
+        [self.collectionView layoutIfNeeded];
+    } completion:nil];
+}
  
 - (PPManagerCellLayoutMode)pp_currentActionsMenuLayoutMode
 {
@@ -4817,7 +5034,8 @@ presentingViewController:self
 {
     return mode == PPCellLayoutModeHorizontalRow ||
            mode == PPCellLayoutModeVertical ||
-           mode == PPCellLayoutModePinterest;
+           mode == PPCellLayoutModePinterest ||
+           mode == PPCellLayoutModeDataViewFullDetails;
 }
 
 - (PPManagerCellLayoutMode)pp_sanitizedDataViewLayoutMode:(PPManagerCellLayoutMode)mode
@@ -4861,14 +5079,35 @@ presentingViewController:self
         return;
     }
 
+    NSIndexPath *anchorIndexPath = [self pp_centerAnchorIndexPathForLayoutSwitch];
+    BOOL enteringFullDetails = (mode == PPCellLayoutModeDataViewFullDetails);
+    BOOL leavingFullDetails = (self.layoutManager.currentLayoutMode == PPCellLayoutModeDataViewFullDetails);
+
     PPDataViewLog(@"PPManagerCellLayoutMode selected %ld", (long)mode);
     [PPFunc triggerLightHaptic];
-    [self.layoutManager applyLayoutMode:mode
-                       toCollectionView:self.collectionView
-                               animated:YES];
+    self.layoutManager.items = self.presentedItems;
+    [self pp_applyCollectionBehaviorForLayoutMode:mode];
+
+    if (enteringFullDetails) {
+        self.layoutManager.currentLayoutMode = mode;
+        UICollectionViewLayout *layout = [self pp_collectionLayoutForDataViewMode:mode];
+        [self.collectionView setCollectionViewLayout:layout animated:!UIAccessibilityIsReduceMotionEnabled()];
+    } else {
+        [self.layoutManager applyLayoutMode:mode
+                           toCollectionView:self.collectionView
+                                   animated:!leavingFullDetails && !UIAccessibilityIsReduceMotionEnabled()];
+    }
+
     [self pp_installPinterestHeightGuardIfNeeded];
     [self.collectionView.collectionViewLayout invalidateLayout];
-    [self pp_refreshVisibleUniversalCellsAppearance];
+    [self applySnapshotAnimated:NO];
+    [self.collectionView reloadData];
+    [self pp_scrollToAnchorIndexPath:anchorIndexPath
+                         fullDetails:enteringFullDetails
+                            animated:!UIAccessibilityIsReduceMotionEnabled()];
+    if (!enteringFullDetails) {
+        [self pp_refreshVisibleUniversalCellsAppearance];
+    }
     [self pp_refreshSearchActionsMenu];
 }
 
@@ -4977,6 +5216,12 @@ presentingViewController:self
                  PPCellLayoutModeHorizontalRow,
                  YES);
 
+    UIAction *layoutFullDetailsPPAction =
+    layoutAction(kLang(@"PPCellLayoutFullDetails"),
+                 @"doc.text.image",
+                 PPCellLayoutModeDataViewFullDetails,
+                 YES);
+
     UIMenu *utilityMenu =
     [UIMenu menuWithTitle:@""
                    image:nil
@@ -4987,10 +5232,11 @@ presentingViewController:self
     return [UIMenu menuWithTitle:(kLang(@"PPDataViewActionsTitle") ?: @"")
                            image:nil
                       identifier:nil
-                         options:0
+                        options:0
                         children:@[layoutHorizontalRowPPAction,
                                    layoutPintrestPPAction,
                                    layoutLargePPAction,
+                                   layoutFullDetailsPPAction,
                                    utilityMenu]];
 }
 
@@ -5462,6 +5708,64 @@ presentingViewController:self
                                                showInAppMarket:nextVisible
                                                     completion:handleResult];
     }
+}
+
+#pragma mark - BBDataViewFullDetailsCellDelegate
+
+- (void)fullDetailsCellDidRequestOpen:(BBDataViewFullDetailsCell *)cell
+                            viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    [self PPUniversalCell_tapCard:viewModel];
+}
+
+- (void)fullDetailsCellDidRequestShare:(BBDataViewFullDetailsCell *)cell
+                             viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    if ([viewModel.ModelObject isKindOfClass:PetAccessory.class]) {
+        [PetAccessory sharePetAccessory:(PetAccessory *)viewModel.ModelObject
+                     fromViewController:self];
+        return;
+    }
+    if ([viewModel.ModelObject isKindOfClass:PetAd.class]) {
+        [self PPUniversalCell_tapShare:viewModel];
+        return;
+    }
+    [self PPUniversalCell_tapCard:viewModel];
+}
+
+- (void)fullDetailsCellDidRequestEdit:(BBDataViewFullDetailsCell *)cell
+                            viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    [self PPUniversalCell_tapEdit:viewModel];
+}
+
+- (void)fullDetailsCellDidRequestDelete:(BBDataViewFullDetailsCell *)cell
+                              viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    [self PPUniversalCell_tapDelete:viewModel];
+}
+
+- (void)fullDetailsCellDidRequestVisibilityToggle:(BBDataViewFullDetailsCell *)cell
+                                        viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    [self PPUniversalCell_tapVisibilityToggle:viewModel];
+}
+
+- (void)fullDetailsCell:(BBDataViewFullDetailsCell *)cell
+ didRequestQuantityDelta:(NSInteger)delta
+              viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)cell;
+    if (![viewModel.ModelObject isKindOfClass:PetAccessory.class]) { return; }
+    PetAccessory *accessory = (PetAccessory *)viewModel.ModelObject;
+    NSInteger currentQuantity = [[CartManager sharedManager] quantityForAccessory:accessory];
+    NSInteger nextQuantity = MAX(0, currentQuantity + delta);
+    [self PPUniversalCell_changeQuantity:viewModel quantity:nextQuantity];
 }
 
 - (void)asyncBlurHashImageForHash:(NSString *)hash

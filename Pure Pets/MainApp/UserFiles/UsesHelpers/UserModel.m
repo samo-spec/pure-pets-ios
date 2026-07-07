@@ -468,6 +468,13 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
         self.purchaseBlocked = PPUserBoolValue(restrictionsDict[@"purchaseBlocked"]);
         self.withdrawalBlocked = PPUserBoolValue(restrictionsDict[@"withdrawalBlocked"]);
     }
+    if (safeDict[@"canReceiveMessages"] != nil || safeDict[@"isChatEnabled"] != nil) {
+        BOOL canReceiveMessages = safeDict[@"canReceiveMessages"] != nil
+            ? PPUserBoolValue(safeDict[@"canReceiveMessages"])
+            : PPUserBoolValue(safeDict[@"isChatEnabled"]);
+        self.canUseChatFeature = canReceiveMessages;
+        self.chatBlocked = !canReceiveMessages;
+    }
 
     BOOL onlineStatusKeyExists = safeDict[kUserKeyOnlineStatus] != nil;
     if (onlineStatusKeyExists) {

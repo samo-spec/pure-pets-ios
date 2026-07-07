@@ -310,8 +310,8 @@ static BOOL PPMarketHeroReduceMotion(void)
                                              backgroundAccent,
                                              darkMode ? 0.062 : 0.024,
                                              self.traitCollection);
-    UIColor *textPrimary = PPMarketHeroColor(0x2A171D, 1.0);
-    UIColor *textSecondary = PPMarketHeroColor(0x7A666C, 1.0);
+    UIColor *textPrimary = darkMode ? [UIColor colorWithWhite:0.96 alpha:1.0] : PPMarketHeroColor(0x2A171D, 1.0);
+    UIColor *textSecondary = darkMode ? [UIColor colorWithWhite:0.76 alpha:1.0] : PPMarketHeroColor(0x7A666C, 1.0);
     UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.78];
     UIColor *orbColor = [backgroundAccent colorWithAlphaComponent:darkMode ? 0.17 : 0.11];
     UIColor *supportGlowColor = PPMarketHeroBlend(backgroundAccent,

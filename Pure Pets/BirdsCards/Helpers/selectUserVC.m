@@ -20,6 +20,7 @@
     FIRStorage *firStorage;
 }
 @property (nonatomic,strong) NSMutableArray<UserModel *>     *userArray;
+@property (nonatomic,strong) NSArray<UserModel *>            *allUsers;
 @property (nonatomic)        BOOL           searchBarActive;
 @property (nonatomic)        float          searchBarBoundsY;
 
@@ -112,7 +113,8 @@
     //self.selectTableView.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
    
     firStorage = [FIRStorage storage];
-    self.userArray = PPUsersArr;
+    self.allUsers = [self pp_visibleUsersFromArray:PPUsersArr];
+    self.userArray = [self.allUsers mutableCopy];
     
     
     if([_vcName isEqualToString:@"mainController"])
@@ -231,6 +233,50 @@
     
 }
 
+-(NSArray<UserModel *> *)pp_visibleUsersFromArray:(NSArray<UserModel *> *)sourceUsers
+{
+    NSMutableArray<UserModel *> *visibleUsers = [NSMutableArray array];
+    NSString *currentUID = [FIRAuth auth].currentUser.uid ?: PPCurrentUser.ID ?: @"";
+    for (UserModel *user in sourceUsers) {
+        if (![user isKindOfClass:UserModel.class]) {
+            continue;
+        }
+        if (user.ID.length == 0) {
+            continue;
+        }
+        if (currentUID.length > 0 && [user.ID isEqualToString:currentUID]) {
+            continue;
+        }
+        if (user.isBlocked || user.chatBlocked || !user.canUseChatFeature) {
+            continue;
+        }
+        if (user.UserName.length == 0 &&
+            user.FirstName.length == 0 &&
+            user.LastName.length == 0 &&
+            user.UserEmail.length == 0) {
+            continue;
+        }
+        [visibleUsers addObject:user];
+    }
+    return [visibleUsers copy];
+}
+
+-(NSString *)pp_searchableTextForUser:(UserModel *)user
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (NSString *part in @[user.UserName ?: @"",
+                             user.FirstName ?: @"",
+                             user.LastName ?: @"",
+                             user.UserEmail ?: @"",
+                             user.MobileNo ?: @""]) {
+        NSString *trimmed = [part stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmed.length > 0) {
+            [parts addObject:trimmed];
+        }
+    }
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
 -(void)dealloc{
     // remove Our KVO observer
 }
@@ -257,11 +303,18 @@
     
     
     if ([searchTerm length] > 0) {
-        _userArray = [[NSMutableArray alloc] init];
-        
-        [_selectTableView reloadData];
-       // _dataSourceForSearchResult = filteredResults;
-        //  _searchBarActive = false;
+        NSString *normalizedTerm = [[searchTerm stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] lowercaseString];
+        NSMutableArray<UserModel *> *filteredResults = [NSMutableArray array];
+        for (UserModel *user in self.allUsers) {
+            NSString *searchable = [self pp_searchableTextForUser:user];
+            if (normalizedTerm.length == 0 || [searchable containsString:normalizedTerm]) {
+                [filteredResults addObject:user];
+            }
+        }
+        self.userArray = filteredResults;
+        [self.selectTableView reloadData];
+    } else {
+        [self restoreCurrentDataSource];
     }
 }
 
@@ -292,7 +345,8 @@
 }
 
 -(void) restoreCurrentDataSource {
-         [_selectTableView reloadData];
+    self.userArray = [self.allUsers mutableCopy];
+    [self.selectTableView reloadData];
 }
 
 - (void)restoreData:(id)sender {

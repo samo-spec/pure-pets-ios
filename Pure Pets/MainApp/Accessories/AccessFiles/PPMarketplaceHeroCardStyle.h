@@ -130,10 +130,24 @@ NS_INLINE UIColor *PPMarketplaceHeroCardOrbColor(UITraitCollection *traitCollect
 
 NS_INLINE UIColor *PPMarketplaceHeroCardPrimaryTextColor(void)
 {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:0.96 alpha:1.0]
+                : PPMarketplaceHeroCardColor(0x2A171D, 1.0);
+        }];
+    }
     return PPMarketplaceHeroCardColor(0x2A171D, 1.0);
 }
 
 NS_INLINE UIColor *PPMarketplaceHeroCardSecondaryTextColor(void)
 {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:0.76 alpha:1.0]
+                : PPMarketplaceHeroCardColor(0x7A666C, 1.0);
+        }];
+    }
     return PPMarketplaceHeroCardColor(0x7A666C, 1.0);
 }

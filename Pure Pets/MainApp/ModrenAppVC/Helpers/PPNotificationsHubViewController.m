@@ -675,7 +675,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     button.backgroundColor = UIColor.clearColor;
     button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     button.layer.cornerRadius = 18.0;
-    button.layer.borderWidth = 1.0;
+    button.layer.borderWidth = 0.0;
     button.layer.masksToBounds = YES;
     [button pp_setBorderColor:UIColor.clearColor];
     if (@available(iOS 13.0, *)) {
@@ -1456,7 +1456,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.heroSurfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
     self.heroSurfaceView.layer.cornerRadius = 28.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
-    self.heroSurfaceView.layer.borderWidth = 1.0;
+    self.heroSurfaceView.layer.borderWidth = 0.0;
     [self.heroSurfaceView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.42]];
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
@@ -1527,7 +1527,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.actionButton.tintColor = [GM appPrimaryColor];
     self.actionButton.layer.cornerRadius = kPPHubActionButtonSize * 0.5;
     self.actionButton.clipsToBounds = NO;
-    self.actionButton.layer.borderWidth = 1.0;
+    self.actionButton.layer.borderWidth = 0.0;
     [self.actionButton pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
     [self.actionButton pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
     self.actionButton.layer.shadowOpacity = 0.06;

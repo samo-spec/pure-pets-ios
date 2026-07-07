@@ -52,6 +52,7 @@ static const CGFloat kAVDetailRowMinHeight   = 66.0;    // minimum detail row he
 static const CGFloat kAVBottomBarBase        = 106.0;   // sticky bottom bar base height
 static const CGFloat kAVSectionSpacing       = 20.0;    // section gap
 static const CGFloat kAVSuggestionBottomInset = 32.0;   // breathing room below collection
+static const CGFloat kAVSuggestionItemSizeIncrease = 20.0;
 static const CGFloat kAVSellerAvatarSize     = 64.0;    // seller identity avatar size
 static const CGFloat kAVSellerAvatarRingSize = 74.0;    // premium avatar shell size
 static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button height
@@ -586,6 +587,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 @property (nonatomic, assign) BOOL isResolvingOwner;
 @property (nonatomic, assign) BOOL ownerLookupFailed;
 @property (nonatomic, assign) BOOL didAnimateSellerSection;
+@property (nonatomic, assign) BOOL didApplyInitialScrollChromeInset;
 
 // ── Thumbnail Rail ──
 @property (nonatomic, strong) UIView *thumbnailRailView;
@@ -1942,8 +1944,9 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGSize)pp_suggestionItemSize {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    CGFloat itemWidth = width * 0.40;
-    return CGSizeMake(floor(itemWidth), floor(itemWidth * 1.64));
+    CGFloat itemWidth = floor(width * 0.40) + kAVSuggestionItemSizeIncrease;
+    CGFloat itemHeight = floor((width * 0.40) * 1.64) + kAVSuggestionItemSizeIncrease;
+    return CGSizeMake(itemWidth, itemHeight);
 }
 
 - (NSString *)pp_categorySummary {
@@ -2241,16 +2244,43 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.bottomBarHeightConstraint.constant = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
 
     CGFloat bottomInset = shouldShowCartBar ? self.bottomBarHeightConstraint.constant : 0.0;
-    self.scrollView.contentInset = UIEdgeInsetsMake(PPNavBarHeightFull,
+    CGFloat topInset = [self pp_navigationChromeTopInset];
+    UIEdgeInsets previousInset = self.scrollView.contentInset;
+    BOOL shouldAnchorTop = !self.didApplyInitialScrollChromeInset ||
+        self.scrollView.contentOffset.y <= (-previousInset.top + 1.0);
+    self.scrollView.contentInset = UIEdgeInsetsMake(topInset,
                                                     0.0,
                                                     bottomInset,
                                                     0.0);
-    self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+    self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(topInset, 0.0, bottomInset, 0.0);
+    if (shouldAnchorTop && !self.scrollView.dragging && !self.scrollView.decelerating) {
+        CGPoint offset = self.scrollView.contentOffset;
+        offset.y = -topInset;
+        self.scrollView.contentOffset = offset;
+        self.didApplyInitialScrollChromeInset = YES;
+    }
 
     if (!shouldShowCartBar) {
         self.bottomBar.alpha = 0.0;
         self.bottomBar.transform = CGAffineTransformIdentity;
     }
+}
+
+- (CGFloat)pp_navigationChromeTopInset
+{
+    CGFloat topInset = self.view.safeAreaInsets.top;
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    if (navigationBar && !navigationBar.hidden && navigationBar.superview) {
+        CGRect navFrame = [navigationBar.superview convertRect:navigationBar.frame toView:self.view];
+        CGFloat navMaxY = CGRectGetMaxY(navFrame);
+        if (isfinite((double)navMaxY) && navMaxY > 0.0) {
+            topInset = MAX(topInset, navMaxY);
+        }
+    }
+    if (!isfinite((double)topInset) || topInset < 0.0) {
+        topInset = 0.0;
+    }
+    return ceil(topInset) + kAVSpace8;
 }
 
 - (UIColor *)pp_stockAccentColor {
