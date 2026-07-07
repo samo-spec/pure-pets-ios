@@ -259,8 +259,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     [super layoutSubviews];
     
-    [self.imageView setNeedsLayout];
-    [self.imageView layoutIfNeeded];
 }
 
 - (void)configureWithURL:(NSString *)url
@@ -294,7 +292,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
                                                placeholder:fallback
                                            transitionStyle:PPImageTransitionStyleNone
                                                 complation:^(UIImage * _Nullable image, NSString * _Nullable urlString) {
-            [self layoutSubviews];
+            [self setNeedsLayout];
         }];
     }
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
@@ -311,7 +309,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
             self.imageView.image = image;
         }
         
-        [self layoutSubviews];
+        [self setNeedsLayout];
     }];
 }
 
@@ -412,6 +410,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UIImage *placeholderImage;
 @property (nonatomic, copy) BBDataViewFullDetailsImageLoader imageLoader;
 @property (nonatomic, strong) PPUniversalCellViewModel *viewModel;
+@property (nonatomic, assign) CGSize lastImageCollectionLayoutSize;
 
 @property (nonatomic, strong) UIView *stepperView;
 @property (nonatomic, strong) UIButton *minusButton;
@@ -486,6 +485,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.pageControl.currentPage = 0;
     self.pageControl.hidden = YES;
     self.imageCollectionView.showsHorizontalScrollIndicator = NO;
+    self.lastImageCollectionLayoutSize = CGSizeZero;
     self.mediaContainerView.hidden = YES;
     self.mediaTopConstraint.active = NO;
     self.mediaBottomConstraint.active = NO;
@@ -553,12 +553,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.pageControl.hidden = self.imageURLs.count <= 1;
     self.imageCollectionView.showsHorizontalScrollIndicator = self.imageURLs.count > 1;
     [self.imageCollectionView setContentOffset:CGPointZero animated:NO];
+    [self bb_updateImageCollectionLayoutIfNeeded];
     [self.imageCollectionView reloadData];
     [self setNeedsLayout];
 
     [self bb_buildDetailsForViewModel:viewModel];
     [self bb_configureActionsForViewModel:viewModel];
-     [self setNeedsLayout];
+    [self setNeedsLayout];
 
     self.accessibilityLabel = self.titleLabel.text;
     self.accessibilityValue = [self bb_accessibilitySummaryForViewModel:viewModel];
@@ -609,13 +610,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
                                    cornerRadius:BBFullDetailsCardCornerRadius].CGPath;
     self.surfaceView.layer.borderColor = BBFullDetailsCardBorderColor().CGColor;
     [self bb_layoutMediaLiquidBorder];
-
- 
-    /*
-     [self.imageCollectionView.collectionViewLayout invalidateLayout];
-     [self.imageCollectionView reloadData];
-     [self.imageCollectionView layoutIfNeeded];
-     */
+    [self bb_updateImageCollectionLayoutIfNeeded];
     
 }
 
@@ -698,6 +693,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     mediaLayout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
     mediaLayout.minimumLineSpacing = 0.0;
     mediaLayout.minimumInteritemSpacing = 0.0;
+    mediaLayout.estimatedItemSize = CGSizeZero;
+
     _imageCollectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:mediaLayout];
     _imageCollectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _imageCollectionView.backgroundColor = BBFullDetailsImageBackgroundColor();
@@ -1959,6 +1956,31 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 }
 
 #pragma mark - Collection
+
+- (void)bb_updateImageCollectionLayoutIfNeeded
+{
+    CGSize targetSize = self.imageCollectionView.bounds.size;
+    if (targetSize.width < 1.0 || targetSize.height < 1.0) {
+        return;
+    }
+
+    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.imageCollectionView.collectionViewLayout;
+    if (![layout isKindOfClass:UICollectionViewFlowLayout.class]) {
+        return;
+    }
+
+    BOOL sizeChanged = !CGSizeEqualToSize(self.lastImageCollectionLayoutSize, targetSize);
+    BOOL layoutSizeNeedsUpdate = !CGSizeEqualToSize(layout.itemSize, targetSize);
+    BOOL estimatedSizeNeedsReset = !CGSizeEqualToSize(layout.estimatedItemSize, CGSizeZero);
+    if (!sizeChanged && !layoutSizeNeedsUpdate && !estimatedSizeNeedsReset) {
+        return;
+    }
+
+    self.lastImageCollectionLayoutSize = targetSize;
+    layout.estimatedItemSize = CGSizeZero;
+    layout.itemSize = targetSize;
+    [layout invalidateLayout];
+}
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
 {

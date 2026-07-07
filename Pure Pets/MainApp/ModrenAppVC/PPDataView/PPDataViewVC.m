@@ -3045,6 +3045,12 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.collectionView.contentInset = inset;
     self.collectionView.scrollIndicatorInsets = inset;
+
+    if (fullDetails &&
+        [self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
+        [(BBDataViewFullDetailsLayout *)self.collectionView.collectionViewLayout invalidateForViewportChange];
+        [self.collectionView setNeedsLayout];
+    }
 }
 
 - (void)saveCurrentSectionScrollOffset
