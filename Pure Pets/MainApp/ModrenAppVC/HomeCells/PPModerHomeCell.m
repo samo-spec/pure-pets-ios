@@ -21,7 +21,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
-    return [AppBackgroundClr colorWithAlphaComponent:0.92] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return [AppForgroundColr colorWithAlphaComponent:0.82] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
 @interface PPModerHomeCell ()

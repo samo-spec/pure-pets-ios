@@ -273,8 +273,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     UIImage *fallback = placeholder ?: [UIImage imageNamed:@"placeholder"];
     self.backfillImageView.image = fallback;
     self.imageView.image = fallback;
-    self.backfillImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.imageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.backfillImageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.failureLabel.hidden = (self.representedURL.length > 0);
     self.imageView.accessibilityLabel = BBFullDetailsLocalized(@"bb_dataview_full_details_image_accessibility");
     self.imageView.accessibilityValue =
@@ -297,7 +297,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
             [self layoutSubviews];
         }];
     }
-    self.imageView.contentMode = UIViewContentModeScaleAspectFill;
+    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
 
     NSString *representedURL = self.representedURL.copy;
     __weak typeof(self) weakSelf = self;
@@ -395,7 +395,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) NSLayoutConstraint *mediaHeightConstraint;
 @property (nonatomic, strong) CAGradientLayer *mediaLiquidBorderLayer;
 @property (nonatomic, strong) CAShapeLayer *mediaLiquidBorderMaskLayer;
-@property (nonatomic, strong) UIScrollView *detailsScrollView;
+@property (nonatomic, strong) NSLayoutConstraint *mediaTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *mediaBottomConstraint;
 @property (nonatomic, strong) UIStackView *detailsStackView;
 @property (nonatomic, strong) UIView *actionBarView;
 @property (nonatomic, strong) UIButton *primaryButton;
@@ -486,8 +487,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.pageControl.hidden = YES;
     self.imageCollectionView.showsHorizontalScrollIndicator = NO;
     self.mediaContainerView.hidden = YES;
+    self.mediaTopConstraint.active = NO;
+    self.mediaBottomConstraint.active = NO;
     self.mediaHeightConstraint.constant = 0.0;
-    self.detailsScrollView.contentOffset = CGPointZero;
+    self.mediaHeightConstraint.active = YES;
     [self bb_removeAllArrangedSubviewsFromStack:self.detailsStackView];
     for (UICollectionViewCell *visibleCell in self.imageCollectionView.visibleCells) {
         if ([visibleCell isKindOfClass:BBFullDetailsImagePageCell.class]) {
@@ -544,6 +547,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.imageURLs = [self bb_imageURLsForViewModel:viewModel];
     BOOL hasImages = self.imageURLs.count > 0;
     self.mediaContainerView.hidden = !hasImages;
+    [self bb_updateMediaHeightForSize:self.bounds.size];
     self.pageControl.numberOfPages = self.imageURLs.count;
     self.pageControl.currentPage = 0;
     self.pageControl.hidden = self.imageURLs.count <= 1;
@@ -554,8 +558,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     [self bb_buildDetailsForViewModel:viewModel];
     [self bb_configureActionsForViewModel:viewModel];
-    self.mediaHeightConstraint.constant = hasImages ? [self bb_preferredMediaHeight] : 0.0;
-    [self setNeedsLayout];
+     [self setNeedsLayout];
 
     self.accessibilityLabel = self.titleLabel.text;
     self.accessibilityValue = [self bb_accessibilitySummaryForViewModel:viewModel];
@@ -581,52 +584,24 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
 - (void)bb_updateMediaHeightForSize:(CGSize)size
 {
-    CGFloat preferredHeight = self.imageURLs.count > 0 ? [self bb_preferredMediaHeightForSize:size] : 0.0;
-    if (self.mediaHeightConstraint.constant != preferredHeight) {
-        self.mediaHeightConstraint.constant = preferredHeight;
-        [self setNeedsLayout];
+    BOOL hasImages = self.viewModel && !self.viewModel.isSkeleton && self.imageURLs.count > 0;
+    if (hasImages) {
+        self.mediaHeightConstraint.active = NO;
+        self.mediaTopConstraint.active = YES;
+        self.mediaBottomConstraint.active = YES;
+    } else {
+        self.mediaTopConstraint.active = NO;
+        self.mediaBottomConstraint.active = NO;
+        self.mediaHeightConstraint.constant = 0.0;
+        self.mediaHeightConstraint.active = YES;
     }
 }
 
-- (CGFloat)bb_preferredMediaHeightForSize:(CGSize)size
-{
-    CGFloat cardHeight = size.height;
-    if (cardHeight <= 0.0) {
-        return 260.0;
-    }
-    CGFloat detailsWidth = MAX(1.0, size.width - (BBFullDetailsContentInset * 2.0));
-    CGSize fittingSize = CGSizeMake(detailsWidth, UILayoutFittingCompressedSize.height);
-    CGFloat detailsHeight =
-        [self.detailsStackView systemLayoutSizeFittingSize:fittingSize
-                             withHorizontalFittingPriority:UILayoutPriorityRequired
-                                   verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
-    if (!isfinite(detailsHeight) || detailsHeight <= 1.0) {
-        detailsHeight = 118.0;
-    }
 
-    CGFloat availableHeight =
-        cardHeight -
-        BBFullDetailsMediaOuterInset -
-        BBFullDetailsMediaToContentSpacing -
-        BBFullDetailsContentBottomInset -
-        ceil(detailsHeight);
-    return floor(MAX(160.0, availableHeight));
-}
-
-- (CGFloat)bb_preferredMediaHeight
-{
-    return [self bb_preferredMediaHeightForSize:self.bounds.size];
-}
 
 - (void)layoutSubviews
 {
-    CGFloat preferredHeight = self.imageURLs.count > 0 ? [self bb_preferredMediaHeight] : 0.0;
-    if (self.mediaHeightConstraint.constant != preferredHeight) {
-        self.mediaHeightConstraint.constant = preferredHeight;
-    }
-
-    CGSize oldSize = self.imageCollectionView.bounds.size;
-
+    
     [super layoutSubviews];
 
     self.cardView.layer.shadowPath =
@@ -635,11 +610,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.surfaceView.layer.borderColor = BBFullDetailsCardBorderColor().CGColor;
     [self bb_layoutMediaLiquidBorder];
 
-    if (!CGSizeEqualToSize(oldSize, self.imageCollectionView.bounds.size)) {
-        [self.imageCollectionView.collectionViewLayout invalidateLayout];
-        [self.imageCollectionView reloadData];
-        [self.imageCollectionView layoutIfNeeded];
-    }
+ 
+    /*
+     [self.imageCollectionView.collectionViewLayout invalidateLayout];
+     [self.imageCollectionView reloadData];
+     [self.imageCollectionView layoutIfNeeded];
+     */
+    
 }
 
 - (void)setHighlighted:(BOOL)highlighted
@@ -696,8 +673,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [surfaceView insertSubview:_ambientGlowView2 atIndex:1];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_ambientGlowView1.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:-40.0],
-        [_ambientGlowView1.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:-40.0],
+        [_ambientGlowView1.topAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-280.0],
+        [_ambientGlowView1.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:10.0],
         [_ambientGlowView1.widthAnchor constraintEqualToConstant:280.0],
         [_ambientGlowView1.heightAnchor constraintEqualToConstant:280.0],
 
@@ -825,26 +802,19 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_plusButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:_quantityLabel.trailingAnchor constant:8.0]
     ]];
 
-    _detailsScrollView = [[UIScrollView alloc] init];
-    _detailsScrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    _detailsScrollView.alwaysBounceVertical = NO;
-    _detailsScrollView.alwaysBounceHorizontal = NO;
-    _detailsScrollView.directionalLockEnabled = YES;
-    _detailsScrollView.showsVerticalScrollIndicator = NO;
-    _detailsScrollView.scrollsToTop = NO;
-    _detailsScrollView.contentInset = UIEdgeInsetsZero;
-    [surfaceView addSubview:_detailsScrollView];
-
     _detailsStackView = [[UIStackView alloc] init];
     _detailsStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _detailsStackView.axis = UILayoutConstraintAxisVertical;
     _detailsStackView.alignment = UIStackViewAlignmentFill;
     _detailsStackView.distribution = UIStackViewDistributionFill;
     _detailsStackView.spacing = 7.0;
-    [_detailsScrollView addSubview:_detailsStackView];
+    [surfaceView addSubview:_detailsStackView];
 
     _mediaHeightConstraint = [_mediaContainerView.heightAnchor constraintEqualToConstant:220.0];
     _mediaHeightConstraint.active = YES;
+
+    _mediaTopConstraint = [_mediaContainerView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsMediaOuterInset];
+    _mediaBottomConstraint = [_mediaContainerView.bottomAnchor constraintEqualToAnchor:_detailsStackView.topAnchor constant:-BBFullDetailsMediaToContentSpacing];
 
     [NSLayoutConstraint activateConstraints:@[
         [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -856,16 +826,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [surfaceView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor],
         [surfaceView.bottomAnchor constraintEqualToAnchor:_cardView.bottomAnchor],
 
-        [_mediaContainerView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsMediaOuterInset],
         [_mediaContainerView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsMediaOuterInset],
         [_mediaContainerView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsMediaOuterInset],
-        
         
         [_imageCollectionView.topAnchor constraintEqualToAnchor:_mediaContainerView.topAnchor],
         [_imageCollectionView.leadingAnchor constraintEqualToAnchor:_mediaContainerView.leadingAnchor],
         [_imageCollectionView.trailingAnchor constraintEqualToAnchor:_mediaContainerView.trailingAnchor],
         [_imageCollectionView.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor],
-        
         
         [_pageControl.centerXAnchor constraintEqualToAnchor:_mediaContainerView.centerXAnchor],
         [_pageControl.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor constant:-8.0],
@@ -875,16 +842,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_ownerMenuButton.widthAnchor constraintEqualToConstant:36.0],
         [_ownerMenuButton.heightAnchor constraintEqualToConstant:36.0],
 
-        [_detailsScrollView.topAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor constant:12.0],
-        [_detailsScrollView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsContentInset],
-        [_detailsScrollView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsContentInset],
-        [_detailsScrollView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-BBFullDetailsContentBottomInset],
-        
-        [_detailsStackView.topAnchor constraintEqualToAnchor:_detailsScrollView.contentLayoutGuide.topAnchor],
-        [_detailsStackView.leadingAnchor constraintEqualToAnchor:_detailsScrollView.contentLayoutGuide.leadingAnchor],
-        [_detailsStackView.trailingAnchor constraintEqualToAnchor:_detailsScrollView.contentLayoutGuide.trailingAnchor],
-        [_detailsStackView.bottomAnchor constraintEqualToAnchor:_detailsScrollView.contentLayoutGuide.bottomAnchor],
-        [_detailsStackView.widthAnchor constraintEqualToAnchor:_detailsScrollView.frameLayoutGuide.widthAnchor]
+        [_detailsStackView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-BBFullDetailsContentBottomInset],
+        [_detailsStackView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsContentInset],
+        [_detailsStackView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsContentInset],
+        [_detailsStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsContentInset]
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(bb_cardTapped)];
@@ -1005,7 +966,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.subtitleLabel.text = @"";
     self.metaLabel.text = @"";
     self.mediaContainerView.hidden = YES;
-    self.mediaHeightConstraint.constant = 0.0;
+    [self bb_updateMediaHeightForSize:self.bounds.size];
     self.primaryButton.enabled = NO;
     self.shareButton.enabled = NO;
     self.ownerMenuButton.hidden = YES;
