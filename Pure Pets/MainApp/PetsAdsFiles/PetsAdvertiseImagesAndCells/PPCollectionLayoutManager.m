@@ -8,6 +8,7 @@
 #import <UIKit/UIKit.h>
 #import "PPUniversalCellViewModel.h"
 #import "PetAccessory.h"
+#import "BBDataViewFullDetailsLayout.h"
 
 @interface PPCollectionLayoutManager ()
 // No private properties needed for now.
@@ -302,6 +303,10 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
             }
                 
                 
+            case PPCellLayoutModeDataViewFullDetails: {
+                layout = [[BBDataViewFullDetailsLayout alloc] init];
+                break;
+            }
             case PPCellLayoutModeCarousel:
                 NSLog(@"[PPCollectionLayoutManager] Carousel layout activated");
                 layout = [self createCompositionalLayoutForMode:PPCellLayoutModeCarousel];
@@ -337,6 +342,10 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
 
 - (UICollectionViewLayout *)pinterestLayout {
     return [self layoutForMode:PPCellLayoutModePinterest];
+}
+
+- (UICollectionViewLayout *)fullDetailsLayout {
+    return [self layoutForMode:PPCellLayoutModeDataViewFullDetails];
 }
 
 - (void)applyLayoutMode:(PPManagerCellLayoutMode)mode toCollectionView:(UICollectionView *)collectionView animated:(BOOL)animated {
@@ -379,6 +388,7 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
         case PPCellLayoutModeHorizontalRow: modeName = @"HorizontalRow"; break;
         case PPCellLayoutModeVertical:  modeName = @"Vertical"; break;
         case PPCellLayoutModePinterest: modeName = @"Pinterest"; break;
+        case PPCellLayoutModeDataViewFullDetails: modeName = @"DataViewFullDetails"; break;
         default: modeName = @"Pinterest"; break;
     }
     NSLog(@"[PPCollectionLayoutManager] Switching to %@ mode using layout class: %@",
@@ -596,6 +606,10 @@ API_AVAILABLE(ios(13.0))
         case PPCellLayoutModePinterest: {
             // For Pinterest mode, using compositional layout is complex due to varying item heights.
             // We will not create a compositional section here (should not be called, as we use custom layout for Pinterest).
+            sectionLayout = nil;
+            break;
+        }
+        case PPCellLayoutModeDataViewFullDetails: {
             sectionLayout = nil;
             break;
         }

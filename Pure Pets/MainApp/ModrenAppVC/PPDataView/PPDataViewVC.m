@@ -44,7 +44,6 @@ static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsIslandCornerRadius = 30.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
-static const PPManagerCellLayoutMode PPCellLayoutModeDataViewFullDetails = (PPManagerCellLayoutMode)9001;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -506,7 +505,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     self.surfaceLiquidBorderLayer = [CAShapeLayer layer];
     self.surfaceLiquidBorderLayer.fillColor = UIColor.clearColor.CGColor;
-    self.surfaceLiquidBorderLayer.lineWidth = 0.85;
+    self.surfaceLiquidBorderLayer.lineWidth = 0.0;
     [self.layer addSublayer:self.surfaceLiquidBorderLayer];
 
     [self pp_applyActiveFilterCount:0 animated:NO];
@@ -985,6 +984,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, assign) BOOL isSubKindsChevronHidden;
 @property (nonatomic, assign) BOOL useCapsuleNavigation;
 @property (nonatomic, assign) BOOL filterBadgesCollapsed;
+@property (nonatomic, assign) BOOL didCaptureFilterBadgesCollapsedStateForFullDetails;
+@property (nonatomic, assign) BOOL filterBadgesCollapsedBeforeFullDetails;
 // Skeleton loading stateAppForgroundColr
 @property (nonatomic, assign) BOOL isShowingSkeleton;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
@@ -1030,6 +1031,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)syncFilterChipsForSection:(PPDataSection)section;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated;
+- (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)toggleFilterBadgesCollapsed:(UIButton *)sender;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (void)refreshFilterChipTitles;
@@ -1174,6 +1177,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_applyPremiumSectionsSegmentedAppearance];
     [self pp_restoreNavigationOwnership];
     [self pp_refreshVisibleUniversalCellsAppearance];
+
+    if (self.layoutManager && self.layoutManager.currentLayoutMode == PPCellLayoutModeDataViewFullDetails) {
+        [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:NO];
+    }
 
     NSString *kindName = self.input.mainKind.KindNameEn;
     if (kindName.length) {
@@ -2955,6 +2962,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     if (!self.collectionView) { return; }
 
+    BOOL fullDetails = [self pp_isFullDetailsLayoutMode];
     CGFloat targetTopInset =
     [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
     ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + kPPFilterCollapseHandleHeight + 18.0)
@@ -2964,15 +2972,45 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     CGRect sectionsFrame = self.sectionsFiltersContainer.frame;
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
 
-    if (!CGRectIsEmpty(sectionsFrame) && !CGRectIsEmpty(safeAreaFrame)) {
+    if (!CGRectIsEmpty(sectionsFrame) && (!CGRectIsEmpty(safeAreaFrame) || fullDetails)) {
         CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
-        CGFloat filtersToContentGap = [self pp_isFullDetailsLayoutMode] ? 26.0 : 6.0;
+        CGFloat filtersToContentGap = fullDetails ? 0.0 : 6.0;
+        CGFloat referenceTopY = fullDetails
+        ? CGRectGetMinY(self.collectionView.frame)
+        : CGRectGetMinY(safeAreaFrame);
 
         targetTopInset =
-        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + filtersToContentGap);
+        MAX(0.0, maxVisibleY - referenceTopY + filtersToContentGap);
     }
 
     CGFloat targetBottomInset = 16.0;
+    BOOL resolvedBottomInsetFromNavigationFrame = NO;
+    if (fullDetails) {
+        UIView *bottomNavigationView = nil;
+        SEL anchorSelector = NSSelectorFromString(@"pp_novaAmbientBottomNavigationAnchorView");
+        if ([self.tabBarController respondsToSelector:anchorSelector]) {
+            UIView *(*anchorIMP)(id, SEL) = (UIView *(*)(id, SEL))[self.tabBarController methodForSelector:anchorSelector];
+            bottomNavigationView = anchorIMP ? anchorIMP(self.tabBarController, anchorSelector) : nil;
+        }
+        if (!bottomNavigationView &&
+            self.tabBarController &&
+            !self.tabBarController.tabBar.hidden &&
+            self.tabBarController.tabBar.alpha > 0.01) {
+            bottomNavigationView = self.tabBarController.tabBar;
+        }
+        if (bottomNavigationView &&
+            !bottomNavigationView.hidden &&
+            bottomNavigationView.alpha > 0.01 &&
+            bottomNavigationView.superview) {
+            CGRect navigationFrame = [bottomNavigationView.superview convertRect:bottomNavigationView.frame
+                                                                          toView:self.view];
+            if (!CGRectIsEmpty(navigationFrame)) {
+                targetBottomInset = MAX(0.0, CGRectGetMaxY(self.collectionView.frame) - CGRectGetMinY(navigationFrame));
+                resolvedBottomInsetFromNavigationFrame = YES;
+            }
+        }
+    }
+
     CGFloat rootClearance = 0.0;
     SEL clearanceSelector = NSSelectorFromString(@"pp_bottomNavigationContentClearance");
     if ([self.tabBarController respondsToSelector:clearanceSelector]) {
@@ -2980,9 +3018,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         rootClearance = clearanceIMP ? clearanceIMP(self.tabBarController, clearanceSelector) : 0.0;
     }
 
-    if (rootClearance > 0.0) {
-        targetBottomInset = ceil(rootClearance);
-    } else {
+    if (!resolvedBottomInsetFromNavigationFrame && rootClearance > 0.0) {
+        targetBottomInset = ceil(rootClearance + (fullDetails ? 22.0 : 0.0));
+    } else if (!resolvedBottomInsetFromNavigationFrame) {
         CGFloat bottomInset = 0.0;
         if (self.tabBarController &&
             !self.tabBarController.tabBar.hidden &&
@@ -2990,7 +3028,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             bottomInset += self.tabBarController.tabBar.bounds.size.height;
         }
         bottomInset += self.view.safeAreaInsets.bottom;
-        targetBottomInset = bottomInset + 16.0;
+        targetBottomInset = bottomInset + (fullDetails ? 0.0 : 16.0);
     }
     UIEdgeInsets currentInset = self.collectionView.contentInset;
     CGFloat topDelta = currentInset.top - targetTopInset;
@@ -4070,6 +4108,37 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:YES];
 }
 
+- (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated
+{
+    if (!self.didCaptureFilterBadgesCollapsedStateForFullDetails) {
+        self.filterBadgesCollapsedBeforeFullDetails = self.filterBadgesCollapsed;
+        self.didCaptureFilterBadgesCollapsedStateForFullDetails = YES;
+    }
+
+    if (![self sectionHasFilterChipBarForSection:self.viewModel.currentSection]) {
+        [self updateCollectionContentInset];
+        return;
+    }
+    if (self.filterBadgesCollapsed) {
+        [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:NO];
+        return;
+    }
+
+    self.filterBadgesCollapsed = YES;
+    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:animated];
+}
+
+- (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated
+{
+    if (self.didCaptureFilterBadgesCollapsedStateForFullDetails) {
+        self.filterBadgesCollapsed = self.filterBadgesCollapsedBeforeFullDetails;
+        self.didCaptureFilterBadgesCollapsedStateForFullDetails = NO;
+        self.filterBadgesCollapsedBeforeFullDetails = NO;
+    }
+
+    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:animated];
+}
+
 // ---------- Dynamic filter menu builder ----------
 
 - (UIMenu *)pp_menuForFilterGroup:(PPFilterGroup *)group chipIndex:(NSInteger)chipIndex
@@ -5086,6 +5155,9 @@ presentingViewController:self
 
     if (self.layoutManager.currentLayoutMode == mode) {
         [PPFunc triggerLightHaptic];
+        if (mode == PPCellLayoutModeDataViewFullDetails) {
+            [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:YES];
+        }
         [self pp_refreshSearchActionsMenu];
         return;
     }
@@ -5101,21 +5173,27 @@ presentingViewController:self
 
     if (enteringFullDetails) {
         self.layoutManager.currentLayoutMode = mode;
+        [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:NO];
         UICollectionViewLayout *layout = [self pp_collectionLayoutForDataViewMode:mode];
         [self.collectionView setCollectionViewLayout:layout animated:!UIAccessibilityIsReduceMotionEnabled()];
     } else {
         [self.layoutManager applyLayoutMode:mode
                            toCollectionView:self.collectionView
                                    animated:!leavingFullDetails && !UIAccessibilityIsReduceMotionEnabled()];
+        if (leavingFullDetails) {
+            [self pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:NO];
+        } else {
+            [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:NO];
+        }
     }
 
     [self pp_installPinterestHeightGuardIfNeeded];
     [self.collectionView.collectionViewLayout invalidateLayout];
     [self applySnapshotAnimated:NO];
     [self.collectionView reloadData];
-    [self pp_scrollToAnchorIndexPath:anchorIndexPath
-                         fullDetails:enteringFullDetails
-                            animated:!UIAccessibilityIsReduceMotionEnabled()];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.collectionView setContentOffset:CGPointZero animated:!UIAccessibilityIsReduceMotionEnabled()];
+    });
     if (!enteringFullDetails) {
         [self pp_refreshVisibleUniversalCellsAppearance];
     }

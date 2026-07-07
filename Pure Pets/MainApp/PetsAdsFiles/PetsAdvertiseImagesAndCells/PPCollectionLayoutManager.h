@@ -13,6 +13,7 @@ typedef NS_ENUM(NSInteger, PPManagerCellLayoutMode) {
     PPCellLayoutModeCarousel,
     PPCellLayoutModeMainKinds,
     PPCellLayoutModeAllKinds,
+    PPCellLayoutModeDataViewFullDetails = 9001,
 };
 
 @protocol PPPinterestManagerLayoutDelegate <NSObject>
@@ -53,6 +54,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (UICollectionViewLayout *)horizontalRowLayout; /// Full-width horizontal row layout.
 - (UICollectionViewLayout *)verticalLayout; /// Vertical grid mode layout.
 - (UICollectionViewLayout *)pinterestLayout;/// Pinterest mode layout (staggered/masonry).
+- (UICollectionViewLayout *)fullDetailsLayout; /// Full details layout.
 
 /**
  * Applies the specified layout mode to the given collection view, optionally animated.
