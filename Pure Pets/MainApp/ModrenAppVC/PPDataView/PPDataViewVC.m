@@ -2529,6 +2529,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_installPinterestHeightGuardIfNeeded];
 
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    if (@available(iOS 11.0, *)) {
+        BOOL fullDetails = (self.layoutManager.currentLayoutMode == PPCellLayoutModeDataViewFullDetails);
+        self.collectionView.contentInsetAdjustmentBehavior = fullDetails
+            ? UIScrollViewContentInsetAdjustmentNever
+            : UIScrollViewContentInsetAdjustmentAutomatic;
+    }
     self.collectionView.backgroundColor = UIColor.clearColor;
     self.collectionView.delegate = self;
     self.collectionView.showsHorizontalScrollIndicator = NO;
@@ -4918,6 +4924,11 @@ presentingViewController:self
         ? UIScrollViewDecelerationRateFast
         : UIScrollViewDecelerationRateNormal;
     self.collectionView.scrollsToTop = !fullDetails;
+    if (@available(iOS 11.0, *)) {
+        self.collectionView.contentInsetAdjustmentBehavior = fullDetails
+            ? UIScrollViewContentInsetAdjustmentNever
+            : UIScrollViewContentInsetAdjustmentAutomatic;
+    }
 }
 
 - (NSIndexPath *)pp_centerAnchorIndexPathForLayoutSwitch

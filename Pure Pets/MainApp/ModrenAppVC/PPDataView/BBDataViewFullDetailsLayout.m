@@ -80,14 +80,23 @@ static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.66;
 
     for (UICollectionViewLayoutAttributes *attribute in attributes) {
         UICollectionViewLayoutAttributes *copy = [attribute copy];
-        if (!reduceMotion && copy.representedElementCategory == UICollectionElementCategoryCell) {
-            CGFloat distance = MIN(ABS(copy.center.x - visibleCenterX), normalizingDistance);
-            CGFloat progress = distance / normalizingDistance;
-            CGFloat scale = 1.0 - ((1.0 - BBFullDetailsAdjacentMinimumScale) * progress);
-            CGFloat alpha = 1.0 - ((1.0 - BBFullDetailsAdjacentMinimumAlpha) * progress);
-            copy.transform = CGAffineTransformMakeScale(scale, scale);
-            copy.alpha = alpha;
-            copy.zIndex = (NSInteger)lrint((1.0 - progress) * 1000.0);
+        if (copy.representedElementCategory == UICollectionElementCategoryCell) {
+            CGRect frame = copy.frame;
+            frame.origin.y = 0.0;
+            copy.frame = frame;
+
+            if (!reduceMotion) {
+                CGFloat distance = MIN(ABS(copy.center.x - visibleCenterX), normalizingDistance);
+                CGFloat progress = distance / normalizingDistance;
+                CGFloat scale = 1.0 - ((1.0 - BBFullDetailsAdjacentMinimumScale) * progress);
+                CGFloat alpha = 1.0 - ((1.0 - BBFullDetailsAdjacentMinimumAlpha) * progress);
+                copy.transform = CGAffineTransformMakeScale(scale, scale);
+                copy.alpha = alpha;
+                copy.zIndex = (NSInteger)lrint((1.0 - progress) * 1000.0);
+            } else {
+                copy.transform = CGAffineTransformIdentity;
+                copy.alpha = 1.0;
+            }
         } else {
             copy.transform = CGAffineTransformIdentity;
             copy.alpha = 1.0;
@@ -100,9 +109,22 @@ static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.66;
 - (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UICollectionViewLayoutAttributes *attributes = [[super layoutAttributesForItemAtIndexPath:indexPath] copy];
-    if (!attributes || !self.collectionView || UIAccessibilityIsReduceMotionEnabled()) {
+    if (!attributes || !self.collectionView) {
         return attributes;
     }
+
+    if (attributes.representedElementCategory == UICollectionElementCategoryCell) {
+        CGRect frame = attributes.frame;
+        frame.origin.y = 0.0;
+        attributes.frame = frame;
+    }
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        attributes.transform = CGAffineTransformIdentity;
+        attributes.alpha = 1.0;
+        return attributes;
+    }
+
     CGFloat visibleCenterX = self.collectionView.contentOffset.x + CGRectGetWidth(self.collectionView.bounds) * 0.5;
     CGFloat normalizingDistance = MAX(self.itemSize.width + self.minimumLineSpacing, 1.0);
     CGFloat distance = MIN(ABS(attributes.center.x - visibleCenterX), normalizingDistance);

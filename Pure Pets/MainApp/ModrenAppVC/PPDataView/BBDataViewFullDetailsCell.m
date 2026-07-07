@@ -21,12 +21,12 @@ static UIColor *BBFullDetailsCardSurfaceColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-                return [UIColor colorWithRed:0.105 green:0.108 blue:0.120 alpha:0.78];
+                return [UIColor colorWithRed:0.105 green:0.108 blue:0.120 alpha:0.38];
             }
-            return [UIColor colorWithWhite:1.0 alpha:0.84];
+            return [UIColor colorWithWhite:1.0 alpha:0.42];
         }];
     }
-    return [UIColor.whiteColor colorWithAlphaComponent:0.84];
+    return [UIColor.whiteColor colorWithAlphaComponent:0.42];
 }
 
 static UIColor *BBFullDetailsCardBorderColor(void)
@@ -49,10 +49,10 @@ static UIColor *BBFullDetailsPlateSurfaceColor(void)
             if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
                 return [UIColor colorWithWhite:1.0 alpha:0.085];
             }
-            return [UIColor colorWithWhite:0.98 alpha:1.0];
+            return [UIColor colorWithWhite:1.0 alpha:0.25];
         }];
     }
-    return [UIColor colorWithWhite:0.98 alpha:1.0];
+    return [UIColor colorWithWhite:1.0 alpha:0.25];
 }
 
 static UIColor *BBFullDetailsPlateBorderColor(void)
@@ -248,6 +248,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UIButton *ownerMenuButton;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UILabel *priceLabel;
 @property (nonatomic, strong) UILabel *metaLabel;
 @property (nonatomic, strong) UIStackView *highlightPlateStackView;
 @property (nonatomic, strong) UIStackView *socialMetricStackView;
@@ -283,9 +284,11 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.placeholderImage = [UIImage imageNamed:@"placeholder"];
     self.titleLabel.text = nil;
     self.subtitleLabel.text = nil;
+    self.priceLabel.text = nil;
     self.metaLabel.text = nil;
     self.titleLabel.accessibilityLabel = nil;
     self.subtitleLabel.accessibilityLabel = nil;
+    self.priceLabel.accessibilityLabel = nil;
     self.metaLabel.accessibilityLabel = nil;
     [self bb_removeAllArrangedSubviewsFromStack:self.highlightPlateStackView];
     [self bb_removeAllArrangedSubviewsFromStack:self.socialMetricStackView];
@@ -639,29 +642,55 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     self.titleLabel = self.titleLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleHeadline weight:UIFontWeightBold color:UIColor.labelColor];
     self.subtitleLabel = self.subtitleLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleSubheadline weight:UIFontWeightMedium color:UIColor.secondaryLabelColor];
+    self.priceLabel = self.priceLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleHeadline weight:UIFontWeightBold color:(AppPrimaryClr ?: UIColor.systemPinkColor)];
     self.metaLabel = self.metaLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleFootnote weight:UIFontWeightMedium color:UIColor.secondaryLabelColor];
+
     UIFont *titleFont = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3] scaledFontForFont:titleFont];
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
+
+    UIFont *subtitleFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:subtitleFont];
+    self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
+
+    UIFont *priceFont = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
+    self.priceLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:priceFont];
+    self.priceLabel.adjustsFontForContentSizeCategory = YES;
+
+    UIFont *metaFont = [GM fontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
+    self.metaLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote] scaledFontForFont:metaFont];
+    self.metaLabel.adjustsFontForContentSizeCategory = YES;
+
     if (viewModel.isSkeleton) {
         self.titleLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
         self.subtitleLabel.text = @"";
+        self.priceLabel.text = @"";
         self.metaLabel.text = @"";
     } else {
         self.titleLabel.text = BBFullDetailsTrimmedString(viewModel.title);
         self.subtitleLabel.text = BBFullDetailsTrimmedString(viewModel.subtitle);
+        self.priceLabel.text = BBFullDetailsTrimmedString(viewModel.priceText);
         self.metaLabel.text = [self bb_summaryMetaTextForViewModel:viewModel];
     }
+
     self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
+    self.priceLabel.hidden = self.priceLabel.text.length == 0;
     self.metaLabel.hidden = self.metaLabel.text.length == 0;
+
     self.titleLabel.numberOfLines = 2;
     self.subtitleLabel.numberOfLines = 1;
+    self.priceLabel.numberOfLines = 1;
     self.metaLabel.numberOfLines = 1;
+
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.priceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.metaLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+
     [self.detailsStackView addArrangedSubview:self.titleLabel];
     [self.detailsStackView addArrangedSubview:self.subtitleLabel];
+    [self.detailsStackView addArrangedSubview:self.priceLabel];
     [self.detailsStackView addArrangedSubview:self.metaLabel];
+
     [self bb_configureHighlightPlatesForViewModel:viewModel];
     [self.detailsStackView addArrangedSubview:self.highlightPlateStackView];
     [self.detailsStackView setCustomSpacing:6.0 afterView:self.metaLabel];
@@ -701,16 +730,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.highlightPlateStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     NSMutableArray<UIView *> *plates = [NSMutableArray array];
-    NSString *priceText = BBFullDetailsTrimmedString(viewModel.priceText);
-    if (priceText.length > 0) {
-        [plates addObject:[self bb_plateViewWithIconName:@"tag.fill"
-                                                    text:priceText
-                                      accessibilityLabel:[self bb_accessibilityTextForLabelKey:@"bb_dataview_full_details_price"
-                                                                                         value:priceText]
-                                               tintColor:(AppPrimaryClr ?: UIColor.systemPinkColor)
-                                              emphasized:YES]];
-    }
-
     NSString *availabilityText = BBFullDetailsTrimmedString(viewModel.availabilityText);
     if (availabilityText.length > 0) {
         BOOL commerce = (viewModel.modelContext == PPCellForMarket ||

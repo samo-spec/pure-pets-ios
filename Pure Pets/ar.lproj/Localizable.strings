@@ -3422,3 +3422,12 @@
 "Allow Alerts" = "تفعيل التنبيهات";
 "My Location" = "موقعي";
 
+/* Quick Access HUD Toasts */
+"quick_access_light_mode_toast" = "تم تفعيل الوضع الفاتح";
+"quick_access_dark_mode_toast" = "تم تفعيل الوضع الداكن";
+"quick_access_lang_ar_toast" = "تم تغيير اللغة إلى العربية";
+"quick_access_lang_en_toast" = "تم تغيير اللغة إلى الإنجليزية";
+"quick_access_notifications_toast" = "جاري فتح إعدادات التنبيهات...";
+"quick_access_location_toast" = "جاري فتح إعدادات الموقع...";
+
+

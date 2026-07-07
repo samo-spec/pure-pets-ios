@@ -327,7 +327,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         stackView.translatesAutoresizingMaskIntoConstraints = NO;
         stackView.axis = UILayoutConstraintAxisHorizontal;
         stackView.alignment = UIStackViewAlignmentCenter;
-        stackView.spacing = PPSpaceBase;
+        stackView.spacing = 12.0;
         stackView.distribution = UIStackViewDistributionFillEqually;
         [scrollView addSubview:stackView];
         self.stackView = stackView;
@@ -343,7 +343,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [stackView.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor constant:PPScreenMargin],
             [stackView.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor constant:-PPScreenMargin],
             [stackView.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor constant:-8.0],
-            [stackView.heightAnchor constraintEqualToConstant:48.0],
+            [stackView.heightAnchor constraintEqualToConstant:52.0],
             [stackView.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor constant:-(PPScreenMargin * 2)]
         ]];
     }
@@ -378,11 +378,11 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.userInteractionEnabled = NO;
     surface.backgroundColor = PPUserMenuSurfaceColor();
-    surface.layer.borderWidth = 1.0;
+    surface.layer.borderWidth =0.75;
     [surface pp_setBorderColor:PPUserMenuBorderColor()];
-    PPApplyContinuousCorners(surface, 20.0);
+    PPApplyContinuousCorners(surface, 18.0);
     PPApplyCardShadow(surface);
-    surface.layer.shadowOpacity = 0.045;
+    surface.layer.shadowOpacity = 0.025;
     [button addSubview:surface];
 
     UIImageView *iconView = [UIImageView new];
@@ -410,7 +410,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [surface.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
         [surface.trailingAnchor constraintEqualToAnchor:button.trailingAnchor],
         [surface.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
-        [surface.heightAnchor constraintEqualToConstant:48.0],
+        [surface.heightAnchor constraintEqualToConstant:52.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:surface.centerXAnchor],
         [iconView.topAnchor constraintEqualToAnchor:surface.topAnchor constant:8.0],
@@ -1147,6 +1147,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleLight];
             [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleLight];
             [PPFunc triggerLightHaptic];
+            [PPHUD showSuccess:kLang(@"quick_access_light_mode_toast")];
             [self pp_rebuildSections];
             [self.tableView reloadData];
             break;
@@ -1155,6 +1156,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleDark];
             [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleDark];
             [PPFunc triggerLightHaptic];
+            [PPHUD showSuccess:kLang(@"quick_access_dark_mode_toast")];
             [self pp_rebuildSections];
             [self.tableView reloadData];
             break;
@@ -1164,6 +1166,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [PPFunc triggerLightHaptic];
             [self pp_rebuildSections];
             [self.tableView reloadData];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPHUD showSuccess:kLang(@"quick_access_lang_ar_toast")];
+            });
             break;
         }
         case PPUserMenuActionQuickAccessSwitchToEnglish: {
@@ -1171,6 +1176,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [PPFunc triggerLightHaptic];
             [self pp_rebuildSections];
             [self.tableView reloadData];
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [PPHUD showSuccess:kLang(@"quick_access_lang_en_toast")];
+            });
             break;
         }
         case PPUserMenuActionQuickAccessEnableNotifications: {
@@ -1181,7 +1189,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if (granted) {
                         [[UIApplication sharedApplication] registerForRemoteNotifications];
+                        [PPHUD showSuccess:kLang(@"Allow Alerts")];
                     } else {
+                        [PPHUD showInfo:kLang(@"quick_access_notifications_toast")];
                         [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
                     }
                 });
@@ -1190,6 +1200,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         }
         case PPUserMenuActionQuickAccessEnableLocation: {
             [PPFunc triggerLightHaptic];
+            [PPHUD showInfo:kLang(@"quick_access_location_toast")];
             [[UIApplication sharedApplication] openURL:[NSURL URLWithString:UIApplicationOpenSettingsURLString] options:@{} completionHandler:nil];
             break;
         }

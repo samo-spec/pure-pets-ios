@@ -3434,3 +3434,12 @@
 "Allow Alerts" = "Allow Alerts";
 "My Location" = "My Location";
 
+/* Quick Access HUD Toasts */
+"quick_access_light_mode_toast" = "Light Mode Activated";
+"quick_access_dark_mode_toast" = "Dark Mode Activated";
+"quick_access_lang_ar_toast" = "Language changed to Arabic";
+"quick_access_lang_en_toast" = "Language changed to English";
+"quick_access_notifications_toast" = "Opening Notification Settings...";
+"quick_access_location_toast" = "Opening Location Settings...";
+
+
