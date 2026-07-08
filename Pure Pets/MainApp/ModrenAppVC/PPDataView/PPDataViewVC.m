@@ -2871,7 +2871,6 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     __weak typeof(self) weakSelf = self;
 
     self.viewModel.onReloadData = ^{
-        [weakSelf hideSkeleton];
         PPDataViewLog(@"\n================ onReloadData =================");
         PPDataViewLog(@"[VC] currentSection = %ld", (long)weakSelf.viewModel.currentSection);
         PPDataViewLog(@"[VC] items.count = %ld", (long)weakSelf.viewModel.items.count);
@@ -2892,9 +2891,28 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
 
-        [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot
-                                     scrollToTop:NO];
-        weakSelf.didApplyInitialSnapshot = YES;
+        BOOL wasShowingSkeleton = weakSelf.isShowingSkeleton;
+        [weakSelf hideSkeleton];
+
+        if (wasShowingSkeleton) {
+            weakSelf.pendingMotionReason = PPDataViewMotionReasonNone;
+            weakSelf.didApplyInitialSnapshot = YES;
+        }
+
+        if (wasShowingSkeleton && !UIAccessibilityIsReduceMotionEnabled()) {
+            [UIView transitionWithView:weakSelf.collectionView
+                              duration:0.25
+                               options:UIViewAnimationOptionTransitionCrossDissolve |
+                                       UIViewAnimationOptionBeginFromCurrentState |
+                                       UIViewAnimationOptionAllowUserInteraction
+                            animations:^{
+                [weakSelf refreshPresentedItemsAnimated:NO scrollToTop:NO];
+            } completion:nil];
+        } else {
+            [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot
+                                         scrollToTop:NO];
+            weakSelf.didApplyInitialSnapshot = YES;
+        }
         [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
         [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
         [weakSelf syncFilterChipsForCurrentSection];
@@ -4824,7 +4842,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (!self.collectionView) { return; }
     [self pp_installPinterestHeightGuardIfNeeded];
 
-    if (!self.view.window) {
+    if (!self.view.window || UIAccessibilityIsReduceMotionEnabled()) {
         self.layoutManager.items = self.presentedItems;
         [self applySnapshotAnimated:NO];
         return;
@@ -4838,31 +4856,19 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     self.isPerformingCrossFade = YES;
     self.collectionView.userInteractionEnabled = NO;
-    [self.collectionView.layer removeAllAnimations];
 
-    [UIView animateWithDuration:0.18
-                          delay:0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.collectionView.alpha = 0.0;
-    } completion:^(BOOL finished) {
-
-        // Reload data while invisible
+    [UIView transitionWithView:self.collectionView
+                      duration:0.22
+                       options:UIViewAnimationOptionTransitionCrossDissolve |
+                               UIViewAnimationOptionBeginFromCurrentState |
+                               UIViewAnimationOptionAllowUserInteraction
+                    animations:^{
         self.layoutManager.items = self.presentedItems;
         [self applySnapshotAnimated:NO];
         [self.collectionView layoutIfNeeded];
-
-        [UIView animateWithDuration:0.22
-                              delay:0
-                            options:UIViewAnimationOptionCurveEaseIn
-                         animations:^{
-            self.collectionView.alpha = 1.0;
-        } completion:^(BOOL finished) {
-            self.collectionView.userInteractionEnabled = YES;
-            self.isPerformingCrossFade = NO;
-            
-           // [self updateNavSectionTitle];
-        }];
+    } completion:^(BOOL finished) {
+        self.collectionView.userInteractionEnabled = YES;
+        self.isPerformingCrossFade = NO;
     }];
 }
 

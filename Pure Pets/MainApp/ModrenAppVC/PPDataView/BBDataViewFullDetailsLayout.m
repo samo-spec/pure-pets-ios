@@ -1,13 +1,13 @@
 #import "BBDataViewFullDetailsLayout.h"
 
-static const CGFloat BBFullDetailsBeaconWidth = 42.0;
+static const CGFloat BBFullDetailsBeaconWidth = 62.0;
 static const CGFloat BBFullDetailsTopViewportInset = 22.0;
 static const CGFloat BBFullDetailsBottomViewportInset = 104.0;
 static const CGFloat BBFullDetailsMinimumCardHeight = 340.0;
 static const CGFloat BBFullDetailsMinimumCardWidth = 260.0;
-static const CGFloat BBFullDetailsInterItemSpacing = 12.0;
+static const CGFloat BBFullDetailsInterItemSpacing = 6.0;
 static const CGFloat BBFullDetailsAdjacentMinimumScale = 0.88;
-static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.70;
+static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.77;
 
 @implementation BBDataViewFullDetailsLayout
 

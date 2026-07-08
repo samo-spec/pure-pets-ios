@@ -326,7 +326,8 @@
     CGFloat lineSpacing = 12.0;
     CGFloat cardWidth = floor((availableWidth - horizontalInset - lineSpacing) / 2.0);
     cardWidth = MAX(154.0, MIN(cardWidth, 2085.0));
-    return CGSizeMake(cardWidth, 270.0);
+    cardWidth = cardWidth - 20.0;
+    return CGSizeMake(cardWidth , 270.0);
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didHighlightItemAtIndexPath:(NSIndexPath *)indexPath {

@@ -51,7 +51,7 @@
         button.configuration = configuration;
     }
 
-    return button;
+    return [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule];
 }
 
 + (UIView *)makeAmbientLeadingView

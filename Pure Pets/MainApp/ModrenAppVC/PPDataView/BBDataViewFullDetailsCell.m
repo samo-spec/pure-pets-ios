@@ -9,6 +9,8 @@
 #import "VetModel.h"
 #import "CartManager.h"
 #import "UserManager.h"
+#import "UserModel.h"
+#import "PPModernAvatarRenderer.h"
 #import "PPHUD.h"
 #import "PPFunc.h"
 
@@ -434,6 +436,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) PPUniversalCellViewModel *viewModel;
 @property (nonatomic, assign) CGSize lastImageCollectionLayoutSize;
 
+@property (nonatomic, strong) UIView *ownerCapsuleBadgeView;
+@property (nonatomic, strong) UIImageView *ownerAvatarImageView;
+@property (nonatomic, strong) UILabel *ownerNameLabel;
+@property (nonatomic, strong) UIView *ownerRatingContainerView;
+@property (nonatomic, strong) UIImageView *ownerRatingStarIcon;
+@property (nonatomic, strong) UILabel *ownerRatingLabel;
+
 @property (nonatomic, strong) UIView *stepperView;
 @property (nonatomic, strong) UIButton *minusButton;
 @property (nonatomic, strong) UIButton *plusButton;
@@ -531,6 +540,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.primaryButton.enabled = YES;
     self.shareButton.enabled = YES;
     self.ownerMenuButton.enabled = YES;
+    if (_ownerCapsuleBadgeView) {
+        _ownerCapsuleBadgeView.hidden = YES;
+        _ownerNameLabel.text = nil;
+        _ownerAvatarImageView.image = nil;
+        _ownerRatingContainerView.hidden = YES;
+        _ownerRatingLabel.text = nil;
+    }
     self.isEditingQuantity = NO;
     [self bb_setQuantity:0 animated:NO];
     self.stepperView.hidden = YES;
@@ -637,6 +653,9 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds
                                    cornerRadius:BBFullDetailsCardCornerRadius].CGPath;
     self.surfaceView.layer.borderColor = BBFullDetailsCardBorderColor().CGColor;
+    if (_ownerCapsuleBadgeView) {
+        _ownerCapsuleBadgeView.layer.borderColor = BBFullDetailsPlateBorderColor().CGColor;
+    }
     [self bb_layoutMediaLiquidBorder];
     [self bb_updateImageCollectionLayoutIfNeeded];
     
@@ -1052,8 +1071,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     [self bb_configureHighlightPlatesForViewModel:viewModel];
     [self.detailsStackView addArrangedSubview:self.highlightPlateStackView];
+    
+    [self bb_configureOwnerCapsuleBadgeForViewModel:viewModel];
+    [self.detailsStackView addArrangedSubview:self.ownerCapsuleBadgeView];
+    
     [self.detailsStackView addArrangedSubview:self.actionBarView];
     [self.detailsStackView setCustomSpacing:10.0 afterView:self.highlightPlateStackView];
+    [self.detailsStackView setCustomSpacing:12.0 afterView:self.ownerCapsuleBadgeView];
 
     [self.detailsStackView setNeedsLayout];
     [self.detailsStackView layoutIfNeeded];
@@ -2043,6 +2067,195 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [NSString stringWithFormat:BBFullDetailsLocalized(@"bb_dataview_full_details_image_page_format"),
          (long)(page + 1),
          (long)self.imageURLs.count];
+}
+
+#pragma mark - Owner Capsule Badge
+
+- (void)bb_setupOwnerCapsuleBadgeIfNeeded
+{
+    if (self.ownerCapsuleBadgeView) return;
+    
+    _ownerCapsuleBadgeView = [[UIView alloc] init];
+    _ownerCapsuleBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerCapsuleBadgeView.layer.cornerRadius = 22.0;
+    _ownerCapsuleBadgeView.layer.masksToBounds = YES;
+    _ownerCapsuleBadgeView.backgroundColor = BBFullDetailsPlateSurfaceColor();
+    _ownerCapsuleBadgeView.layer.borderWidth = 1.0;
+    _ownerCapsuleBadgeView.layer.borderColor = BBFullDetailsPlateBorderColor().CGColor;
+    
+    UIStackView *contentStack = [[UIStackView alloc] init];
+    contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    contentStack.axis = UILayoutConstraintAxisHorizontal;
+    contentStack.alignment = UIStackViewAlignmentCenter;
+    contentStack.distribution = UIStackViewDistributionFill;
+    contentStack.spacing = 12.0;
+    [_ownerCapsuleBadgeView addSubview:contentStack];
+    
+    _ownerAvatarImageView = [[UIImageView alloc] init];
+    _ownerAvatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+    _ownerAvatarImageView.layer.cornerRadius = 16.0;
+    _ownerAvatarImageView.layer.masksToBounds = YES;
+    _ownerAvatarImageView.backgroundColor = [UIColor.systemGrayColor colorWithAlphaComponent:0.1];
+    
+    _ownerNameLabel = [[UILabel alloc] init];
+    _ownerNameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerNameLabel.textColor = UIColor.labelColor;
+    UIFont *nameFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    _ownerNameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:nameFont];
+    _ownerNameLabel.adjustsFontForContentSizeCategory = YES;
+    _ownerNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    
+    _ownerRatingContainerView = [[UIView alloc] init];
+    _ownerRatingContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerRatingContainerView.backgroundColor = [UIColor colorWithRed:1.0 green:0.80 blue:0.34 alpha:0.15];
+    _ownerRatingContainerView.layer.cornerRadius = 12.0;
+    _ownerRatingContainerView.layer.masksToBounds = YES;
+    
+    _ownerRatingStarIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"star.fill"]];
+    _ownerRatingStarIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerRatingStarIcon.contentMode = UIViewContentModeScaleAspectFit;
+    _ownerRatingStarIcon.tintColor = [UIColor colorWithRed:1.0 green:0.75 blue:0.0 alpha:1.0];
+    
+    _ownerRatingLabel = [[UILabel alloc] init];
+    _ownerRatingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerRatingLabel.textColor = [UIColor colorWithRed:1.0 green:0.65 blue:0.0 alpha:1.0];
+    UIFont *ratingFont = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+    _ownerRatingLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:ratingFont];
+    _ownerRatingLabel.adjustsFontForContentSizeCategory = YES;
+    
+    [_ownerRatingContainerView addSubview:_ownerRatingStarIcon];
+    [_ownerRatingContainerView addSubview:_ownerRatingLabel];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [_ownerRatingStarIcon.leadingAnchor constraintEqualToAnchor:_ownerRatingContainerView.leadingAnchor constant:8.0],
+        [_ownerRatingStarIcon.centerYAnchor constraintEqualToAnchor:_ownerRatingContainerView.centerYAnchor],
+        [_ownerRatingStarIcon.widthAnchor constraintEqualToConstant:12.0],
+        [_ownerRatingStarIcon.heightAnchor constraintEqualToConstant:12.0],
+        
+        [_ownerRatingLabel.leadingAnchor constraintEqualToAnchor:_ownerRatingStarIcon.trailingAnchor constant:4.0],
+        [_ownerRatingLabel.trailingAnchor constraintEqualToAnchor:_ownerRatingContainerView.trailingAnchor constant:-8.0],
+        [_ownerRatingLabel.centerYAnchor constraintEqualToAnchor:_ownerRatingContainerView.centerYAnchor],
+        [_ownerRatingLabel.topAnchor constraintEqualToAnchor:_ownerRatingContainerView.topAnchor constant:4.0],
+        [_ownerRatingLabel.bottomAnchor constraintEqualToAnchor:_ownerRatingContainerView.bottomAnchor constant:-4.0],
+    ]];
+    
+    [contentStack addArrangedSubview:_ownerAvatarImageView];
+    [contentStack addArrangedSubview:_ownerNameLabel];
+    
+    [_ownerNameLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [_ownerNameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    
+    [contentStack addArrangedSubview:_ownerRatingContainerView];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [_ownerAvatarImageView.widthAnchor constraintEqualToConstant:32.0],
+        [_ownerAvatarImageView.heightAnchor constraintEqualToConstant:32.0],
+        
+        [contentStack.leadingAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.leadingAnchor constant:12.0],
+        [contentStack.trailingAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.trailingAnchor constant:-12.0],
+        [contentStack.topAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.topAnchor constant:6.0],
+        [contentStack.bottomAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.bottomAnchor constant:-6.0],
+        
+        [_ownerCapsuleBadgeView.heightAnchor constraintEqualToConstant:44.0]
+    ]];
+}
+
+- (NSString *)bb_ownerIDForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (!viewModel || viewModel.isSkeleton) {
+        return nil;
+    }
+    id model = viewModel.ModelObject;
+    if (!model) {
+        return nil;
+    }
+    
+    NSString *ownerID = nil;
+    if ([model isKindOfClass:PetAd.class]) {
+        ownerID = ((PetAd *)model).ownerID;
+    } else if ([model isKindOfClass:PetAccessory.class]) {
+        ownerID = ((PetAccessory *)model).ownerID;
+    } else if ([model isKindOfClass:AdoptPetModel.class]) {
+        ownerID = ((AdoptPetModel *)model).ownerID;
+    } else if ([model isKindOfClass:ServiceModel.class]) {
+        if ([model respondsToSelector:@selector(serviceOwnerID)]) {
+            ownerID = [model performSelector:@selector(serviceOwnerID)];
+        } else if ([model respondsToSelector:@selector(ownerID)]) {
+            ownerID = [model performSelector:@selector(ownerID)];
+        }
+    } else if ([model isKindOfClass:VetModel.class]) {
+        if ([model respondsToSelector:@selector(userID)]) {
+            ownerID = [model performSelector:@selector(userID)];
+        } else if ([model respondsToSelector:@selector(ownerID)]) {
+            ownerID = [model performSelector:@selector(ownerID)];
+        }
+    }
+    
+    if (!ownerID && [model respondsToSelector:@selector(ownerID)]) {
+        ownerID = [model performSelector:@selector(ownerID)];
+    }
+    
+    if (!ownerID && [model respondsToSelector:@selector(userID)]) {
+        ownerID = [model performSelector:@selector(userID)];
+    }
+    
+    return ownerID;
+}
+
+- (void)bb_configureOwnerCapsuleBadgeForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    [self bb_setupOwnerCapsuleBadgeIfNeeded];
+    
+    NSString *ownerID = [self bb_ownerIDForViewModel:viewModel];
+    if (ownerID.length == 0 || viewModel.isSkeleton) {
+        self.ownerCapsuleBadgeView.hidden = YES;
+        return;
+    }
+    
+    self.ownerCapsuleBadgeView.hidden = NO;
+    
+    // Default / loading state
+    self.ownerNameLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
+    self.ownerAvatarImageView.image = [PPModernAvatarRenderer avatarImageForName:@"" size:32.0];
+    self.ownerRatingContainerView.hidden = YES;
+    
+    __weak typeof(self) weakSelf = self;
+    [UsrMgr getOtherUserModelFromFirestoreWithUID:ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.viewModel || ![ownerID isEqualToString:[self bb_ownerIDForViewModel:self.viewModel]]) {
+            return;
+        }
+        
+        if (error || !user) {
+            self.ownerNameLabel.text = BBFullDetailsLocalized(@"unknown");
+            return;
+        }
+        
+        NSString *displayName = user.userName;
+        if (displayName.length == 0) {
+            displayName = BBFullDetailsLocalized(@"unknown");
+        }
+        self.ownerNameLabel.text = displayName;
+        
+        UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:32.0];
+        self.ownerAvatarImageView.image = placeholder;
+        
+        NSURL *avatarURL = [user userImageUrl];
+        if (avatarURL) {
+            [[PPImageLoaderManager shared] setImageOnImageView:self.ownerAvatarImageView
+                                                           url:avatarURL.absoluteString
+                                                   placeholder:placeholder
+                                                    complation:nil];
+        }
+        
+        if (user.providerReviewCount > 0 && user.providerRatingValue > 0.0) {
+            self.ownerRatingLabel.text = [NSString stringWithFormat:@"%.1f", user.providerRatingValue];
+            self.ownerRatingContainerView.hidden = NO;
+        } else {
+            self.ownerRatingContainerView.hidden = YES;
+        }
+    }];
 }
 
 #pragma mark - Helpers
