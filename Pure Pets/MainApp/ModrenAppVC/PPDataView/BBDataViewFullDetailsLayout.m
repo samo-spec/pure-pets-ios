@@ -2,12 +2,12 @@
 
 static const CGFloat BBFullDetailsBeaconWidth = 42.0;
 static const CGFloat BBFullDetailsTopViewportInset = 22.0;
-static const CGFloat BBFullDetailsBottomViewportInset = 22.0;
+static const CGFloat BBFullDetailsBottomViewportInset = 104.0;
 static const CGFloat BBFullDetailsMinimumCardHeight = 340.0;
 static const CGFloat BBFullDetailsMinimumCardWidth = 260.0;
 static const CGFloat BBFullDetailsInterItemSpacing = 12.0;
-static const CGFloat BBFullDetailsAdjacentMinimumScale = 0.94;
-static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.80;
+static const CGFloat BBFullDetailsAdjacentMinimumScale = 0.88;
+static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.70;
 
 @implementation BBDataViewFullDetailsLayout
 
@@ -48,8 +48,8 @@ static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.80;
     }
 
     CGSize boundsSize = collectionView.bounds.size;
-    CGFloat availableWidth = MAX(1.0, boundsSize.width - adjustedInset.left - adjustedInset.right);
-    CGFloat availableHeight = MAX(1.0, boundsSize.height - adjustedInset.top - adjustedInset.bottom);
+    CGFloat availableWidth = MAX(1.0, boundsSize.width - adjustedInset.left  );
+    CGFloat availableHeight = MAX(1.0, boundsSize.height - adjustedInset.top  );
 
     CGFloat preferredWidth =
         availableWidth - ((BBFullDetailsInterItemSpacing + BBFullDetailsBeaconWidth) * 2.0);

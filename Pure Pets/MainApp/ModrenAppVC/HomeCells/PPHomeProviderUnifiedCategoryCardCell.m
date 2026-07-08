@@ -744,7 +744,7 @@ static UIColor *PPHomeUnifiedProviderMarketplaceHeroAccentColor(void)
                                                      backgroundAccent,
                                                      darkMode ? 0.062 : 0.024,
                                                      self.traitCollection);
-    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.78];
+    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.78];
 
     _surfaceView.backgroundColor = UIColor.clearColor;
     _surfaceView.layer.borderColor = stroke.CGColor;

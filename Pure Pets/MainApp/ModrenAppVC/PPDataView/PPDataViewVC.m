@@ -1297,6 +1297,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (self.isShowingSkeleton) return;
     self.isShowingSkeleton = YES;
 
+    // Remove empty state from background immediately
+    [PPEmptyStateHelper removeEmptyStateFromListView:self.collectionView];
+
     NSMutableArray *items = [NSMutableArray array];
     NSInteger count = 8;
 
@@ -1363,9 +1366,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self updateEmptyState];
 
     [self bindViewModel];
-    [self handleInitialRoute];
     
-    [self prefetchSubKindIcons];
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!weakSelf) return;
+        [weakSelf handleInitialRoute];
+        [weakSelf prefetchSubKindIcons];
+    });
     
     self.title=nil;
     
@@ -3018,8 +3025,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         rootClearance = clearanceIMP ? clearanceIMP(self.tabBarController, clearanceSelector) : 0.0;
     }
 
-    if (!resolvedBottomInsetFromNavigationFrame && rootClearance > 0.0) {
-        targetBottomInset = ceil(rootClearance + (fullDetails ? 22.0 : 0.0));
+    if (rootClearance > 0.0) {
+        CGFloat rootTargetBottomInset = ceil(rootClearance + (fullDetails ? 22.0 : 0.0));
+        targetBottomInset = MAX(targetBottomInset, rootTargetBottomInset);
     } else if (!resolvedBottomInsetFromNavigationFrame) {
         CGFloat bottomInset = 0.0;
         if (self.tabBarController &&
@@ -3890,6 +3898,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (section < PPDataSectionAds || section > PPDataSectionServices) {
         return;
     }
+
+    // Clear previous empty state immediately upon starting section switch
+    [PPEmptyStateHelper removeEmptyStateFromListView:self.collectionView];
 
     BOOL isSameSection = (section == self.viewModel.currentSection);
     BOOL shouldSwitchSection = !isSameSection || self.viewModel.items.count == 0;

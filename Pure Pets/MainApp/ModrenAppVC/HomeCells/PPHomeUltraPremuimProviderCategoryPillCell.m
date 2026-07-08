@@ -352,7 +352,13 @@ static UIColor *PPHomeUltraProviderAccentColorForItem(PPHomeProviderCategoryItem
     _textStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     NSString *title = kLang(item.titleKey) ?: item.titleKey ?: @"";
-    NSString *subtitle = kLang(item.subtitleKey) ?: item.subtitleKey ?: @"";
+    
+    // Leverage premium 5-7 word subtitles for the ultra premium card format
+    NSString *premiumSubtitleKey = [NSString stringWithFormat:@"%@_premium", item.subtitleKey];
+    NSString *subtitle = kLang(premiumSubtitleKey);
+    if (subtitle.length == 0 || [subtitle isEqualToString:premiumSubtitleKey]) {
+        subtitle = kLang(item.subtitleKey) ?: item.subtitleKey ?: @"";
+    }
 
     _titleLabel.text = title;
     _subtitleLabel.text = subtitle;

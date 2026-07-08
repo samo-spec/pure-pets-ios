@@ -239,17 +239,17 @@ static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
         BOOL accessibilityText =
             UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
         if (accessibilityText) {
-            return  83.0;
+            return  88.0;
         }
-        return   72.0;
+        return   88.0;
     }
     if (PPHomeWidthIsTablet(width)) {
-        return 72.0;
+        return 88.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 68;
+        return 88.0;
     }
-    return 68;
+    return 88.0;
 }
 
 static inline CGFloat PPHomeMarketplaceHeroHeight(CGFloat width)

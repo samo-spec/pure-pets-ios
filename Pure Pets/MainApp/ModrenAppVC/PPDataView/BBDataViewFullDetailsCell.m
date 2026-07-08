@@ -19,9 +19,9 @@ static CGFloat const BBFullDetailsMediaCornerRadius = 32.0;
 static CGFloat const BBFullDetailsContentInset = 28.0;
 static CGFloat const BBFullDetailsMediaOuterInset = 28.0;
 static CGFloat const BBFullDetailsMediaToContentSpacing = 16.0;
-static CGFloat const BBFullDetailsContentBottomInset = 16.0;
+static CGFloat const BBFullDetailsContentBottomInset = 22.0;
 static CGFloat const BBFullDetailsActionHeight = 44.0;
-static CGFloat const BBFullDetailsMediaLiquidBorderWidth = 0.09;
+static CGFloat const BBFullDetailsMediaLiquidBorderWidth = 0.180;
 static CGFloat const BBFullDetailsStepperButtonSize = 34.0;
 static NSTimeInterval const BBFullDetailsStepperAutoCollapseDelay = 3.5;
 
@@ -35,7 +35,7 @@ static UIColor *BBFullDetailsCardSurfaceColor(void)
             return [UIColor colorWithWhite:1.0 alpha:0.88];
         }];
     }
-    return [UIColor.whiteColor colorWithAlphaComponent:0.88];
+    return [UIColor.whiteColor colorWithAlphaComponent:0.68];
 }
 
 static UIColor *BBFullDetailsCardBorderColor(void)
@@ -79,7 +79,7 @@ static UIColor *BBFullDetailsPlateBorderColor(void)
 
 static UIColor *BBFullDetailsImageBackgroundColor(void)
 {
-    return AppBackgroundClrLigter;
+    return AppForgroundColr;
 }
 
 static NSArray<id> *BBFullDetailsLiquidBorderColors(BOOL isDark)
@@ -160,11 +160,12 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 }
 
 @interface BBFullDetailsImagePageCell : UICollectionViewCell
-@property (nonatomic, strong) UIImageView *backfillImageView;
-@property (nonatomic, strong) UIView *backfillWashView;
+ @property (nonatomic, strong) UIView *backfillWashView;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) UILabel *failureLabel;
 @property (nonatomic, copy) NSString *representedURL;
+@property (nonatomic, strong) NSLayoutConstraint *imageWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *imageHeightConstraint;
 - (void)configureWithURL:(NSString *)url
              placeholder:(UIImage *)placeholder
              imageLoader:(BBDataViewFullDetailsImageLoader)imageLoader
@@ -182,15 +183,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.backgroundColor = BBFullDetailsImageBackgroundColor();
     self.contentView.backgroundColor = BBFullDetailsImageBackgroundColor();
     self.contentView.clipsToBounds = YES;
-
-    _backfillImageView = [[UIImageView alloc] init];
-    _backfillImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _backfillImageView.backgroundColor = BBFullDetailsImageBackgroundColor();
-    _backfillImageView.contentMode = UIViewContentModeScaleAspectFit;
-    _backfillImageView.clipsToBounds = YES;
-    _backfillImageView.alpha = 0.32;
-    [self.contentView addSubview:_backfillImageView];
-
+ 
     _backfillWashView = [[UIView alloc] init];
     _backfillWashView.translatesAutoresizingMaskIntoConstraints = NO;
     _backfillWashView.backgroundColor = [BBFullDetailsImageBackgroundColor() colorWithAlphaComponent:0.42];
@@ -199,10 +192,11 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     _imageView = [[UIImageView alloc] init];
     _imageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _imageView.backgroundColor = BBFullDetailsImageBackgroundColor();
+    // Keep aspect-fit product imagery uncropped while letting the filled backplate cover letterbox space.
+    _imageView.backgroundColor = UIColor.clearColor;
     _imageView.contentMode = UIViewContentModeScaleAspectFit;
     _imageView.clipsToBounds = YES;
-    _imageView.layer.borderColor = AppBackgroundClr.CGColor;
+    _imageView.layer.borderColor = AppBackgroundClrDarker.CGColor;
     _imageView.layer.borderWidth = 0.75;
    //_imageView.layer.borderColor = AppBackgroundClr;;
     _imageView.isAccessibilityElement = YES;
@@ -221,22 +215,26 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [self.contentView addSubview:_failureLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_backfillImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_backfillImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_backfillImageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_backfillImageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+       
+        
         [_backfillWashView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [_backfillWashView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [_backfillWashView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_backfillWashView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [_imageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_imageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_imageView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_imageView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        
+        [_imageView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [_imageView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_imageView.heightAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.heightAnchor],
+        [_imageView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor],
+        [_imageView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor],
         [_failureLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [_failureLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [_failureLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor]
     ]];
+    self.imageWidthConstraint = [_imageView.widthAnchor constraintEqualToConstant:1.0];
+   // self.imageHeightConstraint = [_imageView.heightAnchor constraintEqualToConstant:1.0];
+    self.imageWidthConstraint.active = YES;
+    //self.imageHeightConstraint.active = YES;
 
     return self;
 }
@@ -246,9 +244,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [super prepareForReuse];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
     self.representedURL = @"";
-    self.backfillImageView.image = nil;
-    self.imageView.image = nil;
-    self.backfillImageView.contentMode = UIViewContentModeScaleAspectFit;
+     self.imageView.image = nil;
+     self.imageView.backgroundColor = UIColor.clearColor;
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.imageView.accessibilityLabel = nil;
     self.imageView.accessibilityValue = nil;
@@ -258,7 +255,34 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    
+   [self bb_updateForegroundImageSizeForBounds:self.contentView.bounds.size];
+}
+
+- (void)bb_updateForegroundImageSizeForBounds:(CGSize)boundsSize
+{
+    CGFloat availableWidth = floor(MAX(boundsSize.width, 1.0));
+    CGFloat availableHeight = floor(MAX(boundsSize.height, 1.0));
+    CGSize imageSize = self.imageView.image.size;
+    if (imageSize.width <= 0.0 || imageSize.height <= 0.0) {
+        imageSize = CGSizeMake(availableWidth, availableHeight);
+    }
+
+    CGFloat imageAspect = imageSize.width / imageSize.height;
+    CGFloat boundsAspect = availableWidth / availableHeight;
+    CGFloat targetWidth = availableWidth;
+    CGFloat targetHeight = availableHeight;
+    if (imageAspect > boundsAspect) {
+        targetHeight = floor(availableWidth / imageAspect);
+    } else {
+        targetWidth = floor(availableHeight * imageAspect);
+    }
+
+    targetWidth = MIN(MAX(targetWidth, 1.0), availableWidth);
+    //targetHeight = MIN(MAX(targetHeight, 1.0), availableHeight);
+    if (fabs(self.imageWidthConstraint.constant - targetWidth) > 0.5) {
+        self.imageWidthConstraint.constant = targetWidth;
+        //self.imageHeightConstraint.constant = targetHeight;
+    }
 }
 
 - (void)configureWithURL:(NSString *)url
@@ -269,9 +293,9 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     self.representedURL = url ?: @"";
     UIImage *fallback = placeholder ?: [UIImage imageNamed:@"placeholder"];
-    self.backfillImageView.image = fallback;
-    self.imageView.image = fallback;
-    self.backfillImageView.contentMode = UIViewContentModeScaleAspectFit;
+     self.imageView.image = fallback;
+ 
+    self.imageView.backgroundColor = UIColor.clearColor;
     self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     self.failureLabel.hidden = (self.representedURL.length > 0);
     self.imageView.accessibilityLabel = BBFullDetailsLocalized(@"bb_dataview_full_details_image_accessibility");
@@ -302,8 +326,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [[PPImageLoaderManager shared] fetchImageWithURL:representedURL completion:^(UIImage * _Nullable image) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || !image || ![self.representedURL isEqualToString:representedURL]) { return; }
-        self.backfillImageView.image = image;
-        self.backfillImageView.contentMode = UIViewContentModeScaleAspectFit;
+      
+        self.imageView.backgroundColor = UIColor.clearColor;
         self.imageView.contentMode = UIViewContentModeScaleAspectFit;
         if (!self.imageView.image || self.imageView.image == fallback) {
             self.imageView.image = image;
@@ -390,8 +414,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UICollectionView *imageCollectionView;
 @property (nonatomic, strong) UIPageControl *pageControl;
 @property (nonatomic, strong) UIView *mediaContainerView;
-@property (nonatomic, strong) NSLayoutConstraint *mediaHeightConstraint;
-@property (nonatomic, strong) CAGradientLayer *mediaLiquidBorderLayer;
+ @property (nonatomic, strong) CAGradientLayer *mediaLiquidBorderLayer;
 @property (nonatomic, strong) CAShapeLayer *mediaLiquidBorderMaskLayer;
 @property (nonatomic, strong) NSLayoutConstraint *mediaTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *mediaBottomConstraint;
@@ -403,7 +426,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UILabel *priceLabel;
-@property (nonatomic, strong) UILabel *metaLabel;
 @property (nonatomic, strong) UIStackView *highlightPlateStackView;
 @property (nonatomic, strong) UIStackView *socialMetricStackView;
 @property (nonatomic, copy) NSArray<NSString *> *imageURLs;
@@ -468,11 +490,9 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.titleLabel.text = nil;
     self.subtitleLabel.text = nil;
     self.priceLabel.text = nil;
-    self.metaLabel.text = nil;
     self.titleLabel.accessibilityLabel = nil;
     self.subtitleLabel.accessibilityLabel = nil;
     self.priceLabel.accessibilityLabel = nil;
-    self.metaLabel.accessibilityLabel = nil;
     [self bb_removeAllArrangedSubviewsFromStack:self.highlightPlateStackView];
     [self bb_removeAllArrangedSubviewsFromStack:self.socialMetricStackView];
     self.highlightPlateStackView.hidden = YES;
@@ -489,8 +509,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.mediaContainerView.hidden = YES;
     self.mediaTopConstraint.active = NO;
     self.mediaBottomConstraint.active = NO;
-    self.mediaHeightConstraint.constant = 0.0;
-    self.mediaHeightConstraint.active = YES;
+ 
+
     [self bb_removeAllArrangedSubviewsFromStack:self.detailsStackView];
     for (UICollectionViewCell *visibleCell in self.imageCollectionView.visibleCells) {
         if ([visibleCell isKindOfClass:BBFullDetailsImagePageCell.class]) {
@@ -541,8 +561,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.titleLabel.text = BBFullDetailsTrimmedString(viewModel.title);
     self.subtitleLabel.text = [self bb_descriptionSubtitleForViewModel:viewModel];
     self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
-    self.metaLabel.text = [self bb_summaryMetaTextForViewModel:viewModel];
-    self.metaLabel.hidden = self.metaLabel.text.length == 0;
 
     self.imageURLs = [self bb_imageURLsForViewModel:viewModel];
     BOOL hasImages = self.imageURLs.count > 0;
@@ -555,7 +573,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [self.imageCollectionView setContentOffset:CGPointZero animated:NO];
     [self bb_updateImageCollectionLayoutIfNeeded];
     [self.imageCollectionView reloadData];
-    [self setNeedsLayout];
+    
 
     [self bb_buildDetailsForViewModel:viewModel];
     [self bb_configureActionsForViewModel:viewModel];
@@ -585,17 +603,27 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
 - (void)bb_updateMediaHeightForSize:(CGSize)size
 {
+    (void)size;
+    if ( !self.mediaTopConstraint || !self.mediaBottomConstraint) {
+        return;
+    }
+
     BOOL hasImages = self.viewModel && !self.viewModel.isSkeleton && self.imageURLs.count > 0;
-    if (hasImages) {
-        self.mediaHeightConstraint.active = NO;
-        self.mediaTopConstraint.active = YES;
-        self.mediaBottomConstraint.active = YES;
-    } else {
+    if (!hasImages) {
         self.mediaTopConstraint.active = NO;
         self.mediaBottomConstraint.active = NO;
-        self.mediaHeightConstraint.constant = 0.0;
-        self.mediaHeightConstraint.active = YES;
+      
+        return;
     }
+
+  
+    self.mediaTopConstraint.active = YES;
+    self.mediaBottomConstraint.active = YES;
+ 
+        self.lastImageCollectionLayoutSize = CGSizeZero;
+        [self.imageCollectionView.collectionViewLayout invalidateLayout];
+        [self setNeedsLayout];
+   
 }
 
 
@@ -641,7 +669,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     UIView *surfaceView = [[UIView alloc] init];
     surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.backgroundColor = BBFullDetailsCardSurfaceColor();
+    surfaceView.backgroundColor = [BBFullDetailsCardSurfaceColor() colorWithAlphaComponent:0.82];
     surfaceView.layer.cornerRadius = BBFullDetailsCardCornerRadius;
     surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     surfaceView.layer.borderColor = BBFullDetailsCardBorderColor().CGColor;
@@ -717,7 +745,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     _pageControl.hidesForSinglePage = YES;
     _pageControl.userInteractionEnabled = NO;
     _pageControl.currentPageIndicatorTintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    _pageControl.pageIndicatorTintColor = [UIColor.whiteColor colorWithAlphaComponent:0.55];
+    _pageControl.pageIndicatorTintColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.55];
     [_mediaContainerView addSubview:_pageControl];
 
     _ownerMenuButton = [self bb_iconButtonWithSystemImageName:@"ellipsis"];
@@ -806,9 +834,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     _detailsStackView.distribution = UIStackViewDistributionFill;
     _detailsStackView.spacing = 7.0;
     [surfaceView addSubview:_detailsStackView];
-
-    _mediaHeightConstraint = [_mediaContainerView.heightAnchor constraintEqualToConstant:220.0];
-    _mediaHeightConstraint.active = YES;
+ 
 
     _mediaTopConstraint = [_mediaContainerView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsMediaOuterInset];
     _mediaBottomConstraint = [_mediaContainerView.bottomAnchor constraintEqualToAnchor:_detailsStackView.topAnchor constant:-BBFullDetailsMediaToContentSpacing];
@@ -818,6 +844,8 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [_cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        
+        
         [surfaceView.topAnchor constraintEqualToAnchor:_cardView.topAnchor],
         [surfaceView.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor],
         [surfaceView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor],
@@ -825,11 +853,12 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
         [_mediaContainerView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsMediaOuterInset],
         [_mediaContainerView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsMediaOuterInset],
-        
-        [_imageCollectionView.topAnchor constraintEqualToAnchor:_mediaContainerView.topAnchor],
+
         [_imageCollectionView.leadingAnchor constraintEqualToAnchor:_mediaContainerView.leadingAnchor],
         [_imageCollectionView.trailingAnchor constraintEqualToAnchor:_mediaContainerView.trailingAnchor],
+        [_imageCollectionView.topAnchor constraintEqualToAnchor:_mediaContainerView.topAnchor],
         [_imageCollectionView.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor],
+        
         
         [_pageControl.centerXAnchor constraintEqualToAnchor:_mediaContainerView.centerXAnchor],
         [_pageControl.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor constant:-8.0],
@@ -842,7 +871,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_detailsStackView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-BBFullDetailsContentBottomInset],
         [_detailsStackView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsContentInset],
         [_detailsStackView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsContentInset],
-        [_detailsStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsContentInset]
+        [_detailsStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsContentInset],
+        
+        [_mediaContainerView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:BBFullDetailsMediaOuterInset],
+        [_mediaContainerView.bottomAnchor constraintEqualToAnchor:_detailsStackView.topAnchor constant:-BBFullDetailsMediaOuterInset],
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(bb_cardTapped)];
@@ -941,7 +973,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = BBFullDetailsActionHeight * 0.5;
+    button.layer.cornerRadius = 36.0 * 0.5;
     button.backgroundColor = BBFullDetailsPlateSurfaceColor();
     button.tintColor = UIColor.labelColor;
     button.clipsToBounds = YES;
@@ -961,7 +993,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     self.titleLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
     self.subtitleLabel.text = @"";
-    self.metaLabel.text = @"";
     self.mediaContainerView.hidden = YES;
     [self bb_updateMediaHeightForSize:self.bounds.size];
     self.primaryButton.enabled = NO;
@@ -982,7 +1013,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.titleLabel = self.titleLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleHeadline weight:UIFontWeightBold color:UIColor.labelColor];
     self.subtitleLabel = self.subtitleLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleSubheadline weight:UIFontWeightMedium color:UIColor.secondaryLabelColor];
     self.priceLabel = self.priceLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleHeadline weight:UIFontWeightBold color:(AppPrimaryClr ?: UIColor.systemPinkColor)];
-    self.metaLabel = self.metaLabel ?: [self bb_labelWithTextStyle:UIFontTextStyleFootnote weight:UIFontWeightMedium color:UIColor.secondaryLabelColor];
 
     UIFont *titleFont = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle3] scaledFontForFont:titleFont];
@@ -992,49 +1022,41 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:subtitleFont];
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
 
-    UIFont *priceFont = [GM boldFontWithSize:26.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
+    UIFont *priceFont = [GM BlackFontWithSize:26.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
     self.priceLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:priceFont];
     self.priceLabel.adjustsFontForContentSizeCategory = YES;
-
-    UIFont *metaFont = [GM fontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
-    self.metaLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote] scaledFontForFont:metaFont];
-    self.metaLabel.adjustsFontForContentSizeCategory = YES;
 
     if (viewModel.isSkeleton) {
         self.titleLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
         self.subtitleLabel.text = @"";
         self.priceLabel.text = @"";
-        self.metaLabel.text = @"";
     } else {
         self.titleLabel.text = BBFullDetailsTrimmedString(viewModel.title);
         self.subtitleLabel.text = [self bb_descriptionSubtitleForViewModel:viewModel];
         self.priceLabel.text = BBFullDetailsTrimmedString(viewModel.priceText);
-        self.metaLabel.text = [self bb_summaryMetaTextForViewModel:viewModel];
     }
 
     self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
     self.priceLabel.hidden = self.priceLabel.text.length == 0;
-    self.metaLabel.hidden = self.metaLabel.text.length == 0;
 
     self.titleLabel.numberOfLines = 2;
     self.subtitleLabel.numberOfLines = 2;
     self.priceLabel.numberOfLines = 1;
-    self.metaLabel.numberOfLines = 1;
 
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.priceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.metaLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
     [self.detailsStackView addArrangedSubview:self.titleLabel];
     [self.detailsStackView addArrangedSubview:self.subtitleLabel];
     [self.detailsStackView addArrangedSubview:self.priceLabel];
-    [self.detailsStackView addArrangedSubview:self.metaLabel];
 
     [self bb_configureHighlightPlatesForViewModel:viewModel];
     [self.detailsStackView addArrangedSubview:self.highlightPlateStackView];
     [self.detailsStackView addArrangedSubview:self.actionBarView];
-    [self.detailsStackView setCustomSpacing:6.0 afterView:self.metaLabel];
     [self.detailsStackView setCustomSpacing:10.0 afterView:self.highlightPlateStackView];
+
+    [self.detailsStackView setNeedsLayout];
+    [self.detailsStackView layoutIfNeeded];
 }
 
 - (UILabel *)bb_labelWithTextStyle:(UIFontTextStyle)textStyle
@@ -1226,7 +1248,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.contentMode = UIViewContentModeScaleToFill;
     iconView.tintColor = tintColor ?: UIColor.secondaryLabelColor;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration =
@@ -1980,6 +2002,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     layout.estimatedItemSize = CGSizeZero;
     layout.itemSize = targetSize;
     [layout invalidateLayout];
+    [self.imageCollectionView layoutIfNeeded];
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section

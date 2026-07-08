@@ -741,7 +741,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
         [segmentView configureWithItem:item];
         [segmentView addTarget:self
                         action:@selector(pp_segmentTapped:)
-              forControlEvents:UIControlEventTouchUpInside];
+              forControlEvents:UIControlEventTouchDown];
         [self.segmentsStackView addArrangedSubview:segmentView];
         [segmentViews addObject:segmentView];
     }];

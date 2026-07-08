@@ -110,7 +110,7 @@ NS_INLINE UIColor *PPMarketplaceHeroCardStrokeColor(UITraitCollection *traitColl
     if (@available(iOS 13.0, *)) {
         dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    return [UIColor.whiteColor colorWithAlphaComponent:(dark ? 0.26 : 0.78)];
+    return [UIColor.whiteColor colorWithAlphaComponent:(dark ? 0.12 : 0.78)];
 }
 
 NS_INLINE UIColor *PPMarketplaceHeroCardTopAccentColor(UITraitCollection *traitCollection)

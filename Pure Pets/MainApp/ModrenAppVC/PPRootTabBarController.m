@@ -55,6 +55,10 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
+static CGFloat const PPCartFloatingBarHeight = 66.0;
+static CGFloat const PPCartFloatingBarRestingBottomConstant = 16.0;
+static CGFloat const PPCartFloatingBarHiddenBottomConstant = 28.0;
+static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 
 @class PPPremiumDockBarDelegate;
 @class PPCartFloatingBarCoordinator;
@@ -128,8 +132,7 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 - (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
 - (void)pp_updatePremiumChatsBadgeWithCount:(NSInteger)count;
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded;
-- (void)pp_updateTabBarTopSeparatorIfNeeded;
-- (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
+ - (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
                                            indicatorSize:(CGSize)indicatorSize
                                                fillColor:(UIColor *)fillColor
                                              strokeColor:(UIColor *)strokeColor;
@@ -637,6 +640,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController;
 - (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController
                                          visitedControllers:(NSMutableSet<NSValue *> *)visitedControllers;
+- (CGFloat)expectedBottomClearanceForVisibleFloatingCart;
 @end
 
 @implementation PPCartFloatingBarCoordinator
@@ -708,7 +712,41 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     CGRect floatingFrame = [self.floatingBarView.superview convertRect:self.floatingBarView.frame toView:hostView];
     CGFloat safeBottomY = CGRectGetMaxY(hostView.bounds) - hostView.safeAreaInsets.bottom;
     CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(floatingFrame));
-    return ceil(overlapAboveSafeArea + 12.0);
+    return ceil(overlapAboveSafeArea + PPCartFloatingBarClearancePadding);
+}
+
+- (CGFloat)restingBottomClearance
+{
+    return ceil(MAX(0.0, PPCartFloatingBarHeight - PPCartFloatingBarRestingBottomConstant) + PPCartFloatingBarClearancePadding);
+}
+
+- (CGFloat)expectedBottomClearanceForVisibleFloatingCart
+{
+    UIViewController *source = self.activeSourceViewController;
+    if (!source || !self.hostController) {
+        return 0.0;
+    }
+
+    CartManager *cartManager = [CartManager sharedManager];
+    if ([cartManager totalItemsCount] <= 0 ||
+        ![self isEligibleFloatingCartSourceViewController:source] ||
+        ![self isActiveSourceCurrentlyVisible]) {
+        return 0.0;
+    }
+
+    UIViewController *visible = [self topVisibleViewControllerFrom:self.hostController.selectedViewController ?: self.hostController];
+    PPBottomSurfaceKind resolvedKind =
+        [[PPBottomSurfaceCoordinator sharedCoordinator] resolvedSurfaceKindForController:visible];
+    if (resolvedKind != PPBottomSurfaceKindFloatingCartSurface) {
+        return 0.0;
+    }
+
+    CGFloat measuredClearance = [self currentBottomClearance];
+    if (measuredClearance > 0.0) {
+        return measuredClearance;
+    }
+
+    return [self restingBottomClearance];
 }
 
 - (void)handleCartUpdatedAnimated:(BOOL)animated
@@ -897,7 +935,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         ? CGAffineTransformIdentity
         : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0),
                                   CGAffineTransformMakeScale(0.97, 0.97));
-    self.floatingBarBottomConstraint.constant = 28.0;
+    self.floatingBarBottomConstraint.constant = PPCartFloatingBarHiddenBottomConstant;
     [host.view layoutIfNeeded];
     [host pp_applyBottomNavigationClearanceToVisibleLists];
     [self refreshActiveSourceInsetsIfNeeded];
@@ -940,9 +978,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     self.state.visible = shouldShow;
-    CGFloat restingBottomConstant = 16.0;
-    CGFloat hiddenBottomConstant = 28.0;
-
     if (shouldShow) {
         [self ensureFloatingBarIfNeeded];
         [self pp_applyFloatingFadeAppearance];
@@ -958,7 +993,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                 : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0),
                                           CGAffineTransformMakeScale(0.97, 0.97));
         }
-        self.floatingBarBottomConstraint.constant = hiddenBottomConstant;
+        self.floatingBarBottomConstraint.constant = PPCartFloatingBarHiddenBottomConstant;
         [host.view layoutIfNeeded];
         [host pp_setPremiumBottomNavigationHidden:YES animated:animated];
         if (fadeView) {
@@ -969,7 +1004,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
         void (^showChanges)(void) = ^{
             fadeView.alpha = 1.0;
-            self.floatingBarBottomConstraint.constant = restingBottomConstant;
+            self.floatingBarBottomConstraint.constant = PPCartFloatingBarRestingBottomConstant;
             barView.alpha = 1.0;
             barView.transform = CGAffineTransformIdentity;
             [host.view layoutIfNeeded];
@@ -998,7 +1033,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     PPBottomFadeView *fadeView = self.floatingBarFadeView;
     void (^hideChanges)(void) = ^{
         fadeView.alpha = 0.0;
-        self.floatingBarBottomConstraint.constant = hiddenBottomConstant;
+        self.floatingBarBottomConstraint.constant = PPCartFloatingBarHiddenBottomConstant;
         barView.alpha = 0.0;
         barView.transform = UIAccessibilityIsReduceMotionEnabled()
             ? CGAffineTransformIdentity
@@ -1052,7 +1087,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [hostView addSubview:barView];
     self.floatingBarView = barView;
-    self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:32.0];
+    self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:PPCartFloatingBarHiddenBottomConstant];
 
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
@@ -1063,7 +1098,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0],
         [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0],
         self.floatingBarBottomConstraint,
-        [barView.heightAnchor constraintEqualToConstant:66.0]
+        [barView.heightAnchor constraintEqualToConstant:PPCartFloatingBarHeight]
     ]];
 
     [self pp_applyFloatingFadeAppearance];
@@ -2534,6 +2569,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     CGFloat floatingCartClearance = [self.cartFloatingBarCoordinator currentBottomClearance];
     if (floatingCartClearance > 0.0) {
         return floatingCartClearance;
+    }
+
+    CGFloat expectedFloatingCartClearance = [self.cartFloatingBarCoordinator expectedBottomClearanceForVisibleFloatingCart];
+    if (expectedFloatingCartClearance > 0.0) {
+        return expectedFloatingCartClearance;
     }
 
     if (self.premiumBottomNavigationHidden) {

@@ -155,6 +155,14 @@ static const void *kPPEmptyStateTokenKey = &kPPEmptyStateTokenKey;
 
 + (void)removeEmptyStateFromListView:(UIView *)listView
 {
+    // Synchronously increment token to invalidate any pending delayed show blocks immediately
+    NSNumber *token = objc_getAssociatedObject(listView, kPPEmptyStateTokenKey);
+    NSInteger newToken = token.integerValue + 1;
+    objc_setAssociatedObject(listView,
+                             kPPEmptyStateTokenKey,
+                             @(newToken),
+                             OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
     dispatch_async(dispatch_get_main_queue(), ^{
         if ([listView respondsToSelector:@selector(setBackgroundView:)]) {
             [(id)listView setBackgroundView:nil];
