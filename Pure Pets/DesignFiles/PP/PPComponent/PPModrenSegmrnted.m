@@ -5,7 +5,7 @@
 static const NSInteger PPModrenSegmrntedNoSelection = -1;
 static const CGFloat PPModrenSegmrntedOuterInset = 3.0;
 static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
-static const CGFloat PPModrenSegmrntedUnderlineHeight = 4.0;
+static const CGFloat PPModrenSegmrntedUnderlineHeight = 5.0;
 static const CGFloat PPModrenSegmrntedContainerCornerRadius = 24.0;
 static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 24.0;
 static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.36;
@@ -816,7 +816,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     CGFloat outlineLeading = CGRectGetMinX(selectedFrame) + outlineInset;
 
     CGFloat desiredUnderlineWidth = CGRectGetWidth(selectedFrame) * 0.34;
-    CGFloat underlineWidth = MIN(MAX(30.0, desiredUnderlineWidth), 64.0);
+    CGFloat underlineWidth = PPModrenSegmrntedUnderlineHeight;//MIN(MAX(30.0, desiredUnderlineWidth), 64.0);
     CGFloat underlineLeading = CGRectGetMidX(selectedFrame) - (underlineWidth * 0.5);
 
     self.selectionOutlineLeadingConstraint.constant = outlineLeading;

@@ -743,11 +743,88 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 @end
 
+@interface PPUniversalAmbientGlowView : UIView
+@property (nonatomic, strong, readonly) CAGradientLayer *gradientLayer;
+@property (nonatomic, strong) UIColor *baseColor;
+@property (nonatomic, assign) CGFloat lightAlpha;
+@property (nonatomic, assign) CGFloat darkAlpha;
+- (void)pp_updateGlowColors;
+@end
+
+@implementation PPUniversalAmbientGlowView
+
++ (Class)layerClass
+{
+    return [CAGradientLayer class];
+}
+
+- (CAGradientLayer *)gradientLayer
+{
+    return (CAGradientLayer *)self.layer;
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) { return nil; }
+    self.userInteractionEnabled = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.gradientLayer.type = kCAGradientLayerRadial;
+    self.gradientLayer.startPoint = CGPointMake(0.5, 0.5);
+    self.gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    _lightAlpha = 0.06;
+    _darkAlpha = 0.10;
+    _baseColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    return self;
+}
+
+- (void)setBaseColor:(UIColor *)baseColor
+{
+    _baseColor = baseColor ?: UIColor.systemPinkColor;
+    [self pp_updateGlowColors];
+}
+
+- (void)pp_updateGlowColors
+{
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+    CGFloat alpha = isDark ? self.darkAlpha : self.lightAlpha;
+    UIColor *centerColor = [self.baseColor colorWithAlphaComponent:alpha];
+    UIColor *outerColor = [self.baseColor colorWithAlphaComponent:0.0];
+    self.gradientLayer.colors = @[
+        (id)centerColor.CGColor,
+        (id)outerColor.CGColor
+    ];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [self pp_updateGlowColors];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_updateGlowColors];
+        }
+    }
+}
+
+@end
+
 @class PPUniversalCardView;
 
 @interface PPUniversalCell () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) PPUniversalCardView *cardView;
+@property (nonatomic, strong) UIView *cardAmbientGlowContainerView;
+@property (nonatomic, strong) PPUniversalAmbientGlowView *cardAmbientGlowView1;
+@property (nonatomic, strong) PPUniversalAmbientGlowView *cardAmbientGlowView2;
 
 
 @property (nonatomic, strong) UIView *imageScrimView;
@@ -1077,6 +1154,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     NSArray<UIView *> *views = @[
         self.contentView,
         self.cardView,
+        self.cardAmbientGlowContainerView,
+        self.cardAmbientGlowView1,
+        self.cardAmbientGlowView2,
         self.imageContainer,
         self.imageView,
         self.imageScrimView,
@@ -1099,6 +1179,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.cardView.clipsToBounds = NO;
     self.cardView.layer.masksToBounds = NO;
     self.cardView.layer.shadowPath = nil;
+    self.cardAmbientGlowContainerView.hidden = YES;
+    self.cardAmbientGlowContainerView.alpha = 0.0;
     self.imageContainer.hidden = NO;
     self.imageContainer.clipsToBounds = YES;
     self.imageView.hidden = NO;
@@ -1132,6 +1214,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         strongSelf.cardView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:view.bounds
                                        cornerRadius:view.layer.cornerRadius].CGPath;
+        strongSelf.cardAmbientGlowContainerView.layer.cornerRadius = view.layer.cornerRadius;
         if (strongSelf.cardGradientLayer) {
             strongSelf.cardGradientLayer.frame = view.bounds;
             strongSelf.cardGradientLayer.cornerRadius = view.layer.cornerRadius;
@@ -1139,6 +1222,30 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [CATransaction commit];
         [strongSelf pp_layoutLiquidBorderLayers];
     };
+
+    self.cardAmbientGlowContainerView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.cardAmbientGlowContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cardAmbientGlowContainerView.userInteractionEnabled = NO;
+    self.cardAmbientGlowContainerView.backgroundColor = UIColor.clearColor;
+    self.cardAmbientGlowContainerView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.cardAmbientGlowContainerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.cardView addSubview:self.cardAmbientGlowContainerView];
+
+    self.cardAmbientGlowView1 = [[PPUniversalAmbientGlowView alloc] initWithFrame:CGRectZero];
+    self.cardAmbientGlowView1.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cardAmbientGlowView1.baseColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    self.cardAmbientGlowView1.lightAlpha = 0.06;
+    self.cardAmbientGlowView1.darkAlpha = 0.10;
+    [self.cardAmbientGlowContainerView addSubview:self.cardAmbientGlowView1];
+
+    self.cardAmbientGlowView2 = [[PPUniversalAmbientGlowView alloc] initWithFrame:CGRectZero];
+    self.cardAmbientGlowView2.translatesAutoresizingMaskIntoConstraints = NO;
+    self.cardAmbientGlowView2.baseColor = [UIColor colorWithRed:0.63 green:0.40 blue:0.95 alpha:1.0];
+    self.cardAmbientGlowView2.lightAlpha = 0.04;
+    self.cardAmbientGlowView2.darkAlpha = 0.08;
+    [self.cardAmbientGlowContainerView addSubview:self.cardAmbientGlowView2];
 
     self.imageContainer = [[PPUniversalGradientView alloc] init];
     self.imageContainer.layer.cornerRadius = PPUniversalImageCornerRadius;
@@ -1199,7 +1306,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.favoriteButton.hidesBackground = NO;
     self.favoriteButton.hidden = YES;
     self.favoriteButton.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
-    self.favoriteButton.layer.cornerRadius = PPUniversalControlButtonSize / 2.0;
+    self.favoriteButton.layer.cornerRadius = 14.0 ;
     self.favoriteButton.clipsToBounds = YES;
     [self pp_applyFavoriteButtonAppearance:self.favoriteButton];
     [self.favoriteButton addTarget:self action:@selector(tapFavorite) forControlEvents:UIControlEventTouchUpInside];
@@ -1327,6 +1434,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:2.0],
         [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-2.0],
         [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4.0],
+
+        [self.cardAmbientGlowContainerView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor],
+        [self.cardAmbientGlowContainerView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor],
+        [self.cardAmbientGlowContainerView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor],
+        [self.cardAmbientGlowContainerView.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor],
+        [self.cardAmbientGlowView1.topAnchor constraintEqualToAnchor:self.cardAmbientGlowContainerView.bottomAnchor constant:-280.0],
+        [self.cardAmbientGlowView1.leadingAnchor constraintEqualToAnchor:self.cardAmbientGlowContainerView.leadingAnchor constant:10.0],
+        [self.cardAmbientGlowView1.widthAnchor constraintEqualToConstant:280.0],
+        [self.cardAmbientGlowView1.heightAnchor constraintEqualToConstant:280.0],
+        [self.cardAmbientGlowView2.bottomAnchor constraintEqualToAnchor:self.cardAmbientGlowContainerView.bottomAnchor constant:40.0],
+        [self.cardAmbientGlowView2.trailingAnchor constraintEqualToAnchor:self.cardAmbientGlowContainerView.trailingAnchor constant:40.0],
+        [self.cardAmbientGlowView2.widthAnchor constraintEqualToConstant:240.0],
+        [self.cardAmbientGlowView2.heightAnchor constraintEqualToConstant:240.0],
 
         [self.imageView.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor],
         [self.imageView.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor],
@@ -1692,6 +1812,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.4]
     : [AppForgroundColr colorWithAlphaComponent:0.74];//PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = horizontalRow ? 30.0 : PPUniversalCardCornerRadius;
+    self.cardAmbientGlowContainerView.layer.cornerRadius = self.cardView.layer.cornerRadius;
+    self.cardAmbientGlowContainerView.hidden = !horizontalRow;
+    self.cardAmbientGlowContainerView.alpha = horizontalRow ? 1.0 : 0.0;
+    self.cardAmbientGlowView1.baseColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    [self.cardAmbientGlowView1 pp_updateGlowColors];
+    [self.cardAmbientGlowView2 pp_updateGlowColors];
     self.cardView.layer.borderWidth = 0.0;
     [self.cardView pp_setBorderColor:UIColor.clearColor];
     [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];

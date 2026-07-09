@@ -4,6 +4,7 @@
 #import "PetAd.h"
 #import "PetAccessory.h"
 #import "PetImageItem.h"
+#import "PetImageGalleryView.h"
 #import "ServiceModel.h"
 #import "AdoptPetModel.h"
 #import "VetModel.h"
@@ -14,8 +15,6 @@
 #import "PPHUD.h"
 #import "PPFunc.h"
 
-
-static NSString * const BBFullDetailsImagePageReuseID = @"BBFullDetailsImagePageCell";
 static CGFloat const BBFullDetailsCardCornerRadius = 42.0;
 static CGFloat const BBFullDetailsMediaCornerRadius = 32.0;
 static CGFloat const BBFullDetailsContentInset = 28.0;
@@ -23,7 +22,6 @@ static CGFloat const BBFullDetailsMediaOuterInset = 28.0;
 static CGFloat const BBFullDetailsMediaToContentSpacing = 16.0;
 static CGFloat const BBFullDetailsContentBottomInset = 22.0;
 static CGFloat const BBFullDetailsActionHeight = 44.0;
-static CGFloat const BBFullDetailsMediaLiquidBorderWidth = 0.180;
 static CGFloat const BBFullDetailsStepperButtonSize = 34.0;
 static NSTimeInterval const BBFullDetailsStepperAutoCollapseDelay = 3.5;
 
@@ -34,10 +32,10 @@ static UIColor *BBFullDetailsCardSurfaceColor(void)
             if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
                 return [UIColor colorWithRed:0.095 green:0.098 blue:0.110 alpha:0.54];
             }
-            return [UIColor colorWithWhite:1.0 alpha:0.88];
+            return [(AppForgroundColr ?: UIColor.whiteColor) colorWithAlphaComponent:0.02];
         }];
     }
-    return [UIColor.whiteColor colorWithAlphaComponent:0.68];
+    return [(AppForgroundColr ?: UIColor.whiteColor) colorWithAlphaComponent:0.02];
 }
 
 static UIColor *BBFullDetailsCardBorderColor(void)
@@ -47,10 +45,10 @@ static UIColor *BBFullDetailsCardBorderColor(void)
             if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
                 return [UIColor colorWithWhite:1.0 alpha:0.16];
             }
-            return [UIColor colorWithWhite:1.0 alpha:0.88];
+            return [UIColor colorWithWhite:1.0 alpha:0.92];
         }];
     }
-    return [UIColor colorWithWhite:1.0 alpha:0.88];
+    return [UIColor colorWithWhite:1.0 alpha:0.92];
 }
 
 static UIColor *BBFullDetailsPlateSurfaceColor(void)
@@ -84,16 +82,17 @@ static UIColor *BBFullDetailsImageBackgroundColor(void)
     return AppForgroundColr;
 }
 
-static NSArray<id> *BBFullDetailsLiquidBorderColors(BOOL isDark)
+static UIColor *BBFullDetailsMediaStaticBorderColor(void)
 {
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
-    return @[
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.28 : 0.94)].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.08 : 0.30)].CGColor,
-        (id)[accent colorWithAlphaComponent:(isDark ? 0.12 : 0.07)].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.18 : 0.58)].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.07 : 0.25)].CGColor
-    ];
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.16];
+            }
+            return [AppBackgroundClr colorWithAlphaComponent:0.72];
+        }];
+    }
+    return [AppBackgroundClr colorWithAlphaComponent:0.72];
 }
 
 static NSString *BBFullDetailsLocalized(NSString *key)
@@ -148,12 +147,15 @@ static void BBFullDetailsAppendUniqueURL(NSMutableArray<NSString *> *urls,
 static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     if (![media isKindOfClass:NSDictionary.class]) { return @""; }
-    NSString *mediaType = [BBFullDetailsTrimmedString(media[@"media_type"] ?: media[@"type"]) lowercaseString];
-    if ([mediaType isEqualToString:@"video"]) {
-        NSString *thumbnail = BBFullDetailsTrimmedString(media[@"thumbnail_url"] ?: media[@"thumbnailURL"] ?: media[@"thumbnailUrl"]);
+    NSString *mediaType = [BBFullDetailsTrimmedString(media[@"media_type"] ?: media[@"mediaType"] ?: media[@"type"] ?: media[@"mimeType"] ?: media[@"contentType"]) lowercaseString];
+    BOOL isVideo = [mediaType isEqualToString:@"video"] || [mediaType hasPrefix:@"video/"] || [mediaType containsString:@"video"];
+    if (isVideo) {
+        NSString *thumbnail = BBFullDetailsTrimmedString(media[@"thumbnail_url"] ?: media[@"thumbnailURL"] ?: media[@"thumbnailUrl"] ?: media[@"display_url"] ?: media[@"displayURL"]);
         if (thumbnail.length > 0) { return thumbnail; }
     }
     NSString *url = BBFullDetailsTrimmedString(media[@"url"]);
+    if (url.length == 0) { url = BBFullDetailsTrimmedString(media[@"display_url"]); }
+    if (url.length == 0) { url = BBFullDetailsTrimmedString(media[@"displayURL"]); }
     if (url.length == 0) { url = BBFullDetailsTrimmedString(media[@"imageURL"]); }
     if (url.length == 0) { url = BBFullDetailsTrimmedString(media[@"imageUrl"]); }
     if (url.length == 0) { url = BBFullDetailsTrimmedString(media[@"thumbnail_url"]); }
@@ -161,185 +163,36 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     return url;
 }
 
-@interface BBFullDetailsImagePageCell : UICollectionViewCell
- @property (nonatomic, strong) UIView *backfillWashView;
-@property (nonatomic, strong) UIImageView *imageView;
-@property (nonatomic, strong) UILabel *failureLabel;
-@property (nonatomic, copy) NSString *representedURL;
-@property (nonatomic, strong) NSLayoutConstraint *imageWidthConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *imageHeightConstraint;
-- (void)configureWithURL:(NSString *)url
-             placeholder:(UIImage *)placeholder
-             imageLoader:(BBDataViewFullDetailsImageLoader)imageLoader
-               pageIndex:(NSInteger)pageIndex
-              totalPages:(NSInteger)totalPages;
-@end
-
-@implementation BBFullDetailsImagePageCell
-
-- (instancetype)initWithFrame:(CGRect)frame
+static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 {
-    self = [super initWithFrame:frame];
-    if (!self) { return nil; }
+    if (![media isKindOfClass:NSDictionary.class]) { return nil; }
 
-    self.backgroundColor = BBFullDetailsImageBackgroundColor();
-    self.contentView.backgroundColor = BBFullDetailsImageBackgroundColor();
-    self.contentView.clipsToBounds = YES;
- 
-    _backfillWashView = [[UIView alloc] init];
-    _backfillWashView.translatesAutoresizingMaskIntoConstraints = NO;
-    _backfillWashView.backgroundColor = [BBFullDetailsImageBackgroundColor() colorWithAlphaComponent:0.42];
-    _backfillWashView.userInteractionEnabled = NO;
-    [self.contentView addSubview:_backfillWashView];
-
-    _imageView = [[UIImageView alloc] init];
-    _imageView.translatesAutoresizingMaskIntoConstraints = NO;
-    // Keep aspect-fit product imagery uncropped while letting the filled backplate cover letterbox space.
-    _imageView.backgroundColor = UIColor.clearColor;
-    _imageView.contentMode = UIViewContentModeScaleAspectFit;
-    _imageView.clipsToBounds = YES;
-    _imageView.layer.borderColor = AppBackgroundClrDarker.CGColor;
-    _imageView.layer.borderWidth = 0.75;
-   //_imageView.layer.borderColor = AppBackgroundClr;;
-    _imageView.isAccessibilityElement = YES;
-    [self.contentView addSubview:_imageView];
-
-    _failureLabel = [[UILabel alloc] init];
-    _failureLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _failureLabel.textAlignment = NSTextAlignmentCenter;
-    _failureLabel.numberOfLines = 0;
-    _failureLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
-                          scaledFontForFont:([GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium])];
-    _failureLabel.adjustsFontForContentSizeCategory = YES;
-    _failureLabel.textColor = UIColor.secondaryLabelColor;
-    _failureLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_image_unavailable");
-    _failureLabel.hidden = YES;
-    [self.contentView addSubview:_failureLabel];
-
-    [NSLayoutConstraint activateConstraints:@[
-       
-        
-        [_backfillWashView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_backfillWashView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_backfillWashView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_backfillWashView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        
-        [_imageView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
-        [_imageView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-        [_imageView.heightAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.heightAnchor],
-        [_imageView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor],
-        [_imageView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor],
-        [_failureLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_failureLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-        [_failureLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor]
-    ]];
-    self.imageWidthConstraint = [_imageView.widthAnchor constraintEqualToConstant:1.0];
-   // self.imageHeightConstraint = [_imageView.heightAnchor constraintEqualToConstant:1.0];
-    self.imageWidthConstraint.active = YES;
-    //self.imageHeightConstraint.active = YES;
-
-    return self;
-}
-
-- (void)prepareForReuse
-{
-    [super prepareForReuse];
-    [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
-    self.representedURL = @"";
-     self.imageView.image = nil;
-     self.imageView.backgroundColor = UIColor.clearColor;
-    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    self.imageView.accessibilityLabel = nil;
-    self.imageView.accessibilityValue = nil;
-    self.failureLabel.hidden = YES;
-}
-
--(void)layoutSubviews
-{
-    [super layoutSubviews];
-   [self bb_updateForegroundImageSizeForBounds:self.contentView.bounds.size];
-}
-
-- (void)bb_updateForegroundImageSizeForBounds:(CGSize)boundsSize
-{
-    CGFloat availableWidth = floor(MAX(boundsSize.width, 1.0));
-    CGFloat availableHeight = floor(MAX(boundsSize.height, 1.0));
-    CGSize imageSize = self.imageView.image.size;
-    if (imageSize.width <= 0.0 || imageSize.height <= 0.0) {
-        imageSize = CGSizeMake(availableWidth, availableHeight);
+    NSString *rawType = BBFullDetailsTrimmedString(media[@"media_type"] ?: media[@"mediaType"] ?: media[@"type"] ?: media[@"mimeType"] ?: media[@"contentType"]).lowercaseString;
+    BOOL isVideo = [rawType isEqualToString:@"video"] || [rawType hasPrefix:@"video/"] || [rawType containsString:@"video"];
+    NSString *displayURL = BBFullDetailsURLFromMediaDictionary(media);
+    NSString *videoURL = BBFullDetailsTrimmedString(media[@"video_url"] ?: media[@"videoURL"] ?: media[@"videoUrl"]);
+    if (videoURL.length == 0 && isVideo) {
+        videoURL = BBFullDetailsTrimmedString(media[@"url"]);
     }
 
-    CGFloat imageAspect = imageSize.width / imageSize.height;
-    CGFloat boundsAspect = availableWidth / availableHeight;
-    CGFloat targetWidth = availableWidth;
-    CGFloat targetHeight = availableHeight;
-    if (imageAspect > boundsAspect) {
-        targetHeight = floor(availableWidth / imageAspect);
-    } else {
-        targetWidth = floor(availableHeight * imageAspect);
+    if (displayURL.length == 0) { return nil; }
+    if (isVideo && videoURL.length == 0) { return nil; }
+
+    NSMutableDictionary *normalized = [NSMutableDictionary dictionary];
+    normalized[@"media_type"] = isVideo ? @"video" : @"image";
+    normalized[@"url"] = isVideo ? videoURL : displayURL;
+    if (isVideo) {
+        normalized[@"thumbnail_url"] = displayURL;
     }
 
-    targetWidth = MIN(MAX(targetWidth, 1.0), availableWidth);
-    //targetHeight = MIN(MAX(targetHeight, 1.0), availableHeight);
-    if (fabs(self.imageWidthConstraint.constant - targetWidth) > 0.5) {
-        self.imageWidthConstraint.constant = targetWidth;
-        //self.imageHeightConstraint.constant = targetHeight;
-    }
-}
-
-- (void)configureWithURL:(NSString *)url
-             placeholder:(UIImage *)placeholder
-             imageLoader:(BBDataViewFullDetailsImageLoader)imageLoader
-               pageIndex:(NSInteger)pageIndex
-              totalPages:(NSInteger)totalPages
-{
-    self.representedURL = url ?: @"";
-    UIImage *fallback = placeholder ?: [UIImage imageNamed:@"placeholder"];
-     self.imageView.image = fallback;
- 
-    self.imageView.backgroundColor = UIColor.clearColor;
-    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-    self.failureLabel.hidden = (self.representedURL.length > 0);
-    self.imageView.accessibilityLabel = BBFullDetailsLocalized(@"bb_dataview_full_details_image_accessibility");
-    self.imageView.accessibilityValue =
-        [NSString stringWithFormat:BBFullDetailsLocalized(@"bb_dataview_full_details_image_page_format"),
-         (long)(pageIndex + 1),
-         (long)MAX(totalPages, 1)];
-
-    if (self.representedURL.length == 0) {
-        return;
-    }
-
-    if (imageLoader) {
-        imageLoader(self.imageView, self.representedURL, fallback, self.contentView);
-    } else {
-        [[PPImageLoaderManager shared] setImageOnImageView:self.imageView
-                                                       url:self.representedURL
-                                               placeholder:fallback
-                                           transitionStyle:PPImageTransitionStyleNone
-                                                complation:^(UIImage * _Nullable image, NSString * _Nullable urlString) {
-            [self setNeedsLayout];
-        }];
-    }
-    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-
-    NSString *representedURL = self.representedURL.copy;
-    __weak typeof(self) weakSelf = self;
-    [[PPImageLoaderManager shared] fetchImageWithURL:representedURL completion:^(UIImage * _Nullable image) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || !image || ![self.representedURL isEqualToString:representedURL]) { return; }
-      
-        self.imageView.backgroundColor = UIColor.clearColor;
-        self.imageView.contentMode = UIViewContentModeScaleAspectFit;
-        if (!self.imageView.image || self.imageView.image == fallback) {
-            self.imageView.image = image;
+    for (NSString *key in @[@"width", @"height", @"thumbnail_width", @"thumbnail_height", @"blurHash", @"duration"]) {
+        id value = media[key];
+        if (value) {
+            normalized[key] = value;
         }
-        
-        [self setNeedsLayout];
-    }];
+    }
+    return normalized.copy;
 }
-
-@end
 
 @interface BBFullDetailsAmbientGlowView : UIView
 @property (nonatomic, strong, readonly) CAGradientLayer *gradientLayer;
@@ -408,23 +261,26 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
 @end
 
-@interface BBDataViewFullDetailsCell () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UIScrollViewDelegate, UIGestureRecognizerDelegate>
+@interface BBDataViewFullDetailsCell () <UIGestureRecognizerDelegate>
 @property (nonatomic, strong) BBFullDetailsAmbientGlowView *ambientGlowView1;
 @property (nonatomic, strong) BBFullDetailsAmbientGlowView *ambientGlowView2;
 @property (nonatomic, strong) UIView *cardView;
 @property (nonatomic, strong) UIView *surfaceView;
-@property (nonatomic, strong) UICollectionView *imageCollectionView;
+@property (nonatomic, strong) PetImageGalleryView *imageGallery;
 @property (nonatomic, strong) UIPageControl *pageControl;
 @property (nonatomic, strong) UIView *mediaContainerView;
- @property (nonatomic, strong) CAGradientLayer *mediaLiquidBorderLayer;
-@property (nonatomic, strong) CAShapeLayer *mediaLiquidBorderMaskLayer;
 @property (nonatomic, strong) NSLayoutConstraint *mediaTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *mediaBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *mediaCollapsedTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *mediaCollapsedHeightConstraint;
 @property (nonatomic, strong) UIStackView *detailsStackView;
 @property (nonatomic, strong) UIView *actionBarView;
 @property (nonatomic, strong) UIButton *primaryButton;
 @property (nonatomic, strong) UIButton *shareButton;
 @property (nonatomic, strong) UIButton *ownerMenuButton;
+@property (nonatomic, strong) UIButton *ownerChatButton;
+@property (nonatomic, strong) NSLayoutConstraint *primaryButtonLeadingToShareConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *primaryButtonLeadingToActionBarConstraint;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UILabel *priceLabel;
@@ -432,9 +288,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UIStackView *socialMetricStackView;
 @property (nonatomic, copy) NSArray<NSString *> *imageURLs;
 @property (nonatomic, strong) UIImage *placeholderImage;
-@property (nonatomic, copy) BBDataViewFullDetailsImageLoader imageLoader;
 @property (nonatomic, strong) PPUniversalCellViewModel *viewModel;
-@property (nonatomic, assign) CGSize lastImageCollectionLayoutSize;
 
 @property (nonatomic, strong) UIView *ownerCapsuleBadgeView;
 @property (nonatomic, strong) UIImageView *ownerAvatarImageView;
@@ -492,7 +346,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.primaryButton.hidden = NO;
 
     self.delegate = nil;
-    self.imageLoader = nil;
     self.viewModel = nil;
     self.imageURLs = @[];
     self.placeholderImage = [UIImage imageNamed:@"placeholder"];
@@ -513,21 +366,17 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.pageControl.numberOfPages = 0;
     self.pageControl.currentPage = 0;
     self.pageControl.hidden = YES;
-    self.imageCollectionView.showsHorizontalScrollIndicator = NO;
-    self.lastImageCollectionLayoutSize = CGSizeZero;
+
     self.mediaContainerView.hidden = YES;
     self.mediaTopConstraint.active = NO;
     self.mediaBottomConstraint.active = NO;
+    self.mediaCollapsedTopConstraint.active = YES;
+    self.mediaCollapsedHeightConstraint.active = YES;
  
 
     [self bb_removeAllArrangedSubviewsFromStack:self.detailsStackView];
-    for (UICollectionViewCell *visibleCell in self.imageCollectionView.visibleCells) {
-        if ([visibleCell isKindOfClass:BBFullDetailsImagePageCell.class]) {
-            [(BBFullDetailsImagePageCell *)visibleCell prepareForReuse];
-        }
-    }
-    [self.imageCollectionView setContentOffset:CGPointZero animated:NO];
-    [self.imageCollectionView reloadData];
+    [self.imageGallery removeFromSuperview];
+    self.imageGallery = nil;
     [self.primaryButton setTitle:nil forState:UIControlStateNormal];
     [self.shareButton setTitle:nil forState:UIControlStateNormal];
     [self.ownerMenuButton setTitle:nil forState:UIControlStateNormal];
@@ -535,17 +384,20 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.actionBarView.userInteractionEnabled = NO;
     self.shareButton.hidden = YES;
     self.ownerMenuButton.hidden = YES;
+    self.ownerChatButton.hidden = YES;
     self.ownerMenuButton.menu = nil;
     self.ownerMenuButton.showsMenuAsPrimaryAction = NO;
     self.primaryButton.enabled = YES;
     self.shareButton.enabled = YES;
     self.ownerMenuButton.enabled = YES;
+    self.ownerChatButton.enabled = NO;
     if (_ownerCapsuleBadgeView) {
         _ownerCapsuleBadgeView.hidden = YES;
         _ownerNameLabel.text = nil;
         _ownerAvatarImageView.image = nil;
         _ownerRatingContainerView.hidden = YES;
         _ownerRatingLabel.text = nil;
+        _ownerChatButton.hidden = YES;
     }
     self.isEditingQuantity = NO;
     [self bb_setQuantity:0 animated:NO];
@@ -563,11 +415,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
                    imageLoader:(BBDataViewFullDetailsImageLoader)imageLoader
                       delegate:(id<BBDataViewFullDetailsCellDelegate>)delegate
 {
+    (void)imageLoader;
     self.viewModel = viewModel;
     self.delegate = delegate;
-    self.imageLoader = imageLoader;
     self.placeholderImage = viewModel.placeholder ?: [UIImage imageNamed:@"placeholder"];
-    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     if (viewModel.isSkeleton) {
         [self bb_configureLoadingState];
@@ -578,17 +429,21 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.subtitleLabel.text = [self bb_descriptionSubtitleForViewModel:viewModel];
     self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
 
-    self.imageURLs = [self bb_imageURLsForViewModel:viewModel];
-    BOOL hasImages = self.imageURLs.count > 0;
+    NSArray<PetImageItem *> *galleryItems = [self bb_imageItemsForViewModel:viewModel];
+    self.imageURLs = [self bb_displayURLsFromImageItems:galleryItems];
+    BOOL hasImages = galleryItems.count > 0;
     self.mediaContainerView.hidden = !hasImages;
     [self bb_updateMediaHeightForSize:self.bounds.size];
-    self.pageControl.numberOfPages = self.imageURLs.count;
+    self.pageControl.numberOfPages = galleryItems.count;
     self.pageControl.currentPage = 0;
-    self.pageControl.hidden = self.imageURLs.count <= 1;
-    self.imageCollectionView.showsHorizontalScrollIndicator = self.imageURLs.count > 1;
-    [self.imageCollectionView setContentOffset:CGPointZero animated:NO];
-    [self bb_updateImageCollectionLayoutIfNeeded];
-    [self.imageCollectionView reloadData];
+    self.pageControl.hidden = galleryItems.count <= 1;
+
+    if (hasImages) {
+        [self bb_configureImageGalleryWithItems:galleryItems viewModel:viewModel];
+    } else if (self.imageGallery) {
+        [self.imageGallery removeFromSuperview];
+        self.imageGallery = nil;
+    }
     
 
     [self bb_buildDetailsForViewModel:viewModel];
@@ -628,18 +483,16 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     if (!hasImages) {
         self.mediaTopConstraint.active = NO;
         self.mediaBottomConstraint.active = NO;
-      
+        self.mediaCollapsedTopConstraint.active = YES;
+        self.mediaCollapsedHeightConstraint.active = YES;
         return;
     }
 
-  
+    self.mediaCollapsedTopConstraint.active = NO;
+    self.mediaCollapsedHeightConstraint.active = NO;
     self.mediaTopConstraint.active = YES;
     self.mediaBottomConstraint.active = YES;
- 
-        self.lastImageCollectionLayoutSize = CGSizeZero;
-        [self.imageCollectionView.collectionViewLayout invalidateLayout];
-        [self setNeedsLayout];
-   
+    [self setNeedsLayout];
 }
 
 
@@ -656,9 +509,22 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     if (_ownerCapsuleBadgeView) {
         _ownerCapsuleBadgeView.layer.borderColor = BBFullDetailsPlateBorderColor().CGColor;
     }
-    [self bb_layoutMediaLiquidBorder];
-    [self bb_updateImageCollectionLayoutIfNeeded];
+    [self bb_applyStaticMediaBorder];
     
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            self.surfaceView.layer.borderColor = BBFullDetailsCardBorderColor().CGColor;
+            [self bb_applyStaticMediaBorder];
+            if (_ownerCapsuleBadgeView) {
+                _ownerCapsuleBadgeView.layer.borderColor = BBFullDetailsPlateBorderColor().CGColor;
+            }
+        }
+    }
 }
 
 - (void)setHighlighted:(BOOL)highlighted
@@ -731,33 +597,12 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     _mediaContainerView.backgroundColor = BBFullDetailsImageBackgroundColor();
     _mediaContainerView.clipsToBounds = YES;
     _mediaContainerView.layer.cornerRadius = BBFullDetailsMediaCornerRadius;
+    _mediaContainerView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    _mediaContainerView.layer.borderColor = BBFullDetailsMediaStaticBorderColor().CGColor;
     if (@available(iOS 13.0, *)) {
         _mediaContainerView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [surfaceView addSubview:_mediaContainerView];
-
-    UICollectionViewFlowLayout *mediaLayout = [[UICollectionViewFlowLayout alloc] init];
-    mediaLayout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    mediaLayout.minimumLineSpacing = 0.0;
-    mediaLayout.minimumInteritemSpacing = 0.0;
-    mediaLayout.estimatedItemSize = CGSizeZero;
-
-    _imageCollectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:mediaLayout];
-    _imageCollectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    _imageCollectionView.backgroundColor = BBFullDetailsImageBackgroundColor();
-    _imageCollectionView.dataSource = self;
-    _imageCollectionView.delegate = self;
-    _imageCollectionView.pagingEnabled = YES;
-    _imageCollectionView.decelerationRate = UIScrollViewDecelerationRateFast;
-    _imageCollectionView.directionalLockEnabled = YES;
-    _imageCollectionView.showsHorizontalScrollIndicator = NO;
-    _imageCollectionView.showsVerticalScrollIndicator = NO;
-    //_imageCollectionView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 18.0, 0.0, 18.0);
-    _imageCollectionView.alwaysBounceVertical = NO;
-    _imageCollectionView.scrollsToTop = NO;
-    [_imageCollectionView registerClass:BBFullDetailsImagePageCell.class
-             forCellWithReuseIdentifier:BBFullDetailsImagePageReuseID];
-    [_mediaContainerView addSubview:_imageCollectionView];
 
     _pageControl = [[UIPageControl alloc] init];
     _pageControl.translatesAutoresizingMaskIntoConstraints = NO;
@@ -816,6 +661,11 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [_shareButton addTarget:self action:@selector(bb_shareTapped) forControlEvents:UIControlEventTouchUpInside];
     [_actionBarView addSubview:_shareButton];
 
+    self.primaryButtonLeadingToShareConstraint = [_primaryButton.leadingAnchor constraintEqualToAnchor:_shareButton.trailingAnchor constant:8.0];
+    self.primaryButtonLeadingToActionBarConstraint = [_primaryButton.leadingAnchor constraintEqualToAnchor:_actionBarView.leadingAnchor];
+    self.primaryButtonLeadingToShareConstraint.active = NO;
+    self.primaryButtonLeadingToActionBarConstraint.active = NO;
+
     [NSLayoutConstraint activateConstraints:@[
         [_actionBarView.heightAnchor constraintGreaterThanOrEqualToConstant:BBFullDetailsActionHeight],
         [_shareButton.topAnchor constraintEqualToAnchor:_actionBarView.topAnchor],
@@ -824,7 +674,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_shareButton.widthAnchor constraintEqualToConstant:BBFullDetailsActionHeight],
         [_shareButton.heightAnchor constraintEqualToConstant:BBFullDetailsActionHeight],
         [_primaryButton.topAnchor constraintEqualToAnchor:_actionBarView.topAnchor],
-        [_primaryButton.leadingAnchor constraintEqualToAnchor:_shareButton.trailingAnchor constant:8.0],
         [_primaryButton.trailingAnchor constraintEqualToAnchor:_actionBarView.trailingAnchor],
         [_primaryButton.bottomAnchor constraintEqualToAnchor:_actionBarView.bottomAnchor],
         [_primaryButton.heightAnchor constraintEqualToConstant:BBFullDetailsActionHeight],
@@ -857,6 +706,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
     _mediaTopConstraint = [_mediaContainerView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsMediaOuterInset];
     _mediaBottomConstraint = [_mediaContainerView.bottomAnchor constraintEqualToAnchor:_detailsStackView.topAnchor constant:-BBFullDetailsMediaToContentSpacing];
+    _mediaCollapsedTopConstraint = [_mediaContainerView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor];
+    _mediaCollapsedHeightConstraint = [_mediaContainerView.heightAnchor constraintEqualToConstant:0.0];
+    _mediaCollapsedTopConstraint.active = YES;
+    _mediaCollapsedHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [_cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -872,12 +725,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 
         [_mediaContainerView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsMediaOuterInset],
         [_mediaContainerView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsMediaOuterInset],
-
-        [_imageCollectionView.leadingAnchor constraintEqualToAnchor:_mediaContainerView.leadingAnchor],
-        [_imageCollectionView.trailingAnchor constraintEqualToAnchor:_mediaContainerView.trailingAnchor],
-        [_imageCollectionView.topAnchor constraintEqualToAnchor:_mediaContainerView.topAnchor],
-        [_imageCollectionView.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor],
-        
         
         [_pageControl.centerXAnchor constraintEqualToAnchor:_mediaContainerView.centerXAnchor],
         [_pageControl.bottomAnchor constraintEqualToAnchor:_mediaContainerView.bottomAnchor constant:-8.0],
@@ -891,16 +738,12 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         [_detailsStackView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:BBFullDetailsContentInset],
         [_detailsStackView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-BBFullDetailsContentInset],
         [_detailsStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surfaceView.topAnchor constant:BBFullDetailsContentInset],
-        
-        [_mediaContainerView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:BBFullDetailsMediaOuterInset],
-        [_mediaContainerView.bottomAnchor constraintEqualToAnchor:_detailsStackView.topAnchor constant:-BBFullDetailsMediaOuterInset],
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(bb_cardTapped)];
     tap.cancelsTouchesInView = NO;
     tap.delegate = self;
     [surfaceView addGestureRecognizer:tap];
-    [self bb_installMediaLiquidBorderIfNeeded];
 }
 
 - (void)bb_applyStaticStyle
@@ -1012,6 +855,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 {
     self.titleLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
     self.subtitleLabel.text = @"";
+    self.imageURLs = @[];
     self.mediaContainerView.hidden = YES;
     [self bb_updateMediaHeightForSize:self.bounds.size];
     self.primaryButton.enabled = NO;
@@ -1059,7 +903,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.priceLabel.hidden = self.priceLabel.text.length == 0;
 
     self.titleLabel.numberOfLines = 2;
-    self.subtitleLabel.numberOfLines = 2;
+    self.subtitleLabel.numberOfLines = 3;
     self.priceLabel.numberOfLines = 1;
 
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -1072,11 +916,17 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [self bb_configureHighlightPlatesForViewModel:viewModel];
     [self.detailsStackView addArrangedSubview:self.highlightPlateStackView];
     
+    BOOL isService = [viewModel.ModelObject isKindOfClass:ServiceModel.class];
     [self bb_configureOwnerCapsuleBadgeForViewModel:viewModel];
-    [self.detailsStackView addArrangedSubview:self.ownerCapsuleBadgeView];
-    
-    [self.detailsStackView addArrangedSubview:self.actionBarView];
+    if (isService) {
+        [self.detailsStackView addArrangedSubview:self.actionBarView];
+        [self.detailsStackView addArrangedSubview:self.ownerCapsuleBadgeView];
+    } else {
+        [self.detailsStackView addArrangedSubview:self.ownerCapsuleBadgeView];
+        [self.detailsStackView addArrangedSubview:self.actionBarView];
+    }
     [self.detailsStackView setCustomSpacing:10.0 afterView:self.highlightPlateStackView];
+    [self.detailsStackView setCustomSpacing:10.0 afterView:self.actionBarView];
     [self.detailsStackView setCustomSpacing:12.0 afterView:self.ownerCapsuleBadgeView];
 
     [self.detailsStackView setNeedsLayout];
@@ -1418,6 +1268,154 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     return urls.copy;
 }
 
+- (NSArray<PetImageItem *> *)bb_imageItemsForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    NSMutableArray<PetImageItem *> *items = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+    id model = viewModel.ModelObject;
+
+    void (^appendItem)(PetImageItem *) = ^(PetImageItem *item) {
+        if (![item isKindOfClass:PetImageItem.class]) { return; }
+        NSString *displayURL = BBFullDetailsTrimmedString(item.url);
+        NSString *videoURL = BBFullDetailsTrimmedString(item.videoURL);
+        if (displayURL.length == 0) { return; }
+        if ((displayURL.length > 0 && [seen containsObject:displayURL]) ||
+            (videoURL.length > 0 && [seen containsObject:videoURL])) {
+            return;
+        }
+        if (displayURL.length > 0) { [seen addObject:displayURL]; }
+        if (videoURL.length > 0) { [seen addObject:videoURL]; }
+        [items addObject:item];
+    };
+
+    void (^appendURL)(NSString *) = ^(NSString *candidate) {
+        NSString *url = BBFullDetailsTrimmedString(candidate);
+        if (url.length == 0 || [seen containsObject:url]) { return; }
+        PetImageItem *item = [PetImageItem itemWithURL:url width:0 height:0 blurHash:nil];
+        appendItem(item);
+    };
+
+    void (^appendImageItems)(NSArray<PetImageItem *> *) = ^(NSArray<PetImageItem *> *candidateItems) {
+        if (![candidateItems isKindOfClass:NSArray.class]) { return; }
+        for (PetImageItem *item in candidateItems) {
+            appendItem(item);
+        }
+    };
+
+    void (^appendMetadataArray)(NSArray *) = ^(NSArray *metadataArray) {
+        if (![metadataArray isKindOfClass:NSArray.class]) { return; }
+        for (id candidate in metadataArray) {
+            if ([candidate isKindOfClass:PetImageItem.class]) {
+                appendItem(candidate);
+            } else if ([candidate isKindOfClass:NSDictionary.class]) {
+                NSDictionary *normalized = BBFullDetailsNormalizedMediaDictionary(candidate);
+                PetImageItem *item = [PetImageItem itemWithMediaMetadata:normalized];
+                appendItem(item);
+            } else if ([candidate isKindOfClass:NSString.class]) {
+                appendURL(candidate);
+            }
+        }
+    };
+
+    if ([model isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = model;
+        appendImageItems(accessory.imageItems);
+        appendMetadataArray(accessory.imageMeta);
+        for (NSString *url in accessory.imageURLsArray) {
+            appendURL(url);
+        }
+    } else if ([model isKindOfClass:PetAd.class]) {
+        PetAd *ad = model;
+        appendImageItems(ad.imageItems);
+        appendMetadataArray(ad.imageItemsRaw);
+        appendMetadataArray(ad.imageMeta);
+        for (NSString *url in ad.imageURLs) {
+            appendURL(url);
+        }
+    } else if ([model isKindOfClass:AdoptPetModel.class]) {
+        AdoptPetModel *pet = model;
+        appendMetadataArray(pet.imageMeta);
+        for (NSString *url in pet.imageURLs) {
+            appendURL(url);
+        }
+    } else if ([model isKindOfClass:ServiceModel.class]) {
+        appendURL(((ServiceModel *)model).imageURL);
+    } else if ([model isKindOfClass:VetModel.class]) {
+        appendURL(((VetModel *)model).logoURL);
+    }
+
+    appendURL(viewModel.imageURL);
+    if (items.count == 0) {
+        for (NSString *url in [self bb_imageURLsForViewModel:viewModel]) {
+            appendURL(url);
+        }
+    }
+    return items.copy;
+}
+
+- (NSArray<NSString *> *)bb_displayURLsFromImageItems:(NSArray<PetImageItem *> *)items
+{
+    NSMutableArray<NSString *> *urls = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+    for (PetImageItem *item in items) {
+        if (![item isKindOfClass:PetImageItem.class]) { continue; }
+        BBFullDetailsAppendUniqueURL(urls, seen, item.url);
+    }
+    return urls.copy;
+}
+
+- (void)bb_configureImageGalleryWithItems:(NSArray<PetImageItem *> *)items
+                                viewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (items.count == 0) { return; }
+
+    if (!self.imageGallery) {
+        PetImageGalleryView *gallery =
+            [[PetImageGalleryView alloc] initWithFrame:CGRectZero
+                                            imageItems:items
+                                           galleryType:PetImageGalleryTypeCardsViewer
+                                            itemHeight:300.0
+                                              parentVC:nil
+                                                   obj:viewModel.ModelObject];
+        gallery.translatesAutoresizingMaskIntoConstraints = NO;
+        gallery.backgroundColor = UIColor.clearColor;
+        gallery.contentMode = UIViewContentModeScaleToFill;
+        gallery.hidesPageControl = YES;
+
+        __weak typeof(self) weakSelf = self;
+        gallery.onPageChanged = ^(NSInteger page) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) { return; }
+            NSInteger maxPage = MAX((NSInteger)self.pageControl.numberOfPages - 1, 0);
+            self.pageControl.currentPage = MIN(MAX(page, 0), maxPage);
+            self.pageControl.accessibilityValue =
+                [NSString stringWithFormat:BBFullDetailsLocalized(@"bb_dataview_full_details_image_page_format"),
+                 (long)(self.pageControl.currentPage + 1),
+                 (long)MAX(self.pageControl.numberOfPages, 1)];
+        };
+
+        self.imageGallery = gallery;
+        [self.mediaContainerView insertSubview:gallery atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [gallery.leadingAnchor constraintEqualToAnchor:self.mediaContainerView.leadingAnchor],
+            [gallery.trailingAnchor constraintEqualToAnchor:self.mediaContainerView.trailingAnchor],
+            [gallery.topAnchor constraintEqualToAnchor:self.mediaContainerView.topAnchor],
+            [gallery.bottomAnchor constraintEqualToAnchor:self.mediaContainerView.bottomAnchor],
+        ]];
+        [self bb_applyStaticMediaBorder];
+    } else {
+        self.imageGallery.contentMode = UIViewContentModeScaleAspectFit;
+        self.imageGallery.imageItems = items;
+    }
+
+    self.imageGallery.currentPagr = 0;
+    [self.imageGallery scrollToPage:0 animated:NO];
+    self.pageControl.accessibilityValue =
+        [NSString stringWithFormat:BBFullDetailsLocalized(@"bb_dataview_full_details_image_page_format"),
+         1L,
+         (long)MAX(items.count, 1)];
+}
+
 - (void)bb_configureActionsForViewModel:(PPUniversalCellViewModel *)viewModel
 {
     self.actionBarView.hidden = YES;
@@ -1431,17 +1429,21 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.primaryButton.accessibilityElementsHidden = YES;
     self.shareButton.accessibilityElementsHidden = YES;
     self.stepperView.accessibilityElementsHidden = YES;
+    [self bb_updateActionBarLeadingForShareVisible:NO];
 
     BOOL usesCartCTA = [self bb_usesCartCTAForViewModel:viewModel];
+    BOOL usesServiceChatCTA = [self bb_usesServiceChatCTAForViewModel:viewModel];
     BOOL canShare = usesCartCTA && [viewModel.ModelObject isKindOfClass:PetAccessory.class];
-    if (usesCartCTA || canShare) {
+    if (usesCartCTA || canShare || usesServiceChatCTA) {
         self.actionBarView.hidden = NO;
         self.actionBarView.userInteractionEnabled = YES;
-        self.primaryButton.hidden = !usesCartCTA;
-        self.primaryButton.accessibilityElementsHidden = !usesCartCTA;
+        self.primaryButton.hidden = !(usesCartCTA || usesServiceChatCTA);
+        self.primaryButton.accessibilityElementsHidden = !(usesCartCTA || usesServiceChatCTA);
         self.stepperView.accessibilityElementsHidden = !usesCartCTA;
         if (usesCartCTA) {
             [self bb_configureQuantityStateWithViewModel:viewModel];
+        } else if (usesServiceChatCTA) {
+            [self bb_configureServiceChatButtonForViewModel:viewModel];
         } else {
             [self bb_setQuantity:0 animated:NO];
         }
@@ -1450,6 +1452,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         self.shareButton.enabled = canShare;
         self.shareButton.accessibilityElementsHidden = !canShare;
         self.shareButton.accessibilityLabel = BBFullDetailsLocalized(@"bb_dataview_full_details_share");
+        [self bb_updateActionBarLeadingForShareVisible:canShare];
     } else {
         [self bb_setQuantity:0 animated:NO];
     }
@@ -1462,6 +1465,12 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     if (isOwner) {
         [self bb_configureOwnerMenuForViewModel:viewModel];
     }
+
+    BOOL showsOwnerChat = [self bb_showsAdsOwnerChatForViewModel:viewModel];
+    self.ownerChatButton.hidden = !showsOwnerChat;
+    self.ownerChatButton.enabled = showsOwnerChat;
+    self.ownerChatButton.accessibilityElementsHidden = !showsOwnerChat;
+    self.ownerChatButton.accessibilityLabel = BBFullDetailsLocalized(@"bb_dataview_full_details_chat_owner");
 }
 
 - (BOOL)bb_usesCartCTAForViewModel:(PPUniversalCellViewModel *)viewModel
@@ -1477,6 +1486,90 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         return NO;
     }
     return YES;
+}
+
+- (BOOL)bb_usesServiceChatCTAForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (viewModel.isOwner || viewModel.isSkeleton) {
+        return NO;
+    }
+    if (![viewModel.ModelObject isKindOfClass:ServiceModel.class]) {
+        return NO;
+    }
+    return [self bb_ownerIDForViewModel:viewModel].length > 0;
+}
+
+- (BOOL)bb_showsAdsOwnerChatForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (viewModel.isOwner || viewModel.isSkeleton) {
+        return NO;
+    }
+    if (![viewModel.ModelObject isKindOfClass:PetAd.class]) {
+        return NO;
+    }
+    return [self bb_ownerIDForViewModel:viewModel].length > 0;
+}
+
+- (void)bb_updateActionBarLeadingForShareVisible:(BOOL)shareVisible
+{
+    self.primaryButtonLeadingToShareConstraint.active = shareVisible;
+    self.primaryButtonLeadingToActionBarConstraint.active = !shareVisible;
+}
+
+- (void)bb_configureServiceChatButtonForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    (void)viewModel;
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *foreground = UIColor.whiteColor;
+    UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout]
+                    scaledFontForFont:([GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold])];
+    NSString *title = BBFullDetailsLocalized(@"bb_dataview_full_details_chat_provider");
+
+    if (@available(iOS 15.0, *)) {
+        [self.primaryButton setAttributedTitle:nil forState:UIControlStateNormal];
+        [self.primaryButton setTitle:nil forState:UIControlStateNormal];
+        [self.primaryButton setImage:nil forState:UIControlStateNormal];
+
+        UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        configuration.baseBackgroundColor = brand;
+        configuration.baseForegroundColor = foreground;
+        configuration.background.cornerRadius = BBFullDetailsActionHeight * 0.5;
+        configuration.image = [UIImage systemImageNamed:@"message.fill"];
+        configuration.imagePlacement = NSDirectionalRectEdgeLeading;
+        configuration.imagePadding = 7.0;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(9.0, 16.0, 9.0, 16.0);
+        configuration.title = title;
+        configuration.titleTextAttributesTransformer =
+        ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+            NSMutableDictionary *attributes = incoming.mutableCopy;
+            attributes[NSFontAttributeName] = font;
+            attributes[NSForegroundColorAttributeName] = foreground;
+            return attributes;
+        };
+        self.primaryButton.configuration = configuration;
+        self.primaryButton.backgroundColor = UIColor.clearColor;
+    } else {
+        [self.primaryButton setAttributedTitle:nil forState:UIControlStateNormal];
+        [self.primaryButton setTitle:title forState:UIControlStateNormal];
+        [self.primaryButton setTitleColor:foreground forState:UIControlStateNormal];
+        if (@available(iOS 13.0, *)) {
+            [self.primaryButton setImage:[UIImage systemImageNamed:@"message.fill"] forState:UIControlStateNormal];
+        }
+        self.primaryButton.backgroundColor = brand;
+        self.primaryButton.titleLabel.font = font;
+    }
+
+    self.primaryButton.enabled = YES;
+    self.primaryButton.alpha = 1.0;
+    self.primaryButton.layer.cornerRadius = BBFullDetailsActionHeight * 0.5;
+    self.primaryButton.layer.borderWidth = 0.0;
+    self.primaryButton.layer.borderColor = UIColor.clearColor.CGColor;
+    self.primaryButton.layer.shadowColor = brand.CGColor;
+    self.primaryButton.layer.shadowOpacity = 0.075;
+    self.primaryButton.layer.shadowRadius = 9.0;
+    self.primaryButton.layer.shadowOffset = CGSizeMake(0.0, 4.5);
+    self.primaryButton.accessibilityLabel = title;
 }
 
 - (void)bb_setPrimaryButtonTitle:(NSString *)title enabled:(BOOL)enabled
@@ -1800,54 +1893,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [self bb_refreshActionPresentationAnimated:animated];
 }
 
-- (void)bb_installMediaLiquidBorderIfNeeded
+- (void)bb_applyStaticMediaBorder
 {
-    if (self.mediaLiquidBorderLayer) { return; }
-    self.mediaLiquidBorderLayer = [CAGradientLayer layer];
-    self.mediaLiquidBorderLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.mediaLiquidBorderLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.mediaLiquidBorderLayer.locations = @[@0.0, @0.24, @0.52, @0.76, @1.0];
-    self.mediaLiquidBorderMaskLayer = [CAShapeLayer layer];
-    self.mediaLiquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
-    self.mediaLiquidBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
-    self.mediaLiquidBorderMaskLayer.lineWidth = BBFullDetailsMediaLiquidBorderWidth;
-    self.mediaLiquidBorderLayer.mask = self.mediaLiquidBorderMaskLayer;
-    if (self.imageCollectionView) {
-        [self.mediaContainerView.layer insertSublayer:self.mediaLiquidBorderLayer above:self.imageCollectionView.layer];
-    } else {
-        [self.mediaContainerView.layer addSublayer:self.mediaLiquidBorderLayer];
-    }
-}
-
-- (void)bb_layoutMediaLiquidBorder
-{
-    [self bb_installMediaLiquidBorderIfNeeded];
-    
-    // Dynamically guarantee correct Z-index ordering (above image collection, below interactive elements)
-    if (self.mediaLiquidBorderLayer.superlayer == self.mediaContainerView.layer) {
-        [self.mediaLiquidBorderLayer removeFromSuperlayer];
-    }
-    if (self.imageCollectionView) {
-        [self.mediaContainerView.layer insertSublayer:self.mediaLiquidBorderLayer above:self.imageCollectionView.layer];
-    } else {
-        [self.mediaContainerView.layer addSublayer:self.mediaLiquidBorderLayer];
-    }
-    
-    BOOL isDark = NO;
-    if (@available(iOS 13.0, *)) {
-        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-    self.mediaLiquidBorderLayer.hidden = self.mediaContainerView.hidden || CGRectIsEmpty(self.mediaContainerView.bounds);
-    self.mediaLiquidBorderLayer.colors = BBFullDetailsLiquidBorderColors(isDark);
-    self.mediaLiquidBorderLayer.frame = self.mediaContainerView.bounds;
-    self.mediaLiquidBorderMaskLayer.frame = self.mediaContainerView.bounds;
-
-    CGRect strokeRect = CGRectInset(self.mediaContainerView.bounds,
-                                    BBFullDetailsMediaLiquidBorderWidth * 0.5,
-                                    BBFullDetailsMediaLiquidBorderWidth * 0.5);
-    CGFloat radius = MAX(0.0, BBFullDetailsMediaCornerRadius - BBFullDetailsMediaLiquidBorderWidth * 0.5);
-    self.mediaLiquidBorderMaskLayer.path =
-        [UIBezierPath bezierPathWithRoundedRect:strokeRect cornerRadius:radius].CGPath;
+    self.mediaContainerView.layer.borderWidth = self.mediaContainerView.hidden ? 0.0 : (1.0 / UIScreen.mainScreen.scale);
+    self.mediaContainerView.layer.borderColor = BBFullDetailsMediaStaticBorderColor().CGColor;
 }
 
 - (void)bb_configureOwnerMenuForViewModel:(PPUniversalCellViewModel *)viewModel
@@ -1893,6 +1942,10 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
 - (void)bb_primaryTapped
 {
     if (!self.viewModel) { return; }
+    if ([self bb_usesServiceChatCTAForViewModel:self.viewModel]) {
+        [self bb_requestChat];
+        return;
+    }
     if (![self bb_usesCartCTAForViewModel:self.viewModel]) {
         [self bb_cardTapped];
         return;
@@ -1988,10 +2041,27 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     }
 }
 
+- (void)bb_ownerChatTapped
+{
+    [self bb_requestChat];
+}
+
+- (void)bb_requestChat
+{
+    if (!self.viewModel) { return; }
+    if ([self.delegate respondsToSelector:@selector(fullDetailsCellDidRequestChat:viewModel:)]) {
+        [self.delegate fullDetailsCellDidRequestChat:self viewModel:self.viewModel];
+    }
+}
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
       shouldReceiveTouch:(UITouch *)touch
 {
+    (void)gestureRecognizer;
     UIView *view = touch.view;
+    if (self.imageGallery && [view isDescendantOfView:self.imageGallery]) {
+        return NO;
+    }
     while (view && view != self.surfaceView) {
         if ([view isKindOfClass:UIControl.class]) {
             return NO;
@@ -1999,74 +2069,6 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
         view = view.superview;
     }
     return YES;
-}
-
-#pragma mark - Collection
-
-- (void)bb_updateImageCollectionLayoutIfNeeded
-{
-    CGSize targetSize = self.imageCollectionView.bounds.size;
-    if (targetSize.width < 1.0 || targetSize.height < 1.0) {
-        return;
-    }
-
-    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.imageCollectionView.collectionViewLayout;
-    if (![layout isKindOfClass:UICollectionViewFlowLayout.class]) {
-        return;
-    }
-
-    BOOL sizeChanged = !CGSizeEqualToSize(self.lastImageCollectionLayoutSize, targetSize);
-    BOOL layoutSizeNeedsUpdate = !CGSizeEqualToSize(layout.itemSize, targetSize);
-    BOOL estimatedSizeNeedsReset = !CGSizeEqualToSize(layout.estimatedItemSize, CGSizeZero);
-    if (!sizeChanged && !layoutSizeNeedsUpdate && !estimatedSizeNeedsReset) {
-        return;
-    }
-
-    self.lastImageCollectionLayoutSize = targetSize;
-    layout.estimatedItemSize = CGSizeZero;
-    layout.itemSize = targetSize;
-    [layout invalidateLayout];
-    [self.imageCollectionView layoutIfNeeded];
-}
-
-- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
-{
-    return self.imageURLs.count;
-}
-
-- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
-                          cellForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    BBFullDetailsImagePageCell *cell =
-        [collectionView dequeueReusableCellWithReuseIdentifier:BBFullDetailsImagePageReuseID
-                                                  forIndexPath:indexPath];
-    NSString *url = indexPath.item < self.imageURLs.count ? self.imageURLs[indexPath.item] : @"";
-    [cell configureWithURL:url
-               placeholder:self.placeholderImage
-               imageLoader:self.imageLoader
-                 pageIndex:indexPath.item
-                totalPages:self.imageURLs.count];
-    return cell;
-}
-
-- (CGSize)collectionView:(UICollectionView *)collectionView
-                  layout:(UICollectionViewLayout *)collectionViewLayout
-  sizeForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    return collectionView.bounds.size;
-}
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
-{
-    if (scrollView != self.imageCollectionView || self.imageURLs.count <= 1) { return; }
-    CGFloat width = MAX(CGRectGetWidth(scrollView.bounds), 1.0);
-    NSInteger page = (NSInteger)llround(scrollView.contentOffset.x / width);
-    page = MAX(0, MIN(page, (NSInteger)self.imageURLs.count - 1));
-    self.pageControl.currentPage = page;
-    self.pageControl.accessibilityValue =
-        [NSString stringWithFormat:BBFullDetailsLocalized(@"bb_dataview_full_details_image_page_format"),
-         (long)(page + 1),
-         (long)self.imageURLs.count];
 }
 
 #pragma mark - Owner Capsule Badge
@@ -2105,6 +2107,28 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     _ownerNameLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:nameFont];
     _ownerNameLabel.adjustsFontForContentSizeCategory = YES;
     _ownerNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    _ownerChatButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _ownerChatButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _ownerChatButton.hidden = YES;
+    _ownerChatButton.enabled = NO;
+    _ownerChatButton.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.10];
+    _ownerChatButton.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    _ownerChatButton.layer.cornerRadius = 16.0;
+    _ownerChatButton.layer.masksToBounds = YES;
+    _ownerChatButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    _ownerChatButton.layer.borderColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.14].CGColor;
+    _ownerChatButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [_ownerChatButton addTarget:self action:@selector(bb_ownerChatTapped) forControlEvents:UIControlEventTouchUpInside];
+    if (@available(iOS 13.0, *)) {
+        _ownerChatButton.layer.cornerCurve = kCACornerCurveContinuous;
+        UIImageSymbolConfiguration *symbolConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleMedium];
+        [_ownerChatButton setPreferredSymbolConfiguration:symbolConfig forImageInState:UIControlStateNormal];
+        [_ownerChatButton setImage:[UIImage systemImageNamed:@"message.fill"] forState:UIControlStateNormal];
+    }
     
     _ownerRatingContainerView = [[UIView alloc] init];
     _ownerRatingContainerView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2147,10 +2171,13 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     [_ownerNameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     
     [contentStack addArrangedSubview:_ownerRatingContainerView];
+    [contentStack addArrangedSubview:_ownerChatButton];
     
     [NSLayoutConstraint activateConstraints:@[
         [_ownerAvatarImageView.widthAnchor constraintEqualToConstant:32.0],
         [_ownerAvatarImageView.heightAnchor constraintEqualToConstant:32.0],
+        [_ownerChatButton.widthAnchor constraintEqualToConstant:32.0],
+        [_ownerChatButton.heightAnchor constraintEqualToConstant:32.0],
         
         [contentStack.leadingAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.leadingAnchor constant:12.0],
         [contentStack.trailingAnchor constraintEqualToAnchor:_ownerCapsuleBadgeView.trailingAnchor constant:-12.0],
@@ -2219,6 +2246,7 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
     self.ownerNameLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
     self.ownerAvatarImageView.image = [PPModernAvatarRenderer avatarImageForName:@"" size:32.0];
     self.ownerRatingContainerView.hidden = YES;
+    [self bb_applyRatingBadgeForViewModel:viewModel user:nil];
     
     __weak typeof(self) weakSelf = self;
     [UsrMgr getOtherUserModelFromFirestoreWithUID:ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
@@ -2249,13 +2277,28 @@ static NSString *BBFullDetailsURLFromMediaDictionary(NSDictionary *media)
                                                     complation:nil];
         }
         
-        if (user.providerReviewCount > 0 && user.providerRatingValue > 0.0) {
-            self.ownerRatingLabel.text = [NSString stringWithFormat:@"%.1f", user.providerRatingValue];
-            self.ownerRatingContainerView.hidden = NO;
-        } else {
-            self.ownerRatingContainerView.hidden = YES;
-        }
+        [self bb_applyRatingBadgeForViewModel:self.viewModel user:user];
     }];
+}
+
+- (void)bb_applyRatingBadgeForViewModel:(PPUniversalCellViewModel *)viewModel
+                                   user:(UserModel *)user
+{
+    if ([viewModel.ModelObject isKindOfClass:ServiceModel.class]) {
+        ServiceModel *service = (ServiceModel *)viewModel.ModelObject;
+        if ([service hasDisplayableRating]) {
+            self.ownerRatingLabel.text = [NSString stringWithFormat:@"%.1f", service.ratingValue.doubleValue];
+            self.ownerRatingContainerView.hidden = NO;
+            return;
+        }
+    }
+
+    if (user.providerReviewCount > 0 && user.providerRatingValue > 0.0) {
+        self.ownerRatingLabel.text = [NSString stringWithFormat:@"%.1f", user.providerRatingValue];
+        self.ownerRatingContainerView.hidden = NO;
+    } else {
+        self.ownerRatingContainerView.hidden = YES;
+    }
 }
 
 #pragma mark - Helpers

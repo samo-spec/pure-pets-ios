@@ -806,6 +806,11 @@
 "bb_dataview_full_details_image_page_format" = "Image %ld of %ld";
 "bb_dataview_full_details_loading" = "Loading details";
 "bb_dataview_full_details_share" = "Share";
+"bb_dataview_full_details_chat_owner" = "Chat with owner";
+"bb_dataview_full_details_chat_provider" = "Chat with provider";
+"bb_dataview_full_details_opening_chat" = "Opening chat";
+"bb_dataview_full_details_contact_unavailable" = "Contact is unavailable right now";
+"bb_dataview_full_details_chat_self_unavailable" = "You cannot chat with yourself";
 "bb_dataview_full_details_owner_actions" = "Owner actions";
 "bb_dataview_full_details_visibility" = "Visibility";
 "searchOnly" = "Search";
@@ -3444,5 +3449,4 @@
 "quick_access_lang_en_toast" = "Language changed to English";
 "quick_access_notifications_toast" = "Opening Notification Settings...";
 "quick_access_location_toast" = "Opening Location Settings...";
-
 

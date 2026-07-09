@@ -7289,8 +7289,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionAccessories: {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Accessories");
-           // cfg.actionTitle = kLang(@"ShowAll");
-            cfg.iconName = @"list.bullet";
+            cfg.actionTitle = kLang(@"filterPPAction") ?: kLang(@"home_search_filter") ?: @"Filter";
+            cfg.iconName = @"slider.horizontal.3";
 
             cfg.menu =
                 [PPActionButton generateActionsForMainKind:MKM.MainKindsArray
@@ -7477,7 +7477,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             constraintEqualToAnchor:self.view.topAnchor],
          [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
          [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:0]
+         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-0]
     ]];
 
     [self.collectionView registerClass:PPHomeHeroCell.class

@@ -5,16 +5,16 @@ static CGFloat PPSectionHeaderPixel(void) {
     return 1.0 / UIScreen.mainScreen.scale;
 }
 
-static const CGFloat PPSectionHeaderSurfaceRadius = 22.0;
-static const CGFloat PPSectionHeaderOuterVerticalInset = 3.0;
+static const CGFloat PPSectionHeaderSurfaceRadius = 14.0;
+static const CGFloat PPSectionHeaderOuterVerticalInset = 0.0;
 static const CGFloat PPSectionHeaderContentLeading = 28.0;
-static const CGFloat PPSectionHeaderContentTrailing = 14.0;
-static const CGFloat PPSectionHeaderContentVerticalInset = 10.0;
+static const CGFloat PPSectionHeaderContentTrailing = 4.0;
+static const CGFloat PPSectionHeaderContentVerticalInset = 0.0;
 static const CGFloat PPSectionHeaderAccentWidth = 3.5;
-static const CGFloat PPSectionHeaderAccentHeight = 30.0;
-static const CGFloat PPSectionHeaderActionMinHeight = 40.0;
-static const CGFloat PPSectionHeaderActionMinWidth = 44.0;
-static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
+static const CGFloat PPSectionHeaderAccentHeight = 26.0;
+static const CGFloat PPSectionHeaderActionMinHeight = 36.0;
+static const CGFloat PPSectionHeaderActionMinWidth = 36.0;
+static const CGFloat PPSectionHeaderActionMaxWidth = 184.0;
 
 @interface PPSectionHeaderView () <UIGestureRecognizerDelegate>
 
@@ -81,7 +81,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     self.surfaceView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
     self.surfaceView.layer.borderWidth = 0;//PPSectionHeaderPixel();
-    self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
+    //self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.surfaceView.layer.shadowOpacity = 0.05;
     self.surfaceView.layer.shadowRadius = 16.0;
@@ -143,7 +143,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
         [self.tapHighlightView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
         [self.tapHighlightView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
 
-        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:17.0],
+        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:6.0],
         [self.accentRailView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         self.accentRailWidthConstraint,
         self.accentRailHeightConstraint,
@@ -189,7 +189,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.hidden = YES;
     self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.actionButton.layer.cornerRadius = 12.0;
+    self.actionButton.layer.cornerRadius = 8.0;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     self.actionButton.clipsToBounds = YES;
     self.actionButton.titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -274,7 +274,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
-    background.strokeWidth = PPSectionHeaderPixel();
+    background.strokeWidth = 0.0;//PPSectionHeaderPixel();
     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.24 : 0.10];
     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.14 : 0.075];
     cfg.background = background;
@@ -311,19 +311,19 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
 
     self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
     self.surfaceView.layer.borderColor = AppClearClr.CGColor;//[self pp_surfaceBorderColor].CGColor;
-    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.surfaceView.layer.shadowColor = UIColor.clearColor.CGColor;
     self.surfaceView.layer.shadowOpacity = (decorationActive && !darkMode) ? 0.05 : 0.0;
     self.surfaceView.layer.shadowRadius = decorationActive ? 16.0 : 0.0;
     self.surfaceView.layer.shadowOffset = decorationActive ? CGSizeMake(0.0, 6.0) : CGSizeZero;
 
     UIColor *foregroundWash = AppForgroundColr ?: UIColor.whiteColor;
     self.materialWashView.backgroundColor =
-        [foregroundWash colorWithAlphaComponent:decorationActive ? (darkMode ? 0.045 : 0.16) : (darkMode ? 0.025 : 0.09)];
+        [foregroundWash colorWithAlphaComponent:decorationActive ? (darkMode ? 0.045 : 0.16) : (darkMode ? 0.025 : 0.03)];
     self.topSheenView.backgroundColor =
-        [UIColor.whiteColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.08 : 0.55) : (darkMode ? 0.05 : 0.22)];
-    self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.16 : 0.10];
+        [UIColor.whiteColor colorWithAlphaComponent:decorationActive ? (darkMode ? 0.08 : 0.55) : (darkMode ? 0.05 : 0.02)];
+    self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.16 : 0.01];
 
-    CGFloat accentAlpha = self.currentSection == PPHomeSectionMainKinds ? 0.82 : 0.58;
+    CGFloat accentAlpha = 0.38;
     self.accentRailView.backgroundColor = [accentColor colorWithAlphaComponent:accentAlpha];
     self.accentRailView.alpha = decorationActive ? 1.0 : 0.64;
     self.titleLabel.textColor = [self pp_titleColor];
@@ -332,9 +332,9 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
-    background.strokeWidth = PPSectionHeaderPixel();
-    background.strokeColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10];
-    background.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.075];
+    background.strokeWidth = 0.0;//PPSectionHeaderPixel();
+    background.strokeColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.0];
+    background.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.045];
     cfg.background = background;
     cfg.baseForegroundColor = accentColor;
     self.actionButton.configuration = cfg;
@@ -362,7 +362,7 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     }
 
     UIColor *foregroundSurface = AppBackgroundClr ?: UIColor.whiteColor;
-    return [foregroundSurface colorWithAlphaComponent:self.surfaceDecorationActive ? 0.32 : 0.22];
+    return [foregroundSurface colorWithAlphaComponent:self.surfaceDecorationActive ? 0.32 : 0.02];
 }
 
 - (UIColor *)pp_surfaceBorderColor
@@ -371,12 +371,12 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
         return [UIColor colorWithWhite:1.0 alpha:0.08];
     }
     UIColor *accent = AppBackgroundClr ?: UIColor.separatorColor;
-    return [accent colorWithAlphaComponent:self.surfaceDecorationActive ? 0.42 : 0.72];
+    return [accent colorWithAlphaComponent:self.surfaceDecorationActive ? 0.42 : 0.0];
 }
 
 - (UIFont *)pp_titleFont
 {
-    UIFont *font = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:18.5 weight:UIFontWeightBold];
+    UIFont *font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:17.5 weight:UIFontWeightBold];
     return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:font];
 }
 
@@ -418,7 +418,6 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
     } else {
         self.surfaceView.layer.shadowPath = nil;
     }
-    [self pp_refreshAppearance];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -499,9 +498,20 @@ static const CGFloat PPSectionHeaderActionMaxWidth = 164.0;
                        menu != nil);
     self.actionButton.hidden = !showAction;
 
+    NSString *resolvedActionTitle = actionTitle;
+    NSString *resolvedIconName = iconName;
+    if (showAction) {
+        if (resolvedActionTitle.length == 0) {
+            resolvedActionTitle = kLang(@"ShowAll") ?: @"Show All";
+        }
+        if (resolvedIconName.length == 0 && ppHomeSection != PPHomeSectionMainKinds) {
+            resolvedIconName = @"chevron.forward";
+        }
+    }
+
     UIButtonConfiguration *cfg = self.actionButton.configuration;
-    cfg.title = actionTitle.length > 0 ? actionTitle : @"";
-    cfg = [self pp_applyIconNamed:iconName
+    cfg.title = resolvedActionTitle.length > 0 ? resolvedActionTitle : @"";
+    cfg = [self pp_applyIconNamed:resolvedIconName
                  toConfiguration:cfg
                       forSection:ppHomeSection];
     self.actionButton.configuration = cfg;

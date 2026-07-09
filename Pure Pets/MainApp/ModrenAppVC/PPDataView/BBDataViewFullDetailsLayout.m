@@ -1,13 +1,13 @@
 #import "BBDataViewFullDetailsLayout.h"
 
-static const CGFloat BBFullDetailsBeaconWidth = 62.0;
+static const CGFloat BBFullDetailsBeaconWidth = 72.0;
 static const CGFloat BBFullDetailsTopViewportInset = 22.0;
-static const CGFloat BBFullDetailsBottomViewportInset = 104.0;
+static const CGFloat BBFullDetailsBottomViewportInset = 42.0;
 static const CGFloat BBFullDetailsMinimumCardHeight = 340.0;
-static const CGFloat BBFullDetailsMinimumCardWidth = 260.0;
-static const CGFloat BBFullDetailsInterItemSpacing = 6.0;
+static const CGFloat BBFullDetailsMinimumCardWidth = 220.0;
+static const CGFloat BBFullDetailsInterItemSpacing = 0.0;
 static const CGFloat BBFullDetailsAdjacentMinimumScale = 0.88;
-static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.77;
+static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.62;
 
 @implementation BBDataViewFullDetailsLayout
 
@@ -48,16 +48,16 @@ static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.77;
     }
 
     CGSize boundsSize = collectionView.bounds.size;
-    CGFloat availableWidth = MAX(1.0, boundsSize.width - adjustedInset.left  );
-    CGFloat availableHeight = MAX(1.0, boundsSize.height - adjustedInset.top  );
+    CGFloat availableWidth = MAX(1.0, boundsSize.width - adjustedInset.left - adjustedInset.right);
+    CGFloat availableHeight = MAX(1.0, boundsSize.height - adjustedInset.top - adjustedInset.bottom);
 
     CGFloat preferredWidth =
         availableWidth - ((BBFullDetailsInterItemSpacing + BBFullDetailsBeaconWidth) * 2.0);
     CGFloat itemWidth = floor(MIN(MAX(preferredWidth,
                                       MIN(BBFullDetailsMinimumCardWidth, availableWidth)),
                                   availableWidth));
-    CGFloat preferredHeight =
-        availableHeight - BBFullDetailsTopViewportInset - BBFullDetailsBottomViewportInset;
+    CGFloat requestedVerticalSpace = MAX(1.0, BBFullDetailsTopViewportInset + BBFullDetailsBottomViewportInset);
+    CGFloat preferredHeight = availableHeight - requestedVerticalSpace;
     CGFloat itemHeight = floor(MIN(MAX(preferredHeight,
                                        MIN(BBFullDetailsMinimumCardHeight, availableHeight)),
                                    MAX(1.0, availableHeight)));
@@ -66,12 +66,9 @@ static const CGFloat BBFullDetailsAdjacentMinimumAlpha = 0.77;
 
     CGFloat horizontalInset = MAX(0.0, floor((availableWidth - itemWidth) * 0.5));
     CGFloat remainingVerticalSpace = MAX(0.0, availableHeight - itemHeight);
-    CGFloat requestedVerticalSpace = MAX(1.0, BBFullDetailsTopViewportInset + BBFullDetailsBottomViewportInset);
     CGFloat topInsetRatio = BBFullDetailsTopViewportInset / requestedVerticalSpace;
-    CGFloat topViewportInset = floor(remainingVerticalSpace * topInsetRatio);
-    CGFloat desiredVisibleTopInset = adjustedInset.top + topViewportInset;
-    CGFloat sectionTopInset = MAX(0.0, desiredVisibleTopInset + collectionView.contentOffset.y);
-    CGFloat sectionBottomInset = MAX(0.0, CGRectGetHeight(collectionView.bounds) - sectionTopInset - itemHeight);
+    CGFloat sectionTopInset = floor(remainingVerticalSpace * topInsetRatio);
+    CGFloat sectionBottomInset = MAX(0.0, remainingVerticalSpace - sectionTopInset);
     self.sectionInset = UIEdgeInsetsMake(sectionTopInset,
                                          horizontalInset,
                                          sectionBottomInset,

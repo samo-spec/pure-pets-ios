@@ -830,6 +830,11 @@
 "bb_dataview_full_details_image_page_format" = "الصورة %ld من %ld";
 "bb_dataview_full_details_loading" = "جارٍ تحميل التفاصيل";
 "bb_dataview_full_details_share" = "مشاركة";
+"bb_dataview_full_details_chat_owner" = "مراسلة المالك";
+"bb_dataview_full_details_chat_provider" = "مراسلة مقدم الخدمة";
+"bb_dataview_full_details_opening_chat" = "جارٍ فتح المحادثة";
+"bb_dataview_full_details_contact_unavailable" = "التواصل غير متاح الآن";
+"bb_dataview_full_details_chat_self_unavailable" = "لا يمكنك مراسلة نفسك";
 "bb_dataview_full_details_owner_actions" = "إجراءات المالك";
 "bb_dataview_full_details_visibility" = "الظهور";
 
@@ -3223,11 +3228,11 @@
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
 "provider_marketplace_subtitle" = "أطعمة . إكسسوارات";
 "provider_marketplace_subtitle_premium" = "أغذية ومستلزمات فاخرة وإكسسوارات حصرية لحيوانك";
-"provider_vets_title" = "الأطباء";
-"provider_vets_subtitle" = "أطباء بيطريون وعيادات طبية موثوقة";
+"provider_vets_title" = "البيطري";
+"provider_vets_subtitle" = "أطباء وعيادات";
 "provider_vets_subtitle_premium" = "أطباء بيطريون خبراء وعيادات طبية موثوقة";
 "provider_pharmacies_title" = "الصيدلية";
-"provider_pharmacies_subtitle" = "أدوية بيطرية وعنايه متكاملة";
+"provider_pharmacies_subtitle" = "أدوية ومكملات";
 "provider_pharmacies_subtitle_premium" = "أدوية بيطرية مرخصة ومستلزمات طبية متكاملة";
 "provider_companies_section_title_marketplace" = "واجهات المزودين";
 "provider_companies_section_title_pharmacy" = "واجهات الصيدليات";
@@ -3423,5 +3428,4 @@
 "quick_access_lang_en_toast" = "تم تغيير اللغة إلى الإنجليزية";
 "quick_access_notifications_toast" = "جاري فتح إعدادات التنبيهات...";
 "quick_access_location_toast" = "جاري فتح إعدادات الموقع...";
-
 

@@ -31,9 +31,9 @@ static const CGFloat PPHomeVerticalInnerSpacing   = 0.0;
 static const CGFloat PPHomeEdgeSpacing   = 16.0;
 static const CGFloat PPHomeSpacingBase    = 12.0;
 static const CGFloat PPInner = 12.0;
-static const CGFloat PPHomeSpacingSection = 16.0;
+static const CGFloat PPHomeSpacingSection = 22.0;
 static const CGFloat kHeaderHeight     = 64.0;
-static const CGFloat kHeaderHeightMin     = 56.0;
+static const CGFloat kHeaderHeightMin     = 42.0;
 
 
 // Standard card sizes
@@ -239,17 +239,17 @@ static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
         BOOL accessibilityText =
             UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
         if (accessibilityText) {
-            return  88.0;
+            return  72.0;
         }
-        return   88.0;
+        return   72.0;
     }
     if (PPHomeWidthIsTablet(width)) {
-        return 88.0;
+        return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 88.0;
+        return 72.0;
     }
-    return 88.0;
+    return 72.0;
 }
 
 static inline CGFloat PPHomeMarketplaceHeroHeight(CGFloat width)
@@ -454,7 +454,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.contentInsets =
         NSDirectionalEdgeInsetsMake(PPHomeSpacingBase,
                                     PPHomeEdgeSpacing,
-                                    PPHomeSpacingBase + 0.0,
+                                    PPHomeSpacingSection + 0.0,
                                     PPHomeEdgeSpacing);
 
     return section;

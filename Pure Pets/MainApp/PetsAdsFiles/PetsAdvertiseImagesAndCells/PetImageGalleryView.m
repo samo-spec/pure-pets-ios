@@ -333,7 +333,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
     //layout.itemSize = CGSizeMake(self.frame.size.width, 300);
-    layout.minimumLineSpacing = 0;
+    //layout.minimumLineSpacing = 0;
 
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     _collectionView.pagingEnabled = YES;
@@ -348,7 +348,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     _collectionView.showsHorizontalScrollIndicator = NO;
     _collectionView.backgroundColor = _galleryType == PetImageGalleryTypeAccessory
         ? (AppForgroundColr ?: UIColor.secondarySystemBackgroundColor)
-        : AppBackgroundClr;
+        : AppForgroundColr;
     _collectionView.layer.cornerRadius = 0;
     _collectionView.clipsToBounds = YES;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -827,6 +827,14 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     NSInteger count = self.imageItems.count;
     if (count <= 0) return 0;
+
+    CGPoint visibleCenter = CGPointMake(self.collectionView.contentOffset.x + CGRectGetMidX(self.collectionView.bounds),
+                                        self.collectionView.contentOffset.y + CGRectGetMidY(self.collectionView.bounds));
+    NSIndexPath *centeredIndexPath = [self.collectionView indexPathForItemAtPoint:visibleCenter];
+    if (centeredIndexPath) {
+        return MIN(MAX((NSInteger)centeredIndexPath.item, 0), count - 1);
+    }
+
     CGFloat width = MAX(1.0, CGRectGetWidth(self.collectionView.bounds));
     NSInteger page = (NSInteger)llround(self.collectionView.contentOffset.x / width);
     return MIN(MAX(page, 0), count - 1);
@@ -1517,19 +1525,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
     CGPoint point = [gesture locationInView:self.collectionView];
     NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:point];
-    
+
     if (indexPath) {
-        PetImageItem *item = indexPath.item < self.imageItems.count ? self.imageItems[indexPath.item] : nil;
-        if (PPReusableVideoMediaEnabled() && item.isVideoMedia) {
-            NSURL *videoURL = [NSURL URLWithString:item.videoURL ?: @""];
-            if (videoURL) {
-                PPPremiumVideoPlayerViewController *playerVC =
-                [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
-                UIViewController *presenter = AppMgr.topViewController ?: self.parentViewController;
-                [presenter presentViewController:playerVC animated:YES completion:nil];
-            }
-            return;
-        }
+        [self collectionView:self.collectionView didSelectItemAtIndexPath:indexPath];
+        return;
     }
 
     CGFloat viewWidth = CGRectGetWidth(self.bounds);

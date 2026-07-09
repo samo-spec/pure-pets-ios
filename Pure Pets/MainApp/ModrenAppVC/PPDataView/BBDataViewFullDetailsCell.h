@@ -16,6 +16,8 @@ typedef void (^BBDataViewFullDetailsImageLoader)(UIImageView *_Nullable imageVie
                             viewModel:(PPUniversalCellViewModel *)viewModel;
 - (void)fullDetailsCellDidRequestShare:(BBDataViewFullDetailsCell *)cell
                              viewModel:(PPUniversalCellViewModel *)viewModel;
+- (void)fullDetailsCellDidRequestChat:(BBDataViewFullDetailsCell *)cell
+                            viewModel:(PPUniversalCellViewModel *)viewModel;
 - (void)fullDetailsCellDidRequestEdit:(BBDataViewFullDetailsCell *)cell
                             viewModel:(PPUniversalCellViewModel *)viewModel;
 - (void)fullDetailsCellDidRequestDelete:(BBDataViewFullDetailsCell *)cell

@@ -1110,7 +1110,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return;
     }
 
-    UIColor *baseColor = AppBackgroundClr ?: AppBackgroundClr ?: UIColor.whiteColor;
+    UIColor *baseColor = AppForgroundColr ?: AppBackgroundClr ?: UIColor.whiteColor;
     if (@available(iOS 13.0, *)) {
         if (self.hostController.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
             baseColor = [UIColor colorWithWhite:0.05 alpha:1.0];
@@ -3674,7 +3674,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:12.0],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:6.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
         ]];
