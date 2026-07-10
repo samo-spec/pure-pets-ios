@@ -727,6 +727,22 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     _sheenLayer.frame = cardBounds;
     _sheenLayer.cornerRadius = _cardView.layer.cornerRadius;
+
+    // Dynamically adjust gradient directions to follow app language flow (LTR vs RTL)
+    if (isRTL) {
+        _gradientLayer.startPoint = CGPointMake(1.0, 0.0);
+        _gradientLayer.endPoint = CGPointMake(0.0, 1.0);
+
+        _sheenLayer.startPoint = CGPointMake(1.0, 0.0);
+        _sheenLayer.endPoint = CGPointMake(0.0, 0.0);
+    } else {
+        _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
+        _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+
+        _sheenLayer.startPoint = CGPointMake(0.0, 0.0);
+        _sheenLayer.endPoint = CGPointMake(1.0, 0.0);
+    }
+
     [CATransaction commit];
 
     _eyebrowLabel.layer.cornerRadius = CGRectGetHeight(_eyebrowLabel.bounds) * 0.5;
@@ -6284,6 +6300,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         configuration.image = [UIImage systemImageNamed:Language.isRTL ? @"chevron.left" : @"chevron.right"];
         configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
         configuration.imagePadding = 5.0;
+
+        configuration.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"Home_BuyAgainDiscoverSimilars")
+                                                              attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:12],
+            NSForegroundColorAttributeName: PPIOS26() ? AppPrimaryClr : AppForgroundColr
+        }];
+
+
         button.configuration = configuration;
     } else {
         [button setTitle:kLang(@"Home_BuyAgainDiscoverSimilars") ?: @""
@@ -7276,7 +7300,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_discover_by_category") ?: kLang(@"MainCategories");
-            cfg.actionTitle = nil;
+            cfg.actionTitle = self.isMainKindsExpanded
+                ? (kLang(@"ShowLess") ?: @"Show less")
+                : (kLang(@"ShowAll") ?: @"Show all");
 
             cfg.iconName = self.isMainKindsExpanded
                 ? @"chevron.up"
@@ -7289,17 +7315,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         case PPHomeSectionAccessories: {
             cfg.hidden = NO;
             cfg.title = kLang(@"home_header_featured_products") ?: kLang(@"Accessories");
-            cfg.actionTitle = kLang(@"filterPPAction") ?: kLang(@"home_search_filter") ?: @"Filter";
-            cfg.iconName = @"slider.horizontal.3";
-
-            cfg.menu =
-                [PPActionButton generateActionsForMainKind:MKM.MainKindsArray
-                                                 tintColor:AppPrimaryTextClr
-                                                   handler:^(MainKindsModel *category) {
-                [self handleDeepLinkWithTarget:PPDeepLinkTargetAccessories
-                                      mainKind:category
-                                        source:PPInputSourceHomeAccessoriesSection];
-            }];
+            cfg.actionTitle = kLang(@"home_accessories_refine") ?: @"Refine";
+            cfg.iconName = arrowImage;
+            cfg.menu = nil;
             break;
         }
 

@@ -92,6 +92,14 @@ static NSString *PPSupportUserActorKey(NSString *uid) {
     return safeUID.length > 0 ? [NSString stringWithFormat:@"user:%@", safeUID] : @"";
 }
 
+static NSString *PPChatActorKey(NSString *uid, BOOL provider) {
+    NSString *safeUID = PPSupportTrimmedString(uid);
+    if (safeUID.length == 0) {
+        return @"";
+    }
+    return [NSString stringWithFormat:@"%@:%@", provider ? @"provider" : @"user", safeUID];
+}
+
 static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) {
     NSMutableOrderedSet<NSString *> *set = [NSMutableOrderedSet orderedSet];
     for (NSString *value in values) {
@@ -101,6 +109,37 @@ static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) 
         }
     }
     return set.array ?: @[];
+}
+
+static NSDictionary *PPChatThreadV2Metadata(NSString *threadID,
+                                            NSString *currentUID,
+                                            NSString *otherUID,
+                                            BOOL providerChat) {
+    NSString *safeThreadID = PPSupportTrimmedString(threadID);
+    NSString *safeCurrentUID = PPSupportTrimmedString(currentUID);
+    NSString *safeOtherUID = PPSupportTrimmedString(otherUID);
+    NSString *currentActorKey = PPChatActorKey(safeCurrentUID, NO);
+    NSString *otherActorKey = PPChatActorKey(safeOtherUID, providerChat);
+    NSString *contextType = providerChat ? kPPConversationTypeProviderChat : @"direct_chat";
+
+    return @{
+        @"schemaVersion": @(kPPChatV2SchemaVersion),
+        @"conversationId": safeThreadID,
+        @"contextType": contextType,
+        @"contextId": safeThreadID,
+        @"threadId": safeThreadID,
+        @"threadID": safeThreadID,
+        @"participantKeys": PPSupportUniqueStrings(@[currentActorKey, otherActorKey]),
+        @"participantUids": PPSupportUniqueStrings(@[safeCurrentUID, safeOtherUID]),
+        @"customerActorKey": currentActorKey,
+        @"targetUid": safeOtherUID,
+        @"targetActorKey": otherActorKey,
+        @"targetApp": providerChat ? @"pro" : @"ios",
+        @"route": @"chat",
+        @"notificationType": @"chat",
+        @"updatedByActorKey": currentActorKey,
+        @"updatedByUid": safeCurrentUID
+    };
 }
 
 static NSDictionary *PPSupportThreadV2Metadata(NSString *threadID,
@@ -756,13 +795,18 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 break;
         }
 
-        [threadRef updateData:@{
+        NSMutableDictionary *threadPatch = [@{
             @"lastMessage": lastMessageText,
             @"senderID": resolvedSenderID,
             @"timestamp": [FIRFieldValue fieldValueForServerTimestamp],
             @"lastMessageAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1]
-        } completion:^(NSError * _Nullable threadError) {
+            @"messagesCount": [FIRFieldValue fieldValueForIntegerIncrement:1],
+            @"schemaVersion": @(kPPChatV2SchemaVersion),
+            @"updatedByUid": resolvedSenderID,
+            @"updatedByActorKey": PPChatActorKey(resolvedSenderID, NO)
+        } mutableCopy];
+
+        [threadRef updateData:threadPatch.copy completion:^(NSError * _Nullable threadError) {
             if (threadError) {
                 NSLog(@"⚠️ [SendMessage] Parent thread update failed — thread=%@ code=%ld desc=%@",
                       threadID,
@@ -1603,9 +1647,21 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 [[ChatThreadModel alloc] initWithDictionary:snapshot.data];
             thread.ID = snapshot.documentID;
             thread.otherUser = user;
+            NSMutableDictionary *chatV2Metadata =
+                [PPChatThreadV2Metadata(threadID, currentUserID, user.ID, isProviderChat) mutableCopy];
+            NSArray *existingParticipantUids =
+                [snapshot.data[@"participantUids"] isKindOfClass:NSArray.class] ? snapshot.data[@"participantUids"] : nil;
+            if (existingParticipantUids.count > 0) {
+                chatV2Metadata[@"participantUids"] = existingParticipantUids;
+            }
+            NSArray *existingParticipantKeys =
+                [snapshot.data[@"participantKeys"] isKindOfClass:NSArray.class] ? snapshot.data[@"participantKeys"] : nil;
+            if (existingParticipantKeys.count > 0) {
+                chatV2Metadata[@"participantKeys"] = existingParticipantKeys;
+            }
 
             if (isProviderChat) {
-                NSDictionary *providerMetadata = @{
+                NSMutableDictionary *providerMetadata = [@{
                     @"conversationType": kPPConversationTypeProviderChat,
                     @"threadType": kPPConversationTypeProviderChat,
                     @"supportThread": @(NO),
@@ -1618,8 +1674,9 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                     @"sourceScreen": @"provider_chat",
                     @"sourceType": @"general",
                     @"sourceEntityId": @""
-                };
-                [threadRef setData:providerMetadata merge:YES completion:^(NSError *mergeError) {
+                } mutableCopy];
+                [providerMetadata addEntriesFromDictionary:chatV2Metadata];
+                [threadRef setData:providerMetadata.copy merge:YES completion:^(NSError *mergeError) {
                     if (mergeError) {
                         NSLog(@"⚠️ [ProviderChat] Could not canonicalize provider metadata: %@", mergeError.localizedDescription ?: @"unknown error");
                         if (completion) completion(nil, mergeError);
@@ -1635,6 +1692,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 }];
                 return;
             }
+
+            [threadRef setData:chatV2Metadata merge:YES completion:^(NSError *mergeError) {
+                if (mergeError) {
+                    NSLog(@"⚠️ [ChatV2] Could not canonicalize thread metadata for %@: %@",
+                          threadID,
+                          mergeError.localizedDescription ?: @"unknown error");
+                }
+            }];
 
             // 🔥 ENSURE LISTENER IS ATTACHED
             [[ChManager sharedManager] startListeningForThreadMessages:@[thread]];
@@ -1655,6 +1720,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             @"reportedBy": @[],
             @"reportCount": @(0)
         }];
+        [data addEntriesFromDictionary:PPChatThreadV2Metadata(threadID, currentUserID, user.ID, isProviderChat)];
 
         if (isProviderChat) {
             [data addEntriesFromDictionary:@{

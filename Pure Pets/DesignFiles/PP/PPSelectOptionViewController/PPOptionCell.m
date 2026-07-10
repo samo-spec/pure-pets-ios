@@ -24,6 +24,10 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
 @property (nonatomic, strong) NSLayoutConstraint *subtitleBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cardLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cardTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconPlateWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconPlateHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *circleImageWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *circleImageHeightConstraint;
 @property (nonatomic, strong) UIColor *accentColor;
 @property (nonatomic, assign) PPOptionCellIconStyle iconStyle;
 @property (nonatomic, assign, getter=isOptionSelected) BOOL optionSelected;
@@ -130,13 +134,13 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
             [_iconPlateView.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
             [_iconPlateView.topAnchor constraintGreaterThanOrEqualToAnchor:_cardView.topAnchor constant:8.0],
             [_iconPlateView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardView.bottomAnchor constant:-8.0],
-            [_iconPlateView.widthAnchor constraintEqualToConstant:48.0],
-            [_iconPlateView.heightAnchor constraintEqualToConstant:48.0],
+            self.iconPlateWidthConstraint = [_iconPlateView.widthAnchor constraintEqualToConstant:48.0],
+            self.iconPlateHeightConstraint = [_iconPlateView.heightAnchor constraintEqualToConstant:48.0],
 
             [_circleImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
             [_circleImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-            [_circleImageView.widthAnchor constraintEqualToConstant:31.0],
-            [_circleImageView.heightAnchor constraintEqualToConstant:31.0],
+            self.circleImageWidthConstraint = [_circleImageView.widthAnchor constraintEqualToConstant:31.0],
+            self.circleImageHeightConstraint = [_circleImageView.heightAnchor constraintEqualToConstant:31.0],
 
             [_checkPlateView.trailingAnchor constraintEqualToAnchor:_cardView.trailingAnchor constant:-14.0],
             [_checkPlateView.centerYAnchor constraintEqualToAnchor:_cardView.centerYAnchor],
@@ -180,6 +184,7 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
     self.contentView.transform = CGAffineTransformIdentity;
     self.accentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     self.premiumCardStyleEnabled = NO;
+    self.isUserOption = NO;
     self.preferredHorizontalInset = 0.0;
     self.accessoryType = UITableViewCellAccessoryNone;
     self.accessibilityTraits = UIAccessibilityTraitButton;
@@ -358,8 +363,21 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
 
 - (void)pp_applyAvatarImage:(UIImage *)image {
     self.iconStyle = PPOptionCellIconStyleAvatar;
-    self.iconPlateView.layer.cornerRadius = self.premiumCardStyleEnabled ? 24.0 : 20.0;
-    self.circleImageView.layer.cornerRadius = self.premiumCardStyleEnabled ? 22.0 : 20.0;
+    if (self.isUserOption) {
+        self.iconPlateWidthConstraint.constant = 56.0;
+        self.iconPlateHeightConstraint.constant = 56.0;
+        self.circleImageWidthConstraint.constant = 38.0;
+        self.circleImageHeightConstraint.constant = 38.0;
+        self.iconPlateView.layer.cornerRadius = 28.0;
+        self.circleImageView.layer.cornerRadius = 28.0;
+    } else {
+        self.iconPlateWidthConstraint.constant = 48.0;
+        self.iconPlateHeightConstraint.constant = 48.0;
+        self.circleImageWidthConstraint.constant = 31.0;
+        self.circleImageHeightConstraint.constant = 31.0;
+        self.iconPlateView.layer.cornerRadius = self.premiumCardStyleEnabled ? 24.0 : 20.0;
+        self.circleImageView.layer.cornerRadius = self.premiumCardStyleEnabled ? 22.0 : 20.0;
+    }
     self.circleImageView.clipsToBounds = YES;
     self.circleImageView.contentMode = self.premiumCardStyleEnabled ? UIViewContentModeScaleAspectFill : UIViewContentModeScaleAspectFit;
     self.circleImageView.image = image;

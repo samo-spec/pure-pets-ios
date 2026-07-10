@@ -67,8 +67,8 @@
 #import "UserPaymentInstrumentManager.h"
 #import "UserPaymentInstrument.h"
 #import "PPSelectPaymentVC.h"
- 
- 
+
+
 
 // =====================================================
 // Firebase / Google
@@ -175,10 +175,9 @@
 #import "PPUniversalCellViewModel.h"
 
 
- 
 #import "PetAd.h"
 #import "VetModel.h"
- 
+
 
 // =====================================================
 // Managers
@@ -212,7 +211,6 @@
 
 
 
-
 // =====================================================
 // View Controllers
 // =====================================================
@@ -235,7 +233,6 @@
 #import "TrashModel.h"
 #import "PPDataViewVM.h"
 #import "AppDataListenerManager.h"
-
 
 
 
@@ -370,14 +367,14 @@
 #define PPIsUserLoggedIn UserManager.sharedManager.isUserLoggedIn
 #define PPShowLoginPrompt [UserManager showPromptOnTopController]
 
- 
-/// YES uses PPHomeUltraPremuimPetCareCell; NO preserves PPHomePremiumCareCell.
+
+ /// YES uses PPHomeUltraPremuimPetCareCell; NO preserves PPHomePremiumCareCell.
 static BOOL const PPULTRA_CARE_IS_ACTIVATED = YES;
 
 /// Centralized rendering style for Home-owned background and profile-card glows.
 /// YES keeps soft radial fades; NO renders the same light fields as solid circles.
 static BOOL const backgroundGlowsFaded = YES;
- 
+
 
 #define UsrMgr [UserManager sharedManager]
 #define PPADDRESS PPAddressesManager.sharedManager
@@ -389,7 +386,7 @@ static BOOL const backgroundGlowsFaded = YES;
 #define AppMgr AppManager.sharedInstance
 #define PPUsersArr AppManager.sharedInstance.usersArray
 #define MAX_BUBBLE_WIDTH(view) ((view.frame.size.width))
- 
+
 #define PPCorners42 42.0
 #define PPMaxScreen (UIScreen.mainScreen.bounds.size.height >= 812.0)
 #define PPNavBarHeight (44.0 + PPStatusBarHeight)
@@ -434,9 +431,6 @@ static inline BOOL PPIOS18(void) {
     if (@available(iOS 18.0, *)) return YES;
     return NO;
 }
- 
-
-
 
 
 
@@ -470,7 +464,8 @@ typedef void (^PPImageLoader)(UIImageView *imageView,
                               NSString * _Nullable urlString,
                               UIImage  * _Nullable placeholder,
                               UIView  * _Nullable card);
- 
+
+
 typedef void (^PPVoidHandler)( PPUniversalCellViewModel * _Nullable vmModel);
 
 
@@ -547,7 +542,7 @@ static inline NSInteger PPSafeFormInteger(id v) {
     } else if ([v isKindOfClass:[NSString class]]) {
         return [(NSString *)v integerValue];
     }
-    
+
     return 0; // default
 }
 
@@ -588,7 +583,7 @@ static inline double PPSafeDouble(id v) {
 static inline NSDate *PPSafeDate(id v) {
     return [v isKindOfClass:[NSDate class]] ? v : nil;
 }
- 
+
 // Safe dictionary
 static inline NSDictionary *PPSafeDict(id v) {
     return [v isKindOfClass:[NSDictionary class]] ? v : @{};
@@ -604,7 +599,7 @@ static inline NSString *UUIDJoin(NSString *string) {
 /// Universal safe integer extractor
 static inline NSInteger PPSafeIntegerUniversal(id v) {
     if (!v || v == [NSNull null]) return 0;
-    
+
     // XLFormOptionsObject case
     if ([v isKindOfClass:NSClassFromString(@"XLFormOptionsObject")]) {
         id formValue = [v valueForKey:@"formValue"];
@@ -612,12 +607,12 @@ static inline NSInteger PPSafeIntegerUniversal(id v) {
             return [formValue integerValue];
         }
     }
-    
+
     // NSNumber / NSString fallback
     if ([v respondsToSelector:@selector(integerValue)]) {
         return [v integerValue];
     }
-    
+
     return 0;
 }
 
@@ -647,7 +642,7 @@ static inline UIViewController * _Nullable PPGetTopMostViewController(void) {
     UIViewController *root = UIApplication.sharedApplication.keyWindow.rootViewController;
     return root;
 }
- 
+
 
 // Convert anything into NSURL safely
 static inline NSURL * _Nullable PPSafeURL(id value) {
@@ -693,7 +688,7 @@ static inline CGFloat PPScreenCornerRadius(void) {
 
     // إذا كان هناك مساحة آمنة من الأعلى أو من الجانب الأيسر، فهذا يعني أن الشاشة بها زوايا مستديرة
     CGFloat cornerRadius = MIN(safeAreaInsets.top, safeAreaInsets.left);
-    
+
     return cornerRadius;
 }
 
@@ -744,7 +739,6 @@ static UIButton *PPMakeGlassBackgroundButton(CGFloat corners) {
 
     return button;
 }
-
 
 
 

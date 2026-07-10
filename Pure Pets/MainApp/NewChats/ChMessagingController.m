@@ -8,6 +8,8 @@
 // ChMessagingController.m
 // Pure Pets
 static BOOL PPChatShowLog = NO; // ⬅️ change to YES to enable chat logs
+static const NSInteger PPChatInitialMessagePageLimit = 50;
+static const NSInteger PPChatMessagePageStep = 50;
 
 #define PPChatLog(fmt, ...) \
 do { \
@@ -237,6 +239,10 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
 @property (nonatomic, assign) BOOL isObservingMessages;
 @property (nonatomic, assign) BOOL didFinishInitialLoad;
+@property (nonatomic, assign) NSInteger messagePageLimit;
+@property (nonatomic, assign) BOOL isExpandingMessagePage;
+@property (nonatomic, assign) CGFloat previousContentHeightBeforeExpansion;
+@property (nonatomic, assign) CGFloat previousContentOffsetYBeforeExpansion;
 @property (nonatomic, assign) NSInteger lastMessageCount;
 @property (nonatomic, strong) NSArray<NSString *> *lastMessageIDs;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *lastKnownStatuses;
@@ -1060,6 +1066,10 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (![scrollView isEqual:self.tableView]) return;
+    CGFloat topThreshold = -scrollView.adjustedContentInset.top + 24.0;
+    if (scrollView.contentOffset.y <= topThreshold) {
+        [self pp_loadOlderMessagesIfNeeded];
+    }
     
     
     UIColor *bubbleColor = [self captureBottomVisibleBubbleColor];
@@ -1067,6 +1077,21 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
     BOOL farFromBottom = ![self isNearBottom];
     [self setScrollToBottomButtonVisible:farFromBottom animated:YES];
+}
+
+- (void)pp_loadOlderMessagesIfNeeded
+{
+    if (self.isExpandingMessagePage || !self.didFinishInitialLoad) return;
+    if (self.messages.count < self.messagePageLimit) return;
+    self.isExpandingMessagePage = YES;
+    self.previousContentHeightBeforeExpansion = self.tableView.contentSize.height;
+    self.previousContentOffsetYBeforeExpansion = self.tableView.contentOffset.y;
+    self.messagePageLimit += PPChatMessagePageStep;
+    [self.messageListener remove];
+    self.messageListener = nil;
+    self.isObservingMessages = NO;
+    self.didFinishInitialLoad = NO;
+    [self observeMessages];
 }
 
 - (void)updateBottomBarWithColor:(UIColor *)color
@@ -2469,6 +2494,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
         self.isKeyboardVisible = NO;
         self.didFinishInitialLoad = NO;
         self.didMarkMessagesAsRead = NO;
+        self.messagePageLimit = PPChatInitialMessagePageLimit;
     }
     return self;
 }
@@ -5790,6 +5816,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)observeMessages
 {
     if (self.isObservingMessages || !self.chatThread.ID.length) return;
+    if (self.messagePageLimit <= 0) self.messagePageLimit = PPChatInitialMessagePageLimit;
     self.isObservingMessages = YES;
 
     FIRCollectionReference *ref =
@@ -5800,13 +5827,17 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     __weak typeof(self) weakSelf = self;
 
+    FIRQuery *query = [[ref queryOrderedByField:@"timestamp"] queryLimitedToLast:self.messagePageLimit];
+
     self.messageListener =
-    [[ref queryOrderedByField:@"timestamp"]
-     addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
+    [query addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error || !snapshot) {
             NSLog(@"❌ [Chat] Snapshot error: %@", error.localizedDescription);
             [weakSelf setInitialLoadingVisible:NO];
+            weakSelf.isExpandingMessagePage = NO;
+            weakSelf.previousContentHeightBeforeExpansion = 0.0;
+            weakSelf.previousContentOffsetYBeforeExpansion = 0.0;
             weakSelf.isObservingMessages = NO;
             [weakSelf.messageListener remove];
             weakSelf.messageListener = nil;
@@ -5837,11 +5868,22 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
                 self.didFinishInitialLoad = YES;
                 [self.tableView reloadData];
-                [self scrollToBottomAnimated:NO];
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)),
-                               dispatch_get_main_queue(), ^{
+                [self.tableView layoutIfNeeded];
+                if (self.isExpandingMessagePage && self.previousContentHeightBeforeExpansion > 0.0) {
+                    CGFloat newContentHeight = self.tableView.contentSize.height;
+                    CGFloat delta = MAX(0.0, newContentHeight - self.previousContentHeightBeforeExpansion);
+                    [self.tableView setContentOffset:CGPointMake(0.0, self.previousContentOffsetYBeforeExpansion + delta)
+                                            animated:NO];
+                    self.isExpandingMessagePage = NO;
+                    self.previousContentHeightBeforeExpansion = 0.0;
+                    self.previousContentOffsetYBeforeExpansion = 0.0;
+                } else {
                     [self scrollToBottomAnimated:NO];
-                });
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)),
+                                   dispatch_get_main_queue(), ^{
+                        [self scrollToBottomAnimated:NO];
+                    });
+                }
                 [self setInitialLoadingVisible:NO];
                 [self pp_updateChatEmptyStateAnimated:YES];
                 [self activateRealtimeAfterInitialLoadIfNeeded];

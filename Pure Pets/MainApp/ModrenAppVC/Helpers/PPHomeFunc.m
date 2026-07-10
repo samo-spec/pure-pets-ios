@@ -32,8 +32,8 @@ static const CGFloat PPHomeEdgeSpacing   = 16.0;
 static const CGFloat PPHomeSpacingBase    = 12.0;
 static const CGFloat PPInner = 12.0;
 static const CGFloat PPHomeSpacingSection = 22.0;
-static const CGFloat kHeaderHeight     = 64.0;
-static const CGFloat kHeaderHeightMin     = 42.0;
+static const CGFloat kHeaderHeight     = 48.0;
+static const CGFloat kHeaderHeightMin     = 36.0;
 
 
 // Standard card sizes
@@ -76,7 +76,7 @@ static inline CGFloat PPHomeSectionEdgeInset(void)
 
 static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 {
-    return NSDirectionalEdgeInsetsMake(PPHomeEdgeSpacing,
+    return NSDirectionalEdgeInsetsMake(8.0,
                                        PPHomeEdgeSpacing,
                                        PPHomeSpacingSection,
                                        PPHomeEdgeSpacing);
@@ -85,7 +85,7 @@ static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
-    return NSDirectionalEdgeInsetsMake(PPHomeEdgeSpacing,
+    return NSDirectionalEdgeInsetsMake(8.0,
                                        PPHomeEdgeSpacing,
                                        PPHomeSpacingSection,
                                        PPHomeEdgeSpacing);

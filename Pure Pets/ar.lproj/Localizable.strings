@@ -12,6 +12,8 @@
 "AddedAlertSubtitleDone" = "تمت عملية إنشاء و إضافة بطاقة الطير بنجاح";
 
 "AddressType" = "حدد نوع العنوان";
+"Select User" = "اختر مستخدم";
+"Select" = "اختيار";
 "Address_placeholder" = "";
 "Address_word" = "عنوان";
 "Adopt a Pet" = "تبنَّ حيواناً أليفاً";
@@ -1681,6 +1683,7 @@
 "home_search_try_again"          = "جرّب كلمات أخرى";
 
 "home_search_filter"             = "تصفية";
+"home_accessories_refine"        = "تخصيص";
 "home_search_sort"               = "ترتيب";
 
 "home_search_loading"            = "جاري البحث…";
@@ -2580,6 +2583,7 @@
 "notifications_inbox_tab" = "الإشعارات";
 "notifications_hub_hero_eyebrow" = "صندوق التواصل";
 "notifications_hub_hero_chats_subtitle" = "القصص والمحادثات الأخيرة جاهزة بدون ازدحام.";
+"notifications_hub_hero_chats_subtitle_no_stories" = "المحادثات الأخيرة جاهزة بدون ازدحام.";
 "notifications_hub_hero_reminders_subtitle" = "تذكيرات الرعاية والمتابعات والمواعيد في عرض هادئ.";
 "notifications_hub_hero_notifications_subtitle" = "تحديثات الطلبات وتنبيهات التطبيق مجمعة لمراجعة سريعة.";
 "notifications_inbox_empty_title" = "لا توجد إشعارات بعد";

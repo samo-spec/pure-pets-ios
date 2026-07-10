@@ -17,8 +17,8 @@
 @import UserNotifications;
 
 static CGFloat const kPPHubTopBarHeight = 46.0;
-static CGFloat const kPPHubActionButtonSize = 44.0;
-static CGFloat const kPPHubHeroHeight = 156.0;
+static CGFloat const kPPHubActionButtonSize = 46.0;
+static CGFloat const kPPHubHeroHeight = 162.0;
 static CGFloat const kPPHubHeroHorizontalInset = 16.0;
 static CGFloat const kPPHubHeroTopInset = 8.0;
 static CGFloat const kPPHubContentTopGap = 10.0;
@@ -571,10 +571,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.38];
+    _surfaceView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.98 : 0.98];
     _surfaceView.layer.cornerRadius = 23.0;
     _surfaceView.layer.masksToBounds = NO;
-    _surfaceView.layer.borderWidth = 1.0;
+    _surfaceView.layer.borderWidth = 0.0;
     [_surfaceView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
     [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.12]];
     _surfaceView.layer.shadowOpacity = 0.04;
@@ -597,7 +597,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _selectionIndicator = [[UIView alloc] initWithFrame:CGRectZero];
     _selectionIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-    _selectionIndicator.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+    _selectionIndicator.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.127];
     _selectionIndicator.layer.cornerRadius = 19.0;
     _selectionIndicator.layer.masksToBounds = YES;
     _selectionIndicator.hidden = YES;
@@ -1247,6 +1247,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];
+    self.chatsVC.shouldHideStories = YES;
     self.remindersVC = [PPPetRemindersViewController new];
     self.notificationsVC = [PPNotificationsInboxViewController new];
     self.childControllers = @[self.chatsVC, self.remindersVC, self.notificationsVC];
@@ -1616,7 +1617,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     switch (index) {
         case 0:
-            return kLang(@"notifications_hub_hero_chats_subtitle");
+            return kLang(@"notifications_hub_hero_chats_subtitle_no_stories");
         case 1:
             return kLang(@"notifications_hub_hero_reminders_subtitle");
         case 2:

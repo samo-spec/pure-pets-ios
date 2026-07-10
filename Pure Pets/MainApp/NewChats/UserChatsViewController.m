@@ -78,12 +78,10 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    if (!self.storiesHeaderContainer) {
-        return;
+    if (self.storiesHeaderContainer) {
+        CGFloat height = self.storiesHeaderVisible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
+        [self pp_applyStoriesHeaderHeight:height];
     }
-
-    CGFloat height = self.storiesHeaderVisible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
-    [self pp_applyStoriesHeaderHeight:height];
     [self pp_applyPremiumBottomContentInset];
 }
 
@@ -172,6 +170,9 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 }
 
 - (void)pp_configureStoriesHeader {
+    if (self.shouldHideStories) {
+        return;
+    }
     if (self.storiesViewController) {
         return;
     }
@@ -248,6 +249,9 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Stories Header
 
 - (void)pp_setStoriesHeaderVisible:(BOOL)visible animated:(BOOL)animated {
+    if (self.shouldHideStories) {
+        return;
+    }
     if (self.storiesHeaderVisible == visible && self.storiesViewController.view.hidden == !visible) {
         return;
     }
@@ -926,11 +930,14 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
     picker.title = kLang(@"Select User");
     picker.view.backgroundColor = UIColor.systemBackgroundColor;
     picker.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-    picker.navigationItem.leftBarButtonItem =
+    UIBarButtonItem *cancelItem =
     [[UIBarButtonItem alloc] initWithTitle:kLang(@"Cancel")
                                      style:UIBarButtonItemStylePlain
                                     target:self
                                     action:@selector(pp_dismissPresentedStartChatPicker)];
+    [cancelItem setTitleTextAttributes:@{NSFontAttributeName: [Styling fontMedium:16]} forState:UIControlStateNormal];
+    [cancelItem setTitleTextAttributes:@{NSFontAttributeName: [Styling fontMedium:16]} forState:UIControlStateHighlighted];
+    picker.navigationItem.leftBarButtonItem = cancelItem;
 
     UINavigationController *navigationController =
     [[UINavigationController alloc] initWithRootViewController:picker];

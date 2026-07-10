@@ -28,5 +28,6 @@ typedef NS_ENUM(NSInteger, UserChatsState) {
 
 @property (nonatomic, strong) NSMutableArray<UserModel *> *availableUsers; // header animation (150)
 @property (nonatomic, strong) UserModel *selectedUser;
+@property (nonatomic, assign) BOOL shouldHideStories;
 - (void)startNewChat;
 @end

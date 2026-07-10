@@ -156,7 +156,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
 // ✅ Convenience initializer you’re trying to use
 - (instancetype)initWithCompletion:(PPSelectOptionBlock)completion {
     return [self initWithOptions:@[]
-                           title:@"Select"
+                           title:kLang(@"Select")
                              row:self.rowDescriptor
                 presentationStyle:PPSelectOptionPresentationSheet
                       completion:completion];
@@ -1033,6 +1033,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     BOOL premiumPicker = [self pp_usesPremiumPickerPresentation];
     cell.premiumCardStyleEnabled = premiumPicker;
     cell.preferredHorizontalInset = 0.0;
+    cell.isUserOption = NO;
     if (!option) return cell;
 
     // --- Extract title, subtitle, and image safely ---
@@ -1057,7 +1058,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     
     
     else if ([option isKindOfClass:[UserModel class]]) {
-        
+        cell.isUserOption = YES;
         UserModel *op = (UserModel *)option;
         title = op.UserName;
         subtitle = op.MobileNo ?: op.UserEmail;

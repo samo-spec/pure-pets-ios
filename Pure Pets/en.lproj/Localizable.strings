@@ -12,6 +12,8 @@
 "AddedAlertSubtitleDone" = "The process of creating and adding the bird card was completed successfully";
 "Address" = "title";
 "AddressType" = "Select Address Type";
+"Select User" = "Select User";
+"Select" = "Select";
 "Address_placeholder" = "Write the title here";
 "Address_word" = "Address";
 "Adopt a Pet" = "Adopt a Pet";
@@ -1709,6 +1711,7 @@
 "home_search_try_again"          = "Try different keywords";
 
 "home_search_filter"             = "Filter";
+"home_accessories_refine"        = "Refine";
 "home_search_sort"               = "Sort";
 
 "home_search_loading"            = "Searching…";
@@ -2589,6 +2592,7 @@
 "notifications_inbox_tab" = "Notifications";
 "notifications_hub_hero_eyebrow" = "Inbox";
 "notifications_hub_hero_chats_subtitle" = "Stories and recent conversations stay ready without noise.";
+"notifications_hub_hero_chats_subtitle_no_stories" = "Recent conversations stay ready without noise.";
 "notifications_hub_hero_reminders_subtitle" = "Care reminders, follow-ups, and due items in one calm view.";
 "notifications_hub_hero_notifications_subtitle" = "Order updates and app alerts collected for quick review.";
 "notifications_inbox_empty_title" = "No notifications yet";
