@@ -1975,10 +1975,13 @@
 "orders_empty_filtered" = "No matching orders found.";
 "order_support_request_call" = "Request Call";
 "order_support_button" = "Contact Support";
-"order_history_hero_subtitle" = "Track payment, delivery, and support progress in one place.";
+"order_history_hero_eyebrow" = "ORDER COMMAND CENTER";
+"order_history_hero_subtitle" = "A calm view of payment, delivery, and support progress across every order.";
 "order_history_metric_orders" = "Orders";
 "order_history_metric_spent" = "Spent";
 "order_history_metric_active" = "Active";
+"order_history_scope_all" = "All orders";
+"order_history_scope_filtered" = "Filtered";
 "order_change_delivery_address" = "Change Delivery Address";
 "order_cancel_button" = "Cancel Order";
 "order_edit_location_pending_only" = "Delivery location can only be edited while the order is pending.";
@@ -3379,6 +3382,12 @@
 "user_menu_guest_subtitle" = "Sign in to manage your profile, purchases, orders, and support.";
 "user_menu_signed_in_eyebrow" = "Pure Pets account";
 "user_menu_guest_eyebrow" = "Welcome";
+"user_menu_profile_status_ready" = "Account ready";
+"user_menu_profile_status_guest" = "Guest mode";
+"user_menu_profile_meta_signed_in" = "Profile, orders, and saved places";
+"user_menu_profile_meta_guest" = "Sign in for purchases and support";
+"user_menu_profile_action" = "Edit profile";
+"user_menu_login_action" = "Sign in";
 "user_menu_account_section" = "Account";
 "user_menu_activity_section" = "Activity";
 "user_menu_tools_section" = "Support & Settings";
@@ -3453,4 +3462,3 @@
 "quick_access_lang_en_toast" = "Language changed to English";
 "quick_access_notifications_toast" = "Opening Notification Settings...";
 "quick_access_location_toast" = "Opening Location Settings...";
-

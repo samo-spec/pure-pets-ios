@@ -1955,10 +1955,13 @@
 "orders_empty_filtered" = "لا توجد طلبات مطابقة.";
 "order_support_request_call" = "طلب اتصال";
 "order_support_button" = "التواصل مع الدعم";
-"order_history_hero_subtitle" = "تابع حالة الدفع والتوصيل والدعم من مكان واحد.";
+"order_history_hero_eyebrow" = "مركز متابعة الطلبات";
+"order_history_hero_subtitle" = "عرض هادئ لحالة الدفع والتوصيل والدعم في كل طلب.";
 "order_history_metric_orders" = "الطلبات";
 "order_history_metric_spent" = "المنصرف";
 "order_history_metric_active" = "النشطة";
+"order_history_scope_all" = "كل الطلبات";
+"order_history_scope_filtered" = "تمت التصفية";
 "order_change_delivery_address" = "تغيير عنوان التوصيل";
 "order_cancel_button" = "إلغاء الطلب";
 "order_edit_location_pending_only" = "يمكن تعديل موقع التوصيل فقط عندما يكون الطلب قيد الانتظار.";
@@ -3358,6 +3361,12 @@
 "user_menu_guest_subtitle" = "سجّل الدخول لإدارة ملفك ومشترياتك وطلباتك والدعم.";
 "user_menu_signed_in_eyebrow" = "حساب بيور بيتس";
 "user_menu_guest_eyebrow" = "مرحباً";
+"user_menu_profile_status_ready" = "الحساب جاهز";
+"user_menu_profile_status_guest" = "وضع الضيف";
+"user_menu_profile_meta_signed_in" = "الملف والطلبات والأماكن المحفوظة";
+"user_menu_profile_meta_guest" = "سجّل الدخول للمشتريات والدعم";
+"user_menu_profile_action" = "تعديل الملف";
+"user_menu_login_action" = "تسجيل الدخول";
 "user_menu_account_section" = "الحساب";
 "user_menu_activity_section" = "النشاط";
 "user_menu_tools_section" = "الدعم والإعدادات";
@@ -3432,4 +3441,3 @@
 "quick_access_lang_en_toast" = "تم تغيير اللغة إلى الإنجليزية";
 "quick_access_notifications_toast" = "جاري فتح إعدادات التنبيهات...";
 "quick_access_location_toast" = "جاري فتح إعدادات الموقع...";
-

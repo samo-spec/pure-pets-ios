@@ -6,7 +6,6 @@
 #import "PPRootTabBarController.h"
 #import "PPHomeViewController.h"
 #import "PPSearchViewController.h"
-#import "MyItemsViewController.h"
 #import "SettingVC.h"
 #import "PPCommerceFeedbackManager.h"
 #import "UserModel.h"
@@ -1239,16 +1238,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
 
-    MyItemsViewController *ItemsViewController = [[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds];
-    ItemsViewController.hidesBackButtonWhenOpenedFromHomeDeck = YES;
-    
-    UINavigationController *myAdsNav =
-        [self nav:ItemsViewController
-            title:kLang(@"showMyAds")
-             icon:@"square.stack.3d.up"
-    selectedImage:@"square.stack.3d.up.fill"];
-    myAdsNav.tabBarItem.accessibilityLabel = kLang(@"showMyAds");
-    myAdsNav.tabBarItem.accessibilityHint = kLang(@"myitems_hero_subtitle_ads");
+    NSString *ordersTabTitle = kLang(@"menu_action_orders");
+    if (![ordersTabTitle isKindOfClass:NSString.class] || ordersTabTitle.length == 0) {
+        ordersTabTitle = kLang(@"OrderHistory");
+    }
+    UINavigationController *ordersNav =
+        [self nav:[OrderHistoryViewController new]
+            title:ordersTabTitle
+             icon:@"doc.text"
+    selectedImage:@"doc.text.fill"];
+    ordersNav.tabBarItem.accessibilityLabel = kLang(@"a11y_tab_orders") ?: ordersTabTitle;
+    ordersNav.tabBarItem.accessibilityHint = kLang(@"a11y_tab_orders_hint");
    /*
     UINavigationController *searchNav =
     [self nav:[OrderHistoryViewController new]
@@ -1266,7 +1266,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (!self.useLegacyBar) {
         NSMutableArray<UIViewController *> *premiumRootControllers = [@[
             homeNav,
-            myAdsNav,
+            ordersNav,
             addNav,
             notiNav,
             cartNav
@@ -1276,7 +1276,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     } else {
         self.viewControllers = @[
             homeNav,
-            myAdsNav,
+            ordersNav,
             addNav,
             notiNav,
             cartNav
@@ -1297,8 +1297,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     // ── Accessibility: Tab bar items ──
     homeNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_home", @"Home tab");
     homeNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_home_hint", @"Browse pet ads and services");
-    myAdsNav.tabBarItem.accessibilityLabel    = kLang(@"showMyAds");
-    myAdsNav.tabBarItem.accessibilityHint     = kLang(@"myitems_hero_subtitle_ads");
+    ordersNav.tabBarItem.accessibilityLabel   = kLang(@"a11y_tab_orders") ?: ordersTabTitle;
+    ordersNav.tabBarItem.accessibilityHint    = kLang(@"a11y_tab_orders_hint");
     addNav.tabBarItem.accessibilityLabel      = NSLocalizedString(@"a11y_tab_add", @"Add new post tab");
     notiNav.tabBarItem.accessibilityLabel     = kLang(@"chatsTitle") ?: NSLocalizedString(@"a11y_tab_notifications", @"Chats tab");
     notiNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_notifications_hint", @"View your chats and notifications");
@@ -1308,7 +1308,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     settingsNav.tabBarItem.accessibilityHint  = NSLocalizedString(@"a11y_tab_settings_hint", @"App settings and account");
 
     [self pp_applyPremiumTabBarItemMetrics:homeNav.tabBarItem centerAction:NO];
-    [self pp_applyPremiumTabBarItemMetrics:myAdsNav.tabBarItem centerAction:NO];
+    [self pp_applyPremiumTabBarItemMetrics:ordersNav.tabBarItem centerAction:NO];
     [self pp_applyPremiumTabBarItemMetrics:addNav.tabBarItem centerAction:YES];
     [self pp_applyPremiumTabBarItemMetrics:notiNav.tabBarItem centerAction:NO];
     [self pp_applyPremiumTabBarItemMetrics:cartNav.tabBarItem centerAction:NO];
@@ -2619,7 +2619,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     CGFloat dockHeight = 64.0;
     if (@available(iOS 26.0, *)) {
-        dockHeight = 86.0;
+        dockHeight = 83.0;
     }
     NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-4],
@@ -3011,8 +3011,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return [self pp_profileTabItemImageSelected:selected];
     }
     if ([self pp_isResolvedMyAdsRootTabIndex:index]) {
-        normalSymbolName = @"square.stack.3d.up";
-        selectedSymbolName = @"square.stack.3d.up.fill";
+        normalSymbolName = @"doc.text";
+        selectedSymbolName = @"doc.text.fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
                               pointSize:20.0
                                  weight:selected ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold

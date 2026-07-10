@@ -13,6 +13,7 @@
 #import "CompanyLocationVC.h"
 #import "LeaveFeedbackViewController.h"
 #import "MainController.h"
+#import "PPMarketplaceHeroCardStyle.h"
 #import "PPUserSigningManager.h"
 #import "Language.h"
 #import <SDWebImage/UIImageView+WebCache.h>
@@ -42,6 +43,8 @@ typedef NS_ENUM(NSInteger, PPUserMenuAction) {
 };
 
 static NSString * const PPUserMenuCellIdentifier = @"PPUserMenuCell";
+static NSString * const PPUserMenuHeroConstellationOpacityAnimationKey = @"pp.user.menu.hero.constellation.opacity";
+static NSString * const PPUserMenuHeroDotPulseAnimationKey = @"pp.user.menu.hero.dot.pulse";
 
 static NSString *PPUserMenuLocalized(NSString *key)
 {
@@ -96,6 +99,136 @@ static UIColor *PPUserMenuBorderColor(void)
         }];
     }
     return [UIColor colorWithWhite:0.0 alpha:0.06];
+}
+
+static UIColor *PPUserMenuHeroAccentColor(void)
+{
+    return PPUserMenuColor(AppPrimaryClr, UIColor.systemTealColor);
+}
+
+static BOOL PPUserMenuHeroIsDark(UITraitCollection *traitCollection)
+{
+    if (@available(iOS 13.0, *)) {
+        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+static UIColor *PPUserMenuMarketplaceHeroSurfaceBaseColor(UITraitCollection *traitCollection)
+{
+    UIColor *fallback = [UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:1.0];
+    if (@available(iOS 13.0, *)) {
+        fallback = PPMarketplaceHeroCardResolvedColor(
+            [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
+                return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor colorWithWhite:0.104 alpha:1.0]
+                    : [UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:1.0];
+            }],
+            traitCollection
+        );
+    }
+    return AppForgroundColr ?: fallback;
+}
+
+static UIColor *PPUserMenuMarketplaceHeroSurfaceHighlightColor(UIColor *surfaceBase,
+                                                               BOOL darkMode,
+                                                               UITraitCollection *traitCollection)
+{
+    return PPMarketplaceHeroCardBlend(surfaceBase,
+                                      UIColor.whiteColor,
+                                      darkMode ? 0.08 : 0.20,
+                                      traitCollection);
+}
+
+static UIColor *PPUserMenuMarketplaceHeroBackgroundAccentColor(UIColor *primaryAccent,
+                                                               UIColor *surfaceBase,
+                                                               BOOL darkMode,
+                                                               UITraitCollection *traitCollection)
+{
+    return PPMarketplaceHeroCardBlend(primaryAccent,
+                                      surfaceBase,
+                                      darkMode ? 0.12 : 0.18,
+                                      traitCollection);
+}
+
+static UIColor *PPUserMenuMarketplaceHeroSurfaceTintColor(UIColor *surfaceBase,
+                                                          UIColor *backgroundAccent,
+                                                          BOOL darkMode,
+                                                          UITraitCollection *traitCollection)
+{
+    return PPMarketplaceHeroCardBlend(surfaceBase,
+                                      backgroundAccent,
+                                      darkMode ? 0.095 : 0.038,
+                                      traitCollection);
+}
+
+static UIColor *PPUserMenuMarketplaceHeroSurfaceTailColor(UIColor *surfaceTint,
+                                                          UIColor *backgroundAccent,
+                                                          BOOL darkMode,
+                                                          UITraitCollection *traitCollection)
+{
+    return PPMarketplaceHeroCardBlend(surfaceTint,
+                                      backgroundAccent,
+                                      darkMode ? 0.062 : 0.024,
+                                      traitCollection);
+}
+
+static UIColor *PPUserMenuMarketplaceHeroStrokeColor(BOOL darkMode)
+{
+    return [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.78];
+}
+
+static UIColor *PPUserMenuHeroDotColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.26];
+            }
+            return [UIColor colorWithRed:0.530 green:0.485 blue:0.390 alpha:0.30];
+        }];
+    }
+    return [UIColor colorWithWhite:0.35 alpha:0.22];
+}
+
+static UIColor *PPUserMenuHeroDotHaloColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.10];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.62];
+        }];
+    }
+    return [UIColor colorWithWhite:1.0 alpha:0.35];
+}
+
+static UIColor *PPUserMenuHeroConstellationLineColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.070];
+            }
+            return [UIColor colorWithRed:0.540 green:0.495 blue:0.410 alpha:0.105];
+        }];
+    }
+    return [UIColor colorWithWhite:0.35 alpha:0.08];
+}
+
+static NSString *PPUserMenuFirstNonEmptyString(NSArray<NSString *> *values)
+{
+    for (NSString *value in values) {
+        if (![value isKindOfClass:NSString.class]) {
+            continue;
+        }
+        NSString *trimmed = [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmed.length > 0) {
+            return trimmed;
+        }
+    }
+    return @"";
 }
 
 static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSize, UIImageSymbolWeight weight)
@@ -474,12 +607,23 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) NSArray<PPUserMenuSection *> *sections;
 @property (nonatomic, strong) UIView *headerRootView;
 @property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) UIView *headerMaterialView;
+@property (nonatomic, strong) CAGradientLayer *headerGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *headerDepthLayer;
+@property (nonatomic, strong) CAShapeLayer *headerConstellationLayer;
+@property (nonatomic, strong) NSArray<CAShapeLayer *> *headerDotLayers;
+@property (nonatomic, strong) UIView *headerAccentView;
+@property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) PPInsetLabel *statusPillLabel;
+@property (nonatomic, strong) PPInsetLabel *metaLabel;
+@property (nonatomic, strong) UIButton *primaryHeroButton;
 @property (nonatomic, assign) BOOL preparedEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, assign) BOOL heroBackgroundMotionRunning;
 @end
 
 @implementation PPUserMenuViewController
@@ -511,6 +655,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [self pp_refreshHeaderContent];
     [self.tableView reloadData];
     [self pp_updateHeaderLayoutIfNeeded];
+    [self pp_startHeroBackgroundMotionIfNeeded];
     if (!self.didRunEntrance) {
         [self pp_prepareEntranceState];
     }
@@ -520,20 +665,34 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 {
     [super viewDidLayoutSubviews];
     [self pp_updateHeaderLayoutIfNeeded];
+    [self pp_layoutHeaderMaterialLayers];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     [self pp_runEntranceIfNeeded];
+    [self pp_startHeroBackgroundMotionIfNeeded];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [self pp_stopHeroBackgroundMotion];
+}
+
+- (void)dealloc
+{
+    [self pp_stopHeroBackgroundMotion];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
     self.view.backgroundColor = PPUserMenuCanvasColor();
-    self.headerCardView.backgroundColor = PPUserMenuSurfaceColor();
-    [self.headerCardView pp_setBorderColor:PPUserMenuBorderColor()];
+    [self pp_stopHeroBackgroundMotion];
+    [self pp_applyHeaderMaterialPalette];
+    [self pp_startHeroBackgroundMotionIfNeeded];
     [self.tableView reloadData];
 }
 
@@ -569,31 +728,396 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     ]];
 }
 
+- (void)pp_applyHeaderMaterialPalette
+{
+    UIColor *brand = PPUserMenuHeroAccentColor();
+    BOOL darkMode = PPUserMenuHeroIsDark(self.traitCollection);
+    self.view.backgroundColor = PPUserMenuCanvasColor();
+
+    UIColor *surfaceBase = PPUserMenuMarketplaceHeroSurfaceBaseColor(self.traitCollection);
+    UIColor *surfaceHighlight = PPUserMenuMarketplaceHeroSurfaceHighlightColor(surfaceBase,
+                                                                               darkMode,
+                                                                               self.traitCollection);
+    UIColor *backgroundAccent = PPUserMenuMarketplaceHeroBackgroundAccentColor(brand,
+                                                                               surfaceBase,
+                                                                               darkMode,
+                                                                               self.traitCollection);
+    UIColor *surfaceTint = PPUserMenuMarketplaceHeroSurfaceTintColor(surfaceBase,
+                                                                     backgroundAccent,
+                                                                     darkMode,
+                                                                     self.traitCollection);
+    UIColor *surfaceTail = PPUserMenuMarketplaceHeroSurfaceTailColor(surfaceTint,
+                                                                     backgroundAccent,
+                                                                     darkMode,
+                                                                     self.traitCollection);
+    UIColor *stroke = PPUserMenuMarketplaceHeroStrokeColor(darkMode);
+
+    self.headerCardView.backgroundColor = UIColor.clearColor;
+    self.headerMaterialView.backgroundColor = UIColor.clearColor;
+    [self.headerCardView pp_setBorderColor:stroke];
+    [self.headerCardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
+    self.headerCardView.layer.shadowOpacity = 0.08f;
+    self.headerCardView.layer.shadowRadius = 20.0f;
+    self.headerCardView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
+    self.headerGradientLayer.opacity = darkMode ? 0.90 : 0.72;
+    self.headerGradientLayer.colors = @[
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, self.traitCollection).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, self.traitCollection).CGColor
+    ];
+    self.headerGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    self.headerGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    self.headerGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+
+    self.headerDepthLayer.colors = @[
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];
+    self.headerDepthLayer.locations = @[@0.0, @1.0];
+    self.headerDepthLayer.opacity = 1.0;
+
+    UIColor *dot = PPUserMenuHeroDotColor();
+    UIColor *dotHalo = PPUserMenuHeroDotHaloColor();
+    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
+        dotLayer.fillColor = dot.CGColor;
+        dotLayer.strokeColor = dotHalo.CGColor;
+    }
+    self.headerConstellationLayer.strokeColor = PPUserMenuHeroConstellationLineColor().CGColor;
+    self.headerConstellationLayer.opacity = darkMode ? 0.84 : 0.76;
+
+    self.headerAccentView.backgroundColor = [brand colorWithAlphaComponent:0.58];
+
+    UIColor *quietFill = nil;
+    UIColor *quietStroke = nil;
+    if (@available(iOS 13.0, *)) {
+        quietFill = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.060];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.70];
+        }];
+        quietStroke = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.09];
+            }
+            return [UIColor colorWithWhite:0.0 alpha:0.060];
+        }];
+    } else {
+        quietFill = [UIColor colorWithWhite:1.0 alpha:0.70];
+        quietStroke = [UIColor colorWithWhite:0.0 alpha:0.060];
+    }
+
+    self.avatarFrameView.backgroundColor = quietFill;
+    [self.avatarFrameView pp_setBorderColor:quietStroke];
+    [self.avatarFrameView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
+    self.avatarFrameView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.07 : 0.105;
+    self.avatarFrameView.layer.shadowRadius = 18.0;
+    self.avatarFrameView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
+    UIColor *avatarStroke = nil;
+    if (@available(iOS 13.0, *)) {
+        avatarStroke = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.14];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.82];
+        }];
+    } else {
+        avatarStroke = [UIColor colorWithWhite:1.0 alpha:0.82];
+    }
+    [self.avatarImageView pp_setBorderColor:avatarStroke];
+
+    self.statusPillLabel.backgroundColor = quietFill;
+    self.statusPillLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+    [self.statusPillLabel pp_setBorderColor:quietStroke];
+
+    if (@available(iOS 13.0, *)) {
+        self.metaLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithWhite:1.0 alpha:0.045];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.52];
+        }];
+    } else {
+        self.metaLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.52];
+    }
+    self.metaLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+    [self.metaLabel pp_setBorderColor:quietStroke];
+
+    self.primaryHeroButton.backgroundColor = brand;
+    self.primaryHeroButton.tintColor = UIColor.whiteColor;
+    [self.primaryHeroButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [self.primaryHeroButton setTitleColor:[UIColor.whiteColor colorWithAlphaComponent:0.68] forState:UIControlStateHighlighted];
+}
+
+- (void)pp_layoutHeaderMaterialLayers
+{
+    if (!self.headerCardView || CGRectIsEmpty(self.headerCardView.bounds)) {
+        return;
+    }
+
+    CGRect materialBounds = self.headerMaterialView.bounds;
+    self.headerGradientLayer.frame = materialBounds;
+    self.headerDepthLayer.frame = materialBounds;
+    CGFloat materialRadius = self.headerMaterialView.layer.cornerRadius;
+    self.headerGradientLayer.cornerRadius = materialRadius;
+    self.headerDepthLayer.cornerRadius = materialRadius;
+    [self pp_layoutHeroConstellationInBounds:materialBounds];
+    self.headerCardView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
+                                   cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
+
+    if (!CGRectIsEmpty(self.avatarFrameView.bounds)) {
+        self.avatarFrameView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.avatarFrameView.bounds
+                                       cornerRadius:self.avatarFrameView.layer.cornerRadius].CGPath;
+    }
+}
+
+- (void)pp_layoutHeroConstellationInBounds:(CGRect)bounds
+{
+    if (CGRectIsEmpty(bounds) || self.headerDotLayers.count == 0) {
+        return;
+    }
+
+    static const CGFloat centers[][2] = {
+        {0.090, 0.225}, {0.195, 0.150}, {0.355, 0.245}, {0.535, 0.135},
+        {0.815, 0.205}, {0.905, 0.405}, {0.670, 0.405}, {0.445, 0.505},
+        {0.150, 0.655}, {0.285, 0.805}, {0.510, 0.735}, {0.705, 0.805},
+        {0.885, 0.690}, {0.770, 0.555}
+    };
+    static const CGFloat sizes[] = {
+        2.6, 1.8, 2.2, 1.7, 2.8, 1.9, 2.4, 1.7, 2.1, 2.7, 1.8, 2.2, 1.7, 2.4
+    };
+    static const NSInteger connections[][2] = {
+        {0, 1}, {1, 2}, {3, 4}, {4, 5}, {6, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 12}, {12, 13}
+    };
+
+    CGFloat width = CGRectGetWidth(bounds);
+    CGFloat height = CGRectGetHeight(bounds);
+    UIBezierPath *lines = [UIBezierPath bezierPath];
+
+    NSUInteger dotCount = MIN(self.headerDotLayers.count, (NSUInteger)(sizeof(sizes) / sizeof(CGFloat)));
+    for (NSUInteger index = 0; index < dotCount; index++) {
+        CGFloat x = round(width * centers[index][0]);
+        CGFloat y = round(height * centers[index][1]);
+        CGFloat size = sizes[index];
+        CGRect dotRect = CGRectMake(x - (size * 0.5), y - (size * 0.5), size, size);
+        CAShapeLayer *dotLayer = self.headerDotLayers[index];
+        dotLayer.frame = bounds;
+        dotLayer.path = [UIBezierPath bezierPathWithOvalInRect:dotRect].CGPath;
+        dotLayer.opacity = (index % 3 == 0) ? 0.92 : ((index % 3 == 1) ? 0.64 : 0.76);
+    }
+
+    NSUInteger connectionCount = (NSUInteger)(sizeof(connections) / sizeof(connections[0]));
+    for (NSUInteger index = 0; index < connectionCount; index++) {
+        NSInteger fromIndex = connections[index][0];
+        NSInteger toIndex = connections[index][1];
+        if (fromIndex >= (NSInteger)dotCount || toIndex >= (NSInteger)dotCount) {
+            continue;
+        }
+        CGPoint fromPoint = CGPointMake(round(width * centers[fromIndex][0]), round(height * centers[fromIndex][1]));
+        CGPoint toPoint = CGPointMake(round(width * centers[toIndex][0]), round(height * centers[toIndex][1]));
+        [lines moveToPoint:fromPoint];
+        [lines addLineToPoint:toPoint];
+    }
+
+    self.headerConstellationLayer.frame = bounds;
+    self.headerConstellationLayer.path = lines.CGPath;
+}
+
+- (void)pp_startHeroBackgroundMotionIfNeeded
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopHeroBackgroundMotion];
+        return;
+    }
+
+    if (self.heroBackgroundMotionRunning ||
+        !self.view.window ||
+        !self.headerConstellationLayer ||
+        CGRectIsEmpty(self.headerMaterialView.bounds)) {
+        return;
+    }
+
+    self.heroBackgroundMotionRunning = YES;
+    [self.headerConstellationLayer removeAllAnimations];
+    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
+        [dotLayer removeAllAnimations];
+    }
+
+    CABasicAnimation *lineOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    lineOpacity.fromValue = @0.28;
+    lineOpacity.toValue = @0.84;
+    lineOpacity.duration = 6.8;
+    lineOpacity.autoreverses = YES;
+    lineOpacity.repeatCount = HUGE_VALF;
+    lineOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerConstellationLayer addAnimation:lineOpacity forKey:PPUserMenuHeroConstellationOpacityAnimationKey];
+
+    CFTimeInterval now = CACurrentMediaTime();
+    [self.headerDotLayers enumerateObjectsUsingBlock:^(CAShapeLayer *dotLayer, NSUInteger index, BOOL *stop) {
+        CGFloat baseOpacity = dotLayer.opacity;
+        CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+        scale.fromValue = @0.82;
+        scale.toValue = @1.34;
+
+        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        opacity.fromValue = @(MAX(0.24, baseOpacity * 0.58));
+        opacity.toValue = @(MIN(1.0, baseOpacity + 0.16));
+
+        CABasicAnimation *driftY = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+        driftY.fromValue = @(((NSInteger)index % 2 == 0) ? -0.7 : 0.5);
+        driftY.toValue = @(((NSInteger)index % 2 == 0) ? 0.9 : -0.8);
+
+        CABasicAnimation *driftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        driftX.fromValue = @(((NSInteger)index % 3 == 0) ? -0.45 : 0.25);
+        driftX.toValue = @(((NSInteger)index % 3 == 0) ? 0.35 : -0.30);
+
+        CAAnimationGroup *group = [CAAnimationGroup animation];
+        group.animations = @[scale, opacity, driftY, driftX];
+        group.duration = 4.8 + ((index % 5) * 0.42);
+        group.beginTime = now + (index * 0.115);
+        group.autoreverses = YES;
+        group.repeatCount = HUGE_VALF;
+        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        group.removedOnCompletion = YES;
+        [dotLayer addAnimation:group forKey:PPUserMenuHeroDotPulseAnimationKey];
+    }];
+}
+
+- (void)pp_stopHeroBackgroundMotion
+{
+    self.heroBackgroundMotionRunning = NO;
+    [self.headerConstellationLayer removeAnimationForKey:PPUserMenuHeroConstellationOpacityAnimationKey];
+    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
+        [dotLayer removeAnimationForKey:PPUserMenuHeroDotPulseAnimationKey];
+    }
+}
+
 - (void)pp_buildHeader
 {
-    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 190.0)];
+    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 244.0)];
     root.backgroundColor = UIColor.clearColor;
     root.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     UIView *card = [UIView new];
     card.translatesAutoresizingMaskIntoConstraints = NO;
-    card.backgroundColor = PPUserMenuSurfaceColor();
+    card.backgroundColor = UIColor.clearColor;
     card.layer.borderWidth = 1.0;
-    [card pp_setBorderColor:PPUserMenuBorderColor()];
-    PPApplyContinuousCorners(card, 34.0);
+    [card pp_setBorderColor:PPUserMenuMarketplaceHeroStrokeColor(NO)];
+    PPApplyContinuousCorners(card, PPCornerHero - 6.0);
     PPApplyElevatedShadow(card);
-    card.layer.shadowOpacity = 0.055;
+    card.layer.shadowOpacity = 0.08f;
+    card.layer.shadowRadius = 20.0f;
+    card.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    card.accessibilityIdentifier = @"profile_menu_hero_card";
     [root addSubview:card];
     self.headerCardView = card;
+
+    UIView *material = [UIView new];
+    material.translatesAutoresizingMaskIntoConstraints = NO;
+    material.userInteractionEnabled = NO;
+    material.clipsToBounds = YES;
+    material.backgroundColor = UIColor.clearColor;
+    PPApplyContinuousCorners(material, PPCornerHero - 6.0);
+    [card addSubview:material];
+    self.headerMaterialView = material;
+
+    CAGradientLayer *gradient = [CAGradientLayer layer];
+    gradient.drawsAsynchronously = YES;
+    gradient.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    gradient.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+    [material.layer insertSublayer:gradient atIndex:0];
+    self.headerGradientLayer = gradient;
+
+    CAGradientLayer *depth = [CAGradientLayer layer];
+    depth.drawsAsynchronously = YES;
+    depth.startPoint = CGPointMake(0.0, 0.0);
+    depth.endPoint = CGPointMake(1.0, 1.0);
+    [material.layer insertSublayer:depth above:gradient];
+    self.headerDepthLayer = depth;
+
+    CAShapeLayer *constellation = [CAShapeLayer layer];
+    constellation.fillColor = UIColor.clearColor.CGColor;
+    constellation.lineWidth = 0.7;
+    constellation.lineCap = kCALineCapRound;
+    constellation.lineJoin = kCALineJoinRound;
+    [material.layer insertSublayer:constellation above:depth];
+    self.headerConstellationLayer = constellation;
+
+    NSMutableArray<CAShapeLayer *> *dotLayers = [NSMutableArray arrayWithCapacity:14];
+    for (NSInteger index = 0; index < 14; index++) {
+        CAShapeLayer *dot = [CAShapeLayer layer];
+        dot.lineWidth = 0.75;
+        dot.opacity = 0.0;
+        [material.layer insertSublayer:dot above:constellation];
+        [dotLayers addObject:dot];
+    }
+    self.headerDotLayers = dotLayers.copy;
+
+    UIView *accent = [UIView new];
+    accent.translatesAutoresizingMaskIntoConstraints = NO;
+    accent.userInteractionEnabled = NO;
+    accent.layer.cornerRadius = 2.0;
+    accent.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        accent.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [card addSubview:accent];
+    self.headerAccentView = accent;
+
+    PPInsetLabel *statusPill = [PPInsetLabel new];
+    statusPill.translatesAutoresizingMaskIntoConstraints = NO;
+    statusPill.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+                       scaledFontForFont:([GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold])];
+    statusPill.adjustsFontForContentSizeCategory = YES;
+    statusPill.adjustsFontSizeToFitWidth = YES;
+    statusPill.minimumScaleFactor = 0.78;
+    statusPill.numberOfLines = 1;
+    statusPill.textAlignment = NSTextAlignmentCenter;
+    statusPill.textInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+    statusPill.layer.cornerRadius = 17.0;
+    statusPill.layer.borderWidth = 1.0;
+    statusPill.clipsToBounds = YES;
+    [card addSubview:statusPill];
+    self.statusPillLabel = statusPill;
+
+    UIButton *primaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    primaryButton.translatesAutoresizingMaskIntoConstraints = NO;
+    primaryButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                                     scaledFontForFont:([GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold])];
+    primaryButton.titleLabel.adjustsFontForContentSizeCategory = YES;
+    primaryButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    primaryButton.titleLabel.minimumScaleFactor = 0.78;
+    primaryButton.contentEdgeInsets = UIEdgeInsetsMake(9.0, 14.0, 9.0, 14.0);
+    primaryButton.layer.cornerRadius = 19.0;
+    primaryButton.clipsToBounds = YES;
+    PPApplyContinuousCorners(primaryButton, 19.0);
+    primaryButton.accessibilityIdentifier = @"profile_menu_hero_primary_action";
+    [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchUp:) forControlEvents:UIControlEventTouchDragExit | UIControlEventTouchCancel | UIControlEventTouchUpOutside];
+    [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryAction:) forControlEvents:UIControlEventTouchUpInside];
+    [card addSubview:primaryButton];
+    self.primaryHeroButton = primaryButton;
+
+    UIView *avatarFrame = [UIView new];
+    avatarFrame.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarFrame.layer.borderWidth = 1.0;
+    avatarFrame.clipsToBounds = NO;
+    PPApplyContinuousCorners(avatarFrame, 48.0);
+    [card addSubview:avatarFrame];
+    self.avatarFrameView = avatarFrame;
 
     UIImageView *avatar = [UIImageView new];
     avatar.translatesAutoresizingMaskIntoConstraints = NO;
     avatar.contentMode = UIViewContentModeScaleAspectFill;
     avatar.clipsToBounds = YES;
-    avatar.layer.cornerRadius = 34.0;
+    avatar.layer.cornerRadius = 41.0;
     avatar.layer.borderWidth = 2.0;
-    [avatar pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.68]];
-    [card addSubview:avatar];
+    avatar.isAccessibilityElement = NO;
+    [avatarFrame addSubview:avatar];
     self.avatarImageView = avatar;
 
     UILabel *eyebrow = [UILabel new];
@@ -603,6 +1127,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     eyebrow.adjustsFontForContentSizeCategory = YES;
     eyebrow.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     eyebrow.numberOfLines = 1;
+    eyebrow.adjustsFontSizeToFitWidth = YES;
+    eyebrow.minimumScaleFactor = 0.82;
     eyebrow.textAlignment = [Language alignmentForCurrentLanguage];
     [card addSubview:eyebrow];
     self.eyebrowLabel = eyebrow;
@@ -610,10 +1136,12 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     UILabel *title = [UILabel new];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     title.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2]
-                  scaledFontForFont:([GM boldFontWithSize:PPFontTitle2] ?: [UIFont systemFontOfSize:23.0 weight:UIFontWeightBold])];
+                  scaledFontForFont:([GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold])];
     title.adjustsFontForContentSizeCategory = YES;
     title.textColor = PPUserMenuColor(AppPrimaryTextClr, UIColor.labelColor);
     title.numberOfLines = 2;
+    title.adjustsFontSizeToFitWidth = YES;
+    title.minimumScaleFactor = 0.82;
     title.textAlignment = [Language alignmentForCurrentLanguage];
     [card addSubview:title];
     self.titleLabel = title;
@@ -629,31 +1157,79 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [card addSubview:subtitle];
     self.subtitleLabel = subtitle;
 
+    PPInsetLabel *meta = [PPInsetLabel new];
+    meta.translatesAutoresizingMaskIntoConstraints = NO;
+    meta.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
+                 scaledFontForFont:([GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium])];
+    meta.adjustsFontForContentSizeCategory = YES;
+    meta.adjustsFontSizeToFitWidth = YES;
+    meta.minimumScaleFactor = 0.78;
+    meta.numberOfLines = 1;
+    meta.textAlignment = [Language alignmentForCurrentLanguage];
+    meta.textInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+    meta.layer.cornerRadius = 17.0;
+    meta.layer.borderWidth = 1.0;
+    meta.clipsToBounds = YES;
+    [card addSubview:meta];
+    self.metaLabel = meta;
+
     [NSLayoutConstraint activateConstraints:@[
-        [card.topAnchor constraintEqualToAnchor:root.topAnchor constant:PPSpaceMD],
+        [card.topAnchor constraintEqualToAnchor:root.topAnchor constant:12.0],
         [card.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:PPScreenMargin],
         [card.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-PPScreenMargin],
-        [card.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-PPSpaceBase],
+        [card.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-14.0],
 
-        [avatar.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:PPSpaceLG],
-        [avatar.centerYAnchor constraintEqualToAnchor:card.centerYAnchor],
-        [avatar.widthAnchor constraintEqualToConstant:68.0],
-        [avatar.heightAnchor constraintEqualToConstant:68.0],
+        [material.topAnchor constraintEqualToAnchor:card.topAnchor],
+        [material.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+        [material.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+        [material.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
 
-        [eyebrow.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:PPSpaceBase],
-        [eyebrow.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-PPSpaceLG],
-        [eyebrow.topAnchor constraintGreaterThanOrEqualToAnchor:card.topAnchor constant:PPSpaceLG],
+        [accent.topAnchor constraintEqualToAnchor:card.topAnchor],
+        [accent.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:30.0],
+        [accent.widthAnchor constraintEqualToConstant:44.0],
+        [accent.heightAnchor constraintEqualToConstant:4.0],
+
+        [statusPill.topAnchor constraintEqualToAnchor:card.topAnchor constant:22.0],
+        [statusPill.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
+        [statusPill.trailingAnchor constraintLessThanOrEqualToAnchor:primaryButton.leadingAnchor constant:-12.0],
+        [statusPill.heightAnchor constraintGreaterThanOrEqualToConstant:34.0],
+
+        [primaryButton.topAnchor constraintEqualToAnchor:card.topAnchor constant:20.0],
+        [primaryButton.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-22.0],
+        [primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:106.0],
+        [primaryButton.heightAnchor constraintGreaterThanOrEqualToConstant:38.0],
+
+        [avatarFrame.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
+        [avatarFrame.topAnchor constraintEqualToAnchor:statusPill.bottomAnchor constant:22.0],
+        [avatarFrame.widthAnchor constraintEqualToConstant:96.0],
+        [avatarFrame.heightAnchor constraintEqualToConstant:96.0],
+
+        [avatar.centerXAnchor constraintEqualToAnchor:avatarFrame.centerXAnchor],
+        [avatar.centerYAnchor constraintEqualToAnchor:avatarFrame.centerYAnchor],
+        [avatar.widthAnchor constraintEqualToConstant:82.0],
+        [avatar.heightAnchor constraintEqualToConstant:82.0],
+
+        [eyebrow.leadingAnchor constraintEqualToAnchor:avatarFrame.trailingAnchor constant:18.0],
+        [eyebrow.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-24.0],
+        [eyebrow.topAnchor constraintEqualToAnchor:avatarFrame.topAnchor constant:1.0],
 
         [title.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
         [title.trailingAnchor constraintEqualToAnchor:eyebrow.trailingAnchor],
-        [title.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:4.0],
+        [title.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:5.0],
 
         [subtitle.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
         [subtitle.trailingAnchor constraintEqualToAnchor:eyebrow.trailingAnchor],
         [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:PPSpaceSM],
-        [subtitle.bottomAnchor constraintLessThanOrEqualToAnchor:card.bottomAnchor constant:-PPSpaceLG]
+        [subtitle.bottomAnchor constraintLessThanOrEqualToAnchor:meta.topAnchor constant:-12.0],
+
+        [meta.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
+        [meta.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-24.0],
+        [meta.topAnchor constraintGreaterThanOrEqualToAnchor:avatarFrame.bottomAnchor constant:16.0],
+        [meta.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-24.0],
+        [avatarFrame.bottomAnchor constraintLessThanOrEqualToAnchor:card.bottomAnchor constant:-24.0]
     ]];
 
+    [self pp_applyHeaderMaterialPalette];
     self.headerRootView = root;
     self.tableView.tableHeaderView = root;
 }
@@ -875,8 +1451,38 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     self.eyebrowLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_signed_in_eyebrow") : PPUserMenuLocalized(@"user_menu_guest_eyebrow");
     self.titleLabel.text = displayName;
     self.subtitleLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_subtitle") : PPUserMenuLocalized(@"user_menu_guest_subtitle");
+    self.statusPillLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_profile_status_ready") : PPUserMenuLocalized(@"user_menu_profile_status_guest");
 
-    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:68.0 style:PPModernAvatarStyleGlass];
+    NSString *email = loggedIn ? PPSafeString(user.UserEmail) : @"";
+    NSString *phone = loggedIn ? PPSafeString(user.MobileNo) : @"";
+    NSString *signedInFallback = PPUserMenuLocalized(@"user_menu_profile_meta_signed_in");
+    NSString *guestFallback = PPUserMenuLocalized(@"user_menu_profile_meta_guest");
+    self.metaLabel.text = loggedIn
+        ? PPUserMenuFirstNonEmptyString(@[email, phone, signedInFallback])
+        : guestFallback;
+
+    NSString *actionTitle = loggedIn ? PPUserMenuLocalized(@"user_menu_profile_action") : PPUserMenuLocalized(@"user_menu_login_action");
+    [self.primaryHeroButton setTitle:actionTitle forState:UIControlStateNormal];
+    self.primaryHeroButton.accessibilityLabel = actionTitle;
+    self.primaryHeroButton.accessibilityHint = loggedIn
+        ? PPUserMenuLocalized(@"user_menu_profile_subtitle")
+        : PPUserMenuLocalized(@"user_menu_login_subtitle");
+    self.headerCardView.accessibilityLabel = displayName;
+    self.headerCardView.accessibilityHint = self.subtitleLabel.text;
+
+    UIImageSymbolConfiguration *buttonConfiguration =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                        weight:UIImageSymbolWeightSemibold
+                                                         scale:UIImageSymbolScaleMedium];
+    NSString *buttonSymbolName = loggedIn ? @"square.and.pencil" : @"person.crop.circle.badge.plus";
+    UIImage *buttonImage = [[UIImage systemImageNamed:buttonSymbolName withConfiguration:buttonConfiguration] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [self.primaryHeroButton setImage:buttonImage forState:UIControlStateNormal];
+    self.primaryHeroButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.primaryHeroButton.imageEdgeInsets = Language.isRTL
+        ? UIEdgeInsetsMake(0.0, 8.0, 0.0, -8.0)
+        : UIEdgeInsetsMake(0.0, -8.0, 0.0, 8.0);
+
+    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:82.0 style:PPModernAvatarStyleGlass];
     self.avatarImageView.image = placeholder;
     NSURL *avatarURL = user.UserImageUrl;
     if (loggedIn && avatarURL.absoluteString.length > 0) {
@@ -905,11 +1511,20 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.tableView.alpha = 1.0;
         self.tableView.transform = CGAffineTransformIdentity;
+        self.headerCardView.alpha = 1.0;
+        self.headerCardView.transform = CGAffineTransformIdentity;
+        self.primaryHeroButton.alpha = 1.0;
+        self.primaryHeroButton.transform = CGAffineTransformIdentity;
         return;
     }
     self.tableView.alpha = 0.0;
     self.tableView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 14.0),
                                                        CGAffineTransformMakeScale(0.992, 0.992));
+    self.headerCardView.alpha = 0.0;
+    self.headerCardView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
+                                                           CGAffineTransformMakeScale(1.018, 1.018));
+    self.primaryHeroButton.alpha = 0.0;
+    self.primaryHeroButton.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
 }
 
 - (void)pp_runEntranceIfNeeded
@@ -921,6 +1536,10 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.tableView.alpha = 1.0;
         self.tableView.transform = CGAffineTransformIdentity;
+        self.headerCardView.alpha = 1.0;
+        self.headerCardView.transform = CGAffineTransformIdentity;
+        self.primaryHeroButton.alpha = 1.0;
+        self.primaryHeroButton.transform = CGAffineTransformIdentity;
         return;
     }
     [UIView animateWithDuration:0.46
@@ -931,6 +1550,26 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
                      animations:^{
         self.tableView.alpha = 1.0;
         self.tableView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.52
+                          delay:0.02
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.headerCardView.alpha = 1.0;
+        self.headerCardView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.38
+                          delay:0.14
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.primaryHeroButton.alpha = 1.0;
+        self.primaryHeroButton.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -955,6 +1594,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         self.headerRootView.frame = frame;
         self.tableView.tableHeaderView = self.headerRootView;
     }
+    [self pp_layoutHeaderMaterialLayers];
 }
 
 #pragma mark - UITableViewDataSource
@@ -1076,6 +1716,42 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 }
 
 #pragma mark - Actions
+
+- (void)pp_handleHeroPrimaryTouchDown:(UIButton *)sender
+{
+    if (!sender || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    [UIView animateWithDuration:0.09
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.965, 0.965);
+        sender.alpha = 0.92;
+    } completion:nil];
+}
+
+- (void)pp_handleHeroPrimaryTouchUp:(UIButton *)sender
+{
+    if (!sender) {
+        return;
+    }
+    [UIView animateWithDuration:0.16
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+        sender.alpha = 1.0;
+    } completion:nil];
+}
+
+- (void)pp_handleHeroPrimaryAction:(UIButton *)sender
+{
+    [self pp_handleHeroPrimaryTouchUp:sender];
+    [PPFunc triggerLightHaptic];
+    BOOL loggedIn = PPIsUserLoggedIn && (UserManager.sharedManager.currentUser ?: PPCurrentUser);
+    [self pp_handleAction:(loggedIn ? PPUserMenuActionProfile : PPUserMenuActionLogin)];
+}
 
 - (void)pp_handleAction:(PPUserMenuAction)action
 {
