@@ -257,8 +257,8 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.textStackView.spacing = 12.0;
     self.textStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 11.0, *)) {
-        [self.textStackView setCustomSpacing:10.0 afterView:self.titleLabel];
-        [self.textStackView setCustomSpacing:10.0 afterView:self.lineView];
+        [self.textStackView setCustomSpacing:16.0 afterView:self.titleLabel];
+        [self.textStackView setCustomSpacing:16.0 afterView:self.lineView];
     }
 
 
@@ -713,22 +713,49 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
                       menu:(nullable UIMenu *)menu
              ppHomeSection:(PPHomeSection)ppHomeSection
 {
+    [self configureWithTitle:title
+                    subtitle:nil
+                 actionTitle:actionTitle
+                    iconName:iconName
+                        menu:menu
+               ppHomeSection:ppHomeSection];
+}
+
+- (void)configureWithTitle:(nullable NSString *)title
+                  subtitle:(nullable NSString *)subtitle
+               actionTitle:(nullable NSString *)actionTitle
+                  iconName:(nullable NSString *)iconName
+                      menu:(nullable UIMenu *)menu
+             ppHomeSection:(PPHomeSection)ppHomeSection
+{
     self.currentSection = ppHomeSection;
     self.titleLabel.text = title;
-    self.subtitleLabel.text = nil;
-    self.subtitleLabel.hidden = YES;
+    
+    BOOL hasSubtitle = subtitle.length > 0;
+    self.subtitleLabel.text = hasSubtitle ? subtitle : nil;
+    self.subtitleLabel.hidden = !hasSubtitle;
+    self.contentStackView.spacing = hasSubtitle ? 2.0 : 0.0;
+    
     if (ppHomeSection != PPHomeSectionMainKinds) {
         self.isExpanded = NO;
         self.accentRailView.transform = CGAffineTransformIdentity;
     }
+    
     [self pp_applySemanticDirection];
 
     self.actionButton.imageView.transform = CGAffineTransformIdentity;
+    
     [self pp_applyActionButtonPresentationWithActionTitle:actionTitle
                                                  iconName:iconName
                                                      menu:menu
                                                   section:ppHomeSection
-                                          subtitleVisible:NO];
+                                          subtitleVisible:hasSubtitle];
+                                          
+    [self pp_configureMenu:menu];
+    
+    [self pp_refreshAppearance];
+    
+    // Post-configuration layout updates: MUST happen after all configuration/appearance changes
     [self.actionButton invalidateIntrinsicContentSize];
     if (@available(iOS 15.0, *)) {
         [self.actionButton setNeedsUpdateConfiguration];
@@ -743,8 +770,6 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     [self.textStackView layoutIfNeeded];
     [self.contentStackView layoutIfNeeded];
 
-    [self pp_configureMenu:menu];
-    [self pp_refreshAppearance];
     [self pp_startLineMotionIfNeeded];
     [self pp_updateAccessibility];
 
@@ -753,35 +778,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     }
 
     [self setNeedsLayout];
-}
-
-- (void)configureWithTitle:(nullable NSString *)title
-                  subtitle:(nullable NSString *)subtitle
-               actionTitle:(nullable NSString *)actionTitle
-                  iconName:(nullable NSString *)iconName
-                      menu:(nullable UIMenu *)menu
-             ppHomeSection:(PPHomeSection)ppHomeSection
-{
-    [self configureWithTitle:title
-                 actionTitle:actionTitle
-                    iconName:iconName
-                        menu:menu
-               ppHomeSection:ppHomeSection];
-
-    BOOL hasSubtitle = subtitle.length > 0;
-    self.subtitleLabel.text = hasSubtitle ? subtitle : nil;
-    self.subtitleLabel.hidden = !hasSubtitle;
-    self.contentStackView.spacing = hasSubtitle ? 2.0 : 0.0;
-    [self pp_applyActionButtonPresentationWithActionTitle:actionTitle
-                                                 iconName:iconName
-                                                     menu:menu
-                                                  section:ppHomeSection
-                                          subtitleVisible:hasSubtitle];
-    [self pp_configureMenu:menu];
-    [self pp_refreshAppearance];
-    [self pp_startLineMotionIfNeeded];
-    [self pp_updateAccessibility];
-    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 - (void)pp_applyActionButtonPresentationWithActionTitle:(nullable NSString *)actionTitle

@@ -575,10 +575,10 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         [UIImageSymbolConfiguration configurationWithPointSize:22.0
                                                          weight:UIImageSymbolWeightSemibold
                                                           scale:UIImageSymbolScaleMedium];
-    NSString *symbol = self.mode == MyItemsModeMyAds ? @"square.stack.3d.up.fill" : @"heart.fill";
+    NSString *symbol = self.mode == MyItemsModeMyAds ? @"square.grid.2x2.fill" : @"heart.fill";
     UIImageView *iconView =
         [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:symbol
-                                                  withConfiguration:iconConfiguration]];
+                                                   withConfiguration:iconConfiguration]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.tintColor = PPMyItemsAccentColor();
     iconView.contentMode = UIViewContentModeScaleAspectFit;
@@ -591,11 +591,10 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     iconLottie.contentMode = UIViewContentModeScaleAspectFit;
     iconLottie.loopAnimation = YES;
     iconLottie.alpha = 0.0;
-    [iconPlate addSubview:iconLottie];
+    [aura addSubview:iconLottie];
     
     [Styling setAnimationNamed:@"Speaker.lottie" toView:iconLottie withSpeed:0.8 loopAnimation:YES autoplay:YES completion:^(BOOL success) {
         if (success) {
-            iconView.alpha = 0.0;
             [UIView animateWithDuration:0.3 animations:^{
                 iconLottie.alpha = 1.0;
             }];
@@ -726,10 +725,10 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         [iconView.widthAnchor constraintEqualToConstant:24.0],
         [iconView.heightAnchor constraintEqualToConstant:24.0],
 
-        [iconLottie.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
-        [iconLottie.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
-        [iconLottie.widthAnchor constraintEqualToConstant:36.0],
-        [iconLottie.heightAnchor constraintEqualToConstant:36.0],
+        [iconLottie.centerXAnchor constraintEqualToAnchor:aura.centerXAnchor],
+        [iconLottie.centerYAnchor constraintEqualToAnchor:aura.centerYAnchor],
+        [iconLottie.widthAnchor constraintEqualToConstant:64.0],
+        [iconLottie.heightAnchor constraintEqualToConstant:64.0],
 
         [statusPill.topAnchor constraintEqualToAnchor:identityRow.bottomAnchor constant:PPSpaceMD],
         [statusPill.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG],
@@ -771,7 +770,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
                                                             constant:PPSpaceMD],
         [self.segmentedControl.trailingAnchor constraintEqualToAnchor:segmentHost.trailingAnchor
                                                              constant:-PPSpaceMD],
-        [self.segmentedControl.heightAnchor constraintEqualToConstant:48.0],
+        [self.segmentedControl.heightAnchor constraintEqualToConstant:44.0],
         [self.segmentedControl.bottomAnchor constraintEqualToAnchor:segmentHost.bottomAnchor
                                                            constant:-PPSpaceMD]
     ]];
