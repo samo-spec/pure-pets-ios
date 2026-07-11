@@ -2663,6 +2663,16 @@
 "pet_delete_confirm_msg" = "Are you sure you want to delete this pet profile? This action cannot be undone.";
 "pet_profiles_empty_title" = "No Pets Yet";
 "pet_profiles_empty_subtitle" = "Add your first pet profile to get started.";
+"pet_profiles_section_subtitle" = "Choose a profile to update its details, vaccinations, or default status.";
+"pet_profiles_default_badge" = "Default";
+"pet_profiles_profile_count_label" = "Profiles";
+"pet_profiles_vaccination_count_label" = "Vaccinations";
+"pet_profiles_vaccine_count_format" = "Vaccinations: %ld";
+"pet_profiles_profile_count_accessibility_format" = "Pet profiles: %ld";
+"pet_profiles_image_accessibility_format" = "%@'s photo";
+"pet_profiles_refresh_accessibility" = "Refresh pet profiles";
+"pet_profiles_error_title" = "Couldn't load pet profiles";
+"pet_profiles_error_subtitle" = "Check your connection and try again.";
 "pet_no_pets" = "No pets added";
 "pet_no_pets_title" = "No Pets";
 "pet_no_pets_msg" = "Add a pet profile first.";

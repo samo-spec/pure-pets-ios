@@ -856,9 +856,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     return [self.selectedStatusFilterKey isEqualToString:kOrderHistoryFilterAll]
     ? ([GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor)
     : [self colorForStatusFilterKey:self.selectedStatusFilterKey];
-}
-
-- (void)pp_applyHeroMaterialWithAccent:(UIColor *)accent
+}- (void)pp_applyHeroMaterialWithAccent:(UIColor *)accent
 {
     UIColor *resolvedAccent = accent ?: ([GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor);
     BOOL isDark = NO;
@@ -866,39 +864,15 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     }
 
-    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(self.traitCollection);
-    UIColor *surfaceHighlight = PPMarketplaceHeroCardBlend(surfaceBase,
-                                                          UIColor.whiteColor,
-                                                          isDark ? 0.08 : 0.20,
-                                                          self.traitCollection);
-    UIColor *backgroundAccent = PPMarketplaceHeroCardBlend(resolvedAccent,
-                                                          surfaceBase,
-                                                          isDark ? 0.12 : 0.18,
-                                                          self.traitCollection);
-    UIColor *surfaceTint = PPMarketplaceHeroCardBlend(surfaceBase,
-                                                     backgroundAccent,
-                                                     isDark ? 0.095 : 0.038,
-                                                     self.traitCollection);
-    UIColor *surfaceTail = PPMarketplaceHeroCardBlend(surfaceTint,
-                                                     backgroundAccent,
-                                                     isDark ? 0.062 : 0.024,
-                                                     self.traitCollection);
-    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.12 : 0.78];
+    PPMarketplaceHeroCardApplySurfaceChrome(self.heroCard, 30.0, self.traitCollection);
+    self.heroCard.layer.shadowOpacity = isDark ? 0.22 : 0.07;
+    self.heroCard.layer.shadowRadius = isDark ? 18.0 : 20.0;
+    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
 
-    // Blend with white overlay to make the hero card background significantly whiter in light mode!
-    UIColor *whiteOverlay = UIColor.whiteColor;
-    CGFloat whiteBlendAmount = isDark ? 0.15 : 0.76;
-    UIColor *surfaceHighlightWhite = PPMarketplaceHeroCardBlend(surfaceHighlight, whiteOverlay, whiteBlendAmount, self.traitCollection);
-    UIColor *surfaceTintWhite = PPMarketplaceHeroCardBlend(surfaceTint, whiteOverlay, MAX(0.0, whiteBlendAmount - 0.08), self.traitCollection);
-    UIColor *surfaceTailWhite = PPMarketplaceHeroCardBlend(surfaceTail, whiteOverlay, MAX(0.0, whiteBlendAmount - 0.15), self.traitCollection);
-
-    self.heroGradientLayer.opacity = isDark ? 0.84 : 0.94;
-    self.heroGradientLayer.colors = @[
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlightWhite, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTintWhite, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTailWhite, self.traitCollection).CGColor
-    ];
-    self.heroGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    PPMarketplaceHeroCardConfigureSurfaceGradient(self.heroGradientLayer,
+                                                  resolvedAccent,
+                                                  self.traitCollection,
+                                                  [Language semanticAttributeForCurrentLanguage] == UISemanticContentAttributeForceRightToLeft);
 
     self.searchToggleButton.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
     [self.searchToggleButton pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:isDark ? 0.20 : 0.16]];
@@ -911,7 +885,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     
     // Outer border: highly premium refractive translucent liquid white outline
     self.heroSurfaceView.layer.borderWidth = 1.0;
-    self.heroSurfaceView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.18 : 0.72].CGColor;
+    self.heroSurfaceView.layer.borderColor = PPMarketplaceHeroCardStrokeColor(self.traitCollection).CGColor;
     
     // Inner liquid glow bezel overlay
     self.heroBorderGlowView.layer.borderWidth = 1.0;

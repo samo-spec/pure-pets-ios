@@ -1185,7 +1185,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [material.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
 
         [accent.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [accent.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:30.0],
+        [accent.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:38.0],
         [accent.widthAnchor constraintEqualToConstant:44.0],
         [accent.heightAnchor constraintEqualToConstant:4.0],
 

@@ -2654,6 +2654,16 @@
 "pet_delete_confirm_msg" = "هل أنت متأكد من حذف ملف هذا الحيوان الأليف؟ لا يمكن التراجع عن هذا الإجراء.";
 "pet_profiles_empty_title" = "لا توجد حيوانات أليفة";
 "pet_profiles_empty_subtitle" = "أضف أول ملف للحيوان الأليف للبدء.";
+"pet_profiles_section_subtitle" = "اختر ملفًا لتحديث التفاصيل أو التطعيمات أو تعيين الحيوان الافتراضي.";
+"pet_profiles_default_badge" = "الافتراضي";
+"pet_profiles_profile_count_label" = "الملفات";
+"pet_profiles_vaccination_count_label" = "التطعيمات";
+"pet_profiles_vaccine_count_format" = "التطعيمات: %ld";
+"pet_profiles_profile_count_accessibility_format" = "ملفات الحيوانات الأليفة: %ld";
+"pet_profiles_image_accessibility_format" = "صورة %@";
+"pet_profiles_refresh_accessibility" = "تحديث ملفات الحيوانات الأليفة";
+"pet_profiles_error_title" = "تعذر تحميل ملفات الحيوانات";
+"pet_profiles_error_subtitle" = "تحقق من اتصالك ثم حاول مرة أخرى.";
 "pet_no_pets" = "لا توجد حيوانات";
 "pet_no_pets_title" = "لا توجد حيوانات";
 "pet_no_pets_msg" = "أضف ملف حيوان أليف أولاً.";

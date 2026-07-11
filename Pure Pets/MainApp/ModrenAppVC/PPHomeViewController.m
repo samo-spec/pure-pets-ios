@@ -21,6 +21,7 @@
 #import "PPHomePremiumCareCell.h"
 #import "PPHomeUltraPremuimPetCareCell.h"
 #import "PPPetProfilesViewController.h"
+#import "PPMarketplaceHeroCardStyle.h"
 #import "PetCare/PPPetCareViewController.h"
 #import "PPVetLocator.h"
 #import "PPBrowseHistoryManager.h"
@@ -282,7 +283,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.layer.cornerRadius = 24.0;
     cardView.layer.borderWidth = 1.0;
-    cardView.clipsToBounds = YES;
+    cardView.clipsToBounds = NO;
     [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.12]];
     [cardView pp_setShadowColor:UIColor.clearColor];
     cardView.layer.shadowOpacity = 0.0f;
@@ -712,6 +713,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [CATransaction setDisableActions:YES];
     _gradientLayer.frame = cardBounds;
     _gradientLayer.cornerRadius = _cardView.layer.cornerRadius;
+    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:cardBounds
+                                                            cornerRadius:_cardView.layer.cornerRadius].CGPath;
 
     CGFloat circleSize = MIN(220.0, MAX(164.0, CGRectGetWidth(cardBounds) * 0.54));
     BOOL isRTL = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
@@ -827,16 +830,20 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    UIColor *borderColor = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.10]
-        : [UIColor colorWithWhite:0.0 alpha:0.07];
-    [_cardView pp_setBorderColor:borderColor];
-    _cardView.layer.shadowOpacity = 0.0f;
+    PPMarketplaceHeroCardApplySurfaceChrome(_cardView, 24.0, self.traitCollection);
+    _cardView.layer.shadowOpacity = isDark ? 0.22 : 0.07;
+    _cardView.layer.shadowRadius = isDark ? 18.0 : 20.0;
+    _cardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
+
     [_avatarShellView pp_setBorderColor:isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.16]
         : [UIColor colorWithWhite:0.0 alpha:0.08]];
     [_avatarImageView pp_setBorderColor:UIColor.clearColor];
     [_ctaView pp_setBorderColor:UIColor.clearColor];
+    
+    UIColor *borderColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.10]
+        : [UIColor colorWithWhite:0.0 alpha:0.07];
     [_expandButton pp_setBorderColor:borderColor];
     _detailsDividerView.backgroundColor = borderColor;
 }
@@ -976,12 +983,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         showsEmptyProfileAnimation = YES;
     }
 
-    _cardView.backgroundColor = baseSurfaceColor;
-    _gradientLayer.colors = @[
-        (id)baseSurfaceColor.CGColor,
-        (id)secondarySurfaceColor.CGColor,
-        (id)secondarySurfaceColor.CGColor
-    ];
+    _cardView.backgroundColor = UIColor.clearColor;
+    PPMarketplaceHeroCardConfigureSurfaceGradient(_gradientLayer, accentColor, self.traitCollection, Language.isRTL);
 
     CGFloat circlePeakAlpha = isDark ? 0.20 : 0.14;
     if (_backgroundGlowsFaded) {

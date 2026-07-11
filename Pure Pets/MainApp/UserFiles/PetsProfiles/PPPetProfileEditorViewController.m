@@ -9,6 +9,7 @@
 
 #import "PPPetProfileEditorViewController.h"
 #import "PPPetProfile.h"
+#import "PPFormEngine.h"
 #import "MainKindsModel.h"
 #import "PPSelectOptionViewController.h"
 #import "PPModernAvatarRenderer.h"
@@ -108,92 +109,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 @end
 
-// ─── Text Field Cell (ProfileVC PPProfileTextFieldCell pattern) ──
-
-@interface PPPetEditorFieldCell : PPPetEditorBaseCell
-@property (nonatomic, strong) UILabel     *titleLabel;
-@property (nonatomic, strong) UITextField *textField;
-@end
-
-@implementation PPPetEditorFieldCell
-
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
-    self = [super initWithStyle:style reuseIdentifier:rid];
-    if (!self) return nil;
-
-    self.selectionStyle = UITableViewCellSelectionStyleNone;
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.preservesSuperviewLayoutMargins = NO;
-    self.contentView.preservesSuperviewLayoutMargins = NO;
-    self.semanticContentAttribute = PPEditorSemanticAttr();
-    self.contentView.semanticContentAttribute = PPEditorSemanticAttr();
-
-    _titleLabel = [UILabel new];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _titleLabel.textColor = AppPrimaryTextClr;
-    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_titleLabel];
-
-    _textField = [UITextField new];
-    _textField.translatesAutoresizingMaskIntoConstraints = NO;
-    _textField.borderStyle       = UITextBorderStyleNone;
-    _textField.backgroundColor   = UIColor.clearColor;
-    _textField.textColor         = AppPrimaryTextClr;
-    _textField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _textField.clearButtonMode   = UITextFieldViewModeWhileEditing;
-    _textField.autocorrectionType = UITextAutocorrectionTypeNo;
-    _textField.textAlignment     = Language.alignmentForCurrentLanguage;
-    _textField.semanticContentAttribute = PPEditorSemanticAttr();
-    [self.contentView addSubview:_textField];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_titleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
-        [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
-        [_textField.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
-        [_textField.leadingAnchor  constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_textField.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-        [_textField.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-        [_textField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
-    ]];
-    return self;
-}
-
-- (void)prepareForReuse {
-    [super prepareForReuse];
-    [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
-}
-
-- (void)configureWithTitle:(NSString *)title
-                      text:(NSString *)text
-               placeholder:(NSString *)ph
-              keyboardType:(UIKeyboardType)kb
-                 fieldKind:(PPEditorFieldKind)kind
-                    target:(id)target
-                    action:(SEL)action
-                  delegate:(id<UITextFieldDelegate>)delegate
-{
-    self.semanticContentAttribute = PPEditorSemanticAttr();
-    self.contentView.semanticContentAttribute = PPEditorSemanticAttr();
-    self.titleLabel.text = title ?: @"";
-    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textField.text = text ?: @"";
-    self.textField.placeholder = ph ?: @"";
-    self.textField.tag = kind;
-    self.textField.delegate = delegate;
-    self.textField.keyboardType = kb;
-    self.textField.textAlignment = Language.alignmentForCurrentLanguage;
-    self.textField.semanticContentAttribute = PPEditorSemanticAttr();
-    [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
-    if (target && action) {
-        [self.textField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
-    }
-}
-
-@end
+// (PPPetEditorFieldCell removed in favor of PPFormEngineView)
 
 // ─── Vaccine Card Cell ────────────────────────────────────
 
@@ -320,9 +236,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 @property (nonatomic, strong) UILabel      *heroSubtitleLabel;
 @property (nonatomic, strong) PPInsetLabel *heroMetaLabel;
 @property (nonatomic, strong) UIButton     *heroPhotoButton;
-@property (nonatomic, strong) UITextField  *nameField;
-@property (nonatomic, strong) UITextField  *breedField;
-@property (nonatomic, strong) UITextField  *ageField;
+@property (nonatomic, strong) PPFormEngineView *infoFormView;
 @property (nonatomic, strong) UISwitch     *defaultSwitch;
 @property (nonatomic, assign) BOOL isSaving;
 @property (nonatomic, strong) UIView       *backgroundGlowViewTop;
@@ -376,11 +290,14 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     self.tableView.contentInset        = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     self.tableView.showsVerticalScrollIndicator = NO;
+    self.tableView.showsHorizontalScrollIndicator = NO;
+    self.tableView.alwaysBounceHorizontal = NO;
     self.tableView.semanticContentAttribute = PPEditorSemanticAttr();
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
-    [self.tableView registerClass:PPPetEditorFieldCell.class   forCellReuseIdentifier:@"field"];
+    [self pp_initForm];
+    [self.tableView registerClass:UITableViewCell.class         forCellReuseIdentifier:@"form_cell"];
     [self.tableView registerClass:PPPetEditorActionCell.class   forCellReuseIdentifier:@"toggle"];
     [self.tableView registerClass:PPPetEditorVaccineCell.class forCellReuseIdentifier:@"vaccine"];
     [self.tableView registerClass:PPPetEditorActionCell.class   forCellReuseIdentifier:@"addBtn"];
@@ -669,17 +586,17 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 }
 
 - (void)pp_refreshHeroHeader {
-    NSString *name = [self.nameField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *name = [[self.infoFormView valueForIdentifier:@"name"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (name.length == 0) {
         name = self.pet.name.length ? self.pet.name : (kLang(@"pet_add_title") ?: @"Add Pet");
     }
 
-    NSString *breed = [self.breedField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *breed = [[self.infoFormView valueForIdentifier:@"breed"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (breed.length == 0) {
         breed = self.pet.breed ?: @"";
     }
 
-    NSString *ageValue = [self.ageField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *ageValue = [[self.infoFormView valueForIdentifier:@"age"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSInteger months = ageValue.length ? ageValue.integerValue : self.pet.ageInMonths;
     PPPetProfile *previewPet = [PPPetProfile new];
     previewPet.name = name ?: @"";
@@ -790,7 +707,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
             return 60.0;
     }
     if (indexPath.section == PPEditorSectionInfo) {
-            return 96.0;
+            return UITableViewAutomaticDimension;
     }
     return UITableViewAutomaticDimension;
 }
@@ -798,7 +715,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     switch (section) {
         case PPEditorSectionPhoto:        return 0;
-        case PPEditorSectionInfo:         return PPEditorInfoRowCount;
+        case PPEditorSectionInfo:         return 1;
         case PPEditorSectionSettings:     return 1;
         case PPEditorSectionVaccinations: return (NSInteger)self.records.count + 1;
         default: return 0;
@@ -862,36 +779,19 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     switch (indexPath.section) {
 
         case PPEditorSectionInfo: {
-            PPPetEditorFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:@"field" forIndexPath:indexPath];
-            switch (indexPath.row) {
-                case PPEditorInfoRowName:
-                    [cell configureWithTitle:(kLang(@"pet_field_name") ?: @"Pet Name")
-                                       text:self.pet.name
-                                placeholder:(kLang(@"pet_name_placeholder") ?: @"Enter pet name")
-                               keyboardType:UIKeyboardTypeDefault
-                                  fieldKind:PPEditorFieldName
-                                     target:self action:@selector(pp_fieldChanged:) delegate:self];
-                    self.nameField = cell.textField;
-                    break;
-                case PPEditorInfoRowBreed:
-                    [cell configureWithTitle:(kLang(@"pet_field_breed") ?: @"Breed")
-                                       text:(self.pet.categoryName.length > 0 ? self.pet.categoryName : self.pet.breed)
-                                placeholder:(kLang(@"pet_breed_placeholder") ?: @"Enter breed")
-                               keyboardType:UIKeyboardTypeDefault
-                                  fieldKind:PPEditorFieldBreed
-                                     target:self action:@selector(pp_fieldChanged:) delegate:self];
-                    self.breedField = cell.textField;
-                    self.breedField.userInteractionEnabled = NO;
-                    break;
-                case PPEditorInfoRowAge:
-                    [cell configureWithTitle:(kLang(@"pet_field_age") ?: @"Age (months)")
-                                       text:(self.pet.ageInMonths > 0 ? [@(self.pet.ageInMonths) stringValue] : @"")
-                                placeholder:(kLang(@"pet_age_months_placeholder") ?: @"Age in months")
-                               keyboardType:UIKeyboardTypeNumberPad
-                                  fieldKind:PPEditorFieldAge
-                                     target:self action:@selector(pp_fieldChanged:) delegate:self];
-                    self.ageField = cell.textField;
-                    break;
+            UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"form_cell" forIndexPath:indexPath];
+            cell.selectionStyle = UITableViewCellSelectionStyleNone;
+            cell.backgroundColor = UIColor.clearColor;
+            cell.contentView.backgroundColor = UIColor.clearColor;
+            
+            if (![cell.contentView.subviews containsObject:self.infoFormView]) {
+                [cell.contentView addSubview:self.infoFormView];
+                [NSLayoutConstraint activateConstraints:@[
+                    [self.infoFormView.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:0.0],
+                    [self.infoFormView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:20.0],
+                    [self.infoFormView.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-20.0],
+                    [self.infoFormView.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:0.0],
+                ]];
             }
             return cell;
         }
@@ -980,7 +880,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         ws.pet.categoryId = kind.ID;
         ws.pet.categoryName = kind.KindName;
         ws.pet.breed = kind.KindName; // Fallback for backward compatibility
-        ws.breedField.text = kind.KindName;
+        [ws.infoFormView setValue:kind.KindName forIdentifier:@"breed"];
         [ws pp_refreshHeroHeader];
         }];
     [self presentViewController:vc animated:YES completion:nil];
@@ -1044,14 +944,16 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)pp_save {
     if (self.isSaving) return;
 
-    NSString *name = [self.nameField.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *name = [[self.infoFormView valueForIdentifier:@"name"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (name.length == 0) {
-        // Shake animation
-        CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
-        shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-        shake.duration = 0.4;
-        shake.values   = @[@(-8), @(8), @(-6), @(6), @(-4), @(4), @0];
-        [self.nameField.layer addAnimation:shake forKey:@"shake"];
+        PPFormFieldRowView *row = [self.infoFormView rowForIdentifier:@"name"];
+        if (row) {
+            CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+            shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+            shake.duration = 0.4;
+            shake.values   = @[@(-8), @(8), @(-6), @(6), @(-4), @(4), @0];
+            [row.layer addAnimation:shake forKey:@"shake"];
+        }
 
         [PPHUD showError:(kLang(@"pet_name_required") ?: @"Name Required")
                 subtitle:(kLang(@"pet_name_required_msg") ?: @"Please enter your pet's name")];
@@ -1060,8 +962,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
     self.isSaving = YES;
     self.pet.name         = name;
-    self.pet.breed        = self.breedField.text ?: @"";
-    self.pet.ageInMonths  = MAX(0, self.ageField.text.integerValue);
+    self.pet.breed        = [self.infoFormView valueForIdentifier:@"breed"] ?: @"";
+    self.pet.ageInMonths  = MAX(0, [self.infoFormView valueForIdentifier:@"age"].integerValue);
     self.pet.isDefaultPet = self.defaultSwitch.isOn;
     self.pet.vaccinations = self.records.copy;
 
@@ -1103,8 +1005,64 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     return YES;
 }
 
-- (void)pp_fieldChanged:(UITextField *)field {
-    [self pp_refreshHeroHeader];
+- (void)pp_initForm {
+    PPFormStyle *style = [PPFormStyle defaultStyle];
+    style.cardBackgroundColor = UIColor.clearColor;
+    style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.06]
+            : [UIColor colorWithWhite:0.0 alpha:0.035];
+    }];
+    style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [UIColor colorWithWhite:1.0 alpha:0.08]
+            : [UIColor colorWithWhite:0.0 alpha:0.045];
+    }];
+    style.primaryTextColor = AppPrimaryTextClr;
+    style.secondaryTextColor = UIColor.secondaryLabelColor;
+    style.titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    style.inputFont = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    style.placeholderFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    style.fieldCornerRadius = 14.0;
+    style.stackSpacing = 12.0;
+
+    self.infoFormView = [[PPFormEngineView alloc] initWithStyle:style];
+    self.infoFormView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.infoFormView.semanticContentAttribute = PPEditorSemanticAttr();
+
+    PPFormFieldConfig *nameField = [PPFormFieldConfig fieldWithIdentifier:@"name"
+                                                                    title:(kLang(@"pet_field_name") ?: @"Pet Name")
+                                                              placeholder:(kLang(@"pet_name_placeholder") ?: @"Enter pet name")
+                                                                inputType:PPFormInputTypeText];
+    nameField.value = self.pet.name ?: @"";
+    __weak typeof(self) weakSelf = self;
+    nameField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        [self pp_refreshHeroHeader];
+    };
+
+    PPFormFieldConfig *breedField = [PPFormFieldConfig fieldWithIdentifier:@"breed"
+                                                                     title:(kLang(@"pet_field_breed") ?: @"Breed")
+                                                               placeholder:(kLang(@"pet_breed_placeholder") ?: @"Enter breed")
+                                                                 inputType:PPFormInputTypePicker];
+    breedField.value = (self.pet.categoryName.length > 0 ? self.pet.categoryName : self.pet.breed) ?: @"";
+    breedField.pickerTapBlock = ^(PPFormFieldConfig *config, PPFormFieldRowView *row) {
+        __strong typeof(weakSelf) self = weakSelf;
+        [self pp_presentCategoryPicker];
+    };
+
+    PPFormFieldConfig *ageField = [PPFormFieldConfig fieldWithIdentifier:@"age"
+                                                                   title:(kLang(@"pet_field_age") ?: @"Age (months)")
+                                                             placeholder:(kLang(@"pet_age_months_placeholder") ?: @"Age in months")
+                                                               inputType:PPFormInputTypeNumber];
+    ageField.keyboardType = UIKeyboardTypeNumberPad;
+    ageField.value = self.pet.ageInMonths > 0 ? [@(self.pet.ageInMonths) stringValue] : @"";
+    ageField.textChangeBlock = ^(PPFormFieldConfig *config, NSString *value) {
+        __strong typeof(weakSelf) self = weakSelf;
+        [self pp_refreshHeroHeader];
+    };
+
+    [self.infoFormView setFields:@[nameField, breedField, ageField]];
 }
 
 - (void)pp_defaultSwitchChanged:(UISwitch *)sender {

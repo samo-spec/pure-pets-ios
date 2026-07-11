@@ -11,23 +11,13 @@ NS_ASSUME_NONNULL_BEGIN
 // Dark mode returns a cohesive warm-neutral dark theme.
 
 static inline UIColor *PPPetsUICanvasColor(void) {
-    if (AppBackgroundClr) return AppBackgroundClr;
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
-        }
-        return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
-    }];
+     return AppBackgroundClr;
+    
 }
 
 static inline UIColor *PPPetsUISurfaceColor(void) {
-    if (AppSurfColor) return AppSurfColor;
-    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
-        }
-        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
-    }];
+    return [AppForgroundColr colorWithAlphaComponent:0.82];
+    
 }
 
 static inline UIColor *PPPetsUISurfaceTintColor(void) {
