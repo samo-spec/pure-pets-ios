@@ -44,6 +44,7 @@ do { \
 #import "PPModernAvatarRenderer.h"
 #import "PPFirebaseSessionBridge.h"
 #import "FullScreenImageViewerController.h"
+#import "Pure_Pets-Swift.h"
 
 
 static CGFloat ChatMediaHeight(CGFloat maxWidth,
@@ -235,7 +236,12 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
                                      UITextFieldDelegate,
                                      UITextViewDelegate, AVAudioPlayerDelegate,PPChatInputBarViewDelegate, AVAudioRecorderDelegate, AVAudioPlayerDelegate,
                                      UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate,
-                                     ChatMessageCellDelegate, ChatImageMessageCellDelegate>
+                                     ChatMessageCellDelegate, ChatImageMessageCellDelegate, PPNovaSwiftUIChatBarViewControllerDelegate>
+
+@property (nonatomic, strong) PPNovaSwiftUIChatBarViewController *swiftUIInputVC;
+@property (nonatomic, assign) BOOL useSwiftUIInputBar;
+@property (nonatomic, strong) NSLayoutConstraint *swiftUIInputBarBottomConstraint;
+@property (nonatomic, assign) NSTimeInterval swiftUIRecordingDuration;
 
 @property (nonatomic, assign) BOOL isObservingMessages;
 @property (nonatomic, assign) BOOL didFinishInitialLoad;
@@ -307,6 +313,9 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 @property (nonatomic, strong, nullable) ChatMessageModel *replyingToMessage;
 - (NSString *)resolvedOtherUserID;
 - (NSString *)resolvedOtherUserPresenceID;
+- (CGFloat)pp_activeComposerOcclusionHeight;
+- (void)pp_applyTableViewBottomInsetForActiveComposer;
+- (void)pp_scrollTableViewToBottomWithoutAnimation;
 @end
 
 @implementation ChMessagingController
@@ -317,6 +326,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     if (self.bottomFillBlurView) return;
 
     self.bottomFillBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
+    self.bottomFillBlurView.hidden = YES;
     
     UIButtonConfiguration *cfg = self.bottomFillBlurView.configuration;
     cfg.background.backgroundColor = [UIColor clearColor];
@@ -326,11 +336,12 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     //self.bottomFillBlurView.backgroundColor =  AppBackgroundClrDarker;
     //self.bottomFillBlurView.configuration.background.backgroundColor =  AppBackgroundClrDarker;
     //self.bottomFillBlurView.configuration.baseBackgroundColor =  AppBackgroundClrDarker;
-    [self.view insertSubview:self.bottomFillBlurView belowSubview:self.inputbar];
+    UIView *bottomBarView = [self pp_activeChatInputBarViewForLayout];
+    [self.view insertSubview:self.bottomFillBlurView belowSubview:bottomBarView];
 
     [NSLayoutConstraint activateConstraints:@[
         // Fill ONLY the area below input bar
-        [self.bottomFillBlurView.topAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
+        [self.bottomFillBlurView.topAnchor constraintEqualToAnchor:bottomBarView.topAnchor],
         [self.bottomFillBlurView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomFillBlurView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.bottomFillBlurView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -408,14 +419,6 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     self.tableView.estimatedSectionFooterHeight = 0;
 
     [self viewDidLoadRecordData];
-
-    if ([AVAudioSession sharedInstance].recordPermission == AVAudioSessionRecordPermissionUndetermined) {
-        [[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
-            if (granted) {
-                DLog(@"Microphone permission granted");
-            }
-        }];
-    }
 
     [self fetchInitForDidLoad];
 
@@ -565,7 +568,8 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     NSLayoutConstraint *leadingLimit = [container.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.leadingAnchor constant:24.0];
     NSLayoutConstraint *trailingLimit = [container.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.trailingAnchor constant:-24.0];
     NSLayoutConstraint *topLimit = [container.topAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:96.0];
-    NSLayoutConstraint *bottomLimit = [container.bottomAnchor constraintLessThanOrEqualToAnchor:self.inputbar.topAnchor constant:-24.0];
+    UIView *bottomBarView = [self pp_activeChatInputBarViewForLayout];
+    NSLayoutConstraint *bottomLimit = [container.bottomAnchor constraintLessThanOrEqualToAnchor:bottomBarView.topAnchor constant:-24.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [container.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
@@ -669,7 +673,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
         self.chatEmptyStateView.hidden = NO;
         [self.view bringSubviewToFront:self.chatEmptyStateView];
         [self.view bringSubviewToFront:self.typingIndicatorView];
-        [self.view bringSubviewToFront:self.inputbar];
+        [self.view bringSubviewToFront:[self pp_activeChatInputBarViewForLayout]];
         [self pp_bringChatHeaderToFront];
     }
 
@@ -1035,6 +1039,26 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
         [self.inputbar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:2],
         self.inputBarBottomConstraint
     ]];
+
+    self.useSwiftUIInputBar = YES;
+    self.swiftUIInputVC = [[PPNovaSwiftUIChatBarViewController alloc] init];
+    self.swiftUIInputVC.delegate = (id<PPNovaSwiftUIChatBarViewControllerDelegate>)self;
+    self.swiftUIInputVC.voiceEnabled = YES;
+    [self addChildViewController:self.swiftUIInputVC];
+    self.swiftUIInputVC.view.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:self.swiftUIInputVC.view];
+    [self.swiftUIInputVC didMoveToParentViewController:self];
+
+    self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-8.0];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.swiftUIInputVC.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:22.0],
+        [self.swiftUIInputVC.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-22.0],
+        [self.swiftUIInputVC.view.heightAnchor constraintEqualToConstant:54.0],
+        self.swiftUIInputBarBottomConstraint
+    ]];
+
+    self.swiftUIInputVC.view.hidden = !self.useSwiftUIInputBar;
+    self.inputbar.hidden = self.useSwiftUIInputBar;
     /*self.bottomFill = [UIView new];
     self.bottomFill.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomFill.backgroundColor = AppBackgroundClrDarker;
@@ -1058,6 +1082,15 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     ]];*/
     [self setupBottomFillBlur];
 }
+
+- (UIView *)pp_activeChatInputBarViewForLayout
+{
+    if (self.useSwiftUIInputBar && self.swiftUIInputVC) {
+        return self.swiftUIInputVC.view;
+    }
+    return self.inputbar;
+}
+
 - (void)scrollToBottomButtonTapped
 {
     [self scrollToBottomAnimated:YES];
@@ -1134,7 +1167,9 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
     [NSLayoutConstraint activateConstraints:@[
         [btn.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:-0],
-        [btn.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-12],
+        [btn.bottomAnchor
+         constraintEqualToAnchor:[self pp_activeChatInputBarViewForLayout].topAnchor
+         constant:-12],
         [btn.widthAnchor constraintEqualToConstant:38],
         [btn.heightAnchor constraintEqualToConstant:38],
     ]];
@@ -1275,6 +1310,41 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 - (void)inputBarDidCancelReply:(PPChatInputBarView *)bar
 {
     [self pp_clearPendingReplyAnimated:YES];
+}
+
+#pragma mark - PPNovaSwiftUIChatBarViewControllerDelegate
+
+- (void)swiftUIChatBarDidSendText:(NSString *)text {
+    [self sendChatMessageText:text];
+}
+
+- (void)swiftUIChatBarDidTapCamera {
+    [self presentSourcePickerForMediaType:UTTypeImage.identifier];
+}
+
+- (void)swiftUIChatBarDidTapVideo {
+    [self presentSourcePickerForMediaType:UTTypeMovie.identifier];
+}
+
+- (void)swiftUIChatBarDidTapContact {
+    [self presentSourcePickerForMediaType:UTTypeImage.identifier];
+}
+
+- (void)swiftUIChatBarDidChangeText:(NSString *)text {
+    [self.typingController userDidType];
+}
+
+- (void)swiftUIChatBarDidSendAudioWithURL:(NSURL *)audioURL duration:(double)duration {
+    if (self.previewPlayer.isPlaying) {
+        [self.previewPlayer stop];
+        self.previewPlayer.currentTime = 0;
+    }
+    self.currentRecordingURL = audioURL;
+    self.swiftUIRecordingDuration = duration > 0.0 ? duration : 0.0;
+    self.recordingStartDate =
+        [NSDate dateWithTimeIntervalSinceNow:-self.swiftUIRecordingDuration];
+    self.didFinishRecordingOnce = NO;
+    [self finishVoiceRecordingAndSend];
 }
 
 #pragma mark - Message Reply
@@ -1718,6 +1788,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
     NSLog(@"🔊 Starting voice recording...");
     self.recordingState = PPVoiceRecordingStateRecording;
+    self.swiftUIRecordingDuration = 0.0;
     self.recordingStartDate = [NSDate date];
     NSLog(@"🕒 Recording start time: %@", self.recordingStartDate);
 
@@ -1811,15 +1882,16 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
 - (void)finishVoiceRecordingAndSend
 {
-    
+    if (!self.currentRecordingURL) {
+        self.swiftUIRecordingDuration = 0.0;
+        return;
+    }
+
     if (self.didFinishRecordingOnce) {
         NSLog(@"⛔️ [SEND] Ignored duplicate send");
         return;
     }
     self.didFinishRecordingOnce = YES;
-    
-    
-    if (!self.currentRecordingURL) return;
 
     [self stopAllRecordingUpdates];
 
@@ -1828,13 +1900,20 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     self.audioRecorder = nil;
     self.recordingState = PPVoiceRecordingStateIdle;
 
-    NSTimeInterval duration =
-        [[NSDate date] timeIntervalSinceDate:self.recordingStartDate];
+    NSTimeInterval duration = self.swiftUIRecordingDuration > 0.0
+        ? self.swiftUIRecordingDuration
+        : [[NSDate date] timeIntervalSinceDate:self.recordingStartDate];
+    self.swiftUIRecordingDuration = 0.0;
 
     // ✅ 1. Build message model
     ChatMessageModel *msg = [ChatMessageModel new];
     msg.ID = [GM cleanID];
     if (![self pp_applyOutgoingIdentityToMessage:msg]) {
+        if (self.currentRecordingURL.isFileURL) {
+            [[NSFileManager defaultManager] removeItemAtURL:self.currentRecordingURL
+                                                       error:nil];
+        }
+        self.currentRecordingURL = nil;
         self.didFinishRecordingOnce = NO;
         return;
     }
@@ -2244,6 +2323,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     }
 
     self.currentRecordingURL = nil;
+    self.swiftUIRecordingDuration = 0.0;
     [self.inputbar.recordingBar setRecordingState:PPRecordingBarStateHidden animated:YES];
 }
 
@@ -2415,6 +2495,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
                         [strongSelf handleSendFailureForMessage:msg
                                                           error:sendError
                                                     retryAction:^{
+                            msg.fileURL = localURL.absoluteString;
                             [strongSelf uploadAudioMessage:msg];
                         }];
                         return;
@@ -2423,6 +2504,14 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
                     msg.isLocalPending = NO;
                     msg.status = ChatMessageStatusSent;
                     [strongSelf updateMessageStatus:msg];
+
+                    if (localURL.isFileURL) {
+                        [[NSFileManager defaultManager] removeItemAtURL:localURL
+                                                                   error:nil];
+                    }
+                    if ([strongSelf.currentRecordingURL isEqual:localURL]) {
+                        strongSelf.currentRecordingURL = nil;
+                    }
 
                     NSInteger row = [strongSelf.messages indexOfObject:msg];
                     if (row == NSNotFound) return;
@@ -3499,6 +3588,48 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
 // Observe messages, but only if threadID exists
 
+- (CGFloat)pp_activeComposerOcclusionHeight
+{
+    UIView *composer = [self pp_activeChatInputBarViewForLayout];
+    if (!composer || !composer.superview || composer.hidden || CGRectIsEmpty(composer.bounds)) {
+        return self.baseTableInsets.bottom;
+    }
+
+    CGRect composerFrame = [composer.superview convertRect:composer.frame toView:self.view];
+    CGFloat occlusion = CGRectGetHeight(self.view.bounds) - CGRectGetMinY(composerFrame);
+    return MAX(self.baseTableInsets.bottom, ceil(MAX(0.0, occlusion)));
+}
+
+- (void)pp_applyTableViewBottomInsetForActiveComposer
+{
+    if (!self.tableView) return;
+
+    CGFloat bottomInset = [self pp_activeComposerOcclusionHeight];
+    UIEdgeInsets contentInset = self.tableView.contentInset;
+    UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
+
+    if (fabs(contentInset.bottom - bottomInset) > 0.5) {
+        contentInset.bottom = bottomInset;
+        self.tableView.contentInset = contentInset;
+    }
+    if (fabs(indicatorInset.bottom - bottomInset) > 0.5) {
+        indicatorInset.bottom = bottomInset;
+        self.tableView.scrollIndicatorInsets = indicatorInset;
+    }
+}
+
+- (void)pp_scrollTableViewToBottomWithoutAnimation
+{
+    if (!self.tableView || self.tableView.bounds.size.height <= 0.0) return;
+
+    UIEdgeInsets insets = self.tableView.adjustedContentInset;
+    CGFloat minOffsetY = -insets.top;
+    CGFloat targetY = self.tableView.contentSize.height
+        - self.tableView.bounds.size.height
+        + insets.bottom;
+    targetY = MAX(minOffsetY, targetY);
+    [self.tableView setContentOffset:CGPointMake(0.0, targetY) animated:NO];
+}
 
 - (void)scrollToBottomAnimated:(BOOL)animated
 {
@@ -3507,6 +3638,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
         [self.view layoutIfNeeded];
         [self.tableView layoutIfNeeded];
+        [self pp_applyTableViewBottomInsetForActiveComposer];
 
         if (self.tableView.bounds.size.height <= 0) {
             self.pendingBottomScrollAfterLayout = YES;
@@ -3514,15 +3646,17 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         }
 
         void (^applyBottomOffset)(BOOL) = ^(BOOL animatedOffset) {
+            if (!animatedOffset) {
+                [self pp_scrollTableViewToBottomWithoutAnimation];
+                return;
+            }
             UIEdgeInsets insets = self.tableView.adjustedContentInset;
             CGFloat minOffsetY = -insets.top;
-            CGFloat targetY =
-                self.tableView.contentSize.height
+            CGFloat targetY = self.tableView.contentSize.height
                 - self.tableView.bounds.size.height
                 + insets.bottom;
             targetY = MAX(minOffsetY, targetY);
-            [self.tableView setContentOffset:CGPointMake(0, targetY)
-                                    animated:animatedOffset];
+            [self.tableView setContentOffset:CGPointMake(0.0, targetY) animated:YES];
         };
 
         applyBottomOffset(animated);
@@ -4993,7 +5127,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     manager.enableAutoToolbar = NO;
     
     [self.view bringSubviewToFront:self.typingIndicatorView];
-    [self.view bringSubviewToFront:self.inputbar];
+        [self.view bringSubviewToFront:[self pp_activeChatInputBarViewForLayout]];
     [self pp_updateChatEmptyStateAnimated:NO];
      
     
@@ -5111,6 +5245,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         ? self.view.bounds.size.width
         : UIScreen.mainScreen.bounds.size.width;
     CGFloat targetMaxWidth = MAX(160.0, baseWidth * 0.72);
+    [self pp_applyTableViewBottomInsetForActiveComposer];
     BOOL shouldKeepBottomPinned =
         self.isViewVisible && self.didFinishInitialLoad && [self isNearBottom];
 
@@ -5660,18 +5795,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     if (self.keyboardObserversAdded) return;
     self.keyboardObserversAdded = YES;
 
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(handleKeyboardWillShow:)
-                                                 name:UIKeyboardWillShowNotification
-                                               object:nil];
-
-    [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(handleKeyboardWillHide:)
-                                                 name:UIKeyboardWillHideNotification
-                                               object:nil];
-
-   
-    
+    // Will-change-frame covers both presentation and dismissal. Observing the
+    // show/hide notifications as well produces duplicate inset/scroll passes.
     [[NSNotificationCenter defaultCenter]
      addObserver:self
      selector:@selector(handleKeyboardNotification:)
@@ -5682,19 +5807,15 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)unregisterKeyboardNotifications {
     if (!self.keyboardObserversAdded) return;
     self.keyboardObserversAdded = NO;
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillChangeFrameNotification object:nil];
 }
 
 - (void)handleKeyboardWillShow:(NSNotification *)note {
-    [self handleKeyboardNotification:note];
     self.isKeyboardVisible = YES;
+    [self handleKeyboardNotification:note];
 }
 
 - (void)handleKeyboardWillHide:(NSNotification *)note {
-    self.isKeyboardVisible = NO;
-    self.currentKeyboardHeight = 0;
     [self handleKeyboardNotification:note];
 }
  
@@ -5706,6 +5827,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)handleKeyboardNotification:(NSNotification *)note
 {
+    if (!self.isViewLoaded || !self.tableView) return;
+
     NSDictionary *info = note.userInfo;
 
     CGRect endFrame =
@@ -5717,37 +5840,53 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     UIViewAnimationCurve curve =
         [info[UIKeyboardAnimationCurveUserInfoKey] integerValue];
 
-    CGRect keyboardFrameInView =
-        [self.view convertRect:endFrame fromView:nil];
-
-    CGFloat rawKeyboardHeight =
-        MAX(0, self.view.bounds.size.height - keyboardFrameInView.origin.y);
+    CGRect keyboardFrameInView = [self.view convertRect:endFrame fromView:nil];
+    CGRect keyboardIntersection = CGRectIntersection(self.view.bounds, keyboardFrameInView);
+    CGFloat rawKeyboardHeight = CGRectIsNull(keyboardIntersection)
+        ? 0.0
+        : MAX(0.0, CGRectGetHeight(keyboardIntersection));
 
     // ✅ IMPORTANT: subtract safe-area only
     CGFloat keyboardHeight =
         MAX(0, rawKeyboardHeight - self.view.safeAreaInsets.bottom);
 
-   // BOOL keyboardVisible = keyboardHeight > 0;
+    BOOL shouldKeepBottomPinned = [self isNearBottom];
+    CGFloat previousOffsetY = self.tableView.contentOffset.y;
+    self.currentKeyboardHeight = rawKeyboardHeight;
+    self.isKeyboardVisible = rawKeyboardHeight > 0.5;
 
-    // 🔹 Move input bar ONLY
+    // Keep both composer implementations in the same coordinate system.
     self.inputBarBottomConstraint.constant = -keyboardHeight;
+    CGFloat swiftUIBottom = (rawKeyboardHeight > 0) ? (-rawKeyboardHeight - 8.0) : -8.0;
+    self.swiftUIInputBarBottomConstraint.constant = swiftUIBottom;
 
-    // 🔹 Table inset = ONLY input bar height
- 
-    BOOL shouldStick = [self isNearBottom];
+    UIViewAnimationOptions options =
+        UIViewAnimationOptionBeginFromCurrentState |
+        UIViewAnimationOptionAllowUserInteraction |
+        (UIViewAnimationOptions)(curve << 16);
 
     [UIView animateWithDuration:duration
                           delay:0
-                        options:(curve << 16) | UIViewAnimationOptionBeginFromCurrentState
+                        options:options
                      animations:^{
- 
         [self.view layoutIfNeeded];
+        [self pp_applyTableViewBottomInsetForActiveComposer];
 
-        if (shouldStick) {
-            [self scrollToBottomAnimated:NO];
+        if (shouldKeepBottomPinned) {
+            [self pp_scrollTableViewToBottomWithoutAnimation];
+        } else {
+            UIEdgeInsets insets = self.tableView.adjustedContentInset;
+            CGFloat minOffsetY = -insets.top;
+            CGFloat maxOffsetY = MAX(minOffsetY,
+                                     self.tableView.contentSize.height - self.tableView.bounds.size.height + insets.bottom);
+            CGFloat preservedOffsetY = MIN(MAX(previousOffsetY, minOffsetY), maxOffsetY);
+            [self.tableView setContentOffset:CGPointMake(0.0, preservedOffsetY) animated:NO];
         }
-
-    } completion:nil];
+    } completion:^(__unused BOOL finished) {
+        if (shouldKeepBottomPinned) {
+            [self pp_scrollTableViewToBottomWithoutAnimation];
+        }
+    }];
 }
 
 

@@ -571,7 +571,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     UIView *iconHalo = [[UIView alloc] init];
     iconHalo.translatesAutoresizingMaskIntoConstraints = NO;
     iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
-    iconHalo.layer.cornerRadius = 32.0;
+    iconHalo.layer.cornerRadius = 28.0;
     iconHalo.layer.borderWidth = 1.0;
     [iconHalo pp_setBorderColor:PPPetsCardOverlay(0.48)];
     [iconHalo pp_setShadowColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.30]];
@@ -585,15 +585,15 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     symbolView.contentMode = UIViewContentModeScaleAspectFit;
     symbolView.tintColor = PPPetsUIBrandColor();
     symbolView.backgroundColor = PPPetsCardOverlay(0.66);
-    symbolView.layer.cornerRadius = 26.0;
+    symbolView.layer.cornerRadius = 22.0;
     symbolView.layer.masksToBounds = YES;
     [iconHalo addSubview:symbolView];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     titleLabel.textColor = AppPrimaryTextClr;
-    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     titleLabel.numberOfLines = 2;
     [cardView addSubview:titleLabel];
 
@@ -601,7 +601,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
     subtitleLabel.textColor = PPPetsUISecondaryTextColor();
-    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     subtitleLabel.numberOfLines = 2;
     [cardView addSubview:subtitleLabel];
 
@@ -609,7 +609,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
-    metaLabel.textAlignment = NSTextAlignmentCenter;
+    metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
     metaLabel.numberOfLines = 2;
     metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
@@ -657,7 +657,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         [accentBar.widthAnchor constraintEqualToConstant:44.0],
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:10.0],
+        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:8.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
         [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
@@ -667,30 +667,29 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
 
-        [iconHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [iconHalo.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [iconHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
-        [iconHalo.widthAnchor constraintEqualToConstant:64.0],
-        [iconHalo.heightAnchor constraintEqualToConstant:64.0],
+        [iconHalo.widthAnchor constraintEqualToConstant:56.0],
+        [iconHalo.heightAnchor constraintEqualToConstant:56.0],
 
         [symbolView.centerXAnchor constraintEqualToAnchor:iconHalo.centerXAnchor],
         [symbolView.centerYAnchor constraintEqualToAnchor:iconHalo.centerYAnchor],
-        [symbolView.widthAnchor constraintEqualToConstant:52.0],
-        [symbolView.heightAnchor constraintEqualToConstant:52.0],
+        [symbolView.widthAnchor constraintEqualToConstant:44.0],
+        [symbolView.heightAnchor constraintEqualToConstant:44.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.bottomAnchor constant:12.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.topAnchor constant:0.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconHalo.trailingAnchor constant:14.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
-        [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
-        [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
+        [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
 
-        [primaryButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:14.0],
+        [primaryButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:12.0],
         [primaryButton.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [primaryButton.trailingAnchor constraintEqualToAnchor:cardView.centerXAnchor constant:-6.0],
         [primaryButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-16.0],
@@ -757,7 +756,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
             : (kLang(@"pet_profiles_empty_title") ?: @"No pet profiles yet");
     }
 
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:28.0 weight:UIImageSymbolWeightMedium];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:24.0 weight:UIImageSymbolWeightMedium];
     NSString *symbolName = nextReminder.enabled ? @"bell.badge.fill" : @"bell.fill";
     self.headerSymbolView.image = [UIImage systemImageNamed:symbolName withConfiguration:config];
     self.headerSymbolView.contentMode = UIViewContentModeCenter;

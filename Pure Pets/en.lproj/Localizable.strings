@@ -2137,6 +2137,7 @@
 "image_gallery_accessibility_label" = "Images";
 "image_gallery_page_format" = "Image %ld of %ld";
 "image_gallery_swipe_hint" = "Swipe to browse images.";
+"image_gallery_thumbnail_hint" = "Double-tap to select this image.";
 "image_gallery_open_hint" = "Double-tap to view full screen.";
 "image_gallery_empty" = "No image available";
 "service_view_contact_loading" = "Contact data is still loading. Please try again.";
@@ -2279,6 +2280,11 @@
 "order_tracking_title" = "Order timeline";
 "order_tracking_empty" = "No tracking updates yet";
 "order_tracking_empty_subtitle" = "Your next payment, fulfillment, or delivery update will appear here.";
+"order_tracking_toggle_accessibility_label" = "Order timeline";
+"order_tracking_toggle_accessibility_hint" = "Expands or collapses the order progress timeline.";
+"order_tracking_toggle_expanded" = "Expanded";
+"order_tracking_toggle_collapsed" = "Collapsed";
+"order_item_accessibility_hint" = "Double tap to view item details.";
 "order_timeline_created_title" = "Order placed";
 "order_timeline_paid_title" = "Payment confirmed";
 "order_timeline_processing_title" = "Order processing";
@@ -3472,3 +3478,33 @@
 "quick_access_lang_en_toast" = "Language changed to English";
 "quick_access_notifications_toast" = "Opening Notification Settings...";
 "quick_access_location_toast" = "Opening Location Settings...";
+
+/* Voice Recording & Assistant */
+"voice_resume" = "Resume";
+"voice_pause" = "Pause";
+"voice_preview" = "Preview";
+"voice_slide_to_cancel" = "Slide to cancel";
+"voice_preparing" = "Preparing microphone";
+"voice_slide_up_to_lock" = "Slide up to lock";
+"voice_release_to_cancel" = "Release to cancel";
+"voice_discard" = "Discard recording";
+"voice_play" = "Play recording";
+"voice_send" = "Send voice message";
+"voice_preview_progress" = "Recording preview progress";
+"voice_open_settings" = "Open microphone settings";
+"voice_retry" = "Try recording again";
+"voice_dismiss" = "Dismiss";
+"voice_record_action" = "Record voice message";
+"voice_record_hint" = "Tap for hands-free recording, or hold and slide to cancel or lock.";
+"voice_recording" = "Recording";
+"voice_locked_status" = "Recording locked";
+"voice_paused_status" = "Recording paused";
+"voice_preview_ready" = "Recording ready to preview";
+"voice_recording_cancelled" = "Recording discarded";
+"voice_microphone_permission" = "Microphone access is required to record.";
+"voice_recording_too_short" = "Keep recording a little longer.";
+"voice_recording_interrupted" = "Recording was interrupted. Try again.";
+"voice_recording_failed" = "Couldn’t record. Try again.";
+"nova_voice_unavailable" = "Voice messages are not supported by the AI Assistant";
+"chat_input_placeholder" = "Type a message...";
+"chat_send_message" = "Send message";

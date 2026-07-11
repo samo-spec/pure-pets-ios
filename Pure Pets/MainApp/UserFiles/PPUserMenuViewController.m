@@ -19,6 +19,7 @@
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <UserNotifications/UserNotifications.h>
 #import "PPHUD.h"
+#import "PPHeroGlassBackgroundView.h"
 
 typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionProfile = 0,
@@ -607,12 +608,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) NSArray<PPUserMenuSection *> *sections;
 @property (nonatomic, strong) UIView *headerRootView;
 @property (nonatomic, strong) UIView *headerCardView;
-@property (nonatomic, strong) UIView *headerMaterialView;
-@property (nonatomic, strong) CAGradientLayer *headerGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *headerDepthLayer;
-@property (nonatomic, strong) CAShapeLayer *headerConstellationLayer;
-@property (nonatomic, strong) NSArray<CAShapeLayer *> *headerDotLayers;
-@property (nonatomic, strong) UIView *headerAccentView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *headerBackgroundView;
 @property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -731,62 +727,16 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 - (void)pp_applyHeaderMaterialPalette
 {
     UIColor *brand = PPUserMenuHeroAccentColor();
-    BOOL darkMode = PPUserMenuHeroIsDark(self.traitCollection);
     self.view.backgroundColor = PPUserMenuCanvasColor();
 
-    UIColor *surfaceBase = PPUserMenuMarketplaceHeroSurfaceBaseColor(self.traitCollection);
-    UIColor *surfaceHighlight = PPUserMenuMarketplaceHeroSurfaceHighlightColor(surfaceBase,
-                                                                               darkMode,
-                                                                               self.traitCollection);
-    UIColor *backgroundAccent = PPUserMenuMarketplaceHeroBackgroundAccentColor(brand,
-                                                                               surfaceBase,
-                                                                               darkMode,
-                                                                               self.traitCollection);
-    UIColor *surfaceTint = PPUserMenuMarketplaceHeroSurfaceTintColor(surfaceBase,
-                                                                     backgroundAccent,
-                                                                     darkMode,
-                                                                     self.traitCollection);
-    UIColor *surfaceTail = PPUserMenuMarketplaceHeroSurfaceTailColor(surfaceTint,
-                                                                     backgroundAccent,
-                                                                     darkMode,
-                                                                     self.traitCollection);
-    UIColor *stroke = PPUserMenuMarketplaceHeroStrokeColor(darkMode);
+    [self.headerBackgroundView reapplyPalette];
 
     self.headerCardView.backgroundColor = UIColor.clearColor;
-    self.headerMaterialView.backgroundColor = UIColor.clearColor;
-    [self.headerCardView pp_setBorderColor:stroke];
-    [self.headerCardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    self.headerCardView.layer.shadowOpacity = 0.08f;
-    self.headerCardView.layer.shadowRadius = 20.0f;
-    self.headerCardView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-
-    self.headerGradientLayer.opacity = darkMode ? 0.90 : 0.72;
-    self.headerGradientLayer.colors = @[
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, self.traitCollection).CGColor
-    ];
-    self.headerGradientLayer.locations = @[@0.0, @0.56, @1.0];
-    self.headerGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    self.headerGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-
-    self.headerDepthLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    self.headerDepthLayer.locations = @[@0.0, @1.0];
-    self.headerDepthLayer.opacity = 1.0;
-
-    UIColor *dot = PPUserMenuHeroDotColor();
-    UIColor *dotHalo = PPUserMenuHeroDotHaloColor();
-    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
-        dotLayer.fillColor = dot.CGColor;
-        dotLayer.strokeColor = dotHalo.CGColor;
-    }
-    self.headerConstellationLayer.strokeColor = PPUserMenuHeroConstellationLineColor().CGColor;
-    self.headerConstellationLayer.opacity = darkMode ? 0.84 : 0.76;
-
-    self.headerAccentView.backgroundColor = [brand colorWithAlphaComponent:0.58];
+    [self.headerCardView pp_setBorderColor:UIColor.clearColor];
+    [self.headerCardView pp_setShadowColor:UIColor.clearColor];
+    self.headerCardView.layer.shadowOpacity = 0.0f;
+    self.headerCardView.layer.shadowRadius = 0.0f;
+    self.headerCardView.layer.shadowOffset = CGSizeZero;
 
     UIColor *quietFill = nil;
     UIColor *quietStroke = nil;
@@ -853,147 +803,26 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 
 - (void)pp_layoutHeaderMaterialLayers
 {
-    if (!self.headerCardView || CGRectIsEmpty(self.headerCardView.bounds)) {
-        return;
-    }
-
-    CGRect materialBounds = self.headerMaterialView.bounds;
-    self.headerGradientLayer.frame = materialBounds;
-    self.headerDepthLayer.frame = materialBounds;
-    CGFloat materialRadius = self.headerMaterialView.layer.cornerRadius;
-    self.headerGradientLayer.cornerRadius = materialRadius;
-    self.headerDepthLayer.cornerRadius = materialRadius;
-    [self pp_layoutHeroConstellationInBounds:materialBounds];
-    self.headerCardView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
-                                   cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
-
-    if (!CGRectIsEmpty(self.avatarFrameView.bounds)) {
+    if (self.avatarFrameView && !CGRectIsEmpty(self.avatarFrameView.bounds)) {
         self.avatarFrameView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.avatarFrameView.bounds
                                        cornerRadius:self.avatarFrameView.layer.cornerRadius].CGPath;
     }
 }
 
-- (void)pp_layoutHeroConstellationInBounds:(CGRect)bounds
-{
-    if (CGRectIsEmpty(bounds) || self.headerDotLayers.count == 0) {
-        return;
-    }
-
-    static const CGFloat centers[][2] = {
-        {0.090, 0.225}, {0.195, 0.150}, {0.355, 0.245}, {0.535, 0.135},
-        {0.815, 0.205}, {0.905, 0.405}, {0.670, 0.405}, {0.445, 0.505},
-        {0.150, 0.655}, {0.285, 0.805}, {0.510, 0.735}, {0.705, 0.805},
-        {0.885, 0.690}, {0.770, 0.555}
-    };
-    static const CGFloat sizes[] = {
-        2.6, 1.8, 2.2, 1.7, 2.8, 1.9, 2.4, 1.7, 2.1, 2.7, 1.8, 2.2, 1.7, 2.4
-    };
-    static const NSInteger connections[][2] = {
-        {0, 1}, {1, 2}, {3, 4}, {4, 5}, {6, 7}, {8, 9}, {9, 10}, {10, 11}, {11, 12}, {12, 13}
-    };
-
-    CGFloat width = CGRectGetWidth(bounds);
-    CGFloat height = CGRectGetHeight(bounds);
-    UIBezierPath *lines = [UIBezierPath bezierPath];
-
-    NSUInteger dotCount = MIN(self.headerDotLayers.count, (NSUInteger)(sizeof(sizes) / sizeof(CGFloat)));
-    for (NSUInteger index = 0; index < dotCount; index++) {
-        CGFloat x = round(width * centers[index][0]);
-        CGFloat y = round(height * centers[index][1]);
-        CGFloat size = sizes[index];
-        CGRect dotRect = CGRectMake(x - (size * 0.5), y - (size * 0.5), size, size);
-        CAShapeLayer *dotLayer = self.headerDotLayers[index];
-        dotLayer.frame = bounds;
-        dotLayer.path = [UIBezierPath bezierPathWithOvalInRect:dotRect].CGPath;
-        dotLayer.opacity = (index % 3 == 0) ? 0.92 : ((index % 3 == 1) ? 0.64 : 0.76);
-    }
-
-    NSUInteger connectionCount = (NSUInteger)(sizeof(connections) / sizeof(connections[0]));
-    for (NSUInteger index = 0; index < connectionCount; index++) {
-        NSInteger fromIndex = connections[index][0];
-        NSInteger toIndex = connections[index][1];
-        if (fromIndex >= (NSInteger)dotCount || toIndex >= (NSInteger)dotCount) {
-            continue;
-        }
-        CGPoint fromPoint = CGPointMake(round(width * centers[fromIndex][0]), round(height * centers[fromIndex][1]));
-        CGPoint toPoint = CGPointMake(round(width * centers[toIndex][0]), round(height * centers[toIndex][1]));
-        [lines moveToPoint:fromPoint];
-        [lines addLineToPoint:toPoint];
-    }
-
-    self.headerConstellationLayer.frame = bounds;
-    self.headerConstellationLayer.path = lines.CGPath;
-}
-
 - (void)pp_startHeroBackgroundMotionIfNeeded
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopHeroBackgroundMotion];
+    if (self.heroBackgroundMotionRunning) {
         return;
     }
-
-    if (self.heroBackgroundMotionRunning ||
-        !self.view.window ||
-        !self.headerConstellationLayer ||
-        CGRectIsEmpty(self.headerMaterialView.bounds)) {
-        return;
-    }
-
     self.heroBackgroundMotionRunning = YES;
-    [self.headerConstellationLayer removeAllAnimations];
-    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
-        [dotLayer removeAllAnimations];
-    }
-
-    CABasicAnimation *lineOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    lineOpacity.fromValue = @0.28;
-    lineOpacity.toValue = @0.84;
-    lineOpacity.duration = 6.8;
-    lineOpacity.autoreverses = YES;
-    lineOpacity.repeatCount = HUGE_VALF;
-    lineOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.headerConstellationLayer addAnimation:lineOpacity forKey:PPUserMenuHeroConstellationOpacityAnimationKey];
-
-    CFTimeInterval now = CACurrentMediaTime();
-    [self.headerDotLayers enumerateObjectsUsingBlock:^(CAShapeLayer *dotLayer, NSUInteger index, BOOL *stop) {
-        CGFloat baseOpacity = dotLayer.opacity;
-        CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-        scale.fromValue = @0.82;
-        scale.toValue = @1.34;
-
-        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        opacity.fromValue = @(MAX(0.24, baseOpacity * 0.58));
-        opacity.toValue = @(MIN(1.0, baseOpacity + 0.16));
-
-        CABasicAnimation *driftY = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        driftY.fromValue = @(((NSInteger)index % 2 == 0) ? -0.7 : 0.5);
-        driftY.toValue = @(((NSInteger)index % 2 == 0) ? 0.9 : -0.8);
-
-        CABasicAnimation *driftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        driftX.fromValue = @(((NSInteger)index % 3 == 0) ? -0.45 : 0.25);
-        driftX.toValue = @(((NSInteger)index % 3 == 0) ? 0.35 : -0.30);
-
-        CAAnimationGroup *group = [CAAnimationGroup animation];
-        group.animations = @[scale, opacity, driftY, driftX];
-        group.duration = 4.8 + ((index % 5) * 0.42);
-        group.beginTime = now + (index * 0.115);
-        group.autoreverses = YES;
-        group.repeatCount = HUGE_VALF;
-        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        group.removedOnCompletion = YES;
-        [dotLayer addAnimation:group forKey:PPUserMenuHeroDotPulseAnimationKey];
-    }];
+    [self.headerBackgroundView startAnimations];
 }
 
 - (void)pp_stopHeroBackgroundMotion
 {
     self.heroBackgroundMotionRunning = NO;
-    [self.headerConstellationLayer removeAnimationForKey:PPUserMenuHeroConstellationOpacityAnimationKey];
-    for (CAShapeLayer *dotLayer in self.headerDotLayers) {
-        [dotLayer removeAnimationForKey:PPUserMenuHeroDotPulseAnimationKey];
-    }
+    [self.headerBackgroundView stopAnimations];
 }
 
 - (void)pp_buildHeader
@@ -1005,68 +834,14 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     UIView *card = [UIView new];
     card.translatesAutoresizingMaskIntoConstraints = NO;
     card.backgroundColor = UIColor.clearColor;
-    card.layer.borderWidth = 1.0;
-    [card pp_setBorderColor:PPUserMenuMarketplaceHeroStrokeColor(NO)];
-    PPApplyContinuousCorners(card, PPCornerHero - 6.0);
-    PPApplyElevatedShadow(card);
-    card.layer.shadowOpacity = 0.08f;
-    card.layer.shadowRadius = 20.0f;
-    card.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     card.accessibilityIdentifier = @"profile_menu_hero_card";
     [root addSubview:card];
     self.headerCardView = card;
 
-    UIView *material = [UIView new];
-    material.translatesAutoresizingMaskIntoConstraints = NO;
-    material.userInteractionEnabled = NO;
-    material.clipsToBounds = YES;
-    material.backgroundColor = UIColor.clearColor;
-    PPApplyContinuousCorners(material, PPCornerHero - 6.0);
-    [card addSubview:material];
-    self.headerMaterialView = material;
-
-    CAGradientLayer *gradient = [CAGradientLayer layer];
-    gradient.drawsAsynchronously = YES;
-    gradient.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    gradient.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-    [material.layer insertSublayer:gradient atIndex:0];
-    self.headerGradientLayer = gradient;
-
-    CAGradientLayer *depth = [CAGradientLayer layer];
-    depth.drawsAsynchronously = YES;
-    depth.startPoint = CGPointMake(0.0, 0.0);
-    depth.endPoint = CGPointMake(1.0, 1.0);
-    [material.layer insertSublayer:depth above:gradient];
-    self.headerDepthLayer = depth;
-
-    CAShapeLayer *constellation = [CAShapeLayer layer];
-    constellation.fillColor = UIColor.clearColor.CGColor;
-    constellation.lineWidth = 0.7;
-    constellation.lineCap = kCALineCapRound;
-    constellation.lineJoin = kCALineJoinRound;
-    [material.layer insertSublayer:constellation above:depth];
-    self.headerConstellationLayer = constellation;
-
-    NSMutableArray<CAShapeLayer *> *dotLayers = [NSMutableArray arrayWithCapacity:14];
-    for (NSInteger index = 0; index < 14; index++) {
-        CAShapeLayer *dot = [CAShapeLayer layer];
-        dot.lineWidth = 0.75;
-        dot.opacity = 0.0;
-        [material.layer insertSublayer:dot above:constellation];
-        [dotLayers addObject:dot];
-    }
-    self.headerDotLayers = dotLayers.copy;
-
-    UIView *accent = [UIView new];
-    accent.translatesAutoresizingMaskIntoConstraints = NO;
-    accent.userInteractionEnabled = NO;
-    accent.layer.cornerRadius = 2.0;
-    accent.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        accent.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [card addSubview:accent];
-    self.headerAccentView = accent;
+    PPHeroGlassBackgroundView *bg = [PPHeroGlassBackgroundView new];
+    bg.translatesAutoresizingMaskIntoConstraints = NO;
+    [card insertSubview:bg atIndex:0];
+    self.headerBackgroundView = bg;
 
     PPInsetLabel *statusPill = [PPInsetLabel new];
     statusPill.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1179,15 +954,10 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [card.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-PPScreenMargin],
         [card.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-14.0],
 
-        [material.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [material.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
-        [material.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
-        [material.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
-
-        [accent.topAnchor constraintEqualToAnchor:card.topAnchor],
-        [accent.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:38.0],
-        [accent.widthAnchor constraintEqualToConstant:44.0],
-        [accent.heightAnchor constraintEqualToConstant:4.0],
+        [bg.topAnchor constraintEqualToAnchor:card.topAnchor],
+        [bg.leadingAnchor constraintEqualToAnchor:card.leadingAnchor],
+        [bg.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
+        [bg.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
 
         [statusPill.topAnchor constraintEqualToAnchor:card.topAnchor constant:22.0],
         [statusPill.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
@@ -1263,6 +1033,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 
 - (NSArray<PPUserMenuItem *> *)pp_buildQuickAccessItems
 {
+    
     NSMutableArray<PPUserMenuItem *> *items = [NSMutableArray array];
 
     // Detect current theme
@@ -1328,6 +1099,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
                                       destructive:NO]];
 
     return items.copy;
+    
 }
 
 - (PPUserMenuSection *)pp_buildQuickAccessSection

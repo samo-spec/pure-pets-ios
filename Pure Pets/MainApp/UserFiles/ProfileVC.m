@@ -308,7 +308,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.headerRoot.frame = frame;
     self.tableView.tableHeaderView = self.headerRoot;
     [self pp_layoutProfileHeroMarketplaceMaterial];
-    [Styling addLiquidGlassBorderToView:self.avatarIMV cornerRadius:54.0];
+    [Styling addLiquidGlassBorderToView:self.avatarIMV cornerRadius:40.0];
     
 }
 
@@ -861,7 +861,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     UIView *avatarHalo = [[UIView alloc] init];
     avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
     avatarHalo.backgroundColor = [brandColor colorWithAlphaComponent:0.12];
-    avatarHalo.layer.cornerRadius = 62.0;
+    avatarHalo.layer.cornerRadius = 46.0;
     avatarHalo.layer.borderWidth = 0.0;
     UIColor *avatarHaloBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.48 * 0.18 : 0.48;
@@ -886,7 +886,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
         avatarView.imageView.image =
         [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:72];
     }
-    avatarView.layer.cornerRadius = 54.0;
+    avatarView.layer.cornerRadius = 40.0;
     avatarView.layer.masksToBounds = YES;
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapAddPhoto)];
@@ -896,9 +896,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
+    nameLabel.font = [GM boldFontWithSize:25.0] ?: [UIFont systemFontOfSize:25.0 weight:UIFontWeightBold];
     nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    nameLabel.textAlignment = NSTextAlignmentCenter;
+    nameLabel.textAlignment = Language.alignmentForCurrentLanguage;
     nameLabel.numberOfLines = 2;
     [cardView addSubview:nameLabel];
 
@@ -906,7 +906,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     handleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     handleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
     handleLabel.textColor = [UIColor secondaryLabelColor];
-    handleLabel.textAlignment = NSTextAlignmentCenter;
+    handleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     handleLabel.numberOfLines = 1;
     handleLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [cardView addSubview:handleLabel];
@@ -915,7 +915,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     metaLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
-    metaLabel.textAlignment = NSTextAlignmentCenter;
+    metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
     metaLabel.numberOfLines = 2;
     metaLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.78 * 0.18 : 0.78;
@@ -935,7 +935,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     [editBadge setImage:[[UIImage systemImageNamed:@"pencil" withConfiguration:pencilConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
     editBadge.tintColor = UIColor.whiteColor;
     editBadge.backgroundColor = brandColor;
-    editBadge.layer.cornerRadius = 16.0;
+    editBadge.layer.cornerRadius = 14.0;
     editBadge.layer.borderWidth = 2.5;
     [editBadge pp_setBorderColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -977,44 +977,44 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [accentBar.widthAnchor constraintEqualToConstant:44.0],
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
+        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:12.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
 
-        [avatarHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:20.0],
-        [avatarHalo.widthAnchor constraintEqualToConstant:124.0],
-        [avatarHalo.heightAnchor constraintEqualToConstant:124.0],
+        [avatarHalo.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:14.0],
+        [avatarHalo.widthAnchor constraintEqualToConstant:92.0],
+        [avatarHalo.heightAnchor constraintEqualToConstant:92.0],
 
         [avatarView.centerXAnchor constraintEqualToAnchor:avatarHalo.centerXAnchor],
         [avatarView.centerYAnchor constraintEqualToAnchor:avatarHalo.centerYAnchor],
-        [avatarView.widthAnchor constraintEqualToConstant:108.0],
-        [avatarView.heightAnchor constraintEqualToConstant:108.0],
+        [avatarView.widthAnchor constraintEqualToConstant:80.0],
+        [avatarView.heightAnchor constraintEqualToConstant:80.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:12.0],
-        [nameLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:avatarHalo.topAnchor constant:2.0],
+        [nameLabel.leadingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:16.0],
         [nameLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
-        [handleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:8.0],
+        [handleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:6.0],
         [handleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
         [handleLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:8],
-        [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
-        [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:8.0],
+        [metaLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
+        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
+        [avatarHalo.bottomAnchor constraintLessThanOrEqualToAnchor:cardView.bottomAnchor constant:-18.0],
 
-        [editBadge.widthAnchor constraintEqualToConstant:32.0],
-        [editBadge.heightAnchor constraintEqualToConstant:32.0],
-        [editBadge.trailingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:-2.0],
-        [editBadge.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-2.0],
+        [editBadge.widthAnchor constraintEqualToConstant:28.0],
+        [editBadge.heightAnchor constraintEqualToConstant:28.0],
+        [editBadge.trailingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:-1.0],
+        [editBadge.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-1.0],
     ]];
 
     self.headerCardView = cardView;

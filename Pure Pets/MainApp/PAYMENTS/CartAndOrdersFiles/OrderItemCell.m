@@ -11,108 +11,152 @@
 #import "GM.h" // assuming you use GM for image loading
 #import "PPChatsFunc.h"
 
+@interface OrderItemCell ()
+@property (nonatomic, strong) UIView *surfaceView;
+@end
+
 @implementation OrderItemCell
 
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        [self setupViews];
-    }
+    if (self) [self setupViews];
     return self;
 }
 
-- (void)setupViews {
+- (void)setupViews
+{
     self.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    // RTL/LTR — leading/trailing anchors auto-flip with semantic attribute
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = self.semanticContentAttribute;
 
-    _itemImageView = [[UIImageView alloc] init];
+    self.surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.88 : 0.98];
+    PPApplyContinuousCorners(self.surfaceView, PPCornerCard);
+    self.surfaceView.layer.borderWidth = 1.0;
+    [self.surfaceView pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.055]];
+    [self.contentView addSubview:self.surfaceView];
+
+    _itemImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
     _itemImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _itemImageView.contentMode = UIViewContentModeScaleAspectFill;
-    _itemImageView.layer.cornerRadius = 8;
+    PPApplyContinuousCorners(_itemImageView, PPCornerMedium);
     _itemImageView.clipsToBounds = YES;
-    [self.contentView addSubview:_itemImageView];
+    _itemImageView.accessibilityElementsHidden = YES;
+    [self.surfaceView addSubview:_itemImageView];
 
-    _nameLabel = [[UILabel alloc] init];
+    _nameLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _nameLabel.font = [GM boldFontWithSize:16];
-    _nameLabel.textColor = GM.PrimaryTextColor;
+    _nameLabel.font = [GM boldFontWithSize:PPFontHeadline];
+    _nameLabel.textColor = UIColor.labelColor;
     _nameLabel.textAlignment = NSTextAlignmentNatural;
-    [self.contentView addSubview:_nameLabel];
+    _nameLabel.numberOfLines = 2;
+    _nameLabel.adjustsFontForContentSizeCategory = YES;
+    [_nameLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self.surfaceView addSubview:_nameLabel];
 
-    _quantityLabel = [[UILabel alloc] init];
+    _quantityLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _quantityLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _quantityLabel.font = [GM MidFontWithSize:14];
-    _quantityLabel.textColor = GM.SecondaryTextColor;
+    _quantityLabel.font = [GM MidFontWithSize:PPFontFootnote];
+    _quantityLabel.textColor = UIColor.secondaryLabelColor;
     _quantityLabel.textAlignment = NSTextAlignmentNatural;
-    [self.contentView addSubview:_quantityLabel];
+    _quantityLabel.adjustsFontForContentSizeCategory = YES;
+    [self.surfaceView addSubview:_quantityLabel];
 
-    _priceLabel = [[UILabel alloc] init];
+    _priceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _priceLabel.font = [GM MidFontWithSize:14];
-    _priceLabel.textColor = GM.SecondaryTextColor;
-    [self.contentView addSubview:_priceLabel];
-
-    // ── Auto Layout (RTL-safe via leading/trailing — no manual branching) ──
-    CGFloat padding = 16.0;
-    CGFloat imageSize = 60.0;
-
-    [NSLayoutConstraint activateConstraints:@[
-        // Image: fixed size, leading edge, vertically padded
-        [_itemImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
-        [_itemImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10],
-        [_itemImageView.widthAnchor constraintEqualToConstant:imageSize],
-        [_itemImageView.heightAnchor constraintEqualToConstant:imageSize],
-        [_itemImageView.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-10],
-
-        // Name: top row, spans from image trailing to cell trailing
-        [_nameLabel.leadingAnchor constraintEqualToAnchor:_itemImageView.trailingAnchor constant:padding],
-        [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [_nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10],
-
-        // Quantity: second row leading, below name
-        [_quantityLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
-        [_quantityLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor constant:4],
-
-        // Price: second row trailing, vertically centered with quantity
-        // Uses >= spacing so labels never overlap on narrow screens (iPhone SE fix)
-        [_priceLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
-        [_priceLabel.centerYAnchor constraintEqualToAnchor:_quantityLabel.centerYAnchor],
-        [_priceLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:_quantityLabel.trailingAnchor constant:8],
-    ]];
-
-    // Price must never truncate; quantity compresses gracefully on narrow screens
+    _priceLabel.font = [GM boldFontWithSize:PPFontCallout];
+    _priceLabel.textColor = [GM appPrimaryColor];
+    _priceLabel.textAlignment = NSTextAlignmentNatural;
+    _priceLabel.adjustsFontForContentSizeCategory = YES;
     [_priceLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_priceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [_quantityLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.surfaceView addSubview:_priceLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPScreenMargin],
+        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPScreenMargin],
+        [self.surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPSpaceXS],
+        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPSpaceXS],
+
+        [_itemImageView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceMD],
+        [_itemImageView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceMD],
+        [_itemImageView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-PPSpaceMD],
+        [_itemImageView.widthAnchor constraintEqualToConstant:68.0],
+        [_itemImageView.heightAnchor constraintEqualToConstant:68.0],
+
+        [_nameLabel.leadingAnchor constraintEqualToAnchor:_itemImageView.trailingAnchor constant:PPSpaceMD],
+        [_nameLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceMD],
+        [_nameLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:14.0],
+
+        [_quantityLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
+        [_quantityLabel.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
+        [_quantityLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_priceLabel.leadingAnchor constant:-PPSpaceSM],
+
+        [_priceLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceMD],
+        [_priceLabel.centerYAnchor constraintEqualToAnchor:_quantityLabel.centerYAnchor],
+        [_nameLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_quantityLabel.topAnchor constant:-PPSpaceSM]
+    ]];
 }
 
-- (void)layoutSubviews {
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.itemImageView.image = [UIImage imageNamed:@"placeholder"];
+    self.nameLabel.text = nil;
+    self.quantityLabel.text = nil;
+    self.priceLabel.text = nil;
+    self.accessibilityLabel = nil;
+    self.surfaceView.transform = CGAffineTransformIdentity;
+    self.surfaceView.alpha = 1.0;
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    if (self.selectionStyle == UITableViewCellSelectionStyleNone) return;
+    void (^changes)(void) = ^{
+        self.surfaceView.transform = highlighted ? CGAffineTransformMakeScale(PPTapCardScaleDown, PPTapCardScaleDown) : CGAffineTransformIdentity;
+        self.surfaceView.alpha = highlighted ? 0.88 : 1.0;
+    };
+    if (animated) {
+        [UIView animateWithDuration:highlighted ? 0.09 : 0.18
+                              delay:0.0
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.3
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
+
+- (void)layoutSubviews
+{
     [super layoutSubviews];
-
-    // Update layout direction for runtime language changes
-    UISemanticContentAttribute attr = Language.semanticAttributeForCurrentLanguage;
-    self.semanticContentAttribute = attr;
-    self.contentView.semanticContentAttribute = attr;
+    UISemanticContentAttribute attribute = Language.semanticAttributeForCurrentLanguage;
+    self.semanticContentAttribute = attribute;
+    self.contentView.semanticContentAttribute = attribute;
+    self.surfaceView.semanticContentAttribute = attribute;
 }
 
-
-- (void)configureWithItem:(CartItem *)item {
+- (void)configureWithItem:(CartItem *)item
+{
     _nameLabel.text = item.name;
     _quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)item.quantity];
     _priceLabel.text = [PPChatsFunc formattedCurrency:MAX(0.0, (item.price * item.quantity))];
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@", _nameLabel.text ?: @"", _quantityLabel.text ?: @"", _priceLabel.text ?: @""];
 
     if (item.imageURL.length > 0) {
         [GM setImageFromUrlString:item.imageURL imageView:_itemImageView phImage:@"placeholder"];
     } else {
         _itemImageView.image = [UIImage imageNamed:@"placeholder"];
     }
-    
-    [self setNeedsLayout];
 }
-
 
 @end
 

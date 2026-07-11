@@ -7,12 +7,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
 		16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 471B98E18FD0A42C1B1F054F /* Network.framework */; };
 		2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 2262AF902E74B74B005C8EF0 /* PPBottomBar.m */; };
 		22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = 22E169D72E75E75A00F50C9E /* PPFunc.m */; };
 		32EB72B8657EBD39543086FC /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3C32792C5C5015883E126EAA /* PPSectionHeader.m */; };
 		369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */; };
 		4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */; };
+		4FFF9AACF4E2D30784C0DFBD /* PPVoiceMessageHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B84C83F0E728ED42162D709 /* PPVoiceMessageHelper.swift */; };
+		5674957214A3074F19934B30 /* PPNovaSwiftUIChatBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D896001BDC02CA10E626678D /* PPNovaSwiftUIChatBarViewController.swift */; };
 		58D87A909DD749A582377602 /* PPAgentResponseParser.m in Sources */ = {isa = PBXBuildFile; fileRef = C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */; };
 		59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 425167313B2C23734EA30648 /* PPPermissionHelper.m */; };
 		681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */; };
@@ -21,6 +24,7 @@
 		7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */ = {isa = PBXBuildFile; fileRef = A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */; };
 		8285DB81AC0E45CAAD4045C8 /* PPAgentClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 54CF9E88F5084302B07E92AD /* PPAgentClient.m */; };
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
+		8A0A552A9BF600F0C770F8FD /* PurePets-DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */; };
 		997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */ = {isa = PBXBuildFile; fileRef = 6027D32F8BFF42DE85792BE5 /* PPInAppChatNotificationPresenter.m */; };
 		9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */; };
 		A11CE0022FEA000000000002 /* Profile.lottie in Resources */ = {isa = PBXBuildFile; fileRef = A11CE0012FEA000000000001 /* Profile.lottie */; };
@@ -36,6 +40,7 @@
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
+		BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
@@ -519,8 +524,6 @@
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
 		F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */; };
-		F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */; };
-		F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */; };
 		F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */ = {isa = PBXBuildFile; fileRef = F28E28A72DEB2B5C00D774D0 /* MyItemsViewControllerr.m */; };
 		F290F54F2FD9E943008EADEE /* SellerProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F290F54E2FD9E943008EADEE /* SellerProfileVC.m */; };
 		F2916F0B2D54A3E400FF0394 /* Beiruti-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2916F0A2D54A3E400FF0394 /* Beiruti-Regular.ttf */; };
@@ -565,6 +568,7 @@
 		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
 		F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */; };
 		F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD632D031328009F0B62 /* UIView+Shadow.m */; };
+		F2A24AD23002DA7F003AB79D /* PPHeroGlassBackgroundView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */; };
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
 		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
@@ -668,6 +672,8 @@
 		F2BA434C2CCA489D00943394 /* ABCellMailStyleMenuView.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2BA43412CCA489D00943394 /* ABCellMailStyleMenuView.xib */; };
 		F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA434E2CCA4AC800943394 /* UIView+XIB.m */; };
 		F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA97552DCE7C65007DE482 /* AddNewAd.m */; };
+		F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */; };
+		F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
 		F2BC865C2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
@@ -863,6 +869,7 @@
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
 		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
+		1B84C83F0E728ED42162D709 /* PPVoiceMessageHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPVoiceMessageHelper.swift; sourceTree = "<group>"; };
 		2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOfflineBannerView.m; sourceTree = "<group>"; };
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
@@ -882,11 +889,13 @@
 		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPRatingView.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
 		5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6027D32F8BFF42DE85792BE5 /* PPInAppChatNotificationPresenter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInAppChatNotificationPresenter.m; sourceTree = "<group>"; };
+		6A83DC70A7020B60DBD910AC /* ChatBarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatBarView.swift; sourceTree = "<group>"; };
 		78BDBCFB11D05E53A115F3C0 /* PPVaccinationEditorSheet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVaccinationEditorSheet.h; sourceTree = "<group>"; };
 		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserPermissionsManager.m; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
+		94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "PurePets-DesignSystem.swift"; sourceTree = "<group>"; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
 		A11CE0012FEA000000000001 /* Profile.lottie */ = {isa = PBXFileReference; lastKnownFileType = file; path = Profile.lottie; sourceTree = "<group>"; };
 		A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeUltraPremuimPetCareCell.h; sourceTree = "<group>"; };
@@ -905,6 +914,7 @@
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
 		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
+		AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentButton.swift; sourceTree = "<group>"; };
 		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
 		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
@@ -913,6 +923,7 @@
 		C919979EA9824470B116C5B4 /* PPAgentResponseParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentResponseParser.h; sourceTree = "<group>"; };
 		CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOfflineBannerView.h; sourceTree = "<group>"; };
 		D76BD429E474434CAD5D3B7E /* PPInAppChatNotificationPresenter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInAppChatNotificationPresenter.h; sourceTree = "<group>"; };
+		D896001BDC02CA10E626678D /* PPNovaSwiftUIChatBarViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPNovaSwiftUIChatBarViewController.swift; sourceTree = "<group>"; };
 		DFCBF41EFDF6EF662DE3A38B /* PPPetProfilesUIStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfilesUIStyle.h; sourceTree = "<group>"; };
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
@@ -1820,10 +1831,6 @@
 		F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewInput.m; sourceTree = "<group>"; };
 		F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewVC.h; sourceTree = "<group>"; };
 		F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewVC.m; sourceTree = "<group>"; };
-		F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsCell.h; sourceTree = "<group>"; };
-		F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsCell.m; sourceTree = "<group>"; };
-		F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsLayout.h; sourceTree = "<group>"; };
-		F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsLayout.m; sourceTree = "<group>"; };
 		F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFilterSheetVC.h; sourceTree = "<group>"; };
 		F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFilterSheetVC.m; sourceTree = "<group>"; };
 		F28E28A62DEB2B5C00D774D0 /* MyItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyItemsViewController.h; sourceTree = "<group>"; };
@@ -1910,6 +1917,8 @@
 		F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		F2A1DD7B2D043A79009F0B62 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHeroGlassBackgroundView.h; sourceTree = "<group>"; };
+		F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHeroGlassBackgroundView.m; sourceTree = "<group>"; };
 		F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInfoPillsView.h; sourceTree = "<group>"; };
 		F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInfoPillsView.m; sourceTree = "<group>"; };
 		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
@@ -2125,6 +2134,10 @@
 		F2BA434E2CCA4AC800943394 /* UIView+XIB.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+XIB.m"; sourceTree = "<group>"; };
 		F2BA97542DCE7C65007DE482 /* AddNewAd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddNewAd.h; sourceTree = "<group>"; };
 		F2BA97552DCE7C65007DE482 /* AddNewAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAd.m; sourceTree = "<group>"; };
+		F2BBD0012FFF000100ABCDEF /* BBDataViewFullDetailsCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsCell.h; sourceTree = "<group>"; };
+		F2BBD0022FFF000100ABCDEF /* BBDataViewFullDetailsCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsCell.m; sourceTree = "<group>"; };
+		F2BBD0032FFF000100ABCDEF /* BBDataViewFullDetailsLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBDataViewFullDetailsLayout.h; sourceTree = "<group>"; };
+		F2BBD0042FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBDataViewFullDetailsLayout.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
 		F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSmartSearchTitleView.h; sourceTree = "<group>"; };
@@ -3405,6 +3418,8 @@
 		F25373E42E33AFEA00CD93E7 /* UserFiles */ = {
 			isa = PBXGroup;
 			children = (
+				F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */,
+				F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */,
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
@@ -3543,6 +3558,10 @@
 				4A07F5F900EF407FA841676C /* PPAgentMessage.m */,
 				C919979EA9824470B116C5B4 /* PPAgentResponseParser.h */,
 				C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */,
+				AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */,
+				6A83DC70A7020B60DBD910AC /* ChatBarView.swift */,
+				D896001BDC02CA10E626678D /* PPNovaSwiftUIChatBarViewController.swift */,
+				1B84C83F0E728ED42162D709 /* PPVoiceMessageHelper.swift */,
 			);
 			path = GEMENI;
 			sourceTree = "<group>";
@@ -5214,6 +5233,7 @@
 				F2B1A6412E70343E0019FC7C /* PPColorUtils.h */,
 				F2B1A6422E70344B0019FC7C /* PPColorUtils.m */,
 				803FAD839D84A01431778949 /* PPDesignTokens.h */,
+				94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */,
 			);
 			path = PPStyles;
 			sourceTree = "<group>";
@@ -5743,6 +5763,7 @@
 				F26634542C51D0F600D4B304 /* uploadedCollectionViewCell.m in Sources */,
 				F2AB48942C72CF3C00D88603 /* JGProgressHUDPieIndicatorView.m in Sources */,
 				F28CBB642D302899002993F0 /* JPCell.m in Sources */,
+				F2A24AD23002DA7F003AB79D /* PPHeroGlassBackgroundView.m in Sources */,
 				F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */,
 				F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */,
 				F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */,
@@ -6256,6 +6277,11 @@
 				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
 				7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */,
 				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,
+				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,
+				1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */,
+				5674957214A3074F19934B30 /* PPNovaSwiftUIChatBarViewController.swift in Sources */,
+				8A0A552A9BF600F0C770F8FD /* PurePets-DesignSystem.swift in Sources */,
+				4FFF9AACF4E2D30784C0DFBD /* PPVoiceMessageHelper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -1233,7 +1233,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     cartNav.tabBarItem.selectedImage = [self pp_profileTabItemImageSelected:YES];
    
     
-    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"bubble.left.and.bubble.right" selectedImage:@"bubble.left.and.bubble.right.fill"];
+    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"bubble-chat" selectedImage:@"bubble-chat-fill"];
 
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
@@ -1245,8 +1245,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     UINavigationController *ordersNav =
         [self nav:[OrderHistoryViewController new]
             title:ordersTabTitle
-             icon:@"doc.text"
-    selectedImage:@"doc.text.fill"];
+             icon:@"shopping-new"
+    selectedImage:@"shopping-new-fill"];
     ordersNav.tabBarItem.accessibilityLabel = kLang(@"a11y_tab_orders") ?: ordersTabTitle;
     ordersNav.tabBarItem.accessibilityHint = kLang(@"a11y_tab_orders_hint");
    /*
@@ -3011,8 +3011,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return [self pp_profileTabItemImageSelected:selected];
     }
     if ([self pp_isResolvedMyAdsRootTabIndex:index]) {
-        normalSymbolName = @"doc.text";
-        selectedSymbolName = @"doc.text.fill";
+        normalSymbolName = @"shopping-new";
+        selectedSymbolName = @"shopping-new-fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
                               pointSize:20.0
                                  weight:selected ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold
@@ -3030,8 +3030,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             selectedSymbolName = @"plus.circle.fill";
             break;
         case PPRootTabIndexChats:
-            normalSymbolName = @"bubble.left.and.bubble.right";
-            selectedSymbolName = @"bubble.left.and.bubble.right.fill";
+            normalSymbolName = @"conversation";
+            selectedSymbolName = @"bubble-chat-fill";
             break;
         default:
             break;
@@ -3040,7 +3040,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [UIImageSymbolConfiguration configurationWithPointSize:19.0
                                                          weight:UIImageSymbolWeightMedium
                                                           scale:UIImageSymbolScaleMedium];
-    return [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
+    return [UIImage imageNamed:(selected ? selectedSymbolName : normalSymbolName)] ?: [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];
 }
 

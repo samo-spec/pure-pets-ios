@@ -19,6 +19,7 @@
  
  @property(nonatomic, assign) FIRAuthStateDidChangeListenerHandle authListenerHandle;
 - (void)setupTableView;
+- (UIView *)pp_activeChatInputBarViewForLayout;
 
  
 - (void)setupChatHeader;

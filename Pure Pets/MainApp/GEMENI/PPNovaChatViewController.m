@@ -756,7 +756,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 @end
 
-@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate, NovaConfirmationCellDelegate>
+@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate, NovaConfirmationCellDelegate, PPNovaSwiftUIChatBarViewControllerDelegate>
 
 @property (nonatomic, strong) UIView *novaHeaderContentView;
 @property (nonatomic, strong) UIView *ambientBackgroundView;
@@ -855,6 +855,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, assign) CGFloat currentNovaKeyboardOffset;
 @property (nonatomic, assign) BOOL novaKeyboardTransitionActive;
 @property (nonatomic, copy, nullable) NSString *novaPendingPetType;
+
+@property (nonatomic, strong) PPNovaSwiftUIChatBarViewController *swiftUIInputVC;
+@property (nonatomic, assign) BOOL useSwiftUIInputBar;
+@property (nonatomic, strong) UIButton *inputBarSwitchButton;
+@property (nonatomic, strong) NSLayoutConstraint *tableViewBottomToInputBarTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *tableViewBottomToSwiftUIInputBarTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *swiftUIInputBarBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *swiftUIInputBarKeyboardBottomConstraint;
 
 
 // Nova Product / Cart Context
@@ -984,6 +992,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.useSwiftUIInputBar = YES;
 
     // Stable sessionId per chat — reuse the last known session so the backend
     // Agent Runtime sees consistent conversation context. Only generate a new
@@ -1021,6 +1030,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaHeaderView.alpha = 0.0;
     self.novaHeaderView.transform = CGAffineTransformMakeTranslation(0, -10);
 
+    self.swiftUIInputVC.view.alpha = 0.0;
+    self.swiftUIInputVC.view.transform = CGAffineTransformMakeTranslation(0, PPSpaceSM);
+
     // Lesson: the first real Nova reply IS the greeting now. No more local
     // hardcoded bubble — the Agent Runtime produces a natural, contextual
     // welcome using the STRICT GREETING RULE in its system prompt. The
@@ -1057,6 +1069,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.novaHeaderView.transform = CGAffineTransformIdentity;
         self.inputbar.alpha = 1.0;
         self.inputbar.transform = CGAffineTransformIdentity;
+        self.swiftUIInputVC.view.alpha = 1.0;
+        self.swiftUIInputVC.view.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.alpha = 1.0;
         self.novaChatBottomGlowView.alpha = 1.0;
         self.novaChatCenterRightGlowView.alpha = 1.0;
@@ -1071,6 +1085,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             self.novaHeaderView.transform = CGAffineTransformIdentity;
             self.inputbar.alpha = 1.0;
             self.inputbar.transform = CGAffineTransformIdentity;
+            self.swiftUIInputVC.view.alpha = 1.0;
+            self.swiftUIInputVC.view.transform = CGAffineTransformIdentity;
         } completion:nil];
 
         [UIView animateWithDuration:0.92
@@ -5787,6 +5803,30 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [contentView addSubview:historyButton];
     self.historyButton = historyButton;
 
+    UIButton *switchButton = [self pp_ButtonWithSystemName:@"wand.and.stars" action:nil];
+    switchButton.translatesAutoresizingMaskIntoConstraints = NO;
+    switchButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.85];
+    switchButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    switchButton.layer.shadowOpacity = 0.08;
+    switchButton.layer.shadowRadius = 10.0;
+    switchButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    if (@available(iOS 13.0, *)) {
+        switchButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    switchButton.accessibilityLabel = @"Switch input bar style";
+    [switchButton addTarget:self
+                     action:@selector(pp_handleNovaHeaderControlPressDown:)
+           forControlEvents:UIControlEventTouchDown];
+    [switchButton addTarget:self
+                     action:@selector(pp_handleNovaHeaderControlPressUp:)
+           forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+    [switchButton addTarget:self
+                     action:@selector(pp_handleInputBarSwitchTapped:)
+           forControlEvents:UIControlEventTouchUpInside];
+    [contentView addSubview:switchButton];
+    self.inputBarSwitchButton = switchButton;
+    self.inputBarSwitchButton.hidden = YES;
+
     UIView *hairlineHost = [[UIView alloc] init];
     hairlineHost.translatesAutoresizingMaskIntoConstraints = NO;
     hairlineHost.userInteractionEnabled = NO;
@@ -5797,6 +5837,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
     CGFloat topOffset = 18.0;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [switchButton.leadingAnchor constraintEqualToAnchor:historyButton.trailingAnchor constant:8.0],
+        [switchButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        [switchButton.widthAnchor constraintEqualToConstant:36.0],
+        [switchButton.heightAnchor constraintEqualToConstant:36.0]
+    ]];
 
     // Expanded bottom constraint (online status capsule)
     self.novaHeaderExpandedBottomConstraint = [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0];
@@ -6167,7 +6214,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_updateNovaTableBottomInsetForCurrentLayout {
-    if (!self.tableView || !self.inputbar || CGRectGetHeight(self.view.bounds) <= 0.0) {
+    if (!self.tableView || (!self.inputbar && !self.swiftUIInputVC) || CGRectGetHeight(self.view.bounds) <= 0.0) {
         return;
     }
 
@@ -6709,6 +6756,38 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.inputBarBottomConstraint
     ]];
 
+    // 2. Setup the new SwiftUI ChatBarView (integrated cleanly alongside the legacy one)
+    self.swiftUIInputVC = [[PPNovaSwiftUIChatBarViewController alloc] init];
+    self.swiftUIInputVC.delegate = self;
+    self.swiftUIInputVC.thinking = self.novaIsRequestPending;
+    self.swiftUIInputVC.voiceEnabled = NO;
+    [self addChildViewController:self.swiftUIInputVC];
+    [self.view addSubview:self.swiftUIInputVC.view];
+    [self.swiftUIInputVC didMoveToParentViewController:self];
+    self.swiftUIInputVC.view.translatesAutoresizingMaskIntoConstraints = NO;
+    self.swiftUIInputVC.view.hidden = !self.useSwiftUIInputBar;
+    self.inputbar.hidden = self.useSwiftUIInputBar;
+
+    self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:self.inputBarRestingBottomConstant];
+    if (@available(iOS 15.0, *)) {
+        self.swiftUIInputBarKeyboardBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:self.inputBarRestingBottomConstant];
+        self.swiftUIInputBarBottomConstraint = self.swiftUIInputBarKeyboardBottomConstraint;
+    }
+    NSLayoutConstraint *swiftUICompactWidth = [self.swiftUIInputVC.view.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-(PPNovaComposerHorizontalInset * 2.0)];
+    swiftUICompactWidth.priority = 999.0;
+    NSLayoutConstraint *swiftUIReadableWidth = [self.swiftUIInputVC.view.widthAnchor constraintEqualToConstant:PPNovaComposerMaxWidth];
+    swiftUIReadableWidth.priority = 998.0;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.swiftUIInputVC.view.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:PPNovaComposerHorizontalInset],
+        [self.swiftUIInputVC.view.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-PPNovaComposerHorizontalInset],
+        [self.swiftUIInputVC.view.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.swiftUIInputVC.view.widthAnchor constraintLessThanOrEqualToConstant:760.0],
+        [self.swiftUIInputVC.view.heightAnchor constraintEqualToConstant:54.0], // Matches fixed height of ChatBarView
+        swiftUICompactWidth,
+        swiftUIReadableWidth,
+        self.swiftUIInputBarBottomConstraint
+    ]];
 }
 
 - (void)setupTypingIndicator {
@@ -6763,7 +6842,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.typingLabel.text = nil;
     [content addSubview:self.typingLabel];
 
-    self.typingBottomConstraint = [capsule.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-PPNovaComposerKeyboardGap];
+    UIView *bottomBarView = self.useSwiftUIInputBar ? self.swiftUIInputVC.view : self.inputbar;
+    self.typingBottomConstraint = [capsule.bottomAnchor constraintEqualToAnchor:bottomBarView.topAnchor constant:-PPNovaComposerKeyboardGap];
 
     [NSLayoutConstraint activateConstraints:@[
         self.typingBottomConstraint,
@@ -7844,6 +7924,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if ([self.inputbar respondsToSelector:@selector(focusTextInput)]) {
         [self.inputbar focusTextInput];
     }
+    self.swiftUIInputVC.draftText = trimmed;
+    [self.swiftUIInputVC focusTextInput];
 }
 
 - (void)pp_handleNovaSmartSuggestionPressDown:(UIButton *)sender {
@@ -8005,6 +8087,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)hideNovaTyping {
     self.novaIsRequestPending = NO;
     [self.inputbar setThinking:NO animated:YES];
+    self.swiftUIInputVC.thinking = NO;
     self.statusLabel.text = kLang(@"nova_status_online");
 
     [self pp_hideThinkingHeaderLottie];
@@ -8071,17 +8154,24 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (self.inputbar) {
         [self.view bringSubviewToFront:self.inputbar];
     }
+    if (self.swiftUIInputVC) {
+        [self.view bringSubviewToFront:self.swiftUIInputVC.view];
+    }
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tableView.topAnchor constraintEqualToAnchor:self.novaHeaderView.bottomAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        // The table's bottom tracks the input bar's top, and the input bar's bottom
-        // follows the keyboard (keyboardLayoutGuide). So when the keyboard shows, the
-        // table shrinks and its bottom edge rides just above the keyboard — the newest
-        // message stays visible instead of hiding behind the keyboard.
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
     ]];
+
+    self.tableViewBottomToInputBarTopConstraint = [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor];
+    self.tableViewBottomToSwiftUIInputBarTopConstraint = [self.tableView.bottomAnchor constraintEqualToAnchor:self.swiftUIInputVC.view.topAnchor];
+
+    if (self.useSwiftUIInputBar) {
+        self.tableViewBottomToSwiftUIInputBarTopConstraint.active = YES;
+    } else {
+        self.tableViewBottomToInputBarTopConstraint.active = YES;
+    }
 
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
@@ -8126,11 +8216,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         ? [button.leadingAnchor constraintEqualToAnchor:horizontalAnchor constant:22.0]
         : [button.trailingAnchor constraintEqualToAnchor:horizontalAnchor constant:-22.0];
 
+    UIView *bottomBarView = self.useSwiftUIInputBar ? self.swiftUIInputVC.view : self.inputbar;
     [NSLayoutConstraint activateConstraints:@[
         [button.widthAnchor constraintEqualToConstant:40.0],
         [button.heightAnchor constraintEqualToConstant:40.0],
         horizontalConstraint,
-        [button.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-14.0]
+        [button.bottomAnchor constraintEqualToAnchor:bottomBarView.topAnchor constant:-14.0]
     ]];
     [self.view bringSubviewToFront:button];
     [self pp_updateScrollToBottomButtonVisibilityAnimated:NO];
@@ -8271,7 +8362,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
  
     BOOL keyboardVisible = keyboardOffset > 0.5;
     CGFloat targetBottomConstant = keyboardVisible
-        ? -(keyboardOffset + PPNovaComposerKeyboardGap)
+        ? -(keyboardOffset + PPNovaComposerKeyboardGap + 12.0)
         : self.inputBarRestingBottomConstant;
 
     if (shouldCollapseHeader) {
@@ -8291,9 +8382,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             self.inputBarSafeAreaBottomConstraint.active = NO;
             self.inputBarKeyboardBottomConstraint.active = YES;
             self.inputBarBottomConstraint = self.inputBarKeyboardBottomConstraint;
-            self.inputBarBottomConstraint.constant = self.inputBarRestingBottomConstant;
+            self.inputBarBottomConstraint.constant = keyboardVisible ? (self.inputBarRestingBottomConstant - 12.0) : self.inputBarRestingBottomConstant;
+
+            self.swiftUIInputBarBottomConstraint.constant = keyboardVisible ? (self.inputBarRestingBottomConstant - 12.0) : self.inputBarRestingBottomConstant;
         } else {
             self.inputBarBottomConstraint.constant = targetBottomConstant;
+            self.swiftUIInputBarBottomConstraint.constant = targetBottomConstant;
         }
         [self.view layoutIfNeeded];
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
@@ -8737,6 +8831,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_playNovaPremiumActionFeedback];
     [self.inputbar setText:draft ?: @""];
     [self.inputbar focusTextInput];
+    self.swiftUIInputVC.draftText = draft ?: @"";
+    [self.swiftUIInputVC focusTextInput];
 }
 
 #pragma mark - PPNovaMessageBubbleCellDelegate
@@ -8819,6 +8915,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
     [self.inputbar setThinking:YES animated:YES];
+    self.swiftUIInputVC.thinking = YES;
     [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     [self pp_handleNovaSubmittedText:text];
 }
@@ -9076,6 +9173,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.activeNovaResponseID = responseID;
     self.novaIsRequestPending = YES;
     [self.inputbar setThinking:YES animated:YES];
+    self.swiftUIInputVC.thinking = YES;
     self.novaHasSentFirstMessage = YES;
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -9710,6 +9808,80 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:viewer];
         [self presentViewController:nav animated:YES completion:nil];
     }
+}
+
+#pragma mark - PPNovaSwiftUIChatBarViewControllerDelegate
+
+- (void)swiftUIChatBarDidSendText:(NSString *)text {
+    [self.inputbar setThinking:YES animated:YES];
+    self.swiftUIInputVC.thinking = YES;
+    [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
+    [self pp_handleNovaSubmittedText:text];
+}
+
+- (void)swiftUIChatBarDidTapCamera {
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_attachment_unavailable")];
+}
+
+- (void)swiftUIChatBarDidTapVideo {
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_attachment_unavailable")];
+}
+
+- (void)swiftUIChatBarDidTapContact {
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_attachment_unavailable")];
+}
+
+- (void)swiftUIChatBarDidSendAudioWithURL:(NSURL *)audioURL duration:(double)duration {
+    if (audioURL.isFileURL) {
+        [[NSFileManager defaultManager] removeItemAtURL:audioURL error:nil];
+    }
+    [self pp_playNovaPremiumActionFeedback];
+    [PPHUD showError:kLang(@"nova_voice_unavailable")];
+}
+
+#pragma mark - Input Bar Switch Toggle Action
+
+- (void)pp_handleInputBarSwitchTapped:(UIButton *)sender {
+    [self pp_playNovaPremiumActionFeedback];
+    self.useSwiftUIInputBar = !self.useSwiftUIInputBar;
+    [self updateInputBarVisibility];
+}
+
+- (void)updateInputBarVisibility {
+    [self.typingBottomConstraint setActive:NO];
+    if (self.useSwiftUIInputBar) {
+        self.inputbar.hidden = YES;
+        self.swiftUIInputVC.view.hidden = NO;
+
+        self.tableViewBottomToInputBarTopConstraint.active = NO;
+        self.tableViewBottomToSwiftUIInputBarTopConstraint.active = YES;
+
+        self.typingBottomConstraint = [self.typingContainer.bottomAnchor constraintEqualToAnchor:self.swiftUIInputVC.view.topAnchor constant:-PPNovaComposerKeyboardGap];
+
+        if (@available(iOS 13.0, *)) {
+            [self.inputBarSwitchButton setImage:[UIImage systemImageNamed:@"keyboard"] forState:UIControlStateNormal];
+        }
+    } else {
+        self.inputbar.hidden = NO;
+        self.swiftUIInputVC.view.hidden = YES;
+
+        self.tableViewBottomToSwiftUIInputBarTopConstraint.active = NO;
+        self.tableViewBottomToInputBarTopConstraint.active = YES;
+
+        self.typingBottomConstraint = [self.typingContainer.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-PPNovaComposerKeyboardGap];
+
+        if (@available(iOS 13.0, *)) {
+            [self.inputBarSwitchButton setImage:[UIImage systemImageNamed:@"wand.and.stars"] forState:UIControlStateNormal];
+        }
+    }
+    [self.typingBottomConstraint setActive:YES];
+
+    [UIView animateWithDuration:0.3 animations:^{
+        [self.view layoutIfNeeded];
+    }];
 }
 
 @end

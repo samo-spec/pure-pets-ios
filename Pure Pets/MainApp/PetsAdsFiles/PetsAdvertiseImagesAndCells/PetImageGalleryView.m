@@ -25,162 +25,675 @@ typedef NS_ENUM(NSInteger, PPImageGallerySmartCropSource) {
 
 static const CGFloat PPImageGalleryVerticalCropBiasYOffset = 0.35;
 static NSInteger const PPImageGalleryVideoBadgeTag = 73041;
-static const CGFloat PPImageGalleryThumbnailRailWidth = 58.0;
-static const CGFloat PPImageGalleryThumbnailRailHorizontalInset = 12.0;
-static const CGFloat PPImageGalleryThumbnailRailVerticalInset = 14.0;
-static const CGFloat PPImageGalleryThumbnailControlSize = 48.0;
-static const CGFloat PPImageGalleryThumbnailImageSize = 42.0;
-static const CGFloat PPImageGalleryThumbnailSpacing = 10.0;
+static NSString * const PPImageGalleryThumbnailCellIdentifier = @"PPImageGalleryThumbnailCell";
+static const CGFloat PPImageGalleryThumbnailRailWidth = PPButtonHeightLG + PPSpaceBase;
+static const CGFloat PPImageGalleryThumbnailRailMaximumHeight = 320.0;
+static const CGFloat PPImageGalleryThumbnailRailHorizontalInset = PPSpaceMD;
+static const CGFloat PPImageGalleryThumbnailRailVerticalInset = PPSpaceBase;
+static const CGFloat PPImageGalleryThumbnailCellHeight = PPButtonHeightLG + PPSpaceXS;
+static const CGFloat PPImageGalleryThumbnailImageSize = PPTouchTargetMin;
+static const CGFloat PPImageGalleryThumbnailSpacing = PPSpaceXS;
+static const CGFloat PPImageGalleryThumbnailSectionInset = PPSpaceSM;
+static const CGFloat PPImageGalleryThumbnailFocusInset = PPSpaceMD;
 
-@interface PPImageGalleryThumbnailButton : UIControl
+@interface PPImageGalleryThumbnailCell : UICollectionViewCell
 
+@property (nonatomic, strong) UIView *artworkContainerView;
+@property (nonatomic, strong) UIView *selectionSurfaceView;
+@property (nonatomic, strong) UIView *selectionMarkerView;
 @property (nonatomic, strong) UIImageView *thumbnailImageView;
-@property (nonatomic, strong) UIView *selectionRingView;
 @property (nonatomic, strong) UIImageView *videoBadgeView;
-@property (nonatomic, assign) NSInteger galleryIndex;
+@property (nonatomic, copy) NSString *representedIdentifier;
+@property (nonatomic, assign) BOOL gallerySelected;
 
 - (void)configureWithPlaceholder:(UIImage *)placeholder
                           isVideo:(BOOL)isVideo
-                       totalCount:(NSInteger)totalCount;
+                            index:(NSInteger)index
+                       totalCount:(NSInteger)totalCount
+                  imageIdentifier:(NSString *)imageIdentifier
+                      contentMode:(UIViewContentMode)contentMode;
 - (void)setThumbnailImage:(UIImage *)image;
-- (void)applySelected:(BOOL)selected animated:(BOOL)animated accentColor:(UIColor *)accentColor;
+- (void)applyGallerySelected:(BOOL)selected animated:(BOOL)animated;
+- (void)refreshAppearance;
 
 @end
 
-@implementation PPImageGalleryThumbnailButton
+@implementation PPImageGalleryThumbnailCell
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (!self) return nil;
 
-    self.translatesAutoresizingMaskIntoConstraints = NO;
     self.backgroundColor = UIColor.clearColor;
-    self.exclusiveTouch = YES;
+    self.contentView.backgroundColor = UIColor.clearColor;
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowRadius = 10.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-    self.layer.shadowOpacity = 0.05;
+
+    _artworkContainerView = [[UIView alloc] init];
+    _artworkContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    _artworkContainerView.userInteractionEnabled = NO;
+    _artworkContainerView.backgroundColor = UIColor.clearColor;
+    [self.contentView addSubview:_artworkContainerView];
+
+    _selectionSurfaceView = [[UIView alloc] init];
+    _selectionSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    _selectionSurfaceView.userInteractionEnabled = NO;
+    _selectionSurfaceView.alpha = 0.0;
+    _selectionSurfaceView.layer.borderWidth = 0.5;
+    _selectionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    _selectionSurfaceView.layer.shadowRadius = PPShadowSubtleRadius;
+    _selectionSurfaceView.layer.shadowOpacity = 0.0;
+    PPApplyContinuousCorners(_selectionSurfaceView, PPCornerMedium);
+    [_artworkContainerView addSubview:_selectionSurfaceView];
 
     _thumbnailImageView = [[UIImageView alloc] init];
     _thumbnailImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _thumbnailImageView.contentMode = UIViewContentModeScaleAspectFill;
     _thumbnailImageView.clipsToBounds = YES;
     _thumbnailImageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    _thumbnailImageView.layer.cornerRadius = 13.0;
     _thumbnailImageView.layer.borderWidth = 0.5;
-    _thumbnailImageView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.28].CGColor;
-    if (@available(iOS 13.0, *)) {
-        _thumbnailImageView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    PPApplyContinuousCorners(_thumbnailImageView, PPCornerSmall);
     _thumbnailImageView.isAccessibilityElement = NO;
-    [self addSubview:_thumbnailImageView];
+    [_artworkContainerView addSubview:_thumbnailImageView];
 
-    _selectionRingView = [[UIView alloc] init];
-    _selectionRingView.translatesAutoresizingMaskIntoConstraints = NO;
-    _selectionRingView.userInteractionEnabled = NO;
-    _selectionRingView.backgroundColor = UIColor.clearColor;
-    _selectionRingView.alpha = 0.0;
-    _selectionRingView.layer.cornerRadius = 13.0;
-    _selectionRingView.layer.borderWidth = 1.2;
-    if (@available(iOS 13.0, *)) {
-        _selectionRingView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self addSubview:_selectionRingView];
+    _selectionMarkerView = [[UIView alloc] init];
+    _selectionMarkerView.translatesAutoresizingMaskIntoConstraints = NO;
+    _selectionMarkerView.userInteractionEnabled = NO;
+    _selectionMarkerView.alpha = 0.0;
+    PPApplyContinuousCorners(_selectionMarkerView, PPCornerPill);
+    [self.contentView addSubview:_selectionMarkerView];
 
-    _videoBadgeView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"play.fill"]];
+    UIImageSymbolConfiguration *playConfiguration =
+        [UIImageSymbolConfiguration configurationWithPointSize:7.5
+                                                        weight:UIImageSymbolWeightBold];
+    _videoBadgeView = [[UIImageView alloc]
+                       initWithImage:[[UIImage systemImageNamed:@"play.fill"]
+                                      imageWithConfiguration:playConfiguration]];
     _videoBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
     _videoBadgeView.tintColor = UIColor.whiteColor;
-    _videoBadgeView.contentMode = UIViewContentModeScaleAspectFit;
-    _videoBadgeView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.34];
-    _videoBadgeView.layer.cornerRadius = 8.0;
-    _videoBadgeView.clipsToBounds = YES;
+    _videoBadgeView.contentMode = UIViewContentModeCenter;
+    _videoBadgeView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.56];
     _videoBadgeView.hidden = YES;
     _videoBadgeView.isAccessibilityElement = NO;
-    [self addSubview:_videoBadgeView];
+    PPApplyContinuousCorners(_videoBadgeView, PPCornerPill);
+    [_artworkContainerView addSubview:_videoBadgeView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.widthAnchor constraintEqualToConstant:PPImageGalleryThumbnailControlSize],
-        [self.heightAnchor constraintEqualToConstant:PPImageGalleryThumbnailControlSize],
+        [_artworkContainerView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [_artworkContainerView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_artworkContainerView.widthAnchor constraintEqualToConstant:PPButtonHeightLG],
+        [_artworkContainerView.heightAnchor constraintEqualToConstant:PPButtonHeightLG],
 
-        [_thumbnailImageView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
-        [_thumbnailImageView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+        [_selectionSurfaceView.topAnchor constraintEqualToAnchor:_artworkContainerView.topAnchor],
+        [_selectionSurfaceView.leadingAnchor constraintEqualToAnchor:_artworkContainerView.leadingAnchor],
+        [_selectionSurfaceView.trailingAnchor constraintEqualToAnchor:_artworkContainerView.trailingAnchor],
+        [_selectionSurfaceView.bottomAnchor constraintEqualToAnchor:_artworkContainerView.bottomAnchor],
+
+        [_thumbnailImageView.centerXAnchor constraintEqualToAnchor:_artworkContainerView.centerXAnchor],
+        [_thumbnailImageView.centerYAnchor constraintEqualToAnchor:_artworkContainerView.centerYAnchor],
         [_thumbnailImageView.widthAnchor constraintEqualToConstant:PPImageGalleryThumbnailImageSize],
         [_thumbnailImageView.heightAnchor constraintEqualToConstant:PPImageGalleryThumbnailImageSize],
 
-        [_selectionRingView.centerXAnchor constraintEqualToAnchor:_thumbnailImageView.centerXAnchor],
-        [_selectionRingView.centerYAnchor constraintEqualToAnchor:_thumbnailImageView.centerYAnchor],
-        [_selectionRingView.widthAnchor constraintEqualToAnchor:_thumbnailImageView.widthAnchor],
-        [_selectionRingView.heightAnchor constraintEqualToAnchor:_thumbnailImageView.heightAnchor],
+        [_selectionMarkerView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:1.0],
+        [_selectionMarkerView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_selectionMarkerView.widthAnchor constraintEqualToConstant:3.0],
+        [_selectionMarkerView.heightAnchor constraintEqualToConstant:18.0],
 
-        [_videoBadgeView.trailingAnchor constraintEqualToAnchor:_thumbnailImageView.trailingAnchor constant:-4.0],
-        [_videoBadgeView.bottomAnchor constraintEqualToAnchor:_thumbnailImageView.bottomAnchor constant:-4.0],
-        [_videoBadgeView.widthAnchor constraintEqualToConstant:16.0],
-        [_videoBadgeView.heightAnchor constraintEqualToConstant:16.0]
+        [_videoBadgeView.trailingAnchor constraintEqualToAnchor:_thumbnailImageView.trailingAnchor constant:-3.0],
+        [_videoBadgeView.bottomAnchor constraintEqualToAnchor:_thumbnailImageView.bottomAnchor constant:-3.0],
+        [_videoBadgeView.widthAnchor constraintEqualToConstant:17.0],
+        [_videoBadgeView.heightAnchor constraintEqualToConstant:17.0]
     ]];
 
-    [self applySelected:NO animated:NO accentColor:nil];
+    [self refreshAppearance];
+    [self applyGallerySelected:NO animated:NO];
     return self;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    [self.layer removeAllAnimations];
+    [self.contentView.layer removeAllAnimations];
+    [self.artworkContainerView.layer removeAllAnimations];
+    [self.selectionSurfaceView.layer removeAllAnimations];
+    [self.selectionMarkerView.layer removeAllAnimations];
+    [self.thumbnailImageView.layer removeAllAnimations];
+    [self.videoBadgeView.layer removeAllAnimations];
+    self.representedIdentifier = nil;
+    self.thumbnailImageView.image = nil;
+    self.videoBadgeView.hidden = YES;
+    self.artworkContainerView.transform = CGAffineTransformIdentity;
+    [self applyGallerySelected:NO animated:NO];
 }
 
 - (void)configureWithPlaceholder:(UIImage *)placeholder
                           isVideo:(BOOL)isVideo
+                            index:(NSInteger)index
                        totalCount:(NSInteger)totalCount
+                  imageIdentifier:(NSString *)imageIdentifier
+                      contentMode:(UIViewContentMode)contentMode
 {
+    self.representedIdentifier = imageIdentifier ?: @"";
     self.thumbnailImageView.image = placeholder;
+    self.thumbnailImageView.contentMode = contentMode == UIViewContentModeScaleAspectFit
+        ? UIViewContentModeScaleAspectFit
+        : UIViewContentModeScaleAspectFill;
     self.videoBadgeView.hidden = !(PPReusableVideoMediaEnabled() && isVideo);
+    self.accessibilityIdentifier = [NSString stringWithFormat:@"PPImageGalleryThumbnail_%ld", (long)index];
     self.accessibilityLabel = [NSString stringWithFormat:kLang(@"image_gallery_page_format"),
-                               (long)(self.galleryIndex + 1),
+                               (long)(index + 1),
                                (long)totalCount];
-    self.accessibilityHint = kLang(@"image_gallery_swipe_hint");
+    self.accessibilityHint = kLang(@"image_gallery_thumbnail_hint");
 }
 
 - (void)setThumbnailImage:(UIImage *)image
 {
-    if (!image) return;
-    self.thumbnailImageView.image = image;
+    if (image) {
+        self.thumbnailImageView.image = image;
+    }
 }
 
-- (void)applySelected:(BOOL)selected animated:(BOOL)animated accentColor:(UIColor *)accentColor
+- (void)applyGallerySelected:(BOOL)selected animated:(BOOL)animated
 {
-    UIColor *resolvedAccent = accentColor ?: [AppBackgroundClrLigter colorWithAlphaComponent:1.0] ?: UIColor.labelColor;
-    self.selected = selected;
+    BOOL changed = self.gallerySelected != selected;
+    self.gallerySelected = selected;
     self.accessibilityTraits = selected
         ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
         : UIAccessibilityTraitButton;
-    self.selectionRingView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.42].CGColor;
-    self.selectionRingView.layer.shadowColor = resolvedAccent.CGColor;
-    self.selectionRingView.layer.shadowOffset = CGSizeZero;
 
     void (^changes)(void) = ^{
-        self.selectionRingView.alpha = selected ? 0.36 : 0.0;
-        self.selectionRingView.layer.shadowOpacity = selected ? 0.04 : 0.0;
-        self.selectionRingView.layer.shadowRadius = selected ? 2.0 : 0.0;
-        self.thumbnailImageView.alpha = selected ? 1.0 : 0.66;
-        self.thumbnailImageView.layer.borderWidth = selected ? 1.25 : 0.5;
-        self.thumbnailImageView.layer.borderColor = selected
-            ? [resolvedAccent colorWithAlphaComponent:0.94].CGColor
-            : [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
-        self.thumbnailImageView.transform = selected ? CGAffineTransformMakeScale(1.025, 1.025) : CGAffineTransformIdentity;
-        self.selectionRingView.transform = self.thumbnailImageView.transform;
-        self.layer.shadowOpacity = selected ? 0.08 : 0.04;
-        self.layer.shadowRadius = selected ? 8.0 : 6.0;
-        self.transform = CGAffineTransformIdentity;
+        self.selectionSurfaceView.alpha = selected ? 1.0 : 0.0;
+        self.selectionSurfaceView.transform = selected
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(0.88, 0.88);
+        self.selectionSurfaceView.layer.shadowOpacity = selected ? 0.16 : 0.0;
+        self.selectionMarkerView.alpha = selected ? 1.0 : 0.0;
+        self.selectionMarkerView.transform = selected
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(1.0, 0.35);
+        self.thumbnailImageView.alpha = selected ? 1.0 : 0.68;
+        self.thumbnailImageView.transform = selected
+            ? CGAffineTransformIdentity
+            : CGAffineTransformMakeScale(0.93, 0.93);
+        self.thumbnailImageView.layer.borderWidth = selected ? 1.5 : 0.5;
     };
 
-    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
-        [UIView animateWithDuration:0.24
+    if (animated && changed && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:PPAnimDurationNormal
                               delay:0.0
-             usingSpringWithDamping:0.84
-              initialSpringVelocity:0.35
-                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionBeginFromCurrentState
                          animations:changes
                          completion:nil];
     } else {
         changes();
     }
+    [self refreshAppearance];
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.artworkContainerView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    CGFloat scale = highlighted ? 0.94 : 1.0;
+    NSTimeInterval duration = highlighted ? PPAnimDurationFast : 0.20;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:highlighted ? 1.0 : 0.82
+          initialSpringVelocity:highlighted ? 0.0 : 0.25
+                        options:UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.artworkContainerView.transform = CGAffineTransformMakeScale(scale, scale);
+    } completion:nil];
+}
+
+- (void)refreshAppearance
+{
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *resolvedAccent = [accent resolvedColorWithTraitCollection:self.traitCollection];
+    UIColor *hairline = dark
+        ? [UIColor colorWithWhite:1.0 alpha:0.20]
+        : [UIColor colorWithWhite:0.0 alpha:0.12];
+
+    self.selectionSurfaceView.backgroundColor = [resolvedAccent colorWithAlphaComponent:dark ? 0.20 : 0.14];
+    self.selectionSurfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:dark ? 0.22 : 0.48].CGColor;
+    self.selectionSurfaceView.layer.shadowColor = [resolvedAccent colorWithAlphaComponent:0.70].CGColor;
+    self.selectionMarkerView.backgroundColor = resolvedAccent;
+    self.thumbnailImageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    self.thumbnailImageView.layer.borderColor = self.gallerySelected
+        ? [resolvedAccent colorWithAlphaComponent:0.96].CGColor
+        : hairline.CGColor;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self refreshAppearance];
+}
+
+@end
+
+@interface PPImageGalleryThumbnailRailView : UIView
+<UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
+
+@property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIView *toneView;
+@property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) NSArray<PetImageItem *> *imageItems;
+@property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
+@property (nonatomic, assign) UIViewContentMode thumbnailContentMode;
+@property (nonatomic, assign) NSInteger selectedIndex;
+@property (nonatomic, assign) NSInteger pendingFocusIndex;
+@property (nonatomic, assign) BOOL pendingFocusAnimated;
+@property (nonatomic, copy) void (^onSelectIndex)(NSInteger index);
+
+- (instancetype)initWithImageCache:(NSCache<NSString *, UIImage *> *)imageCache;
+- (void)reloadWithImageItems:(NSArray<PetImageItem *> *)imageItems
+                 contentMode:(UIViewContentMode)contentMode
+               selectedIndex:(NSInteger)selectedIndex;
+- (void)setSelectedIndex:(NSInteger)selectedIndex
+                animated:(BOOL)animated
+           focusIfNeeded:(BOOL)focusIfNeeded;
+- (CGFloat)preferredHeightForAvailableHeight:(CGFloat)availableHeight;
+- (void)updateAccessibilityForPage:(NSInteger)page totalCount:(NSInteger)totalCount;
+- (void)refreshAppearance;
+- (void)pp_focusPendingSelectionIfPossible;
+- (void)pp_accessibilityPreferencesDidChange:(NSNotification *)notification;
+
+@end
+
+
+@implementation PPImageGalleryThumbnailRailView
+
+- (instancetype)initWithImageCache:(NSCache<NSString *, UIImage *> *)imageCache
+{
+    self = [super initWithFrame:CGRectZero];
+    if (!self) return nil;
+
+    _imageCache = imageCache;
+    _imageItems = @[];
+    _selectedIndex = 0;
+    _pendingFocusIndex = NSNotFound;
+    _thumbnailContentMode = UIViewContentModeScaleAspectFill;
+
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
+    self.isAccessibilityElement = NO;
+    self.accessibilityIdentifier = @"PPImageGalleryThumbnailRail";
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    PPApplyContinuousCorners(self, PPCornerCard);
+
+    UIBlurEffect *materialEffect =
+        [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+    _materialView = [[UIVisualEffectView alloc] initWithEffect:materialEffect];
+    _materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    _materialView.userInteractionEnabled = NO;
+    _materialView.clipsToBounds = YES;
+    _materialView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    PPApplyContinuousCorners(_materialView, PPCornerCard);
+    [self addSubview:_materialView];
+
+    _toneView = [[UIView alloc] init];
+    _toneView.translatesAutoresizingMaskIntoConstraints = NO;
+    _toneView.userInteractionEnabled = NO;
+    [_materialView.contentView addSubview:_toneView];
+
+    UICollectionViewFlowLayout *railLayout = [[UICollectionViewFlowLayout alloc] init];
+    railLayout.scrollDirection = UICollectionViewScrollDirectionVertical;
+    railLayout.minimumLineSpacing = PPImageGalleryThumbnailSpacing;
+    railLayout.minimumInteritemSpacing = 0.0;
+    railLayout.sectionInset = UIEdgeInsetsMake(PPImageGalleryThumbnailSectionInset,
+                                               0.0,
+                                               PPImageGalleryThumbnailSectionInset,
+                                               0.0);
+
+    _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero
+                                          collectionViewLayout:railLayout];
+    _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionView.delegate = self;
+    _collectionView.dataSource = self;
+    _collectionView.backgroundColor = UIColor.clearColor;
+    _collectionView.showsVerticalScrollIndicator = NO;
+    _collectionView.showsHorizontalScrollIndicator = NO;
+    _collectionView.alwaysBounceVertical = NO;
+    _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
+    _collectionView.contentInset = UIEdgeInsetsZero;
+    _collectionView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    _collectionView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    _collectionView.clipsToBounds = YES;
+    if (@available(iOS 11.0, *)) {
+        _collectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+    [_collectionView registerClass:PPImageGalleryThumbnailCell.class
+        forCellWithReuseIdentifier:PPImageGalleryThumbnailCellIdentifier];
+    [self addSubview:_collectionView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_materialView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [_materialView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [_materialView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [_materialView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [_toneView.topAnchor constraintEqualToAnchor:_materialView.contentView.topAnchor],
+        [_toneView.leadingAnchor constraintEqualToAnchor:_materialView.contentView.leadingAnchor],
+        [_toneView.trailingAnchor constraintEqualToAnchor:_materialView.contentView.trailingAnchor],
+        [_toneView.bottomAnchor constraintEqualToAnchor:_materialView.contentView.bottomAnchor],
+
+        [_collectionView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [_collectionView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [_collectionView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [_collectionView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+    ]];
+
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_accessibilityPreferencesDidChange:)
+               name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_accessibilityPreferencesDidChange:)
+               name:UIAccessibilityReduceMotionStatusDidChangeNotification
+             object:nil];
+
+    [self refreshAppearance];
+    return self;
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)reloadWithImageItems:(NSArray<PetImageItem *> *)imageItems
+                 contentMode:(UIViewContentMode)contentMode
+               selectedIndex:(NSInteger)selectedIndex
+{
+    self.imageItems = imageItems ?: @[];
+    self.thumbnailContentMode = contentMode;
+    self.selectedIndex = self.imageItems.count > 0
+        ? MIN(MAX(selectedIndex, 0), (NSInteger)self.imageItems.count - 1)
+        : 0;
+    self.pendingFocusIndex = self.imageItems.count > 0 ? self.selectedIndex : NSNotFound;
+    self.pendingFocusAnimated = NO;
+    [self.collectionView reloadData];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self setNeedsLayout];
+}
+
+- (CGFloat)preferredHeightForAvailableHeight:(CGFloat)availableHeight
+{
+    NSInteger count = self.imageItems.count;
+    CGFloat minimumHeight = PPImageGalleryThumbnailCellHeight +
+        (PPImageGalleryThumbnailSectionInset * 2.0);
+    CGFloat contentHeight = (count * PPImageGalleryThumbnailCellHeight) +
+        (MAX(count - 1, 0) * PPImageGalleryThumbnailSpacing) +
+        (PPImageGalleryThumbnailSectionInset * 2.0);
+    CGFloat usableHeight = MAX(minimumHeight, availableHeight);
+    return MAX(minimumHeight,
+               MIN(contentHeight,
+                   MIN(PPImageGalleryThumbnailRailMaximumHeight, usableHeight)));
+}
+
+- (void)setSelectedIndex:(NSInteger)selectedIndex
+                animated:(BOOL)animated
+           focusIfNeeded:(BOOL)focusIfNeeded
+{
+    NSInteger count = self.imageItems.count;
+    if (count <= 0) {
+        self.selectedIndex = 0;
+        self.pendingFocusIndex = NSNotFound;
+        self.pendingFocusAnimated = NO;
+        return;
+    }
+
+    NSInteger safeIndex = MIN(MAX(selectedIndex, 0), count - 1);
+    BOOL changed = self.selectedIndex != safeIndex;
+    self.selectedIndex = safeIndex;
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        PPImageGalleryThumbnailCell *cell =
+            (PPImageGalleryThumbnailCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
+        [cell applyGallerySelected:(indexPath.item == safeIndex)
+                          animated:(animated && changed)];
+    }
+
+    if (focusIfNeeded) {
+        self.pendingFocusIndex = safeIndex;
+        self.pendingFocusAnimated = animated;
+        [self setNeedsLayout];
+    } else {
+        // A direct thumbnail tap owns selection but must preserve the user's
+        // rail offset. Cancel any deferred focus left by an older transition.
+        self.pendingFocusIndex = NSNotFound;
+        self.pendingFocusAnimated = NO;
+    }
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                                       cornerRadius:PPCornerCard].CGPath;
+    self.collectionView.alwaysBounceVertical =
+        self.collectionView.contentSize.height > CGRectGetHeight(self.collectionView.bounds) + 1.0;
+    [self pp_focusPendingSelectionIfPossible];
+}
+
+- (void)pp_focusPendingSelectionIfPossible
+{
+    NSInteger targetIndex = self.pendingFocusIndex;
+    if (targetIndex == NSNotFound ||
+        targetIndex < 0 ||
+        targetIndex >= (NSInteger)self.imageItems.count ||
+        self.collectionView.dragging ||
+        self.collectionView.decelerating) {
+        return;
+    }
+
+    NSIndexPath *targetPath = [NSIndexPath indexPathForItem:targetIndex inSection:0];
+    UICollectionViewLayoutAttributes *attributes =
+        [self.collectionView.collectionViewLayout layoutAttributesForItemAtIndexPath:targetPath];
+    if (!attributes) {
+        [self.collectionView layoutIfNeeded];
+        attributes =
+            [self.collectionView.collectionViewLayout layoutAttributesForItemAtIndexPath:targetPath];
+    }
+    if (!attributes) return;
+
+    self.pendingFocusIndex = NSNotFound;
+    CGRect visibleRect = (CGRect){ self.collectionView.contentOffset,
+                                  self.collectionView.bounds.size };
+    CGRect comfortableVisibleRect = CGRectInset(visibleRect,
+                                                0.0,
+                                                PPImageGalleryThumbnailFocusInset);
+    if (CGRectContainsRect(comfortableVisibleRect, attributes.frame)) {
+        return;
+    }
+
+    UIEdgeInsets adjustedInset = self.collectionView.adjustedContentInset;
+    CGFloat minimumOffsetY = -adjustedInset.top;
+    CGFloat maximumOffsetY = MAX(minimumOffsetY,
+                                 self.collectionView.contentSize.height -
+                                 CGRectGetHeight(self.collectionView.bounds) +
+                                 adjustedInset.bottom);
+    CGFloat targetOffsetY = self.collectionView.contentOffset.y;
+    if (CGRectGetMinY(attributes.frame) < CGRectGetMinY(comfortableVisibleRect)) {
+        targetOffsetY = CGRectGetMinY(attributes.frame) - PPImageGalleryThumbnailFocusInset;
+    } else if (CGRectGetMaxY(attributes.frame) > CGRectGetMaxY(comfortableVisibleRect)) {
+        targetOffsetY = CGRectGetMaxY(attributes.frame) -
+            CGRectGetHeight(self.collectionView.bounds) +
+            PPImageGalleryThumbnailFocusInset;
+    }
+    targetOffsetY = MIN(MAX(targetOffsetY, minimumOffsetY), maximumOffsetY);
+    if (fabs(targetOffsetY - self.collectionView.contentOffset.y) < 0.5) return;
+
+    BOOL shouldAnimate = self.pendingFocusAnimated &&
+        self.window != nil &&
+        !UIAccessibilityIsReduceMotionEnabled();
+    [self.collectionView setContentOffset:CGPointMake(self.collectionView.contentOffset.x,
+                                                      targetOffsetY)
+                                  animated:shouldAnimate];
+}
+
+- (void)updateAccessibilityForPage:(NSInteger)page totalCount:(NSInteger)totalCount
+{
+    self.collectionView.accessibilityLabel = kLang(@"image_gallery_accessibility_label");
+    if (totalCount <= 0) {
+        self.collectionView.accessibilityValue = nil;
+        return;
+    }
+    NSInteger safePage = MIN(MAX(page, 0), totalCount - 1);
+    self.collectionView.accessibilityValue =
+        [NSString stringWithFormat:kLang(@"image_gallery_page_format"),
+         (long)(safePage + 1),
+         (long)totalCount];
+}
+
+- (void)refreshAppearance
+{
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
+    self.materialView.effect = reduceTransparency
+        ? nil
+        : [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.layer.shadowOpacity = dark ? 0.28 : 0.13;
+    self.layer.shadowRadius = dark ? 24.0 : 20.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, dark ? 11.0 : 9.0);
+    self.layer.borderWidth = 0.5;
+    self.layer.borderColor = dark
+        ? [UIColor colorWithWhite:1.0 alpha:0.16].CGColor
+        : [UIColor colorWithWhite:1.0 alpha:0.66].CGColor;
+    if (reduceTransparency) {
+        UIColor *solidSurface = AppForgroundColr ?: UIColor.systemBackgroundColor;
+        self.toneView.backgroundColor = [solidSurface colorWithAlphaComponent:0.97];
+    } else {
+        self.toneView.backgroundColor = dark
+            ? [[UIColor blackColor] colorWithAlphaComponent:0.10]
+            : [[UIColor whiteColor] colorWithAlphaComponent:0.16];
+    }
+    for (PPImageGalleryThumbnailCell *cell in self.collectionView.visibleCells) {
+        [cell refreshAppearance];
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self refreshAppearance];
+}
+
+- (void)pp_accessibilityPreferencesDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    [self refreshAppearance];
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        PPImageGalleryThumbnailCell *cell =
+            (PPImageGalleryThumbnailCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
+        cell.artworkContainerView.transform = CGAffineTransformIdentity;
+        [cell applyGallerySelected:(indexPath.item == self.selectedIndex) animated:NO];
+    }
+}
+
+#pragma mark - UICollectionViewDataSource
+
+- (NSInteger)collectionView:(UICollectionView *)collectionView
+     numberOfItemsInSection:(NSInteger)section
+{
+    return self.imageItems.count;
+}
+
+- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+                           cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPImageGalleryThumbnailCell *cell =
+        [collectionView dequeueReusableCellWithReuseIdentifier:PPImageGalleryThumbnailCellIdentifier
+                                                  forIndexPath:indexPath];
+    PetImageItem *item = self.imageItems[indexPath.item];
+    NSString *itemURL = item.url ?: @"";
+    UIImage *placeholder = nil;
+    if (item.blurHash.length > 0) {
+        placeholder = [PPBlurHashBridge imageFrom:item.blurHash
+                                         syncSize:CGSizeMake(28.0, 28.0)
+                                            punch:1.0];
+    }
+    placeholder = placeholder ?: [UIImage imageNamed:@"placeholder"];
+    [cell configureWithPlaceholder:placeholder
+                           isVideo:item.isVideoMedia
+                             index:indexPath.item
+                        totalCount:self.imageItems.count
+                   imageIdentifier:itemURL
+                       contentMode:self.thumbnailContentMode];
+    [cell applyGallerySelected:(indexPath.item == self.selectedIndex) animated:NO];
+
+    UIImage *cachedImage = itemURL.length > 0 ? [self.imageCache objectForKey:itemURL] : nil;
+    if (cachedImage) {
+        [cell setThumbnailImage:cachedImage];
+        return cell;
+    }
+    if (itemURL.length == 0) return cell;
+
+    __weak typeof(self) weakSelf = self;
+    __weak PPImageGalleryThumbnailCell *weakCell = cell;
+    [[PPImageLoaderManager shared] fetchImageWithURL:itemURL
+                                          completion:^(UIImage * _Nullable image) {
+        if (!image) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            PPImageGalleryThumbnailCell *cell = weakCell;
+            if (!self || !cell ||
+                ![cell.representedIdentifier isEqualToString:itemURL]) {
+                return;
+            }
+            [self.imageCache setObject:image forKey:itemURL];
+            [cell setThumbnailImage:image];
+        });
+    }];
+    return cell;
+}
+
+#pragma mark - UICollectionViewDelegate
+
+- (void)collectionView:(UICollectionView *)collectionView
+didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.item < 0 || indexPath.item >= (NSInteger)self.imageItems.count) return;
+    if (self.onSelectIndex) {
+        self.onSelectIndex(indexPath.item);
+    }
+}
+
+- (CGSize)collectionView:(UICollectionView *)collectionView
+                   layout:(UICollectionViewLayout *)collectionViewLayout
+   sizeForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    return CGSizeMake(MAX(PPImageGalleryThumbnailRailWidth,
+                          CGRectGetWidth(collectionView.bounds)),
+                      PPImageGalleryThumbnailCellHeight);
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView
+                  willDecelerate:(BOOL)decelerate
+{
+    if (!decelerate) {
+        [self pp_focusPendingSelectionIfPossible];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    [self pp_focusPendingSelectionIfPossible];
 }
 
 @end
@@ -241,12 +754,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 @interface PetImageGalleryView ()<UICollectionViewDelegateFlowLayout>
 @property (nonatomic, strong) FullScreenImageViewerController *fullScreenViewer;
 @property (nonatomic, strong) UICollectionView *collectionView;
-@property (nonatomic, strong) UIButton *containerB;
-@property (nonatomic, strong) UIVisualEffectView *thumbnailRailMaterialView;
 @property (nonatomic, strong) id currentModel;
-@property (nonatomic, strong) UIScrollView *thumbnailRailScrollView;
-@property (nonatomic, strong) UIStackView *thumbnailRailStackView;
-@property (nonatomic, strong) NSMutableArray<PPImageGalleryThumbnailButton *> *thumbnailButtons;
+@property (nonatomic, strong) PPImageGalleryThumbnailRailView *thumbnailRailView;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailRailHeightConstraint;
 
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
@@ -255,7 +764,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 @property (nonatomic, assign) BOOL pp_didNormalizeInitialLayout;
 @property (nonatomic, assign) CGSize pp_lastLaidOutCollectionSize;
 @property (nonatomic, assign) NSInteger pp_lastSettledPageIndex;
-@property (nonatomic, strong) UIImpactFeedbackGenerator *pp_swipeFeedbackGenerator;
+@property (nonatomic, assign) NSInteger pp_pendingProgrammaticPageIndex;
+@property (nonatomic, assign) BOOL pp_pendingProgrammaticPageShouldNotify;
+@property (nonatomic, assign) BOOL pp_pendingProgrammaticPageShouldHaptic;
+@property (nonatomic, assign) BOOL pp_pendingProgrammaticPageShouldFocusRail;
+@property (nonatomic, strong) UISelectionFeedbackGenerator *pp_selectionFeedbackGenerator;
 
 - (void)pp_resetImageViewForReuse:(UIImageView *)imageView placeholder:(UIImage *)placeholder itemURL:(NSString *)itemURL;
 - (void)pp_applySmartVerticalBiasForImage:(UIImage *)image
@@ -281,9 +794,9 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)pp_configureVideoBadgeInCell:(UICollectionViewCell *)cell visible:(BOOL)visible;
 - (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page;
 - (void)pp_synchronizeCollectionLayoutIfNeeded;
-- (UIImage *)pp_thumbnailPlaceholderForItem:(PetImageItem *)item;
 - (BOOL)pp_imageItems:(NSArray<PetImageItem *> *)lhs haveSameIdentityAs:(NSArray<PetImageItem *> *)rhs;
 - (BOOL)pp_shouldShowThumbnailRail;
+- (void)pp_setupThumbnailRail;
 - (void)pp_rebuildThumbnailRail;
 - (void)pp_updateThumbnailRailLayout;
 - (void)pp_updateThumbnailSelectionForPage:(NSInteger)page animated:(BOOL)animated scrollToVisible:(BOOL)scrollToVisible;
@@ -291,9 +804,15 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
                        animated:(BOOL)animated
                          notify:(BOOL)notify
                          haptic:(BOOL)haptic
-                 scrollRailIntoView:(BOOL)scrollRailIntoView;
+              scrollRailIntoView:(BOOL)scrollRailIntoView;
 - (NSInteger)pp_currentNearestPageIndex;
-- (void)pp_thumbnailButtonTapped:(PPImageGalleryThumbnailButton *)sender;
+- (void)pp_scrollToPage:(NSInteger)page
+               animated:(BOOL)animated
+         notifyOnSettle:(BOOL)notifyOnSettle
+         hapticOnSettle:(BOOL)hapticOnSettle
+      focusRailIfNeeded:(BOOL)focusRailIfNeeded;
+- (void)pp_cancelPendingProgrammaticPageTransition;
+- (void)pp_applyCurrentLanguageDirection;
 
 @end
 
@@ -304,7 +823,6 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self = [super initWithFrame:frame];
     if (!self) return nil;
     _imageCache = [[NSCache alloc] init];
-    _thumbnailButtons = [NSMutableArray array];
     // Core state
     _currentPagr = 0;
     _currentModel = obj;
@@ -312,7 +830,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     _galleryType = type;
     _contentMode = UIViewContentModeScaleAspectFill;
     _itemHeight = itemHeight;
-    _pp_lastSettledPageIndex = NSNotFound;
+    _pp_lastSettledPageIndex = items.count > 0 ? 0 : NSNotFound;
+    _pp_pendingProgrammaticPageIndex = NSNotFound;
 
     // 🔑 SINGLE SOURCE OF TRUTH
     _imageItems = items ?: @[];
@@ -322,6 +841,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
     // UI
     self.backgroundColor = UIColor.clearColor;
+    [self pp_applyCurrentLanguageDirection];
     [self setupCollectionView];
 
     return self;
@@ -336,6 +856,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     //layout.minimumLineSpacing = 0;
 
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    // Keep model indices stable while UIKit mirrors physical paging for Arabic.
+    _collectionView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _collectionView.pagingEnabled = YES;
     _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
     _collectionView.contentInset = UIEdgeInsetsZero;
@@ -402,7 +924,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     ]];
     
     if (_imageItems.count > 1 && !self.hidesPageControl) {
-        [self setupUI];
+        [self pp_setupThumbnailRail];
     }
     [self pp_prepareGalleryEntranceAnimationIfNeeded];
 }
@@ -413,6 +935,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 {
     [super didMoveToWindow];
     if (self.window) {
+        [self pp_applyCurrentLanguageDirection];
+        [self.thumbnailRailView refreshAppearance];
         dispatch_async(dispatch_get_main_queue(), ^{
             [self setNeedsLayout];
             [self layoutIfNeeded];
@@ -446,13 +970,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     NSInteger targetIndex = self.imageItems.count > 0
         ? MIN(MAX(self.currentPagr, 0), (NSInteger)self.imageItems.count - 1)
         : 0;
-    if (self.pp_didNormalizeInitialLayout && self.imageItems.count > 0) {
-        CGPoint visibleCenter = CGPointMake(self.collectionView.contentOffset.x + CGRectGetMidX(self.collectionView.bounds),
-                                            self.collectionView.contentOffset.y + CGRectGetMidY(self.collectionView.bounds));
-        NSIndexPath *visibleIndexPath = [self.collectionView indexPathForItemAtPoint:visibleCenter];
-        if (visibleIndexPath) {
-            targetIndex = visibleIndexPath.item;
-        }
+    if (self.pp_pendingProgrammaticPageIndex != NSNotFound) {
+        targetIndex = self.pp_pendingProgrammaticPageIndex;
     }
 
     UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
@@ -464,17 +983,24 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
     if (self.imageItems.count > 0) {
         targetIndex = MIN(MAX(targetIndex, 0), (NSInteger)self.imageItems.count - 1);
+        BOOL finalizesPendingTransition = self.pp_pendingProgrammaticPageIndex != NSNotFound;
+        BOOL pendingShouldNotify = self.pp_pendingProgrammaticPageShouldNotify;
+        BOOL pendingShouldHaptic = self.pp_pendingProgrammaticPageShouldHaptic;
+        BOOL pendingShouldFocusRail = self.pp_pendingProgrammaticPageShouldFocusRail;
         NSIndexPath *targetPath = [NSIndexPath indexPathForItem:targetIndex inSection:0];
         [UIView performWithoutAnimation:^{
             [self.collectionView scrollToItemAtIndexPath:targetPath
                                         atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                                 animated:NO];
         }];
+        if (finalizesPendingTransition) {
+            [self pp_cancelPendingProgrammaticPageTransition];
+        }
         [self pp_setCurrentPageIndex:targetIndex
                             animated:NO
-                              notify:NO
-                              haptic:NO
-                  scrollRailIntoView:NO];
+                              notify:(finalizesPendingTransition && pendingShouldNotify)
+                              haptic:(finalizesPendingTransition && pendingShouldHaptic)
+                  scrollRailIntoView:(finalizesPendingTransition && pendingShouldFocusRail)];
     } else {
         self.collectionView.contentOffset = CGPointZero;
     }
@@ -489,10 +1015,10 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         return;
     }
     _contentMode = contentMode;
-    for (PPImageGalleryThumbnailButton *button in self.thumbnailButtons) {
-        button.thumbnailImageView.contentMode = contentMode == UIViewContentModeScaleAspectFit
-            ? UIViewContentModeScaleAspectFit
-            : UIViewContentModeScaleAspectFill;
+    if (self.thumbnailRailView) {
+        [self.thumbnailRailView reloadWithImageItems:self.imageItems
+                                         contentMode:contentMode
+                                       selectedIndex:self.currentPagr];
     }
     [self.collectionView reloadData];
 }
@@ -504,18 +1030,16 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     }
 
     _hidesPageControl = hidesPageControl;
-    if ([self pp_shouldShowThumbnailRail] && !self.containerB) {
-        [self setupUI];
+    if ([self pp_shouldShowThumbnailRail] && !self.thumbnailRailView) {
+        [self pp_setupThumbnailRail];
     }
-    self.containerB.hidden = ![self pp_shouldShowThumbnailRail];
-    if (hidesPageControl) {
-        for (PPImageGalleryThumbnailButton *button in self.thumbnailButtons) {
-            [button removeTarget:self
-                          action:@selector(pp_thumbnailButtonTapped:)
-                forControlEvents:UIControlEventTouchUpInside];
-        }
-    } else {
+    self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
+    if (!hidesPageControl) {
         [self pp_rebuildThumbnailRail];
+        if (self.pp_didRunGalleryEntranceAnimation || UIAccessibilityIsReduceMotionEnabled()) {
+            self.thumbnailRailView.alpha = 1.0;
+            self.thumbnailRailView.transform = CGAffineTransformIdentity;
+        }
     }
     [self setNeedsLayout];
 }
@@ -534,121 +1058,53 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     return pageSize;
 }
  
-- (void)setupUI {
-    if (self.containerB) {
-        self.containerB.hidden = ![self pp_shouldShowThumbnailRail];
+- (void)pp_setupThumbnailRail
+{
+    if (self.thumbnailRailView) {
+        self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
         [self pp_rebuildThumbnailRail];
         return;
     }
 
-    self.containerB = [UIButton buttonWithType:UIButtonTypeCustom];
-    self.containerB.translatesAutoresizingMaskIntoConstraints = NO;
-    self.containerB.backgroundColor = UIColor.clearColor;
-    self.containerB.isAccessibilityElement = NO;
-    self.containerB.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    self.containerB.clipsToBounds = NO;
-    self.containerB.layer.cornerRadius = 18.0;
-    self.containerB.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.containerB.layer.shadowOpacity = 0.12;
-    self.containerB.layer.shadowRadius = 18.0;
-    self.containerB.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    self.containerB.layer.masksToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        self.containerB.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self addSubview:self.containerB];
+    self.thumbnailRailView =
+        [[PPImageGalleryThumbnailRailView alloc] initWithImageCache:self.imageCache];
+    self.thumbnailRailView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.thumbnailRailView.shouldGroupAccessibilityChildren = YES;
+    __weak typeof(self) weakSelf = self;
+    self.thumbnailRailView.onSelectIndex = ^(NSInteger index) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || index < 0 || index >= (NSInteger)self.imageItems.count) return;
+        [self pp_scrollToPage:index
+                     animated:YES
+               notifyOnSettle:YES
+              hapticOnSettle:YES
+           focusRailIfNeeded:NO];
+    };
+    [self addSubview:self.thumbnailRailView];
 
-    UIBlurEffectStyle railBlurStyle = UIBlurEffectStyleExtraLight;
-    if (@available(iOS 13.0, *)) {
-        railBlurStyle = UIBlurEffectStyleSystemThinMaterial;
-    }
-    UIBlurEffect *railBlur = [UIBlurEffect effectWithStyle:railBlurStyle];
-    self.thumbnailRailMaterialView = [[UIVisualEffectView alloc] initWithEffect:railBlur];
-    self.thumbnailRailMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.thumbnailRailMaterialView.userInteractionEnabled = NO;
-    self.thumbnailRailMaterialView.layer.cornerRadius = 18.0;
-    self.thumbnailRailMaterialView.layer.masksToBounds = YES;
-    self.thumbnailRailMaterialView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-
-    if (@available(iOS 13.0, *)) {
-        self.thumbnailRailMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.containerB addSubview:self.thumbnailRailMaterialView];
-
-    self.thumbnailRailScrollView = [[UIScrollView alloc] init];
-    self.thumbnailRailScrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.thumbnailRailScrollView.backgroundColor = UIColor.clearColor;
-    self.thumbnailRailScrollView.showsVerticalScrollIndicator = NO;
-    self.thumbnailRailScrollView.showsHorizontalScrollIndicator = NO;
-    self.thumbnailRailScrollView.alwaysBounceVertical = NO;
-    self.thumbnailRailScrollView.clipsToBounds = YES;
-    if (@available(iOS 11.0, *)) {
-        self.thumbnailRailScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    }
-    self.thumbnailRailScrollView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    [self.containerB addSubview:self.thumbnailRailScrollView];
-
-    self.thumbnailRailStackView = [[UIStackView alloc] init];
-    self.thumbnailRailStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.thumbnailRailStackView.axis = UILayoutConstraintAxisVertical;
-    self.thumbnailRailStackView.alignment = UIStackViewAlignmentCenter;
-    self.thumbnailRailStackView.distribution = UIStackViewDistributionFill;
-    self.thumbnailRailStackView.spacing = PPImageGalleryThumbnailSpacing;
-    self.thumbnailRailStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    [self.thumbnailRailScrollView addSubview:self.thumbnailRailStackView];
-
-    BOOL isRTL  = NO;
-    NSLayoutConstraint *sideConstraint = isRTL
-        ? [self.containerB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPImageGalleryThumbnailRailHorizontalInset]
-        : [self.containerB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPImageGalleryThumbnailRailHorizontalInset];
-    self.thumbnailRailHeightConstraint = [self.containerB.heightAnchor constraintEqualToConstant:80.0];
+    self.thumbnailRailHeightConstraint =
+        [self.thumbnailRailView.heightAnchor constraintEqualToConstant:
+         PPImageGalleryThumbnailCellHeight + (PPImageGalleryThumbnailSectionInset * 2.0)];
     NSLayoutConstraint *topLimit =
-    [self.containerB.topAnchor constraintGreaterThanOrEqualToAnchor:self.topAnchor
-                                                           constant:PPImageGalleryThumbnailRailVerticalInset];
+        [self.thumbnailRailView.topAnchor constraintGreaterThanOrEqualToAnchor:self.safeAreaLayoutGuide.topAnchor
+                                                                       constant:PPImageGalleryThumbnailRailVerticalInset];
     NSLayoutConstraint *bottomLimit =
-    [self.containerB.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor
-                                                           constant:-PPImageGalleryThumbnailRailVerticalInset];
+        [self.thumbnailRailView.bottomAnchor constraintLessThanOrEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor
+                                                                       constant:-PPImageGalleryThumbnailRailVerticalInset];
     topLimit.priority = UILayoutPriorityDefaultHigh;
     bottomLimit.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        sideConstraint,
-        [self.containerB.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-        [self.containerB.widthAnchor constraintEqualToConstant:PPImageGalleryThumbnailRailWidth],
+        [self.thumbnailRailView.trailingAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.trailingAnchor
+                                                                constant:-PPImageGalleryThumbnailRailHorizontalInset],
+        [self.thumbnailRailView.centerYAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.centerYAnchor],
+        [self.thumbnailRailView.widthAnchor constraintEqualToConstant:PPImageGalleryThumbnailRailWidth],
         self.thumbnailRailHeightConstraint,
         topLimit,
-        bottomLimit,
-
-        [self.thumbnailRailMaterialView.topAnchor constraintEqualToAnchor:self.containerB.topAnchor],
-        [self.thumbnailRailMaterialView.leadingAnchor constraintEqualToAnchor:self.containerB.leadingAnchor],
-        [self.thumbnailRailMaterialView.trailingAnchor constraintEqualToAnchor:self.containerB.trailingAnchor],
-        [self.thumbnailRailMaterialView.bottomAnchor constraintEqualToAnchor:self.containerB.bottomAnchor],
-
-        [self.thumbnailRailScrollView.topAnchor constraintEqualToAnchor:self.containerB.topAnchor constant:6.0],
-        [self.thumbnailRailScrollView.leadingAnchor constraintEqualToAnchor:self.containerB.leadingAnchor],
-        [self.thumbnailRailScrollView.trailingAnchor constraintEqualToAnchor:self.containerB.trailingAnchor],
-        [self.thumbnailRailScrollView.bottomAnchor constraintEqualToAnchor:self.containerB.bottomAnchor constant:-0.0]
+        bottomLimit
     ]];
 
-    if (@available(iOS 11.0, *)) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.thumbnailRailStackView.topAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.contentLayoutGuide.topAnchor],
-            [self.thumbnailRailStackView.leadingAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.contentLayoutGuide.leadingAnchor],
-            [self.thumbnailRailStackView.trailingAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.contentLayoutGuide.trailingAnchor],
-            [self.thumbnailRailStackView.bottomAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.contentLayoutGuide.bottomAnchor],
-            [self.thumbnailRailStackView.widthAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.frameLayoutGuide.widthAnchor]
-        ]];
-    } else {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.thumbnailRailStackView.topAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.topAnchor],
-            [self.thumbnailRailStackView.leadingAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.leadingAnchor],
-            [self.thumbnailRailStackView.trailingAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.trailingAnchor],
-            [self.thumbnailRailStackView.bottomAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.bottomAnchor],
-            [self.thumbnailRailStackView.widthAnchor constraintEqualToAnchor:self.thumbnailRailScrollView.widthAnchor]
-        ]];
-    }
-
-    self.containerB.hidden = ![self pp_shouldShowThumbnailRail];
+    self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
     [self pp_rebuildThumbnailRail];
     [self pp_updateGalleryAccessibilityForPage:self.currentPagr];
 }
@@ -656,27 +1112,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)pp_updateGalleryAccessibilityForPage:(NSInteger)page
 {
     NSInteger count = self.imageItems.count;
-    if (count <= 0) {
-        self.containerB.accessibilityValue = nil;
-        return;
-    }
-    NSInteger safePage = MIN(MAX(page, 0), count - 1);
-    self.containerB.accessibilityLabel = kLang(@"image_gallery_accessibility_label");
-    self.containerB.accessibilityValue = [NSString stringWithFormat:kLang(@"image_gallery_page_format"),
-                                          (long)(safePage + 1),
-                                          (long)count];
-    self.containerB.accessibilityHint = kLang(@"image_gallery_swipe_hint");
-}
-
-- (UIImage *)pp_thumbnailPlaceholderForItem:(PetImageItem *)item
-{
-    UIImage *placeholder = nil;
-    if (item.blurHash.length > 0) {
-        placeholder = [PPBlurHashBridge imageFrom:item.blurHash
-                                         syncSize:CGSizeMake(28.0, 28.0)
-                                            punch:1.0];
-    }
-    return placeholder ?: [UIImage imageNamed:@"placeholder"];
+    [self.thumbnailRailView updateAccessibilityForPage:page totalCount:count];
 }
 
 - (BOOL)pp_imageItems:(NSArray<PetImageItem *> *)lhs haveSameIdentityAs:(NSArray<PetImageItem *> *)rhs
@@ -700,127 +1136,46 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 - (void)pp_rebuildThumbnailRail
 {
-    if (!self.thumbnailRailStackView) return;
-
-    for (UIView *view in self.thumbnailRailStackView.arrangedSubviews) {
-        [self.thumbnailRailStackView removeArrangedSubview:view];
-        [view removeFromSuperview];
-    }
-    [self.thumbnailButtons removeAllObjects];
-
-    NSInteger count = self.imageItems.count;
-    if (count <= 1 || self.hidesPageControl) {
-        self.containerB.hidden = YES;
-        [self pp_updateThumbnailRailLayout];
-        return;
-    }
-
-    self.containerB.hidden = NO;
-    __weak typeof(self) weakSelf = self;
-    for (NSInteger index = 0; index < count; index++) {
-        PetImageItem *item = self.imageItems[index];
-        NSString *itemURL = item.url ?: @"";
-
-        PPImageGalleryThumbnailButton *button = [[PPImageGalleryThumbnailButton alloc] initWithFrame:CGRectZero];
-        button.galleryIndex = index;
-        button.thumbnailImageView.contentMode = self.contentMode == UIViewContentModeScaleAspectFit
-            ? UIViewContentModeScaleAspectFit
-            : UIViewContentModeScaleAspectFill;
-        [button configureWithPlaceholder:[self pp_thumbnailPlaceholderForItem:item]
-                                  isVideo:item.isVideoMedia
-                               totalCount:count];
-        [button addTarget:self
-                   action:@selector(pp_thumbnailButtonTapped:)
-         forControlEvents:UIControlEventTouchUpInside];
-
-        [self.thumbnailRailStackView addArrangedSubview:button];
-        [self.thumbnailButtons addObject:button];
-
-        UIImage *cachedImage = itemURL.length > 0 ? [self.imageCache objectForKey:itemURL] : nil;
-        if (cachedImage) {
-            [button setThumbnailImage:cachedImage];
-            continue;
-        }
-        if (itemURL.length == 0) {
-            continue;
-        }
-
-        [[PPImageLoaderManager shared] fetchImageWithURL:itemURL
-                                              completion:^(UIImage * _Nullable image) {
-            if (!image) return;
-            dispatch_async(dispatch_get_main_queue(), ^{
-                __strong typeof(weakSelf) self = weakSelf;
-                if (!self || ![self.thumbnailButtons containsObject:button]) return;
-                if (button.galleryIndex < 0 || button.galleryIndex >= (NSInteger)self.imageItems.count) return;
-                PetImageItem *currentItem = self.imageItems[button.galleryIndex];
-                if (![(currentItem.url ?: @"") isEqualToString:itemURL]) return;
-                [self.imageCache setObject:image forKey:itemURL];
-                [button setThumbnailImage:image];
-            });
-        }];
-    }
-
+    if (!self.thumbnailRailView) return;
+    self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
+    [self.thumbnailRailView reloadWithImageItems:self.imageItems
+                                     contentMode:self.contentMode
+                                   selectedIndex:self.currentPagr];
     [self pp_updateThumbnailRailLayout];
-    [self pp_updateThumbnailSelectionForPage:self.currentPagr animated:NO scrollToVisible:NO];
     [self pp_updateGalleryAccessibilityForPage:self.currentPagr];
 }
 
 - (void)pp_updateThumbnailRailLayout
 {
-    if (!self.containerB || !self.thumbnailRailHeightConstraint) return;
+    if (!self.thumbnailRailView || !self.thumbnailRailHeightConstraint) return;
+    self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
+    if (self.thumbnailRailView.hidden) return;
 
-    self.containerB.hidden = ![self pp_shouldShowThumbnailRail];
-    if (self.containerB.hidden) {
-        return;
+    CGFloat safeHeight = MAX(0.0,
+                             CGRectGetHeight(self.bounds) -
+                             self.safeAreaInsets.top -
+                             self.safeAreaInsets.bottom);
+    CGFloat availableHeight = MAX(PPImageGalleryThumbnailCellHeight +
+                                  (PPImageGalleryThumbnailSectionInset * 2.0),
+                                  safeHeight -
+                                  (PPImageGalleryThumbnailRailVerticalInset * 2.0));
+    CGFloat targetHeight =
+        [self.thumbnailRailView preferredHeightForAvailableHeight:availableHeight];
+    if (fabs(self.thumbnailRailHeightConstraint.constant - targetHeight) > 0.5) {
+        self.thumbnailRailHeightConstraint.constant = targetHeight;
+        [self.thumbnailRailView setSelectedIndex:self.currentPagr
+                                        animated:NO
+                                   focusIfNeeded:YES];
     }
-
-    NSInteger count = self.thumbnailButtons.count;
-    CGFloat contentHeight = (count * PPImageGalleryThumbnailControlSize) +
-        (MAX(count - 1, 0) * PPImageGalleryThumbnailSpacing);
-    CGFloat availableHeight = MAX(PPImageGalleryThumbnailControlSize + 12.0,
-                                  CGRectGetHeight(self.bounds) - (PPImageGalleryThumbnailRailVerticalInset * 2.0));
-    CGFloat preferredMaxHeight = MIN(300.0, availableHeight);
-    CGFloat targetHeight = MIN(preferredMaxHeight, contentHeight + 12.0);
-    if (count <= 3) {
-        targetHeight = MIN(availableHeight, contentHeight + 18.0);
-    }
-
-    self.thumbnailRailHeightConstraint.constant = MAX(PPImageGalleryThumbnailControlSize + 12.0, targetHeight);
-    self.containerB.layer.cornerRadius = 22.0;
-    self.thumbnailRailMaterialView.layer.cornerRadius = 22.0;
-
-    CGFloat visibleHeight = MAX(1.0, self.thumbnailRailHeightConstraint.constant - 12.0);
-    CGFloat centeredInset = MAX(3.0, (visibleHeight - contentHeight) * 0.5);
-    UIEdgeInsets inset = UIEdgeInsetsMake(centeredInset, 0.0, centeredInset, 0.0);
-    if (!UIEdgeInsetsEqualToEdgeInsets(self.thumbnailRailScrollView.contentInset, inset)) {
-        self.thumbnailRailScrollView.contentInset = inset;
-    }
-    self.thumbnailRailScrollView.alwaysBounceVertical = contentHeight > visibleHeight;
-    
 }
 
 - (void)pp_updateThumbnailSelectionForPage:(NSInteger)page animated:(BOOL)animated scrollToVisible:(BOOL)scrollToVisible
 {
-    NSInteger count = self.thumbnailButtons.count;
-    if (count == 0) return;
-
-    NSInteger safePage = MIN(MAX(page, 0), count - 1);
-    UIColor *accent = AppPrimaryClr ?: UIColor.labelColor;
-    for (PPImageGalleryThumbnailButton *button in self.thumbnailButtons) {
-        [button applySelected:(button.galleryIndex == safePage)
-                     animated:animated
-                  accentColor:accent];
-    }
-
-    if (scrollToVisible && safePage < count && self.thumbnailRailScrollView) {
-        PPImageGalleryThumbnailButton *selectedButton = self.thumbnailButtons[safePage];
-        CGRect targetRect = [selectedButton convertRect:selectedButton.bounds
-                                                 toView:self.thumbnailRailScrollView];
-        CGFloat insetY = 8.0;
-        targetRect = CGRectInset(targetRect, 0.0, -insetY);
-        [self.thumbnailRailScrollView scrollRectToVisible:targetRect
-                                                 animated:(animated && self.window != nil)];
-    }
+    if (!self.thumbnailRailView || self.imageItems.count == 0) return;
+    NSInteger safePage = MIN(MAX(page, 0), (NSInteger)self.imageItems.count - 1);
+    [self.thumbnailRailView setSelectedIndex:safePage
+                                    animated:animated
+                               focusIfNeeded:scrollToVisible];
 }
 
 - (NSInteger)pp_currentNearestPageIndex
@@ -835,9 +1190,40 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         return MIN(MAX((NSInteger)centeredIndexPath.item, 0), count - 1);
     }
 
-    CGFloat width = MAX(1.0, CGRectGetWidth(self.collectionView.bounds));
-    NSInteger page = (NSInteger)llround(self.collectionView.contentOffset.x / width);
-    return MIN(MAX(page, 0), count - 1);
+    CGFloat visibleCenterX = self.collectionView.contentOffset.x +
+        CGRectGetMidX(self.collectionView.bounds);
+    NSInteger nearestIndex = NSNotFound;
+    CGFloat nearestDistance = CGFLOAT_MAX;
+    for (NSIndexPath *indexPath in self.collectionView.indexPathsForVisibleItems) {
+        UICollectionViewLayoutAttributes *attributes =
+            [self.collectionView.collectionViewLayout layoutAttributesForItemAtIndexPath:indexPath];
+        if (!attributes) continue;
+        CGFloat distance = fabs(attributes.center.x - visibleCenterX);
+        if (distance < nearestDistance) {
+            nearestDistance = distance;
+            nearestIndex = indexPath.item;
+        }
+    }
+    if (nearestIndex != NSNotFound) {
+        return MIN(MAX(nearestIndex, 0), count - 1);
+    }
+    return MIN(MAX(self.currentPagr, 0), count - 1);
+}
+
+- (void)pp_syncThumbnailRailWithVisiblePageDuringUserScroll
+{
+    if (self.pp_pendingProgrammaticPageIndex != NSNotFound) return;
+    if (self.imageItems.count <= 1) return;
+    if (!self.collectionView.dragging && !self.collectionView.decelerating) return;
+
+    NSInteger page = [self pp_currentNearestPageIndex];
+    if (page == self.currentPagr) return;
+
+    [self pp_setCurrentPageIndex:page
+                        animated:YES
+                          notify:NO
+                          haptic:NO
+              scrollRailIntoView:YES];
 }
 
 - (void)pp_setCurrentPageIndex:(NSInteger)page
@@ -853,40 +1239,90 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     }
 
     NSInteger safePage = MIN(MAX(page, 0), count - 1);
+    BOOL isNewSettledPage = self.pp_lastSettledPageIndex != safePage;
     self.currentPagr = safePage;
     [self pp_updateThumbnailSelectionForPage:safePage
                                     animated:animated
                              scrollToVisible:scrollRailIntoView];
     [self pp_updateGalleryAccessibilityForPage:safePage];
-    if (haptic) {
+    if (haptic && isNewSettledPage) {
         [self pp_emitSwipeFeedbackIfNeededForPage:safePage];
+    } else if (notify && isNewSettledPage) {
+        self.pp_lastSettledPageIndex = safePage;
     }
-    if (notify && self.onPageChanged) {
+    if (notify && isNewSettledPage && self.onPageChanged) {
         self.onPageChanged(safePage);
     }
 }
 
-- (void)pp_thumbnailButtonTapped:(PPImageGalleryThumbnailButton *)sender
+- (void)pp_scrollToPage:(NSInteger)page
+               animated:(BOOL)animated
+         notifyOnSettle:(BOOL)notifyOnSettle
+        hapticOnSettle:(BOOL)hapticOnSettle
+      focusRailIfNeeded:(BOOL)focusRailIfNeeded
 {
-    NSInteger targetIndex = sender.galleryIndex;
-    if (targetIndex < 0 || targetIndex >= (NSInteger)self.imageItems.count) return;
+    if (page < 0 || page >= (NSInteger)self.imageItems.count) return;
+    [self.collectionView layoutIfNeeded];
+    NSInteger visiblePage = [self pp_currentNearestPageIndex];
+    BOOL alreadySettled = visiblePage == page &&
+        !self.collectionView.dragging &&
+        !self.collectionView.decelerating;
+    BOOL effectiveAnimation = animated &&
+        !alreadySettled &&
+        self.window != nil &&
+        !UIAccessibilityIsReduceMotionEnabled();
 
-    if (!UIAccessibilityIsReduceMotionEnabled()) {
-        UIImpactFeedbackGenerator *tapFeedback =
-        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-        [tapFeedback impactOccurredWithIntensity:0.42];
+    [self pp_cancelPendingProgrammaticPageTransition];
+    if (effectiveAnimation) {
+        self.pp_pendingProgrammaticPageIndex = page;
+        self.pp_pendingProgrammaticPageShouldNotify = notifyOnSettle;
+        self.pp_pendingProgrammaticPageShouldHaptic = hapticOnSettle;
+        self.pp_pendingProgrammaticPageShouldFocusRail = focusRailIfNeeded;
     }
 
-    [self pp_setCurrentPageIndex:targetIndex
-                        animated:YES
-                          notify:NO
-                          haptic:NO
-              scrollRailIntoView:YES];
+    [self pp_setCurrentPageIndex:page
+                        animated:effectiveAnimation
+                          notify:(!effectiveAnimation && notifyOnSettle)
+                          haptic:(!effectiveAnimation && hapticOnSettle)
+              scrollRailIntoView:focusRailIfNeeded];
 
-    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:targetIndex inSection:0];
-    [self.collectionView scrollToItemAtIndexPath:indexPath
-                                atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
-                                        animated:YES];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:page inSection:0];
+    if (effectiveAnimation) {
+        [self.collectionView scrollToItemAtIndexPath:indexPath
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:YES];
+    } else {
+        [UIView performWithoutAnimation:^{
+            [self.collectionView scrollToItemAtIndexPath:indexPath
+                                        atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                                animated:NO];
+        }];
+        [self pp_applySwipeMotionToVisibleCells];
+    }
+}
+
+- (void)pp_cancelPendingProgrammaticPageTransition
+{
+    self.pp_pendingProgrammaticPageIndex = NSNotFound;
+    self.pp_pendingProgrammaticPageShouldNotify = NO;
+    self.pp_pendingProgrammaticPageShouldHaptic = NO;
+    self.pp_pendingProgrammaticPageShouldFocusRail = NO;
+}
+
+- (void)pp_applyCurrentLanguageDirection
+{
+    UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
+    BOOL directionChanged = self.semanticContentAttribute != semantic;
+    self.semanticContentAttribute = semantic;
+    self.collectionView.semanticContentAttribute = semantic;
+    self.thumbnailRailView.semanticContentAttribute = semantic;
+    self.thumbnailRailView.collectionView.semanticContentAttribute = semantic;
+    if (directionChanged && self.collectionView) {
+        self.pp_didNormalizeInitialLayout = NO;
+        self.pp_lastLaidOutCollectionSize = CGSizeZero;
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self setNeedsLayout];
+    }
 }
 
 - (void)setImageItems:(NSArray<PetImageItem *> *)imageItems {
@@ -902,16 +1338,17 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         self.pp_didRunGalleryEntranceAnimation = NO;
         self.pp_didNormalizeInitialLayout = NO;
         self.pp_lastLaidOutCollectionSize = CGSizeZero;
-        self.pp_lastSettledPageIndex = NSNotFound;
+        self.pp_lastSettledPageIndex = _imageItems.count > 0 ? self.currentPagr : NSNotFound;
+        [self pp_cancelPendingProgrammaticPageTransition];
     }
-    if ([self pp_shouldShowThumbnailRail] && !self.containerB) {
-        [self setupUI];
+    if ([self pp_shouldShowThumbnailRail] && !self.thumbnailRailView) {
+        [self pp_setupThumbnailRail];
     }
-    self.containerB.hidden = ![self pp_shouldShowThumbnailRail];
+    self.thumbnailRailView.hidden = ![self pp_shouldShowThumbnailRail];
     self.collectionView.backgroundView.hidden = _imageItems.count > 0;
     if (sameItems) {
         [self pp_updateThumbnailRailLayout];
-        [self pp_updateThumbnailSelectionForPage:self.currentPagr animated:NO scrollToVisible:YES];
+        [self pp_updateThumbnailSelectionForPage:self.currentPagr animated:NO scrollToVisible:NO];
     } else {
         [self pp_rebuildThumbnailRail];
     }
@@ -1342,8 +1779,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
         if ([self pp_shouldShowThumbnailRail]) {
-            self.containerB.alpha = 1.0;
-            self.containerB.transform = CGAffineTransformIdentity;
+            self.thumbnailRailView.alpha = 1.0;
+            self.thumbnailRailView.transform = CGAffineTransformIdentity;
         }
         return;
     }
@@ -1351,9 +1788,12 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.collectionView.transform =
     CGAffineTransformMakeScale(1.025, 1.025);
     if ([self pp_shouldShowThumbnailRail]) {
-        self.containerB.alpha = 0.0;
-        self.containerB.transform =
-        CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, 6.0), 0.94, 0.94);
+        CGFloat outwardOffset = Language.isRTL ? -PPSpaceSM : PPSpaceSM;
+        self.thumbnailRailView.alpha = 0.0;
+        self.thumbnailRailView.transform =
+        CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardOffset, PPSpaceXXS),
+                               0.96,
+                               0.96);
     }
 }
 
@@ -1367,8 +1807,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
         if ([self pp_shouldShowThumbnailRail]) {
-            self.containerB.alpha = 1.0;
-            self.containerB.transform = CGAffineTransformIdentity;
+            self.thumbnailRailView.alpha = 1.0;
+            self.thumbnailRailView.transform = CGAffineTransformIdentity;
         }
         return;
     }
@@ -1388,8 +1828,8 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
                               delay:0.12
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
-            self.containerB.alpha = 1.0;
-            self.containerB.transform = CGAffineTransformIdentity;
+            self.thumbnailRailView.alpha = 1.0;
+            self.thumbnailRailView.transform = CGAffineTransformIdentity;
         } completion:nil];
     }
 }
@@ -1437,21 +1877,19 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if (self.pp_lastSettledPageIndex == page) return;
 
     self.pp_lastSettledPageIndex = page;
-    if (UIAccessibilityIsReduceMotionEnabled()) return;
 
-    if (!self.pp_swipeFeedbackGenerator) {
-        self.pp_swipeFeedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    if (!self.pp_selectionFeedbackGenerator) {
+        self.pp_selectionFeedbackGenerator = [[UISelectionFeedbackGenerator alloc] init];
     }
-    [self.pp_swipeFeedbackGenerator impactOccurredWithIntensity:0.45];
-    [self.pp_swipeFeedbackGenerator prepare];
+    [self.pp_selectionFeedbackGenerator selectionChanged];
+    [self.pp_selectionFeedbackGenerator prepare];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
        willDisplayCell:(UICollectionViewCell *)cell
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSInteger page = [self pp_currentNearestPageIndex];
-    [self pp_updateGalleryAccessibilityForPage:page];
+    [self pp_updateGalleryAccessibilityForPage:self.currentPagr];
     [self pp_applySwipeMotionToVisibleCells];
 }
 
@@ -1466,36 +1904,29 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
-    if (scrollView != self.collectionView || UIAccessibilityIsReduceMotionEnabled()) return;
-    if (!self.pp_swipeFeedbackGenerator) {
-        self.pp_swipeFeedbackGenerator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    if (scrollView != self.collectionView) return;
+    [self pp_cancelPendingProgrammaticPageTransition];
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    if (!self.pp_selectionFeedbackGenerator) {
+        self.pp_selectionFeedbackGenerator = [[UISelectionFeedbackGenerator alloc] init];
     }
-    [self.pp_swipeFeedbackGenerator prepare];
+    [self.pp_selectionFeedbackGenerator prepare];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) return;
-    
-    // Only update intermediate pages and selection if the scroll was initiated by the user.
-    // This prevents the selection state from jumping/flickering through intermediate items during programmatic scrollToPage: animations.
-    if (!scrollView.isDragging && !scrollView.isDecelerating) {
-        [self pp_applySwipeMotionToVisibleCells];
-        return;
-    }
-    
-    NSInteger page = [self pp_currentNearestPageIndex];
-    [self pp_setCurrentPageIndex:page
-                        animated:YES
-                          notify:NO
-                          haptic:NO
-              scrollRailIntoView:YES];
+
+    // Keep the thumbnail rail visually coupled to manual swipes. Notification
+    // and haptic ownership still stays with the final settled page below.
+    [self pp_syncThumbnailRailWithVisiblePageDuringUserScroll];
     [self pp_applySwipeMotionToVisibleCells];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) return;
+    if (self.pp_pendingProgrammaticPageIndex != NSNotFound) return;
     NSInteger page = [self pp_currentNearestPageIndex];
     [self pp_setCurrentPageIndex:page
                         animated:YES
@@ -1516,7 +1947,30 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) return;
-    [self scrollViewDidEndDecelerating:scrollView];
+    if (self.pp_pendingProgrammaticPageIndex == NSNotFound) {
+        return;
+    }
+
+    NSInteger targetPage = self.pp_pendingProgrammaticPageIndex;
+    BOOL shouldNotify = self.pp_pendingProgrammaticPageShouldNotify;
+    BOOL shouldHaptic = self.pp_pendingProgrammaticPageShouldHaptic;
+    BOOL shouldFocusRail = self.pp_pendingProgrammaticPageShouldFocusRail;
+    [self pp_cancelPendingProgrammaticPageTransition];
+    if (targetPage < 0 || targetPage >= (NSInteger)self.imageItems.count) return;
+    if ([self pp_currentNearestPageIndex] != targetPage) {
+        NSIndexPath *targetPath = [NSIndexPath indexPathForItem:targetPage inSection:0];
+        [UIView performWithoutAnimation:^{
+            [self.collectionView scrollToItemAtIndexPath:targetPath
+                                        atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                                animated:NO];
+        }];
+    }
+    [self pp_setCurrentPageIndex:targetPage
+                        animated:YES
+                          notify:shouldNotify
+                          haptic:shouldHaptic
+              scrollRailIntoView:shouldFocusRail];
+    [self pp_applySwipeMotionToVisibleCells];
 }
 
 - (void)pp_galleryTapped:(UITapGestureRecognizer *)gesture
@@ -1570,6 +2024,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 -(void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (self.pp_pendingProgrammaticPageIndex != NSNotFound ||
+        self.collectionView.dragging ||
+        self.collectionView.decelerating) {
+        return;
+    }
     UICollectionViewCell *selectedCell = [collectionView cellForItemAtIndexPath:indexPath];
     UIImageView *sourceImageView = [selectedCell.contentView viewWithTag:100];
     PetImageItem *item = indexPath.item < self.imageItems.count ? self.imageItems[indexPath.item] : nil;
@@ -1589,7 +2048,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         return;
     }
 
-    _currentPagr = indexPath.item;
+    [self pp_setCurrentPageIndex:indexPath.item
+                        animated:NO
+                          notify:NO
+                          haptic:NO
+              scrollRailIntoView:NO];
 
     void (^presentViewer)(void) = ^{
         self.fullScreenViewer = [[FullScreenImageViewerController alloc] initWithImage:image];
@@ -1653,16 +2116,11 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 
 - (void)scrollToPage:(NSInteger)page animated:(BOOL)animated
 {
-    if (page < 0 || page >= (NSInteger)self.imageItems.count) return;
-    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:page inSection:0];
-    [self pp_setCurrentPageIndex:page
-                        animated:animated
-                          notify:!animated
-                          haptic:NO
-              scrollRailIntoView:YES];
-    [self.collectionView scrollToItemAtIndexPath:indexPath
-                                atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
-                                        animated:animated];
+    [self pp_scrollToPage:page
+                 animated:animated
+           notifyOnSettle:YES
+          hapticOnSettle:NO
+       focusRailIfNeeded:YES];
 }
 
 @end

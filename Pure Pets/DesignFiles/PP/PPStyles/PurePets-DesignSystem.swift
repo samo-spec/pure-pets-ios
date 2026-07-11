@@ -81,6 +81,23 @@ extension Color {
     static let ppInfo    = Color(red: 0.000, green: 0.478, blue: 1.000)  // #007AFF
 }
 
+extension ShapeStyle where Self == Color {
+    static var ppPrimary: Color { Color.ppPrimary }
+    static var ppPrimaryDarker: Color { Color.ppPrimaryDarker }
+    static var ppPrimaryShiner: Color { Color.ppPrimaryShiner }
+    static var ppAccent: Color { Color.ppAccent }
+    static var ppBackground: Color { Color.ppBackground }
+    static var ppForeground: Color { Color.ppForeground }
+    static var ppCard: Color { Color.ppCard }
+    static var ppTextPrimary: Color { Color.ppTextPrimary }
+    static var ppTextSecondary: Color { Color.ppTextSecondary }
+    static var ppTextTertiary: Color { Color.ppTextTertiary }
+    static var ppSuccess: Color { Color.ppSuccess }
+    static var ppWarning: Color { Color.ppWarning }
+    static var ppError: Color { Color.ppError }
+    static var ppInfo: Color { Color.ppInfo }
+}
+
 // MARK: Gradients
 
 enum PPGradient {
@@ -154,16 +171,16 @@ enum PPFont {
 
 struct PPCardStyle: ViewModifier {
     var cornerRadius: CGFloat = PPCorner.card
-    var shadow: PPShadow = .card
+    var shadowToken: PPShadow = .card
 
     func body(content: Content) -> some View {
         content
-            .background(.ppCard)
+            .background(Color.ppCard)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: shadow.color, radius: shadow.radius, x: shadow.x, y: shadow.y)
+            .shadow(color: shadowToken.color, radius: shadowToken.radius, x: shadowToken.x, y: shadowToken.y)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color.separator.opacity(0.28), lineWidth: 0.33)
+                    .stroke(Color(uiColor: .separator).opacity(0.28), lineWidth: 0.33)
             )
     }
 }
@@ -185,7 +202,7 @@ struct PPTapFeedback: ViewModifier {
 
 extension View {
     func ppCard(cornerRadius: CGFloat = PPCorner.card, shadow: PPShadow = .card) -> some View {
-        modifier(PPCardStyle(cornerRadius: cornerRadius, shadow: shadow))
+        modifier(PPCardStyle(cornerRadius: cornerRadius, shadowToken: shadow))
     }
 
     func ppTapFeedback() -> some View {

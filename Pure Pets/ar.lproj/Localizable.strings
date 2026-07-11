@@ -2112,6 +2112,7 @@
 "image_gallery_accessibility_label" = "الصور";
 "image_gallery_page_format" = "الصورة %ld من %ld";
 "image_gallery_swipe_hint" = "اسحب لتصفح الصور.";
+"image_gallery_thumbnail_hint" = "اضغط مرتين لاختيار هذه الصورة.";
 "image_gallery_open_hint" = "اضغط مرتين لعرض الصورة بملء الشاشة.";
 "image_gallery_empty" = "لا تتوفر صورة";
 "service_view_contact_loading" = "بيانات التواصل قيد التحميل. حاول مرة أخرى.";
@@ -2254,6 +2255,11 @@
 "order_tracking_title" = "التسلسل الزمني للطلب";
 "order_tracking_empty" = "لا توجد تحديثات تتبع بعد";
 "order_tracking_empty_subtitle" = "سيظهر هنا أي تحديث جديد للدفع أو التجهيز أو التوصيل.";
+"order_tracking_toggle_accessibility_label" = "التسلسل الزمني للطلب";
+"order_tracking_toggle_accessibility_hint" = "يوسع أو يطوي التسلسل الزمني لتقدم الطلب.";
+"order_tracking_toggle_expanded" = "موسع";
+"order_tracking_toggle_collapsed" = "مطوي";
+"order_item_accessibility_hint" = "انقر مرتين لعرض تفاصيل العنصر.";
 "order_timeline_created_title" = "تم إنشاء الطلب";
 "order_timeline_paid_title" = "تم تأكيد الدفع";
 "order_timeline_processing_title" = "الطلب قيد المعالجة";
@@ -3451,3 +3457,33 @@
 "quick_access_lang_en_toast" = "تم تغيير اللغة إلى الإنجليزية";
 "quick_access_notifications_toast" = "جاري فتح إعدادات التنبيهات...";
 "quick_access_location_toast" = "جاري فتح إعدادات الموقع...";
+
+/* Voice Recording & Assistant */
+"voice_resume" = "استئناف";
+"voice_pause" = "إيقاف مؤقت";
+"voice_preview" = "معاينة";
+"voice_slide_to_cancel" = "اسحب للإلغاء";
+"voice_preparing" = "جارٍ تجهيز الميكروفون";
+"voice_slide_up_to_lock" = "اسحب للأعلى للتثبيت";
+"voice_release_to_cancel" = "اترك للإلغاء";
+"voice_discard" = "حذف التسجيل";
+"voice_play" = "تشغيل التسجيل";
+"voice_send" = "إرسال الرسالة الصوتية";
+"voice_preview_progress" = "تقدّم معاينة التسجيل";
+"voice_open_settings" = "فتح إعدادات الميكروفون";
+"voice_retry" = "إعادة المحاولة";
+"voice_dismiss" = "إغلاق";
+"voice_record_action" = "تسجيل رسالة صوتية";
+"voice_record_hint" = "اضغط للتسجيل دون استمرار الضغط، أو اضغط مطولاً واسحب للإلغاء أو التثبيت.";
+"voice_recording" = "جارٍ التسجيل";
+"voice_locked_status" = "تم تثبيت التسجيل";
+"voice_paused_status" = "التسجيل متوقف مؤقتاً";
+"voice_preview_ready" = "التسجيل جاهز للمعاينة";
+"voice_recording_cancelled" = "تم حذف التسجيل";
+"voice_microphone_permission" = "يلزم السماح باستخدام الميكروفون للتسجيل.";
+"voice_recording_too_short" = "استمر في التسجيل لوقت أطول قليلاً.";
+"voice_recording_interrupted" = "توقف التسجيل بشكل مفاجئ. حاول مرة أخرى.";
+"voice_recording_failed" = "تعذر التسجيل. حاول مرة أخرى.";
+"nova_voice_unavailable" = "التسجيل الصوتي غير متاح مع المساعد الذكي";
+"chat_input_placeholder" = "اكتب رسالتك...";
+"chat_send_message" = "إرسال الرسالة";
