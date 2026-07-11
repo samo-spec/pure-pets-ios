@@ -113,6 +113,106 @@ NS_INLINE UIColor *PPMarketplaceHeroCardStrokeColor(UITraitCollection *traitColl
     return [UIColor.whiteColor colorWithAlphaComponent:(dark ? 0.12 : 0.78)];
 }
 
+NS_INLINE BOOL PPMarketplaceHeroCardIsDark(UITraitCollection *traitCollection)
+{
+    if (@available(iOS 13.0, *)) {
+        return (traitCollection ?: UITraitCollection.currentTraitCollection).userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+NS_INLINE UIColor *PPMarketplaceHeroCardBackgroundAccentColor(UIColor *accentColor,
+                                                              UITraitCollection *traitCollection)
+{
+    BOOL dark = PPMarketplaceHeroCardIsDark(traitCollection);
+    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(traitCollection);
+    return PPMarketplaceHeroCardBlend(accentColor ?: PPMarketplaceHeroCardAccentColor(),
+                                      surfaceBase,
+                                      dark ? 0.12 : 0.18,
+                                      traitCollection);
+}
+
+NS_INLINE UIColor *PPMarketplaceHeroCardSurfaceTintColorForAccent(UIColor *accentColor,
+                                                                  UITraitCollection *traitCollection)
+{
+    BOOL dark = PPMarketplaceHeroCardIsDark(traitCollection);
+    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(traitCollection);
+    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accentColor, traitCollection);
+    return PPMarketplaceHeroCardBlend(surfaceBase,
+                                      backgroundAccent,
+                                      dark ? 0.095 : 0.038,
+                                      traitCollection);
+}
+
+NS_INLINE UIColor *PPMarketplaceHeroCardSurfaceTailColorForAccent(UIColor *accentColor,
+                                                                  UITraitCollection *traitCollection)
+{
+    BOOL dark = PPMarketplaceHeroCardIsDark(traitCollection);
+    UIColor *surfaceTint = PPMarketplaceHeroCardSurfaceTintColorForAccent(accentColor, traitCollection);
+    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accentColor, traitCollection);
+    return PPMarketplaceHeroCardBlend(surfaceTint,
+                                      backgroundAccent,
+                                      dark ? 0.062 : 0.024,
+                                      traitCollection);
+}
+
+NS_INLINE UIColor *PPMarketplaceHeroCardSupportGlowColor(UIColor *accentColor,
+                                                         UITraitCollection *traitCollection)
+{
+    BOOL dark = PPMarketplaceHeroCardIsDark(traitCollection);
+    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accentColor, traitCollection);
+    return PPMarketplaceHeroCardBlend(backgroundAccent,
+                                      PPMarketplaceHeroCardColor(0x00F5D4, 1.0),
+                                      dark ? 0.18 : 0.22,
+                                      traitCollection);
+}
+
+NS_INLINE void PPMarketplaceHeroCardApplySurfaceChrome(UIView *view,
+                                                       CGFloat cornerRadius,
+                                                       UITraitCollection *traitCollection)
+{
+    if (!view) {
+        return;
+    }
+
+    view.backgroundColor = UIColor.clearColor;
+    view.layer.cornerRadius = cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        view.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    view.layer.borderWidth = 1.0;
+    view.layer.borderColor = PPMarketplaceHeroCardStrokeColor(traitCollection).CGColor;
+    view.layer.shadowColor = UIColor.blackColor.CGColor;
+    view.layer.shadowOpacity = 0.08f;
+    view.layer.shadowRadius = 20.0f;
+    view.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    view.layer.masksToBounds = NO;
+}
+
+NS_INLINE void PPMarketplaceHeroCardConfigureSurfaceGradient(CAGradientLayer *gradientLayer,
+                                                             UIColor *accentColor,
+                                                             UITraitCollection *traitCollection,
+                                                             BOOL isRTL)
+{
+    if (!gradientLayer) {
+        return;
+    }
+
+    BOOL dark = PPMarketplaceHeroCardIsDark(traitCollection);
+    UIColor *surfaceHighlight = PPMarketplaceHeroCardSurfaceHighlightColor(traitCollection);
+    UIColor *surfaceTint = PPMarketplaceHeroCardSurfaceTintColorForAccent(accentColor, traitCollection);
+    UIColor *surfaceTail = PPMarketplaceHeroCardSurfaceTailColorForAccent(accentColor, traitCollection);
+    gradientLayer.opacity = dark ? 0.90 : 0.72;
+    gradientLayer.colors = @[
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, traitCollection).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, traitCollection).CGColor,
+        (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, traitCollection).CGColor
+    ];
+    gradientLayer.locations = @[@0.0, @0.56, @1.0];
+    gradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    gradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+}
+
 NS_INLINE UIColor *PPMarketplaceHeroCardTopAccentColor(UITraitCollection *traitCollection)
 {
     (void)traitCollection;

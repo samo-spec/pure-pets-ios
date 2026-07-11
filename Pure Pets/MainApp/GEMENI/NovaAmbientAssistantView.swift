@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 @objc(NovaAmbientAssistantView)
 public final class NovaAmbientAssistantView: UIControl {
@@ -16,7 +17,13 @@ public final class NovaAmbientAssistantView: UIControl {
     private let secondaryGlowView = UIView()
     private let accentView = UIView()
     private let avatarView = UIView()
-    private let novaLeadingView = PPNovaAmbientAssistantChatBridge.makeAmbientLeadingView()
+    private lazy var novaLeadingView: UIView = {
+        let swiftUIView = ListeningSiriAnimation()
+        let hostingController = UIHostingController(rootView: swiftUIView)
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        return hostingController.view
+    }()
     private let messageLabel = UILabel()
     private let closeButton = UIButton(type: .system)
     private let liquidBorderView = UIView()
@@ -646,5 +653,128 @@ public final class NovaAmbientAssistantView: UIControl {
 
     @objc private func closeTapped() {
         closeHandler?()
+    }
+}
+
+// MARK: - SwiftUI Siri Listening Animation Integration
+
+@objc(PPNovaSiriAnimationWrapper)
+public final class PPNovaSiriAnimationWrapper: NSObject {
+    @objc public static func makeSiriAnimationView() -> UIView {
+        let swiftUIView = ListeningSiriAnimation()
+        let hostingController = UIHostingController(rootView: swiftUIView)
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        return hostingController.view
+    }
+}
+
+struct ListeningSiriAnimation: View {
+    @State private var isRotating = false
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let baseSize = min(geometry.size.width, geometry.size.height)
+            let scale = baseSize / 200.0
+            
+            ZStack {
+                ZStack {
+                    // shadow
+                    Circle()
+                        .fill(Color.black.opacity(0.15))
+                        .blur(radius: 12.0 * scale)
+                    
+                    // icon-bg
+                    Circle()
+                        .fill(Color.black.opacity(0.85))
+                    
+                    // pink-top
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.pink.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 60.0 * scale))
+                        .frame(width: 100.0 * scale, height: 100.0 * scale)
+                        .offset(y: -30.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? 320.0 : -360.0))
+                        .hueRotation(.degrees(isRotating ? -270.0 : 60.0))
+                    
+                    // pink-left
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.pink.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 50.0 * scale))
+                        .frame(width: 80.0 * scale, height: 80.0 * scale)
+                        .offset(x: -30.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? -360.0 : 180.0))
+                        .hueRotation(.degrees(isRotating ? -220.0 : 300.0))
+                    
+                    // blue-middle
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 70.0 * scale))
+                        .frame(width: 110.0 * scale, height: 110.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? -360.0 : 420.0))
+                        .hueRotation(.degrees(isRotating ? -150.0 : 0.0))
+                        .rotation3DEffect(.degrees(75.0), axis: (x: isRotating ? 1.0 : 5.0, y: 0.0, z: 0.0))
+                    
+                    // blue-right
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.blue.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 60.0 * scale))
+                        .frame(width: 90.0 * scale, height: 90.0 * scale)
+                        .offset(x: 30.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? -360.0 : 420.0))
+                        .hueRotation(.degrees(isRotating ? 720.0 : -50.0))
+                        .rotation3DEffect(.degrees(75.0), axis: (x: 1.0, y: 0.0, z: isRotating ? -5.0 : 15.0))
+                    
+                    // intersect
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.purple.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 50.0 * scale))
+                        .frame(width: 80.0 * scale, height: 80.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? 30.0 : -420.0))
+                        .hueRotation(.degrees(isRotating ? 0.0 : 720.0))
+                        .rotation3DEffect(.degrees(15.0), axis: (x: 1.0, y: 1.0, z: 1.0), perspective: isRotating ? 5.0 : -5.0)
+                    
+                    // green-right
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.green.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 50.0 * scale))
+                        .frame(width: 80.0 * scale, height: 80.0 * scale)
+                        .offset(x: 25.0 * scale, y: 15.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? -300.0 : 360.0))
+                        .hueRotation(.degrees(isRotating ? 300.0 : -15.0))
+                        .rotation3DEffect(.degrees(15.0), axis: (x: 1.0, y: isRotating ? -1.0 : 1.0, z: 0.0), perspective: isRotating ? -1.0 : 1.0)
+                    
+                    // green-left
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.green.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 60.0 * scale))
+                        .frame(width: 90.0 * scale, height: 90.0 * scale)
+                        .offset(x: -25.0 * scale, y: -15.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? 360.0 : -360.0))
+                        .hueRotation(.degrees(isRotating ? 180.0 : 50.0))
+                        .rotation3DEffect(.degrees(75.0), axis: (x: 1.0, y: isRotating ? -5.0 : 15.0, z: 0.0))
+                    
+                    // bottom-pink
+                    Circle()
+                        .fill(RadialGradient(gradient: Gradient(colors: [Color.pink.opacity(0.8), Color.clear]), center: .center, startRadius: 0, endRadius: 80.0 * scale))
+                        .frame(width: 120.0 * scale, height: 120.0 * scale)
+                        .offset(y: 35.0 * scale)
+                        .rotationEffect(.degrees(isRotating ? 400.0 : -360.0))
+                        .hueRotation(.degrees(isRotating ? 0.0 : 230.0))
+                        .opacity(0.25)
+                        .blendMode(.multiply)
+                        .rotation3DEffect(.degrees(75.0), axis: (x: 5.0, y: isRotating ? 1.0 : -45.0, z: 0.0))
+                }
+                .blendMode(isRotating ? .hardLight : .difference)
+                
+                // highlight
+                Circle()
+                    .fill(RadialGradient(gradient: Gradient(colors: [Color.white.opacity(0.9), Color.clear]), center: .center, startRadius: 0, endRadius: 40.0 * scale))
+                    .frame(width: 60.0 * scale, height: 60.0 * scale)
+                    .rotationEffect(.degrees(isRotating ? 360.0 : 250.0))
+                    .hueRotation(.degrees(isRotating ? 0.0 : 230.0))
+            }
+            .frame(width: baseSize, height: baseSize)
+            .position(x: geometry.size.width / 2.0, y: geometry.size.height / 2.0)
+            .scaleEffect(0.9)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 8.0).repeatForever(autoreverses: false)) {
+                    isRotating = true
+                }
+            }
+        }
     }
 }

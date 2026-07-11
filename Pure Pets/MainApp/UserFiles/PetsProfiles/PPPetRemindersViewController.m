@@ -14,6 +14,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
+#import "PPMarketplaceHeroCardStyle.h"
  
 #import "PPReminderNotificationManager.h"
 
@@ -320,6 +321,11 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
 @property (nonatomic, strong) NSArray<UIView *> *floatingCircles;
 @property (nonatomic, strong) UIView *headerRoot;
 @property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) UIView *headerMaterialView;
+@property (nonatomic, strong) CAGradientLayer *headerMarketplaceGradientLayer;
+@property (nonatomic, strong) UIView *headerAmbientGlowView;
+@property (nonatomic, strong) UIView *headerSupportGlowView;
+@property (nonatomic, strong) UIView *headerAccentBarView;
 @property (nonatomic, strong) PPInsetLabel *headerEyebrowLabel;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
@@ -392,6 +398,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     self.view.semanticContentAttribute      = PPPetsCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     [self pp_applyCanvasBackground];
+    [self pp_applyHeroMarketplaceMaterial];
     [self pp_refreshHeroHeaderContent];
     [self pp_reload];
 }
@@ -409,6 +416,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
     [self.view sendSubviewToBack:self.backgroundGlowViewTop];
     [self pp_updateHeaderLayout];
+    [self pp_layoutHeroMarketplaceMaterial];
 }
 
 #pragma mark - Appearance
@@ -416,6 +424,52 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 - (void)pp_applyCanvasBackground {
     PPPetsApplyCanvasBackground(self, nil);
     self.tableView.backgroundColor = UIColor.clearColor;
+}
+
+- (void)pp_applyHeroMarketplaceMaterial {
+    UIColor *accent = PPPetsUIBrandColor();
+    BOOL isDark = PPMarketplaceHeroCardIsDark(self.traitCollection);
+    PPMarketplaceHeroCardApplySurfaceChrome(self.headerCardView,
+                                            PPCornerHero - 6.0,
+                                            self.traitCollection);
+    PPMarketplaceHeroCardConfigureSurfaceGradient(self.headerMarketplaceGradientLayer,
+                                                  accent,
+                                                  self.traitCollection,
+                                                  Language.isRTL);
+
+    self.headerMaterialView.backgroundColor = UIColor.clearColor;
+    self.headerMaterialView.layer.cornerRadius = PPCornerHero - 6.0;
+    if (@available(iOS 13.0, *)) {
+        self.headerMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accent, self.traitCollection);
+    UIColor *supportGlowColor = PPMarketplaceHeroCardSupportGlowColor(accent, self.traitCollection);
+    self.headerAmbientGlowView.backgroundColor = [backgroundAccent colorWithAlphaComponent:isDark ? 0.17 : 0.11];
+    self.headerAmbientGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
+    self.headerAmbientGlowView.layer.shadowOpacity = 0.0f;
+    self.headerAmbientGlowView.layer.shadowRadius = 0.0f;
+    self.headerAmbientGlowView.layer.shadowOffset = CGSizeZero;
+
+    self.headerSupportGlowView.backgroundColor = [supportGlowColor colorWithAlphaComponent:isDark ? 0.12 : 0.095];
+    self.headerSupportGlowView.layer.shadowColor = supportGlowColor.CGColor;
+    self.headerSupportGlowView.layer.shadowOpacity = isDark ? 0.11f : 0.075f;
+    self.headerSupportGlowView.layer.shadowRadius = 18.0f;
+    self.headerSupportGlowView.layer.shadowOffset = CGSizeZero;
+
+    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:0.58];
+}
+
+- (void)pp_layoutHeroMarketplaceMaterial {
+    CGRect materialBounds = self.headerMaterialView.bounds;
+    self.headerMarketplaceGradientLayer.frame = CGRectIsEmpty(materialBounds) ? CGRectZero : materialBounds;
+    self.headerMarketplaceGradientLayer.cornerRadius = self.headerMaterialView.layer.cornerRadius;
+
+    if (!CGRectIsEmpty(self.headerCardView.bounds)) {
+        self.headerCardView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
+                                       cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
+    }
 }
 
 - (void)pp_setupBackdrop {
@@ -459,34 +513,42 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    PPPetsApplySurfaceStyle(cardView, 34.0);
+    PPMarketplaceHeroCardApplySurfaceChrome(cardView, PPCornerHero - 6.0, self.traitCollection);
     [self.headerRoot addSubview:cardView];
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = PPPetsUISurfaceTintColor();
-    tintView.layer.cornerRadius = 34.0;
+    tintView.backgroundColor = UIColor.clearColor;
+    tintView.layer.cornerRadius = PPCornerHero - 6.0;
+    if (@available(iOS 13.0, *)) {
+        tintView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
-    UIView *ambientGlow = PPPetsBuildGlowView([PPPetsUIBrandColor() colorWithAlphaComponent:0.16],
-                                              [PPPetsUIBrandColor() colorWithAlphaComponent:0.50],
-                                              0.16,
-                                              42.0);
-    ambientGlow.layer.cornerRadius = 94.0;
+    CAGradientLayer *materialGradientLayer = [CAGradientLayer layer];
+    materialGradientLayer.drawsAsynchronously = YES;
+    [tintView.layer insertSublayer:materialGradientLayer atIndex:0];
+
+    UIView *ambientGlow = [[UIView alloc] init];
+    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientGlow.userInteractionEnabled = NO;
+    ambientGlow.layer.cornerRadius = 58.0;
     [cardView addSubview:ambientGlow];
 
-    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
-                                                PPPetsCardOverlay(0.45),
-                                                0.20,
-                                                22.0);
-    secondaryGlow.layer.cornerRadius = 58.0;
+    UIView *secondaryGlow = [[UIView alloc] init];
+    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryGlow.userInteractionEnabled = NO;
+    secondaryGlow.layer.cornerRadius = 66.0;
     [cardView addSubview:secondaryGlow];
 
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = PPPetsUIBrandColor();
+    accentBar.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.58];
     accentBar.layer.cornerRadius = 2.0;
+    if (@available(iOS 13.0, *)) {
+        accentBar.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [cardView addSubview:accentBar];
 
     UIView *eyebrowPill = [[UIView alloc] init];
@@ -580,19 +642,19 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [ambientGlow.widthAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-82.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:82.0],
+        [ambientGlow.widthAnchor constraintEqualToConstant:116.0],
+        [ambientGlow.heightAnchor constraintEqualToConstant:116.0],
+        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-34.0],
+        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:Language.isRTL ? 22.0 : -12.0],
 
-        [secondaryGlow.widthAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
+        [secondaryGlow.widthAnchor constraintEqualToConstant:132.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:132.0],
+        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:48.0],
+        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:Language.isRTL ? -26.0 : 28.0],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:56.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor],
+        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:30.0],
+        [accentBar.widthAnchor constraintEqualToConstant:44.0],
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
         [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:10.0],
@@ -640,6 +702,11 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     ]];
 
     self.headerCardView = cardView;
+    self.headerMaterialView = tintView;
+    self.headerMarketplaceGradientLayer = materialGradientLayer;
+    self.headerAmbientGlowView = ambientGlow;
+    self.headerSupportGlowView = secondaryGlow;
+    self.headerAccentBarView = accentBar;
     self.headerEyebrowLabel = eyebrowLabel;
     self.headerTitleLabel = titleLabel;
     self.headerSubtitleLabel = subtitleLabel;
@@ -648,6 +715,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     self.headerPrimaryButton = primaryButton;
     self.headerSecondaryButton = secondaryButton;
 
+    [self pp_applyHeroMarketplaceMaterial];
     self.tableView.tableHeaderView = self.headerRoot;
 }
 
@@ -992,6 +1060,8 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplyCanvasBackground(self, self.tableView);
         PPPetsRefreshDynamicLayerColors(self.tableView);
+        [self pp_applyHeroMarketplaceMaterial];
+        [self pp_layoutHeroMarketplaceMaterial];
     }
 }
 

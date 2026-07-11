@@ -14,6 +14,7 @@
 #import "PPPetProfilesViewController.h"
 #import "PPModernAvatarRenderer.h"
 #import "PPRootTabBarController.h"
+#import "PPMarketplaceHeroCardStyle.h"
 
 
 #import "PPProfileTextFieldCell.h"
@@ -72,6 +73,11 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 @property (nonatomic, strong) UIView *headerRoot;
 @property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) UIView *headerMaterialView;
+@property (nonatomic, strong) CAGradientLayer *headerMarketplaceGradientLayer;
+@property (nonatomic, strong) UIView *headerAmbientGlowView;
+@property (nonatomic, strong) UIView *headerSupportGlowView;
+@property (nonatomic, strong) UIView *headerAccentBarView;
 @property (nonatomic, strong) UILabel *headerEyebrowLabel;
 @property (nonatomic, strong) UILabel *headerNameLabel;
 @property (nonatomic, strong) UILabel *headerHandleLabel;
@@ -108,6 +114,59 @@ static CGFloat PPProfileBottomBarClearance(void) {
 - (UIColor *)pp_profileSurfaceBorderColor
 {
     return [AppPrimaryClr colorWithAlphaComponent:0.08];
+}
+
+- (UIColor *)pp_profileHeroAccentColor
+{
+    return AppPrimaryClr ?: UIColor.systemOrangeColor;
+}
+
+- (void)pp_applyProfileHeroMarketplaceMaterial
+{
+    UIColor *accent = [self pp_profileHeroAccentColor];
+    BOOL isDark = PPMarketplaceHeroCardIsDark(self.traitCollection);
+    PPMarketplaceHeroCardApplySurfaceChrome(self.headerCardView,
+                                            PPCornerHero - 6.0,
+                                            self.traitCollection);
+    PPMarketplaceHeroCardConfigureSurfaceGradient(self.headerMarketplaceGradientLayer,
+                                                  accent,
+                                                  self.traitCollection,
+                                                  Language.isRTL);
+
+    self.headerMaterialView.backgroundColor = UIColor.clearColor;
+    self.headerMaterialView.layer.cornerRadius = PPCornerHero - 6.0;
+    if (@available(iOS 13.0, *)) {
+        self.headerMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIColor *backgroundAccent = PPMarketplaceHeroCardBackgroundAccentColor(accent, self.traitCollection);
+    UIColor *supportGlowColor = PPMarketplaceHeroCardSupportGlowColor(accent, self.traitCollection);
+    self.headerAmbientGlowView.backgroundColor = [backgroundAccent colorWithAlphaComponent:isDark ? 0.17 : 0.11];
+    self.headerAmbientGlowView.layer.shadowColor = UIColor.clearColor.CGColor;
+    self.headerAmbientGlowView.layer.shadowOpacity = 0.0f;
+    self.headerAmbientGlowView.layer.shadowRadius = 0.0f;
+    self.headerAmbientGlowView.layer.shadowOffset = CGSizeZero;
+
+    self.headerSupportGlowView.backgroundColor = [supportGlowColor colorWithAlphaComponent:isDark ? 0.12 : 0.095];
+    self.headerSupportGlowView.layer.shadowColor = supportGlowColor.CGColor;
+    self.headerSupportGlowView.layer.shadowOpacity = isDark ? 0.11f : 0.075f;
+    self.headerSupportGlowView.layer.shadowRadius = 18.0f;
+    self.headerSupportGlowView.layer.shadowOffset = CGSizeZero;
+
+    self.headerAccentBarView.backgroundColor = [accent colorWithAlphaComponent:0.58];
+}
+
+- (void)pp_layoutProfileHeroMarketplaceMaterial
+{
+    CGRect materialBounds = self.headerMaterialView.bounds;
+    self.headerMarketplaceGradientLayer.frame = CGRectIsEmpty(materialBounds) ? CGRectZero : materialBounds;
+    self.headerMarketplaceGradientLayer.cornerRadius = self.headerMaterialView.layer.cornerRadius;
+
+    if (!CGRectIsEmpty(self.headerCardView.bounds)) {
+        self.headerCardView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerCardView.bounds
+                                       cornerRadius:self.headerCardView.layer.cornerRadius].CGPath;
+    }
 }
 
 - (void)pp_applyProfileCanvasBackground
@@ -186,6 +245,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     [self BellowIos26Buttons];
     [self pp_applyProfileCanvasBackground];
+    [self pp_applyProfileHeroMarketplaceMaterial];
     [self pp_refreshAvatarImageView];
     [self.tableView reloadData];
 
@@ -247,6 +307,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     frame.size.height = headerHeight;
     self.headerRoot.frame = frame;
     self.tableView.tableHeaderView = self.headerRoot;
+    [self pp_layoutProfileHeroMarketplaceMaterial];
     [Styling addLiquidGlassBorderToView:self.avatarIMV cornerRadius:54.0];
     
 }
@@ -269,12 +330,8 @@ static CGFloat PPProfileBottomBarClearance(void) {
     }];
     [self.avatarIMV pp_setBorderColor:avatarBorderDynamic];
 
-    self.headerCardView.layer.borderWidth = 1.0;
-    UIColor *headerCardBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
-        return [[UIColor whiteColor] colorWithAlphaComponent:a];
-    }];
-    [self.headerCardView pp_setBorderColor:headerCardBorderDynamic];
+    [self pp_applyProfileHeroMarketplaceMaterial];
+    [self pp_layoutProfileHeroMarketplaceMaterial];
 
     UIColor *editBadgeBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -743,66 +800,42 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    cardView.backgroundColor = [self pp_profileSurfaceColor];
-    cardView.layer.cornerRadius = 34.0;
-    cardView.layer.masksToBounds = NO;
-    cardView.layer.borderWidth = 1.0;
-    UIColor *cardBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
-        return [[UIColor whiteColor] colorWithAlphaComponent:a];
-    }];
-    [cardView pp_setBorderColor:cardBorderColor];
-    [cardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    cardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
-    cardView.layer.shadowRadius = 24.0;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    PPMarketplaceHeroCardApplySurfaceChrome(cardView, PPCornerHero - 6.0, self.traitCollection);
     [self.headerRoot addSubview:cardView];
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
-        }
-        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
-    }];
-    tintView.layer.cornerRadius = 34.0;
+    tintView.backgroundColor = UIColor.clearColor;
+    tintView.layer.cornerRadius = PPCornerHero - 6.0;
+    if (@available(iOS 13.0, *)) {
+        tintView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
+    CAGradientLayer *materialGradientLayer = [CAGradientLayer layer];
+    materialGradientLayer.drawsAsynchronously = YES;
+    [tintView.layer insertSublayer:materialGradientLayer atIndex:0];
+
     UIView *ambientGlow = [[UIView alloc] init];
     ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    ambientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
     ambientGlow.userInteractionEnabled = NO;
-    ambientGlow.layer.cornerRadius = 94.0;
-    [ambientGlow pp_setShadowColor:[brandColor colorWithAlphaComponent:0.50]];
-    ambientGlow.layer.shadowOpacity = 0.16;
-    ambientGlow.layer.shadowRadius = 42.0;
-    ambientGlow.layer.shadowOffset = CGSizeZero;
+    ambientGlow.layer.cornerRadius = 58.0;
     [cardView addSubview:ambientGlow];
 
     UIView *secondaryGlow = [[UIView alloc] init];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 * 0.18 : 0.40;
-        return [[UIColor whiteColor] colorWithAlphaComponent:a];
-    }];
     secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.layer.cornerRadius = 58.0;
-    UIColor *secondaryGlowShadowColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
-        return [[UIColor whiteColor] colorWithAlphaComponent:a];
-    }];
-    [secondaryGlow pp_setShadowColor:secondaryGlowShadowColor];
-    secondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
-    secondaryGlow.layer.shadowRadius = 22.0;
-    secondaryGlow.layer.shadowOffset = CGSizeZero;
+    secondaryGlow.layer.cornerRadius = 66.0;
     [cardView addSubview:secondaryGlow];
 
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = brandColor;
-    accentBar.layer.cornerRadius = 3.0;
+    accentBar.backgroundColor = [brandColor colorWithAlphaComponent:0.58];
+    accentBar.layer.cornerRadius = 2.0;
+    if (@available(iOS 13.0, *)) {
+        accentBar.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [cardView addSubview:accentBar];
 
     UIView *eyebrowPill = [[UIView alloc] init];
@@ -929,20 +962,20 @@ static CGFloat PPProfileBottomBarClearance(void) {
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [ambientGlow.widthAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:188.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-82.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:82.0],
+        [ambientGlow.widthAnchor constraintEqualToConstant:116.0],
+        [ambientGlow.heightAnchor constraintEqualToConstant:116.0],
+        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-34.0],
+        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:Language.isRTL ? 22.0 : -12.0],
 
-        [secondaryGlow.widthAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:116.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
+        [secondaryGlow.widthAnchor constraintEqualToConstant:132.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:132.0],
+        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:48.0],
+        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:Language.isRTL ? -26.0 : 28.0],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:72.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor],
+        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:30.0],
+        [accentBar.widthAnchor constraintEqualToConstant:44.0],
+        [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
         [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
@@ -985,6 +1018,11 @@ static CGFloat PPProfileBottomBarClearance(void) {
     ]];
 
     self.headerCardView = cardView;
+    self.headerMaterialView = tintView;
+    self.headerMarketplaceGradientLayer = materialGradientLayer;
+    self.headerAmbientGlowView = ambientGlow;
+    self.headerSupportGlowView = secondaryGlow;
+    self.headerAccentBarView = accentBar;
     self.headerEyebrowLabel = eyebrowLabel;
     self.headerNameLabel = nameLabel;
     self.headerHandleLabel = handleLabel;
@@ -992,6 +1030,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
     CGSize fittingSize = [self.headerRoot systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
     self.headerRoot.frame = CGRectMake(0, 0, CGRectGetWidth(self.view.bounds), fittingSize.height);
+    [self pp_applyProfileHeroMarketplaceMaterial];
     self.tableView.tableHeaderView = self.headerRoot;
 }
 
@@ -2735,13 +2774,8 @@ static CGFloat PPProfileBottomBarClearance(void) {
     }];
     [self.avatarIMV pp_setBorderColor:avatarBorderDyn];
 
-    // Header card border + shadow
-    UIColor *headerCardBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
-        CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
-        return [[UIColor whiteColor] colorWithAlphaComponent:a];
-    }];
-    [self.headerCardView pp_setBorderColor:headerCardBorderDyn];
-    self.headerCardView.layer.shadowOpacity = isDark ? 0.03 : 0.08;
+    [self pp_applyProfileHeroMarketplaceMaterial];
+    [self pp_layoutProfileHeroMarketplaceMaterial];
 
     // Add-photo button
     UIColor *photoBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {

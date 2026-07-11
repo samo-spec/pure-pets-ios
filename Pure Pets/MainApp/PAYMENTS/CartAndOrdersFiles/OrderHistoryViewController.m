@@ -546,7 +546,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         [self.searchToggleButton setImage:img forState:UIControlStateNormal];
         self.searchToggleButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self.searchToggleButton addTarget:self action:@selector(searchToggleButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.searchToggleButton addTarget:self action:@selector(searchToggleButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.heroSurfaceView addSubview:self.searchToggleButton];
 
     UIBlurEffect *btnBlur;
@@ -1032,7 +1032,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - Search Expand/Collapse Action
 
-- (void)searchToggleButtonTapped
+- (void)searchToggleButtonTapped:(UIButton *)sender
 {
     self.searchExpanded = !self.searchExpanded;
 
@@ -1061,12 +1061,24 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         if (finished && self.searchExpanded) {
-            [self.searchView focus];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                @try {
+                    [self.searchView focus];
+                } @catch (NSException *exception) {
+                    NSLog(@"[PurePets] Focus exception caught: %@", exception);
+                }
+            });
         }
     }];
 
     if (!self.searchExpanded) {
-        [self.searchView unfocus];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            @try {
+                [self.searchView unfocus];
+            } @catch (NSException *exception) {
+                NSLog(@"[PurePets] Unfocus exception caught: %@", exception);
+            }
+        });
     }
 }
 

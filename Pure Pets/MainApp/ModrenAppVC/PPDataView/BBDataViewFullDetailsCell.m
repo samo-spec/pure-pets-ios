@@ -1,5 +1,6 @@
 #import "BBDataViewFullDetailsCell.h"
 #import "PPUniversalCellViewModel.h"
+#import "FavoriteButton.h"
 #import "PPImageLoaderManager.h"
 #import "PetAd.h"
 #import "PetAccessory.h"
@@ -284,6 +285,8 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UILabel *priceLabel;
+@property (nonatomic, strong) UIStackView *priceRowStackView;
+@property (nonatomic, strong) FavoriteFloatingButton *favoriteButton;
 @property (nonatomic, strong) UIStackView *highlightPlateStackView;
 @property (nonatomic, strong) UIStackView *socialMetricStackView;
 @property (nonatomic, copy) NSArray<NSString *> *imageURLs;
@@ -355,6 +358,9 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     self.titleLabel.accessibilityLabel = nil;
     self.subtitleLabel.accessibilityLabel = nil;
     self.priceLabel.accessibilityLabel = nil;
+    self.favoriteButton.hidden = YES;
+    self.favoriteButton.adID = nil;
+    self.favoriteButton.collection = nil;
     [self bb_removeAllArrangedSubviewsFromStack:self.highlightPlateStackView];
     [self bb_removeAllArrangedSubviewsFromStack:self.socialMetricStackView];
     self.highlightPlateStackView.hidden = YES;
@@ -885,18 +891,49 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     self.subtitleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:subtitleFont];
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
 
-    UIFont *priceFont = [GM BlackFontWithSize:26.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
+    UIFont *priceFont = [GM BlackFontWithSize:30.0] ?: [UIFont systemFontOfSize:23.0 weight:UIFontWeightBold];
     self.priceLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:priceFont];
     self.priceLabel.adjustsFontForContentSizeCategory = YES;
+
+    // Symmetrically configure premium favorite button and container stack view
+    if (!self.favoriteButton) {
+        self.favoriteButton = [[FavoriteFloatingButton alloc] init];
+        self.favoriteButton.hidesBackground = NO;
+        self.favoriteButton.hidden = YES;
+        self.favoriteButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92];
+        self.favoriteButton.layer.cornerRadius = 19.0;
+        self.favoriteButton.clipsToBounds = YES;
+        [self.favoriteButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [self.favoriteButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    }
+    
+    if (!self.priceRowStackView) {
+        self.priceRowStackView = [[UIStackView alloc] init];
+        self.priceRowStackView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.priceRowStackView.axis = UILayoutConstraintAxisHorizontal;
+        self.priceRowStackView.alignment = UIStackViewAlignmentCenter;
+        self.priceRowStackView.distribution = UIStackViewDistributionFill;
+        self.priceRowStackView.spacing = 12.0;
+        self.priceRowStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    }
 
     if (viewModel.isSkeleton) {
         self.titleLabel.text = BBFullDetailsLocalized(@"bb_dataview_full_details_loading");
         self.subtitleLabel.text = @"";
         self.priceLabel.text = @"";
+        self.favoriteButton.hidden = YES;
     } else {
         self.titleLabel.text = BBFullDetailsTrimmedString(viewModel.title);
         self.subtitleLabel.text = [self bb_descriptionSubtitleForViewModel:viewModel];
         self.priceLabel.text = BBFullDetailsTrimmedString(viewModel.priceText);
+        
+        BOOL showsFav = !viewModel.isOwner && viewModel.ModelID.length > 0;
+        self.favoriteButton.hidden = !showsFav;
+        if (showsFav) {
+            self.favoriteButton.adID = viewModel.ModelID ?: @"";
+            self.favoriteButton.collection = [self bb_favoritesCollectionForContext:viewModel.modelContext];
+            [self.favoriteButton initValue];
+        }
     }
 
     self.subtitleLabel.hidden = self.subtitleLabel.text.length == 0;
@@ -911,7 +948,11 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 
     [self.detailsStackView addArrangedSubview:self.titleLabel];
     [self.detailsStackView addArrangedSubview:self.subtitleLabel];
-    [self.detailsStackView addArrangedSubview:self.priceLabel];
+    
+    [self bb_removeAllArrangedSubviewsFromStack:self.priceRowStackView];
+    [self.priceRowStackView addArrangedSubview:self.priceLabel];
+    [self.priceRowStackView addArrangedSubview:self.favoriteButton];
+    [self.detailsStackView addArrangedSubview:self.priceRowStackView];
 
     [self bb_configureHighlightPlatesForViewModel:viewModel];
     [self.detailsStackView addArrangedSubview:self.highlightPlateStackView];
@@ -931,6 +972,24 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 
     [self.detailsStackView setNeedsLayout];
     [self.detailsStackView layoutIfNeeded];
+}
+
+- (NSString *)bb_favoritesCollectionForContext:(PPCellContext)context
+{
+    switch (context) {
+        case PPCellForMarket:
+        case PPCellForFood:
+        case PPCellForContextAccessory:
+            return @"favoritesAccessories";
+        case PPCellForVets:
+            return @"favoritesVets";
+        case PPCellForServices:
+            return @"favoritesServices";
+        case PPCellForHomeAds:
+        case PPCellForAds:
+        default:
+            return @"favoritesAds";
+    }
 }
 
 - (UILabel *)bb_labelWithTextStyle:(UIFontTextStyle)textStyle
