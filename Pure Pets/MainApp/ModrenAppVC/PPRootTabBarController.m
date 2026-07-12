@@ -111,6 +111,9 @@ static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 - (UIViewController *)pp_makeAddActionPlaceholderViewController;
 - (UIViewController *)pp_makeSettingsRootViewController;
 - (void)pp_applyPremiumTabBarItemMetrics:(UITabBarItem *)item centerAction:(BOOL)centerAction;
+- (void)pp_refreshLegacyTabBarTitleLayout;
+- (nullable UILabel *)pp_tabBarTitleLabelForItem:(UITabBarItem *)item;
+- (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
 - (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController;
 - (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories;
@@ -1141,8 +1144,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @implementation PPRootTabBarController
 
 - (BOOL)useLegacyBar {
-
-    return PPUSE_LEGACY_BAR;
+    if (_hasSetUseLegacyBar) {
+        return _useLegacyBar;
+    }
+    return [[NSUserDefaults standardUserDefaults] boolForKey:@"PPUSE_LEGACY_BAR"];
 }
 
 - (void)setUseLegacyBar:(BOOL)useLegacyBar {
@@ -1213,13 +1218,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (self.useLegacyBar) {
         addNav = [self nav:[self pp_makeAddActionPlaceholderViewController]
                      title:kLang(@"Add")
-                      icon:@"plus.circle"
-             selectedImage:@"plus.circle.fill"];
+                      icon:@"plus"
+             selectedImage:@"plus.fill"];
     } else {
         addNav = [self nav:[self pp_makeAddActionPlaceholderViewController]
                      title:kLang(@"Add")
-                      icon:@"plus.circle"
-             selectedImage:@"plus.circle.fill"];
+                      icon:@"plus"
+             selectedImage:@"plus.fill"];
     }
     // Settings
     UINavigationController *settingsNav = [self nav:[self pp_makeSettingsRootViewController]   title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))  icon:@"slider.horizontal.3" selectedImage:@"slider.horizontal.3"];
@@ -1233,7 +1238,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     cartNav.tabBarItem.selectedImage = [self pp_profileTabItemImageSelected:YES];
    
     
-    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"bubble-chat" selectedImage:@"bubble-chat-fill"];
+    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"message.badge.waveform" selectedImage:@"message.badge.waveform.fill"];
 
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
@@ -1245,8 +1250,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     UINavigationController *ordersNav =
         [self nav:[OrderHistoryViewController new]
             title:ordersTabTitle
-             icon:@"shopping-new"
-    selectedImage:@"shopping-new-fill"];
+             icon:@"cart.badge.clock"
+    selectedImage:@"cart.badge.clock.fill"];
     ordersNav.tabBarItem.accessibilityLabel = kLang(@"a11y_tab_orders") ?: ordersTabTitle;
     ordersNav.tabBarItem.accessibilityHint = kLang(@"a11y_tab_orders_hint");
    /*
@@ -1406,6 +1411,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+    [self pp_refreshLegacyTabBarTitleLayout];
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
     [self pp_assertPremiumTabBarState];
     [self pp_layoutGuestProfileAnimation];
@@ -1634,6 +1640,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
+    // UIKit resolves system-tab title frames during the root's first layout
+    // pass. Reconcile them after that pass so the final Arabic/English glyph
+    // is never clipped on initial presentation.
+    [self pp_refreshLegacyTabBarTitleLayout];
     [self pp_updatePremiumBottomFadeAppearance];
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
@@ -3011,8 +3021,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return [self pp_profileTabItemImageSelected:selected];
     }
     if ([self pp_isResolvedMyAdsRootTabIndex:index]) {
-        normalSymbolName = @"shopping-new";
-        selectedSymbolName = @"shopping-new-fill";
+        normalSymbolName = @"cart.badge.clock";
+        selectedSymbolName = @"cart.badge.clock.fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
                               pointSize:20.0
                                  weight:selected ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold
@@ -3026,12 +3036,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             selectedSymbolName = @"house.fill";
             break;
         case PPRootTabIndexAdd:
-            normalSymbolName = @"plus.circle";
-            selectedSymbolName = @"plus.circle.fill";
+            normalSymbolName = @"plus";
+            selectedSymbolName = @"plus.fill";
             break;
         case PPRootTabIndexChats:
-            normalSymbolName = @"conversation";
-            selectedSymbolName = @"bubble-chat-fill";
+            normalSymbolName = @"message.badge.waveform";
+            selectedSymbolName = @"message.badge.waveform.fill";
             break;
         default:
             break;
@@ -3303,6 +3313,79 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_layoutGuestProfileAnimation];
         [self pp_updateGuestProfileAnimationPlayback];
     });
+}
+
+- (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title
+{
+    if ([view isKindOfClass:UILabel.class]) {
+        UILabel *label = (UILabel *)view;
+        if ([label.text isEqualToString:title]) {
+            return label;
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        UILabel *matchingLabel = [self pp_titleLabelInView:subview matchingTitle:title];
+        if (matchingLabel) {
+            return matchingLabel;
+        }
+    }
+    return nil;
+}
+
+- (nullable UILabel *)pp_tabBarTitleLabelForItem:(UITabBarItem *)item
+{
+    if (item.title.length == 0) {
+        return nil;
+    }
+
+    UIView *itemView = [self pp_viewForTabBarItem:item];
+    if (!itemView || CGRectIsEmpty(itemView.bounds)) {
+        return nil;
+    }
+    return [self pp_titleLabelInView:itemView matchingTitle:item.title];
+}
+
+- (void)pp_refreshLegacyTabBarTitleLayout
+{
+    if (!self.useLegacyBar || self.tabBar.hidden || CGRectGetWidth(self.tabBar.bounds) <= 0.0) {
+        return;
+    }
+
+    for (UITabBarItem *item in self.tabBar.items) {
+        UIView *itemView = [self pp_viewForTabBarItem:item];
+        UILabel *titleLabel = [self pp_tabBarTitleLabelForItem:item];
+        if (!itemView || !titleLabel || !titleLabel.superview) {
+            continue;
+        }
+
+        // UITabBar may retain a narrower launch-time title frame even after
+        // its item widths settle. Keep a small visual inset while making the
+        // label span the resolved item width, centered for both RTL and LTR.
+        CGFloat titleWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - 6.0);
+        if (titleWidth <= 0.0) {
+            continue;
+        }
+
+        CGRect titleFrameInItem = [itemView convertRect:titleLabel.frame
+                                               fromView:titleLabel.superview];
+        titleFrameInItem.origin.x = (CGRectGetWidth(itemView.bounds) - titleWidth) * 0.5;
+        titleFrameInItem.size.width = titleWidth;
+        CGRect resolvedTitleFrame = [titleLabel.superview convertRect:titleFrameInItem
+                                                              fromView:itemView];
+
+        titleLabel.numberOfLines = 1;
+        titleLabel.textAlignment = NSTextAlignmentCenter;
+        titleLabel.adjustsFontSizeToFitWidth = YES;
+        titleLabel.minimumScaleFactor = 0.78;
+        titleLabel.allowsDefaultTighteningForTruncation = YES;
+        titleLabel.frame = CGRectMake(CGRectGetMinX(resolvedTitleFrame),
+                                      CGRectGetMinY(titleLabel.frame),
+                                      CGRectGetWidth(resolvedTitleFrame),
+                                      CGRectGetHeight(titleLabel.frame));
+        titleLabel.preferredMaxLayoutWidth = titleWidth;
+        [titleLabel setNeedsDisplay];
+    }
 }
 
 - (void)pp_layoutGuestProfileAnimation

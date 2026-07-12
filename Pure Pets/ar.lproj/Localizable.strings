@@ -1967,6 +1967,7 @@
 "order_edit_location_pending_only" = "يمكن تعديل موقع التوصيل فقط عندما يكون الطلب قيد الانتظار.";
 "order_cancel_title" = "إلغاء الطلب";
 "order_cancel_confirm" = "هل أنت متأكد أنك تريد إلغاء هذا الطلب؟";
+"order_cancel_checkout_failed" = "تعذر إلغاء هذا الطلب المعلق الآن. حاول مرة أخرى.";
 "order_missing_id" = "معرّف الطلب غير متوفر.";
 "order_status" = "الحالة";
 "order_details_no_items" = "لا توجد عناصر متاحة.";

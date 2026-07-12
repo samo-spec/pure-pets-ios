@@ -1222,10 +1222,83 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     }
 
     if (![order isCashOnDelivery] && ![order hasCapturedPayment]) {
+        // Checkout-pending QIB orders are abandoned through the dedicated,
+        // server-authoritative callable rather than a support-request detour.
+        if ([statusKey isEqualToString:@"pending"] ||
+            [statusKey isEqualToString:@"failed"]) {
+            return nil;
+        }
         return kLang(@"order_action_cancel_unavailable_payment_pending");
     }
 
     return nil;
+}
+
+- (void)pp_cancelPendingCheckoutOrder:(PPOrder *)order
+                  forceSessionRefresh:(BOOL)forceSessionRefresh
+                         didRetryAuth:(BOOL)didRetryAuth
+                           completion:(void (^)(BOOL success,
+                                                BOOL alreadyCancelled,
+                                                NSError * _Nullable error))completion
+{
+    NSString *orderID = PPOrderSupportSafeString(order.orderId);
+    if (orderID.length == 0) {
+        NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                             code:400
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_missing_id")}];
+        if (completion) completion(NO, NO, error);
+        return;
+    }
+
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceSessionRefresh
+                                                        completion:^(NSError * _Nullable sessionError) {
+        if (sessionError) {
+            NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:sessionError
+                                                                      fallbackKey:@"order_cancel_checkout_failed"];
+            if (completion) completion(NO, NO, publicError);
+            return;
+        }
+
+        [[PPOrderDefaultFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
+         callWithObject:@{ @"orderId": orderID }
+         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+            if (error && !didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                [self pp_cancelPendingCheckoutOrder:order
+                                forceSessionRefresh:YES
+                                       didRetryAuth:YES
+                                         completion:completion];
+                return;
+            }
+
+            if (error) {
+                PPORDERLog(@"Cancel pending checkout failed | orderId=%@ | error=%@",
+                           orderID,
+                           error.localizedDescription ?: @"Unknown");
+                NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:error
+                                                                          fallbackKey:@"order_cancel_checkout_failed"];
+                if (completion) completion(NO, NO, publicError);
+                return;
+            }
+
+            NSDictionary *data = [result.data isKindOfClass:NSDictionary.class]
+                ? (NSDictionary *)result.data
+                : @{};
+            if (completion) {
+                completion(YES, [data[@"alreadyCancelled"] boolValue], nil);
+            }
+        }];
+    }];
+}
+
+- (void)cancelPendingCheckoutOrder:(PPOrder *)order
+                        completion:(void (^)(BOOL success,
+                                             BOOL alreadyCancelled,
+                                             NSError * _Nullable error))completion
+{
+    [self pp_cancelPendingCheckoutOrder:order
+                    forceSessionRefresh:NO
+                           didRetryAuth:NO
+                             completion:completion];
 }
 
 - (PPOrderEligibilityDecision *)eligibilityForAction:(PPOrderCustomerActionType)actionType

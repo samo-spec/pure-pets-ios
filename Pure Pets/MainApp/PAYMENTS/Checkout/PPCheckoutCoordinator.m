@@ -1081,16 +1081,17 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
     NSString *orderId = PPCheckoutTrimmedString(order.orderId);
     if (orderId.length > 0) {
-        FIRFunctions *functions = PPCheckoutFunctionsClient();
-        [[functions HTTPSCallableWithName:@"cancelOrderCheckout"]
-         callWithObject:@{@"orderId": orderId}
-             completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-            if (error) {
-                PPORDERLog(@"Failed to cancel order via Cloud Function | orderId=%@ | error=%@",
-                           orderId, error.localizedDescription ?: @"");
-            } else {
-                PPORDERLog(@"Order cancelled via Cloud Function | orderId=%@", orderId);
+        [[PPOrderManager shared] cancelPendingCheckoutOrder:order
+                                                  completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
+            if (!success || error) {
+                PPORDERLog(@"Failed to cancel order via protected checkout path | orderId=%@ | error=%@",
+                           orderId,
+                           error.localizedDescription ?: @"");
+                return;
             }
+            PPORDERLog(@"Order cancelled via protected checkout path | orderId=%@ | alreadyCancelled=%d",
+                       orderId,
+                       alreadyCancelled);
         }];
     }
 

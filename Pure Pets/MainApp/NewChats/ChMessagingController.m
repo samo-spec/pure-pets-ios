@@ -3597,7 +3597,8 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
     CGRect composerFrame = [composer.superview convertRect:composer.frame toView:self.view];
     CGFloat occlusion = CGRectGetHeight(self.view.bounds) - CGRectGetMinY(composerFrame);
-    return MAX(self.baseTableInsets.bottom, ceil(MAX(0.0, occlusion)));
+    // Add 12.0 points of extra breathe room above the chat bar top
+    return MAX(self.baseTableInsets.bottom, ceil(MAX(0.0, occlusion)) + 12.0);
 }
 
 - (void)pp_applyTableViewBottomInsetForActiveComposer

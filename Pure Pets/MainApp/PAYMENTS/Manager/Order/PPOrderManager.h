@@ -173,6 +173,14 @@ typedef NS_ENUM(NSInteger, PPOrderCustomerActionType) {
 
 - (NSArray<NSDictionary *> *)reasonOptionsForAction:(PPOrderCustomerActionType)actionType;
 
+/// Cancels an unpaid checkout-pending order through the server-authoritative
+/// checkout callable. The manager repairs Firebase Auth/App Check freshness and
+/// retries one protected-call failure before surfacing a customer-safe error.
+- (void)cancelPendingCheckoutOrder:(PPOrder *)order
+                        completion:(void (^)(BOOL success,
+                                             BOOL alreadyCancelled,
+                                             NSError * _Nullable error))completion;
+
 - (id<FIRListenerRegistration> _Nullable)listenToSupportRequestsForOrderID:(NSString *)orderID
                                                                      update:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))update;
 

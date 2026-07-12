@@ -152,9 +152,9 @@ struct ChatBarView: View {
         Color(
             uiColor: UIColor { traitCollection in
                 if traitCollection.userInterfaceStyle == .dark {
-                    return UIColor.secondarySystemBackground.withAlphaComponent(0.92)
+                    return UIColor.secondarySystemBackground.withAlphaComponent(0.42)
                 }
-                return UIColor.white.withAlphaComponent(0.94)
+                return UIColor.white.withAlphaComponent(0.46)
             }
         )
     }

@@ -5316,6 +5316,34 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     }
 
     [self startLoading];
+
+    NSString *statusKey = [self normalizedStatusKeyForOrder:self.order];
+    BOOL shouldCancelPendingCheckout =
+        ![self.order isCashOnDelivery] &&
+        ![self.order hasCapturedPayment] &&
+        ([statusKey isEqualToString:@"pending"] || [statusKey isEqualToString:@"failed"]);
+
+    if (shouldCancelPendingCheckout) {
+        __weak typeof(self) weakSelf = self;
+        [self.orderManager cancelPendingCheckoutOrder:self.order
+                                           completion:^(BOOL success, BOOL alreadyCancelled, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                [strongSelf stopLoading];
+                if (!success || error) {
+                    [strongSelf showErrorMessage:error.localizedDescription ?: kLang(@"order_cancel_checkout_failed")];
+                    return;
+                }
+
+                [strongSelf showSuccessMessage:alreadyCancelled
+                    ? kLang(@"order_action_cancel_unavailable_closed")
+                    : kLang(@"OrderCanceled")];
+            });
+        }];
+        return;
+    }
+
     PPOrderSupportDraft *draft = [PPOrderSupportDraft new];
     draft.actionType = PPOrderCustomerActionTypeCancel;
     draft.reasonCode = @"cancelled_by_user";

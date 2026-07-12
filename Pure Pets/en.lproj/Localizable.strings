@@ -1987,6 +1987,7 @@
 "order_edit_location_pending_only" = "Delivery location can only be edited while the order is pending.";
 "order_cancel_title" = "Cancel Order";
 "order_cancel_confirm" = "Are you sure you want to cancel this order?";
+"order_cancel_checkout_failed" = "We could not cancel this pending order right now. Please try again.";
 "order_missing_id" = "Order ID is missing.";
 "order_status" = "Status";
 "order_details_no_items" = "No items available.";

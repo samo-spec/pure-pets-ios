@@ -86,6 +86,7 @@ static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVi
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 static NSString * const PPHomeConfigCacheBackgroundGlowsFadedKey = @"backgroundGlowsFaded";
 static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
+static NSString * const PPHomeConfigCacheUseLegacyBarKey = @"PPUSE_LEGACY_BAR";
 static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
@@ -1698,7 +1699,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                 premiumCareVisible:(BOOL)premiumCareVisible
                novaFloatingVisible:(BOOL)novaFloatingVisible
              backgroundGlowsFaded:(BOOL)glowsFaded
-                     novaUseGenkit:(BOOL)novaUseGenkit;
+                     novaUseGenkit:(BOOL)novaUseGenkit
+                      useLegacyBar:(BOOL)useLegacyBar;
 - (BOOL)pp_applyCachedHomeConfigIfAvailable;
 - (BOOL)pp_cachedNovaFloatingVisibility;
 - (void)pp_publishNovaFloatingVisibility:(BOOL)visible;
@@ -2454,6 +2456,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                novaFloatingVisible:(BOOL)novaFloatingVisible
              backgroundGlowsFaded:(BOOL)glowsFaded
                      novaUseGenkit:(BOOL)novaUseGenkit
+                      useLegacyBar:(BOOL)useLegacyBar
 {
     if (sections.count == 0) {
         return;
@@ -2465,11 +2468,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCachePremiumCareVisibleKey : @(premiumCareVisible),
         PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
         PPHomeConfigCacheBackgroundGlowsFadedKey : @(glowsFaded),
-        PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
+        PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit),
+        PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
     [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
                                             forKey:PPNovaFloatingVisibleDefaultsKey];
+    [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     // We also set it individually so other view controllers can read it easily
@@ -2505,6 +2510,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     if ([cachedGlowsFaded respondsToSelector:@selector(boolValue)]) {
         glowsFaded = [cachedGlowsFaded boolValue];
     }
+
+    BOOL useLegacyBar = NO;
+    id cachedUseLegacyBar = payload[PPHomeConfigCacheUseLegacyBarKey];
+    if ([cachedUseLegacyBar respondsToSelector:@selector(boolValue)]) {
+        useLegacyBar = [cachedUseLegacyBar boolValue];
+    }
+    [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
 
     NSString *cachedMode = payload[PPHomeConfigCacheTitleModeKey];
     NSString *resolvedTitleViewMode = @"location";
@@ -4939,18 +4952,18 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         glowsFaded = [remoteGlowsFaded boolValue];
     }
 
-    BOOL novaUseGenkit = NO;
-    id remoteNovaGenkit = data[@"novaUseGenkit"];
-    if ([remoteNovaGenkit respondsToSelector:@selector(boolValue)]) {
-        novaUseGenkit = [remoteNovaGenkit boolValue];
-    }
-    novaUseGenkit = YES;
-    
-    
+    BOOL novaUseGenkit = YES; // Force to YES as required by the code
+
     BOOL premiumCareVisible = YES;
     id remotePremiumCare = data[@"premiumCareVisible"];
     if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
         premiumCareVisible = [remotePremiumCare boolValue];
+    }
+
+    BOOL useLegacyBar = NO;
+    id remoteUseLegacyBar = data[@"PPUSE_LEGACY_BAR"];
+    if ([remoteUseLegacyBar respondsToSelector:@selector(boolValue)]) {
+        useLegacyBar = [remoteUseLegacyBar boolValue];
     }
 
     __weak typeof(self) weakSelf = self;
@@ -4980,8 +4993,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                                  titleViewMode:resolvedTitleViewMode
                             premiumCareVisible:premiumCareVisible
                            novaFloatingVisible:novaVisible
-                         backgroundGlowsFaded:glowsFaded
-                                 novaUseGenkit:novaUseGenkit];
+                          backgroundGlowsFaded:glowsFaded
+                                 novaUseGenkit:novaUseGenkit
+                                  useLegacyBar:useLegacyBar];
 
         NSArray<NSNumber *> *nextIdentifiers = [strongSelf pp_orderedHomeSectionIdentifiers];
         NSString *nextSignature =
