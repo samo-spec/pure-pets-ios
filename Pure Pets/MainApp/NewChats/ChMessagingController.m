@@ -10,6 +10,10 @@
 static BOOL PPChatShowLog = NO; // ⬅️ change to YES to enable chat logs
 static const NSInteger PPChatInitialMessagePageLimit = 50;
 static const NSInteger PPChatMessagePageStep = 50;
+static const NSTimeInterval PPChatUnsendWindow = 15.0 * 60.0;
+static const NSInteger PPChatReplyIndicatorTag = 0x50505250;
+static NSString * const PPChatReplyPanName = @"pp.chat.reply.pan";
+static NSString * const PPChatDismissPanName = @"pp.chat.dismiss.pan";
 
 #define PPChatLog(fmt, ...) \
 do { \
@@ -44,6 +48,7 @@ do { \
 #import "PPModernAvatarRenderer.h"
 #import "PPFirebaseSessionBridge.h"
 #import "FullScreenImageViewerController.h"
+#import "PPHeroGlassBackgroundView.h"
 #import "Pure_Pets-Swift.h"
 
 
@@ -131,16 +136,6 @@ static UIImage *PPChatPremiumHeaderSupportLogoImage(void)
     return [UIImage imageNamed:@"PPLogo"] ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
 }
 
-static UIColor *PPChatPremiumHeaderSurfaceColor(void)
-{
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        return dark
-            ? [UIColor colorWithWhite:0.08 alpha:0.78]
-            : [UIColor colorWithWhite:1.0 alpha:0.82];
-    }];
-}
-
 static UIColor *PPChatPremiumHeaderControlSurfaceColor(void)
 {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
@@ -193,12 +188,7 @@ static UIColor *PPChatEmptyStateIconSurfaceColor(void)
 
 static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 {
-    if (@available(iOS 13.0, *)) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithWhite:0.035 alpha:1.0];
-        }
-    }
-    return AppBackgroundClr ?: [UIColor systemBackgroundColor];
+    return [PPChatsFunc chatCanvasBackgroundColor];
 }
 
 static UIColor *PPChatAmbientGlowWarmColor(UITraitCollection *traitCollection)
@@ -223,12 +213,11 @@ static UIColor *PPChatAmbientGlowPearlColor(UITraitCollection *traitCollection)
 
 static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 {
-    UIColor *brand = AppPrimaryClr ?: UIColor.systemPinkColor;
     CGFloat alpha = 0.11;
     if (@available(iOS 13.0, *)) {
         alpha = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.070 : 0.115;
     }
-    return [brand colorWithAlphaComponent:alpha];
+    return [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:alpha];
 }
 
 
@@ -241,6 +230,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 @property (nonatomic, strong) PPNovaSwiftUIChatBarViewController *swiftUIInputVC;
 @property (nonatomic, assign) BOOL useSwiftUIInputBar;
 @property (nonatomic, strong) NSLayoutConstraint *swiftUIInputBarBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *swiftUIInputBarHeightConstraint;
 @property (nonatomic, assign) NSTimeInterval swiftUIRecordingDuration;
 
 @property (nonatomic, assign) BOOL isObservingMessages;
@@ -296,7 +286,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 @property (nonatomic, assign) BOOL pendingBottomScrollAfterLayout;
 @property (nonatomic, assign) BOOL isOpeningHeaderStory;
 @property (nonatomic, strong) UIView *premiumModalHeaderView;
-@property (nonatomic, strong) UIVisualEffectView *premiumModalHeaderBlurView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *premiumModalHeaderGlassBackgroundView;
 @property (nonatomic, strong) UIButton *premiumModalHeaderCloseButton;
 @property (nonatomic, strong) UIButton *premiumModalHeaderMoreButton;
 @property (nonatomic, strong) UIControl *premiumModalHeaderProfileControl;
@@ -311,11 +301,20 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 @property (nonatomic, copy) NSString *premiumModalHeaderAvatarUserID;
 @property (nonatomic, copy) NSString *premiumModalHeaderAvatarURLString;
 @property (nonatomic, strong, nullable) ChatMessageModel *replyingToMessage;
+@property (nonatomic, weak, nullable) UITableViewCell *activeReplyGestureCell;
+@property (nonatomic, assign) BOOL replyGesturePassedThreshold;
+@property (nonatomic, strong) NSMutableSet<NSString *> *unsendingMessageIDs;
 - (NSString *)resolvedOtherUserID;
 - (NSString *)resolvedOtherUserPresenceID;
 - (CGFloat)pp_activeComposerOcclusionHeight;
 - (void)pp_applyTableViewBottomInsetForActiveComposer;
 - (void)pp_scrollTableViewToBottomWithoutAnimation;
+- (void)pp_animateComposerHeightChange;
+- (CGFloat)pp_expandedSwiftUIComposerHeight;
+- (void)pp_presentUnsendConfirmationForMessage:(ChatMessageModel *)message
+                                     sourceCell:(nullable UITableViewCell *)sourceCell;
+- (void)pp_unsendMessage:(ChatMessageModel *)message
+               sourceCell:(nullable UITableViewCell *)sourceCell;
 @end
 
 @implementation ChMessagingController
@@ -350,7 +349,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 - (UIColor *)captureBottomVisibleBubbleColor
 {
     NSArray<NSIndexPath *> *visible = [self.tableView indexPathsForVisibleRows];
-    if (visible.count == 0) return PPChatBackground;
+    if (visible.count == 0) return [PPChatsFunc chatCanvasBackgroundColor];
 
     // Sort to get the bottom-most visible cell
     NSIndexPath *bottomIndexPath =
@@ -364,10 +363,10 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
         UIColor *color =
             [(id<PPChatBubbleColorProviding>)cell pp_bubbleBackgroundColor];
 
-        return color ?: PPChatBackground;
+        return color ?: [PPChatsFunc chatCanvasBackgroundColor];
     }
 
-    return PPChatBackground;
+    return [PPChatsFunc chatCanvasBackgroundColor];
 }
 - (BOOL)isPresentedModally
 {
@@ -390,6 +389,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     //[self loadChatBackground];
     self.lastKnownStatuses = [NSMutableDictionary dictionary];
     self.cachedHeights = [NSMutableDictionary dictionary];
+    self.unsendingMessageIDs = [NSMutableSet set];
     self.isPresentingFailureAlert = NO;
     self.didCaptureNotificationHandoff = [ChManager sharedManager].isHandlingNotificationHandoff;
 
@@ -397,7 +397,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
     self.typingAutoHideThreshold = 0.0; // px from bottom
 
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = [PPChatsFunc chatCanvasBackgroundColor];
     [self setupInputView];
     [self setupTableView];
     [self pp_setupPremiumEmptyStateIfNeeded];
@@ -648,7 +648,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
         self.chatEmptyStateIconContainerView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *accent = [PPChatsFunc chatNeutralAccentColor];
     self.chatEmptyStateIconView.tintColor = accent;
     self.chatEmptyStateTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.chatEmptyStateSubtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
@@ -952,6 +952,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
          initWithTarget:self
                  action:@selector(handleSwipeToDismiss:)];
 
+    pan.name = PPChatDismissPanName;
     pan.delegate = (id<UIGestureRecognizerDelegate>)self;
     [self.view addGestureRecognizer:pan];
 }
@@ -1049,11 +1050,17 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     [self.view addSubview:self.swiftUIInputVC.view];
     [self.swiftUIInputVC didMoveToParentViewController:self];
 
-    self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-8.0];
+    if (@available(iOS 15.0, *)) {
+        self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-8.0];
+    } else {
+        self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8.0];
+    }
+    self.swiftUIInputBarHeightConstraint =
+        [self.swiftUIInputVC.view.heightAnchor constraintEqualToConstant:54.0];
     [NSLayoutConstraint activateConstraints:@[
         [self.swiftUIInputVC.view.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:22.0],
         [self.swiftUIInputVC.view.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-22.0],
-        [self.swiftUIInputVC.view.heightAnchor constraintEqualToConstant:54.0],
+        self.swiftUIInputBarHeightConstraint,
         self.swiftUIInputBarBottomConstraint
     ]];
 
@@ -1334,6 +1341,10 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     [self.typingController userDidType];
 }
 
+- (void)swiftUIChatBarDidCancelReply {
+    [self pp_clearPendingReplyAnimated:YES];
+}
+
 - (void)swiftUIChatBarDidSendAudioWithURL:(NSURL *)audioURL duration:(double)duration {
     if (self.previewPlayer.isPlaying) {
         [self.previewPlayer stop];
@@ -1368,6 +1379,9 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
                                    [self pp_replySenderNameForMessage:message]];
     NSString *subtitle = [self pp_replyPreviewTextForMessage:message];
     [self.inputbar setReplyPreviewTitle:title subtitle:subtitle animated:YES];
+    [self.swiftUIInputVC setReplyPreviewTitle:title subtitle:subtitle animated:YES];
+    self.swiftUIInputBarHeightConstraint.constant = [self pp_expandedSwiftUIComposerHeight];
+    [self pp_animateComposerHeightChange];
 
     UIImpactFeedbackGenerator *feedback =
         [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
@@ -1378,6 +1392,40 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 {
     self.replyingToMessage = nil;
     [self.inputbar clearReplyPreviewAnimated:animated];
+    [self.swiftUIInputVC clearReplyPreviewAnimated:animated];
+    self.swiftUIInputBarHeightConstraint.constant = 54.0;
+    [self pp_animateComposerHeightChange];
+}
+
+- (void)pp_animateComposerHeightChange
+{
+    BOOL keepBottomPinned = [self isNearBottom];
+    void (^changes)(void) = ^{
+        [self.view layoutIfNeeded];
+        [self pp_applyTableViewBottomInsetForActiveComposer];
+        if (keepBottomPinned) {
+            [self pp_scrollTableViewToBottomWithoutAnimation];
+        }
+    };
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        return;
+    }
+    [UIView animateWithDuration:0.34
+                          delay:0.0
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:nil];
+}
+
+- (CGFloat)pp_expandedSwiftUIComposerHeight
+{
+    return UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+        ? 118.0
+        : 108.0;
 }
 
 - (void)pp_applyPendingReplyToMessage:(ChatMessageModel *)message clearAfterApplying:(BOOL)clearAfterApplying
@@ -1408,6 +1456,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
 - (NSString *)pp_replyPreviewTextForMessage:(ChatMessageModel *)message
 {
+    if (message.isDeleted) return kLang(@"chat_message_unsent");
     switch (message.messageType) {
         case ChatMessageTypeImage:
             return kLang(@"chat_reply_image");
@@ -1519,6 +1568,20 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     [cell setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
 }
 
+- (void)pp_applyReplyPreviewForMessage:(ChatMessageModel *)message
+                            toAudioCell:(ChatAudioMessageCell *)cell
+                             isIncoming:(BOOL)isIncoming
+{
+    NSString *title = nil;
+    NSString *subtitle = nil;
+    [self pp_replyPreviewPartsForMessage:message title:&title subtitle:&subtitle];
+    if (title.length == 0 && subtitle.length == 0) {
+        [cell clearReplyPreview];
+        return;
+    }
+    [cell setReplyPreviewTitle:title subtitle:subtitle isIncoming:isIncoming];
+}
+
 - (void)chatMessageCellDidRequestCopy:(ChatMessageCell *)cell
 {
     [PPHUD showSuccess:kLang(@"chat_copied")];
@@ -1545,6 +1608,459 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     ChatMessageModel *message = [self pp_messageForCell:cell];
     UIImage *visibleImage = message.localImage ?: cell.imageViewMsg.image;
     [self pp_downloadImageMessage:message visibleImage:visibleImage];
+}
+
+#pragma mark - Premium Message Interaction
+
+- (UIView *)pp_messageInteractionViewForCell:(UITableViewCell *)cell
+{
+    if ([cell isKindOfClass:ChatMessageCell.class]) {
+        return [(ChatMessageCell *)cell messageInteractionView];
+    }
+    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
+        return [(ChatImageMessageCell *)cell messageInteractionView];
+    }
+    if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
+        return [(ChatVideoMessageCell *)cell messageInteractionView];
+    }
+    if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
+        return [(ChatAudioMessageCell *)cell messageInteractionView];
+    }
+    return cell.contentView;
+}
+
+- (BOOL)pp_currentUserOwnsMessage:(ChatMessageModel *)message
+{
+    NSString *authUID = [FIRAuth auth].currentUser.uid ?: @"";
+    NSString *profileID = UserManager.sharedManager.currentUser.ID ?: @"";
+    return message.senderID.length > 0 &&
+        ([message.senderID isEqualToString:authUID] ||
+         [message.senderID isEqualToString:profileID]);
+}
+
+- (BOOL)pp_canUnsendMessage:(ChatMessageModel *)message
+{
+    if (!message || message.isDeleted || message.isLocalPending || message.ID.length == 0) return NO;
+    if ([self.unsendingMessageIDs containsObject:message.ID]) return NO;
+    if (![self pp_currentUserOwnsMessage:message] || !message.timestamp) return NO;
+    NSTimeInterval age = -[message.timestamp timeIntervalSinceNow];
+    return age >= -60.0 && age <= PPChatUnsendWindow;
+}
+
+- (UIView *)pp_replyIndicatorForCell:(UITableViewCell *)cell createIfNeeded:(BOOL)create
+{
+    UIView *indicator = [cell viewWithTag:PPChatReplyIndicatorTag];
+    if (indicator || !create) return indicator;
+
+    indicator = [UIView new];
+    indicator.tag = PPChatReplyIndicatorTag;
+    indicator.translatesAutoresizingMaskIntoConstraints = NO;
+    indicator.userInteractionEnabled = NO;
+    indicator.alpha = 0.0;
+    indicator.transform = CGAffineTransformMakeScale(0.76, 0.76);
+    indicator.backgroundColor = [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:0.12];
+    indicator.layer.cornerRadius = 18.0;
+    if (@available(iOS 13.0, *)) indicator.layer.cornerCurve = kCACornerCurveContinuous;
+
+    UIImageView *icon = [[UIImageView alloc] initWithImage:PPSYSImage(@"arrowshape.turn.up.left.fill")];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
+    icon.tintColor = [PPChatsFunc chatNeutralAccentColor];
+    if (Language.isRTL) {
+        icon.transform = CGAffineTransformMakeScale(-1.0, 1.0);
+    }
+    [indicator addSubview:icon];
+    [cell insertSubview:indicator belowSubview:cell.contentView];
+
+    NSLayoutXAxisAnchor *edge = Language.isRTL ? cell.trailingAnchor : cell.leadingAnchor;
+    NSLayoutConstraint *edgeConstraint = Language.isRTL
+        ? [indicator.trailingAnchor constraintEqualToAnchor:edge constant:-14.0]
+        : [indicator.leadingAnchor constraintEqualToAnchor:edge constant:14.0];
+    [NSLayoutConstraint activateConstraints:@[
+        edgeConstraint,
+        [indicator.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+        [indicator.widthAnchor constraintEqualToConstant:36.0],
+        [indicator.heightAnchor constraintEqualToConstant:36.0],
+        [icon.centerXAnchor constraintEqualToAnchor:indicator.centerXAnchor],
+        [icon.centerYAnchor constraintEqualToAnchor:indicator.centerYAnchor],
+        [icon.widthAnchor constraintEqualToConstant:16.0],
+        [icon.heightAnchor constraintEqualToConstant:16.0],
+    ]];
+    return indicator;
+}
+
+- (void)pp_prepareInteractionsForCell:(UITableViewCell *)cell message:(ChatMessageModel *)message
+{
+    cell.contentView.transform = CGAffineTransformIdentity;
+    UIView *indicator = [self pp_replyIndicatorForCell:cell createIfNeeded:!message.isDeleted];
+    indicator.alpha = 0.0;
+    indicator.transform = CGAffineTransformMakeScale(0.76, 0.76);
+
+    BOOL hasReplyPan = NO;
+    for (UIGestureRecognizer *recognizer in cell.contentView.gestureRecognizers ?: @[]) {
+        if ([recognizer.name isEqualToString:PPChatReplyPanName]) {
+            hasReplyPan = YES;
+            recognizer.enabled = !message.isDeleted;
+            break;
+        }
+    }
+    if (!hasReplyPan && !message.isDeleted) {
+        UIPanGestureRecognizer *pan =
+            [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleReplyPan:)];
+        pan.name = PPChatReplyPanName;
+        pan.delegate = self;
+        pan.cancelsTouchesInView = NO;
+        pan.maximumNumberOfTouches = 1;
+        [cell.contentView addGestureRecognizer:pan];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    __weak UITableViewCell *weakCell = cell;
+    UIAccessibilityCustomAction *replyAction =
+        [[UIAccessibilityCustomAction alloc] initWithName:kLang(@"reply")
+                                            actionHandler:^BOOL(__unused UIAccessibilityCustomAction *action) {
+        [weakSelf pp_selectReplyMessage:message];
+        return YES;
+    }];
+    NSMutableArray<UIAccessibilityCustomAction *> *actions = [NSMutableArray arrayWithObject:replyAction];
+    if (message.isTextMessage && message.text.length > 0) {
+        UIAccessibilityCustomAction *copyAction =
+            [[UIAccessibilityCustomAction alloc] initWithName:kLang(@"copy")
+                                                actionHandler:^BOOL(__unused UIAccessibilityCustomAction *action) {
+            UIPasteboard.generalPasteboard.string = message.text;
+            [PPHUD showSuccess:kLang(@"chat_copied")];
+            return YES;
+        }];
+        [actions addObject:copyAction];
+    }
+    if ([self pp_canUnsendMessage:message]) {
+        UIAccessibilityCustomAction *unsendAction =
+            [[UIAccessibilityCustomAction alloc]
+                initWithName:PPChatLocalizedStringOrFallback(@"chat_unsend", @"Delete")
+                                                actionHandler:^BOOL(__unused UIAccessibilityCustomAction *action) {
+            [weakSelf pp_presentUnsendConfirmationForMessage:message sourceCell:weakCell];
+            return YES;
+        }];
+        [actions addObject:unsendAction];
+    }
+    if (message.isDeleted) [actions removeAllObjects];
+    cell.accessibilityCustomActions = actions;
+    [self pp_messageInteractionViewForCell:cell].accessibilityCustomActions = actions;
+}
+
+- (UITableViewCell *)pp_cellContainingView:(UIView *)view
+{
+    UIView *candidate = view;
+    while (candidate && ![candidate isKindOfClass:UITableViewCell.class]) {
+        candidate = candidate.superview;
+    }
+    return (UITableViewCell *)candidate;
+}
+
+- (void)pp_handleReplyPan:(UIPanGestureRecognizer *)pan
+{
+    UITableViewCell *cell = [self pp_cellContainingView:pan.view];
+    ChatMessageModel *message = [self pp_messageForCell:cell];
+    if (!cell || !message || message.isDeleted) return;
+
+    CGFloat physicalTranslation = [pan translationInView:cell].x;
+    CGFloat logicalTranslation = Language.isRTL ? -physicalTranslation : physicalTranslation;
+    CGFloat clamped = MAX(0.0, MIN(logicalTranslation, 82.0));
+    CGFloat progress = MIN(1.0, clamped / 62.0);
+    CGFloat physicalOffset = (Language.isRTL ? -1.0 : 1.0) * clamped * 0.84;
+    UIView *indicator = [self pp_replyIndicatorForCell:cell createIfNeeded:YES];
+
+    switch (pan.state) {
+        case UIGestureRecognizerStateBegan:
+            self.activeReplyGestureCell = cell;
+            self.replyGesturePassedThreshold = NO;
+            break;
+        case UIGestureRecognizerStateChanged:
+            cell.contentView.transform = CGAffineTransformMakeTranslation(physicalOffset, 0.0);
+            indicator.alpha = progress;
+            indicator.transform = CGAffineTransformMakeScale(0.76 + (0.24 * progress),
+                                                              0.76 + (0.24 * progress));
+            if (progress >= 1.0 && !self.replyGesturePassedThreshold) {
+                self.replyGesturePassedThreshold = YES;
+                UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
+                [feedback selectionChanged];
+            } else if (progress < 0.82) {
+                self.replyGesturePassedThreshold = NO;
+            }
+            break;
+        case UIGestureRecognizerStateEnded:
+        case UIGestureRecognizerStateCancelled: {
+            BOOL shouldReply = pan.state == UIGestureRecognizerStateEnded && progress >= 1.0;
+            if (shouldReply) [self pp_selectReplyMessage:message];
+            void (^reset)(void) = ^{
+                cell.contentView.transform = CGAffineTransformIdentity;
+                indicator.alpha = 0.0;
+                indicator.transform = CGAffineTransformMakeScale(0.76, 0.76);
+            };
+            if (UIAccessibilityIsReduceMotionEnabled()) {
+                [UIView animateWithDuration:0.12 animations:reset];
+            } else {
+                [UIView animateWithDuration:0.36
+                                      delay:0.0
+                     usingSpringWithDamping:0.86
+                      initialSpringVelocity:0.25
+                                    options:UIViewAnimationOptionBeginFromCurrentState |
+                                            UIViewAnimationOptionAllowUserInteraction
+                                 animations:reset
+                                 completion:nil];
+            }
+            self.activeReplyGestureCell = nil;
+            self.replyGesturePassedThreshold = NO;
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+- (UIMenu *)pp_contextMenuForMessage:(ChatMessageModel *)message sourceCell:(UITableViewCell *)cell
+{
+    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+    __weak typeof(self) weakSelf = self;
+    [actions addObject:[UIAction actionWithTitle:kLang(@"reply")
+                                        image:PPSYSImage(@"arrowshape.turn.up.left")
+                                   identifier:nil
+                                      handler:^(__unused UIAction *action) {
+        [weakSelf pp_selectReplyMessage:message];
+    }]];
+
+    if (message.isTextMessage && message.text.length > 0) {
+        [actions addObject:[UIAction actionWithTitle:kLang(@"copy")
+                                            image:PPSYSImage(@"doc.on.doc")
+                                       identifier:nil
+                                          handler:^(__unused UIAction *action) {
+            UIPasteboard.generalPasteboard.string = message.text;
+            [PPHUD showSuccess:kLang(@"chat_copied")];
+        }]];
+    }
+
+    if ([self pp_canUnsendMessage:message]) {
+        UIAction *unsend =
+            [UIAction actionWithTitle:PPChatLocalizedStringOrFallback(@"chat_unsend", @"Delete")
+                                            image:PPSYSImage(@"arrow.uturn.backward")
+                                       identifier:nil
+                                          handler:^(__unused UIAction *action) {
+            [weakSelf pp_presentUnsendConfirmationForMessage:message sourceCell:cell];
+        }];
+        unsend.attributes = UIMenuElementAttributesDestructive;
+        [actions addObject:unsend];
+    }
+    return [UIMenu menuWithTitle:@"" children:actions];
+}
+
+- (nullable UIContextMenuConfiguration *)tableView:(UITableView *)tableView
+       contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
+                                           point:(CGPoint)point
+{
+    if (indexPath.row >= (NSInteger)self.messages.count) return nil;
+    ChatMessageModel *message = self.messages[indexPath.row];
+    if (message.isDeleted || [self.unsendingMessageIDs containsObject:message.ID]) return nil;
+    UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+    __weak typeof(self) weakSelf = self;
+    return [UIContextMenuConfiguration configurationWithIdentifier:message.ID
+                                                   previewProvider:nil
+                                                    actionProvider:^UIMenu * _Nullable(__unused NSArray<UIMenuElement *> *suggestedActions) {
+        return [weakSelf pp_contextMenuForMessage:message sourceCell:cell];
+    }];
+}
+
+- (nullable UITargetedPreview *)pp_contextMenuPreviewForTableView:(UITableView *)tableView
+                                                    configuration:(UIContextMenuConfiguration *)configuration
+{
+    ChatMessageModel *message = [self pp_messageWithID:(NSString *)configuration.identifier];
+    NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
+    if (!message || row == NSNotFound) return nil;
+    UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
+    UIView *surface = [self pp_messageInteractionViewForCell:cell];
+    if (!surface.window) return nil;
+    if ([cell isKindOfClass:ChatMessageCell.class]) {
+        [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:YES];
+    }
+
+    UIPreviewParameters *parameters = [UIPreviewParameters new];
+    parameters.backgroundColor = UIColor.clearColor;
+    CGFloat radius = MIN(18.0, floor(MIN(CGRectGetWidth(surface.bounds),
+                                         CGRectGetHeight(surface.bounds)) * 0.5));
+    parameters.visiblePath = [UIBezierPath bezierPathWithRoundedRect:surface.bounds
+                                                         cornerRadius:radius];
+    return [[UITargetedPreview alloc] initWithView:surface parameters:parameters];
+}
+
+- (void)tableView:(UITableView *)tableView
+ willDisplayContextMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+          animator:(nullable id<UIContextMenuInteractionAnimating>)animator
+{
+    (void)animator;
+    ChatMessageModel *message = [self pp_messageWithID:(NSString *)configuration.identifier];
+    NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
+    if (!message || row == NSNotFound) return;
+    UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
+    if ([cell isKindOfClass:ChatMessageCell.class]) {
+        [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:YES];
+    }
+}
+
+- (void)tableView:(UITableView *)tableView
+ willEndContextMenuInteractionWithConfiguration:(UIContextMenuConfiguration *)configuration
+          animator:(nullable id<UIContextMenuInteractionAnimating>)animator
+{
+    void (^restoreBubble)(void) = ^{
+        ChatMessageModel *message = [self pp_messageWithID:(NSString *)configuration.identifier];
+        NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
+        if (!message || row == NSNotFound) return;
+        UITableViewCell *cell = [tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:row inSection:0]];
+        if ([cell isKindOfClass:ChatMessageCell.class]) {
+            [[(ChatMessageCell *)cell bubbleView] setContextMenuPresentationActive:NO];
+        }
+    };
+    if (animator) {
+        [animator addCompletion:restoreBubble];
+    } else {
+        restoreBubble();
+    }
+}
+
+- (nullable UITargetedPreview *)tableView:(UITableView *)tableView
+ previewForHighlightingContextMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+    return [self pp_contextMenuPreviewForTableView:tableView configuration:configuration];
+}
+
+- (nullable UITargetedPreview *)tableView:(UITableView *)tableView
+ previewForDismissingContextMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+    return [self pp_contextMenuPreviewForTableView:tableView configuration:configuration];
+}
+
+- (void)pp_presentUnsendConfirmationForMessage:(ChatMessageModel *)message
+                                     sourceCell:(UITableViewCell *)sourceCell
+{
+    if (![self pp_canUnsendMessage:message]) return;
+    NSString *title = PPChatLocalizedStringOrFallback(@"chat_unsend_title", @"Delete");
+    NSString *messageText = PPChatLocalizedStringOrFallback(@"chat_unsend_confirmation", nil);
+    NSString *actionTitle = PPChatLocalizedStringOrFallback(@"chat_unsend", @"Delete");
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:title
+                                            message:messageText
+                                     preferredStyle:UIAlertControllerStyleActionSheet];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:actionTitle
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(__unused UIAlertAction *action) {
+        [weakSelf pp_unsendMessage:message sourceCell:sourceCell];
+    }]];
+    UIPopoverPresentationController *popover = alert.popoverPresentationController;
+    popover.sourceView = sourceCell ?: self.view;
+    popover.sourceRect = sourceCell ? sourceCell.bounds : self.view.bounds;
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)pp_unsendMessage:(ChatMessageModel *)message sourceCell:(UITableViewCell *)sourceCell
+{
+    if (![self pp_canUnsendMessage:message]) return;
+    [self.unsendingMessageIDs addObject:message.ID];
+    sourceCell.userInteractionEnabled = NO;
+    [UIView animateWithDuration:0.16 animations:^{ sourceCell.alpha = 0.62; }];
+
+    __weak typeof(self) weakSelf = self;
+    [[ChManager sharedManager] unsendMessageWithID:message.ID
+                                         threadID:self.chatThread.ID
+                                       completion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self.unsendingMessageIDs removeObject:message.ID];
+        sourceCell.userInteractionEnabled = YES;
+        sourceCell.alpha = 1.0;
+        if (error) {
+            NSString *publicMessage =
+                [PPFirebaseSessionBridge publicMessageForError:error fallbackKey:@"chat_unsend_failed"];
+            [PPHUD showError:publicMessage.length > 0 ? publicMessage : kLang(@"chat_unsend_failed")];
+            return;
+        }
+
+        if ([self.audioController.currentMessageID isEqualToString:message.ID]) {
+            [self.audioController stop];
+        }
+        if ([self.replyingToMessage.ID isEqualToString:message.ID]) {
+            [self pp_clearPendingReplyAnimated:YES];
+        }
+        message.isDeleted = YES;
+        message.text = @"";
+        message.replyToMessageID = nil;
+        if (message.localVideoURL.isFileURL) {
+            [NSFileManager.defaultManager removeItemAtURL:message.localVideoURL error:nil];
+        }
+        NSString *cachedAudioPath =
+            [NSTemporaryDirectory() stringByAppendingPathComponent:
+                [NSString stringWithFormat:@"chat_%@.m4a", message.ID]];
+        [NSFileManager.defaultManager removeItemAtPath:cachedAudioPath error:nil];
+        message.fileURL = nil;
+        message.thumbnailURL = nil;
+        message.thumbnailImage = nil;
+        message.blurHash = nil;
+        message.waveformSamples = @[];
+        message.localImage = nil;
+        message.localVideoURL = nil;
+        [self.cachedHeights removeObjectForKey:message.ID];
+        if (self.messages.lastObject == message) {
+            self.chatThread.lastMessage = kLang(@"chat_message_unsent");
+            self.chatThread.lastMessageAt = message.timestamp;
+            if ([self.delegate respondsToSelector:@selector(ReloadChats)]) {
+                [self.delegate ReloadChats];
+            }
+        }
+        NSInteger row = [self.messages indexOfObjectIdenticalTo:message];
+        if (row != NSNotFound) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
+            [self.tableView reloadRowsAtIndexPaths:@[indexPath]
+                                  withRowAnimation:UITableViewRowAnimationFade];
+        }
+        [PPHUD showSuccess:kLang(@"chat_unsend_success")];
+    }];
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:NO];
+    if (indexPath.row >= (NSInteger)self.messages.count) return;
+    ChatMessageModel *message = self.messages[indexPath.row];
+    if (message.replyToMessageID.length == 0 || message.isDeleted) return;
+    ChatMessageModel *source = [self pp_messageWithID:message.replyToMessageID];
+    NSInteger sourceRow = [self.messages indexOfObjectIdenticalTo:source];
+    if (!source || sourceRow == NSNotFound) {
+        [PPHUD showError:kLang(@"chat_reply_unavailable")];
+        return;
+    }
+    NSIndexPath *sourcePath = [NSIndexPath indexPathForRow:sourceRow inSection:0];
+    [tableView scrollToRowAtIndexPath:sourcePath
+                    atScrollPosition:UITableViewScrollPositionMiddle
+                            animated:!UIAccessibilityIsReduceMotionEnabled()];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        UITableViewCell *sourceCell = [tableView cellForRowAtIndexPath:sourcePath];
+        UIView *surface = [self pp_messageInteractionViewForCell:sourceCell];
+        if (!surface) return;
+        [UIView animateKeyframesWithDuration:0.42
+                                      delay:0.0
+                                    options:UIViewKeyframeAnimationOptionBeginFromCurrentState |
+                                            UIViewKeyframeAnimationOptionAllowUserInteraction
+                                 animations:^{
+            [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.42 animations:^{
+                surface.transform = CGAffineTransformMakeScale(1.035, 1.035);
+            }];
+            [UIView addKeyframeWithRelativeStartTime:0.42 relativeDuration:0.58 animations:^{
+                surface.transform = CGAffineTransformIdentity;
+            }];
+        } completion:nil];
+    });
 }
 
 #pragma mark - Media Viewer And Download
@@ -3520,7 +4036,13 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 - (CGFloat)heightForMediaMessage:(ChatMessageModel *)msg
 {
     CGSize mediaSize = [self bubbleSizeForMediaMessage:msg];
-    CGFloat replyChromeHeight = msg.replyToMessageID.length > 0 ? 52.0 : 0.0;
+    CGFloat replyChromeHeight = 0.0;
+    if (msg.replyToMessageID.length > 0) {
+        replyChromeHeight =
+            UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+                ? 64.0
+                : 56.0;
+    }
     return mediaSize.height + replyChromeHeight + (PPChatBubblePad * 2.0);
 }
 
@@ -3803,14 +4325,21 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     return self.messages.count;
 }
 
+- (BOOL)pp_message:(ChatMessageModel *)message canGroupWithMessage:(ChatMessageModel *)other
+{
+    if (!message || !other || ![message.senderID isEqualToString:other.senderID]) return NO;
+    if (!message.timestamp || !other.timestamp) return YES;
+    return fabs([message.timestamp timeIntervalSinceDate:other.timestamp]) <= 5.0 * 60.0;
+}
+
 - (PPBubblePosition)bubblePositionForMessageAtIndex:(NSInteger)index {
     ChatMessageModel *current = self.messages[index];
 
     ChatMessageModel *prev = index > 0 ? self.messages[index - 1] : nil;
     ChatMessageModel *next = index < self.messages.count - 1 ? self.messages[index + 1] : nil;
 
-    BOOL sameAsPrev = prev && [prev.senderID isEqualToString:current.senderID];
-    BOOL sameAsNext = next && [next.senderID isEqualToString:current.senderID];
+    BOOL sameAsPrev = [self pp_message:current canGroupWithMessage:prev];
+    BOOL sameAsNext = [self pp_message:current canGroupWithMessage:next];
 
     if (!sameAsPrev && !sameAsNext) return PPBubblePositionSingle;
     if (!sameAsPrev && sameAsNext)  return PPBubblePositionFirst;
@@ -3834,6 +4363,23 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
    
     PPChatGroupPosition groupPos =
         [self groupPositionForMessageAtIndex:indexPath.row];
+
+    if (msg.isDeleted) {
+        ChatMessageCell *cell =
+            [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell"
+                                            forIndexPath:indexPath];
+        [cell configureWithMessage:kLang(@"chat_message_unsent")
+                              date:msg.timestamp
+                        isIncoming:isIncoming
+                          maxWidth:MAX_BUBBLE_WIDTH(self.view)
+                            status:msg.status
+                      messageModel:msg
+                     groupPosition:groupPos];
+        cell.delegate = self;
+        [cell.bubbleView clearReplyPreview];
+        [self pp_prepareInteractionsForCell:cell message:msg];
+        return cell;
+    }
     
     // 🔊 AUDIO MESSAGE
     switch (msg.messageType) {
@@ -3864,6 +4410,9 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
                                         duration:msg.mediaDuration];
             
             [cell setTotalDuration:msg.mediaDuration];
+            [self pp_applyReplyPreviewForMessage:msg
+                                     toAudioCell:cell
+                                      isIncoming:isIncoming];
 
             [cell setBottomTimeText:msg.timestamp]; // e.g. "12:41 PM" or "0:05"
                                                     // 🔥 BLOCK WIRING (THIS SOLVES EVERYTHING)
@@ -3945,7 +4494,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
                     }
                 }];
             };
-            
+            [self pp_prepareInteractionsForCell:cell message:msg];
             return cell;
         }
 //1628 =
@@ -3968,7 +4517,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
             [self pp_applyReplyPreviewForMessage:msg
                                       toImageCell:cell
                                        isIncoming:isIncoming];
-            
+            [self pp_prepareInteractionsForCell:cell message:msg];
             return cell;
         }
 
@@ -4002,7 +4551,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
             cell.onReplyRequested = ^{
                 [weakSelf pp_selectReplyMessage:msg];
             };
-            
+            [self pp_prepareInteractionsForCell:cell message:msg];
             return cell;
         }
 
@@ -4025,8 +4574,35 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     [self pp_applyReplyPreviewForMessage:msg
                                 toBubble:cell.bubbleView
                               isIncoming:isIncoming];
-    
+    [self pp_prepareInteractionsForCell:cell message:msg];
     return cell;
+}
+
+- (void)tableView:(UITableView *)tableView
+  willDisplayCell:(UITableViewCell *)cell
+forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.row >= (NSInteger)self.messages.count) return;
+    ChatMessageModel *message = self.messages[indexPath.row];
+    if (message.didAnimateInsert) return;
+    message.didAnimateInsert = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        cell.contentView.alpha = 1.0;
+        cell.contentView.transform = CGAffineTransformIdentity;
+        return;
+    }
+    cell.contentView.alpha = 0.0;
+    cell.contentView.transform = CGAffineTransformMakeTranslation(0.0, 4.0);
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        cell.contentView.alpha = 1.0;
+        cell.contentView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (PPChatGroupPosition)groupPositionForMessageAtIndex:(NSInteger)index {
@@ -4037,11 +4613,8 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     ChatMessageModel *next =
         (index < self.messages.count - 1) ? self.messages[index + 1] : nil;
 
-    BOOL sameAsPrev =
-        prev && [prev.senderID isEqualToString:current.senderID];
-
-    BOOL sameAsNext =
-        next && [next.senderID isEqualToString:current.senderID];
+    BOOL sameAsPrev = [self pp_message:current canGroupWithMessage:prev];
+    BOOL sameAsNext = [self pp_message:current canGroupWithMessage:next];
 
     if (!sameAsPrev && !sameAsNext) {
         return PPChatGroupPositionSingle;
@@ -4149,8 +4722,17 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
     // 🔊 Audio÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷÷
     
     
+    if (message.isDeleted) {
+        return [self heightForTextMessage:message];
+    }
+
     if (message.messageType == ChatMessageTypeAudio) {
-        return 68.0;
+        BOOL accessibilitySize =
+            UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+        if (message.replyToMessageID.length > 0) {
+            return accessibilitySize ? 150.0 : 138.0;
+        }
+        return accessibilitySize ? 86.0 : 78.0;
     }
 
     // 🖼 Media
@@ -4204,29 +4786,28 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (CGFloat)spacingForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (indexPath.row == 0) {
-        return 20.0; // top padding of chat
+        return 10.0; // top padding of chat
     }
 
     if (indexPath.row >= self.messages.count || indexPath.row < 1) {
         NSLog(@"❌ ChMessaging spacing: indexPath.row %ld out of bounds or < 1 (messages.count=%lu)", (long)indexPath.row, (unsigned long)self.messages.count);
-        return 10.0;
+        return 5.0;
     }
     ChatMessageModel *current = self.messages[indexPath.row];
     ChatMessageModel *prev    = self.messages[indexPath.row - 1];
 
-    BOOL sameSender =
-        [current.senderID isEqualToString:prev.senderID];
+    BOOL sameSender = [self pp_message:current canGroupWithMessage:prev];
 
     BOOL sameType =
         current.messageType == prev.messageType;
 
     // 🔹 Same sender, same block → tight spacing
     if (sameSender && sameType) {
-        return 4.0;
+        return 1.5;
     }
 
     // 🔹 New block (sender changed OR type changed)
-    return 10.0;
+    return sameSender ? 3.0 : 6.0;
 }
 
 
@@ -4235,19 +4816,29 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
     // Calculate text height using boundingRectWithSize.
     CGFloat maxBubbleWidth = [UIScreen mainScreen].bounds.size.width * 0.8;
     CGFloat textWidth = MAX(64.0, maxBubbleWidth - 32.0);
-    UIFont *font = [GM fontWithSize:16] ?: [UIFont systemFontOfSize:16.0];
-    NSString *text = message.text.length > 0 ? message.text : @" ";
+    UIFont *baseFont = [GM fontWithSize:16] ?: [UIFont systemFontOfSize:16.0];
+    UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledFontForFont:baseFont maximumPointSize:22.0];
+    NSString *text = message.isDeleted
+        ? kLang(@"chat_message_unsent")
+        : (message.text.length > 0 ? message.text : @" ");
 
     CGRect textRect = [text boundingRectWithSize:CGSizeMake(textWidth, CGFLOAT_MAX)
                                          options:NSStringDrawingUsesLineFragmentOrigin
                                       attributes:@{NSFontAttributeName: font}
                                          context:nil];
     CGFloat textHeight = MAX(ceil(textRect.size.height), ceil(font.lineHeight));
-    CGFloat cellHeight = textHeight + 24.0;
+    CGFloat cellHeight = textHeight + 36.0;
     if (message.replyToMessageID.length > 0) {
-        cellHeight = MAX(108.0, 44.0 + 7.0 + textHeight + 30.0);
+        cellHeight += 51.0;
     }
-    return MAX(cellHeight, 48.0) + (PPChatBubblePad * 2.0);
+    
+    BOOL isSingleLine = (ceil(textRect.size.height) <= ceil(font.lineHeight + 1.0)) && (message.replyToMessageID.length == 0);
+    if (isSingleLine) {
+        return 40.0 + (PPChatBubblePad * 2.0);
+    }
+    
+    return MAX(cellHeight, 44.0) + (PPChatBubblePad * 2.0);
 }
 
 - (CGFloat)tableView:(UITableView *)tableView
@@ -4268,11 +4859,31 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
     if ([gestureRecognizer isKindOfClass:UIPanGestureRecognizer.class]) {
+        UIPanGestureRecognizer *pan = (UIPanGestureRecognizer *)gestureRecognizer;
+        CGPoint velocity = [pan velocityInView:pan.view ?: self.view];
 
-        CGPoint velocity =
-            [(UIPanGestureRecognizer *)gestureRecognizer velocityInView:self.view];
+        if ([gestureRecognizer.name isEqualToString:PPChatReplyPanName]) {
+            CGFloat logicalVelocity = Language.isRTL ? -velocity.x : velocity.x;
+            if (logicalVelocity <= 0.0 || fabs(velocity.x) <= fabs(velocity.y) * 1.12) {
+                return NO;
+            }
 
-        // Only vertical swipe
+            CGPoint location = [pan locationInView:pan.view];
+            UIView *hitView = [pan.view hitTest:location withEvent:nil];
+            UIView *candidate = hitView;
+            while (candidate && candidate != pan.view) {
+                if ([candidate isKindOfClass:UIControl.class]) return NO;
+                for (UIGestureRecognizer *nested in candidate.gestureRecognizers ?: @[]) {
+                    if (nested != pan && [nested isKindOfClass:UIPanGestureRecognizer.class]) {
+                        return NO;
+                    }
+                }
+                candidate = candidate.superview;
+            }
+            return YES;
+        }
+
+        // The presentation-dismiss gesture remains vertical-only.
         return fabs(velocity.y) > fabs(velocity.x);
     }
 
@@ -4370,22 +4981,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     header.translatesAutoresizingMaskIntoConstraints = NO;
     header.backgroundColor = UIColor.clearColor;
     header.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    header.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    header.layer.shadowRadius = 22.0;
-    header.layer.shadowOpacity = 0.16;
-    [header pp_setShadowColor:UIColor.blackColor];
 
-    UIVisualEffectView *blurView =
-        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.userInteractionEnabled = NO;
-    blurView.contentView.backgroundColor = PPChatPremiumHeaderSurfaceColor();
-    blurView.clipsToBounds = YES;
-    blurView.layer.cornerRadius = 26.0;
-    blurView.layer.cornerCurve = kCACornerCurveContinuous;
-    blurView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [blurView pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
-    [header addSubview:blurView];
+    PPHeroGlassBackgroundView *glassBackground = [PPHeroGlassBackgroundView new];
+    glassBackground.translatesAutoresizingMaskIntoConstraints = NO;
+    glassBackground.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glassBackground.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
+    [header insertSubview:glassBackground atIndex:0];
 
     UIButton *closeButton = [self pp_premiumModalHeaderButtonWithSystemName:@"xmark"];
     closeButton.accessibilityLabel = kLang(@"Close");
@@ -4468,10 +5069,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-14.0],
         self.premiumModalHeaderHeightConstraint,
 
-        [blurView.topAnchor constraintEqualToAnchor:header.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+        [glassBackground.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [glassBackground.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
+        [glassBackground.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
+        [glassBackground.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
 
         [closeButton.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:14.0],
         [closeButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
@@ -4504,7 +5105,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     ]];
 
     self.premiumModalHeaderView = header;
-    self.premiumModalHeaderBlurView = blurView;
+    self.premiumModalHeaderGlassBackgroundView = glassBackground;
     self.premiumModalHeaderCloseButton = closeButton;
     self.premiumModalHeaderMoreButton = moreButton;
     self.premiumModalHeaderProfileControl = profileControl;
@@ -4530,9 +5131,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     self.premiumModalHeaderView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.premiumModalHeaderProfileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.premiumModalHeaderView.layer.shadowOpacity = dark ? 0.24 : 0.14;
-    self.premiumModalHeaderBlurView.contentView.backgroundColor = PPChatPremiumHeaderSurfaceColor();
-    [self.premiumModalHeaderBlurView pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+    self.premiumModalHeaderGlassBackgroundView.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
+    [self.premiumModalHeaderGlassBackgroundView reapplyPalette];
 
     NSArray<UIButton *> *buttons = @[self.premiumModalHeaderCloseButton, self.premiumModalHeaderMoreButton];
     for (UIButton *button in buttons) {
@@ -4692,6 +5292,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_updatePremiumModalChatHeaderVisibility
 {
     if (![self pp_shouldAttachPremiumModalChatHeader]) {
+        [self.premiumModalHeaderGlassBackgroundView stopAnimations];
         self.premiumModalHeaderView.hidden = YES;
         self.didAnimatePremiumModalHeader = NO;
         [self pp_updatePremiumModalChatHeaderInsets];
@@ -4703,6 +5304,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     self.premiumModalHeaderTopConstraint.constant = [self pp_premiumModalChatHeaderTopPadding];
     [self pp_applyPremiumModalChatHeaderTheme];
     [self pp_updatePremiumModalChatHeaderContentAnimated:NO];
+    [self.premiumModalHeaderView layoutIfNeeded];
+    [self.premiumModalHeaderGlassBackgroundView startAnimations];
     [self pp_bringChatHeaderToFront];
     [self pp_updatePremiumModalChatHeaderInsets];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
@@ -5216,6 +5819,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidFinish" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidCancel" object:nil];
     [self pp_stopChatBackgroundGlowMotion];
+    [self.premiumModalHeaderGlassBackgroundView stopAnimations];
     
     if (self.authListenerHandle) {
         [[FIRAuth auth] removeAuthStateDidChangeListener:self.authListenerHandle];
@@ -5288,6 +5892,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_applyChatBackgroundGlowAppearance];
     [self pp_applyPremiumModalChatHeaderTheme];
     [self pp_applyPremiumEmptyStateTheme];
+    if (self.replyingToMessage) {
+        self.swiftUIInputBarHeightConstraint.constant = [self pp_expandedSwiftUIComposerHeight];
+        [self.view setNeedsLayout];
+    }
 }
 
 - (NSInteger)resolvedChatBackgroundIndex
@@ -5396,18 +6004,11 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     container.userInteractionEnabled = NO;
     container.backgroundColor = PPChatAmbientBackgroundColor(self.traitCollection);
 
-    UIView *leadingGlow = [self pp_makeChatBackgroundGlowView];
-    UIView *trailingGlow = [self pp_makeChatBackgroundGlowView];
-    UIView *bottomGlow = [self pp_makeChatBackgroundGlowView];
-
     UIImageView *imageView = [[UIImageView alloc] init];
     imageView.translatesAutoresizingMaskIntoConstraints = NO;
     imageView.contentMode = UIViewContentModeScaleAspectFill;
     imageView.alpha = 0.08;
 
-    [container addSubview:leadingGlow];
-    [container addSubview:trailingGlow];
-    [container addSubview:bottomGlow];
     [container addSubview:imageView];
     [self.view insertSubview:container atIndex:0];
 
@@ -5417,21 +6018,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [container.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 
-        [leadingGlow.widthAnchor constraintEqualToConstant:292.0],
-        [leadingGlow.heightAnchor constraintEqualToAnchor:leadingGlow.widthAnchor],
-        [leadingGlow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:-128.0],
-        [leadingGlow.topAnchor constraintEqualToAnchor:container.safeAreaLayoutGuide.topAnchor constant:78.0],
-
-        [trailingGlow.widthAnchor constraintEqualToConstant:238.0],
-        [trailingGlow.heightAnchor constraintEqualToAnchor:trailingGlow.widthAnchor],
-        [trailingGlow.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:104.0],
-        [trailingGlow.topAnchor constraintEqualToAnchor:container.safeAreaLayoutGuide.topAnchor constant:210.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:342.0],
-        [bottomGlow.heightAnchor constraintEqualToAnchor:bottomGlow.widthAnchor],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:26.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:108.0],
-
         [imageView.topAnchor constraintEqualToAnchor:container.topAnchor],
         [imageView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
         [imageView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
@@ -5440,9 +6026,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     self.chatBackgroundContainer = container;
     self.chatBackgroundImageView = imageView;
-    self.chatBackgroundGlowLeadingView = leadingGlow;
-    self.chatBackgroundGlowTrailingView = trailingGlow;
-    self.chatBackgroundGlowBottomView = bottomGlow;
 
     [self pp_applyChatBackgroundGlowAppearance];
 }
@@ -5466,26 +6049,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     self.chatBackgroundContainer.backgroundColor =
         PPChatAmbientBackgroundColor(self.traitCollection);
-
-    BOOL isDark = NO;
-    if (@available(iOS 13.0, *)) {
-        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-
-    [self pp_applyChatGlowView:self.chatBackgroundGlowLeadingView
-                         color:PPChatAmbientGlowWarmColor(self.traitCollection)
-                  shadowRadius:42.0
-                 shadowOpacity:(isDark ? 0.16 : 0.22)];
-
-    [self pp_applyChatGlowView:self.chatBackgroundGlowTrailingView
-                         color:PPChatAmbientGlowPearlColor(self.traitCollection)
-                  shadowRadius:36.0
-                 shadowOpacity:(isDark ? 0.13 : 0.18)];
-
-    [self pp_applyChatGlowView:self.chatBackgroundGlowBottomView
-                         color:PPChatAmbientGlowRoseColor(self.traitCollection)
-                  shadowRadius:48.0
-                 shadowOpacity:(isDark ? 0.15 : 0.18)];
 }
 
 - (void)pp_applyChatGlowView:(UIView *)glowView
@@ -5519,38 +6082,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_startChatBackgroundGlowMotionIfNeeded
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopChatBackgroundGlowMotion];
-        return;
-    }
-
-    if (!self.chatBackgroundContainer.window ||
-        [self.chatBackgroundGlowLeadingView.layer animationForKey:@"pp_chat_glow_scale"]) {
-        return;
-    }
-
-    [self pp_updateChatBackgroundGlowGeometry];
-    [self pp_animateChatGlowView:self.chatBackgroundGlowLeadingView
-                         scaleBy:0.026
-                      translateX:14.0
-                      translateY:8.0
-                         opacity:0.14
-                        duration:6.4
-                           delay:0.0];
-    [self pp_animateChatGlowView:self.chatBackgroundGlowTrailingView
-                         scaleBy:0.022
-                      translateX:-12.0
-                      translateY:10.0
-                         opacity:0.12
-                        duration:7.2
-                           delay:0.45];
-    [self pp_animateChatGlowView:self.chatBackgroundGlowBottomView
-                         scaleBy:0.030
-                      translateX:10.0
-                      translateY:-14.0
-                         opacity:0.10
-                        duration:8.1
-                           delay:0.9];
+    [self pp_stopChatBackgroundGlowMotion];
 }
 
 - (void)pp_animateChatGlowView:(UIView *)glowView
@@ -5858,8 +6390,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     // Keep both composer implementations in the same coordinate system.
     self.inputBarBottomConstraint.constant = -keyboardHeight;
-    CGFloat swiftUIBottom = (rawKeyboardHeight > 0) ? (-rawKeyboardHeight - 8.0) : -8.0;
-    self.swiftUIInputBarBottomConstraint.constant = swiftUIBottom;
+    if (@available(iOS 15.0, *)) {
+        // Automatically handled by keyboardLayoutGuide
+    } else {
+        CGFloat swiftUIBottom = (rawKeyboardHeight > 0) ? (-keyboardHeight - 8.0) : -8.0;
+        self.swiftUIInputBarBottomConstraint.constant = swiftUIBottom;
+    }
 
     UIViewAnimationOptions options =
         UIViewAnimationOptionBeginFromCurrentState |
@@ -6053,8 +6589,14 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                     if (index != NSNotFound) {
 	                        // Already exists → just update fields
 	                        ChatMessageModel *existing = self.messages[index];
+	                        BOOL wasDeleted = existing.isDeleted;
 	                        [existing updateFromDictionary:change.document.data];
 	                        [self.cachedHeights removeObjectForKey:existing.ID];
+	                        if (wasDeleted != existing.isDeleted) {
+	                            NSIndexPath *path = [NSIndexPath indexPathForRow:index inSection:0];
+	                            [self.tableView reloadRowsAtIndexPaths:@[path]
+	                                                  withRowAnimation:UITableViewRowAnimationFade];
+	                        }
 	                        continue;
                     }
 
@@ -6103,8 +6645,14 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                     }
 
 	                    ChatMessageModel *msg = self.messages[index];
+	                    BOOL wasDeleted = msg.isDeleted;
 	                    [msg updateFromDictionary:change.document.data];
 	                    [self.cachedHeights removeObjectForKey:msg.ID];
+	                    if (wasDeleted != msg.isDeleted) {
+	                        NSIndexPath *path = [NSIndexPath indexPathForRow:index inSection:0];
+	                        [self.tableView reloadRowsAtIndexPaths:@[path]
+	                                              withRowAnimation:UITableViewRowAnimationFade];
+	                    }
 
                     NSNumber *prev = self.lastKnownStatuses[msg.ID];
                     NSNumber *curr = @(msg.status);

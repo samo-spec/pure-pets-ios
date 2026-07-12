@@ -38,6 +38,28 @@ NS_ASSUME_NONNULL_BEGIN
           groupPosition:(PPChatGroupPosition)position
                showGlow:(BOOL)showGlow;
 
+/// Physical alignment derived from ownership and the active interface direction.
++ (BOOL)bubbleUsesTrailingAlignmentForIncoming:(BOOL)isIncoming;
+
+/// Shared premium message-surface palette. Keeps text, audio, image and video
+/// bubbles visually consistent in light/dark mode without duplicating colors.
++ (UIColor *)chatCanvasBackgroundColor;
++ (UIColor *)chatNeutralAccentColor;
++ (UIColor *)bubbleSurfaceColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubblePrimaryContentColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubbleSecondaryContentColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubbleStrokeColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubbleInteractiveAccentColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubblePlaybackControlSurfaceColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubbleWaveInactiveColorForIncoming:(BOOL)isIncoming;
++ (UIColor *)bubbleReplySurfaceColorForIncoming:(BOOL)isIncoming;
+
+/// Shared delivery/read-state renderer used by every message cell.
++ (void)applyStatusForMessage:(ChatMessageModel *)message
+                  toImageView:(UIImageView *)imageView
+                   isIncoming:(BOOL)isIncoming
+                     animated:(BOOL)animated;
+
 
 //- (instancetype)init NS_UNAVAILABLE;
 + (UIButton *)buttonWithSystemName:(NSString *)imageName

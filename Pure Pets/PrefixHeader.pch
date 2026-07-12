@@ -742,7 +742,7 @@ static UIButton *PPMakeGlassBackgroundButton(CGFloat corners) {
 
 
 
-#define PPChatBubblePad                   4.0
+#define PPChatBubblePad                   2.0
 #define PPChatBubbleMineColor  [AppPrimaryClr colorWithAlphaComponent:0.92]
 #define PPChatBubbleSomeoneColor [AppForgroundColr colorWithAlphaComponent:0.92]
 

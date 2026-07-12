@@ -3122,6 +3122,22 @@
 "chat_reply_audio" = "رسالة صوتية";
 "chat_reply_unavailable" = "الرسالة الأصلية غير متاحة.";
 "chat_reply_cancel" = "إلغاء الرد";
+"chat_unsend" = "إلغاء الإرسال";
+"chat_unsend_title" = "إلغاء إرسال الرسالة؟";
+"chat_unsend_confirmation" = "ستتم إزالة هذه الرسالة لدى جميع المشاركين في المحادثة.";
+"chat_unsend_success" = "تم إلغاء إرسال الرسالة";
+"chat_unsend_failed" = "تعذر إلغاء إرسال هذه الرسالة.";
+"chat_message_unsent" = "تم إلغاء إرسال الرسالة";
+"chat_status_sending" = "جارٍ الإرسال";
+"chat_status_sent" = "تم الإرسال";
+"chat_status_delivered" = "تم التسليم";
+"chat_status_read" = "تمت القراءة";
+"chat_unread" = "غير مقروء";
+"chat_unread_count_format" = "الرسائل غير المقروءة: %ld";
+"chat_accessibility_incoming" = "رسالة مستلمة";
+"chat_accessibility_outgoing" = "رسالة مرسلة";
+"chat_accessibility_reply_format" = "رد على: %@";
+"chat_message_actions_hint" = "اسحب للرد، أو المس مطولاً لعرض إجراءات الرسالة.";
 
 /* Premium intro */
 "intro_brand_kicker" = "عناية متكاملة بكل اهتمام";
@@ -3244,10 +3260,11 @@
 "provider_companies_title_marketplace" = "سوق المزودين";
 "provider_marketplace_hero_title" = "مزودون موثوقون\nلكل احتياجات حيوانك";
 "home_marketplace_hero_eyebrow" = "المتجر";
+"home_marketplace_hero_eyebrow_proof" = "المتجر - موردون بتقييمات عالية";
 "home_marketplace_hero_title" = "اختر مزوداً موثوقاً";
 "home_marketplace_hero_subtitle" = "اختر الواجهة أولاً، ثم تصفح المنتجات من المزود المناسب.";
 "home_marketplace_hero_cta" = "عرض المزودين";
-"home_marketplace_hero_accessibility_label" = "المتجر. اختر مزوداً موثوقاً. عرض المزودين.";
+"home_marketplace_hero_accessibility_label" = "المتجر. اختر مزوداً موثوقاً. موردون بتقييمات عالية. عرض المزودين.";
 "home_marketplace_hero_accessibility_hint" = "يفتح قائمة شركات ومزودي المتجر.";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
 "provider_marketplace_subtitle" = "أطعمة . إكسسوارات";

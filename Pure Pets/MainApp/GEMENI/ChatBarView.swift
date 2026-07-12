@@ -19,6 +19,31 @@ import SwiftUI
 import AVFoundation
 import UIKit
 
+private enum PPChatComposerPalette {
+    static let accent = Color(
+        uiColor: UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor(red: 0.710, green: 0.745, blue: 0.720, alpha: 1.0)
+            }
+            return UIColor(red: 0.145, green: 0.166, blue: 0.165, alpha: 1.0)
+        }
+    )
+
+    static let fieldSurface = Color(
+        uiColor: UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor(white: 1.0, alpha: 0.085)
+            }
+            return UIColor(red: 0.955, green: 0.948, blue: 0.925, alpha: 0.82)
+        }
+    )
+}
+
+private extension Color {
+    static var ppChatAccent: Color { PPChatComposerPalette.accent }
+    static var ppChatFieldSurface: Color { PPChatComposerPalette.fieldSurface }
+}
+
 /// Premium chat composer shared by user messaging and Nova hosts.
 struct ChatBarView: View {
 
@@ -43,6 +68,7 @@ struct ChatBarView: View {
     var onVideoTap: () -> Void
     var onContactTap: () -> Void
     var onSendAudio: (URL, Double) -> Void
+    var onCancelReply: () -> Void = {}
 
     // MARK: - Composer State
 
@@ -148,13 +174,21 @@ struct ChatBarView: View {
             )
     }
 
+    private var replyPreviewHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 58.0 : 46.0
+    }
+
+    private var expandedComposerHeight: CGFloat {
+        chatBarHeight + PPSpace.xs + replyPreviewHeight
+    }
+
     private var composerSurfaceColor: Color {
         Color(
             uiColor: UIColor { traitCollection in
                 if traitCollection.userInterfaceStyle == .dark {
-                    return UIColor.secondarySystemBackground.withAlphaComponent(0.42)
+                    return UIColor(red: 0.100, green: 0.110, blue: 0.118, alpha: 0.76)
                 }
-                return UIColor.white.withAlphaComponent(0.46)
+                return UIColor(red: 0.984, green: 0.977, blue: 0.958, alpha: 0.86)
             }
         )
     }
@@ -162,6 +196,18 @@ struct ChatBarView: View {
     // MARK: - Body
 
     var body: some View {
+        VStack(spacing: PPSpace.xs) {
+            if state.hasReply {
+                replyPreview
+                    .transition(contentTransition)
+            }
+            composerBody
+        }
+        .frame(height: state.hasReply ? expandedComposerHeight : chatBarHeight, alignment: .bottom)
+        .animation(stateAnimation, value: state.hasReply)
+    }
+
+    private var composerBody: some View {
         ZStack(alignment: .trailing) {
             stateContent
                 .transition(contentTransition)
@@ -229,6 +275,49 @@ struct ChatBarView: View {
             recorder.cleanup()
             player.cleanup()
         }
+    }
+
+    private var replyPreview: some View {
+        HStack(spacing: PPSpace.sm) {
+            Capsule()
+                .fill(Color.ppChatAccent)
+                .frame(width: 3.0, height: 28.0)
+
+            VStack(alignment: .leading, spacing: 1.0) {
+                Text(state.replyTitle)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                Text(state.replySubtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                onCancelReply()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11.0, weight: .bold))
+                    .frame(width: 32.0, height: 32.0)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(localized("chat_reply_cancel")))
+        }
+        .padding(.leading, PPSpace.md)
+        .padding(.trailing, PPSpace.xs)
+        .frame(height: replyPreviewHeight)
+        .background {
+            RoundedRectangle(cornerRadius: 16.0, style: .continuous)
+                .fill(.thinMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 16.0, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.20), lineWidth: 0.5)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder
@@ -329,7 +418,7 @@ struct ChatBarView: View {
             )
             .focused($isTextFieldFocused)
             .foregroundStyle(Color.ppTextPrimary)
-            .tint(Color.ppPrimary)
+            .tint(Color.ppChatAccent)
             .submitLabel(.send)
             .disabled(state.thinking)
             .onSubmit {
@@ -343,14 +432,14 @@ struct ChatBarView: View {
 
             if state.thinking {
                 ProgressView()
-                    .tint(Color.ppPrimary)
+                    .tint(Color.ppChatAccent)
                     .frame(width: 36.0, height: 36.0)
                     .accessibilityLabel(localized("nova_thinking"))
             } else if !trimmedMessage.isEmpty {
                 voiceActionButton(
                     systemName: "arrow.up",
                     foreground: .white,
-                    background: Color.ppPrimary,
+                    background: Color.ppChatAccent,
                     accessibilityLabel: localized("chat_send_message")
                 ) {
                     submitMessage()
@@ -363,11 +452,11 @@ struct ChatBarView: View {
         .frame(height: 44.0)
         .background {
             Capsule(style: .continuous)
-                .fill(Color.ppPrimary.opacity(0.075))
+                .fill(Color.ppChatFieldSurface)
                 .overlay {
                     Capsule(style: .continuous)
                         .strokeBorder(
-                            Color.ppPrimary.opacity(0.03),
+                            Color.ppChatAccent.opacity(0.08),
                             lineWidth: 1.0 / UIScreen.main.scale
                         )
                 }
@@ -412,7 +501,7 @@ struct ChatBarView: View {
                                 VoiceMetrics.compactWaveformCount
                             )
                         ),
-                        tint: .ppPrimary
+                        tint: .ppChatAccent
                     )
                     .frame(width: 100.0)
                 }
@@ -441,7 +530,7 @@ struct ChatBarView: View {
             cancelArmed
             ? .ppError
             : (isLockGuidance && lockProgress > 0.72
-               ? .ppPrimary
+               ? .ppChatAccent
                : .ppTextSecondary)
 
         return HStack(spacing: PPSpace.xs) {
@@ -517,7 +606,7 @@ struct ChatBarView: View {
                                 VoiceMetrics.lockedWaveformCount
                             )
                         ),
-                        tint: .ppPrimary,
+                        tint: .ppChatAccent,
                         isActive: recorder.state == .locked
                     )
                     .frame(maxWidth: .infinity)
@@ -532,7 +621,7 @@ struct ChatBarView: View {
                     ? voiceSymbol(.resume)
                     : voiceSymbol(.pause),
                 foreground: .ppTextPrimary,
-                background: Color.ppPrimary.opacity(0.10),
+                background: Color.ppChatAccent.opacity(0.10),
                 accessibilityLabel: localized(
                     recorder.state == .paused
                         ? "voice_resume"
@@ -577,11 +666,11 @@ struct ChatBarView: View {
                 systemName: player.isPlaying
                     ? voiceSymbol(.pause)
                     : voiceSymbol(.preview),
-                foreground: player.playbackFailed ? .ppError : .ppPrimary,
+                foreground: player.playbackFailed ? .ppError : .ppChatAccent,
                 background: (
                     player.playbackFailed
                     ? Color.ppError
-                    : Color.ppPrimary
+                    : Color.ppChatAccent
                 ).opacity(0.10),
                 accessibilityLabel: localized(
                     player.isPlaying
@@ -625,7 +714,7 @@ struct ChatBarView: View {
             voiceActionButton(
                 systemName: "arrow.up",
                 foreground: .white,
-                background: Color.ppPrimary,
+                background: Color.ppChatAccent,
                 accessibilityLabel: localized("voice_send")
             ) {
                 commitRecordingForSend()
@@ -649,14 +738,14 @@ struct ChatBarView: View {
                     .frame(height: 4.0)
 
                 Capsule(style: .continuous)
-                    .fill(Color.ppPrimary)
+                    .fill(Color.ppChatAccent)
                     .frame(width: max(width * progress, progress > 0 ? 4.0 : 0.0), height: 4.0)
 
                 Circle()
-                    .fill(Color.ppPrimary)
+                    .fill(Color.ppChatAccent)
                     .frame(width: 12.0, height: 12.0)
                     .shadow(
-                        color: Color.ppPrimary.opacity(0.22),
+                        color: Color.ppChatAccent.opacity(0.22),
                         radius: 3.0,
                         x: 0.0,
                         y: 1.0
@@ -728,8 +817,8 @@ struct ChatBarView: View {
             if recorder.failure == .permissionDenied {
                 voiceActionButton(
                     systemName: "gearshape.fill",
-                    foreground: .ppPrimary,
-                    background: Color.ppPrimary.opacity(0.10),
+                    foreground: .ppChatAccent,
+                    background: Color.ppChatAccent.opacity(0.10),
                     accessibilityLabel: localized("voice_open_settings")
                 ) {
                     guard let url = URL(
@@ -742,8 +831,8 @@ struct ChatBarView: View {
             } else {
                 voiceActionButton(
                     systemName: "arrow.clockwise",
-                    foreground: .ppPrimary,
-                    background: Color.ppPrimary.opacity(0.10),
+                    foreground: .ppChatAccent,
+                    background: Color.ppChatAccent.opacity(0.10),
                     accessibilityLabel: localized("voice_retry")
                 ) {
                     recorder.resetFailure()
@@ -768,7 +857,7 @@ struct ChatBarView: View {
     private var recordControl: some View {
         let active =
             recorder.state == .recording || recorder.state == .preparing
-        let controlColor: Color = cancelArmed ? .ppError : .ppPrimary
+        let controlColor: Color = cancelArmed ? .ppError : .ppChatAccent
         let audioScale =
             recorder.state == .recording && !reduceMotion
             ? 1.0 + min(microphoneLevel, 1.0) * 0.10
@@ -809,7 +898,7 @@ struct ChatBarView: View {
             if recorder.state == .preparing {
                 Image(systemName: voiceSymbol(.preparing))
                     .font(.system(size: 18.0, weight: .semibold))
-                    .foregroundStyle(Color.ppPrimary)
+                    .foregroundStyle(Color.ppChatAccent)
                     .opacity(reduceMotion ? 1.0 : 0.82)
             } else {
                 Image(
@@ -829,7 +918,7 @@ struct ChatBarView: View {
                     .stroke(
                         cancelProgress >= lockProgress
                             ? Color.ppError
-                            : Color.ppPrimary,
+                            : Color.ppChatAccent,
                         style: StrokeStyle(
                             lineWidth: 2.0,
                             lineCap: .round

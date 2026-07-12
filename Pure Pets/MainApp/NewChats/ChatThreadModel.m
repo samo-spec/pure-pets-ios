@@ -19,6 +19,7 @@ static NSString *PPCurrentChatIdentity(void) {
 
 static NSString * const PPSupportAvatarToken = @"purepets://support-logo";
 static NSString * const PPPurePetsOfficialSupportUserID = @"PUIDPOFFICILAL20262214";
+static NSString * const PPChatUnsentPreviewToken = @"__pp_message_unsent__";
 
 static NSString *PPChatTrimmedString(id value) {
     if (![value isKindOfClass:NSString.class]) {
@@ -94,6 +95,9 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
         [dict[@"lastMessage"] isKindOfClass:NSString.class]
         ? dict[@"lastMessage"]
         : @"";
+    if ([_lastMessage isEqualToString:PPChatUnsentPreviewToken]) {
+        _lastMessage = kLang(@"chat_message_unsent");
+    }
 
     _lastSenderID =
         [dict[@"senderID"] isKindOfClass:NSString.class]

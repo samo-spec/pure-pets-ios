@@ -6,24 +6,10 @@
 #import "PPHomeMarketplaceHeroCell.h"
 #import "PetCareHelpers.h"
 #import "PPHeroGlassBackgroundView.h"
+#import "PPMarketplaceHeroCardStyle.h"
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
-static NSString * const PPHomeMarketplaceHeroPrimaryTileBreathKey = @"pp.home.marketplaceHero.primaryTileBreath";
-static NSString * const PPHomeMarketplaceHeroSecondaryTileBreathKey = @"pp.home.marketplaceHero.secondaryTileBreath";
-static NSString * const PPHomeMarketplaceHeroPremiumGlowPulseKey = @"pp.home.marketplaceHero.premiumGlowPulse";
-static NSString * const PPHomeMarketplaceHeroPremiumGlowCorePulseKey = @"pp.home.marketplaceHero.premiumGlowCorePulse";
-
-static UIColor *MarketHeroGoldColor(void) {
-    UIColor *lightGold = [UIColor colorWithRed:0.851 green:0.714 blue:0.424 alpha:1.0];
-    UIColor *darkGold = [UIColor colorWithRed:0.949 green:0.847 blue:0.580 alpha:1.0];
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? darkGold : lightGold;
-        }];
-    }
-    return lightGold;
-}
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {
@@ -31,16 +17,6 @@ static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
                            green:((hex >>  8) & 0xFF) / 255.0
                             blue:((hex      ) & 0xFF) / 255.0
                            alpha:alpha];
-}
-
-static UIColor *PPMarketHeroDynamicColor(UIColor *light, UIColor *dark)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? dark : light;
-        }];
-    }
-    return light;
 }
 
 static UIColor *PPMarketHeroAccentColor(void)
@@ -103,16 +79,11 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong) UIImageView *primaryProductIconView;
 @property (nonatomic, strong) UIView *secondaryProductTileView;
 @property (nonatomic, strong) UIImageView *secondaryProductIconView;
-@property (nonatomic, strong) UIView *routeLineView;
 @property (nonatomic, strong) NSLayoutConstraint *visualWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *visualHeightConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *contentTrailingToVisualConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *contentTrailingToSurfaceConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentLeadingToVisualConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentLeadingToSurfaceConstraint;
 @property (nonatomic, assign) BOOL visualHiddenForReadableText;
-
-@property (nonatomic, strong) UIView *premiumGlowDotContainer;
-@property (nonatomic, strong) UIView *premiumGlowCoreView;
-@property (nonatomic, strong) UIView *premiumGlowHaloView;
 
 @end
 
@@ -145,8 +116,15 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.transform = CGAffineTransformIdentity;
     self.contentView.alpha = 1.0;
     self.contentView.transform = CGAffineTransformIdentity;
+    self.surfaceControl.alpha = 1.0;
     self.surfaceControl.transform = CGAffineTransformIdentity;
     [self configureDefaultContent];
+}
+
+- (BOOL)accessibilityActivate
+{
+    [self pp_handleTap];
+    return YES;
 }
 
 - (void)didMoveToWindow
@@ -165,6 +143,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     [self pp_updateAdaptiveLayout];
 
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     CGRect ctaBounds = self.ctaView.bounds;
     self.ctaGradientLayer.frame = (!CGRectIsEmpty(ctaBounds) &&
                                    isfinite((double)CGRectGetWidth(ctaBounds)) &&
@@ -200,13 +180,6 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.contentView.layer.shadowPath = nil;
     }
 
-    CGRect glowHaloBounds = self.premiumGlowHaloView.bounds;
-    if (!CGRectIsEmpty(glowHaloBounds)) {
-        self.premiumGlowHaloView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowHaloBounds].CGPath;
-    } else {
-        self.premiumGlowHaloView.layer.shadowPath = nil;
-    }
-
     if (self.window) {
         [self pp_startAmbientMotionIfNeeded];
     }
@@ -226,7 +199,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 
 - (void)configureDefaultContent
 {
-    self.eyebrowLabel.text = kLang(@"home_marketplace_hero_eyebrow") ?: @"";
+    self.eyebrowLabel.text = kLang(@"home_marketplace_hero_eyebrow_proof") ?: kLang(@"home_marketplace_hero_eyebrow") ?: @"";
     self.titleLabel.text = kLang(@"home_marketplace_hero_title") ?: @"";
     self.subtitleLabel.text = kLang(@"home_marketplace_hero_subtitle") ?: @"";
     self.ctaLabel.text = kLang(@"home_marketplace_hero_cta") ?: @"";
@@ -261,19 +234,22 @@ static BOOL PPMarketHeroReduceMotion(void)
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    UIColor *surfaceBase = AppForgroundColr ?: PPMarketHeroDynamicColor([UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:1.0],
-                                                                         [UIColor colorWithWhite:0.104 alpha:1.0]);
-    UIColor *textPrimary = darkMode ? [UIColor colorWithWhite:0.96 alpha:1.0] : PPMarketHeroColor(0x2A171D, 1.0);
-    UIColor *textSecondary = darkMode ? [UIColor colorWithWhite:0.76 alpha:1.0] : PPMarketHeroColor(0x7A666C, 1.0);
-    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.78];
-    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:0.09];
-    UIColor *ctaEnd = PPMarketHeroColor(0xD91557, 0.82);
+    UIColor *surfaceBase = PPMarketplaceHeroCardSurfaceBaseColor(self.traitCollection);
+    UIColor *textPrimary = PPMarketplaceHeroCardPrimaryTextColor();
+    UIColor *textSecondary = PPMarketplaceHeroCardSecondaryTextColor();
+    UIColor *stroke = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
+    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:darkMode ? 0.14 : 0.085];
+    UIColor *ctaEnd = PPMarketplaceHeroCardBlend(primaryAccent,
+                                                  PPMarketHeroColor(0xB82454, 1.0),
+                                                  0.54,
+                                                  self.traitCollection);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
+    self.heroGlassBackground.accentColorOverride = primaryAccent;
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.contentView.layer.shadowOpacity = 0.08f;
-    self.contentView.layer.shadowRadius = 20.0f;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.contentView.layer.shadowOpacity = darkMode ? 0.18f : 0.075f;
+    self.contentView.layer.shadowRadius = darkMode ? 24.0f : 18.0f;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 12.0 : 9.0);
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
     self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:0.16].CGColor;
@@ -283,56 +259,43 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.titleLabel.textColor = textPrimary;
     self.subtitleLabel.textColor = textSecondary;
     self.ctaView.backgroundColor = UIColor.clearColor;
-    self.ctaGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:0.92].CGColor,
-        (id)ctaEnd.CGColor
-    ];
+    self.ctaGradientLayer.colors = @[(id)primaryAccent.CGColor, (id)ctaEnd.CGColor];
     self.ctaGradientLayer.locations = @[@0.0, @1.0];
     self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
     self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     self.ctaView.layer.borderWidth = 0.8;
     self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.28].CGColor;
     self.ctaView.layer.shadowColor = PPMarketHeroColor(0xBC2455, 1.0).CGColor;
-    self.ctaView.layer.shadowOpacity = 0.11f;
-    self.ctaView.layer.shadowRadius = 10.0f;
-    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    self.ctaView.layer.shadowOpacity = darkMode ? 0.16f : 0.10f;
+    self.ctaView.layer.shadowRadius = 9.0f;
+    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     self.ctaLabel.textColor = UIColor.whiteColor;
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:0.16].CGColor,
-        (id)[[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.22 : 0.14].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:0.12].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
 
     self.storefrontGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:0.20].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:0.98].CGColor
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.24 : 0.16].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.96 : 0.92].CGColor
     ];
     self.storefrontGradientLayer.startPoint = CGPointMake(0.12, 0.0);
     self.storefrontGradientLayer.endPoint = CGPointMake(0.92, 1.0);
     self.storefrontPlateView.layer.borderColor = stroke.CGColor;
-    self.storefrontIconView.tintColor = PPMarketHeroColor(0x1D2420, 1.0);
+    self.storefrontIconView.tintColor = PPMarketHeroLabelIconColor();
 
     [self pp_applyProductTile:self.primaryProductTileView
                          icon:self.primaryProductIconView
                        accent:primaryAccent
-                         dark:NO];
+                         dark:darkMode];
     [self pp_applyProductTile:self.secondaryProductTileView
                          icon:self.secondaryProductIconView
                        accent:PPMarketHeroColor(0x6EAFA2, 1.0)
-                         dark:NO];
-    self.routeLineView.backgroundColor = [primaryAccent colorWithAlphaComponent:0.22];
-
-    UIColor *glowColor = MarketHeroGoldColor();
-    self.premiumGlowCoreView.backgroundColor = [glowColor colorWithAlphaComponent:darkMode ? 0.82 : 0.72];
-    self.premiumGlowCoreView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:darkMode ? 0.28 : 0.76].CGColor;
-    self.premiumGlowHaloView.backgroundColor = [glowColor colorWithAlphaComponent:darkMode ? 0.115 : 0.085];
-    self.premiumGlowHaloView.layer.shadowColor = glowColor.CGColor;
-    self.premiumGlowHaloView.layer.shadowOpacity = darkMode ? 0.22f : 0.16f;
-    self.premiumGlowHaloView.layer.shadowRadius = 10.0f;
-    self.premiumGlowHaloView.layer.shadowOffset = CGSizeZero;
+                         dark:darkMode];
 }
 
 #pragma mark - Build
@@ -364,12 +327,12 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
+    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 
     [self pp_buildContentStackInSurface:surface];
     [self pp_buildVisualClusterInSurface:surface];
-    [self pp_buildPremiumGlowViewInSurface:surface];
 
     [NSLayoutConstraint activateConstraints:@[
         [surface.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -382,22 +345,22 @@ static BOOL PPMarketHeroReduceMotion(void)
         [glass.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
         [glass.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
 
-        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:PPSpaceLG],
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG],
-        [self.contentStackView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:PPSpaceMD],
+        [self.contentStackView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceLG],
+        [self.contentStackView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor constant:-3.0],
         [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:surface.bottomAnchor constant:-PPSpaceLG],
 
-        [self.visualContainerView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceMD],
+        [self.visualContainerView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceMD],
         [self.visualContainerView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
     ]];
 
-    self.visualWidthConstraint = [self.visualContainerView.widthAnchor constraintEqualToConstant:118.0];
-    self.visualHeightConstraint = [self.visualContainerView.heightAnchor constraintEqualToConstant:132.0];
-    self.contentTrailingToVisualConstraint =
-        [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.visualContainerView.leadingAnchor constant:-PPSpaceMD];
-    self.contentTrailingToSurfaceConstraint =
-        [self.contentStackView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceLG];
-    self.contentTrailingToVisualConstraint.active = YES;
+    self.visualWidthConstraint = [self.visualContainerView.widthAnchor constraintEqualToConstant:124.0];
+    self.visualHeightConstraint = [self.visualContainerView.heightAnchor constraintEqualToConstant:146.0];
+    self.contentLeadingToVisualConstraint =
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.visualContainerView.trailingAnchor constant:PPSpaceMD];
+    self.contentLeadingToSurfaceConstraint =
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG];
+    self.contentLeadingToVisualConstraint.active = YES;
     self.visualWidthConstraint.active = YES;
     self.visualHeightConstraint.active = YES;
 }
@@ -430,8 +393,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = PPMarketHeroScaledFont([GM MidFontWithSize:11.0], UIFontTextStyleCaption1);
     eyebrowLabel.adjustsFontForContentSizeCategory = YES;
-    eyebrowLabel.adjustsFontSizeToFitWidth = YES;
-    eyebrowLabel.minimumScaleFactor = 0.86;
+    eyebrowLabel.adjustsFontSizeToFitWidth = NO;
     eyebrowLabel.numberOfLines = 1;
     eyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [eyebrowPill addSubview:eyebrowLabel];
@@ -507,27 +469,28 @@ static BOOL PPMarketHeroReduceMotion(void)
     [surface addSubview:stack];
     self.contentStackView = stack;
 
-[NSLayoutConstraint activateConstraints:@[
-         [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
-         [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
-         [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
+    [NSLayoutConstraint activateConstraints:@[
+        [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
+        [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
+        [cta.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
 
-         [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
-         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
-         [eyebrowIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
-         [eyebrowIcon.widthAnchor constraintEqualToConstant:13.0],
-         [eyebrowIcon.heightAnchor constraintEqualToConstant:13.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
+        [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
+        [eyebrowIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
+        [eyebrowIcon.widthAnchor constraintEqualToConstant:13.0],
+        [eyebrowIcon.heightAnchor constraintEqualToConstant:13.0],
 
-         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:6.0],
-         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-10.0],
-         [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:5.0],
-         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowIcon.trailingAnchor constant:6.0],
+        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-10.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:5.0],
+        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
 
-         [cta.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
-        [ctaLabel.leadingAnchor constraintEqualToAnchor:cta.leadingAnchor constant:PPSpaceMD - 2.0],
+        [cta.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
+        [ctaLabel.leadingAnchor constraintEqualToAnchor:cta.leadingAnchor constant:PPSpaceMD],
         [ctaLabel.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
-        [ctaIcon.leadingAnchor constraintEqualToAnchor:ctaLabel.trailingAnchor constant:PPSpaceSM - 1.0],
-        [ctaIcon.trailingAnchor constraintEqualToAnchor:cta.trailingAnchor constant:-(PPSpaceMD - 2.0)],
+        [ctaIcon.leadingAnchor constraintEqualToAnchor:ctaLabel.trailingAnchor constant:PPSpaceSM],
+        [ctaIcon.trailingAnchor constraintEqualToAnchor:cta.trailingAnchor constant:-PPSpaceMD],
         [ctaIcon.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
         [ctaIcon.widthAnchor constraintEqualToConstant:15.0],
         [ctaIcon.heightAnchor constraintEqualToConstant:15.0],
@@ -539,13 +502,15 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIView *visual = [[UIView alloc] init];
     visual.translatesAutoresizingMaskIntoConstraints = NO;
     visual.userInteractionEnabled = NO;
+    visual.isAccessibilityElement = NO;
+    visual.accessibilityElementsHidden = YES;
     [surface addSubview:visual];
     self.visualContainerView = visual;
 
     UIView *halo = [[UIView alloc] init];
     halo.translatesAutoresizingMaskIntoConstraints = NO;
     halo.userInteractionEnabled = NO;
-    halo.layer.cornerRadius = 60.0;
+    halo.layer.cornerRadius = 62.0;
     halo.clipsToBounds = YES;
     [visual addSubview:halo];
     self.visualHaloView = halo;
@@ -574,7 +539,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     UIImageView *storefrontIcon =
         [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"storefront.fill"
-                                                         pointSize:42.0
+                                                         pointSize:46.0
                                                             weight:UIImageSymbolWeightSemibold
                                                              scale:UIImageSymbolScaleLarge
                                                            palette:@[PPMarketHeroLabelIconColor()]
@@ -583,12 +548,6 @@ static BOOL PPMarketHeroReduceMotion(void)
     storefrontIcon.contentMode = UIViewContentModeScaleAspectFit;
     [plate addSubview:storefrontIcon];
     self.storefrontIconView = storefrontIcon;
-
-    UIView *routeLine = [[UIView alloc] init];
-    routeLine.translatesAutoresizingMaskIntoConstraints = NO;
-    routeLine.layer.cornerRadius = 1.0;
-    [visual addSubview:routeLine];
-    self.routeLineView = routeLine;
 
     self.primaryProductTileView = [self pp_makeProductTileWithSymbol:@"bag.fill"];
     self.primaryProductIconView = (UIImageView *)self.primaryProductTileView.subviews.firstObject;
@@ -601,33 +560,28 @@ static BOOL PPMarketHeroReduceMotion(void)
     [NSLayoutConstraint activateConstraints:@[
         [halo.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:visual.centerYAnchor],
-        [halo.widthAnchor constraintEqualToConstant:120.0],
-        [halo.heightAnchor constraintEqualToConstant:120.0],
+        [halo.widthAnchor constraintEqualToConstant:124.0],
+        [halo.heightAnchor constraintEqualToConstant:124.0],
 
         [plate.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],
         [plate.centerYAnchor constraintEqualToAnchor:visual.centerYAnchor constant:-2.0],
-        [plate.widthAnchor constraintEqualToConstant:88.0],
-        [plate.heightAnchor constraintEqualToConstant:88.0],
+        [plate.widthAnchor constraintEqualToConstant:100.0],
+        [plate.heightAnchor constraintEqualToConstant:100.0],
 
         [storefrontIcon.centerXAnchor constraintEqualToAnchor:plate.centerXAnchor],
         [storefrontIcon.centerYAnchor constraintEqualToAnchor:plate.centerYAnchor],
-        [storefrontIcon.widthAnchor constraintEqualToConstant:47.0],
-        [storefrontIcon.heightAnchor constraintEqualToConstant:47.0],
+        [storefrontIcon.widthAnchor constraintEqualToConstant:52.0],
+        [storefrontIcon.heightAnchor constraintEqualToConstant:52.0],
 
-        [routeLine.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],
-        [routeLine.topAnchor constraintEqualToAnchor:plate.bottomAnchor constant:8.0],
-        [routeLine.widthAnchor constraintEqualToConstant:40.0],
-        [routeLine.heightAnchor constraintEqualToConstant:2.0],
+        [self.primaryProductTileView.widthAnchor constraintEqualToConstant:44.0],
+        [self.primaryProductTileView.heightAnchor constraintEqualToConstant:44.0],
+        [self.primaryProductTileView.trailingAnchor constraintEqualToAnchor:visual.trailingAnchor constant:0.0],
+        [self.primaryProductTileView.topAnchor constraintEqualToAnchor:visual.topAnchor constant:12.0],
 
-        [self.primaryProductTileView.widthAnchor constraintEqualToConstant:42.0],
-        [self.primaryProductTileView.heightAnchor constraintEqualToConstant:42.0],
-        [self.primaryProductTileView.trailingAnchor constraintEqualToAnchor:visual.trailingAnchor constant:-2.0],
-        [self.primaryProductTileView.topAnchor constraintEqualToAnchor:visual.topAnchor constant:16.0],
-
-        [self.secondaryProductTileView.widthAnchor constraintEqualToConstant:36.0],
-        [self.secondaryProductTileView.heightAnchor constraintEqualToConstant:36.0],
-        [self.secondaryProductTileView.leadingAnchor constraintEqualToAnchor:visual.leadingAnchor constant:2.0],
-        [self.secondaryProductTileView.bottomAnchor constraintEqualToAnchor:visual.bottomAnchor constant:-18.0],
+        [self.secondaryProductTileView.widthAnchor constraintEqualToConstant:38.0],
+        [self.secondaryProductTileView.heightAnchor constraintEqualToConstant:38.0],
+        [self.secondaryProductTileView.leadingAnchor constraintEqualToAnchor:visual.leadingAnchor constant:0.0],
+        [self.secondaryProductTileView.bottomAnchor constraintEqualToAnchor:visual.bottomAnchor constant:-14.0],
     ]];
 }
 
@@ -663,52 +617,6 @@ static BOOL PPMarketHeroReduceMotion(void)
     return tile;
 }
 
-- (void)pp_buildPremiumGlowViewInSurface:(UIView *)surface
-{
-    self.premiumGlowDotContainer = [[UIView alloc] init];
-    self.premiumGlowDotContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    self.premiumGlowDotContainer.userInteractionEnabled = NO;
-    [surface addSubview:self.premiumGlowDotContainer];
-
-    self.premiumGlowHaloView = [[UIView alloc] init];
-    self.premiumGlowHaloView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.premiumGlowHaloView.userInteractionEnabled = NO;
-    self.premiumGlowHaloView.layer.cornerRadius = 17.0;
-    self.premiumGlowHaloView.clipsToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        self.premiumGlowHaloView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.premiumGlowDotContainer addSubview:self.premiumGlowHaloView];
-
-    self.premiumGlowCoreView = [[UIView alloc] init];
-    self.premiumGlowCoreView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.premiumGlowCoreView.userInteractionEnabled = NO;
-    self.premiumGlowCoreView.layer.cornerRadius = 4.0;
-    self.premiumGlowCoreView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.premiumGlowCoreView.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.premiumGlowCoreView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.premiumGlowDotContainer addSubview:self.premiumGlowCoreView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.premiumGlowDotContainer.topAnchor constraintEqualToAnchor:surface.topAnchor constant:18.0],
-        [self.premiumGlowDotContainer.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-20.0],
-        [self.premiumGlowDotContainer.widthAnchor constraintEqualToConstant:10.0],
-        [self.premiumGlowDotContainer.heightAnchor constraintEqualToConstant:10.0],
-
-        [self.premiumGlowHaloView.centerXAnchor constraintEqualToAnchor:self.premiumGlowDotContainer.centerXAnchor],
-        [self.premiumGlowHaloView.centerYAnchor constraintEqualToAnchor:self.premiumGlowDotContainer.centerYAnchor],
-        [self.premiumGlowHaloView.widthAnchor constraintEqualToConstant:34.0],
-        [self.premiumGlowHaloView.heightAnchor constraintEqualToConstant:34.0],
-
-        [self.premiumGlowCoreView.centerXAnchor constraintEqualToAnchor:self.premiumGlowDotContainer.centerXAnchor],
-        [self.premiumGlowCoreView.centerYAnchor constraintEqualToAnchor:self.premiumGlowDotContainer.centerYAnchor],
-        [self.premiumGlowCoreView.widthAnchor constraintEqualToConstant:8.0],
-        [self.premiumGlowCoreView.heightAnchor constraintEqualToConstant:8.0]
-    ]];
-}
-
 #pragma mark - State
 
 - (void)pp_applyProductTile:(UIView *)tile
@@ -716,13 +624,13 @@ static BOOL PPMarketHeroReduceMotion(void)
                      accent:(UIColor *)accent
                      dark:(BOOL)dark
 {
-    UIColor *surfaceBase = UIColor.whiteColor;
-    tile.backgroundColor = [surfaceBase colorWithAlphaComponent:0.80];
-    tile.layer.borderColor = PPMarketHeroColor(0xE6CCD4, 0.30).CGColor;
+    UIColor *surfaceBase = dark ? [UIColor colorWithWhite:0.18 alpha:0.92] : [UIColor.whiteColor colorWithAlphaComponent:0.86];
+    tile.backgroundColor = surfaceBase;
+    tile.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:dark ? 0.12 : 0.76].CGColor;
     tile.layer.shadowColor = PPMarketHeroColor(0x29312E, 1.0).CGColor;
-    tile.layer.shadowOpacity = 0.08f;
-    tile.layer.shadowRadius = 12.0f;
-    tile.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    tile.layer.shadowOpacity = dark ? 0.18f : 0.075f;
+    tile.layer.shadowRadius = 10.0f;
+    tile.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     icon.tintColor = accent ?: PPMarketHeroAccentColor();
 }
 
@@ -731,7 +639,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     CGFloat width = CGRectGetWidth(self.bounds);
     BOOL accessibilityCategory =
         UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
-    BOOL hideVisual = accessibilityCategory || (width > 0.0 && width < 335.0);
+    BOOL hideVisual = accessibilityCategory || (width > 0.0 && width < 350.0);
 
     if (hideVisual == self.visualHiddenForReadableText) {
         return;
@@ -739,8 +647,14 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     self.visualHiddenForReadableText = hideVisual;
     self.visualContainerView.hidden = hideVisual;
-    self.contentTrailingToVisualConstraint.active = !hideVisual;
-    self.contentTrailingToSurfaceConstraint.active = hideVisual;
+    self.contentLeadingToVisualConstraint.active = !hideVisual;
+    self.contentLeadingToSurfaceConstraint.active = hideVisual;
+    if (hideVisual) {
+        [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
+        [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
+    } else if (self.window) {
+        [self pp_startAmbientMotionIfNeeded];
+    }
 }
 
 - (void)pp_touchDown
@@ -794,30 +708,14 @@ static BOOL PPMarketHeroReduceMotion(void)
     }
     [self.heroGlassBackground startAnimations];
 
-    // Tight jewel-glint pulse: subtle enough for scroll performance, alive enough to feel intentional.
-    [self pp_applyBreathingGlowToView:self.premiumGlowHaloView
-                                  key:PPHomeMarketplaceHeroPremiumGlowPulseKey
-                            fromAlpha:0.18
-                              toAlpha:0.42
-                            fromScale:0.92
-                              toScale:1.18
-                             duration:1.55];
-    [self pp_applyBreathingGlowToView:self.premiumGlowCoreView
-                                  key:PPHomeMarketplaceHeroPremiumGlowCorePulseKey
-                            fromAlpha:0.78
-                              toAlpha:0.96
-                            fromScale:0.96
-                              toScale:1.045
-                             duration:1.10];
-
-    if (CGRectIsEmpty(self.visualContainerView.bounds)) {
+    if (self.visualContainerView.hidden || CGRectIsEmpty(self.visualContainerView.bounds)) {
         return;
     }
     if (![self.visualContainerView.layer animationForKey:PPHomeMarketplaceHeroFloatMotionKey]) {
         CABasicAnimation *floatAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
         floatAnimation.fromValue = @0.0;
-        floatAnimation.toValue = @(-7.0);
-        floatAnimation.duration = 3.1;
+        floatAnimation.toValue = @(-4.0);
+        floatAnimation.duration = 3.8;
         floatAnimation.autoreverses = YES;
         floatAnimation.repeatCount = HUGE_VALF;
         floatAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -827,26 +725,11 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     [self pp_applyBreathingGlowToView:self.visualHaloView
                                   key:PPHomeMarketplaceHeroHaloBreathKey
-                            fromAlpha:0.78
+                            fromAlpha:0.82
                               toAlpha:1.0
-                            fromScale:0.95
-                              toScale:1.075
-                             duration:3.4];
-
-    [self pp_applyBreathAnimationToTile:self.primaryProductTileView
-                                    key:PPHomeMarketplaceHeroPrimaryTileBreathKey
-                                  delay:0.04
-                               duration:2.8
-                              amplitude:0.078
-                                   lift:-3.4
-                             lowOpacity:0.84];
-    [self pp_applyBreathAnimationToTile:self.secondaryProductTileView
-                                    key:PPHomeMarketplaceHeroSecondaryTileBreathKey
-                                  delay:0.48
-                               duration:3.2
-                              amplitude:0.082
-                                   lift:-3.8
-                             lowOpacity:0.82];
+                            fromScale:0.97
+                              toScale:1.045
+                             duration:3.8];
 }
 
 - (void)pp_applyBreathingGlowToView:(UIView *)view
@@ -879,80 +762,15 @@ static BOOL PPMarketHeroReduceMotion(void)
     [view.layer addAnimation:group forKey:key];
 }
 
-- (void)pp_applyBreathAnimationToTile:(UIView *)tile
-                                  key:(NSString *)key
-                                delay:(CFTimeInterval)delay
-                             duration:(CFTimeInterval)duration
-                            amplitude:(CGFloat)amplitude
-                                 lift:(CGFloat)lift
-                           lowOpacity:(CGFloat)lowOpacity
-{
-    if (!tile || [tile.layer animationForKey:key]) {
-        return;
-    }
-
-    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scaleAnimation.fromValue = @(1.0 - (amplitude * 0.42));
-    scaleAnimation.toValue = @(1.0 + amplitude);
-
-    CABasicAnimation *liftAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    liftAnimation.fromValue = @0.0;
-    liftAnimation.toValue = @(lift);
-
-    CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacityAnimation.fromValue = @(lowOpacity);
-    opacityAnimation.toValue = @1.0;
-
-    CAAnimationGroup *breathAnimation = [CAAnimationGroup animation];
-    breathAnimation.animations = @[scaleAnimation, liftAnimation, opacityAnimation];
-    breathAnimation.duration = duration;
-    breathAnimation.beginTime = [tile.layer convertTime:CACurrentMediaTime() fromLayer:nil] + delay;
-    breathAnimation.autoreverses = YES;
-    breathAnimation.repeatCount = HUGE_VALF;
-    breathAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    breathAnimation.removedOnCompletion = YES;
-    [tile.layer addAnimation:breathAnimation forKey:key];
-}
-
 - (void)pp_stopAmbientMotion
 {
     [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
     [self.heroGlassBackground stopAnimations];
     [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
-    [self.primaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroPrimaryTileBreathKey];
-    [self.secondaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroSecondaryTileBreathKey];
-    [self.premiumGlowHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroPremiumGlowPulseKey];
-    [self.premiumGlowCoreView.layer removeAnimationForKey:PPHomeMarketplaceHeroPremiumGlowCorePulseKey];
     self.visualContainerView.transform = CGAffineTransformIdentity;
     self.visualHaloView.transform = CGAffineTransformIdentity;
     self.primaryProductTileView.transform = CGAffineTransformIdentity;
     self.secondaryProductTileView.transform = CGAffineTransformIdentity;
-    self.premiumGlowHaloView.transform = CGAffineTransformIdentity;
-    self.premiumGlowHaloView.alpha = 0.26;
-    self.premiumGlowCoreView.transform = CGAffineTransformIdentity;
-    self.premiumGlowCoreView.alpha = 0.88;
-}
-
-- (NSString *)pp_lottieFirebasePathForCurrentTime
-{
-    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:NSDate.date];
-    return @"Boy Giving Food To Bird";
-    if (hour < 9) {
-        return @"Woman playing with a dog";
-    }
-    if (hour < 12) {
-        return @"Boy Giving Food To Bird";
-    }
-    if (hour < 17) {
-        return @"Man playing with a dog";
-    }
-    if (hour < 20) {
-        return @"Womanlovingpetcats";
-    }
-    if (hour < 23) {
-        return @"evening chair cat and girl";
-    }
-    return @"man playing with cat during free time";
 }
 
 

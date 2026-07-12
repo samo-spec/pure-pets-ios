@@ -15,9 +15,15 @@ public final class PPNovaChatBarState: NSObject, ObservableObject {
     @Published @objc public var message: String = ""
     @Published @objc public var thinking: Bool = false
     @Published @objc public var isFocusedTrigger: Bool = false
+    @Published @objc public var replyTitle: String = ""
+    @Published @objc public var replySubtitle: String = ""
     /// Host capability. User-to-user messaging keeps this enabled; hosts that
     /// cannot transport audio can hide the recorder without forking ChatBarView.
     @Published @objc public var voiceEnabled: Bool = true
+
+    @objc public var hasReply: Bool {
+        !replyTitle.isEmpty || !replySubtitle.isEmpty
+    }
 }
 
 /// Objective-C compatible delegate for the SwiftUI ChatBar actions.
@@ -29,6 +35,7 @@ public protocol PPNovaSwiftUIChatBarViewControllerDelegate: AnyObject {
     @objc func swiftUIChatBarDidTapContact()
     @objc optional func swiftUIChatBarDidChangeText(_ text: String)
     @objc optional func swiftUIChatBarDidSendAudioWithURL(_ audioURL: URL, duration: Double)
+    @objc optional func swiftUIChatBarDidCancelReply()
 }
 
 /// A UIViewController subclass that hosts the SwiftUI ChatBarView and bridges interaction back to UIKit.
@@ -55,6 +62,16 @@ public final class PPNovaSwiftUIChatBarViewController: UIViewController {
 
     @objc public func focusTextInput() {
         chatBarState.isFocusedTrigger = true
+    }
+
+    @objc public func setReplyPreviewTitle(_ title: String, subtitle: String, animated: Bool) {
+        chatBarState.replyTitle = title
+        chatBarState.replySubtitle = subtitle
+    }
+
+    @objc public func clearReplyPreviewAnimated(_ animated: Bool) {
+        chatBarState.replyTitle = ""
+        chatBarState.replySubtitle = ""
     }
 
     private var hostingController: UIHostingController<ChatBarView>?
@@ -85,6 +102,9 @@ public final class PPNovaSwiftUIChatBarViewController: UIViewController {
                     return
                 }
                 sendAudio(url, duration)
+            },
+            onCancelReply: { [weak self] in
+                self?.delegate?.swiftUIChatBarDidCancelReply?()
             }
         )
 

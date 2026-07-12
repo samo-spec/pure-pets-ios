@@ -24,22 +24,22 @@
 #import "MainKindsModel.h"
 #import "SubKindModel.h"
 
-static CGFloat const PPUniversalCardCornerRadius = 32.0;
+static CGFloat const PPUniversalCardCornerRadius = 36.0;
 static CGFloat const PPUniversalImageCornerRadius = 26.0;
 static CGFloat const PPUniversalLiquidCardBorderWidth = 1.05;
 static CGFloat const PPUniversalLiquidImageBorderWidth = 0.88;
 static CGFloat const PPUniversalOuterInset = 16.0;
-static CGFloat const PPUniversalInnerSpacing = 22.0;
+static CGFloat const PPUniversalInnerSpacing = 12.0;
 static CGFloat const PPUniversalButtonHeight = 34.0;
-static CGFloat const PPUniversalPillHeight = 28.0;
+static CGFloat const PPUniversalPillHeight = 26.0;
 static CGFloat const PPUniversalCompactTitleHeight = 22.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 32.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.84;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
 static CGFloat const PPUniversalCompactCardVerticalInset = 6.0;
-static CGFloat const PPUniversalCompactTitleToPriceSpacing = 10.0;
-static CGFloat const PPUniversalCompactPriceToActionSpacing = 6.0;
+static CGFloat const PPUniversalCompactTitleToPriceSpacing = 8.0;
+static CGFloat const PPUniversalCompactPriceToActionSpacing = 4.0;
 static CGFloat const PPUniversalHorizontalRowMediaSpacing = 14.0;
 static CGFloat const PPUniversalHorizontalRowImageWidthMin = 112.0;
 static CGFloat const PPUniversalHorizontalRowImageWidthMax = 150.0;

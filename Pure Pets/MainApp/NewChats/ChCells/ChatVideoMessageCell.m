@@ -11,10 +11,11 @@
 #import "MDRadialProgressView.h"
 #import "MDRadialProgressTheme.h"
 #import "PPChatsFunc.h"
+#import "ChatBubbleView.h"
 
 @interface ChatVideoMessageCell ()<ChatMessageStatusUpdatable>
 @property (nonatomic, strong) UILabel *durationLabel;
-@property (nonatomic, strong) UIView *bubbleView;
+@property (nonatomic, strong) ChatMediaBubbleView *bubbleView;
 @property (nonatomic, strong) UIImageView *thumbnailView;
 @property (nonatomic, strong) UIVisualEffectView *glassOverlay;
 @property (nonatomic, strong) UIButton *playButton;
@@ -42,13 +43,17 @@
 
 @implementation ChatVideoMessageCell
 
+- (UIView *)messageInteractionView
+{
+    return self.bubbleView;
+}
+
 #pragma mark - Visual State
 
 - (void)layoutSubviews {
+    self.bubbleView.isIncoming = self.isIncoming;
+    self.bubbleView.groupPosition = self.groupPosition;
     [super layoutSubviews];
-    if (!self.window) return;
-    
-    [PPChatsFunc applyBubbleMask:self.bubbleView isIncoming:self.isIncoming groupPosition:self.groupPosition showGlow:YES];
 }
 
 /*
@@ -101,7 +106,7 @@
 }
 
 - (void)buildUI {
-    self.bubbleView = [[UIView alloc] init];
+    self.bubbleView = [[ChatMediaBubbleView alloc] init];
     self.bubbleView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bubbleView.layer.masksToBounds = YES;
     [self.contentView addSubview:self.bubbleView];
@@ -144,8 +149,8 @@
     MDRadialProgressTheme *theme = [MDRadialProgressTheme standardTheme];
     theme.sliceDividerHidden = YES;
     theme.thickness = 4;
-    theme.completedColor = AppPrimaryClr;
-    theme.incompletedColor = [AppPrimaryClr colorWithAlphaComponent:0.15];
+    theme.completedColor = [PPChatsFunc chatNeutralAccentColor];
+    theme.incompletedColor = [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:0.15];
     theme.centerColor = UIColor.whiteColor;
     theme.labelColor = AppClearClr;
     self.loadingIndicator =
@@ -190,11 +195,6 @@
     [self setupPremiumMediaActions];
     [self setupReplyPreview];
 
-    UILongPressGestureRecognizer *replyPress =
-        [[UILongPressGestureRecognizer alloc] initWithTarget:self
-                                                      action:@selector(handleReplyLongPress:)];
-    replyPress.minimumPressDuration = 0.34;
-    [self.bubbleView addGestureRecognizer:replyPress];
 }
 
 - (void)setupConstraints {
@@ -315,6 +315,7 @@
     self.replyTitleLabel = [[UILabel alloc] init];
     self.replyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.replyTitleLabel.font = [GM boldFontWithSize:11.0];
+    self.replyTitleLabel.adjustsFontForContentSizeCategory = YES;
     self.replyTitleLabel.textColor = UIColor.whiteColor;
     self.replyTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.replyTitleLabel.numberOfLines = 1;
@@ -323,6 +324,7 @@
     self.replySubtitleLabel = [[UILabel alloc] init];
     self.replySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.replySubtitleLabel.font = [GM MidFontWithSize:12.0];
+    self.replySubtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.replySubtitleLabel.textColor = [UIColor.whiteColor colorWithAlphaComponent:0.78];
     self.replySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.replySubtitleLabel.numberOfLines = 1;
@@ -429,14 +431,15 @@
     self.groupPosition = groupPosition;
     [self updateMediaActionsForMessage:message animated:YES];
 
-    self.leadingConstraint.active = !isIncoming;
-    self.trailingConstraint.active = isIncoming;
+    BOOL usesTrailing = [PPChatsFunc bubbleUsesTrailingAlignmentForIncoming:isIncoming];
+    self.leadingConstraint.active = !usesTrailing;
+    self.trailingConstraint.active = usesTrailing;
     CGFloat absoluteMax = YYScreenSize().width * 0.72;
     CGFloat resolvedWidth = maxWidth > 0 ? MIN(maxWidth, absoluteMax) : absoluteMax;
     self.maxWidthConstraint.constant = MAX(140.0, resolvedWidth);
 
-    self.bubbleView.backgroundColor = isIncoming ? PPChatBubbleSomeoneColor : PPChatBubbleMineColor;
-    self.timeLabel.textColor = isIncoming ? PPChatTimeSomeoneColor : PPChatTimeMineColor;
+    self.bubbleView.backgroundColor = [PPChatsFunc bubbleSurfaceColorForIncoming:isIncoming];
+    self.timeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:isIncoming];
 
     if (message.blurHash.length > 0) {
         UIImage *placeholder = [PPBlurHashBridge imageFrom:message.blurHash syncSize:CGSizeMake(32, 32) punch:1.0];
@@ -444,7 +447,10 @@
             self.thumbnailView.image = placeholder;
         }
     }
-    [self updateMessageStatus:message];
+    [PPChatsFunc applyStatusForMessage:message
+                          toImageView:self.statusIcon
+                           isIncoming:isIncoming
+                             animated:NO];
     if (message.mediaDuration > 0) {
         NSInteger total = (NSInteger)round(message.mediaDuration);
         NSInteger minutes = total / 60;
@@ -455,14 +461,16 @@
     }
 
     self.timeLabel.text = [self formattedTime:message.timestamp];
+    UIColor *interactive = [PPChatsFunc bubbleInteractiveAccentColorForIncoming:isIncoming];
+    UIColor *controlSurface = [PPChatsFunc bubblePlaybackControlSurfaceColorForIncoming:isIncoming];
     if (!isIncoming) {
-        self.playButton.backgroundColor = [PPChatPrimaryAccent colorWithAlphaComponent:0.18];
-        self.playButton.tintColor = PPChatPrimaryAccent;
-        self.timeLabel.textColor = AppBackgroundClrLigter;
+        self.playButton.backgroundColor = controlSurface;
+        self.playButton.tintColor = interactive;
+        self.timeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
     } else {
-        self.playButton.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.08];
-        self.playButton.tintColor = UIColor.labelColor;
-        self.timeLabel.textColor = UIColor.secondaryLabelColor;
+        self.playButton.backgroundColor = controlSurface;
+        self.playButton.tintColor = interactive;
+        self.timeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:YES];
     }
 
     // Thumbnail loading
@@ -491,6 +499,7 @@
     self.loadingVideo = message.isUploading;
     // self.playingVideo = NO; // (Do not reset playing here; controller owns playback state.)
     [self applyVisualState];
+    [self setNeedsLayout];
 }
 
 - (void)setReplyPreviewTitle:(nullable NSString *)title
@@ -503,13 +512,21 @@
     }
 
     self.replyPreviewView.hidden = NO;
-    self.replyPreviewHeightConstraint.constant = 44.0;
+    self.replyPreviewHeightConstraint.constant =
+        UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory)
+            ? 56.0
+            : 44.0;
     self.replyTitleLabel.text = title.length > 0 ? title : kLang(@"chat_replying");
     self.replySubtitleLabel.text = subtitle.length > 0 ? subtitle : kLang(@"Message");
-    self.replyAccentView.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    self.replyPreviewView.backgroundColor = isIncoming
-        ? [[UIColor blackColor] colorWithAlphaComponent:0.36]
-        : [[UIColor blackColor] colorWithAlphaComponent:0.44];
+    UIColor *foreground = [PPChatsFunc bubblePrimaryContentColorForIncoming:isIncoming];
+    self.replyAccentView.backgroundColor =
+        [PPChatsFunc bubbleInteractiveAccentColorForIncoming:isIncoming];
+    self.replyPreviewView.backgroundColor =
+        [PPChatsFunc bubbleReplySurfaceColorForIncoming:isIncoming];
+    self.replyPreviewView.layer.borderColor =
+        [PPChatsFunc bubbleStrokeColorForIncoming:isIncoming].CGColor;
+    self.replyTitleLabel.textColor = foreground;
+    self.replySubtitleLabel.textColor = [foreground colorWithAlphaComponent:0.66];
 }
 
 - (void)clearReplyPreview
@@ -611,39 +628,10 @@
         return;
     }
     self.message = message;
-    // Only update status icon/tint for outgoing messages
-    if (!self.isIncoming) {
-        // Helper block to encapsulate status icon logic
-        void (^updateStatusIcon)(void) = ^{
-            UIImage *icon = nil;
-            UIColor *tint = [UIColor grayColor];
-            switch (message.status) {
-                case ChatMessageStatusSending:
-                    icon = [UIImage systemImageNamed:@"clock"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusSent:
-                    icon = [UIImage systemImageNamed:@"checkmark"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusDelivered:
-                    icon = [UIImage imageNamed:@"checked"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusRead:
-                    icon = [UIImage imageNamed:@"checked"];
-                    tint = AppForgroundColr;
-                    break;
-                default:
-                    icon = nil;
-                    break;
-            }
-            self.statusIcon.image = icon;
-            self.statusIcon.tintColor = tint;
-            self.statusIcon.hidden = (icon == nil);
-        };
-        updateStatusIcon();
-    }
+    [PPChatsFunc applyStatusForMessage:message
+                          toImageView:self.statusIcon
+                           isIncoming:self.isIncoming
+                             animated:YES];
     // Do not touch thumbnail, loading, play state, or applyVisualState.
 }
 
@@ -669,17 +657,6 @@
 {
     if (self.onDownloadTapped) {
         self.onDownloadTapped();
-    }
-}
-
-- (void)handleReplyLongPress:(UILongPressGestureRecognizer *)gesture
-{
-    if (gesture.state != UIGestureRecognizerStateBegan) return;
-    UIImpactFeedbackGenerator *feedback =
-        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [feedback impactOccurredWithIntensity:0.55];
-    if (self.onReplyRequested) {
-        self.onReplyRequested();
     }
 }
 
@@ -718,6 +695,10 @@
 - (void)prepareForReuse
 {
     [super prepareForReuse];
+    self.contentView.alpha = 1.0;
+    self.contentView.transform = CGAffineTransformIdentity;
+    self.accessibilityCustomActions = nil;
+    self.bubbleView.accessibilityCustomActions = nil;
     self.boundMessageID = nil;
     self.message = nil;
     self.loadingVideo = NO;

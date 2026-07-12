@@ -35,6 +35,7 @@
                     subtitle:(nullable NSString *)subtitle
                   isIncoming:(BOOL)isIncoming;
 - (void)clearReplyPreview;
+- (UIView *)messageInteractionView;
 @property (nonatomic, strong) UIButton *retryButton;
 @property (nonatomic, assign) BOOL didFailLoading;
 @property (nonatomic, assign) BOOL didAnimateInsert;

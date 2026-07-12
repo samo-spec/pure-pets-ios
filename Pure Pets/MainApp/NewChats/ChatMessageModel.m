@@ -437,6 +437,24 @@
     // Flags
     if (dict[@"isDeleted"]) {
         self.isDeleted = [dict[@"isDeleted"] boolValue];
+        if (self.isDeleted) {
+            // A tombstone must not retain redacted content in the in-memory model.
+            self.text = @"";
+            self.fileURL = nil;
+            self.thumbnailURL = nil;
+            self.thumbnailImage = nil;
+            self.localImage = nil;
+            self.localVideoURL = nil;
+            self.blurHash = nil;
+            self.waveformSamples = @[];
+            self.mimeType = nil;
+            self.fileSize = 0;
+            self.mediaDuration = 0.0;
+            self.isUploading = NO;
+            self.isDownloading = NO;
+            self.transferProgress = 0.0;
+            self.replyToMessageID = nil;
+        }
     }
 
     if (dict[@"isEdited"]) {
@@ -463,12 +481,14 @@
         self.encryptionVersion = encVer;
     }
    
-    // 🔥 RESTORE UI-only state
-    self.localImage = localImage;
-    if (keepLocalTransferState) {
+    // Preserve optimistic upload state only while the message is still live.
+    if (!self.isDeleted) {
+        self.localImage = localImage;
+    }
+    if (keepLocalTransferState && !self.isDeleted) {
         self.cachedMediaHeight = cachedHeight;
     }
-    if (keepLocalTransferState) {
+    if (keepLocalTransferState && !self.isDeleted) {
         self.isUploading = wasUploading;
         self.transferProgress = progress;
     }

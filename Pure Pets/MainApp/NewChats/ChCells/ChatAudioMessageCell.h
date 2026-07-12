@@ -33,9 +33,14 @@
 - (void)setStatusImage:(UIImage *)image;
 - (void)setTotalDuration:(NSTimeInterval)duration;
 - (void)setLoading:(BOOL)isLoading;
+- (void)setReplyPreviewTitle:(nullable NSString *)title
+                    subtitle:(nullable NSString *)subtitle
+                  isIncoming:(BOOL)isIncoming;
+- (void)clearReplyPreview;
 
 - (void)applyPlaybackStateForMessageID:(NSString *)messageID
                               progress:(CGFloat)progress
                               isPlaying:(BOOL)isPlaying
                               duration:(NSTimeInterval)duration;
+- (UIView *)messageInteractionView;
 @end

@@ -6,6 +6,7 @@
 //
 
 #import "PPChatInputBarView.h"
+#import "PPChatsFunc.h"
 
 
  
@@ -38,10 +39,9 @@ static UIColor *PPChatInputBarSecondaryTextColor(UITraitCollection *traitCollect
 static UIColor *PPChatInputBarSurfaceColor(UITraitCollection *traitCollection)
 {
     BOOL isDark = PPChatInputBarIsDark(traitCollection);
-    UIColor *lightSurface = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
     return isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.085]
-        : [lightSurface colorWithAlphaComponent:0.94];
+        ? [UIColor colorWithWhite:1.0 alpha:0.090]
+        : [UIColor colorWithRed:0.984 green:0.977 blue:0.958 alpha:0.94];
 }
 
 static UIColor *PPChatInputBarControlSurfaceColor(UITraitCollection *traitCollection)
@@ -65,6 +65,11 @@ static UIColor *PPChatInputBarControlTintColor(UITraitCollection *traitCollectio
     return PPChatInputBarIsDark(traitCollection)
         ? [UIColor colorWithWhite:1.0 alpha:0.88]
         : (AppPrimaryTextClr ?: UIColor.labelColor);
+}
+
+static UIColor *PPChatInputBarAccentColor(void)
+{
+    return [PPChatsFunc chatNeutralAccentColor];
 }
 
 static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewController *preferredPresenter)
@@ -199,7 +204,7 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     self.textView.delegate = self;
     self.textView.backgroundColor = UIColor.clearColor;
     self.textView.textColor = PPChatInputBarTextColor(self.traitCollection);
-    self.textView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.textView.tintColor = PPChatInputBarAccentColor();
     self.textView.keyboardAppearance = PPChatInputBarIsDark(self.traitCollection) ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;
     self.textView.layer.cornerRadius = 0;
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -468,7 +473,7 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     self.contentContainer.backgroundColor = UIColor.clearColor;
 
     self.textView.textColor = PPChatInputBarTextColor(self.traitCollection);
-    self.textView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.textView.tintColor = PPChatInputBarAccentColor();
     self.textView.keyboardAppearance = isDark ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;
 
     self.placeholderLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
@@ -507,8 +512,8 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
 
     self.replyPreviewView.backgroundColor = surfaceColor;
     self.replyPreviewView.layer.borderColor = borderColor.CGColor;
-    self.replyAccentView.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    self.replyIconView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.replyAccentView.backgroundColor = PPChatInputBarAccentColor();
+    self.replyIconView.tintColor = PPChatInputBarAccentColor();
     self.replyTitleLabel.textColor = PPChatInputBarTextColor(self.traitCollection);
     self.replySubtitleLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
     [self pp_applyIconButtonTheme:self.replyCancelButton systemName:@"xmark" active:NO];
@@ -519,7 +524,7 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     if (!button) return;
 
     BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
-    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *accentColor = PPChatInputBarAccentColor();
     UIColor *foregroundColor = active ? accentColor : PPChatInputBarControlTintColor(self.traitCollection);
     UIColor *surfaceColor = active
         ? [accentColor colorWithAlphaComponent:(isDark ? 0.22 : 0.13)]
@@ -946,10 +951,10 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
     preferences.drawing.backgroundColor = isDark
         ? [UIColor colorWithWhite:0.10 alpha:0.96]
-        : [(AppPrimaryClr ?: UIColor.systemBlueColor) colorWithAlphaComponent:0.92];
+        : [PPChatInputBarAccentColor() colorWithAlphaComponent:0.92];
     preferences.drawing.foregroundColor = isDark
         ? UIColor.whiteColor
-        : (AppForgroundColr ?: UIColor.whiteColor);
+        : UIColor.whiteColor;
     preferences.drawing.textAlignment = NSTextAlignmentCenter;
     preferences.drawing.font = [GM MidFontWithSize:15];
     preferences.drawing.cornerRadius = 14;

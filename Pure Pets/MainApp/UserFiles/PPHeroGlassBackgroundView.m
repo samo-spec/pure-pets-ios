@@ -206,7 +206,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 - (void)pp_generateConstellationDefinition;
 - (NSArray<NSValue *> *)pp_generateNormalizedDotCenters;
 - (NSArray<NSValue *> *)pp_generateConnectionsForCenters:(NSArray<NSValue *> *)centers;
+- (void)pp_applyAccentStyle;
 - (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification;
+- (void)pp_applicationDidBecomeActive:(NSNotification *)notification;
 @end
 
 @implementation PPHeroGlassBackgroundView
@@ -236,6 +238,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.userInteractionEnabled = NO;
     self.backgroundColor = UIColor.clearColor;
     self.clipsToBounds = NO;
+    _accentStyle = PPHeroGlassAccentStyleBar;
     [self pp_generateConstellationDefinition];
 
     // Card-level chrome: border, shadow, continuous corners
@@ -249,20 +252,12 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
     // Material container (clipped, receives gradient + constellation + dots)
     UIView *material = [UIView new];
-    material.translatesAutoresizingMaskIntoConstraints = NO;
     material.userInteractionEnabled = NO;
     material.clipsToBounds = YES;
     material.backgroundColor = UIColor.clearColor;
     PPApplyContinuousCorners(material, PPCornerHero - 6.0);
     [self addSubview:material];
     self.materialView = material;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [material.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [material.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [material.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [material.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
-    ]];
 
     // Gradient layer
     CAGradientLayer *gradient = [CAGradientLayer layer];
@@ -331,7 +326,6 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
     // Top accent bar
     UIView *accent = [UIView new];
-    accent.translatesAutoresizingMaskIntoConstraints = NO;
     accent.userInteractionEnabled = NO;
     accent.layer.cornerRadius = 2.0;
     accent.clipsToBounds = YES;
@@ -341,12 +335,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     [self addSubview:accent];
     self.accentView = accent;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [accent.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [accent.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:38.0],
-        [accent.widthAnchor constraintEqualToConstant:44.0],
-        [accent.heightAnchor constraintEqualToConstant:4.0]
-    ]];
+    [self pp_applyAccentStyle];
 
     // Apply initial palette
     [self reapplyPalette];
@@ -354,6 +343,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(pp_reduceMotionStatusDidChange:)
                                                  name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                               object:nil];
+ 
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_applicationDidBecomeActive:)
+                                                 name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
 }
 
@@ -493,27 +487,47 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-
-    if (CGRectIsEmpty(self.materialView.bounds)) {
+ 
+    // Manual layout to bypass Auto Layout constraints solver latency and race conditions
+    self.materialView.frame = self.bounds;
+ 
+    // Corner radius inheritance (self-healing)
+    CGFloat materialRadius = MAX(0.0, self.layer.cornerRadius - self.layer.borderWidth);
+    self.materialView.layer.cornerRadius = materialRadius;
+    if (@available(iOS 13.0, *)) {
+        self.materialView.layer.cornerCurve = self.layer.cornerCurve;
+    }
+ 
+    // Manual layout for accent view
+    BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
+    CGFloat diameter = 172.0;
+    if (cornerGlow) {
+        self.accentView.frame = CGRectMake(-58.0, -66.0, diameter, diameter);
+    } else {
+        CGFloat leadingConstant = 38.0;
+        CGFloat x = [Language isRTL] ? (CGRectGetWidth(self.bounds) - leadingConstant - 44.0) : leadingConstant;
+        self.accentView.frame = CGRectMake(x, 0.0, 44.0, 4.0);
+    }
+ 
+    if (CGRectIsEmpty(self.bounds)) {
         return;
     }
-
+ 
     CGRect materialBounds = self.materialView.bounds;
-    CGFloat materialRadius = self.materialView.layer.cornerRadius;
-
+ 
     self.gradientLayer.frame = materialBounds;
     self.depthLayer.frame = materialBounds;
     self.gradientLayer.cornerRadius = materialRadius;
     self.depthLayer.cornerRadius = materialRadius;
-
+ 
     [self pp_layoutConstellationInBounds:materialBounds];
-
+ 
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                    cornerRadius:self.layer.cornerRadius].CGPath;
-
+ 
     // Self-healing animation trigger: Auto-start animations once we are on-screen with valid bounds!
-    if (self.window && !self.motionRunning) {
+    if (self.window) {
         [self startAnimations];
     }
 }
@@ -584,6 +598,16 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 #pragma mark - Palette
 
+- (void)setAccentStyle:(PPHeroGlassAccentStyle)accentStyle
+{
+    if (_accentStyle == accentStyle) {
+        return;
+    }
+    _accentStyle = accentStyle;
+    [self pp_applyAccentStyle];
+    [self reapplyPalette];
+}
+
 - (void)setAccentColorOverride:(UIColor *)accentColorOverride
 {
     if (_accentColorOverride == accentColorOverride ||
@@ -592,6 +616,21 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     }
     _accentColorOverride = accentColorOverride;
     [self reapplyPalette];
+}
+
+- (void)pp_applyAccentStyle
+{
+    BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
+    CGFloat diameter = 172.0;
+ 
+    self.accentView.layer.cornerRadius = cornerGlow ? diameter * 0.5 : 2.0;
+    self.accentView.clipsToBounds = !cornerGlow;
+    self.accentView.layer.masksToBounds = !cornerGlow;
+    self.accentView.layer.shadowOffset = CGSizeZero;
+    self.accentView.layer.shadowPath = cornerGlow
+        ? [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, diameter, diameter)].CGPath
+        : nil;
+    [self setNeedsLayout];
 }
 
 - (void)reapplyPalette
@@ -644,7 +683,8 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
                                                                                          darkMode,
                                                                                          self.traitCollection),
                                                         self.traitCollection);
-    UIColor *trace = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationTraceColor([AppPrimaryClrShiner colorWithAlphaComponent:(CGFloat)0.92],
+    UIColor *traceAccent = self.accentColorOverride ?: [AppPrimaryClrShiner colorWithAlphaComponent:(CGFloat)0.92];
+    UIColor *trace = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationTraceColor(traceAccent,
                                                                                            darkMode,
                                                                                            self.traitCollection),
                                                          self.traitCollection);
@@ -666,7 +706,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.constellationTraceLayer.strokeColor = trace.CGColor;
     self.constellationTraceLayer.opacity = 0.0;
 
-    self.accentView.backgroundColor = [brand colorWithAlphaComponent:0.58];
+    BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
+    self.accentView.backgroundColor = [brand colorWithAlphaComponent:cornerGlow ? (darkMode ? 0.20 : 0.155) : 0.58];
+    self.accentView.layer.shadowColor = brand.CGColor;
+    self.accentView.layer.shadowOpacity = cornerGlow ? (darkMode ? 0.24f : 0.17f) : 0.0f;
+    self.accentView.layer.shadowRadius = cornerGlow ? 30.0f : 0.0f;
 }
 
 #pragma mark - Animation Lifecycle
@@ -677,8 +721,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         [self stopAnimations];
         return;
     }
-
-    if (self.motionRunning ||
+ 
+    BOOL animationsActive = [self.constellationLayer animationForKey:PPHeroGlassConstellationOpacityAnimationKey] != nil;
+    if ((self.motionRunning && animationsActive) ||
         !self.window ||
         !self.constellationLayer ||
         CGRectIsEmpty(self.materialView.bounds)) {
@@ -814,6 +859,15 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [self stopAnimations];
     } else {
+        [self startAnimations];
+    }
+}
+ 
+- (void)pp_applicationDidBecomeActive:(NSNotification *)notification
+{
+    (void)notification;
+    if (self.window) {
+        [self stopAnimations];
         [self startAnimations];
     }
 }

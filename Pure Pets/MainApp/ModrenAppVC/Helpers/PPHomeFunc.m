@@ -260,15 +260,15 @@ static inline CGFloat PPHomeMarketplaceHeroHeight(CGFloat width)
         return PPHomeWidthIsTablet(width) ? 292.0 : 316.0;
     }
     if (PPHomeWidthIsTablet(width)) {
-        return 224.0;
-    }
-    if (PPHomeWidthIsWidePhone(width)) {
         return 216.0;
     }
-    if (PPHomeWidthIsCompactPhone(width)) {
-        return 206.0;
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 208.0;
     }
-    return 212.0;
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 200.0;
+    }
+    return 204.0;
 }
 
 static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)

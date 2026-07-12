@@ -111,6 +111,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)deleteChatThreadWithID:(NSString *)threadID
                     completion:(void (^)(NSError * _Nullable error))completion;
 
+/// Redacts a sender-owned message through the audited backend lifecycle.
+- (void)unsendMessageWithID:(NSString *)messageID
+                   threadID:(NSString *)threadID
+                 completion:(void (^)(NSError * _Nullable error))completion;
+
 - (void)startChatWith:(UserModel *)user fromController:(UIViewController *)controller;
 // Thread actions
 - (void)muteThreadWithID:(NSString *)threadID

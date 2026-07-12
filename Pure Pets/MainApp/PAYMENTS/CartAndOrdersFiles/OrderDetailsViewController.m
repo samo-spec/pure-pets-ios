@@ -2723,13 +2723,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UIColor *warm = [UIColor colorWithRed:0.98 green:0.70 blue:0.34 alpha:1.0];
 
     self.backgroundTopGlowLayer.colors = @[
-        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.38 : 0.30].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.25 : 0.19].CGColor,
+        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.32 : 0.25].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.21 : 0.16].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
     self.backgroundBottomGlowLayer.colors = @[
-        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.34 : 0.26].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.22 : 0.17].CGColor,
+        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.29 : 0.22].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.18 : 0.14].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
 }
@@ -4399,6 +4399,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
     if (!accent) accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    self.heroGlassBackground.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     self.heroGlassBackground.accentColorOverride = accent;
     self.headerCard.backgroundColor = PPOrderDetailsSurfaceColor();
     self.deliveryMapCard.backgroundColor = PPOrderDetailsSurfaceColor();

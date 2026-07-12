@@ -9,6 +9,7 @@
 #import "ChatAudioMessageCell.h"
 #import "PPChatsFunc.h"
 #import "PPPlaybackWaveformView.h"
+#import "ChatBubbleView.h"
 
 
 #import "ZYCircleProgressView.h"
@@ -16,7 +17,7 @@
 @interface ChatAudioMessageCell ()<PPChatBubbleColorProviding,ChatMessageStatusUpdatable>
 @property (nonatomic, strong) UIColor *playColor;
 
-@property (nonatomic, strong) UIView *bubbleView;
+@property (nonatomic, strong) ChatMediaBubbleView *bubbleView;
 @property (nonatomic, strong) PPPlaybackWaveformView *waveformView;
 @property (nonatomic, strong) UIView *progressHitView;
 @property (nonatomic, strong) UILabel *timeLabel;
@@ -38,29 +39,34 @@
 @property (nonatomic, assign) BOOL isShowingUploadProgress;
 @property (nonatomic, assign) PPChatGroupPosition groupPosition;
 @property (nonatomic, assign) BOOL isIncoming;
+@property (nonatomic, strong) UIStackView *audioStack;
+@property (nonatomic, strong) UIView *replyPreviewView;
+@property (nonatomic, strong) UIView *replyAccentView;
+@property (nonatomic, strong) UILabel *replyTitleLabel;
+@property (nonatomic, strong) UILabel *replySubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *replyPreviewHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *audioStackTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *audioStackBelowReplyConstraint;
  @end
 
 @implementation ChatAudioMessageCell
 
+- (UIView *)messageInteractionView
+{
+    return self.bubbleView;
+}
+
 
 -(UIColor *)pp_bubbleBackgroundColor
 {
-    //return self.bubbleView.backgroundColor ?: PPChatBackground;
-    
-    UIColor *soft =
-    [PPColorUtils blendColor:AppBackgroundClrDarker
-                        withColor:PPChatBackground
-                           factor:0.75];
-    return soft;
+    return [PPChatsFunc bubbleSurfaceColorForIncoming:self.isIncoming];
 }
 
 
 - (void)layoutSubviews {
+    self.bubbleView.isIncoming = self.isIncoming;
+    self.bubbleView.groupPosition = self.groupPosition;
     [super layoutSubviews];
-
-    BOOL glow = _isIncoming && _groupPosition != PPChatGroupPositionMiddle;
-    [PPChatsFunc applyBubbleMask:self.bubbleView isIncoming:self.isIncoming groupPosition:self.groupPosition showGlow:glow];
-
 }
 
   
@@ -84,7 +90,7 @@
 - (void)buildUI
 {
     // Bubble
-    self.bubbleView = [[UIView alloc] init];
+    self.bubbleView = [[ChatMediaBubbleView alloc] init];
     self.bubbleView.translatesAutoresizingMaskIntoConstraints = NO;
     //self.bubbleView.layer.cornerRadius = 18;
     self.bubbleView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -113,9 +119,8 @@
     // Play / Pause (legacy UIButton)
     _playPauseButton = [UIButton buttonWithType:UIButtonTypeCustom];
     _playPauseButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _playPauseButton.backgroundColor =
-        [AppForgroundColr colorWithAlphaComponent:0.0];
-    _playPauseButton.layer.cornerRadius = 16;
+    _playPauseButton.backgroundColor = UIColor.clearColor;
+    _playPauseButton.layer.cornerRadius = 18;
     _playPauseButton.layer.cornerCurve = kCACornerCurveContinuous;
     _playPauseButton.tintColor = UIColor.labelColor;
     [_playPauseButton setImage:[UIImage systemImageNamed:@"play.fill"]
@@ -129,7 +134,7 @@
         [[UIActivityIndicatorView alloc]
             initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.playLoadingIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-    self.playLoadingIndicator.color = AppForgroundColr;
+    self.playLoadingIndicator.color = [PPChatsFunc bubbleInteractiveAccentColorForIncoming:NO];
     self.playLoadingIndicator.hidesWhenStopped = YES;
     [_playPauseButton addSubview:self.playLoadingIndicator];
 
@@ -145,8 +150,8 @@
     self.waveformView = [[PPPlaybackWaveformView alloc] init];
     self.waveformView.translatesAutoresizingMaskIntoConstraints = NO;
     self.waveformView.userInteractionEnabled = NO; // scrubbing handled by hit view
-    self.waveformView.activeColor = AppPrimaryClr;
-    self.waveformView.inactiveColor = [AppBackgroundClr colorWithAlphaComponent:0.3];
+    self.waveformView.activeColor = [PPChatsFunc bubbleInteractiveAccentColorForIncoming:NO];
+    self.waveformView.inactiveColor = [PPChatsFunc bubbleWaveInactiveColorForIncoming:NO];
     // 🔥 Transparent hit area (44pt Apple minimum)
     self.progressHitView = [[UIView alloc] init];
     self.progressHitView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -185,11 +190,11 @@
     self.timeLabel = [[UILabel alloc] init];
     self.timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.timeLabel.font = [GM MidFontWithSize:13];
-    self.timeLabel.textColor = AppBackgroundClrLigter;
+    self.timeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
     self.timeLabel.text = @"0:00";
     
-    [_playPauseButton.widthAnchor constraintEqualToConstant:32].active = YES;
-    [_playPauseButton.heightAnchor constraintEqualToConstant:32].active = YES;
+    [_playPauseButton.widthAnchor constraintEqualToConstant:36].active = YES;
+    [_playPauseButton.heightAnchor constraintEqualToConstant:36].active = YES;
     
     [self.timeLabel setContentHuggingPriority:UILayoutPriorityRequired
                                       forAxis:UILayoutConstraintAxisHorizontal];
@@ -218,9 +223,64 @@
     stack.spacing = 10;
     stack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [self.bubbleView addSubview:stack];
+    self.audioStack = stack;
 
+    self.replyPreviewView = [UIView new];
+    self.replyPreviewView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyPreviewView.hidden = YES;
+    self.replyPreviewView.clipsToBounds = YES;
+    self.replyPreviewView.layer.cornerRadius = 12.0;
+    self.replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
+    self.replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.bubbleView addSubview:self.replyPreviewView];
+
+    self.replyAccentView = [UIView new];
+    self.replyAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyAccentView.layer.cornerRadius = 1.5;
+    [self.replyPreviewView addSubview:self.replyAccentView];
+
+    self.replyTitleLabel = [UILabel new];
+    self.replyTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replyTitleLabel.font = [GM boldFontWithSize:11.0];
+    self.replyTitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.replyTitleLabel.numberOfLines = 1;
+    self.replyTitleLabel.textAlignment = NSTextAlignmentNatural;
+    [self.replyPreviewView addSubview:self.replyTitleLabel];
+
+    self.replySubtitleLabel = [UILabel new];
+    self.replySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.replySubtitleLabel.font = [GM MidFontWithSize:12.0];
+    self.replySubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.replySubtitleLabel.numberOfLines = 1;
+    self.replySubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.replySubtitleLabel.textAlignment = NSTextAlignmentNatural;
+    [self.replyPreviewView addSubview:self.replySubtitleLabel];
+
+    self.replyPreviewHeightConstraint =
+        [self.replyPreviewView.heightAnchor constraintEqualToConstant:0.0];
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:8],
+        [self.replyPreviewView.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:8.0],
+        [self.replyPreviewView.leadingAnchor constraintEqualToAnchor:self.bubbleView.leadingAnchor constant:10.0],
+        [self.replyPreviewView.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-10.0],
+        self.replyPreviewHeightConstraint,
+        [self.replyAccentView.leadingAnchor constraintEqualToAnchor:self.replyPreviewView.leadingAnchor constant:9.0],
+        [self.replyAccentView.centerYAnchor constraintEqualToAnchor:self.replyPreviewView.centerYAnchor],
+        [self.replyAccentView.widthAnchor constraintEqualToConstant:3.0],
+        [self.replyAccentView.heightAnchor constraintEqualToConstant:27.0],
+        [self.replyTitleLabel.topAnchor constraintEqualToAnchor:self.replyPreviewView.topAnchor constant:6.0],
+        [self.replyTitleLabel.leadingAnchor constraintEqualToAnchor:self.replyAccentView.trailingAnchor constant:8.0],
+        [self.replyTitleLabel.trailingAnchor constraintEqualToAnchor:self.replyPreviewView.trailingAnchor constant:-9.0],
+        [self.replySubtitleLabel.topAnchor constraintEqualToAnchor:self.replyTitleLabel.bottomAnchor constant:1.0],
+        [self.replySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.replyTitleLabel.leadingAnchor],
+        [self.replySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.replyTitleLabel.trailingAnchor],
+    ]];
+
+    self.audioStackTopConstraint =
+        [stack.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:8.0];
+    self.audioStackBelowReplyConstraint =
+        [stack.topAnchor constraintEqualToAnchor:self.replyPreviewView.bottomAnchor constant:7.0];
+    self.audioStackTopConstraint.active = YES;
+    [NSLayoutConstraint activateConstraints:@[
 
         [stack.leadingAnchor constraintEqualToAnchor:self.bubbleView.leadingAnchor constant:12],
         [stack.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-12],
@@ -246,7 +306,7 @@
     self.bottomTimeLabel = [[UILabel alloc] init];
     self.bottomTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomTimeLabel.font = [GM MidFontWithSize:11];
-    self.bottomTimeLabel.textColor = AppBackgroundClrDarker;
+    self.bottomTimeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
     self.bottomTimeLabel.text = @"0:00";
     [self.bottomTimeLabel sizeToFit];
     // Status icon (sent / delivered / read)
@@ -283,6 +343,41 @@
     self.waveformView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 }
 
+- (void)setReplyPreviewTitle:(nullable NSString *)title
+                    subtitle:(nullable NSString *)subtitle
+                  isIncoming:(BOOL)isIncoming
+{
+    if (title.length == 0 && subtitle.length == 0) {
+        [self clearReplyPreview];
+        return;
+    }
+    self.replyPreviewView.hidden = NO;
+    self.replyPreviewHeightConstraint.constant = 46.0;
+    self.audioStackTopConstraint.active = NO;
+    self.audioStackBelowReplyConstraint.active = YES;
+    self.replyTitleLabel.text = title.length > 0 ? title : kLang(@"chat_replying");
+    self.replySubtitleLabel.text = subtitle.length > 0 ? subtitle : kLang(@"Message");
+    UIColor *foreground = [PPChatsFunc bubblePrimaryContentColorForIncoming:isIncoming];
+    self.replyAccentView.backgroundColor =
+        [PPChatsFunc bubbleInteractiveAccentColorForIncoming:isIncoming];
+    self.replyPreviewView.backgroundColor =
+        [PPChatsFunc bubbleReplySurfaceColorForIncoming:isIncoming];
+    self.replyPreviewView.layer.borderColor =
+        [PPChatsFunc bubbleStrokeColorForIncoming:isIncoming].CGColor;
+    self.replyTitleLabel.textColor = foreground;
+    self.replySubtitleLabel.textColor = [foreground colorWithAlphaComponent:0.66];
+}
+
+- (void)clearReplyPreview
+{
+    self.replyPreviewHeightConstraint.constant = 0.0;
+    self.audioStackBelowReplyConstraint.active = NO;
+    self.audioStackTopConstraint.active = YES;
+    self.replyPreviewView.hidden = YES;
+    self.replyTitleLabel.text = nil;
+    self.replySubtitleLabel.text = nil;
+}
+
 /// Update only the status-related UI (status icon/tint) for the given message, if currently bound.
 - (void)updateMessageStatus:(ChatMessageModel *)message
 {
@@ -291,39 +386,10 @@
         return;
     }
     self.message = message;
-    // Only update status icon/tint for outgoing messages
-    if (!self.isIncoming) {
-        // Helper block to encapsulate status icon logic
-        void (^updateStatusIcon)(void) = ^{
-            UIImage *icon = nil;
-            UIColor *tint = [UIColor grayColor];
-            switch (message.status) {
-                case ChatMessageStatusSending:
-                    icon = [UIImage systemImageNamed:@"clock"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusSent:
-                    icon = [UIImage systemImageNamed:@"checkmark"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusDelivered:
-                    icon = [UIImage imageNamed:@"checked"];
-                    tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                    break;
-                case ChatMessageStatusRead:
-                    icon = [UIImage imageNamed:@"checked"];
-                    tint = AppForgroundColr;
-                    break;
-                default:
-                    icon = nil;
-                    break;
-            }
-            self.statusImageView.image = icon;
-            self.statusImageView.tintColor = tint;
-            self.statusImageView.hidden = (icon == nil);
-        };
-        updateStatusIcon();
-    }
+    [PPChatsFunc applyStatusForMessage:message
+                          toImageView:self.statusImageView
+                           isIncoming:self.isIncoming
+                             animated:YES];
     // Do not touch thumbnail, loading, play state, or applyVisualState.
 }
 -(void)setLoading:(BOOL)isLoading
@@ -465,74 +531,52 @@ self.isIncoming = isIncoming;
 self.message = msg;
 self.groupPosition = groupPosition;
     
-    self.leadingConstraint.active = !isIncoming;
-    self.trailingConstraint.active = isIncoming;
+    BOOL usesTrailing = [PPChatsFunc bubbleUsesTrailingAlignmentForIncoming:isIncoming];
+    self.leadingConstraint.active = !usesTrailing;
+    self.trailingConstraint.active = usesTrailing;
     self.maxWidthConstraint.constant = maxWidth * 0.8;
 
     if (isIncoming) {
-       // self.bubbleView.backgroundColor =
-       // PPColorWithAddedSaturation(AppPrimaryClr, 0.05);
-
         //[self applyIncomingBubbleElevation:YES];
     } else {
         //[self applyIncomingBubbleElevation:YES];
     }
 
-    self.bubbleView.backgroundColor =  isIncoming ?  PPChatBubbleSomeoneColor : PPChatBubbleMineColor;
-    self.timeLabel.textColor = isIncoming ? PPChatTimeSomeoneColor : PPChatTimeMineColor;
-    self.bottomTimeLabel.textColor =  isIncoming ? PPChatTimeSomeoneColor : PPChatTimeMineColor;
+    self.bubbleView.backgroundColor = [PPChatsFunc bubbleSurfaceColorForIncoming:isIncoming];
+    UIColor *foreground = [PPChatsFunc bubblePrimaryContentColorForIncoming:isIncoming];
+    UIColor *secondary = [PPChatsFunc bubbleSecondaryContentColorForIncoming:isIncoming];
+    UIColor *interactive = [PPChatsFunc bubbleInteractiveAccentColorForIncoming:isIncoming];
+    UIColor *controlSurface = [PPChatsFunc bubblePlaybackControlSurfaceColorForIncoming:isIncoming];
+    self.timeLabel.textColor = secondary;
+    self.bottomTimeLabel.textColor = secondary;
     
     if(!isIncoming)
     {
         self.statuTrailingConstraint.active = YES;
         self.statuTrailingConstraintSomeOne.active = NO;
-        self.playLoadingIndicator.color = AppForgroundColr;
-        _playPauseButton.backgroundColor =  [PPChatPrimaryAccent colorWithAlphaComponent:0.18];
-        _playPauseButton.tintColor = PPChatPrimaryAccent;
-        _playColor = PPChatPrimaryAccent;
-        self.waveformView.activeColor = AppForgroundColr;
-        self.waveformView.inactiveColor = [AppBackgroundClr colorWithAlphaComponent:0.3];
+        self.playLoadingIndicator.color = foreground;
+        _playPauseButton.backgroundColor = controlSurface;
+        _playPauseButton.tintColor = interactive;
+        _playColor = interactive;
+        self.waveformView.activeColor = foreground;
+        self.waveformView.inactiveColor = [PPChatsFunc bubbleWaveInactiveColorForIncoming:NO];
  
        // [Styling applyCornerMaskToView:self.bubbleView tl:12 tr:6 bl:12 br:12];
 
-        UIImage *icon = nil;
-        UIColor *tint = AppBackgroundClrLigter;
-
-        switch (status) {
-            case ChatMessageStatusSending:
-                icon = PPSYSImage(@"clock");
-                tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                break;
-
-            case ChatMessageStatusSent:
-                icon = PPSYSImage(@"checkmark");
-                tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                break;
-
-            case ChatMessageStatusDelivered:
-                icon = PPImage(@"checked");
-                tint = [AppForgroundColr colorWithAlphaComponent:0.4];
-                break;
-
-            case ChatMessageStatusRead:
-                icon = PPImage(@"checked");
-                tint = AppForgroundColr;
-                break;
-        }
-
-        self.statusImageView.image = icon;
-        self.statusImageView.tintColor = tint;
-        self.statusImageView.hidden = (icon == nil);
+        [PPChatsFunc applyStatusForMessage:msg
+                              toImageView:self.statusImageView
+                               isIncoming:NO
+                                 animated:NO];
     }
     else
     {
-        _playPauseButton.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.08];
-        _playPauseButton.tintColor = UIColor.labelColor;
-        _playColor = UIColor.labelColor;
+        _playPauseButton.backgroundColor = controlSurface;
+        _playPauseButton.tintColor = interactive;
+        _playColor = interactive;
 
-        self.waveformView.activeColor = AppPrimaryTextClr;
-        self.waveformView.inactiveColor = [AppSecondaryTextClr colorWithAlphaComponent:0.2];
-        self.playLoadingIndicator.color = AppPrimaryClr;
+        self.waveformView.activeColor = interactive;
+        self.waveformView.inactiveColor = [PPChatsFunc bubbleWaveInactiveColorForIncoming:YES];
+        self.playLoadingIndicator.color = interactive;
         // FIX 2: Force waveform to redraw when colors / state change
          //[Styling applyCornerMaskToView:self.bubbleView tl:6 tr:12 bl:12 br:12];
         self.statuTrailingConstraint.active = NO;
@@ -563,8 +607,7 @@ self.groupPosition = groupPosition;
                                    cornerRadius:12].CGPath;
     
     [self layoutIfNeeded];
-
-    
+    [self setNeedsLayout];
 }
 
 - (void)setTotalDuration:(NSTimeInterval)duration
@@ -639,6 +682,10 @@ self.groupPosition = groupPosition;
 - (void)prepareForReuse
 {
     [super prepareForReuse];
+    self.contentView.alpha = 1.0;
+    self.contentView.transform = CGAffineTransformIdentity;
+    self.accessibilityCustomActions = nil;
+    self.bubbleView.accessibilityCustomActions = nil;
     [self.bubbleView.layer removeAllAnimations];
     [self setPlaying:NO];
     [self setProgress:0];
@@ -647,6 +694,7 @@ self.groupPosition = groupPosition;
     self.playPauseButton.alpha = 1.0;
     self.isShowingUploadProgress = NO;
     [self.playLoadingIndicator stopAnimating];
+    [self clearReplyPreview];
  }
 
 

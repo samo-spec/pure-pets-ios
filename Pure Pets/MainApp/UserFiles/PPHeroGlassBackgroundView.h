@@ -10,6 +10,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
+    PPHeroGlassAccentStyleBar = 0,
+    PPHeroGlassAccentStyleCornerGlow
+};
+
 /// A reusable background-only UIView that renders the premium hero glass surface
 /// used behind header content across the app.
 ///
@@ -37,6 +42,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// follow local state (for example, an order status color).
 /// Leave nil to preserve the default shared hero accent palette.
 @property (nonatomic, strong, nullable) UIColor *accentColorOverride;
+
+/// Controls how the accent is rendered. Defaults to the original slim top bar.
+@property (nonatomic, assign) PPHeroGlassAccentStyle accentStyle;
 
 /// Starts constellation line and dot pulse animations.
 /// Safe to call multiple times — will not duplicate animations.

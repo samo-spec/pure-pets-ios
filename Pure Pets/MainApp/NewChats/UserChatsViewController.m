@@ -116,7 +116,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = AppBackgroundClr;// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClrLigter;// PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 - (void)pp_configureTableView {
@@ -144,12 +144,68 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
 
+    [self pp_setupBackgroundGlows];
     [self.view addSubview:self.tableView];
     [NSLayoutConstraint activateConstraints:@[
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+}
+
+- (void)pp_setupBackgroundGlows {
+    UIView *glow1 = [UIView new];
+    glow1.translatesAutoresizingMaskIntoConstraints = NO;
+    glow1.backgroundColor = [UIColor.systemTealColor colorWithAlphaComponent:0.18];
+    glow1.layer.cornerRadius = 120.0;
+    glow1.clipsToBounds = YES;
+    [self.view addSubview:glow1];
+
+    UIView *glow2 = [UIView new];
+    glow2.translatesAutoresizingMaskIntoConstraints = NO;
+    glow2.backgroundColor = [UIColor.systemPurpleColor colorWithAlphaComponent:0.15];
+    glow2.layer.cornerRadius = 140.0;
+    glow2.clipsToBounds = YES;
+    [self.view addSubview:glow2];
+
+    UIView *glow3 = [UIView new];
+    glow3.translatesAutoresizingMaskIntoConstraints = NO;
+    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.12];
+    glow3.layer.cornerRadius = 110.0;
+    glow3.clipsToBounds = YES;
+    [self.view addSubview:glow3];
+
+    UIBlurEffect *blurEffect;
+    if (@available(iOS 13.0, *)) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    } else {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+    }
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:blurView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [glow1.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40.0],
+        [glow1.centerYAnchor constraintEqualToAnchor:self.view.topAnchor constant:150.0],
+        [glow1.widthAnchor constraintEqualToConstant:240.0],
+        [glow1.heightAnchor constraintEqualToConstant:240.0],
+
+        [glow2.centerXAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
+        [glow2.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+        [glow2.widthAnchor constraintEqualToConstant:280.0],
+        [glow2.heightAnchor constraintEqualToConstant:280.0],
+
+        [glow3.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:100.0],
+        [glow3.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-120.0],
+        [glow3.widthAnchor constraintEqualToConstant:220.0],
+        [glow3.heightAnchor constraintEqualToConstant:220.0],
+
+        [blurView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
 }
 
@@ -696,7 +752,9 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         BOOL messageUpdated = NO;
         if (latestMsg) {
             NSString *lastMessageText = @"";
-            if (latestMsg.isTextMessage) {
+            if (latestMsg.isDeleted) {
+                lastMessageText = kLang(@"chat_message_unsent");
+            } else if (latestMsg.isTextMessage) {
                 lastMessageText = latestMsg.text ?: @"";
             } else if (latestMsg.isAudioMessage) {
                 lastMessageText = kLang(@"Audio message");

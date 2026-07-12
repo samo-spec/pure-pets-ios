@@ -7,6 +7,7 @@
 
 
 #import "PPRecordingBarView.h"
+#import "PPChatsFunc.h"
 
 static BOOL PPRecordingBarIsDark(UITraitCollection *traitCollection)
 {
@@ -18,15 +19,15 @@ static BOOL PPRecordingBarIsDark(UITraitCollection *traitCollection)
 
 static UIColor *PPRecordingBarPrimaryColor(void)
 {
-    return AppPrimaryClr ?: UIColor.systemPinkColor;
+    return [PPChatsFunc chatNeutralAccentColor];
 }
 
 static UIColor *PPRecordingBarSurfaceColor(UITraitCollection *traitCollection)
 {
     BOOL isDark = PPRecordingBarIsDark(traitCollection);
     return isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.10]
-        : [(AppForgroundColr ?: UIColor.systemBackgroundColor) colorWithAlphaComponent:0.96];
+        ? [UIColor colorWithWhite:1.0 alpha:0.105]
+        : [UIColor colorWithRed:0.984 green:0.977 blue:0.958 alpha:0.96];
 }
 
 static UIColor *PPRecordingBarBorderColor(UITraitCollection *traitCollection)
@@ -236,7 +237,7 @@ static UIColor *PPRecordingBarMutedTextColor(UITraitCollection *traitCollection)
 	    self.waveformView = [[PPWaveformView alloc] init];
 	    self.waveformView.translatesAutoresizingMaskIntoConstraints = NO;
 	    self.waveformView.activeColor = PPRecordingBarPrimaryColor();
-	    self.waveformView.accentColor = AppPrimaryClrDarker ?: PPRecordingBarPrimaryColor();
+	    self.waveformView.accentColor = PPRecordingBarPrimaryColor();
 	    self.waveformView.inactiveColor = PPRecordingBarMutedTextColor(self.traitCollection);
     // ENSURE: waveformView never shrinks
     [self.waveformView setContentCompressionResistancePriority:UILayoutPriorityRequired
@@ -617,7 +618,7 @@ static UIColor *PPRecordingBarMutedTextColor(UITraitCollection *traitCollection)
     self.hintLabel.textColor = mutedTextColor;
 
     self.waveformView.activeColor = primaryColor;
-    self.waveformView.accentColor = AppPrimaryClrDarker ?: primaryColor;
+    self.waveformView.accentColor = primaryColor;
     self.waveformView.inactiveColor = [mutedTextColor colorWithAlphaComponent:isDark ? 0.26 : 0.18];
 
     self.centerBarView.backgroundColor = surfaceColor;
@@ -653,7 +654,7 @@ static UIColor *PPRecordingBarMutedTextColor(UITraitCollection *traitCollection)
 
     [self pp_configureIconButton:self.sendButton
                       systemName:@"arrow.up"
-                      foreground:UIColor.whiteColor
+                      foreground:(isDark ? [UIColor.blackColor colorWithAlphaComponent:0.86] : UIColor.whiteColor)
                       background:[primaryColor colorWithAlphaComponent:isDark ? 0.86 : 0.92]
                            border:[primaryColor colorWithAlphaComponent:0.28]];
     [self pp_configureIconButton:self.deleteButton
@@ -663,7 +664,7 @@ static UIColor *PPRecordingBarMutedTextColor(UITraitCollection *traitCollection)
                            border:[UIColor.systemRedColor colorWithAlphaComponent:isDark ? 0.26 : 0.16]];
     [self pp_configureIconButton:self.playPauseButton
                       systemName:(self.isPlaying ? @"pause.fill" : @"play.fill")
-                      foreground:AppPrimaryTextClr ?: UIColor.labelColor
+                      foreground:primaryColor
                       background:controlSurface
                            border:borderColor];
 }

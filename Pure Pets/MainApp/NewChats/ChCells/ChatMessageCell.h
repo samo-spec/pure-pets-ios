@@ -42,6 +42,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSLayoutConstraint *bubbleLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *bubbleTrailingConstraint;
 - (void)updateMessageStatus:(ChatMessageModel *)message;
+- (UIView *)messageInteractionView;
 @property (nonatomic, strong) NSLayoutConstraint *bubbleMaxWidthConstraint;
 @end
 

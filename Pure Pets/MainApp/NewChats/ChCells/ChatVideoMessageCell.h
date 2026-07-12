@@ -36,5 +36,6 @@ NS_ASSUME_NONNULL_BEGIN
                     subtitle:(nullable NSString *)subtitle
                   isIncoming:(BOOL)isIncoming;
 - (void)clearReplyPreview;
+- (UIView *)messageInteractionView;
 @end
 NS_ASSUME_NONNULL_END

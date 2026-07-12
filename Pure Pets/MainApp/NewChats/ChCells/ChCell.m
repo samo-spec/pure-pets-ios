@@ -25,10 +25,10 @@
 
 #pragma mark - Design Tokens
 
-static CGFloat const kCellHorizontalInset      = PPSpaceBase;
-static CGFloat const kCellVerticalInset        = PPSpaceXS;
+static CGFloat const kCellHorizontalInset      = 0.0;
+static CGFloat const kCellVerticalInset        = 0.0;
 static CGFloat const kSurfaceMinimumHeight     = 76.0;
-static CGFloat const kSurfaceCornerRadius      = 20.0;
+static CGFloat const kSurfaceCornerRadius      = 0.0;
 static CGFloat const kSurfaceHorizontalInset   = 14.0;
 static CGFloat const kSurfaceVerticalInset     = 10.0;
 static CGFloat const kAvatarHaloSize           = 56.0;
@@ -92,6 +92,7 @@ static UIColor *PPChatResolvedColor(UIColor *color,
 @property (nonatomic, assign) BOOL currentOnline;
 @property (nonatomic, assign) BOOL hasConfiguredContent;
 @property (nonatomic, assign) BOOL isConfiguring;
+@property (nonatomic, strong) UIView *separatorView;
 
 @end
 
@@ -246,9 +247,6 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     self.surfaceView.clipsToBounds = NO;
     self.surfaceView.layer.cornerRadius = kSurfaceCornerRadius;
     self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowRadius = 12.0;
-    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -371,6 +369,15 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     [self.unreadBadge
         setContentHuggingPriority:UILayoutPriorityRequired
                           forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.separatorView = [UIView new];
+    self.separatorView.translatesAutoresizingMaskIntoConstraints = NO;
+    if (@available(iOS 13.0, *)) {
+        self.separatorView.backgroundColor = [UIColor separatorColor];
+    } else {
+        self.separatorView.backgroundColor = [UIColor colorWithWhite:0.8 alpha:1.0];
+    }
+    [self.surfaceView addSubview:self.separatorView];
 }
 
 #pragma mark - Layout
@@ -471,6 +478,10 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         [self.unreadBadge.heightAnchor
             constraintEqualToConstant:kUnreadBadgeHeight],
         self.badgeWidthConstraint,
+        [self.separatorView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+        [self.separatorView.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
+        [self.separatorView.leadingAnchor constraintEqualToAnchor:self.nameLabel.leadingAnchor],
+        [self.separatorView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
     ]];
 }
 
@@ -650,11 +661,8 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         self.surfaceView.alpha = targetAlpha;
         self.surfaceView.transform = surfaceTransform;
         self.avatarHaloView.transform = avatarTransform;
-        self.surfaceView.layer.shadowOpacity =
-            pressed ? [self pp_restingShadowOpacity] * 0.58f
-                    : [self pp_restingShadowOpacity];
-        self.surfaceView.layer.shadowOffset =
-            pressed ? CGSizeMake(0.0, 1.5) : CGSizeMake(0.0, 4.0);
+        self.surfaceView.layer.shadowOpacity = 0.0;
+        self.surfaceView.layer.shadowOffset = CGSizeZero;
     };
 
     NSTimeInterval duration = pressed ? 0.10 : 0.24;
@@ -712,10 +720,9 @@ static UIColor *PPChatResolvedColor(UIColor *color,
         : ([GM fontWithSize:PPFontSubheadline]
            ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular]);
     UIFont *timeBaseFont =
-        [UIFont monospacedDigitSystemFontOfSize:PPFontCaption1
-                                         weight:hasUnread
-                                                ? UIFontWeightSemibold
-                                                : UIFontWeightMedium];
+        hasUnread
+        ? ([GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold])
+        : ([GM fontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium]);
 
     self.nameLabel.font =
         PPChatScaledFont(nameBaseFont, UIFontTextStyleHeadline);
@@ -752,15 +759,23 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     BOOL hasUnread = self.currentUnreadCount > 0;
     BOOL pressed = self.isHighlighted || self.isSelected;
 
-    self.surfaceView.backgroundColor = surfaceColor;
-    [self.surfaceView pp_setBorderColor:[self pp_surfaceBorderColor]];
-    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity =
-        pressed ? [self pp_restingShadowOpacity] * 0.58f
-                : [self pp_restingShadowOpacity];
-    self.surfaceView.layer.shadowRadius = 12.0;
-    self.surfaceView.layer.shadowOffset =
-        pressed ? CGSizeMake(0.0, 1.5) : CGSizeMake(0.0, 4.0);
+    if (pressed) {
+        if (@available(iOS 13.0, *)) {
+            self.surfaceView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
+                return traits.userInterfaceStyle == UIUserInterfaceStyleDark
+                    ? [UIColor.whiteColor colorWithAlphaComponent:0.08]
+                    : [UIColor.blackColor colorWithAlphaComponent:0.05];
+            }];
+        } else {
+            self.surfaceView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.05];
+        }
+    } else {
+        self.surfaceView.backgroundColor = UIColor.clearColor;
+    }
+
+    [self.surfaceView pp_setBorderColor:UIColor.clearColor];
+    self.surfaceView.layer.shadowOpacity = 0.0;
+    self.ambientGradientLayer.hidden = YES;
 
     self.avatarHaloView.backgroundColor = [self pp_avatarHaloFillColor];
     [self.avatarHaloView pp_setBorderColor:[self pp_avatarHaloBorderColor]];
@@ -963,6 +978,9 @@ static UIColor *PPChatResolvedColor(UIColor *color,
 
 - (NSString *)pp_previewForThread:(ChatThreadModel *)thread {
     NSString *preview = thread.lastMessage ?: @"";
+    if ([preview isEqualToString:@"__pp_message_unsent__"]) {
+        return kLang(@"chat_message_unsent");
+    }
     preview =
         [preview stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
     preview =
@@ -1222,12 +1240,19 @@ static UIColor *PPChatResolvedColor(UIColor *color,
     }
 
     self.accessibilityLabel = [parts componentsJoinedByString:@", "];
-    self.accessibilityValue =
-        self.currentUnreadCount > 0
-        ? [NSString stringWithFormat:@"%@: %@",
-                                     kLang(@"NewMessage"),
-                                     @(self.currentUnreadCount).stringValue]
-        : nil;
+    NSString *unreadFormat = kLang(@"chat_unread_count_format");
+    if ([unreadFormat isEqualToString:@"chat_unread_count_format"]) {
+        self.accessibilityValue = self.currentUnreadCount > 0
+            ? [NSString stringWithFormat:@"%@: %ld",
+                                         kLang(@"NewMessage"),
+                                         (long)self.currentUnreadCount]
+            : nil;
+    } else {
+        self.accessibilityValue = self.currentUnreadCount > 0
+            ? [NSString stringWithFormat:unreadFormat,
+                                         (long)self.currentUnreadCount]
+            : nil;
+    }
     self.accessibilityTraits = UIAccessibilityTraitButton;
 }
 

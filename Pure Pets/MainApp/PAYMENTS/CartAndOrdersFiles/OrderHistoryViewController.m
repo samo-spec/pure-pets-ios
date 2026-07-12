@@ -470,7 +470,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.backgroundColor = [UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.18];
+    self.backgroundBottomGlowView.backgroundColor = [UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.06];
     [self.view addSubview:self.backgroundBottomGlowView];
 }
 
@@ -646,12 +646,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)layoutHeroHeader
 {
     CGFloat width = CGRectGetWidth(self.view.bounds);
-    CGFloat safeTop = self.view.safeAreaInsets.top + 8.0;
+    CGFloat safeTop = PPStatusBarHeight + 12.0;
     BOOL isRTL = ([Language languageVal] == 1);
     CGFloat horizontalMargin = 16.0;
     CGFloat cardWidth = MIN(MAX(0.0, width - (horizontalMargin * 2.0)), 720.0);
     CGFloat cardX = floor((width - cardWidth) * 0.5);
-    CGFloat padding = 20.0;
+    CGFloat padding = 36.0;
     CGFloat contentWidth = MAX(0.0, cardWidth - (padding * 2.0));
 
     self.headerContainer.frame = CGRectMake(0.0, 0.0, width, 1.0);

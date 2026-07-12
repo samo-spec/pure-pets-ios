@@ -3143,6 +3143,22 @@
 "chat_reply_audio" = "Voice message";
 "chat_reply_unavailable" = "Original message is not available.";
 "chat_reply_cancel" = "Cancel reply";
+"chat_unsend" = "Unsend";
+"chat_unsend_title" = "Unsend message?";
+"chat_unsend_confirmation" = "This message will be removed for everyone in this conversation.";
+"chat_unsend_success" = "Message unsent";
+"chat_unsend_failed" = "This message could not be unsent.";
+"chat_message_unsent" = "Message unsent";
+"chat_status_sending" = "Sending";
+"chat_status_sent" = "Sent";
+"chat_status_delivered" = "Delivered";
+"chat_status_read" = "Read";
+"chat_unread" = "Unread";
+"chat_unread_count_format" = "Unread messages: %ld";
+"chat_accessibility_incoming" = "Received message";
+"chat_accessibility_outgoing" = "Sent message";
+"chat_accessibility_reply_format" = "Reply to: %@";
+"chat_message_actions_hint" = "Swipe to reply, or touch and hold for message actions.";
 
 /* Premium intro */
 "intro_brand_kicker" = "Care, thoughtfully connected";
@@ -3265,10 +3281,11 @@
 "provider_companies_title_marketplace" = "Provider Market";
 "provider_marketplace_hero_title" = "Trusted providers\nfor every pet need";
 "home_marketplace_hero_eyebrow" = "Marketplace";
+"home_marketplace_hero_eyebrow_proof" = "Marketplace | Top-rated suppliers";
 "home_marketplace_hero_title" = "Choose a trusted provider";
 "home_marketplace_hero_subtitle" = "Pick a storefront first, then browse products from the provider you trust.";
 "home_marketplace_hero_cta" = "View providers";
-"home_marketplace_hero_accessibility_label" = "Marketplace. Choose a trusted provider. View providers.";
+"home_marketplace_hero_accessibility_label" = "Marketplace. Choose a trusted provider. Top-rated suppliers. View providers.";
 "home_marketplace_hero_accessibility_hint" = "Opens the marketplace companies and providers list.";
 "seller_profile_back_hint" = "Double-tap to go back";
 "provider_marketplace_subtitle" = "Food, accessories, and daily pet essentials.";

@@ -619,6 +619,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) UIButton *primaryHeroButton;
 @property (nonatomic, assign) BOOL preparedEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, strong) NSLayoutConstraint *cardTopConstraint;
 @end
 
 @implementation PPUserMenuViewController
@@ -631,7 +632,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     self.view.backgroundColor = PPUserMenuCanvasColor();
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     //self.navigationItem.title = PPUserMenuLocalized(@"user_menu_title");
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:PPUserMenuLocalized(@"user_menu_title") showBack:NO];
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:NO];
 
     [self pp_buildTableView];
     [self pp_buildHeader];
@@ -645,7 +646,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [super viewWillAppear:animated];
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:PPUserMenuLocalized(@"user_menu_title") showBack:NO];
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:NO];
     [self pp_rebuildSections];
     [self pp_refreshHeaderContent];
     [self.tableView reloadData];
@@ -717,7 +718,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     self.tableView = tableView;
 
     [NSLayoutConstraint activateConstraints:@[
-        [tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -945,8 +946,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [card addSubview:meta];
     self.metaLabel = meta;
 
+    self.cardTopConstraint = [card.topAnchor constraintEqualToAnchor:root.topAnchor constant:PPStatusBarHeight + 12.0];
     [NSLayoutConstraint activateConstraints:@[
-        [card.topAnchor constraintEqualToAnchor:root.topAnchor constant:12.0],
+        self.cardTopConstraint,
         [card.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:PPScreenMargin],
         [card.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-PPScreenMargin],
         [card.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-14.0],
@@ -1351,6 +1353,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     if (!self.headerRootView) {
         return;
     }
+    self.cardTopConstraint.constant = PPStatusBarHeight + 12.0;
+    
     CGFloat width = CGRectGetWidth(self.tableView.bounds);
     if (width <= 0.0) {
         width = CGRectGetWidth(self.view.bounds);

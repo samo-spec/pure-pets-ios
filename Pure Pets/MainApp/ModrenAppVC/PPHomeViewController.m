@@ -12822,7 +12822,7 @@ presentingViewController:self
 
 - (void)pp_applyPremiumHomeBackgroundAppearance
 {
-    UIColor *backgroundColor = AppBackgroundClr ?: AppBackgroundClr ?: UIColor.whiteColor;
+    UIColor *backgroundColor = AppBackgroundClrLigter ?: AppBackgroundClr ?: UIColor.whiteColor;
     self.view.backgroundColor = backgroundColor;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     self.pp_premiumBackgroundCanvasView.backgroundColor = backgroundColor;
@@ -12911,32 +12911,26 @@ presentingViewController:self
     CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
 
     UIColor *signatureColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    self.pp_premiumBackgroundGlowViewTop.hidden = YES;
-    self.pp_premiumBackgroundGlowViewMid.hidden = YES;
+    UIColor *centerGlowColor = AppPrimaryClr ?: signatureColor;
+    self.pp_premiumBackgroundGlowViewTop.hidden = NO;
+    self.pp_premiumBackgroundGlowViewMid.hidden = NO;
     self.pp_premiumBackgroundGlowViewBottom.hidden = NO;
     [self pp_stopPremiumBackgroundGlowMotion];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+                            color:signatureColor
+                        peakAlpha:(isDark ? 0.112 : 0.032) * accessibilityScale
+                      middleAlpha:(isDark ? 0.048 : 0.018) * accessibilityScale];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                            color:centerGlowColor
+                        peakAlpha:(isDark ? 0.074 : 0.021) * accessibilityScale
+                      middleAlpha:(isDark ? 0.030 : (self.backgroundGlowsFadedByHomeConfig ? 0.021 : 0.017)) * accessibilityScale];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
                             color:signatureColor
                         peakAlpha:(isDark ? 0.16 : 0.040) * accessibilityScale
                       middleAlpha:(isDark ? 0.052 : 0.030) * accessibilityScale];
-    /*
-
-[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-           color:UIColor.clearColor
-       peakAlpha:(isDark ? 0.118 : 0.008) * accessibilityScale
-     middleAlpha:(isDark ? 0.054 : 0.0008) * accessibilityScale];
-
-[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-           color:UIColor.clearColor
-       peakAlpha:(isDark ? 0.075 : 0.00050) * accessibilityScale
-     middleAlpha:(isDark ? 0.026 : (self.backgroundGlowsFadedByHomeConfig ? 0.018 : 0.030)) * accessibilityScale];
-
-[self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-           color:UIColor.clearColor
-       peakAlpha:(isDark ? 0.27 : 0.0021) * accessibilityScale
-     middleAlpha:(isDark ? 0.095 : 0.00072) * accessibilityScale];
-     */
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews

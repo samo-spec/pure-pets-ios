@@ -6,6 +6,7 @@
 //
 
 #import "PPVoicePreviewBubbleView.h"
+#import "PPChatsFunc.h"
 
 @implementation PPVoicePreviewBubbleView {
     UILabel *_durationLabel;
@@ -19,10 +20,10 @@
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
 
-    self.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+    self.backgroundColor = [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:0.10];
     self.layer.cornerRadius = 18;
     self.layer.borderWidth = 1;
-    [self pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.25]];
+    [self pp_setBorderColor:[[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:0.25]];
 
     [self buildUI];
     return self;
@@ -77,7 +78,7 @@
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     [b setImage:[UIImage systemImageNamed:systemName]
         forState:UIControlStateNormal];
-    b.tintColor = AppPrimaryClr;
+    b.tintColor = [PPChatsFunc chatNeutralAccentColor];
     [b addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     return b;
 }

@@ -7,6 +7,18 @@
 //
 
 import SwiftUI
+import UIKit
+
+private enum PPChatAttachmentPalette {
+    static let accent = Color(
+        uiColor: UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return UIColor(red: 0.710, green: 0.745, blue: 0.720, alpha: 1.0)
+            }
+            return UIColor(red: 0.145, green: 0.166, blue: 0.165, alpha: 1.0)
+        }
+    )
+}
 
 /// A circular icon button used inside `ChatBarView` for the `+` toggle and attachment options.
 ///
@@ -34,7 +46,7 @@ struct AttachmentButton: View {
             Image(systemName: iconName)
                 .renderingMode(.template)
                 .font(.system(size: iconSize, weight: .medium, design: .rounded))
-                .foregroundColor(Color("AppPrimaryColor"))
+                .foregroundColor(PPChatAttachmentPalette.accent)
                 .padding()
                 .frame(width: 44, height: 44)
                 .background(Color.clear)

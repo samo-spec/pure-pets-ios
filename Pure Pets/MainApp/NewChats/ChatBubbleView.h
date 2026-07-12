@@ -24,8 +24,11 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) CGFloat maxBubbleWidth;
 -(UIImageView *)getStatusImageView;
 /// Whether this bubble is incoming
-@property (nonatomic, readonly) BOOL isIncoming;
+@property (nonatomic, assign) BOOL isIncoming;
+@property (nonatomic, assign) PPChatGroupPosition groupPosition;
+@property (nonatomic, readonly) BOOL isDeleted;
 - (BOOL)isSingleLineMessage;
+- (BOOL)pp_isEmojiOnlyText:(NSString *)text;
 - (void)setMessageText:(NSString *)message
                   time:(NSDate *)date
            isIncoming:(BOOL)isIncoming
@@ -34,6 +37,16 @@ NS_ASSUME_NONNULL_BEGIN
                     subtitle:(nullable NSString *)subtitle
                   isIncoming:(BOOL)isIncoming;
 - (void)clearReplyPreview;
- @end
+- (void)setDeleted:(BOOL)deleted animated:(BOOL)animated;
+- (void)updateMessageStatus:(ChatMessageModel *)message animated:(BOOL)animated;
+/// Applies a contrast-safe foreground before UIKit snapshots the bubble for a
+/// context menu, then restores the normal palette after dismissal.
+- (void)setContextMenuPresentationActive:(BOOL)active;
+@end
+
+@interface ChatMediaBubbleView : UIView
+@property (nonatomic, assign) BOOL isIncoming;
+@property (nonatomic, assign) PPChatGroupPosition groupPosition;
+@end
 
 NS_ASSUME_NONNULL_END

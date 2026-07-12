@@ -1,16 +1,119 @@
-//
-//  PPChatsFunc.m
-//  Pure Pets
-//
-//  Created by Mohammed Ahmed on 19/01/2026.
-//
-
 #import "PPChatsFunc.h"
 #import "CitiesManager.h"
 #import "CountryModel.h"
-  
+#import "ChatBubbleView.h"
+
+static NSString * const PPChatBubbleGradientLayerName = @"pp.chat.bubble.gradient";
+static NSString * const PPChatBubbleStrokeLayerName = @"pp.chat.bubble.stroke";
+
+static UIColor *PPChatResolvedColor(UIColor *color, UITraitCollection *traits)
+{
+    UIColor *resolved = color ?: UIColor.clearColor;
+    if (@available(iOS 13.0, *)) {
+        resolved = [resolved resolvedColorWithTraitCollection:traits];
+    }
+    return resolved;
+}
+
+static UIColor *PPChatDynamicColor(CGFloat lightRed,
+                                   CGFloat lightGreen,
+                                   CGFloat lightBlue,
+                                   CGFloat lightAlpha,
+                                   CGFloat darkRed,
+                                   CGFloat darkGreen,
+                                   CGFloat darkBlue,
+                                   CGFloat darkAlpha)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traits) {
+            BOOL dark = traits.userInterfaceStyle == UIUserInterfaceStyleDark;
+            return [UIColor colorWithRed:(dark ? darkRed : lightRed)
+                                   green:(dark ? darkGreen : lightGreen)
+                                    blue:(dark ? darkBlue : lightBlue)
+                                   alpha:(dark ? darkAlpha : lightAlpha)];
+        }];
+    }
+
+    return [UIColor colorWithRed:lightRed green:lightGreen blue:lightBlue alpha:lightAlpha];
+}
 
 @implementation PPChatsFunc
+
++ (UIColor *)chatCanvasBackgroundColor
+{
+    return  AppBackgroundClrLigter;
+}
+
++ (UIColor *)chatNeutralAccentColor
+{
+    return AppPrimaryClr;//
+}
+
++ (UIColor *)bubbleSurfaceColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.992, 0.989, 0.980, 1.0,
+                             0.122, 0.128, 0.136, 0.98)
+        : AppPrimaryClr;// ;
+}
+
++ (UIColor *)bubblePrimaryContentColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.055, 0.058, 0.056, 1.0,
+                             0.935, 0.932, 0.902, 1.0)
+        : PPChatDynamicColor(0.985, 0.978, 0.940, 1.0,
+                             0.972, 0.988, 0.970, 1.0);
+}
+
++ (UIColor *)bubbleSecondaryContentColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.405, 0.395, 0.360, 0.82,
+                             0.700, 0.708, 0.690, 0.78)
+        : PPChatDynamicColor(0.780, 0.810, 0.785, 0.86,
+                             0.760, 0.835, 0.805, 0.84);
+}
+
++ (UIColor *)bubbleStrokeColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.070, 0.060, 0.050, 0.075,
+                             1.000, 1.000, 1.000, 0.090)
+        : PPChatDynamicColor(1.000, 1.000, 1.000, 0.130,
+                             1.000, 1.000, 1.000, 0.105);
+}
+
++ (UIColor *)bubbleInteractiveAccentColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? [self chatNeutralAccentColor]
+        : [self bubblePrimaryContentColorForIncoming:NO];
+}
+
++ (UIColor *)bubblePlaybackControlSurfaceColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.060, 0.065, 0.060, 0.075,
+                             1.000, 1.000, 1.000, 0.080)
+        : PPChatDynamicColor(1.000, 1.000, 1.000, 0.165,
+                             1.000, 1.000, 1.000, 0.145);
+}
+
++ (UIColor *)bubbleWaveInactiveColorForIncoming:(BOOL)isIncoming
+{
+    return [[self bubbleSecondaryContentColorForIncoming:isIncoming]
+        colorWithAlphaComponent:(isIncoming ? 0.22 : 0.26)];
+}
+
++ (UIColor *)bubbleReplySurfaceColorForIncoming:(BOOL)isIncoming
+{
+    return isIncoming
+        ? PPChatDynamicColor(0.944, 0.936, 0.916, 0.88,
+                             1.000, 1.000, 1.000, 0.065)
+        : PPChatDynamicColor(1.000, 1.000, 1.000, 0.115,
+                             1.000, 1.000, 1.000, 0.085);
+}
  
 
 #pragma mark - Currency Formatting Helper
@@ -236,12 +339,13 @@ bubble.layer.mask = mask;
     if (CGRectIsEmpty(b)) return;
 
     // === Radius system ===
-    CGFloat R = b.size.height < 64.0 ? b.size.height/2 : 26.0;   // main bubble radius
-    CGFloat S = 8.0;    // stacked / connected radius
+    CGFloat R = MIN(20.0, floor(MIN(b.size.width, b.size.height) * 0.5));
+    CGFloat S = MIN(6.0, R);    // stacked / connected radius
 
     CGFloat tl = R, tr = R, bl = R, br = R;
 
-    BOOL incoming = isIncoming;
+    BOOL usesLogicalTrailing = [self bubbleUsesTrailingAlignmentForIncoming:isIncoming];
+    BOOL bubbleOnPhysicalRight = Language.isRTL ? !usesLogicalTrailing : usesLogicalTrailing;
 
     switch (position) {
 
@@ -250,28 +354,28 @@ bubble.layer.mask = mask;
             break;
 
         case PPChatGroupPositionFirst:
-            if (incoming) {
-                bl = S;
-            } else {
+            if (bubbleOnPhysicalRight) {
                 br = S;
+            } else {
+                bl = S;
             }
             break;
 
         case PPChatGroupPositionMiddle:
-            if (incoming) {
-                tl = S;
-                bl = S;
-            } else {
+            if (bubbleOnPhysicalRight) {
                 tr = S;
                 br = S;
+            } else {
+                tl = S;
+                bl = S;
             }
             break;
 
         case PPChatGroupPositionLast:
-            if (incoming) {
-                tl = S;
-            } else {
+            if (bubbleOnPhysicalRight) {
                 tr = S;
+            } else {
+                tl = S;
             }
             break;
     }
@@ -298,8 +402,79 @@ bubble.layer.mask = mask;
                  controlPoint:CGPointMake(0, h)];
 
     [path closePath];
-    
-    
+
+    BOOL rendersSurface = YES;
+    if ([bubble isKindOfClass:[ChatBubbleView class]]) {
+        ChatBubbleView *cb = (ChatBubbleView *)bubble;
+        BOOL emojiOnly = !cb.isDeleted && [cb pp_isEmojiOnlyText:cb.messageLabel.text];
+        rendersSurface = !emojiOnly;
+    }
+
+    CAGradientLayer *gradientLayer = nil;
+    CAShapeLayer *strokeLayer = nil;
+    for (CALayer *layer in bubble.layer.sublayers.copy) {
+        if ([layer.name isEqualToString:PPChatBubbleGradientLayerName] &&
+            [layer isKindOfClass:CAGradientLayer.class]) {
+            gradientLayer = (CAGradientLayer *)layer;
+        } else if ([layer.name isEqualToString:PPChatBubbleStrokeLayerName] &&
+                   [layer isKindOfClass:CAShapeLayer.class]) {
+            strokeLayer = (CAShapeLayer *)layer;
+        }
+    }
+
+    if (rendersSurface) {
+        bubble.backgroundColor = UIColor.clearColor;
+
+        if (gradientLayer) {
+            gradientLayer.hidden = YES;
+        }
+
+        UIVisualEffectView *blurView = [bubble viewWithTag:999];
+        if (!blurView) {
+            UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+            blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+            blurView.tag = 999;
+            [bubble insertSubview:blurView atIndex:0];
+        }
+        blurView.hidden = NO;
+        blurView.frame = b;
+
+        UIColor *resolvedSurface = PPChatResolvedColor([self bubbleSurfaceColorForIncoming:isIncoming],
+                                                       bubble.traitCollection);
+        BOOL dark = NO;
+        if (@available(iOS 13.0, *)) {
+            dark = bubble.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        }
+        CGFloat materialAlpha = isIncoming
+            ? (dark ? 0.80 : 0.88)
+            : (dark ? 0.88 : 0.94);
+        blurView.contentView.backgroundColor =
+            [resolvedSurface colorWithAlphaComponent:materialAlpha];
+
+        if (!strokeLayer) {
+            strokeLayer = [CAShapeLayer layer];
+            strokeLayer.name = PPChatBubbleStrokeLayerName;
+            strokeLayer.fillColor = UIColor.clearColor.CGColor;
+            strokeLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
+            [bubble.layer insertSublayer:strokeLayer above:blurView.layer];
+        }
+        strokeLayer.hidden = NO;
+        strokeLayer.frame = b;
+        strokeLayer.path = path.CGPath;
+        strokeLayer.strokeColor =
+            PPChatResolvedColor([self bubbleStrokeColorForIncoming:isIncoming],
+                                bubble.traitCollection).CGColor;
+    } else {
+        if (gradientLayer) {
+            gradientLayer.hidden = YES;
+        }
+        strokeLayer.hidden = YES;
+        UIVisualEffectView *blurView = [bubble viewWithTag:999];
+        if (blurView) {
+            blurView.hidden = YES;
+        }
+    }
+
     CAShapeLayer *mask = (CAShapeLayer *)bubble.layer.mask;
     if (![mask isKindOfClass:CAShapeLayer.class]) {
         mask = [CAShapeLayer layer];
@@ -314,6 +489,99 @@ bubble.layer.mask = mask;
     mask.path = newPath;
     [CATransaction commit];
  
+}
+
++ (BOOL)bubbleUsesTrailingAlignmentForIncoming:(BOOL)isIncoming
+{
+    BOOL outgoingUsesTrailing = !Language.isRTL;
+    return isIncoming ? !outgoingUsesTrailing : outgoingUsesTrailing;
+}
+
++ (NSString *)pp_accessibilityLabelForMessageStatus:(ChatMessageStatus)status
+{
+    switch (status) {
+        case ChatMessageStatusSending:
+            return kLang(@"chat_status_sending");
+        case ChatMessageStatusSent:
+            return kLang(@"chat_status_sent");
+        case ChatMessageStatusDelivered:
+            return kLang(@"chat_status_delivered");
+        case ChatMessageStatusRead:
+            return kLang(@"chat_status_read");
+        default:
+            return @"";
+    }
+}
+
++ (void)applyStatusForMessage:(ChatMessageModel *)message
+                  toImageView:(UIImageView *)imageView
+                   isIncoming:(BOOL)isIncoming
+                     animated:(BOOL)animated
+{
+    if (!imageView) return;
+    if (!message || isIncoming || message.isDeleted) {
+        imageView.hidden = YES;
+        imageView.image = nil;
+        imageView.accessibilityLabel = nil;
+        return;
+    }
+
+    UIImage *image = nil;
+    UIColor *tint = [[self bubbleSecondaryContentColorForIncoming:NO] colorWithAlphaComponent:0.74];
+    switch (message.status) {
+        case ChatMessageStatusSending:
+            image = PPSYSImage(@"clock");
+            break;
+        case ChatMessageStatusSent:
+            image = PPSYSImage(@"checkmark");
+            break;
+        case ChatMessageStatusDelivered:
+            image = PPSYSImage(@"checkmark.circle");
+            tint = [[self bubbleSecondaryContentColorForIncoming:NO] colorWithAlphaComponent:0.92];
+            break;
+        case ChatMessageStatusRead:
+            image = PPSYSImage(@"checkmark.circle.fill");
+            tint = [self bubblePrimaryContentColorForIncoming:NO];
+            break;
+        default:
+            break;
+    }
+
+    NSString *statusToken = [NSString stringWithFormat:@"pp.chat.status.%ld", (long)message.status];
+    BOOL changed = ![imageView.accessibilityIdentifier isEqualToString:statusToken];
+    void (^apply)(void) = ^{
+        imageView.image = image;
+        imageView.tintColor = tint;
+        imageView.hidden = (image == nil);
+        imageView.alpha = image ? 1.0 : 0.0;
+        imageView.accessibilityIdentifier = statusToken;
+    };
+
+    if (!animated || !changed || UIAccessibilityIsReduceMotionEnabled()) {
+        apply();
+    } else {
+        imageView.transform = CGAffineTransformMakeScale(0.78, 0.78);
+        [UIView transitionWithView:imageView
+                          duration:0.18
+                           options:UIViewAnimationOptionTransitionCrossDissolve |
+                                   UIViewAnimationOptionBeginFromCurrentState |
+                                   UIViewAnimationOptionAllowUserInteraction
+                        animations:apply
+                        completion:nil];
+        [UIView animateWithDuration:0.28
+                              delay:0.02
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.25
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            imageView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+
+    imageView.isAccessibilityElement = (image != nil);
+    imageView.accessibilityTraits = UIAccessibilityTraitStaticText;
+    imageView.accessibilityLabel = [self pp_accessibilityLabelForMessageStatus:message.status];
 }
 
 + (void)applyGlowIfNeededToBubble:(UIView *)bubble
@@ -337,9 +605,8 @@ bubble.layer.mask = mask;
     glow.path = path.CGPath;
     glow.fillColor = UIColor.clearColor.CGColor;
 
-    UIColor *glowColor = isIncoming
-    ? [UIColor.secondaryLabelColor colorWithAlphaComponent:0.4]
-    : [AppPrimaryClrDarker colorWithAlphaComponent:0.75];
+    UIColor *glowColor = [[self bubbleInteractiveAccentColorForIncoming:isIncoming]
+        colorWithAlphaComponent:(isIncoming ? 0.20 : 0.04)];
 
     glow.strokeColor = glowColor.CGColor;
     glow.lineWidth = 1.2;

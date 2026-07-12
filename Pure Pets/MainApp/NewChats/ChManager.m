@@ -3011,6 +3011,49 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     }];
 }
 
+- (void)unsendMessageWithID:(NSString *)messageID
+                   threadID:(NSString *)threadID
+                 completion:(void (^)(NSError * _Nullable error))completion
+{
+    NSString *trimmedMessageID =
+        [messageID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *trimmedThreadID =
+        [threadID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedMessageID.length == 0 || trimmedThreadID.length == 0) {
+        NSError *error = [NSError errorWithDomain:@"ChManager"
+                                             code:400
+                                         userInfo:@{NSLocalizedDescriptionKey:
+                                                        kLang(@"chat_unsend_failed")}];
+        if (completion) completion(error);
+        return;
+    }
+
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:NO
+                                                       completion:^(NSError * _Nullable authError) {
+        if (authError) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(authError);
+            });
+            return;
+        }
+
+        FIRHTTPSCallable *callable =
+            [[FIRFunctions functionsForRegion:@"us-central1"]
+             HTTPSCallableWithName:@"unsendChatMessage"];
+        NSDictionary *payload = @{
+            @"threadID": trimmedThreadID,
+            @"messageID": trimmedMessageID,
+        };
+        [callable callWithObject:payload
+                     completion:^(__unused FIRHTTPSCallableResult * _Nullable result,
+                                  NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (completion) completion(error);
+            });
+        }];
+    }];
+}
+
 - (void)muteThreadWithID:(NSString *)threadID
                  muted:(BOOL)muted
              completion:(void (^)(NSError * _Nullable error))completion
