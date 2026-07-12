@@ -619,7 +619,6 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) UIButton *primaryHeroButton;
 @property (nonatomic, assign) BOOL preparedEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
-@property (nonatomic, assign) BOOL heroBackgroundMotionRunning;
 @end
 
 @implementation PPUserMenuViewController
@@ -667,6 +666,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    [self pp_updateHeaderLayoutIfNeeded];
     [self pp_runEntranceIfNeeded];
     [self pp_startHeroBackgroundMotionIfNeeded];
 }
@@ -812,16 +812,11 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 
 - (void)pp_startHeroBackgroundMotionIfNeeded
 {
-    if (self.heroBackgroundMotionRunning) {
-        return;
-    }
-    self.heroBackgroundMotionRunning = YES;
     [self.headerBackgroundView startAnimations];
 }
 
 - (void)pp_stopHeroBackgroundMotion
 {
-    self.heroBackgroundMotionRunning = NO;
     [self.headerBackgroundView stopAnimations];
 }
 
@@ -840,6 +835,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 
     PPHeroGlassBackgroundView *bg = [PPHeroGlassBackgroundView new];
     bg.translatesAutoresizingMaskIntoConstraints = NO;
+    bg.hidden = NO;
+    bg.alpha = 1.0;
     [card insertSubview:bg atIndex:0];
     self.headerBackgroundView = bg;
 
@@ -867,9 +864,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     primaryButton.titleLabel.adjustsFontSizeToFitWidth = YES;
     primaryButton.titleLabel.minimumScaleFactor = 0.78;
     primaryButton.contentEdgeInsets = UIEdgeInsetsMake(9.0, 14.0, 9.0, 14.0);
-    primaryButton.layer.cornerRadius = 19.0;
+    primaryButton.layer.cornerRadius = 12.0;
     primaryButton.clipsToBounds = YES;
-    PPApplyContinuousCorners(primaryButton, 19.0);
+    PPApplyContinuousCorners(primaryButton, 12.0);
     primaryButton.accessibilityIdentifier = @"profile_menu_hero_primary_action";
     [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchDown:) forControlEvents:UIControlEventTouchDown];
     [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchUp:) forControlEvents:UIControlEventTouchDragExit | UIControlEventTouchCancel | UIControlEventTouchUpOutside];
@@ -999,6 +996,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [avatarFrame.bottomAnchor constraintLessThanOrEqualToAnchor:card.bottomAnchor constant:-24.0]
     ]];
 
+    // Keep all identity, status, and action content above the decorative hero material.
+    [card sendSubviewToBack:bg];
     [self pp_applyHeaderMaterialPalette];
     self.headerRootView = root;
     self.tableView.tableHeaderView = root;
@@ -1356,17 +1355,40 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     if (width <= 0.0) {
         width = CGRectGetWidth(self.view.bounds);
     }
+    if (width <= 0.0) {
+        return;
+    }
+
+    CGRect measurementFrame = self.headerRootView.frame;
+    if (fabs(measurementFrame.size.width - width) > 0.5) {
+        measurementFrame.size.width = width;
+        self.headerRootView.frame = measurementFrame;
+    }
+    [self.headerRootView setNeedsLayout];
+    [self.headerRootView layoutIfNeeded];
+
     CGSize fittingSize = [self.headerRootView systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)
                                              withHorizontalFittingPriority:UILayoutPriorityRequired
                                                    verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    CGFloat height = MAX(172.0, fittingSize.height);
+    CGFloat height = ceil(MAX(172.0, fittingSize.height));
     CGRect frame = self.headerRootView.frame;
     if (fabs(frame.size.width - width) > 0.5 || fabs(frame.size.height - height) > 0.5) {
         frame.size = CGSizeMake(width, height);
         self.headerRootView.frame = frame;
         self.tableView.tableHeaderView = self.headerRootView;
     }
+
+    [self.headerRootView setNeedsLayout];
+    [self.headerRootView layoutIfNeeded];
+    [self.headerCardView setNeedsLayout];
+    [self.headerCardView layoutIfNeeded];
+    [self.headerCardView sendSubviewToBack:self.headerBackgroundView];
+    self.headerBackgroundView.hidden = NO;
+    self.headerBackgroundView.alpha = 1.0;
+    [self.headerBackgroundView setNeedsLayout];
+    [self.headerBackgroundView layoutIfNeeded];
     [self pp_layoutHeaderMaterialLayers];
+    [self pp_startHeroBackgroundMotionIfNeeded];
 }
 
 #pragma mark - UITableViewDataSource

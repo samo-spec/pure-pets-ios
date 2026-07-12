@@ -119,7 +119,7 @@
     // 1. Shadow Container (Card View)
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = UIColor.clearColor;
+    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
     _cardView.userInteractionEnabled = NO;
     [self.contentView addSubview:_cardView];
 
@@ -148,7 +148,7 @@
     PPApplyContinuousCorners(_blurView, PPCornerCard);
     _blurView.clipsToBounds = YES;
     _blurView.layer.borderWidth = 0.5;
-    
+    _blurView.alpha = 0.4;
     [_cardView addSubview:_blurView];
 
     // Constraints for Blur Material (pins to Card View edges)

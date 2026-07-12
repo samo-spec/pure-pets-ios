@@ -34,7 +34,9 @@
 
     self.surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.88 : 0.98];
+    CGFloat surfaceAlpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.80 : 0.94);
+    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:surfaceAlpha];
+    self.surfaceView.opaque = NO;
     PPApplyContinuousCorners(self.surfaceView, PPCornerCard);
     self.surfaceView.layer.borderWidth = 1.0;
     [self.surfaceView pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.055]];

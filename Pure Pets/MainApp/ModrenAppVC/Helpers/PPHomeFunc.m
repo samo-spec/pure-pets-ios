@@ -29,11 +29,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 static const CGFloat PPHomeVerticalInnerSpacing   = 0.0;
 static const CGFloat PPHomeEdgeSpacing   = 16.0;
-static const CGFloat PPHomeSpacingBase    = 12.0;
-static const CGFloat PPInner = 12.0;
-static const CGFloat PPHomeSpacingSection = 22.0;
+static const CGFloat PPHomeSpacingBase    = 16.0;
+static const CGFloat PPInner = 16.0;
+static const CGFloat PPHomeSpacingSection = 16.0;
 static const CGFloat kHeaderHeight     = 48.0;
-static const CGFloat kHeaderHeightMin     = 36.0;
+static const CGFloat kHeaderHeightMin     = 34.0;
 
 
 // Standard card sizes

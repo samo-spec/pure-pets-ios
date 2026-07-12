@@ -17,6 +17,7 @@
 #import "CountryModel.h"
 #import "PPS.h"
 #import "CartManager.h"
+#import "PPHeroGlassBackgroundView.h"
 #import <QuartzCore/QuartzCore.h>
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -133,14 +134,9 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 // Hero Card views
 @property (nonatomic, strong) UIView *heroCard;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) UIVisualEffectView *heroBlurView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIView *heroAccentLineView;
 @property (nonatomic, strong) UIButton *searchToggleButton;
-@property (nonatomic, strong) UIView *glowOrb1;
-@property (nonatomic, strong) UIView *glowOrb2;
 @property (nonatomic, assign) BOOL searchExpanded;
-@property (nonatomic, strong) UIView *heroBorderGlowView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -215,13 +211,14 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 {
     [super viewWillDisappear:animated];
     [self pp_restoreNavigationBarPresentationIfNeededAnimated:animated];
+    [self.heroGlassBackground stopAnimations];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     [self pp_runHeroEntranceIfNeeded];
-    [self pp_animateGlowOrbs];
+    [self.heroGlassBackground startAnimations];
 }
 
 - (void)viewDidLayoutSubviews
@@ -231,9 +228,17 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self pp_prepareHeroEntranceIfNeeded];
 }
 
+- (void)dealloc
+{
+    [self.heroGlassBackground stopAnimations];
+}
+
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    [self.heroGlassBackground stopAnimations];
+    [self.heroGlassBackground reapplyPalette];
+    [self.heroGlassBackground startAnimations];
     [self pp_applyHeroMaterialWithAccent:[self pp_currentHeroAccentColor]];
 }
 
@@ -501,41 +506,18 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
     [self.heroCard addSubview:self.heroSurfaceView];
 
-    // Living Gradient Glow Orbs (under the gradient layer)
-    self.glowOrb1 = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 180, 180)];
-    self.glowOrb1.layer.cornerRadius = 90.0;
-    self.glowOrb1.userInteractionEnabled = NO;
-    self.glowOrb1.layer.masksToBounds = YES;
-    [self.heroSurfaceView addSubview:self.glowOrb1];
-
-    self.glowOrb2 = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 160, 160)];
-    self.glowOrb2.layer.cornerRadius = 80.0;
-    self.glowOrb2.userInteractionEnabled = NO;
-    self.glowOrb2.layer.masksToBounds = YES;
-    [self.heroSurfaceView addSubview:self.glowOrb2];
-
-    // Backdrop Gradient Layer
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [self.heroSurfaceView.layer insertSublayer:self.heroGradientLayer atIndex:2]; // Insert above orbs
-
-    // Glass backdrop for surface card
-    UIBlurEffect *heroBlur;
-    if (@available(iOS 13.0, *)) {
-        heroBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-    } else {
-        heroBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
-    }
-    self.heroBlurView = [[UIVisualEffectView alloc] initWithEffect:heroBlur];
-    self.heroBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.heroSurfaceView insertSubview:self.heroBlurView atIndex:3]; // Insert above gradient layer
-
-    self.heroAccentLineView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroAccentLineView.userInteractionEnabled = NO;
-    self.heroAccentLineView.layer.cornerRadius = 2.0;
-    self.heroAccentLineView.layer.masksToBounds = YES;
-    [self.heroSurfaceView addSubview:self.heroAccentLineView];
+    // Complete hero-card background. Keep all legacy blur/gradient/orb material out
+    // of this surface so PPHeroGlassBackgroundView is the single background source.
+    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    glass.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.heroSurfaceView insertSubview:glass atIndex:0];
+    self.heroGlassBackground = glass;
+    [NSLayoutConstraint activateConstraints:@[
+        [glass.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
+        [glass.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
+        [glass.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
+        [glass.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
+    ]];
 
     // Search Toggle Button (replaces trail icon)
     self.searchToggleButton = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -560,16 +542,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     btnBlurView.userInteractionEnabled = NO;
     btnBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.searchToggleButton insertSubview:btnBlurView atIndex:0];
-
-    // Layered liquid white glow border view
-    self.heroBorderGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroBorderGlowView.userInteractionEnabled = NO;
-    self.heroBorderGlowView.layer.cornerRadius = 30.0;
-    self.heroBorderGlowView.layer.borderWidth = 1.0;
-    if (@available(iOS 13.0, *)) {
-        self.heroBorderGlowView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.heroSurfaceView addSubview:self.heroBorderGlowView];
 
     self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroEyebrowLabel.font = [GM boldFontWithSize:11.0];
@@ -694,9 +666,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     CGFloat toggleX = isRTL ? padding : cardWidth - padding - 44.0;
     self.searchToggleButton.frame = CGRectMake(toggleX, 24.0, 44.0, 44.0);
 
-    CGFloat accentLineX = isRTL ? cardWidth - 4.0 : 0.0;
-    self.heroAccentLineView.frame = CGRectMake(accentLineX, 24.0, 4.0, 48.0);
-
     self.heroEyebrowLabel.frame = CGRectMake(textX, 22.0, textWidth, 16.0);
 
     CGSize titleSize = [self.heroTitleLabel sizeThatFits:CGSizeMake(textWidth, CGFLOAT_MAX)];
@@ -773,13 +742,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.heroCard.frame = CGRectMake(cardX, safeTop, cardWidth, finalHeroHeight);
     self.heroSurfaceView.frame = self.heroCard.bounds;
-    self.heroBlurView.frame = self.heroSurfaceView.bounds;
-    self.heroGradientLayer.frame = self.heroSurfaceView.bounds;
-    self.heroBorderGlowView.frame = self.heroSurfaceView.bounds;
-    [self.heroSurfaceView bringSubviewToFront:self.heroBorderGlowView];
-
-    self.glowOrb1.center = CGPointMake(0.0, 0.0);
-    self.glowOrb2.center = CGPointMake(cardWidth, finalHeroHeight * 0.5);
 
     self.headerContainer.frame = CGRectMake(0.0,
                                             0.0,
@@ -825,7 +787,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     UIColor *accent = [self pp_currentHeroAccentColor];
 
     [self pp_applyHeroMaterialWithAccent:accent];
-    self.heroAccentLineView.backgroundColor = accent;
     self.summaryPanel.backgroundColor = [accent colorWithAlphaComponent:0.06];
     self.activeMetricLabel.backgroundColor = [accent colorWithAlphaComponent:0.14];
     self.activeMetricLabel.textColor = accent;
@@ -869,27 +830,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.layer.shadowRadius = isDark ? 18.0 : 20.0;
     self.heroCard.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
 
-    PPMarketplaceHeroCardConfigureSurfaceGradient(self.heroGradientLayer,
-                                                  resolvedAccent,
-                                                  self.traitCollection,
-                                                  [Language semanticAttributeForCurrentLanguage] == UISemanticContentAttributeForceRightToLeft);
-
     self.searchToggleButton.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.18 : 0.105];
     [self.searchToggleButton pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:isDark ? 0.20 : 0.16]];
     self.searchToggleButton.tintColor = resolvedAccent;
 
-    self.glowOrb1.backgroundColor = [resolvedAccent colorWithAlphaComponent:isDark ? 0.14 : 0.09];
-    self.glowOrb2.backgroundColor = [UIColor.systemBlueColor colorWithAlphaComponent:isDark ? 0.11 : 0.07];
-
-    [self pp_animateGlowOrbs];
-    
-    // Outer border: highly premium refractive translucent liquid white outline
-    self.heroSurfaceView.layer.borderWidth = 1.0;
-    self.heroSurfaceView.layer.borderColor = PPMarketplaceHeroCardStrokeColor(self.traitCollection).CGColor;
-    
-    // Inner liquid glow bezel overlay
-    self.heroBorderGlowView.layer.borderWidth = 1.0;
-    self.heroBorderGlowView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.10 : 0.38].CGColor;
+    self.heroSurfaceView.layer.borderWidth = 0.0;
 
     self.summaryDividerView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:isDark ? 0.34 : 0.45];
     self.initialLoader.color = resolvedAccent;
@@ -1054,54 +999,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
             }
         });
     }
-}
-
-#pragma mark - Orb Animations
-
-- (void)pp_animateGlowOrbs
-{
-    [self.glowOrb1.layer removeAllAnimations];
-    [self.glowOrb2.layer removeAllAnimations];
-
-    if (UIAccessibilityIsReduceMotionEnabled()) return;
-
-    CABasicAnimation *scaleAnim1 = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scaleAnim1.fromValue = @(0.92);
-    scaleAnim1.toValue = @(1.22);
-    scaleAnim1.duration = 7.0;
-    scaleAnim1.autoreverses = YES;
-    scaleAnim1.repeatCount = HUGE_VALF;
-    scaleAnim1.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.glowOrb1.layer addAnimation:scaleAnim1 forKey:@"orb1Scale"];
-
-    CABasicAnimation *moveAnim1 = [CABasicAnimation animationWithKeyPath:@"position"];
-    CGPoint startPos1 = CGPointMake(0.0, 0.0);
-    moveAnim1.fromValue = [NSValue valueWithCGPoint:startPos1];
-    moveAnim1.toValue = [NSValue valueWithCGPoint:CGPointMake(startPos1.x + 35.0, startPos1.y + 15.0)];
-    moveAnim1.duration = 9.0;
-    moveAnim1.autoreverses = YES;
-    moveAnim1.repeatCount = HUGE_VALF;
-    moveAnim1.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.glowOrb1.layer addAnimation:moveAnim1 forKey:@"orb1Move"];
-
-    CABasicAnimation *scaleAnim2 = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scaleAnim2.fromValue = @(1.18);
-    scaleAnim2.toValue = @(0.88);
-    scaleAnim2.duration = 8.0;
-    scaleAnim2.autoreverses = YES;
-    scaleAnim2.repeatCount = HUGE_VALF;
-    scaleAnim2.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.glowOrb2.layer addAnimation:scaleAnim2 forKey:@"orb2Scale"];
-
-    CABasicAnimation *moveAnim2 = [CABasicAnimation animationWithKeyPath:@"position"];
-    CGPoint startPos2 = CGPointMake(self.heroCard.bounds.size.width, self.heroCard.bounds.size.height * 0.5);
-    moveAnim2.fromValue = [NSValue valueWithCGPoint:startPos2];
-    moveAnim2.toValue = [NSValue valueWithCGPoint:CGPointMake(startPos2.x - 30.0, startPos2.y - 20.0)];
-    moveAnim2.duration = 10.0;
-    moveAnim2.autoreverses = YES;
-    moveAnim2.repeatCount = HUGE_VALF;
-    moveAnim2.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.glowOrb2.layer addAnimation:moveAnim2 forKey:@"orb2Move"];
 }
 
 #pragma mark - Data Management

@@ -21,6 +21,7 @@
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PPModernAvatarRenderer.h"
 #import "UIViewController+PPBottomSurface.h"
+#import "PPHeroGlassBackgroundView.h"
 #import <QuartzCore/QuartzCore.h>
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -238,9 +239,6 @@ static BOOL SPSellerIsPharmacyCategory(NSString *identifier)
 
 static NSString * const SPSellerMiddleBackgroundGlowPositionMotionKey = @"pp.sellerProfile.background.mid.position";
 static NSString * const SPSellerMiddleBackgroundGlowPeekMotionKey = @"pp.sellerProfile.background.mid.peek";
-static NSString * const SPSellerHeroInnerGlowMotionKey = @"pp.sellerProfile.hero.innerGlow.alive";
-static NSString * const SPSellerHeroAccentMotionKey = @"pp.sellerProfile.hero.accent.alive";
-static NSString * const SPSellerHeroSupportGlowMotionKey = @"pp.sellerProfile.hero.supportGlow.alive";
 static NSString * const SPSellerAvatarBreathingMotionKey = @"pp.sellerProfile.hero.avatar.breathing";
 
 typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment);
@@ -637,12 +635,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) UIView *heroLiquidBorderView;
-@property (nonatomic, strong) UIView *heroInnerGlowView;
-@property (nonatomic, strong) UIView *heroSupportGlowView;
-@property (nonatomic, strong) UIView *heroTopAccentView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *heroBorderGradientLayer;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackgroundView;
 @property (nonatomic, strong) UIView *topFadeView;
 @property (nonatomic, strong) CAGradientLayer *heroBottomFadeLayer;
 @property (nonatomic, strong) UIButton *heroBackButton;
@@ -973,17 +966,29 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.heroSurfaceView.layer.shadowOpacity = 0.035;
     self.heroSurfaceView.layer.shadowRadius = 16.0;
     self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    UIVisualEffectView *heroBlurView = [self.heroSurfaceView.subviews.firstObject isKindOfClass:UIVisualEffectView.class]
-        ? (UIVisualEffectView *)self.heroSurfaceView.subviews.firstObject
-        : nil;
-    if (heroBlurView) {
-        UIBlurEffect *heroBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleExtraLight];
-        if (@available(iOS 13.0, *)) {
-            heroBlur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
+    for (UIView *subview in [self.heroSurfaceView.subviews copy]) {
+        if ([subview isKindOfClass:UIVisualEffectView.class]) {
+            [subview removeFromSuperview];
         }
-        heroBlurView.effect = heroBlur;
-        heroBlurView.alpha = 0.38;
     }
+
+    PPHeroGlassBackgroundView *glassBg = [PPHeroGlassBackgroundView new];
+    glassBg.translatesAutoresizingMaskIntoConstraints = NO;
+    glassBg.layer.cornerRadius = kSPSurfaceCornerRadius;
+    glassBg.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        glassBg.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroSurfaceView insertSubview:glassBg atIndex:0];
+    self.heroGlassBackgroundView = glassBg;
+    [NSLayoutConstraint activateConstraints:@[
+        [glassBg.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
+        [glassBg.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
+        [glassBg.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
+        [glassBg.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor],
+    ]];
+
     [self.view addSubview:self.heroSurfaceView];
 
     self.topFadeView = [[UIView alloc] init];
@@ -997,49 +1002,6 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.heroBottomFadeLayer.endPoint = CGPointMake(0.5, 1.0);
     //self.heroBottomFadeLayer.locations = @[@0.0, @0.42, @1.0];
     [self.topFadeView.layer addSublayer:self.heroBottomFadeLayer];
-
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.hidden = YES;
-    self.heroGradientLayer.masksToBounds = YES;
-    [self.heroSurfaceView.layer insertSublayer:self.heroGradientLayer atIndex:0];
-
-    self.heroTopAccentView = [[UIView alloc] init];
-    self.heroTopAccentView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTopAccentView.userInteractionEnabled = NO;
-    self.heroTopAccentView.layer.cornerRadius = 2.0;
-    self.heroTopAccentView.alpha = 0.42;
-    [self.heroSurfaceView addSubview:self.heroTopAccentView];
-
-    self.heroInnerGlowView = [[UIView alloc] init];
-    self.heroInnerGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroInnerGlowView.userInteractionEnabled = NO;
-    self.heroInnerGlowView.alpha = 1.0;
-    [self.heroSurfaceView addSubview:self.heroInnerGlowView];
-
-    self.heroSupportGlowView = [[UIView alloc] init];
-    self.heroSupportGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSupportGlowView.userInteractionEnabled = NO;
-    self.heroSupportGlowView.alpha = 1.0;
-    [self.heroSurfaceView addSubview:self.heroSupportGlowView];
-
-    self.heroLiquidBorderView = [[UIView alloc] init];
-    self.heroLiquidBorderView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroLiquidBorderView.userInteractionEnabled = NO;
-    self.heroLiquidBorderView.backgroundColor = UIColor.clearColor;
-    self.heroLiquidBorderView.layer.borderWidth = 0.45;
-    self.heroLiquidBorderView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.heroLiquidBorderView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.heroSurfaceView addSubview:self.heroLiquidBorderView];
-
-    self.heroBorderGradientLayer = [CAGradientLayer layer];
-    self.heroBorderGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroBorderGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroBorderGradientLayer.locations = @[@0.0, @0.44, @1.0];
-    self.heroBorderGradientLayer.opacity = 0.16;
-    self.heroBorderGradientLayer.masksToBounds = YES;
-    [self.heroLiquidBorderView.layer insertSublayer:self.heroBorderGradientLayer atIndex:0];
 
     [self.heroSurfaceView addSubview:self.heroBackButton];
     [self.heroSurfaceView addSubview:self.cartNavButton];
@@ -1161,26 +1123,6 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     [self.heroSurfaceView addSubview:self.contactButtonStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroTopAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
-        [self.heroTopAccentView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:24.0],
-        [self.heroTopAccentView.widthAnchor constraintEqualToConstant:42.0],
-        [self.heroTopAccentView.heightAnchor constraintEqualToConstant:3.0],
-
-        [self.heroInnerGlowView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-24.0],
-        [self.heroInnerGlowView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-16.0],
-        [self.heroInnerGlowView.widthAnchor constraintEqualToConstant:112.0],
-        [self.heroInnerGlowView.heightAnchor constraintEqualToConstant:112.0],
-
-        [self.heroSupportGlowView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.heroSupportGlowView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:24.0],
-        [self.heroSupportGlowView.widthAnchor constraintEqualToConstant:74.0],
-        [self.heroSupportGlowView.heightAnchor constraintEqualToConstant:74.0],
-
-        [self.heroLiquidBorderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:1.0],
-        [self.heroLiquidBorderView.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:1.0],
-        [self.heroLiquidBorderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-1.0],
-        [self.heroLiquidBorderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-1.0],
-
         [self.heroBackButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:kSPSpace16],
         [self.heroBackButton.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:kSPSpace16],
         [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
@@ -1558,52 +1500,22 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 - (void)applyTheme {
     self.view.backgroundColor = SPSellerBackgroundColor(self.traitCollection);
-    UIColor *foreground = SPSellerAppForegroundColor(self.traitCollection);
     UIColor *accent = PPMarketplaceHeroCardAccentColor();
-    UIColor *surfaceBorder = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
 
-    self.heroSurfaceView.backgroundColor = [foreground colorWithAlphaComponent:dark ? 0.82 : 0.86];
-    self.heroGradientLayer.hidden = YES;
-    self.heroGradientLayer.colors = nil;
+    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.topFadeView.hidden = YES;
     self.topFadeView.alpha = 0.0;
     self.heroBottomFadeLayer.colors = @[
         (__bridge id)UIColor.clearColor.CGColor,
         (__bridge id)UIColor.clearColor.CGColor
     ];
-    self.heroBorderGradientLayer.colors = @[
-        (__bridge id)UIColor.clearColor.CGColor,
-        (__bridge id)UIColor.clearColor.CGColor
-    ];
-    self.heroTopAccentView.backgroundColor = [PPMarketplaceHeroCardTopAccentColor(self.traitCollection) colorWithAlphaComponent:dark ? 0.42 : 0.38];
-    self.heroInnerGlowView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.15];
-    self.heroSupportGlowView.backgroundColor = [SPSellerGoldColor() colorWithAlphaComponent:dark ? 0.18 : 0.13];
-    self.heroInnerGlowView.layer.shadowColor = accent.CGColor;
-    self.heroInnerGlowView.layer.shadowOpacity = dark ? 0.10 : 0.13;
-    self.heroInnerGlowView.layer.shadowRadius = 18.0;
-    self.heroInnerGlowView.layer.shadowOffset = CGSizeZero;
-    self.heroSupportGlowView.layer.shadowColor = SPSellerGoldColor().CGColor;
-    self.heroSupportGlowView.layer.shadowOpacity = dark ? 0.09 : 0.10;
-    self.heroSupportGlowView.layer.shadowRadius = 16.0;
-    self.heroSupportGlowView.layer.shadowOffset = CGSizeZero;
-    [self.heroSurfaceView pp_setBorderColor:surfaceBorder];
-    self.heroSurfaceView.layer.borderWidth = 0.70;
-    self.heroLiquidBorderView.hidden = NO;
-    self.heroLiquidBorderView.layer.borderWidth = 0.75;
-    [self.heroLiquidBorderView pp_setBorderColor:surfaceBorder];
-    self.heroBorderGradientLayer.opacity = 0.0;
-    self.heroLiquidBorderView.alpha = dark ? 0.78 : 0.62;
-    self.heroInnerGlowView.alpha = dark ? 0.86 : 0.62;
-    self.heroSupportGlowView.alpha = dark ? 0.82 : 0.58;
+    [self.heroSurfaceView pp_setBorderColor:UIColor.clearColor];
+    self.heroSurfaceView.layer.borderWidth = 0.0;
     self.heroSurfaceView.layer.shadowOpacity = dark ? 0.14 : 0.050;
     self.heroSurfaceView.layer.shadowRadius = 18.0;
     self.heroSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    UIView *heroBlurView = self.heroSurfaceView.subviews.firstObject;
-    if ([heroBlurView isKindOfClass:UIVisualEffectView.class]) {
-        ((UIVisualEffectView *)heroBlurView).effect = nil;
-        heroBlurView.alpha = 0.0;
-    }
+    [self.heroGlassBackgroundView reapplyPalette];
     self.eyebrowLabel.textColor = accent;
     self.nameLabel.textColor = PPMarketplaceHeroCardPrimaryTextColor();
     self.subtitleLabel.textColor = PPMarketplaceHeroCardSecondaryTextColor();
@@ -1619,7 +1531,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.avatarShellView.layer.shadowRadius = 18.0;
     self.avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     [self.avatarShellView pp_setBorderColor:[SPSellerHeroAvatarStrokeColor(self.traitCollection) colorWithAlphaComponent:dark ? 0.62 : 0.42]];
-    self.avatarInnerPlateView.backgroundColor = [foreground colorWithAlphaComponent:dark ? 0.12 : 0.92];
+    self.avatarInnerPlateView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:dark ? 0.12 : 0.92];
     [self.avatarInnerPlateView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:dark ? 0.10 : 0.70]];
     self.compactHeaderView.backgroundColor = [SPSellerSurfaceColor(self.traitCollection) colorWithAlphaComponent:0.88];
     [self.compactHeaderView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.12 : 0.44]];
@@ -1632,8 +1544,8 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.compactHeaderBadgeLabel.textColor = SPSellerAccentTealColor();
     self.compactHeaderBadgeLabel.backgroundColor = [SPSellerAccentTealColor() colorWithAlphaComponent:0.10];
     [self.compactHeaderBadgeLabel pp_setBorderColor:[SPSellerAccentTealColor() colorWithAlphaComponent:0.16]];
-    self.statusBadgeView.backgroundColor = [foreground colorWithAlphaComponent:0.98];
-    [self.statusBadgeView pp_setBorderColor:[foreground colorWithAlphaComponent:0.98]];
+    self.statusBadgeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
+    [self.statusBadgeView pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.98]];
     [self pp_applyHeroActionStyleToButton:self.messageButton role:SPSellerHeroActionRolePrimary];
     [self pp_applyHeroActionStyleToButton:self.callButton role:SPSellerHeroActionRoleSecondary];
     [self pp_applyHeroActionStyleToButton:self.rateButton role:SPSellerHeroActionRoleTertiary];
@@ -2427,21 +2339,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 
 - (void)updateSurfaceShadowPaths {
     if (!CGRectIsEmpty(self.heroSurfaceView.bounds)) {
-        self.heroGradientLayer.frame = self.heroSurfaceView.bounds;
-        self.heroGradientLayer.cornerRadius = kSPSurfaceCornerRadius;
         self.heroSurfaceView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.heroSurfaceView.bounds
                                        cornerRadius:kSPSurfaceCornerRadius].CGPath;
-        self.heroLiquidBorderView.layer.cornerRadius = MAX(kSPSurfaceCornerRadius - 1.0, 0.0);
-        self.heroBorderGradientLayer.frame = self.heroLiquidBorderView.bounds;
-        self.heroBorderGradientLayer.cornerRadius = MAX(kSPSurfaceCornerRadius - 1.0, 0.0);
-        self.heroTopAccentView.layer.cornerRadius = CGRectGetHeight(self.heroTopAccentView.bounds) * 0.5;
-        self.heroInnerGlowView.layer.cornerRadius = CGRectGetWidth(self.heroInnerGlowView.bounds) * 0.5;
-        self.heroInnerGlowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithOvalInRect:self.heroInnerGlowView.bounds].CGPath;
-        self.heroSupportGlowView.layer.cornerRadius = CGRectGetWidth(self.heroSupportGlowView.bounds) * 0.5;
-        self.heroSupportGlowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithOvalInRect:self.heroSupportGlowView.bounds].CGPath;
         self.avatarBreathingHaloView.layer.cornerRadius = CGRectGetWidth(self.avatarBreathingHaloView.bounds) * 0.5;
         self.avatarBreathingHaloView.layer.shadowPath =
             [UIBezierPath bezierPathWithOvalInRect:self.avatarBreathingHaloView.bounds].CGPath;
@@ -2770,48 +2670,9 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     }
 
     self.didStartHeroAliveMotion = YES;
-    CGFloat direction = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? -1.0 : 1.0;
+    [self.heroGlassBackgroundView startAnimations];
     CAMediaTimingFunction *softEase =
         [CAMediaTimingFunction functionWithControlPoints:0.45 :0.0 :0.55 :1.0];
-
-    CABasicAnimation *glowTravel =
-        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    glowTravel.fromValue = @0.0;
-    glowTravel.toValue = @(12.0 * direction);
-
-    CABasicAnimation *glowOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    glowOpacity.fromValue = @0.08;
-    glowOpacity.toValue = @0.16;
-
-    CABasicAnimation *glowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    glowScale.fromValue = @0.985;
-    glowScale.toValue = @1.035;
-
-    CAAnimationGroup *glowGroup = [CAAnimationGroup animation];
-    glowGroup.animations = @[glowTravel, glowOpacity, glowScale];
-    glowGroup.duration = 5.8;
-    glowGroup.autoreverses = YES;
-    glowGroup.repeatCount = HUGE_VALF;
-    glowGroup.removedOnCompletion = YES;
-    glowGroup.timingFunction = softEase;
-    [self.heroInnerGlowView.layer addAnimation:glowGroup forKey:SPSellerHeroInnerGlowMotionKey];
-
-    CABasicAnimation *supportGlowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    supportGlowScale.fromValue = @0.98;
-    supportGlowScale.toValue = @1.045;
-
-    CABasicAnimation *supportGlowOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    supportGlowOpacity.fromValue = @0.92;
-    supportGlowOpacity.toValue = @1.0;
-
-    CAAnimationGroup *supportGlowGroup = [CAAnimationGroup animation];
-    supportGlowGroup.animations = @[supportGlowScale, supportGlowOpacity];
-    supportGlowGroup.duration = 6.4;
-    supportGlowGroup.autoreverses = YES;
-    supportGlowGroup.repeatCount = HUGE_VALF;
-    supportGlowGroup.removedOnCompletion = YES;
-    supportGlowGroup.timingFunction = softEase;
-    [self.heroSupportGlowView.layer addAnimation:supportGlowGroup forKey:SPSellerHeroSupportGlowMotionKey];
 
     CABasicAnimation *avatarScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
     avatarScale.fromValue = @0.965;
@@ -2830,23 +2691,12 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     avatarBreathingGroup.timingFunction = softEase;
     [self.avatarBreathingHaloView.layer addAnimation:avatarBreathingGroup forKey:SPSellerAvatarBreathingMotionKey];
 
-    CABasicAnimation *accentOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    accentOpacity.fromValue = @0.28;
-    accentOpacity.toValue = @0.46;
-    accentOpacity.duration = 4.4;
-    accentOpacity.autoreverses = YES;
-    accentOpacity.repeatCount = HUGE_VALF;
-    accentOpacity.removedOnCompletion = YES;
-    accentOpacity.timingFunction = softEase;
-    [self.heroTopAccentView.layer addAnimation:accentOpacity forKey:SPSellerHeroAccentMotionKey];
 }
 
 - (void)pp_stopHeroAliveMotion
 {
     self.didStartHeroAliveMotion = NO;
-    [self.heroInnerGlowView.layer removeAnimationForKey:SPSellerHeroInnerGlowMotionKey];
-    [self.heroSupportGlowView.layer removeAnimationForKey:SPSellerHeroSupportGlowMotionKey];
-    [self.heroTopAccentView.layer removeAnimationForKey:SPSellerHeroAccentMotionKey];
+    [self.heroGlassBackgroundView stopAnimations];
     [self.avatarBreathingHaloView.layer removeAnimationForKey:SPSellerAvatarBreathingMotionKey];
 }
 

@@ -1238,7 +1238,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     cartNav.tabBarItem.selectedImage = [self pp_profileTabItemImageSelected:YES];
    
     
-    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"message.badge.waveform" selectedImage:@"message.badge.waveform.fill"];
+    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"messagenotfill" selectedImage:@"message.badge.waveform.fill"];
 
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
@@ -4285,7 +4285,7 @@ shouldSelectViewController:(UIViewController *)viewController {
      if(!self.useLegacyBar)
      {
          [self.bottomBar configureTabBarItems:@[
-             @{@"tag":@(PPBarTagHome),@"icon":@"homeCus", @"title":kLang(@"MainPage")}, //homeCus
+             @{@"tag":@(PPBarTagHome),@"icon"Cus", @"title":kLang(@"MainPage")}, //homeCus
              @{@"tag":@(PPBarTagChats), @"icon":@"notificationCus",  @"title":kLang(@"Notifications")} ,
              @{@"tag":@(PPBarTagOrdersHistory), @"icon":@"ordersCus",  @"title": kLang(@"Orders")},
          ]];

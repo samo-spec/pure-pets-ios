@@ -7,6 +7,7 @@
 
 #import "PPNotificationsHubViewController.h"
 #import "PPPetRemindersViewController.h"
+#import "PPHeroGlassBackgroundView.h"
 #import "UserChatsViewController.h"
 #import "OrderDetailsViewController.h"
 #import "PPOrder.h"
@@ -571,7 +572,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.98 : 0.98];
+    _surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.98 : 0.82];
     _surfaceView.layer.cornerRadius = 23.0;
     _surfaceView.layer.masksToBounds = NO;
     _surfaceView.layer.borderWidth = 0.0;
@@ -1219,6 +1220,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -1276,11 +1278,13 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidAppear:animated];
     [self pp_playHeroEntranceIfNeeded];
+    [self.heroGlassBackground startAnimations];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [self.heroGlassBackground stopAnimations];
     if (self.hasStoredPreviousNavigationBarHidden) {
         [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden animated:animated];
     }
@@ -1427,6 +1431,9 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    [self.heroGlassBackground stopAnimations];
+    [self.heroGlassBackground reapplyPalette];
+    [self.heroGlassBackground startAnimations];
     if (@available(iOS 13.0, *)) {
         if (self.traitCollection.userInterfaceStyle != previousTraitCollection.userInterfaceStyle) {
             [self pp_updateGlowAppearance];
@@ -1454,27 +1461,26 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     self.heroSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSurfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
+    self.heroSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroSurfaceView.layer.cornerRadius = 28.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
     self.heroSurfaceView.layer.borderWidth = 0.0;
-    [self.heroSurfaceView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.42]];
     self.heroSurfaceView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
         self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.heroContainerView addSubview:self.heroSurfaceView];
 
-    UIView *heroAccentView = [[UIView alloc] initWithFrame:CGRectZero];
-    heroAccentView.translatesAutoresizingMaskIntoConstraints = NO;
-    heroAccentView.userInteractionEnabled = NO;
-    heroAccentView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-    heroAccentView.layer.cornerRadius = 70.0;
-    [heroAccentView pp_setShadowColor:AppPrimaryClr ?: UIColor.systemPinkColor];
-    heroAccentView.layer.shadowOpacity = 0.10;
-    heroAccentView.layer.shadowRadius = 42.0;
-    heroAccentView.layer.shadowOffset = CGSizeZero;
-    [self.heroSurfaceView addSubview:heroAccentView];
+    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    glass.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.heroSurfaceView insertSubview:glass atIndex:0];
+    self.heroGlassBackground = glass;
+    [NSLayoutConstraint activateConstraints:@[
+        [glass.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
+        [glass.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
+        [glass.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
+        [glass.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
+    ]];
 
     self.heroEyebrowLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1487,7 +1493,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTitleLabel.font = [GM BlackFontWithSize:24.0] ?: [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    self.heroTitleLabel.font = [GM boldFontWithSize:26.0] ?: [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
     self.heroTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.heroTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.heroTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -1547,11 +1553,6 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
         [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
 
-        [heroAccentView.widthAnchor constraintEqualToConstant:140.0],
-        [heroAccentView.heightAnchor constraintEqualToConstant:140.0],
-        [heroAccentView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-58.0],
-        [heroAccentView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:44.0],
-
         [self.actionButton.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:16.0],
         [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-16.0],
         [self.actionButton.widthAnchor constraintEqualToConstant:kPPHubActionButtonSize],
@@ -1565,7 +1566,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
 
-        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:3.0],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:8.0],
         [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroEyebrowLabel.leadingAnchor],
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
 
@@ -1820,6 +1821,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
     [target performSelector:selector];
 #pragma clang diagnostic pop
+}
+
+- (void)dealloc
+{
+    [self.heroGlassBackground stopAnimations];
 }
 
 @end

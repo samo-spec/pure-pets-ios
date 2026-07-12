@@ -15,6 +15,7 @@
 #import "AddressFormVC.h"
 #import "AppClasses.h"
 #import "PPAlertHelper.h"
+#import "PPHeroGlassBackgroundView.h"
 #import "UserManager.h"
 #import "ChManager.h"
 #import "PPSelectOptionViewController.h"
@@ -31,31 +32,36 @@
 
 static NSString * const kOrderDetailsItemCellID = @"OrderItemCell";
 static NSString * const kOrderDetailsPlaceholderCellID = @"OrderDetailsPlaceholderCell";
-static CGFloat const kOrderDetailsHeaderCornerRadius = 16.0;
-static CGFloat const kOrderDetailsButtonCornerRadius = 18.0;
+static CGFloat const kOrderDetailsHeaderCornerRadius = 22.0;
+static CGFloat const kOrderDetailsButtonCornerRadius = 22.0;
 static CGFloat const kOrderDetailsContentBottomInset = 132.0;
-static CGFloat const kOrderDetailsScreenMargin = 20.0;
-static CGFloat const kOrderDetailsSectionSpacing = 16.0;
+static CGFloat const kOrderDetailsScreenMargin = 16.0;
+static CGFloat const kOrderDetailsSectionSpacing = 12.0;
+static CGFloat const kOrderDetailsTopGlowRestingAlpha = 0.98;
+static CGFloat const kOrderDetailsBottomGlowRestingAlpha = 0.96;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 static NSInteger const kOrderSupportComposerMaxAttachments = 4;
 
 static UIColor *PPOrderDetailsSurfaceColor(void)
 {
-    return [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.88 : 0.98];
+    CGFloat alpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.58 : 0.84);
+    return [AppForgroundColr colorWithAlphaComponent:alpha];
 }
 
 static UIColor *PPOrderDetailsSubsurfaceColor(void)
 {
-    return [UIColor secondarySystemBackgroundColor];
+    CGFloat alpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.68 : 0.84);
+    return [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:alpha];
 }
 
 static void PPOrderDetailsApplySurface(UIView *view, CGFloat cornerRadius, BOOL elevated)
 {
     if (!view) return;
     view.backgroundColor = PPOrderDetailsSurfaceColor();
+    view.opaque = NO;
     PPApplyContinuousCorners(view, cornerRadius);
     view.layer.masksToBounds = NO;
-    view.layer.borderWidth = 1.0;
+    view.layer.borderWidth = 0.75;
     [view pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.055]];
     if (elevated) {
         PPApplyCardShadow(view);
@@ -436,14 +442,14 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = AppBackgroundClrLigter;
     self.title = kLang(@"order_tracking_title");
     [self pp_orderApplyChevronBackButton];
     self.dateFormatter = [NSDateFormatter new];
     self.dateFormatter.locale = [NSLocale currentLocale];
     [self.dateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM h:mm a"];
 
-    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleInsetGrouped];
+    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.tableView.delegate = self;
     self.tableView.dataSource = self;
@@ -2341,6 +2347,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
 @property (nonatomic, strong) UIView *statusSummaryCard;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UIView *ambientDotsContainerView;
 @property (nonatomic, strong) UIView *ambientDot1;
 @property (nonatomic, strong) UIView *ambientDot2;
@@ -2430,6 +2437,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_refreshLiveBackgroundGlowColors;
 - (void)pp_startLiveBackgroundGlowsIfNeeded;
 - (void)pp_stopLiveBackgroundGlows;
+- (void)pp_updateLiveBackgroundGlowsForScrollOffset:(CGFloat)contentOffsetY;
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_refreshHeaderHeroLiquidBorderColors;
 - (void)pp_updateHeaderHeroLiquidBorder;
@@ -2526,6 +2534,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.isOrderDetailsScreenVisible = YES;
     [self pp_runPremiumEntranceIfNeeded];
     [self showEntryPresentationIfNeeded];
+    //[self.heroGlassBackground startAnimations];
+    [self pp_updateLiveBackgroundGlowsForScrollOffset:self.tableView.contentOffset.y];
+    [self pp_startLiveBackgroundGlowsIfNeeded];
     [self pp_startCurrentStatusSummaryMotionIfNeeded];
     [self.progressTimelineView refreshCurrentStatusMotion];
 }
@@ -2534,6 +2545,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
+    //[self.heroGlassBackground stopAnimations];
     [self pp_stopLiveBackgroundGlows];
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCurrentStatusSummaryMotion];
@@ -2585,6 +2597,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.tableView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
     self.footerContainer.alpha = 0.0;
     self.footerContainer.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    self.backgroundTopGlowView.alpha = 0.0;
+    self.backgroundTopGlowView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    self.backgroundBottomGlowView.alpha = 0.0;
+    self.backgroundBottomGlowView.transform = CGAffineTransformMakeScale(0.94, 0.94);
 }
 
 - (void)pp_runPremiumEntranceIfNeeded
@@ -2600,8 +2616,31 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         self.tableView.transform = CGAffineTransformIdentity;
         self.footerContainer.alpha = 1.0;
         self.footerContainer.transform = CGAffineTransformIdentity;
+        self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
+        self.backgroundTopGlowView.transform = CGAffineTransformIdentity;
+        self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
+        self.backgroundBottomGlowView.transform = CGAffineTransformIdentity;
         return;
     }
+
+    [UIView animateWithDuration:0.58
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
+        self.backgroundTopGlowView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.68
+                          delay:0.06
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
+        self.backgroundBottomGlowView.transform = CGAffineTransformIdentity;
+    } completion:^(BOOL finished) {
+        if (!finished || !self.isOrderDetailsScreenVisible) return;
+        [self pp_updateLiveBackgroundGlowsForScrollOffset:self.tableView.contentOffset.y];
+    }];
 
     [UIView animateWithDuration:0.38
                           delay:0.0
@@ -2684,13 +2723,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     UIColor *warm = [UIColor colorWithRed:0.98 green:0.70 blue:0.34 alpha:1.0];
 
     self.backgroundTopGlowLayer.colors = @[
-        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.26 : 0.20].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.16 : 0.12].CGColor,
+        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.38 : 0.30].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.25 : 0.19].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
     self.backgroundBottomGlowLayer.colors = @[
-        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.22 : 0.16].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.14 : 0.10].CGColor,
+        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.34 : 0.26].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.22 : 0.17].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
 }
@@ -2698,9 +2737,69 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_startLiveBackgroundGlowsIfNeeded
 {
     [self pp_installLiveBackgroundGlowLayersIfNeeded];
-    // Order details is a live operational surface. Ambient color is present but still;
-    // motion is reserved for real progress and direct user feedback.
-    [self pp_stopLiveBackgroundGlows];
+    if (!self.isOrderDetailsScreenVisible ||
+        !self.backgroundTopGlowView.window ||
+        CGRectIsEmpty(self.backgroundTopGlowView.bounds) ||
+        CGRectIsEmpty(self.backgroundBottomGlowView.bounds)) {
+        return;
+    }
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopLiveBackgroundGlows];
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.backgroundTopGlowLayer.opacity = 0.78;
+    self.backgroundBottomGlowLayer.opacity = 0.68;
+    [CATransaction commit];
+
+    if (![self.backgroundTopGlowLayer animationForKey:@"pp_order_top_glow_breath"]) {
+        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        opacity.fromValue = @0.60;
+        opacity.toValue = @0.94;
+
+        CABasicAnimation *origin = [CABasicAnimation animationWithKeyPath:@"startPoint"];
+        origin.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.10, 0.10)];
+        origin.toValue = [NSValue valueWithCGPoint:CGPointMake(0.34, 0.28)];
+
+        CABasicAnimation *edge = [CABasicAnimation animationWithKeyPath:@"endPoint"];
+        edge.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.82, 0.90)];
+        edge.toValue = [NSValue valueWithCGPoint:CGPointMake(1.02, 0.72)];
+
+        CAAnimationGroup *group = [CAAnimationGroup animation];
+        group.animations = @[opacity, origin, edge];
+        group.duration = 5.4;
+        group.autoreverses = YES;
+        group.repeatCount = HUGE_VALF;
+        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        group.removedOnCompletion = YES;
+        [self.backgroundTopGlowLayer addAnimation:group forKey:@"pp_order_top_glow_breath"];
+    }
+
+    if (![self.backgroundBottomGlowLayer animationForKey:@"pp_order_bottom_glow_breath"]) {
+        CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        opacity.fromValue = @0.52;
+        opacity.toValue = @0.86;
+
+        CABasicAnimation *origin = [CABasicAnimation animationWithKeyPath:@"startPoint"];
+        origin.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.20, 0.14)];
+        origin.toValue = [NSValue valueWithCGPoint:CGPointMake(0.48, 0.34)];
+
+        CABasicAnimation *edge = [CABasicAnimation animationWithKeyPath:@"endPoint"];
+        edge.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.78, 0.94)];
+        edge.toValue = [NSValue valueWithCGPoint:CGPointMake(1.02, 0.74)];
+
+        CAAnimationGroup *group = [CAAnimationGroup animation];
+        group.animations = @[opacity, origin, edge];
+        group.duration = 6.0;
+        group.beginTime = CACurrentMediaTime() + 0.35;
+        group.autoreverses = YES;
+        group.repeatCount = HUGE_VALF;
+        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        group.removedOnCompletion = YES;
+        [self.backgroundBottomGlowLayer addAnimation:group forKey:@"pp_order_bottom_glow_breath"];
+    }
 }
 
 - (void)pp_stopLiveBackgroundGlows
@@ -2709,10 +2808,56 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.backgroundBottomGlowView.layer removeAnimationForKey:@"pp_order_bottom_glow_drift"];
     [self.backgroundTopGlowLayer removeAnimationForKey:@"pp_order_top_glow_breath"];
     [self.backgroundBottomGlowLayer removeAnimationForKey:@"pp_order_bottom_glow_breath"];
-    self.backgroundTopGlowView.layer.transform = CATransform3DIdentity;
-    self.backgroundBottomGlowView.layer.transform = CATransform3DIdentity;
-    self.backgroundTopGlowLayer.opacity = 0.42;
-    self.backgroundBottomGlowLayer.opacity = 0.32;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.backgroundTopGlowLayer.transform = CATransform3DIdentity;
+    self.backgroundBottomGlowLayer.transform = CATransform3DIdentity;
+    self.backgroundTopGlowLayer.opacity = 0.72;
+    self.backgroundBottomGlowLayer.opacity = 0.62;
+    [CATransaction commit];
+}
+
+- (void)pp_updateLiveBackgroundGlowsForScrollOffset:(CGFloat)contentOffsetY
+{
+    if (!self.backgroundTopGlowLayer || !self.backgroundBottomGlowLayer) return;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.backgroundTopGlowLayer.transform = CATransform3DIdentity;
+        self.backgroundBottomGlowLayer.transform = CATransform3DIdentity;
+        [CATransaction commit];
+        return;
+    }
+
+    CGFloat adjustedTopInset = 0.0;
+    if (@available(iOS 11.0, *)) {
+        adjustedTopInset = self.tableView.adjustedContentInset.top;
+    } else {
+        adjustedTopInset = self.tableView.contentInset.top;
+    }
+    CGFloat travel = MAX(0.0, contentOffsetY + adjustedTopInset);
+    CGFloat pullDistance = MAX(0.0, -(contentOffsetY + adjustedTopInset));
+    CGFloat pullProgress = MIN(1.0, pullDistance / 120.0);
+    CGFloat wave = sin(travel * 0.008);
+
+    CGAffineTransform topTransform = CGAffineTransformMakeTranslation(wave * 5.0,
+                                                                      -MIN(24.0, travel * 0.055));
+    topTransform = CGAffineTransformScale(topTransform,
+                                          1.0 + (pullProgress * 0.055),
+                                          1.0 + (pullProgress * 0.055));
+
+    CGAffineTransform bottomTransform = CGAffineTransformMakeTranslation(-wave * 6.0,
+                                                                         MIN(20.0, travel * 0.040));
+    bottomTransform = CGAffineTransformScale(bottomTransform,
+                                             1.0 + (pullProgress * 0.035),
+                                             1.0 + (pullProgress * 0.035));
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.backgroundTopGlowLayer.transform = CATransform3DMakeAffineTransform(topTransform);
+    self.backgroundBottomGlowLayer.transform = CATransform3DMakeAffineTransform(bottomTransform);
+    [CATransaction commit];
 }
 
 #pragma mark - Setup
@@ -2830,13 +2975,13 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundTopGlowView.userInteractionEnabled = NO;
     self.backgroundTopGlowView.backgroundColor = UIColor.clearColor;
-    self.backgroundTopGlowView.alpha = 0.92;
+    self.backgroundTopGlowView.alpha = kOrderDetailsTopGlowRestingAlpha;
     [self.view addSubview:self.backgroundTopGlowView];
 
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
     self.backgroundBottomGlowView.backgroundColor = UIColor.clearColor;
-    self.backgroundBottomGlowView.alpha = 0.82;
+    self.backgroundBottomGlowView.alpha = kOrderDetailsBottomGlowRestingAlpha;
     [self.view addSubview:self.backgroundBottomGlowView];
     [self pp_installLiveBackgroundGlowLayersIfNeeded];
 
@@ -2846,6 +2991,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.tableView.dataSource = self;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.backgroundColor = AppClearClr;
+    self.tableView.backgroundView = nil;
+    self.tableView.opaque = NO;
     self.tableView.rowHeight = 104.0;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.sectionFooterHeight = 0.01;
@@ -2860,6 +3007,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.tableView registerClass:[OrderItemCell class] forCellReuseIdentifier:kOrderDetailsItemCellID];
     [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:kOrderDetailsPlaceholderCellID];
     [self.view addSubview:self.tableView];
+    [self.view sendSubviewToBack:self.backgroundBottomGlowView];
+    [self.view sendSubviewToBack:self.backgroundTopGlowView];
 
     [self setupHeaderView];
     [self setupFooterView];
@@ -2891,9 +3040,20 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.orderIDLabel addGestureRecognizer:orderIDTapGesture];
 
     self.statusSummaryCard = [[UIView alloc] initWithFrame:CGRectZero];
-    PPApplyContinuousCorners(self.statusSummaryCard, PPCornerCard);
-    self.statusSummaryCard.layer.masksToBounds = YES;
+    PPApplyContinuousCorners(self.statusSummaryCard, 0);
+    self.statusSummaryCard.layer.masksToBounds = NO;
     [self.headerCard addSubview:self.statusSummaryCard];
+
+    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    glass.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.statusSummaryCard insertSubview:glass atIndex:0];
+    self.heroGlassBackground = glass;
+    [NSLayoutConstraint activateConstraints:@[
+        [glass.topAnchor constraintEqualToAnchor:self.statusSummaryCard.topAnchor],
+        [glass.leadingAnchor constraintEqualToAnchor:self.statusSummaryCard.leadingAnchor],
+        [glass.trailingAnchor constraintEqualToAnchor:self.statusSummaryCard.trailingAnchor],
+        [glass.bottomAnchor constraintEqualToAnchor:self.statusSummaryCard.bottomAnchor]
+    ]];
 
     self.ambientDotsContainerView = [[UIView alloc] initWithFrame:CGRectZero];
     self.ambientDotsContainerView.backgroundColor = UIColor.clearColor;
@@ -4238,9 +4398,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)refreshVisualTheme
 {
     UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    if (!accent) accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    self.heroGlassBackground.accentColorOverride = accent;
     self.headerCard.backgroundColor = PPOrderDetailsSurfaceColor();
     self.deliveryMapCard.backgroundColor = PPOrderDetailsSurfaceColor();
-    self.statusSummaryCard.backgroundColor = PPOrderDetailsSubsurfaceColor();
+    self.statusSummaryCard.backgroundColor = AppClearClr; //PPOrderDetailsSubsurfaceColor();
     
     self.ambientDot1.backgroundColor = accent;
     self.ambientDot2.backgroundColor = accent;
@@ -4252,8 +4414,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.ambientDot2.layer.shadowColor = accent.CGColor;
     self.ambientDot3.layer.shadowColor = accent.CGColor;
     
-    self.statusSummaryCard.layer.borderWidth = 1.0;
-    [self.statusSummaryCard pp_setBorderColor:[accent colorWithAlphaComponent:0.12]];
+    self.statusSummaryCard.layer.borderWidth = 0.0;
+    [self.statusSummaryCard pp_setBorderColor:[accent colorWithAlphaComponent:0.0]];
     
     self.summaryPanel.backgroundColor = PPOrderDetailsSurfaceColor();
     self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:0.14];
@@ -5047,7 +5209,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         cell.selectionStyle = UITableViewCellSelectionStyleNone;
         cell.accessoryType = UITableViewCellAccessoryNone;
         cell.backgroundColor = UIColor.clearColor;
-        cell.contentView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.72 : 0.96];
+        CGFloat placeholderAlpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.72 : 0.94);
+        cell.contentView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:placeholderAlpha];
+        cell.contentView.opaque = NO;
         cell.contentView.layer.cornerRadius = 20.0;
         cell.contentView.layer.masksToBounds = YES;
         cell.textLabel.text = kLang(@"order_details_no_items");
@@ -5170,6 +5334,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 }
 
 #pragma mark - UITableViewDelegate
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    if (scrollView != self.tableView || !self.isOrderDetailsScreenVisible) return;
+    [self pp_updateLiveBackgroundGlowsForScrollOffset:scrollView.contentOffset.y];
+}
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
@@ -6111,6 +6281,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCurrentStatusSummaryMotion];
     [self pp_stopCheckoutSuccessConfetti];
+    //[self.heroGlassBackground stopAnimations];
     [self stopRealtimeObservers];
 }
 
@@ -6562,6 +6733,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     UIView *group = [[UIView alloc] init];
     group.backgroundColor = PPOrderDetailsSubsurfaceColor();
+    group.opaque = NO;
     PPApplyContinuousCorners(group, PPCornerMedium);
     group.layer.masksToBounds = YES;
     group.layer.borderWidth = 1.0;
@@ -6663,6 +6835,22 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if ([s isEqualToString:@"new_request"] || [s isEqualToString:@"preparing"] || [s isEqualToString:@"delivery_requested"] || [s isEqualToString:@"awaiting_handover"]) return UIColor.systemOrangeColor;
     if ([s isEqualToString:@"rejected"] || [s isEqualToString:@"cancelled"] || [s isEqualToString:@"failed"] || [s isEqualToString:@"returned"]) return UIColor.systemRedColor;
     return UIColor.systemGrayColor;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshLiveBackgroundGlowColors];
+            if (self.isOrderDetailsScreenVisible) {
+                [self pp_startLiveBackgroundGlowsIfNeeded];
+            }
+        }
+    }
+    //[self.heroGlassBackground stopAnimations];
+    //[self.heroGlassBackground reapplyPalette];
+   // [self.heroGlassBackground startAnimations];
 }
 
 @end

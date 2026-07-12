@@ -33,6 +33,11 @@ NS_ASSUME_NONNULL_BEGIN
 /// @endcode
 @interface PPHeroGlassBackgroundView : UIView
 
+/// Optional accent override for screens that need the hero glass surface to
+/// follow local state (for example, an order status color).
+/// Leave nil to preserve the default shared hero accent palette.
+@property (nonatomic, strong, nullable) UIColor *accentColorOverride;
+
 /// Starts constellation line and dot pulse animations.
 /// Safe to call multiple times — will not duplicate animations.
 - (void)startAnimations;
