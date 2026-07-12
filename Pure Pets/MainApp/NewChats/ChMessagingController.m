@@ -124,6 +124,7 @@ static NSString *PPChatLocalizedStringOrFallback(NSString *key, NSString *fallba
 }
 
 static NSString * const PPChatPremiumHeaderSupportAvatarToken = @"purepets://support-logo";
+static const CGFloat PPChatPremiumModalHeaderCornerRadius = 26.0;
 
 static BOOL PPChatPremiumHeaderUsesSupportLogo(UserModel * _Nullable user)
 {
@@ -166,6 +167,16 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     }];
 }
 
+static UIColor *PPChatPremiumHeaderSurfaceOverlayColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:0.0 alpha:0.20]
+            : [UIColor colorWithWhite:1.0 alpha:0.32];
+    }];
+}
+
 static UIColor *PPChatEmptyStateSurfaceColor(void)
 {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
@@ -191,34 +202,6 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     return [PPChatsFunc chatCanvasBackgroundColor];
 }
 
-static UIColor *PPChatAmbientGlowWarmColor(UITraitCollection *traitCollection)
-{
-    if (@available(iOS 13.0, *)) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:1.00 green:0.72 blue:0.60 alpha:0.105];
-        }
-    }
-    return [UIColor colorWithRed:1.00 green:0.79 blue:0.67 alpha:0.20];
-}
-
-static UIColor *PPChatAmbientGlowPearlColor(UITraitCollection *traitCollection)
-{
-    if (@available(iOS 13.0, *)) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.70 green:0.82 blue:1.00 alpha:0.080];
-        }
-    }
-    return [UIColor colorWithRed:0.76 green:0.87 blue:1.00 alpha:0.145];
-}
-
-static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
-{
-    CGFloat alpha = 0.11;
-    if (@available(iOS 13.0, *)) {
-        alpha = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.070 : 0.115;
-    }
-    return [[PPChatsFunc chatNeutralAccentColor] colorWithAlphaComponent:alpha];
-}
 
 
 @interface ChMessagingController () <UITableViewDelegate, UITableViewDataSource,
@@ -266,9 +249,7 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 @property (nonatomic, strong) UIButton *bottomFillBlurView;
 @property (nonatomic, strong) UIView *chatBackgroundContainer;
 @property (nonatomic, strong) UIImageView *chatBackgroundImageView;
-@property (nonatomic, strong) UIView *chatBackgroundGlowLeadingView;
-@property (nonatomic, strong) UIView *chatBackgroundGlowTrailingView;
-@property (nonatomic, strong) UIView *chatBackgroundGlowBottomView;
+
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *cachedHeights;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> userStatusListener;
 @property (nonatomic, strong) UIActivityIndicatorView *initialLoadIndicator;
@@ -747,6 +728,11 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
 
 - (void)pp_focusChatComposer
 {
+    if (self.useSwiftUIInputBar && self.swiftUIInputVC) {
+        [self.swiftUIInputVC focusTextInput];
+        return;
+    }
+
     if (![self pp_focusFirstTextInputInView:self.inputbar]) {
         [self.inputbar becomeFirstResponder];
     }
@@ -1050,11 +1036,9 @@ static UIColor *PPChatAmbientGlowRoseColor(UITraitCollection *traitCollection)
     [self.view addSubview:self.swiftUIInputVC.view];
     [self.swiftUIInputVC didMoveToParentViewController:self];
 
-    if (@available(iOS 15.0, *)) {
-        self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-8.0];
-    } else {
-        self.swiftUIInputBarBottomConstraint = [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8.0];
-    }
+    self.swiftUIInputBarBottomConstraint =
+        [self.swiftUIInputVC.view.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                                                               constant:-8.0];
     self.swiftUIInputBarHeightConstraint =
         [self.swiftUIInputVC.view.heightAnchor constraintEqualToConstant:54.0];
     [NSLayoutConstraint activateConstraints:@[
@@ -4118,9 +4102,16 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     }
 
     CGRect composerFrame = [composer.superview convertRect:composer.frame toView:self.view];
+    CGRect tableFrame = [self.tableView.superview convertRect:self.tableView.frame toView:self.view];
+    CGFloat breatheRoom = 12.0;
+
+    if (!CGRectIsEmpty(tableFrame) &&
+        CGRectGetMaxY(tableFrame) <= CGRectGetMinY(composerFrame) + 2.0) {
+        return MAX(self.baseTableInsets.bottom, self.baseTableInsets.bottom + breatheRoom);
+    }
+
     CGFloat occlusion = CGRectGetHeight(self.view.bounds) - CGRectGetMinY(composerFrame);
-    // Add 12.0 points of extra breathe room above the chat bar top
-    return MAX(self.baseTableInsets.bottom, ceil(MAX(0.0, occlusion)) + 12.0);
+    return MAX(self.baseTableInsets.bottom, ceil(MAX(0.0, occlusion)) + breatheRoom);
 }
 
 - (void)pp_applyTableViewBottomInsetForActiveComposer
@@ -4915,12 +4906,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     button.adjustsImageWhenHighlighted = NO;
     button.tintColor = AppPrimaryTextClr;
     button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
-    button.layer.cornerRadius = 20.0;
+    button.layer.cornerRadius = 21.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
     button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
     UIImageSymbolConfiguration *symbolConfig =
-        [UIImageSymbolConfiguration configurationWithPointSize:15.0 weight:UIImageSymbolWeightSemibold];
+        [UIImageSymbolConfiguration configurationWithPointSize:15.5 weight:UIImageSymbolWeightSemibold];
     UIImage *image = [PPSYSImage(systemName) imageWithConfiguration:symbolConfig];
     [button setImage:image forState:UIControlStateNormal];
     [self pp_addPremiumModalHeaderPressMotionToControl:button];
@@ -4981,12 +4972,27 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     header.translatesAutoresizingMaskIntoConstraints = NO;
     header.backgroundColor = UIColor.clearColor;
     header.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    header.clipsToBounds = YES;
+    header.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    header.layer.cornerCurve = kCACornerCurveContinuous;
 
     PPHeroGlassBackgroundView *glassBackground = [PPHeroGlassBackgroundView new];
     glassBackground.translatesAutoresizingMaskIntoConstraints = NO;
-    glassBackground.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glassBackground.accentStyle = PPHeroGlassAccentStyleBar;
     glassBackground.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
+    glassBackground.clipsToBounds = YES;
+    glassBackground.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    glassBackground.layer.cornerCurve = kCACornerCurveContinuous;
     [header insertSubview:glassBackground atIndex:0];
+
+    UIView *surfaceOverlay = [[UIView alloc] init];
+    surfaceOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    surfaceOverlay.userInteractionEnabled = NO;
+    surfaceOverlay.backgroundColor = PPChatPremiumHeaderSurfaceOverlayColor();
+    surfaceOverlay.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    surfaceOverlay.layer.cornerCurve = kCACornerCurveContinuous;
+    surfaceOverlay.clipsToBounds = YES;
+    [header insertSubview:surfaceOverlay aboveSubview:glassBackground];
 
     UIButton *closeButton = [self pp_premiumModalHeaderButtonWithSystemName:@"xmark"];
     closeButton.accessibilityLabel = kLang(@"Close");
@@ -5013,7 +5019,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarView.contentMode = UIViewContentModeScaleAspectFill;
     avatarView.clipsToBounds = YES;
-    avatarView.layer.cornerRadius = 23.0;
+    avatarView.layer.cornerRadius = 25.0;
     avatarView.layer.cornerCurve = kCACornerCurveContinuous;
     avatarView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [avatarView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.60]];
@@ -5022,7 +5028,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     UIView *statusDot = [[UIView alloc] init];
     statusDot.translatesAutoresizingMaskIntoConstraints = NO;
     statusDot.backgroundColor = UIColor.systemGreenColor;
-    statusDot.layer.cornerRadius = 5.5;
+    statusDot.layer.cornerRadius = 6.0;
     statusDot.layer.borderWidth = 2.0;
     [statusDot pp_setBorderColor:UIColor.systemBackgroundColor];
     statusDot.hidden = YES;
@@ -5030,7 +5036,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.font = [GM boldFontWithSize:16.0];
+    nameLabel.font = [GM boldFontWithSize:17.0];
     nameLabel.textColor = UIColor.labelColor;
     nameLabel.numberOfLines = 1;
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -5040,7 +5046,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     UILabel *statusLabel = [[UILabel alloc] init];
     statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    statusLabel.font = [GM MidFontWithSize:12.0];
+    statusLabel.font = [GM MidFontWithSize:12.5];
     statusLabel.textColor = PPChatPremiumHeaderSecondaryTextColor();
     statusLabel.numberOfLines = 1;
     statusLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -5061,7 +5067,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
                                          constant:[self pp_premiumModalChatHeaderTopPadding]];
     self.premiumModalHeaderHeightConstraint =
-        [header.heightAnchor constraintEqualToConstant:72.0];
+        [header.heightAnchor constraintEqualToConstant:78.0];
 
     [NSLayoutConstraint activateConstraints:@[
         self.premiumModalHeaderTopConstraint,
@@ -5074,32 +5080,37 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [glassBackground.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
         [glassBackground.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
 
+        [surfaceOverlay.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [surfaceOverlay.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
+        [surfaceOverlay.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
+        [surfaceOverlay.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+
         [closeButton.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:14.0],
         [closeButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
-        [closeButton.widthAnchor constraintEqualToConstant:40.0],
-        [closeButton.heightAnchor constraintEqualToConstant:40.0],
+        [closeButton.widthAnchor constraintEqualToConstant:42.0],
+        [closeButton.heightAnchor constraintEqualToConstant:42.0],
 
         [moreButton.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-14.0],
         [moreButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
-        [moreButton.widthAnchor constraintEqualToConstant:40.0],
-        [moreButton.heightAnchor constraintEqualToConstant:40.0],
+        [moreButton.widthAnchor constraintEqualToConstant:42.0],
+        [moreButton.heightAnchor constraintEqualToConstant:42.0],
 
         [profileControl.leadingAnchor constraintEqualToAnchor:closeButton.trailingAnchor constant:10.0],
         [profileControl.trailingAnchor constraintEqualToAnchor:moreButton.leadingAnchor constant:-10.0],
-        [profileControl.topAnchor constraintEqualToAnchor:header.topAnchor constant:8.0],
-        [profileControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0],
+        [profileControl.topAnchor constraintEqualToAnchor:header.topAnchor constant:9.0],
+        [profileControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-9.0],
 
         [avatarView.leadingAnchor constraintEqualToAnchor:profileControl.leadingAnchor],
         [avatarView.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor],
-        [avatarView.widthAnchor constraintEqualToConstant:46.0],
-        [avatarView.heightAnchor constraintEqualToConstant:46.0],
+        [avatarView.widthAnchor constraintEqualToConstant:50.0],
+        [avatarView.heightAnchor constraintEqualToConstant:50.0],
 
-        [statusDot.widthAnchor constraintEqualToConstant:11.0],
-        [statusDot.heightAnchor constraintEqualToConstant:11.0],
+        [statusDot.widthAnchor constraintEqualToConstant:12.0],
+        [statusDot.heightAnchor constraintEqualToConstant:12.0],
         [statusDot.trailingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:-1.0],
         [statusDot.bottomAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:-1.0],
 
-        [labelsStack.leadingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:12.0],
+        [labelsStack.leadingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:13.0],
         [labelsStack.trailingAnchor constraintEqualToAnchor:profileControl.trailingAnchor],
         [labelsStack.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor]
     ]];
@@ -5131,8 +5142,13 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     self.premiumModalHeaderView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.premiumModalHeaderProfileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.premiumModalHeaderView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    self.premiumModalHeaderGlassBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
+    self.premiumModalHeaderGlassBackgroundView.clipsToBounds = YES;
+    self.premiumModalHeaderGlassBackgroundView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
     self.premiumModalHeaderGlassBackgroundView.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
     [self.premiumModalHeaderGlassBackgroundView reapplyPalette];
+    self.premiumModalHeaderGlassBackgroundView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
 
     NSArray<UIButton *> *buttons = @[self.premiumModalHeaderCloseButton, self.premiumModalHeaderMoreButton];
     for (UIButton *button in buttons) {
@@ -5160,7 +5176,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     UIBezierPath *path =
         [UIBezierPath bezierPathWithRoundedRect:self.premiumModalHeaderView.bounds
-                                   cornerRadius:26.0];
+                                   cornerRadius:PPChatPremiumModalHeaderCornerRadius];
     self.premiumModalHeaderView.layer.shadowPath = path.CGPath;
 }
 
@@ -5249,7 +5265,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:46.0];
+    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:50.0];
     self.premiumModalHeaderAvatarView.image = placeholder;
     self.premiumModalHeaderAvatarView.contentMode = UIViewContentModeScaleAspectFill;
     self.premiumModalHeaderAvatarView.backgroundColor = UIColor.clearColor;
@@ -5739,7 +5755,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     
     [self configureBackUX];
     [self pp_bringChatHeaderToFront];
-    [self pp_startChatBackgroundGlowMotionIfNeeded];
 }
 
 - (void)setupTopView {
@@ -5818,7 +5833,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self unregisterAppStateObservers];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidFinish" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidCancel" object:nil];
-    [self pp_stopChatBackgroundGlowMotion];
     [self.premiumModalHeaderGlassBackgroundView stopAnimations];
     
     if (self.authListenerHandle) {
@@ -5880,7 +5894,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     [self pp_updatePremiumModalChatHeaderShadowPath];
     [self pp_updatePremiumModalChatHeaderInsets];
-    [self pp_updateChatBackgroundGlowGeometry];
     [self pp_updateChatEmptyStateAnimated:NO];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
     [self pp_bringChatHeaderToFront];
@@ -5889,7 +5902,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
-    [self pp_applyChatBackgroundGlowAppearance];
     [self pp_applyPremiumModalChatHeaderTheme];
     [self pp_applyPremiumEmptyStateTheme];
     if (self.replyingToMessage) {
@@ -6027,138 +6039,53 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     self.chatBackgroundContainer = container;
     self.chatBackgroundImageView = imageView;
 
-    [self pp_applyChatBackgroundGlowAppearance];
+    [self pp_setupBackgroundGlows];
 }
 
-- (UIView *)pp_makeChatBackgroundGlowView
-{
-    UIView *glowView = [[UIView alloc] init];
-    glowView.translatesAutoresizingMaskIntoConstraints = NO;
-    glowView.userInteractionEnabled = NO;
-    glowView.clipsToBounds = NO;
-    glowView.layer.masksToBounds = NO;
-    glowView.layer.shadowOffset = CGSizeZero;
-    glowView.layer.shouldRasterize = YES;
-    glowView.layer.rasterizationScale = UIScreen.mainScreen.scale;
-    return glowView;
-}
-
-- (void)pp_applyChatBackgroundGlowAppearance
-{
+- (void)pp_setupBackgroundGlows {
     if (!self.chatBackgroundContainer) return;
 
-    self.chatBackgroundContainer.backgroundColor =
-        PPChatAmbientBackgroundColor(self.traitCollection);
-}
+    UIView *glow2 = [UIView new];
+    glow2.translatesAutoresizingMaskIntoConstraints = NO;
+    glow2.backgroundColor = [bageColor colorWithAlphaComponent:0.75];
+    glow2.layer.cornerRadius = 140.0;
+    glow2.clipsToBounds = YES;
+    [self.chatBackgroundContainer addSubview:glow2];
 
-- (void)pp_applyChatGlowView:(UIView *)glowView
-                       color:(UIColor *)color
-                shadowRadius:(CGFloat)shadowRadius
-               shadowOpacity:(CGFloat)shadowOpacity
-{
-    if (!glowView || !color) return;
+    UIView *glow3 = [UIView new];
+    glow3.translatesAutoresizingMaskIntoConstraints = NO;
+    glow3.backgroundColor = [AppPrimaryClrShiner colorWithAlphaComponent:0.04];
+    glow3.layer.cornerRadius = 110.0;
+    glow3.clipsToBounds = YES;
+    [self.chatBackgroundContainer addSubview:glow3];
 
-    glowView.backgroundColor = color;
-    glowView.layer.shadowColor = color.CGColor;
-    glowView.layer.shadowRadius = shadowRadius;
-    glowView.layer.shadowOpacity = shadowOpacity;
-}
+    UIBlurEffect *blurEffect;
+    if (@available(iOS 13.0, *)) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    } else {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+    }
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.alpha = 0.3;
+    [self.chatBackgroundContainer addSubview:blurView];
 
-- (void)pp_updateChatBackgroundGlowGeometry
-{
-    void (^updateGlowGeometry)(UIView *) = ^(UIView *glowView) {
-        if (!glowView.superview || CGRectIsEmpty(glowView.bounds)) return;
+    [NSLayoutConstraint activateConstraints:@[
+        [glow2.centerXAnchor constraintEqualToAnchor:self.chatBackgroundContainer.trailingAnchor constant:-20.0],
+        [glow2.centerYAnchor constraintEqualToAnchor:self.chatBackgroundContainer.centerYAnchor],
+        [glow2.widthAnchor constraintEqualToConstant:280.0],
+        [glow2.heightAnchor constraintEqualToConstant:280.0],
 
-        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
-        glowView.layer.cornerRadius = radius;
-        glowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
-    };
+        [glow3.centerXAnchor constraintEqualToAnchor:self.chatBackgroundContainer.leadingAnchor constant:100.0],
+        [glow3.centerYAnchor constraintEqualToAnchor:self.chatBackgroundContainer.bottomAnchor constant:-120.0],
+        [glow3.widthAnchor constraintEqualToConstant:220.0],
+        [glow3.heightAnchor constraintEqualToConstant:220.0],
 
-    updateGlowGeometry(self.chatBackgroundGlowLeadingView);
-    updateGlowGeometry(self.chatBackgroundGlowTrailingView);
-    updateGlowGeometry(self.chatBackgroundGlowBottomView);
-}
-
-- (void)pp_startChatBackgroundGlowMotionIfNeeded
-{
-    [self pp_stopChatBackgroundGlowMotion];
-}
-
-- (void)pp_animateChatGlowView:(UIView *)glowView
-                       scaleBy:(CGFloat)scaleBy
-                    translateX:(CGFloat)translateX
-                    translateY:(CGFloat)translateY
-                       opacity:(CGFloat)opacityDelta
-                      duration:(CFTimeInterval)duration
-                         delay:(CFTimeInterval)delay
-{
-    if (!glowView) return;
-
-    CAMediaTimingFunction *timing =
-        [CAMediaTimingFunction functionWithControlPoints:0.4 :0.0 :0.2 :1.0];
-    CFTimeInterval beginTime =
-        [glowView.layer convertTime:CACurrentMediaTime() fromLayer:nil] + delay;
-
-    CABasicAnimation *scale =
-        [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scale.fromValue = @(1.0 - scaleBy);
-    scale.toValue = @(1.0 + scaleBy);
-    scale.duration = duration;
-    scale.beginTime = beginTime;
-    scale.autoreverses = YES;
-    scale.repeatCount = HUGE_VALF;
-    scale.timingFunction = timing;
-
-    CABasicAnimation *x =
-        [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    x.fromValue = @(-translateX * 0.5);
-    x.toValue = @(translateX);
-    x.duration = duration * 1.08;
-    x.beginTime = beginTime;
-    x.autoreverses = YES;
-    x.repeatCount = HUGE_VALF;
-    x.timingFunction = timing;
-
-    CABasicAnimation *y =
-        [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    y.fromValue = @(-translateY * 0.5);
-    y.toValue = @(translateY);
-    y.duration = duration * 1.14;
-    y.beginTime = beginTime;
-    y.autoreverses = YES;
-    y.repeatCount = HUGE_VALF;
-    y.timingFunction = timing;
-
-    CABasicAnimation *opacity =
-        [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacity.fromValue = @(MAX(0.58, 1.0 - opacityDelta));
-    opacity.toValue = @1.0;
-    opacity.duration = duration;
-    opacity.beginTime = beginTime;
-    opacity.autoreverses = YES;
-    opacity.repeatCount = HUGE_VALF;
-    opacity.timingFunction = timing;
-
-    [glowView.layer addAnimation:scale forKey:@"pp_chat_glow_scale"];
-    [glowView.layer addAnimation:x forKey:@"pp_chat_glow_translate_x"];
-    [glowView.layer addAnimation:y forKey:@"pp_chat_glow_translate_y"];
-    [glowView.layer addAnimation:opacity forKey:@"pp_chat_glow_opacity"];
-}
-
-- (void)pp_stopChatBackgroundGlowMotion
-{
-    void (^stopGlowMotion)(UIView *) = ^(UIView *glowView) {
-        if (!glowView) return;
-        [glowView.layer removeAnimationForKey:@"pp_chat_glow_scale"];
-        [glowView.layer removeAnimationForKey:@"pp_chat_glow_translate_x"];
-        [glowView.layer removeAnimationForKey:@"pp_chat_glow_translate_y"];
-        [glowView.layer removeAnimationForKey:@"pp_chat_glow_opacity"];
-    };
-
-    stopGlowMotion(self.chatBackgroundGlowLeadingView);
-    stopGlowMotion(self.chatBackgroundGlowTrailingView);
-    stopGlowMotion(self.chatBackgroundGlowBottomView);
+        [blurView.topAnchor constraintEqualToAnchor:self.chatBackgroundContainer.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:self.chatBackgroundContainer.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:self.chatBackgroundContainer.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:self.chatBackgroundContainer.bottomAnchor]
+    ]];
 }
 
 // MARK: - Custom Nav Bottom Blur
@@ -6169,8 +6096,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.navBottomBlurView) return;
 
-     
- 
 
     self.navBottomBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
     self.navBottomBlurView.configuration.background.cornerRadius = 0;
@@ -6282,7 +6207,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 	    [super viewDidAppear:animated];
 	    self.isViewVisible = YES;
 	    [ChManager sharedManager].activeThreadID = self.chatThread.ID;
-        [self pp_startChatBackgroundGlowMotionIfNeeded];
 	    [self pp_animatePremiumModalChatHeaderIfNeeded];
 	    [self pp_bringChatHeaderToFront];
     // ✅ Handoff finished
@@ -6388,14 +6312,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     self.currentKeyboardHeight = rawKeyboardHeight;
     self.isKeyboardVisible = rawKeyboardHeight > 0.5;
 
-    // Keep both composer implementations in the same coordinate system.
-    self.inputBarBottomConstraint.constant = -keyboardHeight;
-    if (@available(iOS 15.0, *)) {
-        // Automatically handled by keyboardLayoutGuide
-    } else {
-        CGFloat swiftUIBottom = (rawKeyboardHeight > 0) ? (-keyboardHeight - 8.0) : -8.0;
-        self.swiftUIInputBarBottomConstraint.constant = swiftUIBottom;
-    }
+    self.inputBarBottomConstraint.constant = self.isKeyboardVisible ? -(keyboardHeight + 8.0) : 0.0;
+    self.swiftUIInputBarBottomConstraint.constant = self.isKeyboardVisible ? -(keyboardHeight + 8.0) : -8.0;
 
     UIViewAnimationOptions options =
         UIViewAnimationOptionBeginFromCurrentState |

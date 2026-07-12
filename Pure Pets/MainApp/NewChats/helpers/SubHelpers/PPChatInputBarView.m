@@ -7,6 +7,7 @@
 
 #import "PPChatInputBarView.h"
 #import "PPChatsFunc.h"
+#import "Styling.h"
 
 
  
@@ -58,6 +59,28 @@ static UIColor *PPChatInputBarBorderColor(UITraitCollection *traitCollection)
     return isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.12]
         : [UIColor.labelColor colorWithAlphaComponent:0.055];
+}
+
+static UIColor *PPChatInputBarReplySurfaceColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.13]
+        : [UIColor colorWithWhite:1.0 alpha:0.86];
+}
+
+static UIColor *PPChatInputBarReplyBorderColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    return [UIColor.whiteColor colorWithAlphaComponent:(isDark ? 0.34 : 0.92)];
+}
+
+static UIColor *PPChatInputBarReplySecondaryTextColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.68]
+        : [UIColor colorWithWhite:0.0 alpha:0.58];
 }
 
 static UIColor *PPChatInputBarControlTintColor(UITraitCollection *traitCollection)
@@ -367,6 +390,12 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
             [UIBezierPath bezierPathWithRoundedRect:self.textBackgroundView.bounds
                                       cornerRadius:16.0].CGPath;
     }
+
+    if (!self.replyPreviewView.hidden && !CGRectIsEmpty(self.replyPreviewView.bounds)) {
+        [Styling addLiquidGlassBorderToView:self.replyPreviewView
+                               cornerRadius:16.0
+                                      color:PPChatInputBarReplyBorderColor(self.traitCollection)];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -387,7 +416,8 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
     self.replyPreviewView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.replyPreviewView.alpha = 0.0;
     self.replyPreviewView.hidden = YES;
-    self.replyPreviewView.clipsToBounds = YES;
+    self.replyPreviewView.clipsToBounds = NO;
+    self.replyPreviewView.layer.masksToBounds = NO;
     self.replyPreviewView.layer.cornerRadius = 16.0;
     self.replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     if (@available(iOS 13.0, *)) {
@@ -510,13 +540,27 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
                        systemName:actionName
                            active:(self.actionMode == PPActionButtonModeSend)];
 
-    self.replyPreviewView.backgroundColor = surfaceColor;
-    self.replyPreviewView.layer.borderColor = borderColor.CGColor;
-    self.replyAccentView.backgroundColor = PPChatInputBarAccentColor();
-    self.replyIconView.tintColor = PPChatInputBarAccentColor();
+    UIColor *replyBorderColor = PPChatInputBarReplyBorderColor(self.traitCollection);
+    UIColor *replyAccentColor =
+        isDark ? [UIColor.whiteColor colorWithAlphaComponent:0.88] : PPChatInputBarAccentColor();
+
+    self.replyPreviewView.backgroundColor = PPChatInputBarReplySurfaceColor(self.traitCollection);
+    self.replyPreviewView.layer.borderColor = replyBorderColor.CGColor;
+    self.replyPreviewView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.replyPreviewView.layer.shadowOpacity = isDark ? 0.18 : 0.08;
+    self.replyPreviewView.layer.shadowRadius = isDark ? 14.0 : 12.0;
+    self.replyPreviewView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.replyAccentView.backgroundColor = replyAccentColor;
+    self.replyIconView.tintColor = replyAccentColor;
     self.replyTitleLabel.textColor = PPChatInputBarTextColor(self.traitCollection);
-    self.replySubtitleLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
+    self.replySubtitleLabel.textColor = PPChatInputBarReplySecondaryTextColor(self.traitCollection);
     [self pp_applyIconButtonTheme:self.replyCancelButton systemName:@"xmark" active:NO];
+
+    if (!self.replyPreviewView.hidden && !CGRectIsEmpty(self.replyPreviewView.bounds)) {
+        [Styling addLiquidGlassBorderToView:self.replyPreviewView
+                               cornerRadius:16.0
+                                      color:replyBorderColor];
+    }
 }
 
 - (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active

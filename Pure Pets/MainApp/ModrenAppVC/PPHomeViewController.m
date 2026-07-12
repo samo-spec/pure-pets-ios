@@ -11762,7 +11762,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (targetWidth > 0.0) {
         self.homeLocationTitleWidthConstraint.constant = targetWidth;
         CGRect frame = self.homeLocationTitleView.frame;
-        frame.size = CGSizeMake(targetWidth, 46.0);
+        frame.size = CGSizeMake(targetWidth, 48.0);
         self.homeLocationTitleView.frame = frame;
         self.homeLocationTitleView.bounds = (CGRect){CGPointZero, frame.size};
         [self.homeLocationTitleView invalidateIntrinsicContentSize];
@@ -11833,7 +11833,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (targetWidth > 0.0) {
         self.homeSmartSearchWidthConstraint.constant = targetWidth;
         CGRect frame = self.homeSmartSearchView.frame;
-        frame.size = CGSizeMake(targetWidth, 46.0);
+        frame.size = CGSizeMake(targetWidth, 48.0);
         self.homeSmartSearchView.frame = frame;
         self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
         [self.homeSmartSearchView invalidateIntrinsicContentSize];
@@ -11849,13 +11849,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     CGFloat width = [self pp_preferredNavigationLocationTitleWidth];
     if (!self.homeLocationTitleView) {
         self.homeLocationTitleView =
-            [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 46.0)];
+            [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 48.0)];
         self.homeLocationTitleView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeLocationTitleWidthConstraint =
             [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 160.0)];
         self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityDefaultHigh;
         self.homeLocationTitleWidthConstraint.active = YES;
-        [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+        [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:48.0].active = YES;
         [self.homeLocationTitleView addTarget:self
                                        action:@selector(presentHomeLocationOptions)
                              forControlEvents:UIControlEventTouchUpInside];
@@ -11863,7 +11863,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGRect frame = self.homeLocationTitleView.frame;
     frame.size.width = width;
-    frame.size.height = 46.0;
+    frame.size.height = 48.0;
     self.homeLocationTitleView.frame = frame;
     self.homeLocationTitleView.bounds = (CGRect){CGPointZero, frame.size};
     self.homeLocationTitleView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
@@ -11876,13 +11876,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     CGFloat width = [self pp_preferredNavigationSearchWidth];
     if (!self.homeSmartSearchView) {
         self.homeSmartSearchView =
-            [[PPHomeSmartSearchTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 46.0)];
+            [[PPHomeSmartSearchTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 48.0)];
         self.homeSmartSearchView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeSmartSearchWidthConstraint =
             [self.homeSmartSearchView.widthAnchor constraintEqualToConstant:MAX(width, 220.0)];
         self.homeSmartSearchWidthConstraint.priority = UILayoutPriorityDefaultHigh;
         self.homeSmartSearchWidthConstraint.active = YES;
-        [self.homeSmartSearchView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+        [self.homeSmartSearchView.heightAnchor constraintEqualToConstant:48.0].active = YES;
         [self.homeSmartSearchView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                                   forAxis:UILayoutConstraintAxisHorizontal];
         [self.homeSmartSearchView setContentHuggingPriority:UILayoutPriorityDefaultLow
@@ -11895,7 +11895,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGRect frame = self.homeSmartSearchView.frame;
     frame.size.width = width;
-    frame.size.height = 46.0;
+    frame.size.height = 48.0;
     self.homeSmartSearchView.frame = frame;
     self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
     self.homeSmartSearchView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
@@ -12095,7 +12095,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UIView *wrapped = [self pp_wrappedNavigationTitleView:logoView];
 
     // Explicit size so UIKit never guesses
-    CGFloat height =  46.0;
+    CGFloat height =  48.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [logoView.heightAnchor constraintEqualToConstant:height],
@@ -12424,7 +12424,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                              action:(SEL _Nullable)action
 {
     static const CGFloat kAvatarSize = 36.0;
-    static const CGFloat kMinHeight  = 46.0;
+    static const CGFloat kMinHeight  = 48.0;
 
     // =====================================================
     // 1️⃣ Container (UIButton – nav-safe)

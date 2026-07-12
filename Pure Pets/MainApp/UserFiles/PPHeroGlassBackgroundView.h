@@ -46,6 +46,10 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// Controls how the accent is rendered. Defaults to the original slim top bar.
 @property (nonatomic, assign) PPHeroGlassAccentStyle accentStyle;
 
+/// Multiplies the decorative corner-glow opacity when `accentStyle` is
+/// `PPHeroGlassAccentStyleCornerGlow`. Defaults to 1.0.
+@property (nonatomic, assign) CGFloat cornerGlowOpacityMultiplier;
+
 /// Starts constellation line and dot pulse animations.
 /// Safe to call multiple times — will not duplicate animations.
 - (void)startAnimations;

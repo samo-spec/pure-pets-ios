@@ -239,6 +239,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.backgroundColor = UIColor.clearColor;
     self.clipsToBounds = NO;
     _accentStyle = PPHeroGlassAccentStyleBar;
+    _cornerGlowOpacityMultiplier = 1.0;
     [self pp_generateConstellationDefinition];
 
     // Card-level chrome: border, shadow, continuous corners
@@ -608,6 +609,16 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     [self reapplyPalette];
 }
 
+- (void)setCornerGlowOpacityMultiplier:(CGFloat)cornerGlowOpacityMultiplier
+{
+    CGFloat clamped = MIN(MAX(cornerGlowOpacityMultiplier, 0.0), 1.0);
+    if (fabs(_cornerGlowOpacityMultiplier - clamped) < 0.001) {
+        return;
+    }
+    _cornerGlowOpacityMultiplier = clamped;
+    [self reapplyPalette];
+}
+
 - (void)setAccentColorOverride:(UIColor *)accentColorOverride
 {
     if (_accentColorOverride == accentColorOverride ||
@@ -707,9 +718,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.constellationTraceLayer.opacity = 0.0;
 
     BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
-    self.accentView.backgroundColor = [brand colorWithAlphaComponent:cornerGlow ? (darkMode ? 0.20 : 0.155) : 0.58];
+    CGFloat cornerGlowOpacity = MIN(MAX(self.cornerGlowOpacityMultiplier, 0.0), 1.0);
+    self.accentView.backgroundColor =
+        [brand colorWithAlphaComponent:cornerGlow ? ((darkMode ? 0.20 : 0.155) * cornerGlowOpacity) : 0.58];
     self.accentView.layer.shadowColor = brand.CGColor;
-    self.accentView.layer.shadowOpacity = cornerGlow ? (darkMode ? 0.24f : 0.17f) : 0.0f;
+    self.accentView.layer.shadowOpacity = cornerGlow ? ((darkMode ? 0.24f : 0.17f) * cornerGlowOpacity) : 0.0f;
     self.accentView.layer.shadowRadius = cornerGlow ? 30.0f : 0.0f;
 }
 

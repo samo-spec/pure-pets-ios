@@ -210,7 +210,9 @@
     UIViewController *targetController = controller;
     while (targetController) {
         UIViewController *presentedController = targetController.presentedViewController;
-        if (presentedController) {
+        if (presentedController &&
+            !presentedController.isBeingDismissed &&
+            !presentedController.isMovingFromParentViewController) {
             targetController = presentedController;
             continue;
         }

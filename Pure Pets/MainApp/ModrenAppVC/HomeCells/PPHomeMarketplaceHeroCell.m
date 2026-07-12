@@ -273,8 +273,8 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.22 : 0.14].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:0.12].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.14 : 0.08].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:0.07].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
@@ -328,6 +328,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glass.cornerGlowOpacityMultiplier = 0.48;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 
@@ -522,7 +523,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.visualHaloGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     }
     [halo.layer insertSublayer:self.visualHaloGradientLayer atIndex:0];
-
+    halo.layer.opacity = 0.32;
     UIView *plate = [[UIView alloc] init];
     plate.translatesAutoresizingMaskIntoConstraints = NO;
     plate.layer.cornerRadius = 32.0;
@@ -725,8 +726,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     [self pp_applyBreathingGlowToView:self.visualHaloView
                                   key:PPHomeMarketplaceHeroHaloBreathKey
-                            fromAlpha:0.82
-                              toAlpha:1.0
+                            fromAlpha:0.36
+                              toAlpha:0.52
                             fromScale:0.97
                               toScale:1.045
                              duration:3.8];

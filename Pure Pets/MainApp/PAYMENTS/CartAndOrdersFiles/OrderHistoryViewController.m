@@ -125,9 +125,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 @interface OrderHistoryViewController () <UITableViewDataSource, UITableViewDelegate, PPSDelegate, UIScrollViewDelegate>
 
-@property (nonatomic, strong) UIView *backgroundTopGlowView;
-@property (nonatomic, strong) UIView *backgroundBottomGlowView;
-
 // Passthrough header layout
 @property (nonatomic, strong) PPPassThroughHeaderContainer *headerContainer;
 
@@ -428,14 +425,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     CGFloat safeTop = self.view.safeAreaInsets.top;
     CGFloat safeBottom = self.view.safeAreaInsets.bottom;
 
-    self.backgroundTopGlowView.frame = CGRectMake(-72.0, safeTop - 36.0, width * 0.78, width * 0.78);
-    self.backgroundBottomGlowView.frame = CGRectMake(width - (width * 0.62) + 26.0,
-                                                     height - (width * 0.58) - safeBottom - 84.0,
-                                                     width * 0.62,
-                                                     width * 0.62);
-    self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
-    self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
-
     self.tableView.frame = self.view.bounds;
     [self layoutHeroHeader];
     [self pp_applyPremiumBottomContentInset];
@@ -463,15 +452,59 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setupBackdrop
 {
-    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.backgroundColor = [UIColor.systemGrayColor colorWithAlphaComponent:0.015];
-    [self.view addSubview:self.backgroundTopGlowView];
+    [self pp_setupBackgroundGlows];
+}
 
-    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.backgroundColor = [UIColor.tertiarySystemFillColor colorWithAlphaComponent:0.06];
-    [self.view addSubview:self.backgroundBottomGlowView];
+- (void)pp_setupBackgroundGlows {
+    UIView *glow1 = [UIView new];
+    glow1.translatesAutoresizingMaskIntoConstraints = NO;
+    glow1.backgroundColor = [bageColor colorWithAlphaComponent:0.04];
+    glow1.layer.cornerRadius = 120.0;
+    glow1.clipsToBounds = YES;
+    [self.view addSubview:glow1];
+
+    UIView *glow2 = [UIView new];
+    glow2.translatesAutoresizingMaskIntoConstraints = NO;
+    glow2.backgroundColor = [UIColor.systemPurpleColor colorWithAlphaComponent:0.03];
+    glow2.layer.cornerRadius = 140.0;
+    glow2.clipsToBounds = YES;
+    [self.view addSubview:glow2];
+
+    UIView *glow3 = [UIView new];
+    glow3.translatesAutoresizingMaskIntoConstraints = NO;
+    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.06];
+    glow3.layer.cornerRadius = 110.0;
+    glow3.clipsToBounds = YES;
+    [self.view addSubview:glow3];
+
+    UIBlurEffect *blurEffect;
+    if (@available(iOS 13.0, *)) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    } else {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+    }
+    //UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    //blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    //[self.view addSubview:blurView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [glow1.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40.0],
+        [glow1.centerYAnchor constraintEqualToAnchor:self.view.topAnchor constant:150.0],
+        [glow1.widthAnchor constraintEqualToConstant:240.0],
+        [glow1.heightAnchor constraintEqualToConstant:240.0],
+
+        [glow2.centerXAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
+        [glow2.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
+        [glow2.widthAnchor constraintEqualToConstant:280.0],
+        [glow2.heightAnchor constraintEqualToConstant:280.0],
+
+        [glow3.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:100.0],
+        [glow3.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-120.0],
+        [glow3.widthAnchor constraintEqualToConstant:220.0],
+        [glow3.heightAnchor constraintEqualToConstant:220.0],
+
+      
+    ]];
 }
 
 - (void)setupHeroHeader
@@ -509,26 +542,19 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     // Complete hero-card background. Keep all legacy blur/gradient/orb material out
     // of this surface so PPHeroGlassBackgroundView is the single background source.
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
-    glass.translatesAutoresizingMaskIntoConstraints = NO;
     [self.heroSurfaceView insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
-    [NSLayoutConstraint activateConstraints:@[
-        [glass.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor],
-        [glass.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor],
-        [glass.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor],
-        [glass.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor]
-    ]];
 
     // Search Toggle Button (replaces trail icon)
     self.searchToggleButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.searchToggleButton.layer.cornerRadius = 22.0;
     self.searchToggleButton.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
-        UIImage *img = [UIImage systemImageNamed:@"magnifyingglass"];
+        UIImage *img = [UIImage systemImageNamed:@"cart"];
         [self.searchToggleButton setImage:img forState:UIControlStateNormal];
         self.searchToggleButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self.searchToggleButton addTarget:self action:@selector(searchToggleButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+   // [self.searchToggleButton addTarget:self action:@selector(searchToggleButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [self.heroSurfaceView addSubview:self.searchToggleButton];
 
     UIBlurEffect *btnBlur;
@@ -651,7 +677,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     CGFloat horizontalMargin = 16.0;
     CGFloat cardWidth = MIN(MAX(0.0, width - (horizontalMargin * 2.0)), 720.0);
     CGFloat cardX = floor((width - cardWidth) * 0.5);
-    CGFloat padding = 36.0;
+    CGFloat padding = 24.0;
     CGFloat contentWidth = MAX(0.0, cardWidth - (padding * 2.0));
 
     self.headerContainer.frame = CGRectMake(0.0, 0.0, width, 1.0);
@@ -742,6 +768,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.heroCard.frame = CGRectMake(cardX, safeTop, cardWidth, finalHeroHeight);
     self.heroSurfaceView.frame = self.heroCard.bounds;
+    self.heroGlassBackground.frame = self.heroSurfaceView.bounds;
 
     self.headerContainer.frame = CGRectMake(0.0,
                                             0.0,
@@ -791,8 +818,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.activeMetricLabel.backgroundColor = [accent colorWithAlphaComponent:0.14];
     self.activeMetricLabel.textColor = accent;
     
-    // Dynamic Top Ambient glow background updates
-    self.backgroundTopGlowView.backgroundColor = [accent colorWithAlphaComponent:0.015];
+
     
     NSString *scopeTitle = [self pp_hasSearchOrFilter] ? kLang(@"order_history_scope_filtered") : kLang(@"order_history_scope_all");
     self.activeMetricLabel.text = [NSString stringWithFormat:@"%@ • %@ %ld",
@@ -953,6 +979,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)searchToggleButtonTapped:(UIButton *)sender
 {
+    return;
     self.searchExpanded = !self.searchExpanded;
 
     // Smooth button icon rotate & morph transition

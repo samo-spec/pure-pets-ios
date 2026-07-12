@@ -41,7 +41,7 @@ static UIColor *PPChatDynamicColor(CGFloat lightRed,
 
 + (UIColor *)chatCanvasBackgroundColor
 {
-    return  AppBackgroundClrLigter;
+    return  AppBackgroundClr;
 }
 
 + (UIColor *)chatNeutralAccentColor
@@ -54,7 +54,7 @@ static UIColor *PPChatDynamicColor(CGFloat lightRed,
     return isIncoming
         ? PPChatDynamicColor(0.992, 0.989, 0.980, 1.0,
                              0.122, 0.128, 0.136, 0.98)
-        : AppPrimaryClr;// ;
+    : [AppPrimaryClrDarker colorWithAlphaComponent:0.82];// ;
 }
 
 + (UIColor *)bubblePrimaryContentColorForIncoming:(BOOL)isIncoming

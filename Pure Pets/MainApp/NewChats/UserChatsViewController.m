@@ -116,7 +116,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = AppBackgroundClrLigter;// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClr ;// PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 - (void)pp_configureTableView {
@@ -157,33 +157,34 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 - (void)pp_setupBackgroundGlows {
     UIView *glow1 = [UIView new];
     glow1.translatesAutoresizingMaskIntoConstraints = NO;
-    glow1.backgroundColor = [UIColor.systemTealColor colorWithAlphaComponent:0.18];
+    glow1.backgroundColor = [bageColor colorWithAlphaComponent:0.41]; //[UIColor.systemTealColor colorWithAlphaComponent:0.18];
     glow1.layer.cornerRadius = 120.0;
     glow1.clipsToBounds = YES;
     [self.view addSubview:glow1];
 
     UIView *glow2 = [UIView new];
     glow2.translatesAutoresizingMaskIntoConstraints = NO;
-    glow2.backgroundColor = [UIColor.systemPurpleColor colorWithAlphaComponent:0.15];
+    glow2.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.03]; //[UIColor.systemPurpleColor colorWithAlphaComponent:0.15];
     glow2.layer.cornerRadius = 140.0;
     glow2.clipsToBounds = YES;
     [self.view addSubview:glow2];
 
     UIView *glow3 = [UIView new];
     glow3.translatesAutoresizingMaskIntoConstraints = NO;
-    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.12];
+    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.04];
     glow3.layer.cornerRadius = 110.0;
     glow3.clipsToBounds = YES;
     [self.view addSubview:glow3];
 
     UIBlurEffect *blurEffect;
     if (@available(iOS 13.0, *)) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
     } else {
         blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
     }
     UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
     blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.alpha = 0.4;
     [self.view addSubview:blurView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -198,7 +199,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         [glow2.heightAnchor constraintEqualToConstant:280.0],
 
         [glow3.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:100.0],
-        [glow3.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-120.0],
+        [glow3.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-40.0],
         [glow3.widthAnchor constraintEqualToConstant:220.0],
         [glow3.heightAnchor constraintEqualToConstant:220.0],
 
