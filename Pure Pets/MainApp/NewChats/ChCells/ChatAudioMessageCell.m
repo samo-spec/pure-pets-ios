@@ -25,8 +25,6 @@
 @property (nonatomic, strong) NSLayoutConstraint *leadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *trailingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *maxWidthConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *statuTrailingConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *statuTrailingConstraintSomeOne;
 @property (nonatomic, strong) UIView *thumbView;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *scrubHaptic;
 @property (nonatomic, assign) NSInteger lastScrubTick;
@@ -193,37 +191,63 @@
     self.timeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
     self.timeLabel.text = @"0:00";
     
-    [_playPauseButton.widthAnchor constraintEqualToConstant:36].active = YES;
-    [_playPauseButton.heightAnchor constraintEqualToConstant:36].active = YES;
-    
     [self.timeLabel setContentHuggingPriority:UILayoutPriorityRequired
                                       forAxis:UILayoutConstraintAxisHorizontal];
-
     [self.timeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                     forAxis:UILayoutConstraintAxisHorizontal];
     
+    // Bottom time label (e.g. 0:05 or 12:41 PM)
+    self.bottomTimeLabel = [[UILabel alloc] init];
+    self.bottomTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bottomTimeLabel.font = [GM MidFontWithSize:11];
+    self.bottomTimeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
+    self.bottomTimeLabel.text = @"0:00";
+    [self.bottomTimeLabel sizeToFit];
+    [self.bottomTimeLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                            forAxis:UILayoutConstraintAxisHorizontal];
+    [self.bottomTimeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                          forAxis:UILayoutConstraintAxisHorizontal];
+
+    // Status icon (sent / delivered / read)
+    self.statusImageView = [[UIImageView alloc] init];
+    self.statusImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.statusImageView.contentMode = UIViewContentModeScaleAspectFit;
+    self.statusImageView.tintColor = UIColor.tertiaryLabelColor;
+    
+    const CGFloat statusSize = 14.0;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.statusImageView.widthAnchor constraintEqualToConstant:statusSize],
+        [self.statusImageView.heightAnchor constraintEqualToConstant:statusSize],
+    ]];
+
+    [_playPauseButton.widthAnchor constraintEqualToConstant:36].active = YES;
+    [_playPauseButton.heightAnchor constraintEqualToConstant:36].active = YES;
     
     [self.progressHitView setContentHuggingPriority:UILayoutPriorityDefaultLow
                                            forAxis:UILayoutConstraintAxisHorizontal];
-
     [self.progressHitView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                          forAxis:UILayoutConstraintAxisHorizontal];
+
     // Stack
     UIStackView *stack =
         [[UIStackView alloc] initWithArrangedSubviews:@[
             _playPauseButton,
             self.timeLabel,
             self.progressHitView,
-            
+            self.bottomTimeLabel,
+            self.statusImageView
         ]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
-    // FIX 3: Ensure waveform is not visually collapsed by stack alignment
-    stack.alignment = UIStackViewAlignmentFill;
+    stack.alignment = UIStackViewAlignmentCenter;
     stack.spacing = 10;
     stack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [self.bubbleView addSubview:stack];
     self.audioStack = stack;
+
+    if (@available(iOS 11.0, *)) {
+        [stack setCustomSpacing:6.0 afterView:self.bottomTimeLabel];
+    }
 
     self.replyPreviewView = [UIView new];
     self.replyPreviewView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -281,10 +305,9 @@
         [stack.topAnchor constraintEqualToAnchor:self.replyPreviewView.bottomAnchor constant:7.0];
     self.audioStackTopConstraint.active = YES;
     [NSLayoutConstraint activateConstraints:@[
-
         [stack.leadingAnchor constraintEqualToAnchor:self.bubbleView.leadingAnchor constant:12],
         [stack.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-12],
- 
+        [stack.bottomAnchor constraintEqualToAnchor:self.bubbleView.bottomAnchor constant:-8.0],
     ]];
 
     [self.progressHitView addSubview:self.waveformView];
@@ -299,41 +322,6 @@
 
         // Touch target height
         [self.progressHitView.heightAnchor constraintEqualToConstant:44],
-     ]];
-    
-     
-    // Bottom time label (e.g. 0:05 or 12:41 PM)
-    self.bottomTimeLabel = [[UILabel alloc] init];
-    self.bottomTimeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.bottomTimeLabel.font = [GM MidFontWithSize:11];
-    self.bottomTimeLabel.textColor = [PPChatsFunc bubbleSecondaryContentColorForIncoming:NO];
-    self.bottomTimeLabel.text = @"0:00";
-    [self.bottomTimeLabel sizeToFit];
-    // Status icon (sent / delivered / read)
-    self.statusImageView = [[UIImageView alloc] init];
-    self.statusImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.statusImageView.contentMode = UIViewContentModeScaleAspectFit;
-    self.statusImageView.tintColor = UIColor.tertiaryLabelColor;
-    
-     
-    [self.bubbleView addSubview:_bottomTimeLabel];
-    [self.bubbleView addSubview:_statusImageView];
-  
-    const CGFloat padding16 = 16.0;
-   
-    const CGFloat statusSize = 14.0;
-    const CGFloat spacingBetweenTimeAndStatus = 6.0;
-    self.statuTrailingConstraint = [self.bottomTimeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.statusImageView.leadingAnchor constant:-spacingBetweenTimeAndStatus];
-    self.statuTrailingConstraintSomeOne = [self.bottomTimeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.bubbleView.trailingAnchor constant:-16];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.statusImageView.bottomAnchor constraintEqualToAnchor:self.bubbleView.bottomAnchor constant: -8],
-        [self.statusImageView.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-padding16],
-        [self.statusImageView.widthAnchor constraintEqualToConstant:statusSize],
-        [self.statusImageView.heightAnchor constraintEqualToConstant:statusSize],
-        // Removed conflicting trailing constraints:
-        [self.bottomTimeLabel.centerYAnchor constraintEqualToAnchor:self.statusImageView.centerYAnchor],
-        self.statuTrailingConstraint,
     ]];
     self.bubbleLeadingConstraint =
         [self.bubbleView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:12];
@@ -552,8 +540,7 @@ self.groupPosition = groupPosition;
     
     if(!isIncoming)
     {
-        self.statuTrailingConstraint.active = YES;
-        self.statuTrailingConstraintSomeOne.active = NO;
+        self.statusImageView.hidden = NO;
         self.playLoadingIndicator.color = foreground;
         _playPauseButton.backgroundColor = controlSurface;
         _playPauseButton.tintColor = interactive;
@@ -570,6 +557,7 @@ self.groupPosition = groupPosition;
     }
     else
     {
+        self.statusImageView.hidden = YES;
         _playPauseButton.backgroundColor = controlSurface;
         _playPauseButton.tintColor = interactive;
         _playColor = interactive;
@@ -579,8 +567,6 @@ self.groupPosition = groupPosition;
         self.playLoadingIndicator.color = interactive;
         // FIX 2: Force waveform to redraw when colors / state change
          //[Styling applyCornerMaskToView:self.bubbleView tl:6 tr:12 bl:12 br:12];
-        self.statuTrailingConstraint.active = NO;
-        self.statuTrailingConstraintSomeOne.active = YES;
     }
     
   

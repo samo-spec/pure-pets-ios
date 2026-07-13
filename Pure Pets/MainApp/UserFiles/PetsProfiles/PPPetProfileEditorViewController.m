@@ -857,8 +857,29 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     }
 }
 
-- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+- (void)pp_applyCellChrome:(UITableViewCell *)cell
+               atIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == PPEditorSectionInfo) {
+        cell.backgroundColor = UIColor.clearColor;
+        cell.contentView.backgroundColor = UIColor.clearColor;
+        cell.layer.shadowOpacity = 0.0f;
+        cell.layer.shadowRadius = 0.0f;
+        cell.layer.shadowOffset = CGSizeZero;
+        cell.layer.shadowColor = UIColor.clearColor.CGColor;
+        cell.layer.masksToBounds = NO;
+        cell.contentView.layer.cornerRadius = 0.0;
+        cell.contentView.layer.borderWidth = 0.0;
+        cell.contentView.layer.borderColor = UIColor.clearColor.CGColor;
+        cell.contentView.layer.masksToBounds = NO;
+        return;
+    }
+
     PPPetsApplySurfaceCellStyle(cell, 20.0);
+}
+
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+    [self pp_applyCellChrome:cell atIndexPath:indexPath];
 }
 
 #pragma mark - Category Picker
@@ -1007,7 +1028,9 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 - (void)pp_initForm {
     PPFormStyle *style = [PPFormStyle defaultStyle];
+    UIColor *formAccentColor = PPPetsUIBrandColor();
     style.cardBackgroundColor = UIColor.clearColor;
+    style.accentColor = formAccentColor;
     style.fieldBackgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
             ? [UIColor colorWithWhite:1.0 alpha:0.06]
@@ -1015,8 +1038,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     }];
     style.fieldBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return tc.userInterfaceStyle == UIUserInterfaceStyleDark
-            ? [UIColor colorWithWhite:1.0 alpha:0.08]
-            : [UIColor colorWithWhite:0.0 alpha:0.045];
+            ? [formAccentColor colorWithAlphaComponent:0.18]
+            : [formAccentColor colorWithAlphaComponent:0.12];
     }];
     style.primaryTextColor = AppPrimaryTextClr;
     style.secondaryTextColor = UIColor.secondaryLabelColor;
@@ -1088,7 +1111,12 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         PPPetsApplyCanvasBackground(self, self.tableView);
-        PPPetsRefreshDynamicLayerColors(self.tableView);
+        for (UITableViewCell *cell in self.tableView.visibleCells) {
+            NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+            if (indexPath) {
+                [self pp_applyCellChrome:cell atIndexPath:indexPath];
+            }
+        }
     }
 }
 

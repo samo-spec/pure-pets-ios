@@ -230,7 +230,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.isAllOption = isAll;
     self.isKindSelected = selected;
     self.currentImageURL = PPSafeString(kind.KindImageUrl);
-    self.currentAccentColor = [self pp_accentColorForKind:kind isAll:isAll];
+    self.currentAccentColor = isAll ? [AppPrimaryTextClr colorWithAlphaComponent:0.72] : [self pp_accentColorForKind:kind isAll:isAll];
 
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -337,8 +337,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (UIColor *)pp_accentColorForKind:(MainKindsModel *)kind isAll:(BOOL)isAll
 {
     if (isAll || !kind) {
-        return AppPrimaryClr ?: PPModerHomeDynamicColor([UIColor colorWithRed:0.88 green:0.05 blue:0.30 alpha:1.0],
-                                                        [UIColor colorWithRed:1.00 green:0.40 blue:0.58 alpha:1.0]);
+        return AppPrimaryClr ?: [GM appPrimaryColor] ?: PPModerHomeDynamicColor([UIColor colorWithRed:0.788 green:0.188 blue:0.322 alpha:1.0],
+                                                                                [UIColor colorWithRed:1.000 green:0.608 blue:0.702 alpha:1.0]);
     }
 
     UIColor *modelColor = kind.kindColor;

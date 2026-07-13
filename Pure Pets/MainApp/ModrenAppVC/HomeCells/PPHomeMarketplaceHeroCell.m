@@ -12,6 +12,8 @@
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
+static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
+static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {
@@ -23,7 +25,43 @@ static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 
 static UIColor *PPMarketHeroAccentColor(void)
 {
-    return AppPrimaryClr ?: PPMarketHeroColor(0xEA6D54, 1.0);
+    return AppPrimaryClr ?: [GM appPrimaryColor] ?: PPMarketHeroColor(0xC93052, 1.0);
+}
+
+static UIColor *PPMarketHeroShineColor(void)
+{
+    return AppPrimaryClrShiner ?: [GM AppPrimaryColorShainer] ?: PPMarketHeroColor(0xF43F6A, 1.0);
+}
+
+static UIColor *PPMarketHeroDisplayAccentColor(UIColor *accentColor,
+                                               UITraitCollection *traitCollection)
+{
+    UIColor *sourceAccent = accentColor ?: PPMarketHeroAccentColor();
+    UIColor *resolvedAccent = PPMarketplaceHeroCardResolvedColor(sourceAccent, traitCollection);
+    return resolvedAccent ?: sourceAccent;
+}
+
+static UIColor *PPMarketHeroCTAEndColor(UIColor *accentColor,
+                                        UITraitCollection *traitCollection,
+                                        BOOL useBrandFamily)
+{
+    UIColor *resolvedAccent = PPMarketplaceHeroCardResolvedColor(accentColor ?: PPMarketHeroAccentColor(),
+                                                                 traitCollection);
+    BOOL darkMode = PPMarketplaceHeroCardIsDark(traitCollection);
+
+    if (useBrandFamily) {
+        UIColor *shine = PPMarketplaceHeroCardResolvedColor(PPMarketHeroShineColor(),
+                                                            traitCollection);
+        return PPMarketplaceHeroCardBlend(resolvedAccent,
+                                          shine ?: resolvedAccent,
+                                          darkMode ? 0.18 : 0.28,
+                                          traitCollection);
+    }
+
+    return PPMarketplaceHeroCardBlend(resolvedAccent,
+                                      darkMode ? UIColor.whiteColor : UIColor.blackColor,
+                                      darkMode ? 0.10 : 0.14,
+                                      traitCollection);
 }
 
 static UIColor *PPMarketHeroLabelIconColor(void)
@@ -77,6 +115,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong) UIView *storefrontPlateView;
 @property (nonatomic, strong) CAGradientLayer *storefrontGradientLayer;
 @property (nonatomic, strong) UIImageView *storefrontIconView;
+@property (nonatomic, strong) NSLayoutConstraint *storefrontIconWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *storefrontIconHeightConstraint;
 @property (nonatomic, strong) UIView *primaryProductTileView;
 @property (nonatomic, strong) UIImageView *primaryProductIconView;
 @property (nonatomic, strong) UIView *secondaryProductTileView;
@@ -89,6 +129,9 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong, nullable) UIColor *contextAccentColor;
 @property (nonatomic, copy) NSString *currentContextIdentifier;
 @property (nonatomic, copy, nullable) NSString *currentArtworkImageURL;
+
+- (void)pp_applyArtworkSizingForAllContext:(BOOL)isAll
+                                  animated:(BOOL)animated;
 
 @end
 
@@ -227,6 +270,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     }
 
     void (^applyContent)(void) = ^{
+        [self pp_applyArtworkSizingForAllContext:isAll animated:animated && contentChanged];
         if (isAll) {
             [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.storefrontIconView];
             self.currentArtworkImageURL = nil;
@@ -315,7 +359,10 @@ static BOOL PPMarketHeroReduceMotion(void)
 
 - (void)refreshThemeAppearance
 {
-    UIColor *primaryAccent = self.contextAccentColor ?: PPPetCareAccentColor() ?: PPMarketHeroAccentColor();
+    UIColor *rawAccent = self.contextAccentColor ?: PPPetCareAccentColor() ?: PPMarketHeroAccentColor();
+    BOOL isAllContext = [PPSafeString(self.currentContextIdentifier) isEqualToString:@"all"];
+    UIColor *primaryAccent = PPMarketHeroDisplayAccentColor(rawAccent,
+                                                            self.traitCollection);
     BOOL darkMode = NO;
     if (@available(iOS 13.0, *)) {
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
@@ -325,11 +372,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIColor *textPrimary = PPMarketplaceHeroCardPrimaryTextColor();
     UIColor *textSecondary = PPMarketplaceHeroCardSecondaryTextColor();
     UIColor *stroke = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
-    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:darkMode ? 0.20 : 0.135];
-    UIColor *ctaEnd = PPMarketplaceHeroCardBlend(primaryAccent,
-                                                  PPMarketHeroColor(0x86133B, 1.0),
-                                                  darkMode ? 0.30 : 0.38,
-                                                  self.traitCollection);
+    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:darkMode ? 0.22 : 0.17];
+    UIColor *ctaEnd = PPMarketHeroCTAEndColor(primaryAccent,
+                                             self.traitCollection,
+                                             isAllContext);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
     self.heroGlassBackground.accentColorOverride = primaryAccent;
@@ -351,29 +397,29 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
     self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     self.ctaView.layer.borderWidth = 0.8;
-    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.36].CGColor;
+    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.46].CGColor;
     self.ctaView.layer.shadowColor = primaryAccent.CGColor;
-    self.ctaView.layer.shadowOpacity = darkMode ? 0.20f : 0.15f;
-    self.ctaView.layer.shadowRadius = 11.0f;
-    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    self.ctaView.layer.shadowOpacity = darkMode ? 0.24f : 0.19f;
+    self.ctaView.layer.shadowRadius = 12.0f;
+    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     self.ctaLabel.textColor = UIColor.whiteColor;
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.20 : 0.135].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:0.10].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.06 : 0.03].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
 
     self.storefrontGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.34 : 0.245].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.96 : 0.90].CGColor
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.42 : 0.34].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.90 : 0.78].CGColor
     ];
     self.storefrontGradientLayer.startPoint = CGPointMake(0.12, 0.0);
     self.storefrontGradientLayer.endPoint = CGPointMake(0.92, 1.0);
     self.storefrontPlateView.layer.borderColor = stroke.CGColor;
-    self.storefrontIconView.tintColor = PPMarketHeroLabelIconColor();
+    self.storefrontIconView.tintColor = isAllContext ? PPMarketHeroLabelIconColor() : primaryAccent;
 
     [self pp_applyProductTile:self.primaryProductTileView
                          icon:self.primaryProductIconView
@@ -394,7 +440,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     UIImage *placeholder = [self pp_artworkImageForMainKind:mainKind];
     self.storefrontIconView.image = placeholder;
-    self.storefrontIconView.tintColor = self.contextAccentColor ?: PPMarketHeroAccentColor();
+    self.storefrontIconView.tintColor = PPMarketHeroDisplayAccentColor(self.contextAccentColor ?: PPMarketHeroAccentColor(),
+                                                                       self.traitCollection);
 
     if (imageURL.length == 0) {
         return;
@@ -467,7 +514,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.68;
+    glass.cornerGlowOpacityMultiplier = 0.88;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 
@@ -674,7 +721,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.visualHaloGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     }
     [halo.layer insertSublayer:self.visualHaloGradientLayer atIndex:0];
-    halo.layer.opacity = 0.32;
+    halo.layer.opacity = 0.42;
     UIView *plate = [[UIView alloc] init];
     plate.translatesAutoresizingMaskIntoConstraints = NO;
     plate.layer.cornerRadius = 32.0;
@@ -709,6 +756,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.secondaryProductIconView = (UIImageView *)self.secondaryProductTileView.subviews.firstObject;
     [visual addSubview:self.secondaryProductTileView];
 
+    self.storefrontIconWidthConstraint = [storefrontIcon.widthAnchor constraintEqualToConstant:PPHomeMarketplaceHeroAllArtworkSide];
+    self.storefrontIconHeightConstraint = [storefrontIcon.heightAnchor constraintEqualToConstant:PPHomeMarketplaceHeroAllArtworkSide];
+
     [NSLayoutConstraint activateConstraints:@[
         [halo.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:visual.centerYAnchor],
@@ -722,8 +772,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 
         [storefrontIcon.centerXAnchor constraintEqualToAnchor:plate.centerXAnchor],
         [storefrontIcon.centerYAnchor constraintEqualToAnchor:plate.centerYAnchor],
-        [storefrontIcon.widthAnchor constraintEqualToConstant:52.0],
-        [storefrontIcon.heightAnchor constraintEqualToConstant:52.0],
+        self.storefrontIconWidthConstraint,
+        self.storefrontIconHeightConstraint,
 
         [self.primaryProductTileView.widthAnchor constraintEqualToConstant:44.0],
         [self.primaryProductTileView.heightAnchor constraintEqualToConstant:44.0],
@@ -770,6 +820,36 @@ static BOOL PPMarketHeroReduceMotion(void)
 }
 
 #pragma mark - State
+
+- (void)pp_applyArtworkSizingForAllContext:(BOOL)isAll
+                                  animated:(BOOL)animated
+{
+    if (!self.storefrontIconWidthConstraint || !self.storefrontIconHeightConstraint) {
+        return;
+    }
+
+    CGFloat targetSide = isAll ? PPHomeMarketplaceHeroAllArtworkSide : PPHomeMarketplaceHeroCategoryArtworkSide;
+    if (fabs(self.storefrontIconWidthConstraint.constant - targetSide) < 0.5 &&
+        fabs(self.storefrontIconHeightConstraint.constant - targetSide) < 0.5) {
+        return;
+    }
+
+    void (^updates)(void) = ^{
+        self.storefrontIconWidthConstraint.constant = targetSide;
+        self.storefrontIconHeightConstraint.constant = targetSide;
+        [self.storefrontPlateView layoutIfNeeded];
+    };
+
+    if (animated && !PPMarketHeroReduceMotion()) {
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                         animations:updates
+                         completion:nil];
+    } else {
+        updates();
+    }
+}
 
 - (void)pp_applyProductTile:(UIView *)tile
                        icon:(UIImageView *)icon
@@ -877,8 +957,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     [self pp_applyBreathingGlowToView:self.visualHaloView
                                   key:PPHomeMarketplaceHeroHaloBreathKey
-                            fromAlpha:0.36
-                              toAlpha:0.52
+                            fromAlpha:0.42
+                              toAlpha:0.62
                             fromScale:0.97
                               toScale:1.045
                              duration:3.8];

@@ -34,8 +34,8 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
 static const CGFloat kPPAccessoryFilterHeight = 52.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 24.0;
-static const CGFloat kPPFilterExpandedBottomInset = 24.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 28.0;
+static const CGFloat kPPFilterExpandedBottomInset = 36.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -928,6 +928,42 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 @end
 
+@interface PPPremiumCollapseButton : UIButton
+@property (nonatomic, assign) BOOL expanded;
+@end
+
+@implementation PPPremiumCollapseButton
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.alpha = highlighted ? 0.92 : 1.0;
+        return;
+    }
+
+    CGFloat scale = highlighted ? 0.96 : 1.0;
+    [UIView animateWithDuration:highlighted ? 0.10 : 0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.transform = CGAffineTransformMakeScale(scale, scale);
+        self.alpha = highlighted ? 0.94 : 1.0;
+    } completion:nil];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    // Re-apply the transform to protect it from UIKit resetting it
+    self.imageView.transform = self.expanded
+        ? CGAffineTransformMakeRotation((CGFloat)M_PI)
+        : CGAffineTransformIdentity;
+}
+
+@end
+
 @interface PPDataViewVC () <PPUniversalCellDelegate,UITabBarDelegate,UIGestureRecognizerDelegate,UICollectionViewDataSourcePrefetching, PPPinterestLayoutDelegate, BBDataViewFullDetailsCellDelegate>//UITabBarDelegate
  // Input
 @property (nonatomic, strong) PPDataViewInput *input;
@@ -940,7 +976,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
-@property (nonatomic, strong) UIButton *filterCollapseButton;
+@property (nonatomic, strong) PPPremiumCollapseButton *filterCollapseButton;
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
 // Scroll restore
@@ -1335,6 +1371,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
     }
     self.didFixInitialScroll = NO;
+    self.filterBadgesCollapsed = YES; // Default filter state is collapsed
     _didlayout = NO;
     self.useCapsuleNavigation = NO;
     self.blurHashCache = [NSCache new];
@@ -4098,16 +4135,35 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     UIImageSymbolConfiguration *symbolConfig =
-        [UIImageSymbolConfiguration configurationWithPointSize:13.5
+        [UIImageSymbolConfiguration configurationWithPointSize:10.0
                                                         weight:UIImageSymbolWeightBold
                                                          scale:UIImageSymbolScaleSmall];
     UIImage *chevron = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolConfig]
                         imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [self.filterCollapseButton setImage:chevron forState:UIControlStateNormal];
 
+    NSString *titleText = kLang(labelKey);
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.filterCollapseButton.configuration;
+        UIFont *btnFont = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:titleText attributes:@{
+            NSFontAttributeName: btnFont,
+            NSForegroundColorAttributeName: PPDataViewAccentColor()
+        }];
+        self.filterCollapseButton.configuration = config;
+    } else {
+        UIFont *btnFont = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+        self.filterCollapseButton.titleLabel.font = btnFont;
+        [self.filterCollapseButton setTitle:titleText forState:UIControlStateNormal];
+    }
+
+    if ([self.filterCollapseButton isKindOfClass:[PPPremiumCollapseButton class]]) {
+        ((PPPremiumCollapseButton *)self.filterCollapseButton).expanded = expanded;
+    }
+
     void (^updates)(void) = ^{
         self.filterCollapseButton.alpha = hasFilters ? 1.0 : 0.0;
-        self.filterCollapseButton.transform = expanded
+        self.filterCollapseButton.imageView.transform = expanded
             ? CGAffineTransformMakeRotation((CGFloat)M_PI)
             : CGAffineTransformIdentity;
     };
@@ -5502,7 +5558,7 @@ presentingViewController:self
 
     [controlIsland addSubview:filterContainer];
 
-    UIButton *collapseButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    PPPremiumCollapseButton *collapseButton = [PPPremiumCollapseButton buttonWithType:UIButtonTypeCustom];
     collapseButton.translatesAutoresizingMaskIntoConstraints = NO;
     collapseButton.backgroundColor = UIColor.clearColor;
     collapseButton.tintColor = PPDataViewAccentColor();
@@ -5513,19 +5569,27 @@ presentingViewController:self
     [collapseButton addTarget:self
                        action:@selector(toggleFilterBadgesCollapsed:)
              forControlEvents:UIControlEventTouchUpInside];
+    
+    collapseButton.layer.cornerRadius = 14.0;
+    if (@available(iOS 13.0, *)) {
+        collapseButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    collapseButton.layer.masksToBounds = YES;
+    
+    collapseButton.backgroundColor = [UIColor clearColor];
+    
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 16.0, 2.0, 16.0);
-        configuration.baseForegroundColor = UIColor.lightGrayColor;// PPDataViewAccentColor();
-        configuration.background.backgroundColor = UIColor.clearColor;
-        configuration.background.strokeColor = UIColor.clearColor;
-        configuration.background.strokeWidth = 0.0;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(4.0, 16.0, 4.0, 16.0);
+        configuration.imagePadding = 6.0;
+        configuration.imagePlacement = NSDirectionalRectEdgeTrailing; // RTL-safe chevron placement
+        configuration.baseForegroundColor = PPDataViewAccentColor();
         collapseButton.configuration = configuration;
     } else {
-        collapseButton.contentEdgeInsets = UIEdgeInsetsMake(2.0, 16.0, 2.0, 16.0);
+        collapseButton.contentEdgeInsets = UIEdgeInsetsMake(4.0, 16.0, 4.0, 16.0);
+        collapseButton.imageEdgeInsets = UIEdgeInsetsMake(0.0, 6.0, 0.0, -6.0);
     }
-    collapseButton.layer.borderWidth = 0.0;
-    collapseButton.layer.borderColor = [UIColor clearColor].CGColor;
+    
     self.filterCollapseButton = collapseButton;
     [controlIsland addSubview:collapseButton];
 
@@ -5539,14 +5603,13 @@ presentingViewController:self
     self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-8.0];
     self.filterChipBottomConstraint.active = YES;
     self.filterCollapseButtonBottomConstraint =
-    [collapseButton.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-3.0];
+    [collapseButton.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-4.0];
     self.filterCollapseButtonBottomConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
         [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
         [collapseButton.centerXAnchor constraintEqualToAnchor:controlIsland.centerXAnchor],
-        [collapseButton.widthAnchor constraintEqualToConstant:48.0],
         [collapseButton.heightAnchor constraintEqualToConstant:kPPFilterCollapseHandleHeight]
     ]];
 

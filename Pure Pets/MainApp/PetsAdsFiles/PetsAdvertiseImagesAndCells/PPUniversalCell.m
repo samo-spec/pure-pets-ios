@@ -96,13 +96,19 @@ static UIColor *PPUniversalCellNotifyActionForegroundColor(void)
 
 static UIColor *PPUniversalCellNotifyActionBackgroundColor(void)
 {
-    return AppWarningClr ?: PPUniversalCellDynamicColor([UIColor colorWithRed:0.92 green:0.47 blue:0.10 alpha:1.0],
-                                                        [UIColor colorWithRed:1.00 green:0.68 blue:0.20 alpha:1.0]);
+    return AppPrimaryClrDarker ?: PPUniversalCellDynamicColor([UIColor colorWithRed:(0x7F / 255.0)
+                                                                              green:(0x2B / 255.0)
+                                                                               blue:(0x3C / 255.0)
+                                                                              alpha:1.0],
+                                                              [UIColor colorWithRed:1.0
+                                                                              green:(0xB7 / 255.0)
+                                                                               blue:(0xB3 / 255.0)
+                                                                              alpha:1.0]);
 }
 
 static UIColor *PPUniversalCellNotifyActionBorderColor(void)
 {
-    return [UIColor.whiteColor colorWithAlphaComponent:0.26];
+    return [PPUniversalCellNotifyActionBackgroundColor() colorWithAlphaComponent:0.42];
 }
 
 static NSArray<id> *PPUniversalCellLiquidBorderColors(BOOL isDark, BOOL selected, BOOL imageBorder)
@@ -2064,8 +2070,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     BOOL containedProductImage = [self pp_prefersContainedProductImageForViewModel:vm];
     self.imageView.contentMode = containedProductImage ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
+    UIColor *containedImageBackground = AppBackgroundClrLigter
+        ? [AppBackgroundClrLigter colorWithAlphaComponent:0.22]
+        : [UIColor colorWithWhite:1.0 alpha:0.16];
     self.imageView.backgroundColor = containedProductImage
-        ? PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.16],
+        ? PPUniversalCellDynamicColor(containedImageBackground,
                                       [UIColor colorWithWhite:1.0 alpha:0.05])
         : UIColor.clearColor;
 
@@ -2798,7 +2807,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         config.baseBackgroundColor = background;
         config.baseForegroundColor = foreground;
         config.background.cornerRadius = actionCornerRadius;
-        config.background.strokeWidth = (usesQuantity && isInCart) ? 1.0 : 0.0;
+        config.background.strokeWidth = isOutOfStock ? 1.0 : ((usesQuantity && isInCart) ? 1.0 : 0.0);
         config.background.strokeColor = border;
         config.image = imageName.length > 0 ? [UIImage systemImageNamed:imageName] : nil;
         config.showsActivityIndicator = NO;
@@ -2827,17 +2836,22 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.addButton.contentEdgeInsets = horizontalRow
             ? UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0)
             : UIEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
-        self.addButton.layer.borderWidth = (usesQuantity && isInCart) ? 1.0 : 0.0;
+        self.addButton.layer.borderWidth = isOutOfStock ? 1.0 : ((usesQuantity && isInCart) ? 1.0 : 0.0);
         [self.addButton pp_setBorderColor:border];
     }
 
     self.addButton.layer.cornerRadius = actionCornerRadius;
     [self.addButton pp_setShadowColor:(isOutOfStock ? background : brand)];
     self.addButton.layer.shadowOpacity = isOutOfStock
-        ? (horizontalRow ? 0.12 : 0.16)
+        ? (horizontalRow ? 0.10 : 0.12)
         : (isInCart ? 0.0 : (horizontalRow ? 0.045 : 0.075));
-    self.addButton.layer.shadowRadius = isOutOfStock ? (horizontalRow ? 8.0 : 10.0) : (horizontalRow ? 7.0 : 9.0);
-    self.addButton.layer.shadowOffset = CGSizeMake(0.0, isOutOfStock ? (horizontalRow ? 3.5 : 5.0) : (horizontalRow ? 3.0 : 4.5));
+    self.addButton.layer.shadowRadius = isOutOfStock
+        ? (horizontalRow ? 6.0 : 7.5)
+        : (horizontalRow ? 7.0 : 9.0);
+    self.addButton.layer.shadowOffset = CGSizeMake(0.0,
+                                                   isOutOfStock
+                                                   ? (horizontalRow ? 2.5 : 3.0)
+                                                   : (horizontalRow ? 3.0 : 4.5));
     self.addButton.enabled = !(isOutOfStock && isNotifyPending);
     self.addButton.accessibilityLabel = title;
 }

@@ -193,6 +193,38 @@ struct ChatBarView: View {
         )
     }
 
+    private var replyPreviewSurfaceColor: Color {
+        Color(
+            uiColor: UIColor { traitCollection in
+                if traitCollection.userInterfaceStyle == .dark {
+                    return UIColor(red: 0.128, green: 0.138, blue: 0.144, alpha: 0.94)
+                }
+                return UIColor(red: 0.997, green: 0.991, blue: 0.972, alpha: 0.97)
+            }
+        )
+    }
+
+    private var replyPreviewBorderColor: Color {
+        Color(
+            uiColor: UIColor { traitCollection in
+                if traitCollection.userInterfaceStyle == .dark {
+                    return UIColor(white: 1.0, alpha: 0.16)
+                }
+                return UIColor(red: 0.145, green: 0.166, blue: 0.165, alpha: 0.12)
+            }
+        )
+    }
+
+    private var replyPreviewShadowColor: Color {
+        Color(
+            uiColor: UIColor { traitCollection in
+                UIColor.black.withAlphaComponent(
+                    traitCollection.userInterfaceStyle == .dark ? 0.22 : 0.095
+                )
+            }
+        )
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -286,11 +318,11 @@ struct ChatBarView: View {
             VStack(alignment: .leading, spacing: 1.0) {
                 Text(state.replyTitle)
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(1)
                 Text(state.replySubtitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.ppTextSecondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -310,13 +342,18 @@ struct ChatBarView: View {
         .padding(.trailing, PPSpace.xs)
         .frame(height: replyPreviewHeight)
         .background {
-            RoundedRectangle(cornerRadius: 16.0, style: .continuous)
-                .fill(.thinMaterial)
+            ZStack {
+                RoundedRectangle(cornerRadius: 16.0, style: .continuous)
+                    .fill(.regularMaterial)
+                RoundedRectangle(cornerRadius: 16.0, style: .continuous)
+                    .fill(replyPreviewSurfaceColor)
+            }
         }
         .overlay {
             RoundedRectangle(cornerRadius: 16.0, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.20), lineWidth: 0.5)
+                .strokeBorder(replyPreviewBorderColor, lineWidth: 1.0)
         }
+        .shadow(color: replyPreviewShadowColor, radius: 12.0, x: 0.0, y: 4.0)
         .accessibilityElement(children: .combine)
     }
 

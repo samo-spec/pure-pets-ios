@@ -377,12 +377,14 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    background.cornerRadius = self.actionButtonUsesCirclePresentation ? PPSectionHeaderActionMinHeight * 0.5 : ((PPSectionHeaderActionMinHeight * 0.5) - 4);
     background.strokeWidth = 0.0;//PPSectionHeaderPixel();
-    background.strokeColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.26 : 0.08) : (darkMode ? 0.24 : 0.0)];
-    background.backgroundColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.16 : 0.065) : (darkMode ? 0.14 : 0.025)];
+    background.strokeColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.26 : 0.08) : (darkMode ? 0.24 : 0.28)];
+    background.backgroundColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.16 : 0.065) : (darkMode ? 0.22 : 0.025)];
     cfg.background = background;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
     cfg.baseForegroundColor = [accentColor colorWithAlphaComponent:0.82];
+    cfg.baseForegroundColor = [AppPrimaryClr colorWithAlphaComponent:0.22];
     self.actionButton.configuration = cfg;
     self.actionButton.layer.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;

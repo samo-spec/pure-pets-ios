@@ -49,7 +49,7 @@ NS_INLINE UIColor *PPMarketplaceHeroCardBlend(UIColor *baseColor,
 
 NS_INLINE UIColor *PPMarketplaceHeroCardAccentColor(void)
 {
-    return AppPrimaryClr ?: PPMarketplaceHeroCardColor(0xEA6D54, 1.0);
+    return AppPrimaryClr ?: PPMarketplaceHeroCardColor(0xC93052, 1.0);
 }
 
 NS_INLINE UIColor *PPMarketplaceHeroCardSurfaceBaseColor(UITraitCollection *traitCollection)

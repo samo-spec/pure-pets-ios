@@ -12,6 +12,8 @@ static const NSInteger PPChatInitialMessagePageLimit = 50;
 static const NSInteger PPChatMessagePageStep = 50;
 static const NSTimeInterval PPChatUnsendWindow = 15.0 * 60.0;
 static const NSInteger PPChatReplyIndicatorTag = 0x50505250;
+static const CGFloat PPChatReplyPanCommitDistance = 72.0;
+static const CGFloat PPChatReplyPanMaxDistance = 96.0;
 static NSString * const PPChatReplyPanName = @"pp.chat.reply.pan";
 static NSString * const PPChatDismissPanName = @"pp.chat.dismiss.pan";
 
@@ -1727,6 +1729,12 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
          [message.senderID isEqualToString:profileID]);
 }
 
+- (CGFloat)pp_replyPanPhysicalDirectionForMessage:(ChatMessageModel *)message
+{
+    CGFloat outgoingDirection = Language.isRTL ? -1.0 : 1.0;
+    return [self pp_currentUserOwnsMessage:message] ? outgoingDirection : -outgoingDirection;
+}
+
 - (BOOL)pp_canUnsendMessage:(ChatMessageModel *)message
 {
     if (!message || message.isDeleted || message.isLocalPending || message.ID.length == 0) return NO;
@@ -1781,12 +1789,22 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 - (void)pp_prepareInteractionsForCell:(UITableViewCell *)cell message:(ChatMessageModel *)message
 {
     cell.contentView.transform = CGAffineTransformIdentity;
+    UIView *interactionView = [self pp_messageInteractionViewForCell:cell];
+    interactionView.transform = CGAffineTransformIdentity;
     UIView *indicator = [self pp_replyIndicatorForCell:cell createIfNeeded:!message.isDeleted];
     indicator.alpha = 0.0;
     indicator.transform = CGAffineTransformMakeScale(0.76, 0.76);
 
+    NSArray<UIGestureRecognizer *> *legacyReplyRecognizers =
+        [cell.contentView.gestureRecognizers copy] ?: @[];
+    for (UIGestureRecognizer *recognizer in legacyReplyRecognizers) {
+        if ([recognizer.name isEqualToString:PPChatReplyPanName]) {
+            [cell.contentView removeGestureRecognizer:recognizer];
+        }
+    }
+
     BOOL hasReplyPan = NO;
-    for (UIGestureRecognizer *recognizer in cell.contentView.gestureRecognizers ?: @[]) {
+    for (UIGestureRecognizer *recognizer in interactionView.gestureRecognizers ?: @[]) {
         if ([recognizer.name isEqualToString:PPChatReplyPanName]) {
             hasReplyPan = YES;
             recognizer.enabled = !message.isDeleted;
@@ -1800,7 +1818,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
         pan.delegate = self;
         pan.cancelsTouchesInView = NO;
         pan.maximumNumberOfTouches = 1;
-        [cell.contentView addGestureRecognizer:pan];
+        [interactionView addGestureRecognizer:pan];
     }
 
     __weak typeof(self) weakSelf = self;
@@ -1852,29 +1870,34 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     ChatMessageModel *message = [self pp_messageForCell:cell];
     if (!cell || !message || message.isDeleted) return;
 
+    UIView *interactionView = [self pp_messageInteractionViewForCell:cell];
+    if (!interactionView) return;
+
+    CGFloat replyDirection = [self pp_replyPanPhysicalDirectionForMessage:message];
     CGFloat physicalTranslation = [pan translationInView:cell].x;
-    CGFloat logicalTranslation = Language.isRTL ? -physicalTranslation : physicalTranslation;
-    CGFloat clamped = MAX(0.0, MIN(logicalTranslation, 82.0));
-    CGFloat progress = MIN(1.0, clamped / 62.0);
-    CGFloat physicalOffset = (Language.isRTL ? -1.0 : 1.0) * clamped * 0.84;
+    CGFloat directionalTranslation = physicalTranslation * replyDirection;
+    CGFloat clamped = MAX(0.0, MIN(directionalTranslation, PPChatReplyPanMaxDistance));
+    CGFloat progress = MIN(1.0, clamped / PPChatReplyPanCommitDistance);
+    CGFloat physicalOffset = replyDirection * clamped;
     UIView *indicator = [self pp_replyIndicatorForCell:cell createIfNeeded:YES];
 
     switch (pan.state) {
         case UIGestureRecognizerStateBegan:
             self.activeReplyGestureCell = cell;
             self.replyGesturePassedThreshold = NO;
+            [cell.contentView.layer removeAllAnimations];
+            [interactionView.layer removeAllAnimations];
+            [indicator.layer removeAllAnimations];
             break;
         case UIGestureRecognizerStateChanged:
-            cell.contentView.transform = CGAffineTransformMakeTranslation(physicalOffset, 0.0);
-            indicator.alpha = progress;
-            indicator.transform = CGAffineTransformMakeScale(0.76 + (0.24 * progress),
-                                                              0.76 + (0.24 * progress));
+            interactionView.transform = CGAffineTransformMakeTranslation(physicalOffset, 0.0);
+            indicator.alpha = 0.14 + (0.86 * progress);
+            CGFloat indicatorScale = 0.76 + (0.28 * progress);
+            indicator.transform = CGAffineTransformMakeScale(indicatorScale, indicatorScale);
             if (progress >= 1.0 && !self.replyGesturePassedThreshold) {
                 self.replyGesturePassedThreshold = YES;
                 UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
                 [feedback selectionChanged];
-            } else if (progress < 0.82) {
-                self.replyGesturePassedThreshold = NO;
             }
             break;
         case UIGestureRecognizerStateEnded:
@@ -1882,17 +1905,22 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
             BOOL shouldReply = pan.state == UIGestureRecognizerStateEnded && progress >= 1.0;
             if (shouldReply) [self pp_selectReplyMessage:message];
             void (^reset)(void) = ^{
-                cell.contentView.transform = CGAffineTransformIdentity;
+                interactionView.transform = CGAffineTransformIdentity;
                 indicator.alpha = 0.0;
                 indicator.transform = CGAffineTransformMakeScale(0.76, 0.76);
             };
             if (UIAccessibilityIsReduceMotionEnabled()) {
-                [UIView animateWithDuration:0.12 animations:reset];
-            } else {
-                [UIView animateWithDuration:0.36
+                [UIView animateWithDuration:0.12
                                       delay:0.0
-                     usingSpringWithDamping:0.86
-                      initialSpringVelocity:0.25
+                                    options:UIViewAnimationOptionBeginFromCurrentState |
+                                            UIViewAnimationOptionAllowUserInteraction
+                                 animations:reset
+                                 completion:nil];
+            } else {
+                [UIView animateWithDuration:(shouldReply ? 0.28 : 0.34)
+                                      delay:0.0
+                     usingSpringWithDamping:(shouldReply ? 0.82 : 0.88)
+                      initialSpringVelocity:(shouldReply ? 0.42 : 0.22)
                                     options:UIViewAnimationOptionBeginFromCurrentState |
                                             UIViewAnimationOptionAllowUserInteraction
                                  animations:reset
@@ -4959,8 +4987,15 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         CGPoint velocity = [pan velocityInView:pan.view ?: self.view];
 
         if ([gestureRecognizer.name isEqualToString:PPChatReplyPanName]) {
-            CGFloat logicalVelocity = Language.isRTL ? -velocity.x : velocity.x;
-            if (logicalVelocity <= 0.0 || fabs(velocity.x) <= fabs(velocity.y) * 1.12) {
+            UITableViewCell *cell = [self pp_cellContainingView:pan.view];
+            ChatMessageModel *message = [self pp_messageForCell:cell];
+            if (!message || message.isDeleted) {
+                return NO;
+            }
+
+            CGFloat replyDirection = [self pp_replyPanPhysicalDirectionForMessage:message];
+            CGFloat directionalVelocity = velocity.x * replyDirection;
+            if (directionalVelocity <= 0.0 || fabs(velocity.x) <= fabs(velocity.y) * 1.12) {
                 return NO;
             }
 

@@ -12,7 +12,7 @@
 #import "ChMessagingController.h"
 #import "ChatThreadModel.h"
 #import "PPRootTabBarController.h"
-#import "PPFunc.h" // your sheet presenter
+#import "PPOverlayCoordinator.h"
 
 static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
 {
@@ -118,23 +118,25 @@ static PPRootTabBarController *PPChatRouterRootTabControllerForController(UIView
     return PPChatRouterRootTabControllerInHierarchy(controller);
 }
 
-static void PPChatRouterPresentThreadFallback(ChatThreadModel *thread,
-                                              UIViewController *presentingVC)
+static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
+                                                UIViewController *sourceVC)
 {
-    if (!presentingVC.view.window) {
-        presentingVC = UIApplication.sharedApplication.keyWindow.rootViewController;
-    }
-    if (!presentingVC) {
+    if (!thread) {
         [ChManager sharedManager].isHandlingNotificationHandoff = NO;
         return;
     }
 
-    ChMessagingController *chatVC =
-        [[ChMessagingController alloc] initWithChatThread:thread];
+    UIViewController *presentingVC = [PPOverlayCoordinator pp_resolvedPresenterFrom:sourceVC];
+    if (!presentingVC) {
+        presentingVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+    }
 
-    [PPFunc presentSheetFrom:presentingVC
-                     sheetVC:chatVC
-                 detentStyle:PPSheetDetentStyleSemiLargAndLarge];
+    if (![PPOverlayCoordinator pp_canPresentFrom:presentingVC]) {
+        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
+        return;
+    }
+
+    [PPOverlayCoordinator pp_openChatThread:thread fromVC:presentingVC];
 }
 
 @implementation ChNotificationRouter
@@ -198,13 +200,7 @@ static void PPChatRouterPresentThreadFallback(ChatThreadModel *thread,
                 PPChatRouterRootTabControllerForController(presentingVC);
 
             void (^openInRoot)(void) = ^{
-                if (rootTabController) {
-                    if (![rootTabController pp_openChatThreadFromNotification:thread animated:YES]) {
-                        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
-                    }
-                    return;
-                }
-                PPChatRouterPresentThreadFallback(thread, presentingVC);
+                PPChatRouterPresentThreadFullscreen(thread, rootTabController ?: presentingVC);
             };
 
             if (rootTabController.presentedViewController &&
