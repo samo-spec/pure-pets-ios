@@ -230,7 +230,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.isAllOption = isAll;
     self.isKindSelected = selected;
     self.currentImageURL = PPSafeString(kind.KindImageUrl);
-    self.currentAccentColor = isAll ? [AppPrimaryTextClr colorWithAlphaComponent:0.72] : [self pp_accentColorForKind:kind isAll:isAll];
+    self.currentAccentColor = isAll ? [AppPrimaryClr colorWithAlphaComponent:0.78] : [self pp_accentColorForKind:kind isAll:isAll];
 
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -353,13 +353,13 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    UIColor *selectedBorder = [accent colorWithAlphaComponent:0.62];
+    UIColor *selectedBorder = self.isAllOption ? [accent colorWithAlphaComponent:0.42] : [accent colorWithAlphaComponent:0.62];
     UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     CGFloat glowOpacity = selected
-        ? (self.isAllOption ? 0.60 : 0.87)
+        ? (self.isAllOption ? 0.50 : 0.82)
         : (self.isAllOption ? 0.18 : 0.52);
 
     void (^changes)(void) = ^{
