@@ -64,7 +64,7 @@
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
-
+#import "PPHeroGlassBackgroundView.h"
 #import "PPHomeMarketplaceHeroCell.h"
 #import "ProviderCompaniesListVC.h"
 #import "PPHomeProviderCategoryPillCell.h"
@@ -87,6 +87,8 @@ static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloating
 static NSString * const PPHomeConfigCacheBackgroundGlowsFadedKey = @"backgroundGlowsFaded";
 static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
 static NSString * const PPHomeConfigCacheUseLegacyBarKey = @"PPUSE_LEGACY_BAR";
+static NSString * const PPHomeLastSelectedMainKindIDKey = @"PPHome.lastSelectedMainKindID.v1";
+static NSInteger const PPHomeAllMainKindID = -1;
 static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
@@ -252,9 +254,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIImageView *_ctaImageView;
     UIButton *_expandButton;
     UIImageView *_expandImageView;
-    CAGradientLayer *_gradientLayer;
-    CAGradientLayer *_circleGlowLayer;
-    CAGradientLayer *_sheenLayer;
+    PPHeroGlassBackgroundView *_heroGlassBackground;
     NSLayoutConstraint *_detailsHeightConstraint;
     BOOL _expanded;
     BOOL _backgroundGlowsFaded;
@@ -283,9 +283,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.layer.cornerRadius = 24.0;
-    cardView.layer.borderWidth = 1.0;
+    cardView.layer.borderWidth = 0.0;
     cardView.clipsToBounds = NO;
-    [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.12]];
     [cardView pp_setShadowColor:UIColor.clearColor];
     cardView.layer.shadowOpacity = 0.0f;
     if (@available(iOS 13.0, *)) {
@@ -294,33 +293,19 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [self.contentView addSubview:cardView];
     _cardView = cardView;
 
-    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-    gradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    gradientLayer.locations = @[@0.0, @0.68, @1.0];
-    gradientLayer.cornerRadius = 24.0;
-    [cardView.layer insertSublayer:gradientLayer atIndex:0];
-    _gradientLayer = gradientLayer;
+    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    glass.translatesAutoresizingMaskIntoConstraints = NO;
+    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glass.cornerGlowOpacityMultiplier = 0.48;
+    [cardView insertSubview:glass atIndex:0];
+    _heroGlassBackground = glass;
 
-    CAGradientLayer *circleGlowLayer = [CAGradientLayer layer];
-    circleGlowLayer.startPoint = CGPointMake(0.5, 0.5);
-    circleGlowLayer.endPoint = CGPointMake(1.0, 1.0);
-    circleGlowLayer.locations = @[@0.0, @0.52, @1.0];
-    circleGlowLayer.drawsAsynchronously = YES;
-    if (@available(iOS 12.0, *)) {
-        circleGlowLayer.type = kCAGradientLayerRadial;
-    }
-    [cardView.layer insertSublayer:circleGlowLayer above:gradientLayer];
-    _circleGlowLayer = circleGlowLayer;
-
-    CAGradientLayer *sheenLayer = [CAGradientLayer layer];
-    sheenLayer.startPoint = CGPointMake(0.0, 0.0);
-    sheenLayer.endPoint = CGPointMake(1.0, 0.0);
-    sheenLayer.locations = @[@0.0, @0.46, @1.0];
-    sheenLayer.cornerRadius = 24.0;
-    sheenLayer.opacity = 0.58;
-    [cardView.layer insertSublayer:sheenLayer above:gradientLayer];
-    _sheenLayer = sheenLayer;
+    [NSLayoutConstraint activateConstraints:@[
+        [glass.topAnchor constraintEqualToAnchor:cardView.topAnchor],
+        [glass.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
+        [glass.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
+        [glass.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor]
+    ]];
 
     UIView *accentRailView = [[UIView alloc] init];
     accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -334,8 +319,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarShellView.backgroundColor = UIColor.clearColor;
     avatarShellView.layer.cornerRadius = 39.0;
-    avatarShellView.layer.borderWidth = 1.0;
-    [avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.28]];
+    avatarShellView.layer.borderWidth = 0.0;
     [avatarShellView pp_setShadowColor:UIColor.clearColor];
     avatarShellView.layer.shadowOpacity = 0.0f;
     if (@available(iOS 13.0, *)) {
@@ -524,8 +508,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIButton *expandButton = [UIButton buttonWithType:UIButtonTypeCustom];
     expandButton.translatesAutoresizingMaskIntoConstraints = NO;
     expandButton.layer.cornerRadius = 22.0;
-    expandButton.layer.borderWidth = 1.0;
-    [expandButton pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.16]];
+    expandButton.layer.borderWidth = 0.0;
     expandButton.accessibilityTraits = UIAccessibilityTraitButton;
     expandButton.isAccessibilityElement = NO;
     if (@available(iOS 13.0, *)) {
@@ -675,9 +658,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     // Reset visual state to prevent stale gradient/text on cell reuse
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _gradientLayer.colors = nil;
-    _circleGlowLayer.colors = nil;
-    _sheenLayer.colors = nil;
+    [_heroGlassBackground reapplyPalette];
     [CATransaction commit];
 
     [_loadingIndicator stopAnimating];
@@ -697,8 +678,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     _avatarShellView.transform = CGAffineTransformIdentity;
     _detailsHeightConstraint.constant = 96.0;
     [_avatarShellView.layer removeAllAnimations];
-    [_circleGlowLayer removeAllAnimations];
-    [_sheenLayer removeAllAnimations];
+    // Sheen/Glow handled by PPHeroGlassBackgroundView
     self.onToggleExpanded = nil;
 }
 
@@ -712,40 +692,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     // Keep decorative layers locked to the resolved card bounds on first render.
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _gradientLayer.frame = cardBounds;
-    _gradientLayer.cornerRadius = _cardView.layer.cornerRadius;
     _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:cardBounds
                                                             cornerRadius:_cardView.layer.cornerRadius].CGPath;
-
-    CGFloat circleSize = MIN(220.0, MAX(164.0, CGRectGetWidth(cardBounds) * 0.54));
-    BOOL isRTL = self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
-    CGFloat circleX = isRTL
-        ? -circleSize * 0.30
-        : CGRectGetWidth(cardBounds) - (circleSize * 0.70);
-    _circleGlowLayer.frame = CGRectMake(circleX,
-                                        -circleSize * 0.34,
-                                        circleSize,
-                                        circleSize);
-    _circleGlowLayer.cornerRadius = circleSize * 0.5;
-    _circleGlowLayer.masksToBounds = !_backgroundGlowsFaded;
-
-    _sheenLayer.frame = cardBounds;
-    _sheenLayer.cornerRadius = _cardView.layer.cornerRadius;
-
-    // Dynamically adjust gradient directions to follow app language flow (LTR vs RTL)
-    if (isRTL) {
-        _gradientLayer.startPoint = CGPointMake(1.0, 0.0);
-        _gradientLayer.endPoint = CGPointMake(0.0, 1.0);
-
-        _sheenLayer.startPoint = CGPointMake(1.0, 0.0);
-        _sheenLayer.endPoint = CGPointMake(0.0, 0.0);
-    } else {
-        _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
-        _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-
-        _sheenLayer.startPoint = CGPointMake(0.0, 0.0);
-        _sheenLayer.endPoint = CGPointMake(1.0, 0.0);
-    }
 
     [CATransaction commit];
 
@@ -832,21 +780,20 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     }
 
     PPMarketplaceHeroCardApplySurfaceChrome(_cardView, 24.0, self.traitCollection);
+    _cardView.layer.borderWidth = 0.0;
     _cardView.layer.shadowOpacity = isDark ? 0.22 : 0.07;
     _cardView.layer.shadowRadius = isDark ? 18.0 : 20.0;
     _cardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 10.0);
+    [_heroGlassBackground reapplyPalette];
 
-    [_avatarShellView pp_setBorderColor:isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.16]
-        : [UIColor colorWithWhite:0.0 alpha:0.08]];
+    _avatarShellView.layer.borderWidth = 0.0;
     [_avatarImageView pp_setBorderColor:UIColor.clearColor];
     [_ctaView pp_setBorderColor:UIColor.clearColor];
     
-    UIColor *borderColor = isDark
+    _expandButton.layer.borderWidth = 0.0;
+    _detailsDividerView.backgroundColor = isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.10]
         : [UIColor colorWithWhite:0.0 alpha:0.07];
-    [_expandButton pp_setBorderColor:borderColor];
-    _detailsDividerView.backgroundColor = borderColor;
 }
 
 - (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
@@ -884,12 +831,14 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         ? [UIColor colorWithWhite:1.0 alpha:0.68]
         : [UIColor colorWithWhite:0.0 alpha:0.58];
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *baseSurfaceColor = AppSurfColor ?: (isDark
-        ? [UIColor colorWithRed:0.16 green:0.17 blue:0.19 alpha:1.0]
-        : UIColor.systemBackgroundColor);
-    UIColor *secondarySurfaceColor = AppSurfSecColor ?: (isDark
-        ? [UIColor colorWithRed:0.20 green:0.21 blue:0.23 alpha:1.0]
-        : UIColor.secondarySystemBackgroundColor);
+  /*
+   UIColor *baseSurfaceColor = AppSurfColor ?: (isDark
+       ? [UIColor colorWithRed:0.16 green:0.17 blue:0.19 alpha:1.0]
+       : UIColor.systemBackgroundColor);
+   UIColor *secondarySurfaceColor = AppSurfSecColor ?: (isDark
+       ? [UIColor colorWithRed:0.20 green:0.21 blue:0.23 alpha:1.0]
+       : UIColor.secondarySystemBackgroundColor);
+   */
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     UIImage *avatarPlaceholder = nil;
     NSString *primaryIconName = @"cross.case.fill";
@@ -985,30 +934,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     }
 
     _cardView.backgroundColor = UIColor.clearColor;
-    PPMarketplaceHeroCardConfigureSurfaceGradient(_gradientLayer, accentColor, self.traitCollection, Language.isRTL);
-
-    CGFloat circlePeakAlpha = isDark ? 0.20 : 0.14;
-    if (_backgroundGlowsFaded) {
-        _circleGlowLayer.locations = @[@0.0, @0.52, @1.0];
-        _circleGlowLayer.colors = @[
-            (id)[accentColor colorWithAlphaComponent:circlePeakAlpha].CGColor,
-            (id)[accentColor colorWithAlphaComponent:(circlePeakAlpha * 0.34)].CGColor,
-            (id)[accentColor colorWithAlphaComponent:0.0].CGColor
-        ];
-    } else {
-        UIColor *solidCircleColor = [accentColor colorWithAlphaComponent:circlePeakAlpha];
-        _circleGlowLayer.locations = @[@0.0, @1.0];
-        _circleGlowLayer.colors = @[
-            (id)solidCircleColor.CGColor,
-            (id)solidCircleColor.CGColor
-        ];
-    }
-
-    _sheenLayer.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.025 : 0.24)].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.018 : 0.07)].CGColor
-    ];
+    _heroGlassBackground.accentColorOverride = accentColor;
+    [_heroGlassBackground reapplyPalette];
     _accentRailView.backgroundColor = accentColor;
     _titleLabel.textColor = textColor;
     _subtitleLabel.textColor = secondaryTextColor;
@@ -1468,6 +1395,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, assign) BOOL nearbyServicesLoading;
 @property (nonatomic, assign) BOOL nearbyServicesShowingLatest;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
+@property (nonatomic, assign) BOOL didResolveInitialHomeCategory;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPHomeItem *> *dataSource;
@@ -1580,6 +1508,15 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (NSArray<PPHomeProviderCategoryItem *> *)pp_homeProviderUnifiedCategoryItems;
 - (void)pp_handleProviderCategorySelection:(PPHomeProviderCategoryItem *)item;
 - (void)pp_openMarketplaceProvidersListFromHero;
+- (NSArray<MainKindsModel *> *)pp_mainKindsRailDataSource;
+- (void)pp_applyInitialCategorySelectionIfNeeded;
+- (void)pp_selectHomeMainKind:(MainKindsModel *)kind
+                        isAll:(BOOL)isAll
+                      persist:(BOOL)persist
+                     navigate:(BOOL)navigate;
+- (void)pp_refreshHomeCategorySelectionAnimated:(BOOL)animated;
+- (NSArray<PPHomeItem *> *)pp_safeItemsInSection:(PPHomeSection)section
+                                    fromSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
 - (void)pp_refreshProviderCategoryNavigationSection;
 - (void)handleQuickActionSelection:(PPHomeQuickActionModel *)quickAction;
 - (void)pp_openAddNewAdComposer;
@@ -1838,6 +1775,138 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
 
 @implementation PPHomeViewController
+
+- (void)setInitialSelectedMainKindID:(NSInteger)initialSelectedMainKindID
+{
+    _initialSelectedMainKindID = initialSelectedMainKindID;
+    if (!self.isViewLoaded) {
+        return;
+    }
+    self.didResolveInitialHomeCategory = NO;
+    [self pp_applyInitialCategorySelectionIfNeeded];
+    [self pp_refreshHomeCategorySelectionAnimated:YES];
+}
+
+- (NSArray<MainKindsModel *> *)pp_mainKindsRailDataSource
+{
+    NSMutableArray<MainKindsModel *> *items = [NSMutableArray array];
+    [items addObject:[MainKindsModel allKind]];
+    NSArray<MainKindsModel *> *source = [self.mainKinds isKindOfClass:NSArray.class] ? self.mainKinds : @[];
+    for (MainKindsModel *kind in source) {
+        if (![kind isKindOfClass:MainKindsModel.class] || kind.ID == PPHomeAllMainKindID) {
+            continue;
+        }
+        [items addObject:kind];
+    }
+    return items.copy;
+}
+
+- (MainKindsModel *)pp_resolvedSavedHomeCategory
+{
+    id storedValue = [[NSUserDefaults standardUserDefaults] objectForKey:PPHomeLastSelectedMainKindIDKey];
+    if (![storedValue respondsToSelector:@selector(integerValue)]) {
+        return nil;
+    }
+
+    NSInteger storedID = [storedValue integerValue];
+    if (storedID == PPHomeAllMainKindID) {
+        return nil;
+    }
+    if (storedID > 0) {
+        return [self resolveMainKindWithID:storedID];
+    }
+    return nil;
+}
+
+- (void)pp_applyInitialCategorySelectionIfNeeded
+{
+    if (self.didResolveInitialHomeCategory) {
+        return;
+    }
+    self.didResolveInitialHomeCategory = YES;
+
+    if (self.initialSelectedMainKindID == PPHomeAllMainKindID) {
+        self.selectedCategory = nil;
+        return;
+    }
+    if (self.initialSelectedMainKindID > 0) {
+        MainKindsModel *navigationKind = [self resolveMainKindWithID:self.initialSelectedMainKindID];
+        if (navigationKind) {
+            self.selectedCategory = navigationKind;
+            return;
+        }
+    }
+
+    self.selectedCategory = [self pp_resolvedSavedHomeCategory];
+}
+
+- (void)pp_saveSelectedHomeCategory:(MainKindsModel *)kind
+                              isAll:(BOOL)isAll
+{
+    NSInteger storedID = (isAll || !kind) ? PPHomeAllMainKindID : kind.ID;
+    [[NSUserDefaults standardUserDefaults] setInteger:storedID
+                                               forKey:PPHomeLastSelectedMainKindIDKey];
+}
+
+- (void)pp_refreshVisibleMarketplaceHeroAnimated:(BOOL)animated
+{
+    if (!self.collectionView) {
+        return;
+    }
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionMarketplaceHero];
+    if (sectionIndex == NSNotFound) {
+        return;
+    }
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
+    UICollectionViewCell *rawCell = [self.collectionView cellForItemAtIndexPath:indexPath];
+    if ([rawCell isKindOfClass:PPHomeMarketplaceHeroCell.class]) {
+        [(PPHomeMarketplaceHeroCell *)rawCell configureWithMainKind:self.selectedCategory
+                                                           animated:animated];
+    }
+}
+
+- (void)pp_refreshHomeCategorySelectionAnimated:(BOOL)animated
+{
+    if (!self.dataSource) {
+        return;
+    }
+    NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+    NSArray *items = [self pp_safeItemsInSection:PPHomeSectionMainKinds
+                                    fromSnapshot:snapshot];
+    if (items.count > 0) {
+        [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
+    }
+    [self pp_refreshVisibleMarketplaceHeroAnimated:animated];
+}
+
+- (void)pp_selectHomeMainKind:(MainKindsModel *)kind
+                        isAll:(BOOL)isAll
+                      persist:(BOOL)persist
+                     navigate:(BOOL)navigate
+{
+    MainKindsModel *nextCategory = isAll ? nil : kind;
+    BOOL changed = (self.selectedCategory == nil && nextCategory != nil) ||
+                   (self.selectedCategory != nil && nextCategory == nil) ||
+                   (self.selectedCategory != nil && nextCategory != nil &&
+                    self.selectedCategory.ID != nextCategory.ID);
+
+    self.selectedCategory = nextCategory;
+    if (persist) {
+        [self pp_saveSelectedHomeCategory:kind isAll:isAll];
+    }
+    [self pp_refreshHomeCategorySelectionAnimated:changed];
+
+    if (!navigate) {
+        return;
+    }
+    if (isAll) {
+        [self handleDeepLinkWithTarget:PPDeepLinkTargetAllCategories
+                              mainKind:nil
+                                source:PPInputSourceHomeMainKindsSection];
+    } else if (kind) {
+        [self handleMainKindSelection:kind];
+    }
+}
 
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames
 {
@@ -2746,7 +2815,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     // ✅ MainKinds
     NSMutableArray *kinds = [NSMutableArray array];
-    for (MainKindsModel *k in self.mainKinds) {
+    for (MainKindsModel *k in [self pp_mainKindsRailDataSource]) {
         PPHomeItem *item = [PPHomeItem new];
         item.payload = k;
         [kinds addObject:item];
@@ -4106,8 +4175,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.chatsListenerStarted = NO;
     [self pp_applyPremiumHomeBackgroundAppearance];
 
-    self.mainKinds = PPMainKindsArray;
-    self.selectedCategory = nil; // nil == "All"
+    self.mainKinds = PPMainKindsArray ?: @[];
+    [self pp_applyInitialCategorySelectionIfNeeded];
     self.blurHashCache = [NSCache new];
     self.blurHashCache.countLimit = 250;
     self.blurHashQueue =
@@ -6310,20 +6379,25 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleLarge;
-        configuration.baseBackgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-        configuration.baseForegroundColor = UIColor.whiteColor;
+        configuration.baseBackgroundColor = [UIColor clearColor];
+        configuration.baseForegroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
         configuration.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-        configuration.title = kLang(@"Home_BuyAgainDiscoverSimilars") ?: @"";
         configuration.image = [UIImage systemImageNamed:Language.isRTL ? @"chevron.left" : @"chevron.right"];
         configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
         configuration.imagePadding = 5.0;
 
+        UIBackgroundConfiguration *bgConfig = [UIBackgroundConfiguration clearConfiguration];
+        bgConfig.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        bgConfig.cornerRadius = 16.0;
+        bgConfig.strokeColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
+        bgConfig.strokeWidth = 1.0;
+        configuration.background = bgConfig;
+
         configuration.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"Home_BuyAgainDiscoverSimilars")
                                                               attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:12],
-            NSForegroundColorAttributeName: PPIOS26() ? AppPrimaryClr : AppForgroundColr
+            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.systemPinkColor
         }];
-
 
         button.configuration = configuration;
     } else {
@@ -6331,8 +6405,10 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 forState:UIControlStateNormal];
         button.titleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
         button.contentEdgeInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-        button.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+        [button setTitleColor:(AppPrimaryClr ?: UIColor.systemPinkColor) forState:UIControlStateNormal];
+        button.layer.borderWidth = 1.0;
+        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18].CGColor;
     }
 
     [button addTarget:self action:@selector(pp_unavailableBuyAgainDiscoverTapped:)
@@ -7789,13 +7865,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             PPHomeMarketplaceHeroCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeMarketplaceHeroCell.reuseIdentifier
                                                           forIndexPath:indexPath];
-            [cell configureDefaultContent];
+            [cell configureWithMainKind:strongSelf.selectedCategory animated:NO];
 
             __weak typeof(strongSelf) weakHome = strongSelf;
             cell.onTap = ^{
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
-                [self pp_openMarketplaceProvidersListFromHero];
+                [self pp_selectHomeMainKind:self.selectedCategory
+                                      isAll:(self.selectedCategory == nil)
+                                    persist:NO
+                                   navigate:YES];
             };
 
             pp_stageCell(cell); return cell;
@@ -8086,31 +8165,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     __strong typeof(weakStrongSelf) strongSelf = weakStrongSelf;
                     if (!strongSelf) return;
 
-                    // ✅ ONLY update selection state here
-                    strongSelf.selectedCategory = isAll ? nil : kind;
-
                     if (isAll) {
                         NSLog(@"[Home][MainKinds][Action] ALL selected → deep link");
-                        [strongSelf handleDeepLinkWithTarget:PPDeepLinkTargetAllCategories
-                                                     mainKind:nil
-                                                       source:PPInputSourceHomeMainKindsSection];
                     } else {
                         NSLog(@"[Home][MainKinds][Action] Kind selected → %@",
                               kind.KindName);
-                        [strongSelf handleMainKindSelection:(MainKindsModel *)item.payload];
                     }
-
-
-
-
-                     // 🔁 Refresh main kinds visuals only
-                     NSDiffableDataSourceSnapshot *snapshot = strongSelf.dataSource.snapshot;
-                     NSArray *items =
-                         [strongSelf pp_safeItemsInSection:PPHomeSectionMainKinds
-                                              fromSnapshot:snapshot];
-                     [strongSelf pp_reconfigureHomeItems:items inSnapshot:snapshot];
-
-
+                    [strongSelf pp_selectHomeMainKind:kind
+                                                isAll:isAll
+                                              persist:YES
+                                             navigate:YES];
                 };
 
 
@@ -9477,7 +9541,10 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
 
     switch (section) {
         case PPHomeSectionMarketplaceHero:
-            [self pp_openMarketplaceProvidersListFromHero];
+            [self pp_selectHomeMainKind:self.selectedCategory
+                                  isAll:(self.selectedCategory == nil)
+                                persist:NO
+                               navigate:YES];
             return;
 
         case PPHomeSectionProviderCategoryNav: {
@@ -9520,16 +9587,19 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
                   item.payload);
 
             if (isAll) {
-                // ✅ Route ALL to DataViewVC
-                [self handleDeepLinkWithTarget:PPDeepLinkTargetAllCategories
-                                      mainKind:nil
-                                        source:PPInputSourceHomeMainKindsSection];
+                [self pp_selectHomeMainKind:nil
+                                      isAll:YES
+                                    persist:YES
+                                   navigate:YES];
                 return;
             }
 
 
             // ✅ Route specific kind
-            [self handleMainKindSelection:kind];
+            [self pp_selectHomeMainKind:kind
+                                  isAll:NO
+                                persist:YES
+                               navigate:YES];
             return;
             break;
         }

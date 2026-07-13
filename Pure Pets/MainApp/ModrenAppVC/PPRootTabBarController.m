@@ -30,6 +30,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
+#import "ChMessagingController.h"
 #import "CartManager.h"
 #import "PPBottomSurfaceCoordinator.h"
 #import "UIViewController+PPBottomSurface.h"
@@ -1628,6 +1629,40 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
     [self setPremiumTabDockViewHidden:hidden animation:animated];
+}
+
+- (BOOL)pp_openChatThreadFromNotification:(ChatThreadModel *)thread animated:(BOOL)animated
+{
+    if (!thread || self.viewControllers.count <= PPRootTabIndexChats) {
+        return NO;
+    }
+
+    UIViewController *targetController = self.viewControllers[PPRootTabIndexChats];
+    if (![targetController isKindOfClass:UINavigationController.class]) {
+        return NO;
+    }
+    if (![self tabBarController:self shouldSelectViewController:targetController]) {
+        return NO;
+    }
+
+    UINavigationController *chatNavigationController = (UINavigationController *)targetController;
+    self.selectedIndex = PPRootTabIndexChats;
+    [self tabBarController:self didSelectViewController:targetController];
+
+    UIViewController *rootController = chatNavigationController.viewControllers.firstObject;
+    if (rootController && chatNavigationController.viewControllers.count > 1) {
+        [chatNavigationController setViewControllers:@[rootController] animated:NO];
+    }
+
+    ChMessagingController *chatController =
+        [[ChMessagingController alloc] initWithChatThread:thread];
+    chatController.keepsBottomNavigationVisibleForNotificationHandoff = YES;
+    chatController.hidesBottomBarWhenPushed = NO;
+
+    [self pp_setBottomNavigationHidden:NO animated:animated];
+    [chatNavigationController pushViewController:chatController animated:animated];
+    [self pp_applyPremiumTabSelectionAnimated:animated];
+    return YES;
 }
 
 -(void)viewWillLayoutSubviews

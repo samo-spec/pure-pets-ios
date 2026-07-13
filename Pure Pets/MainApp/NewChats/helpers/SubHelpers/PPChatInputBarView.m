@@ -66,7 +66,7 @@ static UIColor *PPChatInputBarReplySurfaceColor(UITraitCollection *traitCollecti
     BOOL isDark = PPChatInputBarIsDark(traitCollection);
     return isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.13]
-        : [UIColor colorWithWhite:1.0 alpha:0.86];
+    : [AppBackgroundClrLigter colorWithAlphaComponent:0.92];
 }
 
 static UIColor *PPChatInputBarReplyBorderColor(UITraitCollection *traitCollection)
@@ -87,7 +87,7 @@ static UIColor *PPChatInputBarControlTintColor(UITraitCollection *traitCollectio
 {
     return PPChatInputBarIsDark(traitCollection)
         ? [UIColor colorWithWhite:1.0 alpha:0.88]
-        : (AppPrimaryTextClr ?: UIColor.labelColor);
+    : ([AppPrimaryClrDarker colorWithAlphaComponent:0.76] ?: UIColor.labelColor);
 }
 
 static UIColor *PPChatInputBarAccentColor(void)

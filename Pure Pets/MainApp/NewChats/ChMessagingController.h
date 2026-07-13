@@ -39,6 +39,7 @@ typedef NS_ENUM(NSUInteger, PPRecordingPreviewState) {
 @property (nonatomic, weak) id <ReloadChatsDelegate> delegate;
 @property (nonatomic, strong) ChatThreadModel *chatThread;
 @property (nonatomic, strong) NSString *fromVC;
+@property (nonatomic, assign) BOOL keepsBottomNavigationVisibleForNotificationHandoff;
 - (instancetype)initWithChatThread:(ChatThreadModel *)thread;
 @property (nonatomic, strong) PPChatHeaderView *chatHeaderView;
 

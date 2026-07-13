@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
                                   mainKind:(MainKindsModel *_Nullable)mainKind
                                     source:(PPInputSource)source;
 @property (nonatomic) PPMainKindsLayoutMode mainKindsLayoutMode;
+@property (nonatomic, assign) NSInteger initialSelectedMainKindID;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -47,7 +47,9 @@
     input.mainKind = safeKinds.firstObject;
     input.sourceTarget = sourceTarget;
     input.source = source;
-    input.title = input.mainKind.KindName ?: @"";
+    input.title = (sourceTarget == PPDeepLinkTargetAllCategories)
+        ? (kLang(@"AllCategories") ?: kLang(@"All") ?: @"")
+        : (input.mainKind.KindName ?: @"");
     input.initialSectionOverride = nil;
     return input;
 }

@@ -1111,6 +1111,13 @@
 
 
 "Out of stock" = "Out of stock";
+"notify_me" = "Notify me when available";
+"notify_me_loading" = "Saving alert";
+"stock_notify_success" = "We will notify you when it is back.";
+"stock_notify_already_registered" = "We will notify you when it is back.";
+"stock_notify_already_available" = "This item is available now.";
+"stock_notify_failed" = "We could not save this alert. Try again.";
+"stock_notify_item_unavailable" = "We could not identify this item right now.";
 "Only" = "Only";
 "left in stock" = "left in stock";
 "in stock" = "in stock";
@@ -3287,6 +3294,16 @@
 "home_marketplace_hero_cta" = "View providers";
 "home_marketplace_hero_accessibility_label" = "Marketplace. Choose a trusted provider. Top-rated suppliers. View providers.";
 "home_marketplace_hero_accessibility_hint" = "Opens the marketplace companies and providers list.";
+"home_marketplace_hero_all_eyebrow" = "All | Trusted discovery";
+"home_marketplace_hero_all_title" = "Curated for every pet";
+"home_marketplace_hero_all_subtitle" = "Selected products, services, and listings from trusted suppliers.";
+"home_marketplace_hero_all_cta" = "Explore marketplace";
+"home_marketplace_hero_all_accessibility_label" = "All. Curated for every pet. Explore marketplace.";
+"home_marketplace_hero_category_eyebrow_format" = "Marketplace | %@ picks";
+"home_marketplace_hero_category_title_format" = "Curated for %@";
+"home_marketplace_hero_category_subtitle_format" = "Products, services, and listings for %@ from trusted providers.";
+"home_marketplace_hero_category_cta_format" = "Explore %@";
+"home_marketplace_hero_category_accessibility_label_format" = "%@. Products, services, and listings from trusted providers.";
 "seller_profile_back_hint" = "Double-tap to go back";
 "provider_marketplace_subtitle" = "Food, accessories, and daily pet essentials.";
 "provider_marketplace_subtitle_premium" = "Premium food, supplies, and luxury accessories.";

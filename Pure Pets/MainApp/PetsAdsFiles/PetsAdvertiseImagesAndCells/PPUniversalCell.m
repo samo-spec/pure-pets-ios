@@ -23,6 +23,7 @@
 #import "CitiesManager.h"
 #import "MainKindsModel.h"
 #import "SubKindModel.h"
+@import FirebaseFunctions;
 
 static CGFloat const PPUniversalCardCornerRadius = 36.0;
 static CGFloat const PPUniversalImageCornerRadius = 26.0;
@@ -54,6 +55,7 @@ static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
 static BOOL const PPUniversalTemporarilyHideCategoryBadge = YES;
 static BOOL const PPUniversalTemporarilyHideMenuButton = YES;
+static NSString * const PPUniversalStockNotificationCallableName = @"registerStockNotificationRequest";
 
 static NSString *PPUniversalCellLocalizedString(NSString *key, NSString *fallback)
 {
@@ -85,6 +87,22 @@ static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
     return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
                                        [UIColor colorWithWhite:1.0 alpha:0.12]);
+}
+
+static UIColor *PPUniversalCellNotifyActionForegroundColor(void)
+{
+    return UIColor.whiteColor;
+}
+
+static UIColor *PPUniversalCellNotifyActionBackgroundColor(void)
+{
+    return AppWarningClr ?: PPUniversalCellDynamicColor([UIColor colorWithRed:0.92 green:0.47 blue:0.10 alpha:1.0],
+                                                        [UIColor colorWithRed:1.00 green:0.68 blue:0.20 alpha:1.0]);
+}
+
+static UIColor *PPUniversalCellNotifyActionBorderColor(void)
+{
+    return [UIColor.whiteColor colorWithAlphaComponent:0.26];
 }
 
 static NSArray<id> *PPUniversalCellLiquidBorderColors(BOOL isDark, BOOL selected, BOOL imageBorder)
@@ -887,6 +905,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, copy) NSString *lastConfiguredImageSignature;
 @property (nonatomic, assign, readwrite) NSInteger quantity;
 @property (nonatomic, assign) BOOL isEditingQuantity;
+@property (nonatomic, assign) BOOL stockNotifyInFlight;
+@property (nonatomic, copy) NSString *stockNotifyItemID;
 @property (nonatomic, strong) NSTimer *stepperCollapseTimer;
 
 - (void)pp_resetReusableVisualState;
@@ -910,6 +930,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown;
 - (void)pp_cartDidUpdate:(NSNotification *)notification;
 - (NSInteger)pp_cartQuantityForViewModel:(PPUniversalCellViewModel *)vm;
+- (void)pp_registerStockNotificationForCurrentItem;
+- (void)pp_setStockNotifyInFlight:(BOOL)inFlight forItemID:(NSString *)itemID;
 - (NSString *)pp_cityLocationBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_horizontalRowDescriptionSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_horizontalRowAdBottomBadgeTextForViewModel:(PPUniversalCellViewModel *)vm;
@@ -981,6 +1003,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.lastConfiguredImageSignature = nil;
     self.onTap = nil;
     self.isEditingQuantity = NO;
+    self.stockNotifyInFlight = NO;
+    self.stockNotifyItemID = nil;
     [self setQuantity:0 animated:NO];
     [self pp_stopVideoPlaybackAndTearDown:YES];
 
@@ -1919,6 +1943,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     self.vm = vm;
     self.context = context;
+    NSString *incomingItemID = [self pp_cartLookupIdentifierForViewModel:vm];
+    if (self.stockNotifyItemID.length > 0 &&
+        ![self.stockNotifyItemID isEqualToString:incomingItemID]) {
+        self.stockNotifyInFlight = NO;
+        self.stockNotifyItemID = nil;
+    }
 
     PPManagerCellLayoutMode resolvedLayout = layout;
     
@@ -2717,6 +2747,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
     BOOL isOutOfStock = usesQuantity && [self pp_stockLimitForCurrentItem] <= 0;
     BOOL isInCart = usesQuantity && self.quantity > 0;
+    NSString *currentItemID = [self pp_cartLookupIdentifierForViewModel:self.vm];
+    BOOL isNotifyPending = isOutOfStock &&
+                           self.stockNotifyInFlight &&
+                           self.stockNotifyItemID.length > 0 &&
+                           [self.stockNotifyItemID isEqualToString:currentItemID];
 
     NSString *title = nil;
     NSString *imageName = nil;
@@ -2727,11 +2762,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     if (usesQuantity) {
         if (isOutOfStock) {
-            title = PPUniversalCellLocalizedString(@"Out of stock", @"Out of stock");
-            imageName = @"exclamationmark.circle.fill";
-            foreground = [UIColor colorWithRed:0.83 green:0.25 blue:0.29 alpha:1.0];
-            background = [foreground colorWithAlphaComponent:0.10];
-            border = [foreground colorWithAlphaComponent:0.14];
+            title = isNotifyPending
+                ? PPUniversalCellLocalizedString(@"notify_me_loading", @"Saving alert")
+                : PPUniversalCellLocalizedString(@"notify_me", @"Notify me");
+            imageName = nil;
+            foreground = PPUniversalCellNotifyActionForegroundColor();
+            background = PPUniversalCellNotifyActionBackgroundColor();
+            border = PPUniversalCellNotifyActionBorderColor();
         } else if (isInCart) {
             title = [NSString stringWithFormat:@"%@ • %ld",
                      PPUniversalCellLocalizedString(@"InCart", @"In cart"),
@@ -2761,9 +2798,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         config.baseBackgroundColor = background;
         config.baseForegroundColor = foreground;
         config.background.cornerRadius = actionCornerRadius;
-        config.background.strokeWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
+        config.background.strokeWidth = (usesQuantity && isInCart) ? 1.0 : 0.0;
         config.background.strokeColor = border;
-        config.image = [UIImage systemImageNamed:imageName];
+        config.image = imageName.length > 0 ? [UIImage systemImageNamed:imageName] : nil;
+        config.showsActivityIndicator = NO;
         config.imagePlacement = NSDirectionalRectEdgeLeading;
         config.imagePadding = horizontalRow ? 5.0 : 7.0;
         config.contentInsets = horizontalRow
@@ -2782,22 +2820,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     } else {
         [self.addButton setTitle:title forState:UIControlStateNormal];
         [self.addButton setTitleColor:foreground forState:UIControlStateNormal];
-        [self.addButton setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
+        [self.addButton setImage:imageName.length > 0 ? [UIImage systemImageNamed:imageName] : nil forState:UIControlStateNormal];
+        self.addButton.tintColor = foreground;
         self.addButton.backgroundColor = background;
         self.addButton.titleLabel.font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
         self.addButton.contentEdgeInsets = horizontalRow
             ? UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0)
             : UIEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
-        self.addButton.layer.borderWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
+        self.addButton.layer.borderWidth = (usesQuantity && isInCart) ? 1.0 : 0.0;
         [self.addButton pp_setBorderColor:border];
     }
 
     self.addButton.layer.cornerRadius = actionCornerRadius;
-    [self.addButton pp_setShadowColor:brand];
-    self.addButton.layer.shadowOpacity = (usesQuantity && (isOutOfStock || isInCart)) ? 0.0 : (horizontalRow ? 0.045 : 0.075);
-    self.addButton.layer.shadowRadius = horizontalRow ? 7.0 : 9.0;
-    self.addButton.layer.shadowOffset = CGSizeMake(0.0, horizontalRow ? 3.0 : 4.5);
-    self.addButton.enabled = !isOutOfStock;
+    [self.addButton pp_setShadowColor:(isOutOfStock ? background : brand)];
+    self.addButton.layer.shadowOpacity = isOutOfStock
+        ? (horizontalRow ? 0.12 : 0.16)
+        : (isInCart ? 0.0 : (horizontalRow ? 0.045 : 0.075));
+    self.addButton.layer.shadowRadius = isOutOfStock ? (horizontalRow ? 8.0 : 10.0) : (horizontalRow ? 7.0 : 9.0);
+    self.addButton.layer.shadowOffset = CGSizeMake(0.0, isOutOfStock ? (horizontalRow ? 3.5 : 5.0) : (horizontalRow ? 3.0 : 4.5));
+    self.addButton.enabled = !(isOutOfStock && isNotifyPending);
+    self.addButton.accessibilityLabel = title;
 }
 
 - (void)pp_updateStepperButtonStates
@@ -3214,8 +3256,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     NSInteger stockLimit = [self pp_stockLimitForCurrentItem];
     if (stockLimit <= 0) {
-        [self pp_showOutOfStockFeedback];
-        [self setQuantity:0 animated:YES];
+        [self pp_registerStockNotificationForCurrentItem];
         return;
     }
 
@@ -3440,7 +3481,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         if ([self pp_isAdContext] && badge == self.reasonBadgeLabel) {
             [constraints addObject:[badge.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:-8.0]];
         } else {
-            [constraints addObject:[badge.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:12.0]];
+            CGFloat topConstant = (badge == self.discountBadgeLabel) ? 8.0 : 12.0;
+            [constraints addObject:[badge.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:topConstant]];
         }
 
         if (badge == self.discountBadgeLabel) {
@@ -3679,6 +3721,87 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
            [self.vm.ModelObject isKindOfClass:[VetModel class]] ||
            self.context == PPCellForServices ||
            self.context == PPCellForVets;
+}
+
+- (void)pp_setStockNotifyInFlight:(BOOL)inFlight forItemID:(NSString *)itemID
+{
+    self.stockNotifyInFlight = inFlight;
+    self.stockNotifyItemID = inFlight ? (itemID ?: @"") : nil;
+    [self pp_refreshActionPresentationAnimated:(self.window != nil)];
+}
+
+- (void)pp_registerStockNotificationForCurrentItem
+{
+    NSString *itemID = [self pp_cartLookupIdentifierForViewModel:self.vm];
+    if (itemID.length == 0) {
+        [PPHUD showError:PPUniversalCellLocalizedString(@"stock_notify_item_unavailable",
+                                                        @"We could not identify this item right now.")];
+        [PPFunc triggerWarningHaptic];
+        return;
+    }
+
+    if (self.stockNotifyInFlight &&
+        self.stockNotifyItemID.length > 0 &&
+        [self.stockNotifyItemID isEqualToString:itemID]) {
+        return;
+    }
+
+    NSMutableDictionary *payload = [@{
+        @"itemId": itemID,
+        @"source": @"ios_market_cell",
+        @"locale": [Language isRTL] ? @"ar" : @"en"
+    } mutableCopy];
+    if (self.vm.title.length > 0) {
+        payload[@"clientItemTitle"] = self.vm.title;
+    }
+
+    [self pp_setStockNotifyInFlight:YES forItemID:itemID];
+    [PPHUD showLoading:PPUniversalCellLocalizedString(@"notify_me_loading", @"Saving alert")];
+
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:PPUniversalStockNotificationCallableName];
+    callable.timeoutInterval = 30.0;
+
+    __weak typeof(self) weakSelf = self;
+    [callable callWithObject:[payload copy]
+                  completion:^(FIRHTTPSCallableResult * _Nullable result,
+                               NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (self) {
+                NSString *currentItemID = [self pp_cartLookupIdentifierForViewModel:self.vm];
+                if ([currentItemID isEqualToString:itemID]) {
+                    [self pp_setStockNotifyInFlight:NO forItemID:itemID];
+                }
+            }
+
+            if (error) {
+                [PPHUD showError:PPUniversalCellLocalizedString(@"stock_notify_failed",
+                                                                @"We could not save this alert. Try again.")];
+                [PPFunc triggerWarningHaptic];
+                return;
+            }
+
+            NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
+            NSString *status = [response[@"status"] isKindOfClass:NSString.class] ? response[@"status"] : @"";
+            if ([status isEqualToString:@"already_available"]) {
+                [PPHUD showInfo:PPUniversalCellLocalizedString(@"stock_notify_already_available",
+                                                               @"This item is available now.")];
+                [PPFunc triggerMediumHaptic];
+                return;
+            }
+            if ([status isEqualToString:@"already_registered"]) {
+                [PPHUD showInfo:PPUniversalCellLocalizedString(@"stock_notify_already_registered",
+                                                               @"We will notify you when it is back.")];
+                [PPFunc triggerMediumHaptic];
+                return;
+            }
+
+            [PPHUD showSuccess:PPUniversalCellLocalizedString(@"stock_notify_success",
+                                                              @"We will notify you when it is back.")];
+            [PPFunc triggerMediumHaptic];
+        });
+    }];
 }
 
 - (BOOL)pp_isFullWidthLayout

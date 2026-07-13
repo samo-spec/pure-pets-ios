@@ -23,6 +23,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^PPCartFloatingBarOpenHandler)(void);
+@class ChatThreadModel;
  
 @interface PPRootTabBarController : UITabBarController <UITabBarControllerDelegate>
 @property (nonatomic, assign) BOOL useLegacyBar;
@@ -34,6 +35,7 @@ typedef void (^PPCartFloatingBarOpenHandler)(void);
                                                  animated:(BOOL)animated;
 - (void)pp_deactivateFloatingCartBarForSourceViewController:(UIViewController *)viewController
                                                    animated:(BOOL)animated;
+- (BOOL)pp_openChatThreadFromNotification:(ChatThreadModel *)thread animated:(BOOL)animated;
 @end
 
 

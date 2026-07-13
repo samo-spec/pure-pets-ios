@@ -4,8 +4,10 @@
 //
 
 #import "PPHomeMarketplaceHeroCell.h"
+#import "MainKindsModel.h"
 #import "PetCareHelpers.h"
 #import "PPHeroGlassBackgroundView.h"
+#import "PPImageLoaderManager.h"
 #import "PPMarketplaceHeroCardStyle.h"
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
@@ -84,6 +86,9 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong) NSLayoutConstraint *contentLeadingToVisualConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *contentLeadingToSurfaceConstraint;
 @property (nonatomic, assign) BOOL visualHiddenForReadableText;
+@property (nonatomic, strong, nullable) UIColor *contextAccentColor;
+@property (nonatomic, copy) NSString *currentContextIdentifier;
+@property (nonatomic, copy, nullable) NSString *currentArtworkImageURL;
 
 @end
 
@@ -111,6 +116,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 {
     [super prepareForReuse];
     [self pp_stopAmbientMotion];
+    [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.storefrontIconView];
+    self.currentArtworkImageURL = nil;
     self.onTap = nil;
     self.alpha = 1.0;
     self.transform = CGAffineTransformIdentity;
@@ -199,12 +206,91 @@ static BOOL PPMarketHeroReduceMotion(void)
 
 - (void)configureDefaultContent
 {
-    self.eyebrowLabel.text = kLang(@"home_marketplace_hero_eyebrow_proof") ?: kLang(@"home_marketplace_hero_eyebrow") ?: @"";
-    self.titleLabel.text = kLang(@"home_marketplace_hero_title") ?: @"";
-    self.subtitleLabel.text = kLang(@"home_marketplace_hero_subtitle") ?: @"";
-    self.ctaLabel.text = kLang(@"home_marketplace_hero_cta") ?: @"";
-    self.accessibilityLabel = kLang(@"home_marketplace_hero_accessibility_label") ?: @"";
-    self.accessibilityHint = kLang(@"home_marketplace_hero_accessibility_hint") ?: @"";
+    [self configureWithMainKind:nil animated:NO];
+}
+
+- (void)configureWithMainKind:(MainKindsModel *)mainKind
+                     animated:(BOOL)animated
+{
+    BOOL isAll = (mainKind == nil || mainKind.ID == -1);
+    NSString *contextID = isAll ? @"all" : [NSString stringWithFormat:@"%ld", (long)mainKind.ID];
+    BOOL contentChanged = ![PPSafeString(self.currentContextIdentifier) isEqualToString:contextID];
+    self.currentContextIdentifier = contextID;
+    self.contextAccentColor = isAll ? PPMarketHeroAccentColor() : ([mainKind kindColor] ?: PPMarketHeroAccentColor());
+
+    NSString *kindName = PPSafeString(mainKind.KindName);
+    if (kindName.length == 0) {
+        kindName = PPSafeString(mainKind.KindNameAr);
+    }
+    if (kindName.length == 0) {
+        kindName = PPSafeString(mainKind.KindNameEn);
+    }
+
+    void (^applyContent)(void) = ^{
+        if (isAll) {
+            [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.storefrontIconView];
+            self.currentArtworkImageURL = nil;
+            self.eyebrowLabel.text = kLang(@"home_marketplace_hero_all_eyebrow") ?: kLang(@"home_marketplace_hero_eyebrow_proof") ?: @"";
+            self.titleLabel.text = kLang(@"home_marketplace_hero_all_title") ?: kLang(@"home_marketplace_hero_title") ?: @"";
+            self.subtitleLabel.text = kLang(@"home_marketplace_hero_all_subtitle") ?: kLang(@"home_marketplace_hero_subtitle") ?: @"";
+            self.ctaLabel.text = kLang(@"home_marketplace_hero_all_cta") ?: kLang(@"home_marketplace_hero_cta") ?: @"";
+            self.accessibilityLabel = kLang(@"home_marketplace_hero_all_accessibility_label") ?: kLang(@"home_marketplace_hero_accessibility_label") ?: @"";
+            self.storefrontIconView.image = [UIImage pp_symbolNamed:@"storefront.fill"
+                                                          pointSize:46.0
+                                                             weight:UIImageSymbolWeightSemibold
+                                                              scale:UIImageSymbolScaleLarge
+                                                            palette:@[PPMarketHeroLabelIconColor()]
+                                                       makeTemplate:YES];
+            self.primaryProductIconView.image = [UIImage pp_symbolNamed:@"bag.fill"
+                                                               pointSize:15.0
+                                                                  weight:UIImageSymbolWeightBold
+                                                                   scale:UIImageSymbolScaleMedium
+                                                                 palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
+                                                            makeTemplate:YES];
+            self.secondaryProductIconView.image = [UIImage pp_symbolNamed:@"shippingbox.fill"
+                                                                 pointSize:15.0
+                                                                    weight:UIImageSymbolWeightBold
+                                                                     scale:UIImageSymbolScaleMedium
+                                                                   palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
+                                                              makeTemplate:YES];
+        } else {
+            NSString *eyebrowFormat = kLang(@"home_marketplace_hero_category_eyebrow_format") ?: @"";
+            NSString *titleFormat = kLang(@"home_marketplace_hero_category_title_format") ?: @"";
+            NSString *subtitleFormat = kLang(@"home_marketplace_hero_category_subtitle_format") ?: @"";
+            NSString *ctaFormat = kLang(@"home_marketplace_hero_category_cta_format") ?: @"";
+            NSString *accessibilityFormat = kLang(@"home_marketplace_hero_category_accessibility_label_format") ?: @"";
+
+            self.eyebrowLabel.text = eyebrowFormat.length ? [NSString stringWithFormat:eyebrowFormat, kindName] : kindName;
+            self.titleLabel.text = titleFormat.length ? [NSString stringWithFormat:titleFormat, kindName] : kindName;
+            self.subtitleLabel.text = subtitleFormat.length ? [NSString stringWithFormat:subtitleFormat, kindName] : kindName;
+            self.ctaLabel.text = ctaFormat.length ? [NSString stringWithFormat:ctaFormat, kindName] : (kLang(@"home_marketplace_hero_cta") ?: @"");
+            self.accessibilityLabel = accessibilityFormat.length ? [NSString stringWithFormat:accessibilityFormat, kindName] : self.titleLabel.text;
+            [self pp_configureArtworkForMainKind:mainKind];
+            self.primaryProductIconView.image = [UIImage pp_symbolNamed:@"checkmark.seal.fill"
+                                                               pointSize:15.0
+                                                                  weight:UIImageSymbolWeightBold
+                                                                   scale:UIImageSymbolScaleMedium
+                                                                 palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
+                                                            makeTemplate:YES];
+            self.secondaryProductIconView.image = [UIImage pp_symbolNamed:@"sparkles"
+                                                                 pointSize:15.0
+                                                                    weight:UIImageSymbolWeightBold
+                                                                     scale:UIImageSymbolScaleMedium
+                                                                   palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
+                                                              makeTemplate:YES];
+        }
+        self.accessibilityHint = kLang(@"home_marketplace_hero_accessibility_hint") ?: @"";
+    };
+
+    if (animated && contentChanged && !PPMarketHeroReduceMotion()) {
+        [UIView transitionWithView:self.surfaceControl
+                          duration:0.22
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                        animations:applyContent
+                        completion:nil];
+    } else {
+        applyContent();
+    }
 
     self.semanticContentAttribute = PPMarketHeroSemanticAttribute();
     self.contentView.semanticContentAttribute = PPMarketHeroSemanticAttribute();
@@ -224,11 +310,12 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.titleLabel.textAlignment = PPMarketHeroTextAlignment();
     self.subtitleLabel.textAlignment = PPMarketHeroTextAlignment();
     self.ctaLabel.textAlignment = PPMarketHeroTextAlignment();
+    [self refreshThemeAppearance];
 }
 
 - (void)refreshThemeAppearance
 {
-    UIColor *primaryAccent = PPPetCareAccentColor() ?: PPMarketHeroAccentColor();
+    UIColor *primaryAccent = self.contextAccentColor ?: PPPetCareAccentColor() ?: PPMarketHeroAccentColor();
     BOOL darkMode = NO;
     if (@available(iOS 13.0, *)) {
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
@@ -238,10 +325,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIColor *textPrimary = PPMarketplaceHeroCardPrimaryTextColor();
     UIColor *textSecondary = PPMarketplaceHeroCardSecondaryTextColor();
     UIColor *stroke = PPMarketplaceHeroCardStrokeColor(self.traitCollection);
-    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:darkMode ? 0.14 : 0.085];
+    UIColor *eyebrowFill = [primaryAccent colorWithAlphaComponent:darkMode ? 0.20 : 0.135];
     UIColor *ctaEnd = PPMarketplaceHeroCardBlend(primaryAccent,
-                                                  PPMarketHeroColor(0xB82454, 1.0),
-                                                  0.54,
+                                                  PPMarketHeroColor(0x86133B, 1.0),
+                                                  darkMode ? 0.30 : 0.38,
                                                   self.traitCollection);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
@@ -252,7 +339,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.contentView.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 12.0 : 9.0);
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
-    self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:0.16].CGColor;
+    self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor;
     self.eyebrowIconView.tintColor = primaryAccent;
     self.eyebrowLabel.textColor = primaryAccent;
 
@@ -264,24 +351,24 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
     self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     self.ctaView.layer.borderWidth = 0.8;
-    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.28].CGColor;
-    self.ctaView.layer.shadowColor = PPMarketHeroColor(0xBC2455, 1.0).CGColor;
-    self.ctaView.layer.shadowOpacity = darkMode ? 0.16f : 0.10f;
-    self.ctaView.layer.shadowRadius = 9.0f;
-    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.36].CGColor;
+    self.ctaView.layer.shadowColor = primaryAccent.CGColor;
+    self.ctaView.layer.shadowOpacity = darkMode ? 0.20f : 0.15f;
+    self.ctaView.layer.shadowRadius = 11.0f;
+    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     self.ctaLabel.textColor = UIColor.whiteColor;
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.14 : 0.08].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:0.07].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.20 : 0.135].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:0.10].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
 
     self.storefrontGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.24 : 0.16].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.96 : 0.92].CGColor
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.34 : 0.245].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.96 : 0.90].CGColor
     ];
     self.storefrontGradientLayer.startPoint = CGPointMake(0.12, 0.0);
     self.storefrontGradientLayer.endPoint = CGPointMake(0.92, 1.0);
@@ -296,6 +383,58 @@ static BOOL PPMarketHeroReduceMotion(void)
                          icon:self.secondaryProductIconView
                        accent:PPMarketHeroColor(0x6EAFA2, 1.0)
                          dark:darkMode];
+}
+
+- (void)pp_configureArtworkForMainKind:(MainKindsModel *)mainKind
+{
+    [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.storefrontIconView];
+
+    NSString *imageURL = PPSafeString(mainKind.KindImageUrl);
+    self.currentArtworkImageURL = imageURL;
+
+    UIImage *placeholder = [self pp_artworkImageForMainKind:mainKind];
+    self.storefrontIconView.image = placeholder;
+    self.storefrontIconView.tintColor = self.contextAccentColor ?: PPMarketHeroAccentColor();
+
+    if (imageURL.length == 0) {
+        return;
+    }
+
+    [[PPImageLoaderManager shared] setImageOnImageView:self.storefrontIconView
+                                                   url:imageURL
+                                           placeholder:placeholder
+                                       transitionStyle:PPImageTransitionStyleNone
+                                            complation:nil];
+}
+
+- (UIImage *)pp_artworkImageForMainKind:(MainKindsModel *)mainKind
+{
+    UIImage *image = mainKind.KindImageFile;
+    if (!image && mainKind.KindImageNamed.length > 0) {
+        image = [UIImage imageNamed:mainKind.KindImageNamed];
+    }
+    if (!image && mainKind.KindIconName.length > 0) {
+        image = [UIImage imageNamed:mainKind.KindIconName];
+    }
+    if (!image && mainKind.KindIconName.length > 0) {
+        if (@available(iOS 13.0, *)) {
+            image = [UIImage systemImageNamed:mainKind.KindIconName];
+        }
+    }
+    if (!image) {
+        if (@available(iOS 13.0, *)) {
+            image = [UIImage systemImageNamed:@"pawprint.fill"];
+        }
+    }
+    if (image) {
+        return [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] ?: image;
+    }
+    return [UIImage pp_symbolNamed:@"pawprint.fill"
+                         pointSize:46.0
+                            weight:UIImageSymbolWeightSemibold
+                             scale:UIImageSymbolScaleLarge
+                           palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
+                      makeTemplate:YES];
 }
 
 #pragma mark - Build
@@ -328,7 +467,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.48;
+    glass.cornerGlowOpacityMultiplier = 0.68;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 
@@ -379,7 +518,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     UIImageView *eyebrowIcon =
         [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"storefront.fill"
-                                                         pointSize:11.0
+                                                         pointSize:10.5
                                                             weight:UIImageSymbolWeightSemibold
                                                              scale:UIImageSymbolScaleMedium
                                                            palette:@[PPMarketHeroAccentColor()]
@@ -392,7 +531,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = PPMarketHeroScaledFont([GM MidFontWithSize:11.0], UIFontTextStyleCaption1);
+    eyebrowLabel.font = PPMarketHeroScaledFont([GM MidFontWithSize:10.5], UIFontTextStyleCaption1);
     eyebrowLabel.adjustsFontForContentSizeCategory = YES;
     eyebrowLabel.adjustsFontSizeToFitWidth = NO;
     eyebrowLabel.numberOfLines = 1;
@@ -432,13 +571,18 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaGradientLayer.drawsAsynchronously = YES;
     [cta.layer insertSublayer:self.ctaGradientLayer atIndex:0];
 
+    UIView *ctaContainer = [[UIView alloc] init];
+    ctaContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    ctaContainer.userInteractionEnabled = NO;
+    [cta addSubview:ctaContainer];
+
     UILabel *ctaLabel = [[UILabel alloc] init];
     ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     ctaLabel.font = PPMarketHeroScaledFont([GM boldFontWithSize:13.0], UIFontTextStyleCallout);
     ctaLabel.adjustsFontForContentSizeCategory = YES;
     ctaLabel.numberOfLines = 1;
     ctaLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [cta addSubview:ctaLabel];
+    [ctaContainer addSubview:ctaLabel];
     self.ctaLabel = ctaLabel;
 
     UIImageView *ctaIcon =
@@ -450,7 +594,7 @@ static BOOL PPMarketHeroReduceMotion(void)
                                                       makeTemplate:YES]];
     ctaIcon.translatesAutoresizingMaskIntoConstraints = NO;
     ctaIcon.contentMode = UIViewContentModeScaleAspectFit;
-    [cta addSubview:ctaIcon];
+    [ctaContainer addSubview:ctaIcon];
     self.ctaIconView = ctaIcon;
 
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[
@@ -488,11 +632,18 @@ static BOOL PPMarketHeroReduceMotion(void)
         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-5.0],
 
         [cta.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin],
-        [ctaLabel.leadingAnchor constraintEqualToAnchor:cta.leadingAnchor constant:PPSpaceMD],
-        [ctaLabel.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
-        [ctaIcon.leadingAnchor constraintEqualToAnchor:ctaLabel.trailingAnchor constant:PPSpaceSM],
-        [ctaIcon.trailingAnchor constraintEqualToAnchor:cta.trailingAnchor constant:-PPSpaceMD],
-        [ctaIcon.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
+        [ctaContainer.centerXAnchor constraintEqualToAnchor:cta.centerXAnchor],
+        [ctaContainer.centerYAnchor constraintEqualToAnchor:cta.centerYAnchor],
+        [ctaContainer.topAnchor constraintEqualToAnchor:cta.topAnchor],
+        [ctaContainer.bottomAnchor constraintEqualToAnchor:cta.bottomAnchor],
+        [ctaContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:cta.leadingAnchor],
+        [ctaContainer.trailingAnchor constraintLessThanOrEqualToAnchor:cta.trailingAnchor],
+
+        [ctaLabel.leadingAnchor constraintEqualToAnchor:ctaContainer.leadingAnchor constant:PPSpaceMD-2],
+        [ctaLabel.centerYAnchor constraintEqualToAnchor:ctaContainer.centerYAnchor],
+        [ctaIcon.leadingAnchor constraintEqualToAnchor:ctaLabel.trailingAnchor constant:PPSpaceSM+4],
+        [ctaIcon.trailingAnchor constraintEqualToAnchor:ctaContainer.trailingAnchor constant:-PPSpaceMD],
+        [ctaIcon.centerYAnchor constraintEqualToAnchor:ctaContainer.centerYAnchor],
         [ctaIcon.widthAnchor constraintEqualToConstant:15.0],
         [ctaIcon.heightAnchor constraintEqualToConstant:15.0],
     ]];
@@ -561,7 +712,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     [NSLayoutConstraint activateConstraints:@[
         [halo.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:visual.centerYAnchor],
-        [halo.widthAnchor constraintEqualToConstant:124.0],
+        [halo.widthAnchor constraintEqualToConstant:118.0],
         [halo.heightAnchor constraintEqualToConstant:124.0],
 
         [plate.centerXAnchor constraintEqualToAnchor:visual.centerXAnchor],

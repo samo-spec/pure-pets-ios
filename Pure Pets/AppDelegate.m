@@ -781,7 +781,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                 NSString *osVersion = PPAppDelegateTrimmedString(UIDevice.currentDevice.systemVersion);
                 NSString *deviceModel = PPAppDelegateCurrentDeviceModel();
                 NSString *apnsTokenHex = PPAppDelegateTrimmedString(strongSelf.pp_apnsTokenHexString);
-                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat"];
+                NSArray<NSString *> *notificationScopes = @[@"customer.orders", @"customer.chat", @"customer.marketing"];
                 NSDictionary *capabilities = @{
                     @"customer": @YES,
                     @"provider": @NO,
@@ -809,13 +809,15 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
                     payload[@"apnsTokenHash"] = apnsTokenHex;
                 }
 
+                NSString *notificationScopeSignature = [notificationScopes componentsJoinedByString:@","];
                 NSString *registrationSignature =
                     [@[uid,
                        safeInstallationId,
                        safeToken,
                        apnsTokenHex,
                        bundleId,
-                       PPAppDelegateNotificationEnvironment()] componentsJoinedByString:@"|"];
+                       PPAppDelegateNotificationEnvironment(),
+                       notificationScopeSignature] componentsJoinedByString:@"|"];
 
                 if ([registrationSignature isEqualToString:PPAppDelegateTrimmedString(strongSelf.notificationV2LastSuccessfulSignature)]) {
                     NSLog(@"[NotificationsV2] Registration skipped. reason=%@ duplicateSignature=yes uid=%@",

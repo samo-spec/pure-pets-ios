@@ -21,7 +21,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
-    return [AppForgroundColr colorWithAlphaComponent:0.82] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return [AppForgroundColr colorWithAlphaComponent:0.62] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
 @interface PPModerHomeCell ()
@@ -158,8 +158,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.cornerPinView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.cornerPinView];
 
-    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:60.0];
-    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:60.0];
+    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:68.0];
+    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:68.0];
     self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:76.0];
     self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:76.0];
 
@@ -174,7 +174,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.tapButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.tapButton.bottomAnchor],
 
-        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:11.0],
+        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:9.5],
         [self.imagePlateView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
         self.imagePlateWidthConstraint,
         self.imagePlateHeightConstraint,
@@ -219,8 +219,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
            (long)kind.ID,
            PPSafeString(kind.KindName),
            PPSafeString(kind.KindImageUrl)];
+    BOOL isSameBoundCell = [PPSafeString(self.boundCellID) isEqualToString:PPSafeString(nextCellID)];
+    BOOL shouldAnimateSelection = isSameBoundCell && self.window != nil && self.isKindSelected != selected;
     BOOL shouldRefreshImage =
-        ![PPSafeString(self.boundCellID) isEqualToString:PPSafeString(nextCellID)] ||
+        !isSameBoundCell ||
         self.kindImageView.image == nil;
 
     self.boundCellID = nextCellID;
@@ -240,12 +242,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     if (shouldRefreshImage) {
         [self pp_configureImageForKind:kind isAll:isAll accent:self.currentAccentColor];
     } else {
-        self.kindImageView.tintColor = isAll
-            ? (AppPrimaryTextClr ?: UIColor.labelColor)
-            : self.currentAccentColor;
+        self.kindImageView.tintColor = self.currentAccentColor;
     }
     [self pp_applyBaseTheme];
-    [self pp_applySelection:selected animated:NO];
+    [self pp_applySelection:selected animated:shouldAnimateSelection];
     [self pp_updateImageSizingForAll:isAll];
 
     [self setNeedsLayout];
@@ -268,7 +268,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
             }
         }
         self.kindImageView.image = [gridImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        self.kindImageView.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        self.kindImageView.tintColor = accent ?: (AppPrimaryClr ?: UIColor.labelColor);
         return;
     }
 
@@ -312,8 +312,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                      [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
     UIColor *borderColor = PPModerHomeDynamicColor([AppForgroundColr colorWithAlphaComponent:0.95],
                                                    [AppForgroundColr colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.76],
-                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
+    UIColor *plateColor = PPModerHomeDynamicColor([AppBackgroundClrLigter colorWithAlphaComponent:0.06],
+                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.63]);
     UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.045],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
     UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
@@ -323,7 +323,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         (__bridge id)surfaceTop.CGColor,
         (__bridge id)surfaceBottom.CGColor
     ];
-    self.surfaceView.backgroundColor = AppForgroundColr;
+    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.62];
     [self.surfaceView pp_setBorderColor:borderColor];
 
     [self pp_applyBottomGlowPalette];
@@ -337,8 +337,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 - (UIColor *)pp_accentColorForKind:(MainKindsModel *)kind isAll:(BOOL)isAll
 {
     if (isAll || !kind) {
-        return PPModerHomeDynamicColor([UIColor colorWithRed:0.38 green:0.42 blue:0.48 alpha:1.0],
-                                       [UIColor colorWithRed:0.72 green:0.75 blue:0.80 alpha:1.0]);
+        return AppPrimaryClr ?: PPModerHomeDynamicColor([UIColor colorWithRed:0.88 green:0.05 blue:0.30 alpha:1.0],
+                                                        [UIColor colorWithRed:1.00 green:0.40 blue:0.58 alpha:1.0]);
     }
 
     UIColor *modelColor = kind.kindColor;
@@ -353,20 +353,21 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    UIColor *selectedBorder = [accent colorWithAlphaComponent:0.42];
+    UIColor *selectedBorder = [accent colorWithAlphaComponent:0.62];
     UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     CGFloat glowOpacity = selected
-        ? (self.isAllOption ? 0.38 : 0.87)
-        : (self.isAllOption ? 0.24 : 0.52);
+        ? (self.isAllOption ? 0.60 : 0.87)
+        : (self.isAllOption ? 0.18 : 0.52);
 
     void (^changes)(void) = ^{
         self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
         self.cornerPinView.alpha = selected ? 1.0 : 0.36;
         self.selectionIndicatorView.backgroundColor = accent;
         self.cornerPinView.backgroundColor = [accent colorWithAlphaComponent:selected ? 0.78 : 0.26];
+        self.titleLabel.textColor = selected ? accent : (AppPrimaryTextClr ?: UIColor.labelColor);
         [self.surfaceView pp_setBorderColor:selected ? selectedBorder : regularBorder];
         self.imagePlateView.backgroundColor = plateColor;
         self.layer.shadowOpacity = selected ? 0.12 : 0.075;
@@ -444,8 +445,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
     BOOL isAll = self.isAllOption;
     self.bottomGlowLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.38].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.08 : 0.19].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.30 : 0.38].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.13 : 0.19].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
     ];
 }

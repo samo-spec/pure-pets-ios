@@ -316,9 +316,9 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
-    background.strokeWidth = 0.04;//PPSectionHeaderPixel();
+    background.strokeWidth = 0.08;//PPSectionHeaderPixel();
     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.24 : 0.10];
-    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.14 : 0.075];
+    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.14 : 0.095];
     cfg.background = background;
 
     UIImageSymbolConfiguration *symbolConfig =

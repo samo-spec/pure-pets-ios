@@ -85,7 +85,7 @@ static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
-    return NSDirectionalEdgeInsetsMake(8.0,
+    return NSDirectionalEdgeInsetsMake(4.0,
                                        PPHomeEdgeSpacing,
                                        PPHomeSpacingSection,
                                        PPHomeEdgeSpacing);
@@ -214,7 +214,7 @@ static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)
         return 120.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 110.0;
+        return 120.0;
     }
     return 120.0;
 }

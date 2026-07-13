@@ -11,6 +11,7 @@
 #import "ChNotificationRouter.h"
 #import "ChMessagingController.h"
 #import "ChatThreadModel.h"
+#import "PPRootTabBarController.h"
 #import "PPFunc.h" // your sheet presenter
 
 static NSString *PPChatRouterThreadIDFromPayload(NSDictionary *userInfo)
@@ -59,6 +60,81 @@ static ChMessagingController *PPChatRouterVisibleMessagingController(UIViewContr
     }
 
     return nil;
+}
+
+static PPRootTabBarController *PPChatRouterRootTabControllerInHierarchy(UIViewController *controller)
+{
+    if (!controller) return nil;
+
+    if ([controller isKindOfClass:PPRootTabBarController.class]) {
+        return (PPRootTabBarController *)controller;
+    }
+
+    if ([controller.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        return (PPRootTabBarController *)controller.tabBarController;
+    }
+
+    if ([controller isKindOfClass:UINavigationController.class]) {
+        UINavigationController *navigationController = (UINavigationController *)controller;
+        PPRootTabBarController *visibleRoot =
+            PPChatRouterRootTabControllerInHierarchy(navigationController.visibleViewController ?: navigationController.topViewController);
+        if (visibleRoot) return visibleRoot;
+
+        for (UIViewController *child in navigationController.viewControllers.reverseObjectEnumerator) {
+            PPRootTabBarController *root = PPChatRouterRootTabControllerInHierarchy(child);
+            if (root) return root;
+        }
+    }
+
+    if ([controller isKindOfClass:UITabBarController.class]) {
+        UITabBarController *tabController = (UITabBarController *)controller;
+        PPRootTabBarController *selectedRoot =
+            PPChatRouterRootTabControllerInHierarchy(tabController.selectedViewController);
+        if (selectedRoot) return selectedRoot;
+
+        for (UIViewController *child in tabController.viewControllers.reverseObjectEnumerator) {
+            PPRootTabBarController *root = PPChatRouterRootTabControllerInHierarchy(child);
+            if (root) return root;
+        }
+    }
+
+    for (UIViewController *child in controller.childViewControllers.reverseObjectEnumerator) {
+        PPRootTabBarController *root = PPChatRouterRootTabControllerInHierarchy(child);
+        if (root) return root;
+    }
+
+    return nil;
+}
+
+static PPRootTabBarController *PPChatRouterRootTabControllerForController(UIViewController *controller)
+{
+    UIViewController *windowRoot =
+        controller.view.window.rootViewController ?:
+        UIApplication.sharedApplication.keyWindow.rootViewController;
+
+    PPRootTabBarController *root = PPChatRouterRootTabControllerInHierarchy(windowRoot);
+    if (root) return root;
+
+    return PPChatRouterRootTabControllerInHierarchy(controller);
+}
+
+static void PPChatRouterPresentThreadFallback(ChatThreadModel *thread,
+                                              UIViewController *presentingVC)
+{
+    if (!presentingVC.view.window) {
+        presentingVC = UIApplication.sharedApplication.keyWindow.rootViewController;
+    }
+    if (!presentingVC) {
+        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
+        return;
+    }
+
+    ChMessagingController *chatVC =
+        [[ChMessagingController alloc] initWithChatThread:thread];
+
+    [PPFunc presentSheetFrom:presentingVC
+                     sheetVC:chatVC
+                 detentStyle:PPSheetDetentStyleSemiLargAndLarge];
 }
 
 @implementation ChNotificationRouter
@@ -118,13 +194,26 @@ static ChMessagingController *PPChatRouterVisibleMessagingController(UIViewContr
                 return;
             }
 
-            ChMessagingController *chatVC =
-                [[ChMessagingController alloc] initWithChatThread:thread];
+            PPRootTabBarController *rootTabController =
+                PPChatRouterRootTabControllerForController(presentingVC);
 
- 
-            [PPFunc presentSheetFrom:presentingVC
-                             sheetVC:chatVC
-                         detentStyle:PPSheetDetentStyleSemiLargAndLarge];
+            void (^openInRoot)(void) = ^{
+                if (rootTabController) {
+                    if (![rootTabController pp_openChatThreadFromNotification:thread animated:YES]) {
+                        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
+                    }
+                    return;
+                }
+                PPChatRouterPresentThreadFallback(thread, presentingVC);
+            };
+
+            if (rootTabController.presentedViewController &&
+                !rootTabController.presentedViewController.isBeingDismissed) {
+                [rootTabController dismissViewControllerAnimated:NO completion:openInRoot];
+                return;
+            }
+
+            openInRoot();
         });
     }];
 }

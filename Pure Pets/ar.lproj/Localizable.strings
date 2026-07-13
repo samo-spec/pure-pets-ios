@@ -1098,6 +1098,13 @@
 
 
 "Out of stock" = "غير متوفر";
+"notify_me" = "نبهني عند التوفر";
+"notify_me_loading" = "جارٍ حفظ التنبيه";
+"stock_notify_success" = "سننبّهك عند توفره مرة أخرى.";
+"stock_notify_already_registered" = "سننبّهك عند توفره مرة أخرى.";
+"stock_notify_already_available" = "هذا المنتج متوفر الآن.";
+"stock_notify_failed" = "تعذر حفظ التنبيه. حاول مرة أخرى.";
+"stock_notify_item_unavailable" = "تعذر تحديد هذا المنتج الآن.";
 "Only" = "متبقي";
 "left in stock" = "فقط";
 "leftInStock" = "فقط";
@@ -3260,12 +3267,22 @@
 "provider_companies_title_marketplace" = "سوق المزودين";
 "provider_marketplace_hero_title" = "مزودون موثوقون\nلكل احتياجات حيوانك";
 "home_marketplace_hero_eyebrow" = "المتجر";
-"home_marketplace_hero_eyebrow_proof" = "المتجر - موردون بتقييمات عالية";
+"home_marketplace_hero_eyebrow_proof" = "المتجر · موردون موثوقون";
 "home_marketplace_hero_title" = "اختر مزوداً موثوقاً";
 "home_marketplace_hero_subtitle" = "اختر الواجهة أولاً، ثم تصفح المنتجات من المزود المناسب.";
 "home_marketplace_hero_cta" = "عرض المزودين";
 "home_marketplace_hero_accessibility_label" = "المتجر. اختر مزوداً موثوقاً. موردون بتقييمات عالية. عرض المزودين.";
 "home_marketplace_hero_accessibility_hint" = "يفتح قائمة شركات ومزودي المتجر.";
+"home_marketplace_hero_all_eyebrow" = "الكل · اكتشاف موثوق";
+"home_marketplace_hero_all_title" = "مختارات لكل حيوان";
+"home_marketplace_hero_all_subtitle" = "منتجات وخدمات وإعلانات مختارة من موردين موثوقين.";
+"home_marketplace_hero_all_cta" = "استكشف المتجر";
+"home_marketplace_hero_all_accessibility_label" = "الكل. مختارات لكل حيوان. استكشف المتجر.";
+"home_marketplace_hero_category_eyebrow_format" = "المتجر · %@ مختارة";
+"home_marketplace_hero_category_title_format" = "مختارات %@ بعناية";
+"home_marketplace_hero_category_subtitle_format" = "منتجات وخدمات وإعلانات مناسبة لـ %@ من مزودين موثوقين.";
+"home_marketplace_hero_category_cta_format" = "استكشف %@";
+"home_marketplace_hero_category_accessibility_label_format" = "%@. منتجات وخدمات وإعلانات مناسبة من مزودين موثوقين.";
 "seller_profile_back_hint" = "انقر مرتين للرجوع";
 "provider_marketplace_subtitle" = "أطعمة . إكسسوارات";
 "provider_marketplace_subtitle_premium" = "أغذية ومستلزمات فاخرة وإكسسوارات حصرية لحيوانك";

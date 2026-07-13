@@ -289,6 +289,11 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 - (NSString *)resolvedOtherUserPresenceID;
 - (CGFloat)pp_activeComposerOcclusionHeight;
 - (void)pp_applyTableViewBottomInsetForActiveComposer;
+- (CGFloat)pp_visibleNotificationHandoffBottomNavigationClearance;
+- (CGFloat)pp_restingInputBarBottomConstant;
+- (CGFloat)pp_restingSwiftUIInputBarBottomConstant;
+- (void)pp_updateInputBarBottomConstraintsForCurrentState;
+- (void)pp_applyNotificationHandoffBottomNavigationVisibilityAnimated:(BOOL)animated;
 - (void)pp_scrollTableViewToBottomWithoutAnimation;
 - (void)pp_animateComposerHeightChange;
 - (CGFloat)pp_expandedSwiftUIComposerHeight;
@@ -1080,6 +1085,106 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
         return self.swiftUIInputVC.view;
     }
     return self.inputbar;
+}
+
+- (UIView *)pp_visibleBottomNavigationAnchorView
+{
+    UITabBarController *tabBarController = self.tabBarController;
+    SEL selector = @selector(pp_novaAmbientBottomNavigationAnchorView);
+    if (!tabBarController || ![tabBarController respondsToSelector:selector]) {
+        return nil;
+    }
+
+    UIView *(*anchorFunc)(id, SEL) = (UIView *(*)(id, SEL))[tabBarController methodForSelector:selector];
+    if (!anchorFunc) {
+        return nil;
+    }
+
+    UIView *anchorView = anchorFunc(tabBarController, selector);
+    if (!anchorView ||
+        !anchorView.superview ||
+        anchorView.hidden ||
+        anchorView.alpha <= 0.01 ||
+        CGRectIsEmpty(anchorView.bounds)) {
+        return nil;
+    }
+    return anchorView;
+}
+
+- (CGFloat)pp_visibleNotificationHandoffBottomNavigationClearance
+{
+    if (!self.keepsBottomNavigationVisibleForNotificationHandoff ||
+        self.isKeyboardVisible ||
+        CGRectIsEmpty(self.view.bounds)) {
+        return 0.0;
+    }
+
+    UIView *anchorView = [self pp_visibleBottomNavigationAnchorView];
+    if (!anchorView) {
+        return 0.0;
+    }
+
+    CGRect anchorFrame = [anchorView.superview convertRect:anchorView.frame toView:self.view];
+    if (CGRectIsEmpty(anchorFrame)) {
+        return 0.0;
+    }
+
+    CGFloat safeBottomY = CGRectGetHeight(self.view.bounds) - self.view.safeAreaInsets.bottom;
+    CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(anchorFrame));
+    return ceil(overlapAboveSafeArea + 10.0);
+}
+
+- (CGFloat)pp_restingInputBarBottomConstant
+{
+    return -[self pp_visibleNotificationHandoffBottomNavigationClearance];
+}
+
+- (CGFloat)pp_restingSwiftUIInputBarBottomConstant
+{
+    return -8.0 - [self pp_visibleNotificationHandoffBottomNavigationClearance];
+}
+
+- (void)pp_updateInputBarBottomConstraintsForCurrentState
+{
+    if (self.isKeyboardVisible) {
+        return;
+    }
+
+    CGFloat inputConstant = [self pp_restingInputBarBottomConstant];
+    CGFloat swiftConstant = [self pp_restingSwiftUIInputBarBottomConstant];
+
+    if (self.inputBarBottomConstraint &&
+        fabs(self.inputBarBottomConstraint.constant - inputConstant) > 0.5) {
+        self.inputBarBottomConstraint.constant = inputConstant;
+    }
+
+    if (self.swiftUIInputBarBottomConstraint &&
+        fabs(self.swiftUIInputBarBottomConstraint.constant - swiftConstant) > 0.5) {
+        self.swiftUIInputBarBottomConstraint.constant = swiftConstant;
+    }
+}
+
+- (void)pp_applyNotificationHandoffBottomNavigationVisibilityAnimated:(BOOL)animated
+{
+    if (!self.keepsBottomNavigationVisibleForNotificationHandoff) {
+        return;
+    }
+
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:PPShowSystemTabBarNotification
+                      object:nil];
+
+    UITabBarController *tabBarController = self.tabBarController;
+    SEL selector = @selector(pp_setBottomNavigationHidden:animated:);
+    if ([tabBarController respondsToSelector:selector]) {
+        void (*setHiddenFunc)(id, SEL, BOOL, BOOL) =
+            (void (*)(id, SEL, BOOL, BOOL))[tabBarController methodForSelector:selector];
+        if (setHiddenFunc) {
+            setHiddenFunc(tabBarController, selector, NO, animated);
+        }
+    }
+
+    [self pp_updateInputBarBottomConstraintsForCurrentState];
 }
 
 - (void)scrollToBottomButtonTapped
@@ -5726,9 +5831,13 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
    
 
 
-    [[NSNotificationCenter defaultCenter]
-           postNotificationName:PPHideSystemTabBarNotification
-                         object:nil];
+    if (self.keepsBottomNavigationVisibleForNotificationHandoff) {
+        [self pp_applyNotificationHandoffBottomNavigationVisibilityAnimated:animated];
+    } else {
+        [[NSNotificationCenter defaultCenter]
+               postNotificationName:PPHideSystemTabBarNotification
+                             object:nil];
+    }
     
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.tableView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -5864,6 +5973,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         ? self.view.bounds.size.width
         : UIScreen.mainScreen.bounds.size.width;
     CGFloat targetMaxWidth = MAX(160.0, baseWidth * 0.72);
+    [self pp_updateInputBarBottomConstraintsForCurrentState];
     [self pp_applyTableViewBottomInsetForActiveComposer];
     BOOL shouldKeepBottomPinned =
         self.isViewVisible && self.didFinishInitialLoad && [self isNearBottom];
@@ -6207,6 +6317,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 	    [super viewDidAppear:animated];
 	    self.isViewVisible = YES;
 	    [ChManager sharedManager].activeThreadID = self.chatThread.ID;
+        [self pp_applyNotificationHandoffBottomNavigationVisibilityAnimated:animated];
 	    [self pp_animatePremiumModalChatHeaderIfNeeded];
 	    [self pp_bringChatHeaderToFront];
     // ✅ Handoff finished
@@ -6312,8 +6423,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     self.currentKeyboardHeight = rawKeyboardHeight;
     self.isKeyboardVisible = rawKeyboardHeight > 0.5;
 
-    self.inputBarBottomConstraint.constant = self.isKeyboardVisible ? -(keyboardHeight + 8.0) : 0.0;
-    self.swiftUIInputBarBottomConstraint.constant = self.isKeyboardVisible ? -(keyboardHeight + 8.0) : -8.0;
+    self.inputBarBottomConstraint.constant = self.isKeyboardVisible
+        ? -(keyboardHeight + 8.0)
+        : [self pp_restingInputBarBottomConstant];
+    self.swiftUIInputBarBottomConstraint.constant = self.isKeyboardVisible
+        ? -(keyboardHeight + 8.0)
+        : [self pp_restingSwiftUIInputBarBottomConstant];
 
     UIViewAnimationOptions options =
         UIViewAnimationOptionBeginFromCurrentState |
