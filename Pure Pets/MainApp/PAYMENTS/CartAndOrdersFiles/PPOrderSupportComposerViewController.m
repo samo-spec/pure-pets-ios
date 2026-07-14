@@ -6,6 +6,14 @@
 //
 
 #import "PPOrderSupportComposerViewController.h"
+#import "PPOrderSupportRequestDetailsViewController.h"
+#import "PPOrder.h"
+#import "PPOrderManager.h"
+#import "OrderSupportFunc.h"
+#import "PPFirebaseSessionBridge.h"
+
+
+@import PhotosUI;
 
 @interface PPOrderSupportComposerViewController () <PHPickerViewControllerDelegate>
 @property (nonatomic, strong) PPOrder *order;

@@ -6,6 +6,10 @@
 //
 
 #import "PPOrderSupportRequestDetailsViewController.h"
+#import "PPOrder.h"
+#import "PPOrderManager.h"
+#import "OrderSupportFunc.h"
+
 
 @interface PPOrderSupportRequestDetailsViewController ()
 @property (nonatomic, strong) PPOrder *order;

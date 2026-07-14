@@ -24,6 +24,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     return [AppForgroundColr colorWithAlphaComponent:0.62] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
+static NSString * const PPModerHomeTapSheenAnimationKey = @"pp.moderHome.tapSheen";
+static NSString * const PPModerHomeTapHaloAnimationKey = @"pp.moderHome.tapHalo";
+static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowCommit";
+
 @interface PPModerHomeCell ()
 
 @property (nonatomic, strong) UIButton *tapButton;
@@ -35,6 +39,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 @property (nonatomic, strong) UIView *cornerPinView;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *tapHaloLayer;
+@property (nonatomic, strong) CAGradientLayer *tapSheenLayer;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *kindImageWidthConstraint;
@@ -45,6 +51,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 @property (nonatomic, strong) UIColor *currentAccentColor;
 @property (nonatomic, copy, nullable) NSString *currentImageURL;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, assign) BOOL isPressing;
 
 @end
 
@@ -83,9 +90,10 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.tapButton.layer.masksToBounds = NO;
     [self.tapButton addTarget:self action:@selector(pp_handleTap) forControlEvents:UIControlEventTouchUpInside];
     [self.tapButton addTarget:self action:@selector(pp_handleTouchDown) forControlEvents:UIControlEventTouchDown];
-    [self.tapButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchUpInside];
+    [self.tapButton addTarget:self action:@selector(pp_handleTouchDown) forControlEvents:UIControlEventTouchDragEnter];
     [self.tapButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchUpOutside];
     [self.tapButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchCancel];
+    [self.tapButton addTarget:self action:@selector(pp_handleTouchUp) forControlEvents:UIControlEventTouchDragExit];
     [self.contentView addSubview:self.tapButton];
 
     self.surfaceView = [[UIView alloc] init];
@@ -115,6 +123,25 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         self.bottomGlowLayer.type = kCAGradientLayerRadial;
     }
     [self.surfaceView.layer insertSublayer:self.bottomGlowLayer above:self.surfaceGradientLayer];
+
+    self.tapHaloLayer = [CAGradientLayer layer];
+    self.tapHaloLayer.name = @"PPMainKindsTapHaloLayer";
+    self.tapHaloLayer.startPoint = CGPointMake(0.5, 0.5);
+    self.tapHaloLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.tapHaloLayer.locations = @[@0.0, @0.48, @1.0];
+    self.tapHaloLayer.opacity = 0.0;
+    if (@available(iOS 12.0, *)) {
+        self.tapHaloLayer.type = kCAGradientLayerRadial;
+    }
+    [self.surfaceView.layer insertSublayer:self.tapHaloLayer above:self.bottomGlowLayer];
+
+    self.tapSheenLayer = [CAGradientLayer layer];
+    self.tapSheenLayer.name = @"PPMainKindsTapSheenLayer";
+    self.tapSheenLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.tapSheenLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.tapSheenLayer.locations = @[@0.0, @0.46, @0.58, @1.0];
+    self.tapSheenLayer.opacity = 0.0;
+    [self.surfaceView.layer insertSublayer:self.tapSheenLayer above:self.tapHaloLayer];
 
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -358,9 +385,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
-    CGFloat glowOpacity = selected
-        ? (self.isAllOption ? 0.50 : 0.82)
-        : (self.isAllOption ? 0.18 : 0.52);
+    CGFloat glowOpacity = [self pp_restingGlowOpacityForSelected:selected];
 
     void (^changes)(void) = ^{
         self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
@@ -373,8 +398,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         self.layer.shadowOpacity = selected ? 0.12 : 0.075;
         self.layer.shadowRadius = selected ? 19.0 : 15.0;
         self.layer.shadowOffset = selected ? CGSizeMake(0.0, 11.0) : CGSizeMake(0.0, 9.0);
-        self.bottomGlowLayer.opacity = glowOpacity;
-        self.tapButton.transform = selected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
+        self.bottomGlowLayer.opacity = self.isPressing ? [self pp_pressedGlowOpacityForSelected:selected] : glowOpacity;
+        self.tapButton.transform = self.isPressing ? [self pp_pressedTapTransform] : [self pp_restingTapTransform];
     };
 
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
@@ -428,6 +453,20 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                             glowDiameter));
     float corners = glowDiameter * 0.5;
     self.bottomGlowLayer.cornerRadius = corners;
+    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.36;
+    CGFloat haloX = (CGRectGetWidth(surfaceBounds) - haloDiameter) * 0.5;
+    CGFloat haloY = CGRectGetHeight(surfaceBounds) - (haloDiameter * 0.74);
+    self.tapHaloLayer.frame = CGRectIntegral(CGRectMake(haloX, haloY, haloDiameter, haloDiameter));
+    self.tapHaloLayer.cornerRadius = haloDiameter * 0.5;
+
+    CGFloat sheenWidth = MAX(48.0, CGRectGetWidth(surfaceBounds) * 0.46);
+    CGFloat sheenHeight = MAX(96.0, CGRectGetHeight(surfaceBounds) * 1.52);
+    self.tapSheenLayer.anchorPoint = CGPointMake(0.5, 0.5);
+    self.tapSheenLayer.bounds = CGRectIntegral(CGRectMake(0.0, 0.0, sheenWidth, sheenHeight));
+    self.tapSheenLayer.position = CGPointMake(-sheenWidth * 0.58, CGRectGetMidY(surfaceBounds));
+    CGFloat sheenRotation = Language.isRTL ? 0.6981317008 : -0.6981317008;
+    self.tapSheenLayer.transform = CATransform3DMakeRotation(sheenRotation, 0.0, 0.0, 1.0);
+
     [self pp_applyBottomGlowPalette];
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
@@ -440,6 +479,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
     if (!accent) {
         self.bottomGlowLayer.colors = nil;
+        self.tapHaloLayer.colors = nil;
+        self.tapSheenLayer.colors = nil;
         return;
     }
 
@@ -448,6 +489,29 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.30 : 0.38].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.13 : 0.19].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+    ];
+    [self pp_applyMotionLayerPaletteWithAccent:accent];
+}
+
+- (void)pp_applyMotionLayerPaletteWithAccent:(UIColor *)accent
+{
+    if (!accent) {
+        self.tapHaloLayer.colors = nil;
+        self.tapSheenLayer.colors = nil;
+        return;
+    }
+
+    UIColor *white = UIColor.whiteColor;
+    self.tapHaloLayer.colors = @[
+        (__bridge id)[accent colorWithAlphaComponent:0.30].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:0.10].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+    ];
+    self.tapSheenLayer.colors = @[
+        (__bridge id)[white colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[white colorWithAlphaComponent:0.34].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:0.18].CGColor,
+        (__bridge id)[white colorWithAlphaComponent:0.0].CGColor
     ];
 }
 
@@ -459,6 +523,30 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 }
 
 #pragma mark - Motion
+
+- (CGFloat)pp_restingGlowOpacityForSelected:(BOOL)selected
+{
+    if (selected) {
+        return self.isAllOption ? 0.50 : 0.82;
+    }
+    return self.isAllOption ? 0.18 : 0.52;
+}
+
+- (CGFloat)pp_pressedGlowOpacityForSelected:(BOOL)selected
+{
+    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.10 : 0.16));
+}
+
+- (CGAffineTransform)pp_restingTapTransform
+{
+    return self.isKindSelected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
+}
+
+- (CGAffineTransform)pp_pressedTapTransform
+{
+    CGFloat scale = self.isKindSelected ? 0.992 : 0.974;
+    return CGAffineTransformMakeScale(scale, scale);
+}
 
 - (void)didMoveToWindow
 {
@@ -494,44 +582,199 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     } completion:nil];
 }
 
-- (void)pp_handleTouchDown
+- (void)pp_applyPressed:(BOOL)pressed animated:(BOOL)animated
+{
+    self.isPressing = pressed;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        if (!pressed) {
+            self.tapButton.transform = [self pp_restingTapTransform];
+            self.imagePlateView.transform = CGAffineTransformIdentity;
+            self.kindImageView.transform = CGAffineTransformIdentity;
+            self.titleLabel.transform = CGAffineTransformIdentity;
+            self.selectionIndicatorView.transform = CGAffineTransformIdentity;
+            self.tapHaloLayer.opacity = 0.0;
+            self.bottomGlowLayer.opacity = [self pp_restingGlowOpacityForSelected:self.isKindSelected];
+        }
+        return;
+    }
+
+    NSTimeInterval duration = pressed ? 0.11 : (animated ? 0.24 : 0.0);
+    CGFloat damping = pressed ? 1.0 : 0.82;
+    CGFloat velocity = pressed ? 0.0 : 0.42;
+    void (^changes)(void) = ^{
+        self.tapButton.transform = pressed ? [self pp_pressedTapTransform] : [self pp_restingTapTransform];
+        self.imagePlateView.transform = pressed ? CGAffineTransformMakeScale(0.925, 0.925) : CGAffineTransformIdentity;
+        self.kindImageView.transform = pressed ? CGAffineTransformMakeScale(0.965, 0.965) : CGAffineTransformIdentity;
+        self.titleLabel.transform = pressed ? CGAffineTransformMakeTranslation(0.0, 0.45) : CGAffineTransformIdentity;
+        self.selectionIndicatorView.transform = pressed ? CGAffineTransformMakeScale(0.82, 1.0) : CGAffineTransformIdentity;
+        self.cornerPinView.alpha = pressed ? MIN(1.0, (self.isKindSelected ? 1.0 : 0.36) + 0.18) : (self.isKindSelected ? 1.0 : 0.36);
+        self.bottomGlowLayer.opacity = pressed ? [self pp_pressedGlowOpacityForSelected:self.isKindSelected] : [self pp_restingGlowOpacityForSelected:self.isKindSelected];
+        self.tapHaloLayer.opacity = pressed ? 0.28 : 0.0;
+    };
+
+    if (!animated || duration <= 0.0) {
+        changes();
+        return;
+    }
+
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:damping
+          initialSpringVelocity:velocity
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:changes
+                     completion:nil];
+}
+
+- (void)pp_performTapCommitMotion
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
         return;
     }
 
-    [UIView animateWithDuration:0.10
-                          delay:0.0
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.tapButton.transform = CGAffineTransformMakeScale(0.972, 0.972);
-        self.imagePlateView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    [self pp_performTapSheenMotion];
+    [self pp_performHaloBurstMotion];
+
+    CGFloat restingGlow = [self pp_restingGlowOpacityForSelected:self.isKindSelected];
+    CABasicAnimation *glowAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    glowAnimation.fromValue = @(MIN(1.0, restingGlow + 0.18));
+    glowAnimation.toValue = @(restingGlow);
+    glowAnimation.duration = 0.36;
+    glowAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    self.bottomGlowLayer.opacity = restingGlow;
+    [self.bottomGlowLayer addAnimation:glowAnimation forKey:PPModerHomeGlowCommitAnimationKey];
+
+    [UIView animateKeyframesWithDuration:0.42
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionAllowUserInteraction | UIViewKeyframeAnimationOptionBeginFromCurrentState | UIViewKeyframeAnimationOptionCalculationModeCubic
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
+            CGFloat liftScale = self.isKindSelected ? 1.026 : 1.018;
+            self.tapButton.transform = CGAffineTransformMakeScale(liftScale, liftScale);
+            self.imagePlateView.transform = CGAffineTransformMakeScale(1.055, 1.055);
+            self.kindImageView.transform = CGAffineTransformMakeScale(1.028, 1.028);
+            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.18, 1.0);
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{
+            self.tapButton.transform = [self pp_restingTapTransform];
+            self.imagePlateView.transform = CGAffineTransformIdentity;
+            self.kindImageView.transform = CGAffineTransformIdentity;
+            self.titleLabel.transform = CGAffineTransformIdentity;
+            self.selectionIndicatorView.transform = CGAffineTransformIdentity;
+            self.tapHaloLayer.opacity = 0.0;
+        }];
     } completion:nil];
+}
+
+- (void)pp_performTapSheenMotion
+{
+    CGRect bounds = self.surfaceView.bounds;
+    if (CGRectIsEmpty(bounds)) {
+        return;
+    }
+
+    [self.tapSheenLayer removeAnimationForKey:PPModerHomeTapSheenAnimationKey];
+    self.tapSheenLayer.opacity = 0.0;
+
+    CGFloat travelPadding = MAX(CGRectGetWidth(self.tapSheenLayer.bounds) * 0.9, 54.0);
+    CGFloat fromX = Language.isRTL ? CGRectGetWidth(bounds) + travelPadding : -travelPadding;
+    CGFloat toX = Language.isRTL ? -travelPadding : CGRectGetWidth(bounds) + travelPadding;
+
+    CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position.x"];
+    positionAnimation.fromValue = @(fromX);
+    positionAnimation.toValue = @(toX);
+
+    CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.values = @[@0.0, @0.78, @0.0];
+    opacityAnimation.keyTimes = @[@0.0, @0.42, @1.0];
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[positionAnimation, opacityAnimation];
+    group.duration = 0.48;
+    group.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.18 :0.74 :0.24 :1.0];
+    group.removedOnCompletion = YES;
+    [self.tapSheenLayer addAnimation:group forKey:PPModerHomeTapSheenAnimationKey];
+}
+
+- (void)pp_performHaloBurstMotion
+{
+    [self.tapHaloLayer removeAnimationForKey:PPModerHomeTapHaloAnimationKey];
+    self.tapHaloLayer.opacity = 0.0;
+
+    CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.values = @[@0.0, @0.42, @0.0];
+    opacityAnimation.keyTimes = @[@0.0, @0.22, @1.0];
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scaleAnimation.fromValue = @0.72;
+    scaleAnimation.toValue = @1.18;
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[opacityAnimation, scaleAnimation];
+    group.duration = 0.40;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    group.removedOnCompletion = YES;
+    [self.tapHaloLayer addAnimation:group forKey:PPModerHomeTapHaloAnimationKey];
+}
+
+- (void)pp_emitTapHaptic
+{
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        if (@available(iOS 13.0, *)) {
+            [generator impactOccurredWithIntensity:0.62];
+        } else {
+            [generator impactOccurred];
+        }
+    }
+}
+
+- (void)pp_resetTransientMotion
+{
+    [self.tapSheenLayer removeAnimationForKey:PPModerHomeTapSheenAnimationKey];
+    [self.tapHaloLayer removeAnimationForKey:PPModerHomeTapHaloAnimationKey];
+    [self.bottomGlowLayer removeAnimationForKey:PPModerHomeGlowCommitAnimationKey];
+    self.isPressing = NO;
+    self.contentView.transform = CGAffineTransformIdentity;
+    self.tapButton.transform = [self pp_restingTapTransform];
+    self.imagePlateView.transform = CGAffineTransformIdentity;
+    self.kindImageView.transform = CGAffineTransformIdentity;
+    self.titleLabel.transform = CGAffineTransformIdentity;
+    self.selectionIndicatorView.transform = CGAffineTransformIdentity;
+    self.tapHaloLayer.opacity = 0.0;
+    self.tapSheenLayer.opacity = 0.0;
+}
+
+- (void)pp_handleTouchDown
+{
+    [self pp_applyPressed:YES animated:YES];
 }
 
 - (void)pp_handleTouchUp
 {
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.imagePlateView.transform = CGAffineTransformIdentity;
-        [self pp_applySelection:self.isKindSelected animated:NO];
-        return;
-    }
-
-    [UIView animateWithDuration:0.20
-                          delay:0.0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.30
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.imagePlateView.transform = CGAffineTransformIdentity;
-        self.tapButton.transform = self.isKindSelected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
-    } completion:nil];
+    [self pp_applyPressed:NO animated:YES];
 }
 
 - (void)pp_handleTap
 {
-    if (self.onSelect) {
-        self.onSelect(self.currentKind, self.isAllOption);
+    [self pp_applyPressed:NO animated:YES];
+    [self pp_emitTapHaptic];
+    [self pp_performTapCommitMotion];
+
+    void (^selection)(MainKindsModel *_Nullable, BOOL) = [self.onSelect copy];
+    if (!selection) {
+        return;
+    }
+
+    MainKindsModel *kind = self.currentKind;
+    BOOL isAll = self.isAllOption;
+    NSTimeInterval routeDelay = UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.055;
+    if (routeDelay <= 0.0) {
+        selection(kind, isAll);
+    } else {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(routeDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            selection(kind, isAll);
+        });
     }
 }
 
@@ -550,19 +793,20 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.isAllOption = NO;
     self.isKindSelected = NO;
     self.didRunEntrance = NO;
+    self.isPressing = NO;
 
     self.titleLabel.text = nil;
     self.tapButton.accessibilityLabel = nil;
     self.kindImageView.image = nil;
     self.kindImageView.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.alpha = 1.0;
-    self.contentView.transform = CGAffineTransformIdentity;
-    self.tapButton.transform = CGAffineTransformIdentity;
-    self.imagePlateView.transform = CGAffineTransformIdentity;
+    [self pp_resetTransientMotion];
     self.selectionIndicatorView.alpha = 0.0;
     self.cornerPinView.alpha = 0.36;
     self.bottomGlowLayer.opacity = 0.0;
     self.bottomGlowLayer.frame = CGRectZero;
+    self.tapHaloLayer.frame = CGRectZero;
+    self.tapSheenLayer.frame = CGRectZero;
     [self pp_applyBaseTheme];
 }
 

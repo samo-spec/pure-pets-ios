@@ -28,7 +28,7 @@ static NSString * const kOrderHistoryCellID = @"OrderCell";
 static NSInteger const kOrderHistoryPageSize = 12;
 static CGFloat const kOrderHistoryRowHeight = 128.0;
 static CGFloat const kOrderHistoryContentBottomInset = 132.0;
-static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
+//static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 
 static NSString * const kOrderHistoryFilterAll = @"all";
 static NSString * const kOrderHistoryFilterPending = @"pending";

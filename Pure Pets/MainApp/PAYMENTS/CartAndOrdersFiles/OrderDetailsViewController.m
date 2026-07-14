@@ -12,7 +12,14 @@
 #import "PPOrderManager.h"
 #import "PPFulfillmentOrder.h"
 #import "PPAddressesManager.h"
+#import "PPOrderProgressTimelineView.h"
+#import "PPOrderStatusStepperView.h"
+#import "PPOrderSupportComposerViewController.h"
+#import "PPOrderSupportRequestDetailsViewController.h"
+#import "PPOrderSupportRequestListViewController.h"
+#import "PPOrderTimelineViewController.h"
 #import "AddressFormVC.h"
+#import "OrderSupportFunc.h"
 #import "AppClasses.h"
 #import "PPAlertHelper.h"
 #import "PPHeroGlassBackgroundView.h"
@@ -30,31 +37,23 @@
 @import FirebaseAuth;
 @import PhotosUI;
 
-static NSString * const kOrderDetailsItemCellID = @"OrderItemCell";
-static NSString * const kOrderDetailsPlaceholderCellID = @"OrderDetailsPlaceholderCell";
-static CGFloat const kOrderDetailsHeaderCornerRadius = 22.0;
-static CGFloat const kOrderDetailsButtonCornerRadius = 22.0;
-static CGFloat const kOrderDetailsContentBottomInset = 132.0;
-static CGFloat const kOrderDetailsScreenMargin = 16.0;
-static CGFloat const kOrderDetailsSectionSpacing = 12.0;
-static CGFloat const kOrderDetailsTopGlowRestingAlpha = 0.98;
-static CGFloat const kOrderDetailsBottomGlowRestingAlpha = 0.96;
-static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
-static NSInteger const kOrderSupportComposerMaxAttachments = 4;
+CGFloat const kOrderDetailsScreenMargin = 16.0;
 
-static UIColor *PPOrderDetailsSurfaceColor(void)
+
+
+UIColor *PPOrderDetailsSurfaceColor(void)
 {
     CGFloat alpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.58 : 0.84);
     return [AppForgroundColr colorWithAlphaComponent:alpha];
 }
 
-static UIColor *PPOrderDetailsSubsurfaceColor(void)
+UIColor *PPOrderDetailsSubsurfaceColor(void)
 {
     CGFloat alpha = UIAccessibilityIsReduceTransparencyEnabled() ? 1.0 : (PPIOS26() ? 0.68 : 0.84);
     return [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:alpha];
 }
 
-static void PPOrderDetailsApplySurface(UIView *view, CGFloat cornerRadius, BOOL elevated)
+void PPOrderDetailsApplySurface(UIView *view, CGFloat cornerRadius, BOOL elevated)
 {
     if (!view) return;
     view.backgroundColor = PPOrderDetailsSurfaceColor();
@@ -186,7 +185,7 @@ static BOOL PPOrderTimelineUsesDeliveryPresentation(NSString *statusKey)
     return NO;
 }
 
-static NSString *PPOrderStepperSymbolForTitle(NSString *title, NSInteger index)
+NSString *PPOrderStepperSymbolForTitle(NSString *title, NSInteger index)
 {
     NSString *key = PPOrderStepperNormalizedKey(title);
     if ([key containsString:@"pending"]) return @"clock.fill";
@@ -217,7 +216,7 @@ static NSString *PPOrderStepperSymbolForTitle(NSString *title, NSInteger index)
     return @"circle";
 }
 
-static UIImage *PPOrderStepperImage(NSString *name)
+UIImage *PPOrderStepperImage(NSString *name)
 {
     if (![name isKindOfClass:NSString.class] || name.length == 0) {
         return nil;
@@ -237,7 +236,7 @@ static UIImage *PPOrderStepperImage(NSString *name)
 
 
 
-static UIColor *PPOrderRequestStatusColor(NSString *status)
+UIColor *PPOrderRequestStatusColor(NSString *status)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(status);
     if ([normalized isEqualToString:@"approved"] ||
@@ -256,7 +255,7 @@ static UIColor *PPOrderRequestStatusColor(NSString *status)
     return UIColor.systemOrangeColor;
 }
 
-static NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
+NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
 {
     NSString *type = PPOrderStepperNormalizedKey(event.type);
     if ([type isEqualToString:@"order_created"]) return kLang(@"order_timeline_created_title");
@@ -308,7 +307,7 @@ static NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
     return event.summary.length > 0 ? event.summary : kLang(@"order_tracking_title");
 }
 
-static NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
+NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 {
     if (event.summary.length > 0) return event.summary;
     NSString *status = PPOrderStepperNormalizedKey(event.status);
@@ -327,39 +326,7 @@ static NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     return statusTitle.length > 0 ? statusTitle : kLang(@"order_tracking_empty");
 }
 
-static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
-{
-    NSMutableArray<NSDictionary *> *items = [NSMutableArray array];
-    for (id rawItem in order.items ?: @[]) {
-        if ([rawItem isKindOfClass:NSString.class]) {
-            NSString *itemID = [(NSString *)rawItem stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (itemID.length == 0) continue;
-            [items addObject:@{
-                @"id": itemID,
-                @"name": itemID,
-                @"quantity": @(1)
-            }];
-            continue;
-        }
-        if (![rawItem isKindOfClass:NSDictionary.class]) continue;
-        NSDictionary *item = (NSDictionary *)rawItem;
-        NSString *itemID = [item[@"id"] isKindOfClass:NSString.class] ? item[@"id"] : item[@"itemID"];
-        if (![itemID isKindOfClass:NSString.class] || itemID.length == 0) continue;
-        NSString *name = [item[@"name"] isKindOfClass:NSString.class] ? item[@"name"] : (item[@"title"] ?: itemID);
-        NSInteger qty = [item[@"qty"] ?: item[@"quantity"] integerValue];
-        [items addObject:@{
-            @"id": itemID ?: @"",
-            @"name": name ?: itemID ?: @"",
-            @"quantity": @(MAX(1, qty))
-        }];
-    }
-    return items.copy;
-}
 
-@interface UIViewController (PPOrderChevronBack)
-- (void)pp_orderApplyChevronBackButton;
-- (void)pp_orderHandleChevronBack;
-@end
 
 @implementation UIViewController (PPOrderChevronBack)
 

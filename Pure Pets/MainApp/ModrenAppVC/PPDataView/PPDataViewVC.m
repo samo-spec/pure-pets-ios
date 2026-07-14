@@ -2018,9 +2018,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
     UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
-    UIColor *surface = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.982 blue:0.988 alpha:0.78],
+    UIColor *surface = PPDataViewDynamicColor([bageColor colorWithAlphaComponent:0.18],
                                              [UIColor colorWithRed:0.150 green:0.090 blue:0.116 alpha:0.84]);
-    UIColor *badgeSurface = PPDataViewBlendColor(AppPrimaryClrDarker,
+    UIColor *badgeSurface = PPDataViewBlendColor(surface,
                                                 accent,
                                                 darkMode ? 0.20 : 0.04,
                                                 self.traitCollection);

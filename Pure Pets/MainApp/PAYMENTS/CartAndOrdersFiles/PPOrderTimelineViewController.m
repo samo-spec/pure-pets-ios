@@ -7,6 +7,9 @@
 
 
 #import "PPOrderTimelineViewController.h"
+#import "PPOrder.h"
+#import "PPOrderManager.h"
+#import "OrderSupportFunc.h"
 
 @interface PPOrderTimelineViewController () <UITableViewDelegate, UITableViewDataSource>
 @property (nonatomic, strong) PPOrder *order;
