@@ -686,6 +686,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.userInteractionEnabled = NO;
     self.hidden = YES;
     self.backgroundColor = [UIColor clearColor];
+    self.clipsToBounds = YES;
 
     NSMutableArray<UIView *> *views = [NSMutableArray array];
     for (NSInteger idx = 0; idx < 7; idx++) {
@@ -707,9 +708,20 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     CGFloat inset = 14.0;
     CGFloat width = CGRectGetWidth(self.bounds);
-    CGFloat imageHeight = self.isCompactLayout ? width - (inset * 2.0) : CGRectGetHeight(self.bounds) - (inset * 2.0);
+    CGFloat height = CGRectGetHeight(self.bounds);
+    if (width <= 1.0 || height <= 1.0 || self.bars.count < 7) {
+        return;
+    }
+
+    CGFloat availableHeight = MAX(height - (inset * 2.0), 1.0);
+    CGFloat imageHeight = self.isCompactLayout ? width - (inset * 2.0) : availableHeight;
     if (!self.isCompactLayout) {
         imageHeight = MIN(MAX(width * 0.34, 128.0), 160.0);
+    }
+    if (self.isCompactLayout) {
+        CGFloat reservedTextHeight = 132.0;
+        CGFloat maxImageHeight = MAX(92.0, height - (inset * 2.0) - reservedTextHeight);
+        imageHeight = MIN(MIN(MAX(width * 0.78, 116.0), 220.0), maxImageHeight);
     }
 
     UIView *imageBar = self.bars[0];
@@ -717,8 +729,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         ? width - inset - imageHeight
         : inset;
     imageBar.frame = self.isCompactLayout
-        ? CGRectMake(inset, inset, width - (inset * 2.0), MIN(MAX(width * 0.78, 116.0), 220.0))
-        : CGRectMake(horizontalImageX, inset, imageHeight, CGRectGetHeight(self.bounds) - (inset * 2.0));
+        ? CGRectMake(inset, inset, width - (inset * 2.0), imageHeight)
+        : CGRectMake(horizontalImageX, inset, imageHeight, availableHeight);
     imageBar.layer.cornerRadius = 20.0;
 
     CGFloat contentX = self.isCompactLayout ? inset : (self.mediaOnTrailingEdge ? inset : CGRectGetMaxX(imageBar.frame) + 14.0);
@@ -726,19 +738,27 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         ? width - contentX - inset
         : (self.mediaOnTrailingEdge ? CGRectGetMinX(imageBar.frame) - 14.0 - inset : width - contentX - inset);
     contentWidth = MAX(contentWidth, 1.0);
-    CGFloat currentY = self.isCompactLayout ? CGRectGetMaxY(imageBar.frame) + 14.0 : inset + 10.0;
+    __block CGFloat currentY = self.isCompactLayout ? CGRectGetMaxY(imageBar.frame) + 14.0 : inset + 10.0;
+    CGFloat maxY = MAX(CGRectGetMaxY(self.bounds) - inset, currentY);
+    void (^placeBar)(NSInteger, CGFloat, CGFloat, CGFloat) =
+        ^(NSInteger index, CGFloat requestedWidth, CGFloat barHeight, CGFloat gap) {
+            UIView *bar = self.bars[(NSUInteger)index];
+            CGFloat safeHeight = MIN(barHeight, MAX(maxY - currentY, 0.0));
+            if (safeHeight < 4.0) {
+                bar.frame = CGRectZero;
+                return;
+            }
+            bar.frame = CGRectMake(contentX, currentY, MIN(requestedWidth, contentWidth), safeHeight);
+            bar.layer.cornerRadius = MIN(bar.layer.cornerRadius, safeHeight * 0.5);
+            currentY += safeHeight + gap;
+        };
 
-    self.bars[1].frame = CGRectMake(contentX, currentY, MIN(112.0, contentWidth * 0.45), 20.0);
-    currentY += 28.0;
-    self.bars[2].frame = CGRectMake(contentX, currentY, contentWidth, 18.0);
-    currentY += 26.0;
-    self.bars[3].frame = CGRectMake(contentX, currentY, contentWidth * 0.68, 16.0);
-    currentY += 28.0;
-    self.bars[4].frame = CGRectMake(contentX, currentY, MIN(128.0, contentWidth * 0.55), 24.0);
-    currentY += 36.0;
-    self.bars[5].frame = CGRectMake(contentX, currentY, contentWidth, 44.0);
-    currentY += 56.0;
-    self.bars[6].frame = CGRectMake(contentX, currentY, MIN(110.0, contentWidth * 0.5), 24.0);
+    placeBar(1, MIN(112.0, contentWidth * 0.45), 20.0, 8.0);
+    placeBar(2, contentWidth, 18.0, 8.0);
+    placeBar(3, contentWidth * 0.68, 16.0, 12.0);
+    placeBar(4, MIN(128.0, contentWidth * 0.55), 24.0, 12.0);
+    placeBar(5, contentWidth, 38.0, 10.0);
+    placeBar(6, MIN(110.0, contentWidth * 0.5), 22.0, 0.0);
 }
 
 - (void)startAnimating

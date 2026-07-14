@@ -38,6 +38,8 @@
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
 		A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */; };
+		A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */; };
+		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -914,6 +916,8 @@
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
 		A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHeroGlassBackgroundViewApexBridge.m; sourceTree = "<group>"; };
+		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
+		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
 		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
@@ -3424,6 +3428,7 @@
 				F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */,
 				F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */,
 				A5E100012FF1000100A5E001 /* PPHeroApex.swift */,
+				A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */,
 				A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */,
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
@@ -4997,6 +5002,7 @@
 			isa = PBXGroup;
 			children = (
 				F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */,
+				A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */,
 			);
 			path = "Pure PetsTests";
 			sourceTree = "<group>";
@@ -5769,6 +5775,7 @@
 				F2AB48942C72CF3C00D88603 /* JGProgressHUDPieIndicatorView.m in Sources */,
 				F28CBB642D302899002993F0 /* JPCell.m in Sources */,
 				A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */,
+				A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */,
 				A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */,
 				F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */,
 				F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */,
@@ -6298,6 +6305,7 @@
 				F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */,
 				F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */,
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
+				A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

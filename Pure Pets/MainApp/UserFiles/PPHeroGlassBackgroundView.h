@@ -2,8 +2,8 @@
 //  PPHeroGlassBackgroundView.h
 //  Pure Pets
 //
-//  Reusable decorative glass background extracted from PPUserMenuViewController hero card.
-//  Contains gradient, constellation lines, animated dots, and top accent bar.
+//  Reusable decorative glass background extracted from PPUserMenuViewController.
+//  The stable Objective-C surface is backed by the shared Swift hero engine.
 //
 
 #import <UIKit/UIKit.h>
@@ -19,11 +19,11 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// used behind header content across the app.
 ///
 /// Includes:
-/// - Three-stop diagonal gradient
-/// - Depth gradient layer
-/// - Animated constellation lines
-/// - 14 animated dot particles with halos
-/// - Top accent bar
+/// - Adaptive glass, depth, and contrast-aware surface layers
+/// - A restrained top-right aurora beacon and ambient particle field
+/// - Optional logical-leading accent bar or physical top-right corner glow
+/// - Interruption-safe entrance, ambient, and touch-reactive motion
+/// - Reduce Motion, low-power, thermal, and offscreen lifecycle handling
 /// - Continuous corner radius, border, and shadow
 ///
 /// Does NOT contain any profile-specific content (avatar, name, labels, buttons).
@@ -50,11 +50,11 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// `PPHeroGlassAccentStyleCornerGlow`. Defaults to 1.0.
 @property (nonatomic, assign) CGFloat cornerGlowOpacityMultiplier;
 
-/// Starts constellation line and dot pulse animations.
-/// Safe to call multiple times — will not duplicate animations.
+/// Requests the semantic motion timeline. Safe to call repeatedly; animation
+/// identity and phase are preserved whenever the view is only suspended.
 - (void)startAnimations;
 
-/// Stops all running animations.
+/// Stops motion deterministically until `startAnimations` is called again.
 - (void)stopAnimations;
 
 /// Re-applies the full color palette for the current trait collection.

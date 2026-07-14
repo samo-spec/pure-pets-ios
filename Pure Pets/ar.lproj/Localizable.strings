@@ -3466,6 +3466,9 @@
 /* DataView Filter Badges */
 "dataview_filter_service_badge" = "الخدمة";
 "dataview_filter_service_when_badge" = "الموعد";
+"dataview_provider_context_products" = "كل منتجات المزودين";
+"dataview_provider_context_services" = "كل خدمات المزودين";
+"dataview_provider_context_listings" = "كل عروض السوق";
 "dataview_filters_collapse_accessibility" = "إخفاء الفلاتر";
 "dataview_filters_expand_accessibility" = "إظهار الفلاتر";
 

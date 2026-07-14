@@ -169,16 +169,7 @@ static FIRFunctions *PPOrderFunctionsClient(void) {
 }
 
 static FIRFunctions *PPOrderDefaultFunctionsClient(void) {
-    static FIRFunctions *functions = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *region = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
-        if (region.length == 0) {
-            region = @"us-central1";
-        }
-        functions = [FIRFunctions functionsForRegion:region];
-    });
-    return functions;
+    return PPOrderFunctionsClient();
 }
 
 static NSString *PPOrderFunctionsMessageCandidate(id value, NSInteger depth) {
@@ -1266,7 +1257,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             return;
         }
 
-        [[PPOrderDefaultFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
+        [[PPOrderFunctionsClient() HTTPSCallableWithName:@"cancelOrderCheckout"]
          callWithObject:@{ @"orderId": orderID }
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
             if (error && !didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
@@ -1746,7 +1737,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                         completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
 {
     void (^callCreateRequest)(void) = ^{
-        [[PPOrderDefaultFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
+        [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
          callWithObject:payload ?: @{}
          completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
             if (error) {

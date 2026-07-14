@@ -54,13 +54,13 @@ static UIColor *PPMarketHeroCTAEndColor(UIColor *accentColor,
                                                             traitCollection);
         return PPMarketplaceHeroCardBlend(resolvedAccent,
                                           shine ?: resolvedAccent,
-                                          darkMode ? 0.18 : 0.28,
+                                          darkMode ? 0.10 : 0.16,
                                           traitCollection);
     }
 
     return PPMarketplaceHeroCardBlend(resolvedAccent,
                                       darkMode ? UIColor.whiteColor : UIColor.blackColor,
-                                      darkMode ? 0.10 : 0.14,
+                                      darkMode ? 0.07 : 0.09,
                                       traitCollection);
 }
 
@@ -196,6 +196,13 @@ static BOOL PPMarketHeroReduceMotion(void)
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     CGRect ctaBounds = self.ctaView.bounds;
+    if (!CGRectIsEmpty(ctaBounds) && isfinite((double)CGRectGetHeight(ctaBounds))) {
+        self.ctaView.layer.cornerRadius = MAX(0.0, floor(CGRectGetHeight(ctaBounds) * 0.5));
+        self.ctaView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:ctaBounds
+                                                                   cornerRadius:self.ctaView.layer.cornerRadius].CGPath;
+    } else {
+        self.ctaView.layer.shadowPath = nil;
+    }
     self.ctaGradientLayer.frame = (!CGRectIsEmpty(ctaBounds) &&
                                    isfinite((double)CGRectGetWidth(ctaBounds)) &&
                                    isfinite((double)CGRectGetHeight(ctaBounds))) ? ctaBounds : CGRectZero;
@@ -394,14 +401,14 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaView.backgroundColor = UIColor.clearColor;
     self.ctaGradientLayer.colors = @[(id)primaryAccent.CGColor, (id)ctaEnd.CGColor];
     self.ctaGradientLayer.locations = @[@0.0, @1.0];
-    self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-    self.ctaView.layer.borderWidth = 0.8;
-    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.46].CGColor;
+    self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
+    self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
+    self.ctaView.layer.borderWidth = 0.6;
+    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.32].CGColor;
     self.ctaView.layer.shadowColor = primaryAccent.CGColor;
-    self.ctaView.layer.shadowOpacity = darkMode ? 0.24f : 0.19f;
-    self.ctaView.layer.shadowRadius = 12.0f;
-    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.ctaView.layer.shadowOpacity = darkMode ? 0.18f : 0.13f;
+    self.ctaView.layer.shadowRadius = 9.0f;
+    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     self.ctaLabel.textColor = UIColor.whiteColor;
     self.ctaIconView.tintColor = UIColor.whiteColor;
 

@@ -200,7 +200,13 @@ static void PPChatRouterPresentThreadFullscreen(ChatThreadModel *thread,
                 PPChatRouterRootTabControllerForController(presentingVC);
 
             void (^openInRoot)(void) = ^{
-                PPChatRouterPresentThreadFullscreen(thread, rootTabController ?: presentingVC);
+                if (rootTabController) {
+                    if (![rootTabController pp_openChatThreadFromNotification:thread animated:YES]) {
+                        [ChManager sharedManager].isHandlingNotificationHandoff = NO;
+                    }
+                    return;
+                }
+                PPChatRouterPresentThreadFullscreen(thread, presentingVC);
             };
 
             if (rootTabController.presentedViewController &&

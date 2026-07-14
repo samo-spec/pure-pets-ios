@@ -59,6 +59,12 @@
 {
     [super layoutSubviews];
     self.apexView.frame = self.bounds;
+
+    CGFloat resolvedCornerRadius = self.layer.cornerRadius;
+    if (resolvedCornerRadius <= 0.5) {
+        resolvedCornerRadius = self.superview.layer.cornerRadius;
+    }
+    self.apexView.heroCornerRadius = resolvedCornerRadius > 0.5 ? resolvedCornerRadius : 30.0;
 }
 
 - (void)setAccentColorOverride:(UIColor *)accentColorOverride

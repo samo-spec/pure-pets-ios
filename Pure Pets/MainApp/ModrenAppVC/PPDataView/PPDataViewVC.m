@@ -34,8 +34,9 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
 static const CGFloat kPPAccessoryFilterHeight = 52.0;
+static const CGFloat kPPProviderFilterContextBarHeight = 42.0;
 static const CGFloat kPPFilterCollapseHandleHeight = 28.0;
-static const CGFloat kPPFilterExpandedBottomInset = 36.0;
+static const CGFloat kPPFilterExpandedBottomInset = 12.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -974,6 +975,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) PPCollectionLayoutManager *layoutManager;
 @property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
+@property (nonatomic, strong) UIView *providerFilterContextBar;
+@property (nonatomic, strong) UIView *providerFilterContextBadgeView;
+@property (nonatomic, strong) UIImageView *providerFilterContextIconView;
+@property (nonatomic, strong) UILabel *providerFilterContextLabel;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
 @property (nonatomic, strong) PPPremiumCollapseButton *filterCollapseButton;
@@ -1004,10 +1009,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) NSLayoutConstraint *mainKindsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *providerFilterContextBarHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipBottomConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *filterCollapseButtonBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
@@ -1065,6 +1070,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)syncFilterChipsForSection:(PPDataSection)section;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)updateProviderFilterContextBarForSection:(PPDataSection)section;
+- (NSString *)providerFilterContextTitleForSection:(PPDataSection)section;
+- (void)pp_applyProviderFilterContextBarAppearance;
+- (void)pp_updateCollectionContentInsetPreservingTopAnchor;
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)toggleFilterBadgesCollapsed:(UIButton *)sender;
@@ -1140,6 +1149,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_prepareSectionsSegmentedEntranceInitialState;
 - (void)pp_runSectionsSegmentedEntranceIfNeeded;
 - (void)pp_setSectionsSegmentedEntranceVisibleWithoutAnimation;
+- (void)pp_anchorSkeletonLoadingBelowChromeIfNeeded;
 - (NSArray<UICollectionViewCell *> *)pp_sortedVisibleCollectionCells;
 - (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath;
 - (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
@@ -1334,6 +1344,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     // Remove empty state from background immediately
     [PPEmptyStateHelper removeEmptyStateFromListView:self.collectionView];
+    if (self.sectionsFiltersContainer) {
+        [self pp_setSectionsSegmentedEntranceVisibleWithoutAnimation];
+        [self.view bringSubviewToFront:self.sectionsFiltersContainer];
+    }
 
     NSMutableArray *items = [NSMutableArray array];
     NSInteger count = 8;
@@ -1350,6 +1364,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self.layoutManager applyLayoutMode:self.layoutManager.currentLayoutMode
                        toCollectionView:self.collectionView
                                animated:NO];
+    [self updateCollectionContentInset];
+    [self pp_anchorSkeletonLoadingBelowChromeIfNeeded];
 
     [self performCrossFadeReload];
 }
@@ -1953,6 +1969,52 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (@available(iOS 13.0, *)) {
         self.sectionsSegmentedControl.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    [self pp_applyProviderFilterContextBarAppearance];
+}
+
+- (void)pp_applyProviderFilterContextBarAppearance
+{
+    if (!self.providerFilterContextBar) {
+        return;
+    }
+
+    BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+    UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
+    UIColor *surface = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.982 blue:0.988 alpha:0.78],
+                                             [UIColor colorWithRed:0.150 green:0.090 blue:0.116 alpha:0.84]);
+    UIColor *badgeSurface = PPDataViewBlendColor(surface,
+                                                accent,
+                                                darkMode ? 0.20 : 0.13,
+                                                self.traitCollection);
+    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.70];
+
+    self.providerFilterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.providerFilterContextBar.backgroundColor = surface;
+    self.providerFilterContextBar.layer.cornerRadius = 18.0;
+    self.providerFilterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.providerFilterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
+    self.providerFilterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
+    self.providerFilterContextBar.layer.shadowOpacity = darkMode ? 0.10 : 0.07;
+    self.providerFilterContextBar.layer.shadowRadius = 10.0;
+    self.providerFilterContextBar.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    if (@available(iOS 13.0, *)) {
+        self.providerFilterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.providerFilterContextBadgeView.backgroundColor = badgeSurface;
+    self.providerFilterContextBadgeView.layer.cornerRadius = 14.0;
+    self.providerFilterContextBadgeView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.providerFilterContextBadgeView.layer.borderColor =
+        PPDataViewResolvedColor([UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.14 : 0.78],
+                                self.traitCollection).CGColor;
+    if (@available(iOS 13.0, *)) {
+        self.providerFilterContextBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.providerFilterContextIconView.tintColor = accent;
+    self.providerFilterContextLabel.textColor = PPDataViewChromeTextColor();
+    self.providerFilterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.filterCollapseButton.tintColor = PPDataViewAccentColor();
 }
 
 - (void)pp_updatePremiumChromeShadowPaths
@@ -1990,6 +2052,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                           kPPDataViewSectionsSegmentedCornerRadius);
         self.sectionsSegmentedControl.layer.cornerRadius = radius;
         self.sectionsSegmentedControl.layer.shadowPath = nil;
+    }
+
+    if (self.providerFilterContextBar && !CGRectIsEmpty(self.providerFilterContextBar.bounds)) {
+        CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.providerFilterContextBar.bounds), 18.0));
+        self.providerFilterContextBar.layer.cornerRadius = radius;
+        self.providerFilterContextBar.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.providerFilterContextBar.bounds
+                                       cornerRadius:radius].CGPath;
     }
 
 
@@ -2837,6 +2907,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_applyPremiumSectionsSegmentedAppearance];
     [self pp_updatePremiumChromeShadowPaths];
     [self updateCollectionContentInset];
+    [self pp_anchorSkeletonLoadingBelowChromeIfNeeded];
     [self updateSectionsTabBarSelectionIndicatorIfNeeded];
     [self reloadNavigationCenterViewLayout];
     if ([self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
@@ -3035,7 +3106,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     if (!CGRectIsEmpty(sectionsFrame) && (!CGRectIsEmpty(safeAreaFrame) || fullDetails)) {
         CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
-        CGFloat filtersToContentGap = fullDetails ? 0.0 : 6.0;
+        CGFloat filtersToContentGap = fullDetails ? 0.0 : 14.0;
         CGFloat referenceTopY = fullDetails
         ? CGRectGetMinY(self.collectionView.frame)
         : CGRectGetMinY(safeAreaFrame);
@@ -3112,6 +3183,56 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         [self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
         [(BBDataViewFullDetailsLayout *)self.collectionView.collectionViewLayout invalidateForViewportChange];
         [self.collectionView setNeedsLayout];
+    }
+}
+
+- (void)pp_updateCollectionContentInsetPreservingTopAnchor
+{
+    if (!self.collectionView) {
+        return;
+    }
+
+    CGFloat previousTopOffsetY = [self preferredTopContentOffsetY];
+    CGPoint currentOffset = self.collectionView.contentOffset;
+    BOOL shouldPinToChrome =
+        !self.collectionView.isDragging &&
+        !self.collectionView.isDecelerating &&
+        currentOffset.y <= previousTopOffsetY + 1.0;
+
+    [self updateCollectionContentInset];
+
+    if (!shouldPinToChrome) {
+        return;
+    }
+
+    CGPoint targetOffset = CGPointMake(currentOffset.x, [self preferredTopContentOffsetY]);
+    if (fabs(self.collectionView.contentOffset.y - targetOffset.y) >= 0.5 ||
+        fabs(self.collectionView.contentOffset.x - targetOffset.x) >= 0.5) {
+        [self.collectionView setContentOffset:targetOffset animated:NO];
+    }
+}
+
+- (void)pp_anchorSkeletonLoadingBelowChromeIfNeeded
+{
+    if (!self.isShowingSkeleton || !self.collectionView) {
+        return;
+    }
+
+    if (self.sectionsFiltersContainer) {
+        self.sectionsFiltersContainer.hidden = NO;
+        self.sectionsFiltersContainer.alpha = 1.0;
+        self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
+        [self.view bringSubviewToFront:self.sectionsFiltersContainer];
+    }
+
+    if (self.collectionView.isDragging || self.collectionView.isDecelerating) {
+        return;
+    }
+
+    CGPoint targetOffset = CGPointMake(0.0, [self preferredTopContentOffsetY]);
+    if (fabs(self.collectionView.contentOffset.y - targetOffset.y) >= 0.5 ||
+        fabs(self.collectionView.contentOffset.x - targetOffset.x) >= 0.5) {
+        [self.collectionView setContentOffset:targetOffset animated:NO];
     }
 }
 
@@ -4062,6 +4183,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     PPFilterState *state = [self pp_filterStateForSection:section];
     NSInteger activeFilterCount = canShowFilters ? state.activeFilterCount : 0;
     [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:animated && self.view.window != nil];
+    [self updateProviderFilterContextBarForSection:section];
     [self updateFilterCollapseButtonForSection:section expanded:shouldShow animated:animated];
 
     self.filterChipContainer.hidden = NO;
@@ -4072,7 +4194,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     void (^layoutChanges)(void) = ^{
         self.filterChipTopConstraint.constant = shouldShow ? 8.0 : 0.0;
         self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
-        self.filterChipBottomConstraint.constant = canShowFilters ? -kPPFilterExpandedBottomInset : -4.0;
+        self.filterChipBottomConstraint.constant = canShowFilters ? -kPPFilterExpandedBottomInset : -10.0;
         self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
         self.filterChipContainer.transform = shouldShow
             ? CGAffineTransformIdentity
@@ -4080,12 +4202,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                ? CGAffineTransformIdentity
                : CGAffineTransformMakeTranslation(0.0, -5.0));
         [self.view layoutIfNeeded];
+        [self pp_updateCollectionContentInsetPreservingTopAnchor];
     };
 
     if (!animated || self.view.window == nil) {
         layoutChanges();
         self.filterChipContainer.hidden = !shouldShow;
-        [self updateCollectionContentInset];
         return;
     }
 
@@ -4100,7 +4222,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                          animations:layoutChanges
                          completion:^(__unused BOOL finished) {
             self.filterChipContainer.hidden = !shouldShow;
-            [self updateCollectionContentInset];
+            [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }];
         return;
     }
@@ -4113,8 +4235,37 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                      animations:layoutChanges
                      completion:^(__unused BOOL finished) {
         self.filterChipContainer.hidden = !shouldShow;
-        [self updateCollectionContentInset];
+        [self pp_updateCollectionContentInsetPreservingTopAnchor];
     }];
+}
+
+- (void)updateProviderFilterContextBarForSection:(PPDataSection)section
+{
+    if (!self.providerFilterContextBar || !self.providerFilterContextLabel) {
+        return;
+    }
+
+    BOOL hasFilters = [self sectionHasFilterChipBarForSection:section];
+    NSString *title = [self providerFilterContextTitleForSection:section];
+    self.providerFilterContextLabel.text = title;
+    self.providerFilterContextBarHeightConstraint.constant = hasFilters ? kPPProviderFilterContextBarHeight : 0.0;
+    self.providerFilterContextBar.hidden = !hasFilters;
+    self.providerFilterContextBar.alpha = hasFilters ? 1.0 : 0.0;
+    self.providerFilterContextBar.accessibilityLabel = title;
+    [self pp_applyProviderFilterContextBarAppearance];
+}
+
+- (NSString *)providerFilterContextTitleForSection:(PPDataSection)section
+{
+    NSString *key = @"dataview_provider_context_products";
+    if (section == PPDataSectionAds) {
+        key = @"dataview_provider_context_listings";
+    } else if (section == PPDataSectionServices) {
+        key = @"dataview_provider_context_services";
+    }
+
+    NSString *localized = kLang(key);
+    return localized.length > 0 ? localized : @"All provider products";
 }
 
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated
@@ -5546,6 +5697,45 @@ presentingViewController:self
         [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-4.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
+
+    UIView *providerContextBar = [[UIView alloc] init];
+    providerContextBar.translatesAutoresizingMaskIntoConstraints = NO;
+    providerContextBar.backgroundColor = UIColor.clearColor;
+    providerContextBar.clipsToBounds = NO;
+    providerContextBar.accessibilityIdentifier = @"pp.data.filters.providerContextBar";
+    self.providerFilterContextBar = providerContextBar;
+    [controlIsland addSubview:providerContextBar];
+
+    UIView *providerBadgeView = [[UIView alloc] init];
+    providerBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    providerBadgeView.backgroundColor = UIColor.clearColor;
+    providerBadgeView.clipsToBounds = YES;
+    providerBadgeView.userInteractionEnabled = NO;
+    self.providerFilterContextBadgeView = providerBadgeView;
+    [providerContextBar addSubview:providerBadgeView];
+
+    UIImageSymbolConfiguration *contextIconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:12.5
+                                                        weight:UIImageSymbolWeightSemibold
+                                                         scale:UIImageSymbolScaleSmall];
+    UIImageView *contextIconView =
+        [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"storefront.fill"
+                                                    withConfiguration:contextIconConfig]
+                                      imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    contextIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    contextIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.providerFilterContextIconView = contextIconView;
+    [providerBadgeView addSubview:contextIconView];
+
+    UILabel *contextLabel = [[UILabel alloc] init];
+    contextLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    contextLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    contextLabel.adjustsFontForContentSizeCategory = YES;
+    contextLabel.numberOfLines = 1;
+    contextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    contextLabel.text = [self providerFilterContextTitleForSection:self.viewModel.currentSection];
+    self.providerFilterContextLabel = contextLabel;
+    [providerBadgeView addSubview:contextLabel];
     
     UIView *filterContainer = [[UIView alloc] init];
     filterContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -5591,27 +5781,50 @@ presentingViewController:self
     }
     
     self.filterCollapseButton = collapseButton;
-    [controlIsland addSubview:collapseButton];
+    [providerContextBar addSubview:collapseButton];
 
     self.filterChipHeightConstraint =
     [filterContainer.heightAnchor constraintEqualToConstant:0.0];
     self.filterChipHeightConstraint.active = YES;
     self.filterChipTopConstraint =
-    [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:0.0];
+    [filterContainer.topAnchor constraintEqualToAnchor:providerContextBar.bottomAnchor constant:0.0];
     self.filterChipTopConstraint.active = YES;
 
-    self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-8.0];
+    self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-10.0];
     self.filterChipBottomConstraint.active = YES;
-    self.filterCollapseButtonBottomConstraint =
-    [collapseButton.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-4.0];
-    self.filterCollapseButtonBottomConstraint.active = YES;
+    self.providerFilterContextBarHeightConstraint =
+        [providerContextBar.heightAnchor constraintEqualToConstant:kPPProviderFilterContextBarHeight];
+    self.providerFilterContextBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
+        [providerContextBar.topAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor constant:8.0],
+        [providerContextBar.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
+        [providerContextBar.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
+
+        [providerBadgeView.leadingAnchor constraintEqualToAnchor:providerContextBar.leadingAnchor constant:8.0],
+        [providerBadgeView.centerYAnchor constraintEqualToAnchor:providerContextBar.centerYAnchor],
+        [providerBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:collapseButton.leadingAnchor constant:-8.0],
+        [providerBadgeView.heightAnchor constraintEqualToConstant:28.0],
+
+        [contextIconView.leadingAnchor constraintEqualToAnchor:providerBadgeView.leadingAnchor constant:10.0],
+        [contextIconView.centerYAnchor constraintEqualToAnchor:providerBadgeView.centerYAnchor],
+        [contextIconView.widthAnchor constraintEqualToConstant:14.0],
+        [contextIconView.heightAnchor constraintEqualToConstant:14.0],
+
+        [contextLabel.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:6.0],
+        [contextLabel.trailingAnchor constraintEqualToAnchor:providerBadgeView.trailingAnchor constant:-12.0],
+        [contextLabel.centerYAnchor constraintEqualToAnchor:providerBadgeView.centerYAnchor],
+
         [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
         [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
-        [collapseButton.centerXAnchor constraintEqualToAnchor:controlIsland.centerXAnchor],
+        [collapseButton.trailingAnchor constraintEqualToAnchor:providerContextBar.trailingAnchor constant:-8.0],
+        [collapseButton.centerYAnchor constraintEqualToAnchor:providerContextBar.centerYAnchor],
         [collapseButton.heightAnchor constraintEqualToConstant:kPPFilterCollapseHandleHeight]
     ]];
+    [collapseButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [collapseButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [providerBadgeView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self pp_applyProviderFilterContextBarAppearance];
 
     // Dynamic filter chips — created from PPFilterState for the initial section
     self.filterChips = [NSMutableArray array];

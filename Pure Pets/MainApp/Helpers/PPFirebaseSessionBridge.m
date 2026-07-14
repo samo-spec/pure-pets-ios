@@ -109,6 +109,46 @@ static NSError *PPFirebaseSessionRefreshError(NSError * _Nullable underlying)
                                   underlying);
 }
 
+static NSError *PPFirebaseSessionMissingTokenError(void)
+{
+    return PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
+                                  @"pp_auth_session_refresh_failed",
+                                  @"We could not refresh your session. Please try again.",
+                                  nil);
+}
+
+static void PPFirebaseSessionFallbackToCachedToken(FIRUser *user,
+                                                   NSString *stage,
+                                                   NSError * _Nullable originalError,
+                                                   void (^completion)(NSString * _Nullable token, NSError * _Nullable error))
+{
+    NSError *(^fallbackError)(NSError * _Nullable) = ^NSError *(NSError * _Nullable candidate) {
+        return candidate ?: PPFirebaseSessionMissingTokenError();
+    };
+
+    FIRUser *currentUser = [FIRAuth auth].currentUser;
+    if (!currentUser.uid.length || ![currentUser.uid isEqualToString:user.uid]) {
+        if (completion) completion(nil, fallbackError(originalError));
+        return;
+    }
+
+    [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable cachedToken, NSError * _Nullable cachedError) {
+        if (!cachedError && cachedToken.length > 0) {
+            NSLog(@"[PPFirebaseSessionBridge] %@ using cached auth token after refresh failure",
+                  stage ?: @"auth refresh");
+            if (completion) completion(cachedToken, nil);
+            return;
+        }
+
+        if (cachedError) {
+            PPFirebaseSessionLogFailure(@"cached auth token fallback", cachedError);
+        } else {
+            NSLog(@"[PPFirebaseSessionBridge] cached auth token fallback failed: token was empty");
+        }
+        if (completion) completion(nil, fallbackError(originalError ?: cachedError));
+    }];
+}
+
 static void PPFirebaseSessionGetIDTokenWithRepair(FIRUser *user,
                                                   BOOL forceRefresh,
                                                   NSString *stage,
@@ -129,13 +169,20 @@ static void PPFirebaseSessionGetIDTokenWithRepair(FIRUser *user,
         [user reloadWithCompletion:^(NSError * _Nullable reloadError) {
             if (reloadError) {
                 PPFirebaseSessionLogFailure(@"auth user reload", reloadError);
+                if (forceRefresh) {
+                    PPFirebaseSessionFallbackToCachedToken(user,
+                                                           stage ?: @"forced auth refresh",
+                                                           reloadError ?: error,
+                                                           completion);
+                    return;
+                }
                 if (completion) completion(nil, reloadError ?: error);
                 return;
             }
 
             FIRUser *currentUser = [FIRAuth auth].currentUser;
             if (!currentUser.uid.length || ![currentUser.uid isEqualToString:user.uid]) {
-                if (completion) completion(nil, error);
+                if (completion) completion(nil, error ?: PPFirebaseSessionMissingTokenError());
                 return;
             }
 
@@ -164,12 +211,15 @@ static void PPFirebaseSessionGetIDTokenWithRepair(FIRUser *user,
                         } else {
                             NSLog(@"[PPFirebaseSessionBridge] request auth token refresh fallback failed: token was empty");
                         }
-                        if (completion) completion(nil, refreshError ?: repairError ?: error);
+                        if (completion) completion(nil, refreshError ?: repairError ?: error ?: PPFirebaseSessionMissingTokenError());
                     }];
                     return;
                 }
 
-                if (completion) completion(nil, repairError ?: error);
+                PPFirebaseSessionFallbackToCachedToken(currentUser,
+                                                       stage ?: @"forced auth refresh",
+                                                       repairError ?: error,
+                                                       completion);
             }];
         }];
     }];
