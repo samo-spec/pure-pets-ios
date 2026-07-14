@@ -115,6 +115,72 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let shadowOpacity: Float
     }
 
+    private struct DefaultColorStory {
+        let leadingTintLight: UIColor
+        let leadingTintDark: UIColor
+        let accent: UIColor
+        let companion: UIColor
+        let counterpoint: UIColor
+    }
+
+    /// Curated P3 stories keep the default hero varied without allowing
+    /// arbitrary RGB combinations to compromise contrast or material quality.
+    private static let defaultColorStories: [DefaultColorStory] = {
+        func p3(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat) -> UIColor {
+            UIColor(
+                displayP3Red: red / 255,
+                green: green / 255,
+                blue: blue / 255,
+                alpha: 1
+            )
+        }
+
+        return [
+            DefaultColorStory(
+                leadingTintLight: p3(207, 237, 226),
+                leadingTintDark: p3(35, 78, 67),
+                accent: p3(21, 157, 124),
+                companion: p3(64, 182, 194),
+                counterpoint: p3(104, 111, 204)
+            ),
+            DefaultColorStory(
+                leadingTintLight: p3(214, 229, 250),
+                leadingTintDark: p3(28, 55, 96),
+                accent: p3(48, 111, 218),
+                companion: p3(78, 180, 210),
+                counterpoint: p3(116, 87, 196)
+            ),
+            DefaultColorStory(
+                leadingTintLight: p3(234, 220, 244),
+                leadingTintDark: p3(65, 42, 78),
+                accent: p3(151, 75, 188),
+                companion: p3(220, 94, 142),
+                counterpoint: p3(87, 131, 212)
+            ),
+            DefaultColorStory(
+                leadingTintLight: p3(245, 220, 226),
+                leadingTintDark: p3(76, 38, 49),
+                accent: p3(198, 55, 91),
+                companion: p3(230, 120, 97),
+                counterpoint: p3(116, 99, 195)
+            ),
+            DefaultColorStory(
+                leadingTintLight: p3(242, 233, 207),
+                leadingTintDark: p3(67, 55, 34),
+                accent: p3(185, 137, 53),
+                companion: p3(105, 157, 125),
+                counterpoint: p3(76, 126, 183)
+            ),
+            DefaultColorStory(
+                leadingTintLight: p3(207, 237, 241),
+                leadingTintDark: p3(30, 64, 72),
+                accent: p3(24, 148, 170),
+                companion: p3(59, 116, 208),
+                counterpoint: p3(126, 85, 187)
+            )
+        ]
+    }()
+
     // MARK: - Objective-C compatibility surface
 
     public var accentColorOverride: UIColor? {
@@ -197,6 +263,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var interactionRecoveryAnimator: UIViewPropertyAnimator?
     private var ambientTimelineInstalled = false
     private var ambientTimelinePaused = false
+    private var paletteCycleWorkItem: DispatchWorkItem?
+    private var paletteCycleGeneration: UInt = 0
 
     private var parallaxMotionEffect: UIMotionEffectGroup?
     private weak var touchHost: UIView?
@@ -211,6 +279,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var storedAccentMode: AccentMode = .bar
     private var storedCornerGlowOpacityMultiplier: CGFloat = 1
     private var storedCornerRadius: CGFloat = 30
+    private var activeDefaultColorStoryIndex = 0
     private var lastLayoutSize: CGSize = .zero
 
     private let auroraAnimationKey = "pp.hero.apex.aurora"
@@ -221,6 +290,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let signatureSweepAnimationKey = "pp.hero.apex.signature-sweep"
     private let accentBarTransitionKey = "pp.hero.apex.accent-bar-transition"
     private let accentGlowTransitionKey = "pp.hero.apex.accent-glow-transition"
+    private let paletteTransitionKey = "pp.hero.apex.palette-transition"
 
     // MARK: - Initialization
 
@@ -239,6 +309,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         entranceAnimator?.stopAnimation(true)
         overlayEntranceAnimator?.stopAnimation(true)
         interactionRecoveryAnimator?.stopAnimation(true)
+        paletteCycleWorkItem?.cancel()
         detachTouchTracker()
         removeMotionEffects()
         removeAmbientTimeline()
@@ -257,6 +328,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         layer.shadowOffset = CGSize(width: 0, height: 12)
         layer.shadowRadius = 24
 
+        selectInitialDefaultColorStory()
         configureViewHierarchy()
         configureLayers()
         registerForLifecycleChanges()
@@ -596,13 +668,24 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     // MARK: - Palette
 
     public func reapplyPalette() {
-        let palette = makePalette()
+        applyPalette(makePalette(), animated: false)
+        synchronizeDefaultPaletteCycle()
+    }
+
+    private func applyPalette(_ palette: Palette, animated: Bool) {
         let isDark = traitCollection.userInterfaceStyle == .dark
         let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        let animateColors = animated && shouldAnimateVisualStateChange
 
-        materialView.effect = reduceTransparency
-            ? nil
-            : UIBlurEffect(style: .systemUltraThinMaterial)
+        if !animated {
+            materialView.effect = reduceTransparency
+                ? nil
+                : UIBlurEffect(style: .systemUltraThinMaterial)
+        }
+
+        if !animateColors {
+            removePaletteTransitionAnimations()
+        }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -611,72 +694,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         materialView.backgroundColor = .clear
         materialView.contentView.backgroundColor = .clear
 
-        baseGradientLayer.colors = [
-            palette.surfaceHighlight.cgColor,
-            palette.surfaceMiddle.cgColor,
-            palette.surfaceTail.cgColor
-        ]
-        baseGradientLayer.startPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 1, y: 0)
-            : CGPoint(x: 0, y: 0)
-        baseGradientLayer.endPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 0, y: 1)
-            : CGPoint(x: 1, y: 1)
-
-        depthGradientLayer.colors = [
-            UIColor.clear.cgColor,
-            palette.depth.withAlphaComponent(isDark ? 0.055 : 0.018).cgColor,
-            palette.depth.withAlphaComponent(isDark ? 0.16 : 0.055).cgColor
-        ]
-
         vignetteLayer.colors = [
             UIColor.clear.cgColor,
             UIColor.clear.cgColor,
             UIColor.black.withAlphaComponent(isDark ? 0.13 : 0.032).cgColor
-        ]
-
-        for (index, layer) in auroraLayers.enumerated() {
-            let color = palette.aurora[index % palette.aurora.count]
-            let restingOpacity = index < auroraSpecs.count
-                ? auroraSpecs[index].opacityRange.upperBound
-                : 1
-            let leadingAlpha: CGFloat = reduceTransparency
-                ? (isDark ? 0.19 : 0.14)
-                : (isDark ? 0.28 : 0.19)
-            layer.colors = [
-                color.withAlphaComponent(leadingAlpha).cgColor,
-                color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
-                UIColor.clear.cgColor
-            ]
-            layer.opacity = restingOpacity
-        }
-
-        for (index, layer) in particleLayers.enumerated() {
-            let color = palette.particle[index % palette.particle.count]
-            layer.fillColor = color.cgColor
-            layer.opacity = isDark ? 0.31 : 0.24
-            layer.shadowOpacity = 0
-            layer.shadowRadius = 0
-            layer.shadowOffset = .zero
-        }
-
-        reactiveLightLayer.colors = [
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.20 : 0.27).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.06 : 0.08).cgColor,
-            UIColor.clear.cgColor
-        ]
-        reactiveLightLayer.opacity = 0.84
-
-        touchLensLayer.colors = [
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.28 : 0.34).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
-            palette.accent.withAlphaComponent(isDark ? 0.045 : 0.035).cgColor,
-            UIColor.clear.cgColor
-        ]
-        touchCoreLayer.colors = [
-            UIColor.white.withAlphaComponent(isDark ? 0.24 : 0.36).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.08 : 0.12).cgColor,
-            UIColor.clear.cgColor
         ]
 
         glassSheenLayer.colors = [
@@ -697,25 +718,106 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             UIColor.clear.cgColor
         ]
         signatureSweepLayer.opacity = 0
-
-        accentBarLayer.colors = [
-            palette.accent.withAlphaComponent(0.38).cgColor,
-            palette.accent.withAlphaComponent(0.82).cgColor,
-            palette.accent.withAlphaComponent(0.22).cgColor
-        ]
-
-        let glowStrength = storedCornerGlowOpacityMultiplier
-        accentGlowLayer.colors = [
-            palette.accent.withAlphaComponent((isDark ? 0.17 : 0.115) * glowStrength).cgColor,
-            palette.accent.withAlphaComponent((isDark ? 0.055 : 0.034) * glowStrength).cgColor,
-            UIColor.clear.cgColor
-        ]
-
-        innerStrokeLayer.strokeColor = palette.stroke.cgColor
         layer.shadowOpacity = palette.shadowOpacity
 
         CATransaction.commit()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
 
+        setGradientColors([
+            palette.surfaceHighlight.cgColor,
+            palette.surfaceMiddle.cgColor,
+            palette.surfaceTail.cgColor
+        ], on: baseGradientLayer, animated: animateColors)
+        baseGradientLayer.startPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? CGPoint(x: 1, y: 0)
+            : CGPoint(x: 0, y: 0)
+        baseGradientLayer.endPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            ? CGPoint(x: 0, y: 1)
+            : CGPoint(x: 1, y: 1)
+
+        setGradientColors([
+            UIColor.clear.cgColor,
+            palette.depth.withAlphaComponent(isDark ? 0.055 : 0.018).cgColor,
+            palette.depth.withAlphaComponent(isDark ? 0.16 : 0.055).cgColor
+        ], on: depthGradientLayer, animated: animateColors)
+
+        for (index, layer) in auroraLayers.enumerated() {
+            let color = palette.aurora[index % palette.aurora.count]
+            let restingOpacity = index < auroraSpecs.count
+                ? auroraSpecs[index].opacityRange.upperBound
+                : 1
+            let leadingAlpha: CGFloat = reduceTransparency
+                ? (isDark ? 0.19 : 0.14)
+                : (isDark ? 0.28 : 0.19)
+            setGradientColors([
+                color.withAlphaComponent(leadingAlpha).cgColor,
+                color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
+                UIColor.clear.cgColor
+            ], on: layer, animated: animateColors)
+            layer.opacity = restingOpacity
+        }
+
+        for (index, layer) in particleLayers.enumerated() {
+            let color = palette.particle[index % palette.particle.count]
+            setLayerColor(
+                color.cgColor,
+                on: layer,
+                keyPath: "fillColor",
+                modelColor: layer.fillColor,
+                animated: animateColors
+            ) {
+                layer.fillColor = color.cgColor
+            }
+            layer.opacity = isDark ? 0.31 : 0.24
+            layer.shadowOpacity = 0
+            layer.shadowRadius = 0
+            layer.shadowOffset = .zero
+        }
+
+        setGradientColors([
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.20 : 0.27).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.06 : 0.08).cgColor,
+            UIColor.clear.cgColor
+        ], on: reactiveLightLayer, animated: animateColors)
+        reactiveLightLayer.opacity = 0.84
+
+        setGradientColors([
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.28 : 0.34).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
+            palette.accent.withAlphaComponent(isDark ? 0.045 : 0.035).cgColor,
+            UIColor.clear.cgColor
+        ], on: touchLensLayer, animated: animateColors)
+        setGradientColors([
+            UIColor.white.withAlphaComponent(isDark ? 0.24 : 0.36).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.08 : 0.12).cgColor,
+            UIColor.clear.cgColor
+        ], on: touchCoreLayer, animated: animateColors)
+
+        setGradientColors([
+            palette.accent.withAlphaComponent(0.38).cgColor,
+            palette.accent.withAlphaComponent(0.82).cgColor,
+            palette.accent.withAlphaComponent(0.22).cgColor
+        ], on: accentBarLayer, animated: animateColors)
+
+        let glowStrength = storedCornerGlowOpacityMultiplier
+        setGradientColors([
+            palette.accent.withAlphaComponent((isDark ? 0.17 : 0.115) * glowStrength).cgColor,
+            palette.accent.withAlphaComponent((isDark ? 0.055 : 0.034) * glowStrength).cgColor,
+            UIColor.clear.cgColor
+        ], on: accentGlowLayer, animated: animateColors)
+
+        setLayerColor(
+            palette.stroke.cgColor,
+            on: innerStrokeLayer,
+            keyPath: "strokeColor",
+            modelColor: innerStrokeLayer.strokeColor,
+            animated: animateColors
+        ) {
+            innerStrokeLayer.strokeColor = palette.stroke.cgColor
+        }
+
+        CATransaction.commit()
         applyAccentMode(animated: false)
         setNeedsLayout()
     }

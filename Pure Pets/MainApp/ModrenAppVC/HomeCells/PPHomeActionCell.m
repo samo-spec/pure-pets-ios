@@ -127,7 +127,7 @@ static UIColor *PPHomeActionBlend(UIColor *baseColor, UIColor *overlayColor, CGF
     self.surfaceView.userInteractionEnabled = NO;
     self.surfaceView.layer.cornerRadius = PPHomeActionCellCornerRadius;
     self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 1.0;
+    self.surfaceView.layer.borderWidth = 0.75;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -334,8 +334,8 @@ static UIColor *PPHomeActionBlend(UIColor *baseColor, UIColor *overlayColor, CGF
     UIColor *plateStroke = [accent colorWithAlphaComponent:darkMode ? 0.26 : 0.16];
 
     self.surfaceView.backgroundColor = baseSurface;
-    self.surfaceView.layer.borderWidth = darkMode ? 0.9 : 1.0;
-    [self.surfaceView pp_setBorderColor:[strokeColor colorWithAlphaComponent:darkMode ? 0.70 : 0.58]];
+    self.surfaceView.layer.borderWidth = darkMode ? 0.9 : 0.75;
+    [self.surfaceView pp_setBorderColor:[strokeColor colorWithAlphaComponent:darkMode ? 0.70 : 0.38]];
     self.surfaceGradientLayer.colors = @[
         (__bridge id)liftedSurface.CGColor,
         (__bridge id)settledSurface.CGColor

@@ -35,6 +35,13 @@ static NSString *PPSelectOptionTrimmedString(NSString *value)
     return [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
 }
 
+static BOOL PPSelectOptionStringLooksLikeRemoteImageURL(NSString *value)
+{
+    NSString *trimmed = PPSelectOptionTrimmedString(value);
+    NSString *lowercase = trimmed.lowercaseString;
+    return [lowercase hasPrefix:@"http://"] || [lowercase hasPrefix:@"https://"];
+}
+
 static NSString *PPSelectOptionLocalizedString(NSString *key, NSString *fallback)
 {
     NSString *value = kLang(key);
@@ -1093,7 +1100,11 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         OptionModel *op = (OptionModel *)option;
         title = op.title;
         subtitle = op.subtitle;
-        imageNamed = op.systemImageName ?: op.imageName; 
+        if (PPSelectOptionStringLooksLikeRemoteImageURL(op.imageName)) {
+            imageURLString = PPSelectOptionTrimmedString(op.imageName);
+        } else {
+            imageNamed = op.systemImageName ?: op.imageName;
+        }
     }
     else if ([option respondsToSelector:@selector(systemImageName)]) {
 #pragma clang diagnostic push

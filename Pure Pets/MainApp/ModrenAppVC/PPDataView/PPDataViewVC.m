@@ -25,6 +25,10 @@
 #import "UIView+Badge.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
+#import "UserManager.h"
+#import "UserModel.h"
+#import "PPModernAvatarRenderer.h"
+#import <FirebaseFirestore/FirebaseFirestore.h>
 #import <QuartzCore/QuartzCore.h>
 #import <math.h>
 
@@ -53,6 +57,20 @@ static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsIslandCornerRadius = 30.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 21.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
+
+static NSString * const PPDataViewProviderIdentityTitleKey = @"title";
+static NSString * const PPDataViewProviderIdentityPhotoURLKey = @"photoURL";
+
+static NSString *PPDataViewTrimmedString(id value)
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    }
+    if ([value isKindOfClass:NSURL.class]) {
+        return [[(NSURL *)value absoluteString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    }
+    return @"";
+}
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -997,6 +1015,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSString *> *selectedProviderIDsBySection;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, NSDictionary<NSString *, NSString *> *> *providerIdentityCache;
+@property (nonatomic, strong) NSMutableSet<NSString *> *providerIdentityFetchesInFlight;
+@property (nonatomic, strong) NSMutableSet<NSString *> *providerIdentityHydratedProviderIDs;
 // Scroll restore
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *scrollOffsetsBySection;
 @property (nonatomic, strong) id imageLoader;
@@ -1108,6 +1129,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_updateProviderChipAvatarForProviderID:(NSString *)providerID title:(NSString *)title sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
 - (NSString *)pp_providerSheetSubtitleForCount:(NSInteger)count;
 - (NSString *)pp_shortProviderIdentifier:(NSString *)providerID;
+- (NSDictionary<NSString *, NSString *> *)pp_cachedProviderIdentityForProviderID:(NSString *)providerID;
+- (void)pp_storeProviderIdentityForProviderID:(NSString *)providerID title:(NSString *)title photoURL:(NSString *)photoURL;
+- (void)pp_prefetchProviderIdentitiesForSection:(PPDataSection)section sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (void)pp_hydrateProviderIdentitiesForIDs:(NSArray<NSString *> *)providerIDs section:(PPDataSection)section completion:(dispatch_block_t)completion;
+- (NSString *)pp_realProviderTitleForID:(NSString *)providerID sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (BOOL)pp_providerTitleIsGeneric:(NSString *)title providerID:(NSString *)providerID;
+- (void)pp_presentProviderFilterSheetForSection:(PPDataSection)section options:(NSArray<OptionModel *> *)options selectedOption:(OptionModel *)selectedOption;
 - (CGFloat)pp_currentCollectionLayoutTopInset;
 - (BOOL)pp_shouldPinCollectionTopForChromeOffset:(CGPoint)currentOffset
                               previousTopOffsetY:(CGFloat)previousTopOffsetY;
@@ -4061,6 +4089,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // Keep the server-backed view model intact while the screen applies lightweight
     // presentation-only price filtering and sorting for the accessories experience.
     NSArray<PPUniversalCellViewModel *> *sourceItems = self.viewModel.items ?: @[];
+    [self pp_prefetchProviderIdentitiesForSection:self.viewModel.currentSection sourceItems:sourceItems];
     self.presentedItems = [self filteredPresentedItemsFromSourceItems:sourceItems];
     PPDataViewMotionReason motionReason = self.pendingMotionReason;
     if (motionReason == PPDataViewMotionReasonNone &&
@@ -4605,14 +4634,43 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     PPDataSection section = self.viewModel.currentSection;
     NSString *selectedProviderID = [self selectedProviderIDForSection:section];
-    OptionModel *selectedOption = nil;
+    __weak typeof(self) weakSelf = self;
+    NSMutableArray<NSString *> *providerIDs = [NSMutableArray arrayWithCapacity:options.count];
     for (OptionModel *option in options) {
-        if (selectedProviderID.length > 0 && [option.optID isEqualToString:selectedProviderID]) {
-            selectedOption = option;
-            break;
+        if (option.optID.length > 0) {
+            [providerIDs addObject:option.optID];
         }
     }
 
+    [self pp_hydrateProviderIdentitiesForIDs:providerIDs section:section completion:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        NSArray<OptionModel *> *hydratedOptions = [self providerOptionsForSection:section
+                                                                      sourceItems:self.viewModel.items ?: @[]];
+        if (hydratedOptions.count == 0) {
+            [PPHUD showInfo:kLang(@"dataview_provider_filter_empty_message") ?: @""];
+            return;
+        }
+
+        OptionModel *selectedOption = nil;
+        for (OptionModel *option in hydratedOptions) {
+            if (selectedProviderID.length > 0 && [option.optID isEqualToString:selectedProviderID]) {
+                selectedOption = option;
+                break;
+            }
+        }
+        [self pp_presentProviderFilterSheetForSection:section
+                                              options:hydratedOptions
+                                       selectedOption:selectedOption];
+    }];
+}
+
+- (void)pp_presentProviderFilterSheetForSection:(PPDataSection)section
+                                        options:(NSArray<OptionModel *> *)options
+                                 selectedOption:(OptionModel *)selectedOption
+{
     __weak typeof(self) weakSelf = self;
     PPSelectOptionViewController *vc =
     [[PPSelectOptionViewController alloc] initWithOptions:options
@@ -4708,13 +4766,21 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }
         NSMutableDictionary<NSString *, id> *entry = providersByID[providerID];
         if (!entry) {
-            NSString *title = [self pp_providerTitleForViewModel:viewModel fallbackID:providerID];
+            NSString *title = [self pp_realProviderTitleForID:providerID sourceItems:@[viewModel]];
+            NSString *photoURL = [self pp_providerPhotoURLForViewModel:viewModel fallbackID:providerID];
             entry = [@{
                 @"title": title.length > 0 ? title : providerID,
+                @"photoURL": photoURL ?: @"",
                 @"count": @0
             } mutableCopy];
             providersByID[providerID] = entry;
             [orderedIDs addObject:providerID];
+            [self pp_hydrateProviderIdentitiesForIDs:@[providerID] section:section completion:nil];
+        } else if (PPDataViewTrimmedString(entry[@"photoURL"]).length == 0) {
+            NSString *photoURL = [self pp_providerPhotoURLForViewModel:viewModel fallbackID:providerID];
+            if (photoURL.length > 0) {
+                entry[@"photoURL"] = photoURL;
+            }
         }
         NSInteger count = [entry[@"count"] integerValue] + 1;
         entry[@"count"] = @(count);
@@ -4735,12 +4801,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     for (NSString *providerID in orderedIDs) {
         NSDictionary<NSString *, id> *entry = providersByID[providerID];
         NSInteger count = [entry[@"count"] integerValue];
+        NSString *photoURL = PPDataViewTrimmedString(entry[@"photoURL"]);
         OptionModel *option =
         [[OptionModel alloc] initWithID:providerID
                                   title:entry[@"title"] ?: providerID
                                subtitle:[self pp_providerSheetSubtitleForCount:count]
-                              imageName:@"providers.png"
-                        systemImageName:nil];
+                              imageName:photoURL.length > 0 ? photoURL : nil
+                        systemImageName:photoURL.length > 0 ? nil : @"storefront.fill"];
         option.sortOrder = options.count;
         [options addObject:option];
     }
@@ -4820,7 +4887,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (selectedProviderID.length > 0) {
         for (OptionModel *option in providerOptions) {
             if ([option.optID isEqualToString:selectedProviderID]) {
-                title = option.title ?: title;
+                NSString *realTitle = [self pp_realProviderTitleForID:selectedProviderID
+                                                           sourceItems:self.viewModel.items ?: @[]];
+                NSString *optionTitle = PPDataViewTrimmedString(option.title);
+                BOOL optionTitleLooksReal =
+                    optionTitle.length > 0 &&
+                    ![optionTitle isEqualToString:selectedProviderID] &&
+                    ![self pp_providerTitleIsGeneric:optionTitle providerID:selectedProviderID];
+                title = realTitle.length > 0 ? realTitle : (optionTitleLooksReal ? optionTitle : title);
                 subtitle = kLang(@"dataview_provider_filter_selected_subtitle");
                 ratingText = [self pp_providerRatingBadgeTextForProviderID:selectedProviderID
                                                                 sourceItems:self.viewModel.items ?: @[]] ?: @"";
@@ -5029,7 +5103,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     if (cleanProviderID.length > 0) {
+        NSDictionary<NSString *, NSString *> *cachedIdentity = [self pp_cachedProviderIdentityForProviderID:cleanProviderID];
+        NSString *identityTitle = PPDataViewTrimmedString(cachedIdentity[PPDataViewProviderIdentityTitleKey]);
+        if (identityTitle.length > 0 && isDisplayableName(identityTitle)) {
+            return identityTitle;
+        }
+
         UserModel *cachedUser = [UserManager userModelForID:cleanProviderID];
+        if (!cachedUser) {
+            cachedUser = [UserManager userModelFromUsersArrayForID:cleanProviderID];
+        }
         NSArray<NSString *> *cachedNames = @[
             cachedUser.UserName ?: @"",
             cachedUser.FirstName.length > 0 && cachedUser.LastName.length > 0
@@ -5060,9 +5143,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     UserModel *cachedUser = [UserManager userModelForID:providerID];
+    if (!cachedUser) {
+        cachedUser = [UserManager userModelFromUsersArrayForID:providerID];
+    }
     NSString *cachedURL = cachedUser.UserImageUrl.absoluteString ?: @"";
     if (cachedURL.length > 0) {
         return cachedURL;
+    }
+    NSDictionary<NSString *, NSString *> *cachedIdentity = [self pp_cachedProviderIdentityForProviderID:providerID];
+    NSString *identityPhotoURL = PPDataViewTrimmedString(cachedIdentity[PPDataViewProviderIdentityPhotoURLKey]);
+    if (identityPhotoURL.length > 0) {
+        return identityPhotoURL;
     }
 
     for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
@@ -5082,9 +5173,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     if (providerID.length > 0) {
         UserModel *cachedUser = [UserManager userModelForID:providerID];
+        if (!cachedUser) {
+            cachedUser = [UserManager userModelFromUsersArrayForID:providerID];
+        }
         NSString *cachedURL = cachedUser.UserImageUrl.absoluteString ?: @"";
         if (cachedURL.length > 0) {
             return cachedURL;
+        }
+        NSDictionary<NSString *, NSString *> *cachedIdentity = [self pp_cachedProviderIdentityForProviderID:providerID];
+        NSString *identityPhotoURL = PPDataViewTrimmedString(cachedIdentity[PPDataViewProviderIdentityPhotoURLKey]);
+        if (identityPhotoURL.length > 0) {
+            return identityPhotoURL;
         }
     }
 
@@ -5131,19 +5230,327 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     return @"";
 }
 
+- (NSString *)pp_displayTitleForProviderUser:(UserModel *)user fallbackID:(NSString *)providerID
+{
+    if (![user isKindOfClass:UserModel.class]) {
+        return @"";
+    }
+
+    NSCharacterSet *trimSet = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+    NSMutableArray<NSString *> *candidates = [NSMutableArray array];
+    if ([user respondsToSelector:@selector(bestDisplayName)]) {
+        NSString *bestName = [user bestDisplayName] ?: @"";
+        if (bestName.length > 0) {
+            [candidates addObject:bestName];
+        }
+    }
+    if (user.UserName.length > 0) {
+        [candidates addObject:user.UserName];
+    }
+    if (user.FirstName.length > 0 && user.LastName.length > 0) {
+        [candidates addObject:[NSString stringWithFormat:@"%@ %@", user.FirstName, user.LastName]];
+    }
+    if (user.FirstName.length > 0) {
+        [candidates addObject:user.FirstName];
+    }
+
+    for (NSString *candidate in candidates) {
+        NSString *title = [candidate stringByTrimmingCharactersInSet:trimSet] ?: @"";
+        if (title.length > 0 && ![self pp_providerTitleIsGeneric:title providerID:providerID]) {
+            return title;
+        }
+    }
+    return @"";
+}
+
+- (BOOL)pp_providerTitleIsGeneric:(NSString *)title providerID:(NSString *)providerID
+{
+    NSString *cleanTitle = PPDataViewTrimmedString(title);
+    if (cleanTitle.length == 0) {
+        return YES;
+    }
+
+    NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+    if (cleanProviderID.length > 0 && [cleanTitle isEqualToString:cleanProviderID]) {
+        return YES;
+    }
+    if (cleanProviderID.length > 0 && [cleanTitle isEqualToString:[self pp_shortProviderIdentifier:cleanProviderID]]) {
+        return YES;
+    }
+
+    NSMutableArray<NSString *> *genericTitles = [NSMutableArray arrayWithObjects:
+        @"Provider",
+        @"Service Provider",
+        @"مقدم الخدمة",
+        @"مزود",
+        nil];
+    NSArray<NSString *> *localizedKeys = @[
+        @"service_view_provider_title",
+        @"dataview_filter_by_provider"
+    ];
+    for (NSString *key in localizedKeys) {
+        NSString *localized = PPDataViewTrimmedString(kLang(key));
+        if (localized.length > 0) {
+            [genericTitles addObject:localized];
+        }
+    }
+
+    for (NSString *generic in genericTitles) {
+        if ([cleanTitle localizedCaseInsensitiveCompare:generic] == NSOrderedSame) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSDictionary<NSString *, NSString *> *)pp_cachedProviderIdentityForProviderID:(NSString *)providerID
+{
+    NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+    if (cleanProviderID.length == 0) {
+        return nil;
+    }
+    if (!self.providerIdentityCache) {
+        self.providerIdentityCache = [NSMutableDictionary dictionary];
+    }
+
+    NSDictionary<NSString *, NSString *> *cached = self.providerIdentityCache[cleanProviderID];
+    if (cached.count > 0) {
+        return cached;
+    }
+
+    UserModel *cachedUser = [UserManager userModelForID:cleanProviderID];
+    if (!cachedUser) {
+        cachedUser = [UserManager userModelFromUsersArrayForID:cleanProviderID];
+    }
+    NSString *title = [self pp_displayTitleForProviderUser:cachedUser fallbackID:cleanProviderID];
+    NSString *photoURL = PPDataViewTrimmedString(cachedUser.UserImageUrl);
+    if (title.length > 0 || photoURL.length > 0) {
+        [self pp_storeProviderIdentityForProviderID:cleanProviderID title:title photoURL:photoURL];
+    }
+    return self.providerIdentityCache[cleanProviderID];
+}
+
+- (void)pp_storeProviderIdentityForProviderID:(NSString *)providerID
+                                        title:(NSString *)title
+                                     photoURL:(NSString *)photoURL
+{
+    NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+    if (cleanProviderID.length == 0) {
+        return;
+    }
+    if (!self.providerIdentityCache) {
+        self.providerIdentityCache = [NSMutableDictionary dictionary];
+    }
+
+    NSMutableDictionary<NSString *, NSString *> *merged =
+        [self.providerIdentityCache[cleanProviderID] mutableCopy] ?: [NSMutableDictionary dictionary];
+    NSString *cleanTitle = PPDataViewTrimmedString(title);
+    NSString *cleanPhotoURL = PPDataViewTrimmedString(photoURL);
+    if (cleanTitle.length > 0 && ![self pp_providerTitleIsGeneric:cleanTitle providerID:cleanProviderID]) {
+        merged[PPDataViewProviderIdentityTitleKey] = cleanTitle;
+    }
+    if (cleanPhotoURL.length > 0) {
+        merged[PPDataViewProviderIdentityPhotoURLKey] = cleanPhotoURL;
+    }
+    if (merged.count > 0) {
+        self.providerIdentityCache[cleanProviderID] = merged.copy;
+    }
+}
+
+- (void)pp_fetchProviderIdentityForProviderID:(NSString *)providerID
+                                      section:(PPDataSection)section
+                                   completion:(dispatch_block_t)completion
+{
+    NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+    if (cleanProviderID.length == 0) {
+        if (completion) completion();
+        return;
+    }
+
+    if (!self.providerIdentityFetchesInFlight) {
+        self.providerIdentityFetchesInFlight = [NSMutableSet set];
+    }
+    if (!self.providerIdentityHydratedProviderIDs) {
+        self.providerIdentityHydratedProviderIDs = [NSMutableSet set];
+    }
+    BOOL prefetchOnly = (completion == nil);
+    if (prefetchOnly && [self.providerIdentityHydratedProviderIDs containsObject:cleanProviderID]) {
+        return;
+    }
+    if (prefetchOnly && [self.providerIdentityFetchesInFlight containsObject:cleanProviderID]) {
+        return;
+    }
+    [self.providerIdentityFetchesInFlight addObject:cleanProviderID];
+
+    NSDictionary<NSString *, NSString *> *cached = [self pp_cachedProviderIdentityForProviderID:cleanProviderID];
+    __block NSString *resolvedTitle = PPDataViewTrimmedString(cached[PPDataViewProviderIdentityTitleKey]);
+    __block NSString *resolvedPhotoURL = PPDataViewTrimmedString(cached[PPDataViewProviderIdentityPhotoURLKey]);
+
+    dispatch_group_t group = dispatch_group_create();
+
+    dispatch_group_enter(group);
+    [[UserManager sharedManager] getUserWithUID:cleanProviderID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+        if (!error && [user isKindOfClass:UserModel.class]) {
+            NSString *userTitle = [self pp_displayTitleForProviderUser:user fallbackID:cleanProviderID];
+            NSString *userPhotoURL = PPDataViewTrimmedString(user.UserImageUrl);
+            if (userTitle.length > 0) {
+                resolvedTitle = userTitle;
+            }
+            if (userPhotoURL.length > 0) {
+                resolvedPhotoURL = userPhotoURL;
+            }
+        }
+        dispatch_group_leave(group);
+    }];
+
+    NSString *profileID = [NSString stringWithFormat:@"%@_%@", cleanProviderID, @"marketplace"];
+    FIRDocumentReference *profileRef =
+        [[[FIRFirestore firestore] collectionWithPath:@"providerProfiles"] documentWithPath:profileID];
+    dispatch_group_enter(group);
+    [profileRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (!error && snapshot.exists) {
+            NSDictionary *data = [snapshot.data isKindOfClass:NSDictionary.class] ? snapshot.data : @{};
+            NSDictionary *form = [data[@"form"] isKindOfClass:NSDictionary.class] ? data[@"form"] : @{};
+            NSDictionary *userSummary = [data[@"userSummary"] isKindOfClass:NSDictionary.class] ? data[@"userSummary"] : @{};
+
+            NSString *profileTitle = PPDataViewTrimmedString(form[@"fullName"]);
+            if (profileTitle.length == 0) {
+                profileTitle = PPDataViewTrimmedString(userSummary[@"displayName"]);
+            }
+            if (profileTitle.length == 0) {
+                profileTitle = PPDataViewTrimmedString(data[@"displayName"]);
+            }
+            if (profileTitle.length == 0) {
+                profileTitle = PPDataViewTrimmedString(form[@"businessName"]);
+            }
+            if (profileTitle.length == 0) {
+                profileTitle = PPDataViewTrimmedString(data[@"businessName"]);
+            }
+
+            NSString *profilePhotoURL = PPDataViewTrimmedString(userSummary[@"photoURL"]);
+            if (profilePhotoURL.length == 0) {
+                profilePhotoURL = PPDataViewTrimmedString(data[@"avatarURL"]);
+            }
+            if (profilePhotoURL.length == 0) {
+                profilePhotoURL = PPDataViewTrimmedString(data[@"photoURL"]);
+            }
+
+            if (profileTitle.length > 0 && ![self pp_providerTitleIsGeneric:profileTitle providerID:cleanProviderID]) {
+                resolvedTitle = profileTitle;
+            }
+            if (profilePhotoURL.length > 0) {
+                resolvedPhotoURL = profilePhotoURL;
+            }
+        }
+        dispatch_group_leave(group);
+    }];
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        [self.providerIdentityFetchesInFlight removeObject:cleanProviderID];
+        [self.providerIdentityHydratedProviderIDs addObject:cleanProviderID];
+        [self pp_storeProviderIdentityForProviderID:cleanProviderID
+                                             title:resolvedTitle
+                                          photoURL:resolvedPhotoURL];
+        if (section == self.viewModel.currentSection && self.providerFilterChipButton) {
+            [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:self.view.window != nil];
+        }
+        if (completion) {
+            completion();
+        }
+    });
+}
+
+- (void)pp_hydrateProviderIdentitiesForIDs:(NSArray<NSString *> *)providerIDs
+                                   section:(PPDataSection)section
+                                completion:(dispatch_block_t)completion
+{
+    NSMutableOrderedSet<NSString *> *uniqueIDs = [NSMutableOrderedSet orderedSet];
+    for (NSString *providerID in providerIDs ?: @[]) {
+        NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+        if (cleanProviderID.length > 0) {
+            [uniqueIDs addObject:cleanProviderID];
+        }
+    }
+    if (uniqueIDs.count == 0) {
+        if (completion) completion();
+        return;
+    }
+
+    dispatch_group_t group = dispatch_group_create();
+    for (NSString *providerID in uniqueIDs) {
+        if ([self.providerIdentityHydratedProviderIDs containsObject:providerID]) {
+            continue;
+        }
+        dispatch_group_enter(group);
+        [self pp_fetchProviderIdentityForProviderID:providerID section:section completion:^{
+            dispatch_group_leave(group);
+        }];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (completion) {
+            completion();
+        }
+    });
+}
+
+- (void)pp_prefetchProviderIdentitiesForSection:(PPDataSection)section
+                                    sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (![self pp_sectionSupportsProviderFilter:section]) {
+        return;
+    }
+
+    NSMutableOrderedSet<NSString *> *providerIDs = [NSMutableOrderedSet orderedSet];
+    for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+        if (viewModel.isSkeleton) {
+            continue;
+        }
+        NSString *providerID = [self pp_providerIDForViewModel:viewModel];
+        if (providerID.length > 0) {
+            [providerIDs addObject:providerID];
+        }
+    }
+    [self pp_hydrateProviderIdentitiesForIDs:providerIDs.array section:section completion:nil];
+}
+
+- (NSString *)pp_realProviderTitleForID:(NSString *)providerID
+                             sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    NSString *cleanProviderID = PPDataViewTrimmedString(providerID);
+    if (cleanProviderID.length == 0) {
+        return @"";
+    }
+
+    NSDictionary<NSString *, NSString *> *identity = [self pp_cachedProviderIdentityForProviderID:cleanProviderID];
+    NSString *identityTitle = PPDataViewTrimmedString(identity[PPDataViewProviderIdentityTitleKey]);
+    if (identityTitle.length > 0 && ![self pp_providerTitleIsGeneric:identityTitle providerID:cleanProviderID]) {
+        return identityTitle;
+    }
+
+    for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+        NSString *itemProviderID = [self pp_providerIDForViewModel:viewModel];
+        if (![itemProviderID isEqualToString:cleanProviderID]) {
+            continue;
+        }
+        NSString *title = [self pp_providerTitleForViewModel:viewModel fallbackID:cleanProviderID];
+        if (title.length > 0 && ![self pp_providerTitleIsGeneric:title providerID:cleanProviderID]) {
+            return title;
+        }
+    }
+
+    return @"";
+}
+
 - (UIImage *)pp_providerPlaceholderImage
 {
-    UIImage *placeholder = [UIImage imageNamed:@"providers.png"];
-    if (!placeholder) {
-        placeholder = [UIImage imageNamed:@"providers"];
+    NSString *title = kLang(@"dataview_filter_by_provider") ?: kLang(@"service_view_provider_title") ?: @"Provider";
+    UIImage *avatar = [PPModernAvatarRenderer avatarImageForName:title size:34.0];
+    if (avatar) {
+        return avatar;
     }
-    if (!placeholder) {
-        placeholder = [UIImage imageNamed:@"providers_placeholder"];
-    }
-    if (!placeholder) {
-        placeholder = [UIImage systemImageNamed:@"storefront.fill"];
-    }
-    return placeholder;
+    UIImage *placeholder = [UIImage imageNamed:@"providers.png"] ?: [UIImage imageNamed:@"providers"];
+    return placeholder ?: [UIImage systemImageNamed:@"storefront.fill"];
 }
 
 - (void)pp_updateProviderChipAvatarForProviderID:(NSString *)providerID
