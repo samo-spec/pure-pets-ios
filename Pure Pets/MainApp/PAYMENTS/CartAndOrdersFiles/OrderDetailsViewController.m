@@ -885,12 +885,20 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 @property (nonatomic, strong) NSMutableArray<UIImage *> *selectedImages;
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIStackView *stackView;
+@property (nonatomic, strong) UIView *formSurfaceView;
+@property (nonatomic, strong) UIStackView *formStackView;
+@property (nonatomic, strong) UIView *notesSurfaceView;
 @property (nonatomic, strong) UIButton *reasonButton;
 @property (nonatomic, strong) UIStackView *itemsStackView;
 @property (nonatomic, strong) UITextView *notesTextView;
 @property (nonatomic, strong) UIButton *addPhotoButton;
 @property (nonatomic, strong) UILabel *attachmentsLabel;
 @property (nonatomic, strong) UIButton *submitButton;
+@property (nonatomic, strong) UIActivityIndicatorView *submitActivityIndicator;
+@property (nonatomic, strong) NSLayoutConstraint *scrollViewBottomConstraint;
+@property (nonatomic, strong) NSArray<UIView *> *entranceViews;
+@property (nonatomic, assign) BOOL didPrepareEntrance;
+@property (nonatomic, assign) BOOL didRunEntrance;
 @end
 
 @implementation PPOrderSupportComposerViewController
@@ -924,96 +932,365 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
     self.view.semanticContentAttribute = semantic;
 
-    self.scrollView = [[UIScrollView alloc] initWithFrame:self.view.bounds];
-    self.scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    UIView *ambientWash = [[UIView alloc] initWithFrame:CGRectZero];
+    ambientWash.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientWash.userInteractionEnabled = NO;
+    ambientWash.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:0.035];
+    PPApplyContinuousCorners(ambientWash, 999.0);
+    [self.view addSubview:ambientWash];
+
+    self.scrollView = [[UIScrollView alloc] initWithFrame:CGRectZero];
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.alwaysBounceVertical = YES;
+    self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.scrollView.showsVerticalScrollIndicator = NO;
     self.scrollView.semanticContentAttribute = semantic;
     [self.view addSubview:self.scrollView];
 
     self.stackView = [[UIStackView alloc] initWithFrame:CGRectZero];
     self.stackView.axis = UILayoutConstraintAxisVertical;
-    self.stackView.spacing = PPSpaceMD;
+    self.stackView.spacing = PPSpaceLG;
     self.stackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.stackView.semanticContentAttribute = semantic;
     [self.scrollView addSubview:self.stackView];
 
+    self.scrollViewBottomConstraint = [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
     [NSLayoutConstraint activateConstraints:@[
-        [self.stackView.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor constant:kOrderDetailsScreenMargin],
-        [self.stackView.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor constant:-kOrderDetailsScreenMargin],
-        [self.stackView.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:PPSpaceBase],
-        [self.stackView.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor constant:-PPSpaceXL],
-        [self.stackView.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-(kOrderDetailsScreenMargin * 2.0)]
+        [ambientWash.widthAnchor constraintEqualToAnchor:self.view.widthAnchor multiplier:0.72],
+        [ambientWash.heightAnchor constraintEqualToAnchor:ambientWash.widthAnchor],
+        [ambientWash.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:90.0],
+        [ambientWash.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:28.0],
+
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        self.scrollViewBottomConstraint,
+
+        [self.stackView.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor constant:20.0],
+        [self.stackView.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor constant:-20.0],
+        [self.stackView.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor constant:PPSpaceLG],
+        [self.stackView.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor constant:-(PPSpaceXL + 120.0)],
+        [self.stackView.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor constant:-40.0]
     ]];
 
     UILabel *intro = [[UILabel alloc] initWithFrame:CGRectZero];
-    intro.font = [GM MidFontWithSize:15];
+    intro.font = [self pp_composerFont:[GM MidFontWithSize:15] textStyle:UIFontTextStyleSubheadline];
     intro.textColor = UIColor.secondaryLabelColor;
     intro.numberOfLines = 0;
     intro.textAlignment = leadingAlignment;
     intro.semanticContentAttribute = semantic;
+    intro.adjustsFontForContentSizeCategory = YES;
     intro.text = [self.orderManager eligibilityForAction:self.actionType
                                                    order:self.order
                                                 requests:@[]
                                            referenceDate:[NSDate date]].message;
+    intro.accessibilityTraits = UIAccessibilityTraitStaticText;
     [self.stackView addArrangedSubview:intro];
 
+    self.formSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.formSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    PPOrderDetailsApplySurface(self.formSurfaceView, PPCornerCard, YES);
+    [self.stackView addArrangedSubview:self.formSurfaceView];
+
+    self.formStackView = [[UIStackView alloc] initWithFrame:CGRectZero];
+    self.formStackView.axis = UILayoutConstraintAxisVertical;
+    self.formStackView.spacing = PPSpaceMD;
+    self.formStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.formStackView.semanticContentAttribute = semantic;
+    [self.formSurfaceView addSubview:self.formStackView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.formStackView.leadingAnchor constraintEqualToAnchor:self.formSurfaceView.leadingAnchor constant:PPSpaceLG],
+        [self.formStackView.trailingAnchor constraintEqualToAnchor:self.formSurfaceView.trailingAnchor constant:-PPSpaceLG],
+        [self.formStackView.topAnchor constraintEqualToAnchor:self.formSurfaceView.topAnchor constant:PPSpaceLG],
+        [self.formStackView.bottomAnchor constraintEqualToAnchor:self.formSurfaceView.bottomAnchor constant:-PPSpaceLG]
+    ]];
+
     self.reasonButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    PPOrderDetailsApplySurface(self.reasonButton, PPCornerMedium, NO);
+    [self pp_applyComposerControlStyleToButton:self.reasonButton filled:NO];
     self.reasonButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
     self.reasonButton.semanticContentAttribute = semantic;
-    self.reasonButton.titleLabel.font = [GM boldFontWithSize:16];
+    self.reasonButton.titleLabel.font = [self pp_composerFont:[GM boldFontWithSize:16] textStyle:UIFontTextStyleBody];
+    self.reasonButton.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.reasonButton.titleLabel.textAlignment = leadingAlignment;
     [self.reasonButton setTitleColor:[GM appPrimaryColor] forState:UIControlStateNormal];
     [self.reasonButton setTitle:kLang(@"order_request_select_reason") forState:UIControlStateNormal];
     self.reasonButton.contentEdgeInsets = UIEdgeInsetsMake(14, 16, 14, 16);
+    self.reasonButton.accessibilityLabel = kLang(@"order_request_select_reason");
     [self.reasonButton addTarget:self action:@selector(selectReasonTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.stackView addArrangedSubview:self.reasonButton];
+    [self.reasonButton addTarget:self action:@selector(pp_controlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [self.reasonButton addTarget:self action:@selector(pp_controlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    [self.formStackView addArrangedSubview:self.reasonButton];
+    [self.reasonButton.heightAnchor constraintGreaterThanOrEqualToConstant:56.0].active = YES;
 
     self.itemsStackView = [[UIStackView alloc] initWithFrame:CGRectZero];
     self.itemsStackView.axis = UILayoutConstraintAxisVertical;
     self.itemsStackView.spacing = 10.0;
-    [self.stackView addArrangedSubview:self.itemsStackView];
+    self.itemsStackView.semanticContentAttribute = semantic;
+    [self.formStackView addArrangedSubview:self.itemsStackView];
     [self rebuildItemsSelection];
 
+    self.notesSurfaceView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.notesSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    PPOrderDetailsApplySurface(self.notesSurfaceView, PPCornerMedium, NO);
+    [self.formStackView addArrangedSubview:self.notesSurfaceView];
+
+    UILabel *notesTitle = [[UILabel alloc] initWithFrame:CGRectZero];
+    notesTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    notesTitle.font = [self pp_composerFont:[GM boldFontWithSize:13] textStyle:UIFontTextStyleCaption1];
+    notesTitle.adjustsFontForContentSizeCategory = YES;
+    notesTitle.textColor = UIColor.secondaryLabelColor;
+    notesTitle.textAlignment = leadingAlignment;
+    notesTitle.semanticContentAttribute = semantic;
+    notesTitle.text = kLang(@"order_request_notes_title");
+    [self.notesSurfaceView addSubview:notesTitle];
+
     self.notesTextView = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, 0, 140)];
-    self.notesTextView.font = [GM MidFontWithSize:15];
-    self.notesTextView.backgroundColor = PPOrderDetailsSurfaceColor();
-    PPApplyContinuousCorners(self.notesTextView, PPCornerMedium);
-    self.notesTextView.layer.borderWidth = 1.0;
-    [self.notesTextView pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.055]];
-    self.notesTextView.textContainerInset = UIEdgeInsetsMake(14, 12, 14, 12);
+    self.notesTextView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.notesTextView.font = [self pp_composerFont:[GM MidFontWithSize:16] textStyle:UIFontTextStyleBody];
+    self.notesTextView.adjustsFontForContentSizeCategory = YES;
+    self.notesTextView.backgroundColor = UIColor.clearColor;
+    self.notesTextView.textContainerInset = UIEdgeInsetsMake(6, 0, 0, 0);
     self.notesTextView.textAlignment = leadingAlignment;
     self.notesTextView.semanticContentAttribute = semantic;
     self.notesTextView.text = @"";
-    [self.stackView addArrangedSubview:self.notesTextView];
-    [self.notesTextView.heightAnchor constraintEqualToConstant:140].active = YES;
+    self.notesTextView.accessibilityLabel = kLang(@"order_request_notes_title");
+    [self.notesSurfaceView addSubview:self.notesTextView];
+    [NSLayoutConstraint activateConstraints:@[
+        [notesTitle.leadingAnchor constraintEqualToAnchor:self.notesSurfaceView.leadingAnchor constant:PPSpaceMD],
+        [notesTitle.trailingAnchor constraintEqualToAnchor:self.notesSurfaceView.trailingAnchor constant:-PPSpaceMD],
+        [notesTitle.topAnchor constraintEqualToAnchor:self.notesSurfaceView.topAnchor constant:PPSpaceMD],
+        [self.notesTextView.leadingAnchor constraintEqualToAnchor:self.notesSurfaceView.leadingAnchor constant:PPSpaceMD],
+        [self.notesTextView.trailingAnchor constraintEqualToAnchor:self.notesSurfaceView.trailingAnchor constant:-PPSpaceMD],
+        [self.notesTextView.topAnchor constraintEqualToAnchor:notesTitle.bottomAnchor constant:4.0],
+        [self.notesTextView.bottomAnchor constraintEqualToAnchor:self.notesSurfaceView.bottomAnchor constant:-PPSpaceSM],
+        [self.notesTextView.heightAnchor constraintGreaterThanOrEqualToConstant:136.0]
+    ]];
 
     self.addPhotoButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    PPOrderDetailsApplySurface(self.addPhotoButton, PPCornerMedium, NO);
+    [self pp_applyComposerControlStyleToButton:self.addPhotoButton filled:NO];
     self.addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(14, 16, 14, 16);
-    self.addPhotoButton.titleLabel.font = [GM boldFontWithSize:16];
+    self.addPhotoButton.titleLabel.font = [self pp_composerFont:[GM boldFontWithSize:16] textStyle:UIFontTextStyleBody];
+    self.addPhotoButton.titleLabel.adjustsFontForContentSizeCategory = YES;
     [self.addPhotoButton setTitleColor:[GM appPrimaryColor] forState:UIControlStateNormal];
     [self.addPhotoButton setTitle:kLang(@"order_request_add_photos") forState:UIControlStateNormal];
+    self.addPhotoButton.accessibilityLabel = kLang(@"order_request_add_photos");
     [self.addPhotoButton addTarget:self action:@selector(addPhotosTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.stackView addArrangedSubview:self.addPhotoButton];
+    [self.addPhotoButton addTarget:self action:@selector(pp_controlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [self.addPhotoButton addTarget:self action:@selector(pp_controlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    [self.formStackView addArrangedSubview:self.addPhotoButton];
+    [self.addPhotoButton.heightAnchor constraintGreaterThanOrEqualToConstant:56.0].active = YES;
 
     self.attachmentsLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.attachmentsLabel.font = [GM MidFontWithSize:13];
+    self.attachmentsLabel.font = [self pp_composerFont:[GM MidFontWithSize:13] textStyle:UIFontTextStyleCaption1];
+    self.attachmentsLabel.adjustsFontForContentSizeCategory = YES;
     self.attachmentsLabel.textColor = UIColor.secondaryLabelColor;
     self.attachmentsLabel.numberOfLines = 0;
     self.attachmentsLabel.textAlignment = leadingAlignment;
     self.attachmentsLabel.semanticContentAttribute = semantic;
-    [self.stackView addArrangedSubview:self.attachmentsLabel];
+    [self.formStackView addArrangedSubview:self.attachmentsLabel];
     [self refreshAttachmentLabel];
 
     self.submitButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.submitButton.backgroundColor = [GM appPrimaryColor];
-    PPApplyContinuousCorners(self.submitButton, PPCornerMedium);
+    [self pp_applyComposerControlStyleToButton:self.submitButton filled:YES];
     [self.submitButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.submitButton.titleLabel.font = [GM boldFontWithSize:17];
+    self.submitButton.titleLabel.font = [self pp_composerFont:[GM boldFontWithSize:17] textStyle:UIFontTextStyleHeadline];
+    self.submitButton.titleLabel.adjustsFontForContentSizeCategory = YES;
     [self.submitButton setTitle:kLang(@"order_request_submit") forState:UIControlStateNormal];
+    self.submitButton.accessibilityLabel = kLang(@"order_request_submit");
     [self.submitButton addTarget:self action:@selector(submitTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.submitButton addTarget:self action:@selector(pp_controlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [self.submitButton addTarget:self action:@selector(pp_controlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
     [self.stackView addArrangedSubview:self.submitButton];
-    [self.submitButton.heightAnchor constraintEqualToConstant:54].active = YES;
+    [self.submitButton.heightAnchor constraintGreaterThanOrEqualToConstant:58.0].active = YES;
+
+    if (@available(iOS 13.0, *)) {
+        self.submitActivityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
+    } else {
+        self.submitActivityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
+    }
+    self.submitActivityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
+    self.submitActivityIndicator.hidesWhenStopped = YES;
+    self.submitActivityIndicator.color = UIColor.whiteColor;
+    [self.submitButton addSubview:self.submitActivityIndicator];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.submitActivityIndicator.centerYAnchor constraintEqualToAnchor:self.submitButton.centerYAnchor],
+        [self.submitActivityIndicator.trailingAnchor constraintEqualToAnchor:self.submitButton.trailingAnchor constant:-PPSpaceLG]
+    ]];
+
+    self.entranceViews = @[intro, self.formSurfaceView, self.submitButton];
+    [self pp_prepareEntranceState];
+
+    UITapGestureRecognizer *dismissKeyboardTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    dismissKeyboardTap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:dismissKeyboardTap];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillChangeFrame:)
+                                                 name:UIKeyboardWillChangeFrameNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    [self pp_prepareEntranceState];
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self pp_runEntranceIfNeeded];
+}
+
+- (UIFont *)pp_composerFont:(UIFont *)font textStyle:(UIFontTextStyle)textStyle
+{
+    if (!font) return [UIFont preferredFontForTextStyle:textStyle];
+    if (@available(iOS 11.0, *)) {
+        return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:font];
+    }
+    return font;
+}
+
+- (void)pp_applyComposerControlStyleToButton:(UIButton *)button filled:(BOOL)filled
+{
+    if (!button) return;
+    button.adjustsImageWhenHighlighted = NO;
+    button.titleLabel.numberOfLines = 0;
+    button.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    PPApplyContinuousCorners(button, PPCornerMedium);
+    button.layer.borderWidth = filled ? 0.0 : 0.75;
+    if (filled) {
+        button.backgroundColor = [GM appPrimaryColor];
+        button.layer.shadowColor = [GM appPrimaryColor].CGColor;
+        button.layer.shadowOpacity = 0.20;
+        button.layer.shadowRadius = 18.0;
+        button.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    } else {
+        button.backgroundColor = PPOrderDetailsSubsurfaceColor();
+        [button pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.060]];
+        button.layer.shadowOpacity = 0.0;
+    }
+}
+
+- (void)pp_prepareEntranceState
+{
+    if (self.didRunEntrance || self.didPrepareEntrance) return;
+    self.didPrepareEntrance = YES;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        for (UIView *view in self.entranceViews) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        return;
+    }
+    for (UIView *view in self.entranceViews) {
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+    }
+    self.formSurfaceView.transform = CGAffineTransformTranslate(CGAffineTransformMakeScale(0.985, 0.985), 0.0, 12.0);
+}
+
+- (void)pp_runEntranceIfNeeded
+{
+    if (self.didRunEntrance) return;
+    self.didRunEntrance = YES;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        for (UIView *view in self.entranceViews) {
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        }
+        return;
+    }
+    [self.view layoutIfNeeded];
+    [self.entranceViews enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
+        (void)stop;
+        NSTimeInterval delay = 0.04 * idx;
+        [UIView animateWithDuration:0.42
+                              delay:delay
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (void)pp_controlTouchDown:(UIControl *)control
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    [UIView animateWithDuration:0.08
+                          delay:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        control.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    } completion:nil];
+}
+
+- (void)pp_controlTouchUp:(UIControl *)control
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        control.transform = CGAffineTransformIdentity;
+        return;
+    }
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.35
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        control.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_dismissKeyboard
+{
+    [self.view endEditing:YES];
+}
+
+- (void)pp_keyboardWillChangeFrame:(NSNotification *)notification
+{
+    CGRect keyboardFrame = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
+    CGFloat overlap = MAX(0.0, CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(convertedFrame));
+    NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationOptions options = (UIViewAnimationOptions)([notification.userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue] << 16);
+    self.scrollViewBottomConstraint.constant = -overlap;
+    UIEdgeInsets inset = self.scrollView.contentInset;
+    inset.bottom = overlap > 0.0 ? PPSpaceXL : 0.0;
+    self.scrollView.contentInset = inset;
+    self.scrollView.scrollIndicatorInsets = inset;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+                        options:options | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        [self.view layoutIfNeeded];
+    } completion:nil];
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)notification
+{
+    NSTimeInterval duration = [notification.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    self.scrollViewBottomConstraint.constant = 0.0;
+    self.scrollView.contentInset = UIEdgeInsetsZero;
+    self.scrollView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        [self.view layoutIfNeeded];
+    } completion:nil];
 }
 
 - (void)showMessage:(NSString *)message title:(NSString *)title
@@ -1040,6 +1317,9 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                                                 handler:^(__unused UIAlertAction * _Nonnull action) {
             self.selectedReason = reason;
             [self.reasonButton setTitle:reason[@"title"] forState:UIControlStateNormal];
+            self.reasonButton.accessibilityValue = reason[@"title"];
+            UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
+            [feedback selectionChanged];
             [self rebuildItemsSelection];
         }]];
     }
@@ -1063,7 +1343,8 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     if (self.itemsStackView.hidden) return;
 
     UILabel *title = [[UILabel alloc] initWithFrame:CGRectZero];
-    title.font = [GM boldFontWithSize:15];
+    title.font = [self pp_composerFont:[GM boldFontWithSize:15] textStyle:UIFontTextStyleSubheadline];
+    title.adjustsFontForContentSizeCategory = YES;
     title.textColor = UIColor.labelColor;
     title.textAlignment = Language.alignmentForCurrentLanguage;
     title.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -1075,22 +1356,33 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         NSString *itemID = item[@"id"] ?: @"";
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = index;
-        PPOrderDetailsApplySurface(button, PPCornerMedium, NO);
+        [self pp_applyComposerControlStyleToButton:button filled:NO];
         button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
         button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
         button.contentEdgeInsets = UIEdgeInsetsMake(12, 16, 12, 16);
-        button.titleLabel.font = [GM MidFontWithSize:15];
+        button.titleLabel.font = [self pp_composerFont:[GM MidFontWithSize:15] textStyle:UIFontTextStyleBody];
+        button.titleLabel.adjustsFontForContentSizeCategory = YES;
+        button.titleLabel.numberOfLines = 0;
         button.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
         BOOL selected = [self.selectedItemIDs containsObject:itemID];
-        NSString *titleText = [NSString stringWithFormat:@"%@%@ ×%@", selected ? @"✓ " : @"", item[@"name"] ?: itemID, item[@"quantity"] ?: @1];
+        NSString *titleText = [NSString stringWithFormat:@"%@ ×%@%@", item[@"name"] ?: itemID, item[@"quantity"] ?: @1, selected ? @"  ✓" : @""];
         [button setTitle:titleText forState:UIControlStateNormal];
         [button setTitleColor:selected ? UIColor.whiteColor : UIColor.labelColor forState:UIControlStateNormal];
+        button.accessibilityLabel = titleText;
+        button.accessibilityTraits = selected ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected) : UIAccessibilityTraitButton;
         if (selected) {
             button.backgroundColor = [GM appPrimaryColor];
             [button pp_setBorderColor:[[GM appPrimaryColor] colorWithAlphaComponent:0.82]];
+            button.layer.shadowColor = [GM appPrimaryColor].CGColor;
+            button.layer.shadowOpacity = 0.16;
+            button.layer.shadowRadius = 14.0;
+            button.layer.shadowOffset = CGSizeMake(0.0, 8.0);
         }
         [button addTarget:self action:@selector(toggleItemSelection:) forControlEvents:UIControlEventTouchUpInside];
+        [button addTarget:self action:@selector(pp_controlTouchDown:) forControlEvents:UIControlEventTouchDown];
+        [button addTarget:self action:@selector(pp_controlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
         [self.itemsStackView addArrangedSubview:button];
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:52.0].active = YES;
     }
 }
 
@@ -1106,6 +1398,8 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     } else {
         [self.selectedItemIDs addObject:itemID];
     }
+    UISelectionFeedbackGenerator *feedback = [UISelectionFeedbackGenerator new];
+    [feedback selectionChanged];
     [self rebuildItemsSelection];
 }
 
@@ -1163,8 +1457,10 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 {
     if (self.selectedImages.count == 0) {
         self.attachmentsLabel.text = kLang(@"order_request_photos_optional");
+        self.attachmentsLabel.accessibilityLabel = kLang(@"order_request_photos_optional");
     } else {
         self.attachmentsLabel.text = [NSString stringWithFormat:kLang(@"order_request_photos_count"), (long)self.selectedImages.count];
+        self.attachmentsLabel.accessibilityLabel = self.attachmentsLabel.text;
     }
 }
 
@@ -1173,7 +1469,15 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.submitButton.enabled = !loading;
     self.reasonButton.enabled = !loading;
     self.addPhotoButton.enabled = !loading;
+    self.notesTextView.editable = !loading;
     [self.submitButton setTitle:(loading ? kLang(@"order_request_submitting") : kLang(@"order_request_submit")) forState:UIControlStateNormal];
+    self.submitButton.alpha = loading ? 0.86 : 1.0;
+    if (loading) {
+        [self.submitActivityIndicator startAnimating];
+    } else {
+        [self.submitActivityIndicator stopAnimating];
+    }
+    UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, loading ? kLang(@"order_request_submitting") : kLang(@"order_request_submit"));
 }
 
 - (void)submitTapped
@@ -1218,6 +1522,8 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                 }
                 if (strongSelf.onComplete) strongSelf.onComplete();
                 if (request) {
+                    UINotificationFeedbackGenerator *feedback = [UINotificationFeedbackGenerator new];
+                    [feedback notificationOccurred:UINotificationFeedbackTypeSuccess];
                     UIViewController *detailsVC = [PPOrderSupportRequestDetailsViewController controllerWithOrder:strongSelf.order
                                                                                                    orderManager:strongSelf.orderManager
                                                                                                         request:request];

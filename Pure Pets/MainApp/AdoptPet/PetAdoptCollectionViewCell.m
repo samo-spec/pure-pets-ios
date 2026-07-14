@@ -7,20 +7,18 @@
 
 #import "PetAdoptCollectionViewCell.h"
 #import "AppClasses.h"
+#import "PPHeroGlassBackgroundView.h"
 
 static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
-static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 
 @interface PetAdoptCollectionViewCell () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) UIView *cardSurfaceView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *heroBackgroundView;
 @property (nonatomic, strong) UIView *contentWrapView;
 @property (nonatomic, strong) UIView *visualStageView;
 @property (nonatomic, strong) UIView *visualGlassView;
 @property (nonatomic, strong) UIView *visualOrbView;
-@property (nonatomic, strong) UIView *ambientRoseView;
-@property (nonatomic, strong) UIView *ambientMintView;
-@property (nonatomic, strong) UIView *ambientPeachView;
 @property (nonatomic, strong) UIView *hairlineView;
 @property (nonatomic, strong) UIImageView *seedImageView;
 @property (nonatomic, strong) UIView *badgePillView;
@@ -28,7 +26,6 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 @property (nonatomic, strong) UIView *ctaPillView;
 @property (nonatomic, strong) UILabel *ctaLabel;
 @property (nonatomic, strong) UIImageView *ctaIconView;
-@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *visualGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *ctaGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *hairlineGradientLayer;
@@ -68,12 +65,6 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.contentWrapView.transform = CGAffineTransformIdentity;
     self.visualStageView.transform = CGAffineTransformIdentity;
     self.lottieHeaderView.transform = CGAffineTransformIdentity;
-    self.ambientRoseView.transform = CGAffineTransformIdentity;
-    self.ambientMintView.transform = CGAffineTransformIdentity;
-    self.ambientPeachView.transform = CGAffineTransformIdentity;
-    self.ambientRoseView.hidden = YES;
-    self.ambientPeachView.hidden = YES;
-    self.ambientMintView.hidden = NO;
     self.alpha = 1.0;
     [self pp_applyCurrentDirection];
 }
@@ -81,10 +72,12 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window) {
+        [self.heroBackgroundView startAnimations];
         [self pp_startLivingMotionIfNeeded];
         [self pp_playLottieIfPossible];
         [self pp_runEntranceIfNeeded];
     } else {
+        [self.heroBackgroundView stopAnimations];
         [self pp_stopLivingMotion];
         [self.lottieHeaderView stop];
     }
@@ -94,6 +87,7 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self.heroBackgroundView reapplyPalette];
             [self pp_applyBaseStyle];
         }
     }
@@ -142,23 +136,12 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     _cardSurfaceView.accessibilityTraits = UIAccessibilityTraitButton;
     [self.contentView addSubview:_cardSurfaceView];
 
-    _surfaceGradientLayer = [CAGradientLayer layer];
-    [_cardSurfaceView.layer insertSublayer:_surfaceGradientLayer atIndex:0];
-
-    _ambientRoseView = [self pp_makeAtmosphereViewWithColor:[UIColor hx_colorWithHexStr:@"#F4A4BE"]
-                                                      alpha:0.18
-                                                shadowAlpha:0.16];
-    [_cardSurfaceView addSubview:_ambientRoseView];
-
-    _ambientMintView = [self pp_makeAtmosphereViewWithColor:[UIColor hx_colorWithHexStr:@"#BFEBD4"]
-                                                      alpha:0.20
-                                                shadowAlpha:0.14];
-    [_cardSurfaceView addSubview:_ambientMintView];
-
-    _ambientPeachView = [self pp_makeAtmosphereViewWithColor:[UIColor hx_colorWithHexStr:@"#FFD3AC"]
-                                                       alpha:0.17
-                                                 shadowAlpha:0.12];
-    [_cardSurfaceView addSubview:_ambientPeachView];
+    _heroBackgroundView = [PPHeroGlassBackgroundView new];
+    _heroBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+    _heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    _heroBackgroundView.cornerGlowOpacityMultiplier = 0.72;
+    _heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
+    [_cardSurfaceView insertSubview:_heroBackgroundView atIndex:0];
 
     _hairlineView = [[UIView alloc] init];
     _hairlineView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -288,20 +271,10 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
         [_cardSurfaceView.trailingAnchor constraintEqualToAnchor:layoutGuide.trailingAnchor],
         [_cardSurfaceView.bottomAnchor constraintEqualToAnchor:layoutGuide.bottomAnchor],
 
-        [_ambientRoseView.widthAnchor constraintEqualToAnchor:_cardSurfaceView.widthAnchor multiplier:0.58],
-        [_ambientRoseView.heightAnchor constraintEqualToAnchor:_ambientRoseView.widthAnchor],
-        [_ambientRoseView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor constant:54.0],
-        [_ambientRoseView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor constant:-54.0],
-
-        [_ambientMintView.widthAnchor constraintEqualToAnchor:_cardSurfaceView.widthAnchor multiplier:0.46],
-        [_ambientMintView.heightAnchor constraintEqualToAnchor:_ambientMintView.widthAnchor],
-        [_ambientMintView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor constant:-44.0],
-        [_ambientMintView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor constant:48.0],
-
-        [_ambientPeachView.widthAnchor constraintEqualToAnchor:_cardSurfaceView.widthAnchor multiplier:0.34],
-        [_ambientPeachView.heightAnchor constraintEqualToAnchor:_ambientPeachView.widthAnchor],
-        [_ambientPeachView.centerXAnchor constraintEqualToAnchor:_cardSurfaceView.centerXAnchor],
-        [_ambientPeachView.centerYAnchor constraintEqualToAnchor:_cardSurfaceView.centerYAnchor constant:20.0],
+        [_heroBackgroundView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor],
+        [_heroBackgroundView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor],
+        [_heroBackgroundView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor],
+        [_heroBackgroundView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor],
 
         [_hairlineView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor],
         [_hairlineView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor],
@@ -398,11 +371,11 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.layer.shadowRadius = isDark ? 22.0 : 26.0;
     self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
 
-    UIColor *surfaceA = isDark ? [UIColor hx_colorWithHexStr:@"#181A20"] : [UIColor colorWithWhite:1.0 alpha:0.98];
-    UIColor *surfaceB = isDark ? [UIColor hx_colorWithHexStr:@"#111318"] : [UIColor hx_colorWithHexStr:@"#F8FAF8"];
-    UIColor *surfaceC = isDark ? [UIColor hx_colorWithHexStr:@"#1B151B"] : [UIColor hx_colorWithHexStr:@"#FFF5F8"];
-    self.surfaceGradientLayer.colors = @[(id)surfaceA.CGColor, (id)surfaceB.CGColor, (id)surfaceC.CGColor];
-    self.surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    self.cardSurfaceView.backgroundColor = UIColor.clearColor;
+    self.heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
+    self.heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    self.heroBackgroundView.cornerGlowOpacityMultiplier = isDark ? 0.82 : 0.66;
+    [self.heroBackgroundView reapplyPalette];
 
     UIColor *ink = isDark ? [UIColor colorWithWhite:0.96 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#14181F"];
     UIColor *muted = isDark ? [UIColor colorWithWhite:0.76 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#66717D"];
@@ -436,19 +409,6 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     ];
     self.hairlineGradientLayer.locations = @[@0.0, @0.50, @1.0];
 
-    self.ambientRoseView.hidden = YES;
-    self.ambientRoseView.alpha = 0.0;
-    self.ambientRoseView.layer.shadowOpacity = 0.0f;
-    self.ambientPeachView.hidden = YES;
-    self.ambientPeachView.alpha = 0.0;
-    self.ambientPeachView.layer.shadowOpacity = 0.0f;
-    self.ambientMintView.hidden = NO;
-    self.ambientMintView.alpha = 1.0;
-    self.ambientMintView.backgroundColor = [rose colorWithAlphaComponent:isDark ? 0.105 : 0.070];
-    [self.ambientMintView pp_setShadowColor:rose];
-    self.ambientMintView.layer.shadowOpacity = isDark ? 0.10f : 0.07f;
-    self.ambientMintView.layer.shadowRadius = isDark ? 28.0 : 24.0;
-
     [self pp_applyCurrentDirection];
 }
 
@@ -472,12 +432,11 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.ctaIconView.image = [self pp_systemImage:(isRTL ? @"arrow.left" : @"arrow.right")
                                         fallback:@"arrow.right"];
 
-    self.surfaceGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    self.surfaceGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     self.visualGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
     self.visualGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     self.ctaGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
     self.ctaGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
+    [self.heroBackgroundView reapplyPalette];
 }
 
 - (void)pp_refreshGeometry {
@@ -491,8 +450,6 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.surfaceGradientLayer.frame = self.cardSurfaceView.bounds;
-    self.surfaceGradientLayer.cornerRadius = cornerRadius;
     self.visualGradientLayer.frame = self.visualGlassView.bounds;
     self.visualGradientLayer.cornerRadius = self.visualGlassView.layer.cornerRadius;
     self.ctaGradientLayer.frame = self.ctaPillView.bounds;
@@ -504,9 +461,6 @@ static NSString * const PPAdoptGlowAnimationKey = @"pp_adopt_glow";
     self.visualGlassView.layer.cornerRadius = MIN(34.0, CGRectGetHeight(self.visualGlassView.bounds) * 0.24);
     self.badgePillView.layer.cornerRadius = CGRectGetHeight(self.badgePillView.bounds) * 0.5;
     self.ctaPillView.layer.cornerRadius = CGRectGetHeight(self.ctaPillView.bounds) * 0.5;
-    self.ambientRoseView.layer.cornerRadius = CGRectGetWidth(self.ambientRoseView.bounds) * 0.5;
-    self.ambientMintView.layer.cornerRadius = CGRectGetWidth(self.ambientMintView.bounds) * 0.5;
-    self.ambientPeachView.layer.cornerRadius = CGRectGetWidth(self.ambientPeachView.bounds) * 0.5;
     self.visualOrbView.layer.cornerRadius = CGRectGetWidth(self.visualOrbView.bounds) * 0.5;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:cornerRadius].CGPath;
 }
@@ -684,16 +638,11 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
                                  key:PPAdoptBreathingAnimationKey
                             duration:5.6
                          translation:CGPointMake(0.0, -2.0)];
-    [self pp_addFloatAnimationToView:self.ambientMintView
-                                 key:PPAdoptGlowAnimationKey
-                            duration:8.4
-                         translation:CGPointMake(4.0, -4.0)];
 }
 
 - (void)pp_stopLivingMotion {
-    for (UIView *view in @[self.visualStageView, self.lottieHeaderView, self.ambientRoseView, self.ambientMintView, self.ambientPeachView]) {
+    for (UIView *view in @[self.visualStageView, self.lottieHeaderView]) {
         [view.layer removeAnimationForKey:PPAdoptBreathingAnimationKey];
-        [view.layer removeAnimationForKey:PPAdoptGlowAnimationKey];
         view.transform = CGAffineTransformIdentity;
     }
 }

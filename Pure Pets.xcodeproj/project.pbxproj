@@ -36,6 +36,8 @@
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
+		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
+		A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
@@ -568,7 +570,6 @@
 		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
 		F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5B2D03058F009F0B62 /* YIInnerShadowLayer.m */; };
 		F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD632D031328009F0B62 /* UIView+Shadow.m */; };
-		F2A24AD23002DA7F003AB79D /* PPHeroGlassBackgroundView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */; };
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
 		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
@@ -911,6 +912,8 @@
 		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
 		A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPBottomSurface.m"; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
+		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
+		A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHeroGlassBackgroundViewApexBridge.m; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
 		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
@@ -3420,6 +3423,8 @@
 			children = (
 				F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */,
 				F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */,
+				A5E100012FF1000100A5E001 /* PPHeroApex.swift */,
+				A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */,
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
@@ -5763,7 +5768,8 @@
 				F26634542C51D0F600D4B304 /* uploadedCollectionViewCell.m in Sources */,
 				F2AB48942C72CF3C00D88603 /* JGProgressHUDPieIndicatorView.m in Sources */,
 				F28CBB642D302899002993F0 /* JPCell.m in Sources */,
-				F2A24AD23002DA7F003AB79D /* PPHeroGlassBackgroundView.m in Sources */,
+				A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */,
+				A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */,
 				F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */,
 				F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */,
 				F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */,
@@ -6484,7 +6490,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6594,7 +6600,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6700,7 +6706,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6718,7 +6724,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6735,7 +6741,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6752,7 +6758,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 201;
+				CURRENT_PROJECT_VERSION = 202;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

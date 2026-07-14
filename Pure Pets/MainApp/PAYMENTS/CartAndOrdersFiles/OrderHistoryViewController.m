@@ -458,22 +458,22 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)pp_setupBackgroundGlows {
     UIView *glow1 = [UIView new];
     glow1.translatesAutoresizingMaskIntoConstraints = NO;
-    glow1.backgroundColor = [bageColor colorWithAlphaComponent:0.04];
-    glow1.layer.cornerRadius = 120.0;
+    glow1.backgroundColor = [bageColor colorWithAlphaComponent:0.026];
+    glow1.layer.cornerRadius = 88.0;
     glow1.clipsToBounds = YES;
     [self.view addSubview:glow1];
 
     UIView *glow2 = [UIView new];
     glow2.translatesAutoresizingMaskIntoConstraints = NO;
-    glow2.backgroundColor = [UIColor.systemPurpleColor colorWithAlphaComponent:0.03];
-    glow2.layer.cornerRadius = 140.0;
+    glow2.backgroundColor = [UIColor.systemPurpleColor colorWithAlphaComponent:0.018];
+    glow2.layer.cornerRadius = 110.0;
     glow2.clipsToBounds = YES;
     [self.view addSubview:glow2];
 
     UIView *glow3 = [UIView new];
     glow3.translatesAutoresizingMaskIntoConstraints = NO;
-    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.06];
-    glow3.layer.cornerRadius = 110.0;
+    glow3.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.024];
+    glow3.layer.cornerRadius = 80.0;
     glow3.clipsToBounds = YES;
     [self.view addSubview:glow3];
 
@@ -488,20 +488,20 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     //[self.view addSubview:blurView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [glow1.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:40.0],
-        [glow1.centerYAnchor constraintEqualToAnchor:self.view.topAnchor constant:150.0],
-        [glow1.widthAnchor constraintEqualToConstant:240.0],
-        [glow1.heightAnchor constraintEqualToConstant:240.0],
+        [glow1.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18.0],
+        [glow1.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:26.0],
+        [glow1.widthAnchor constraintEqualToConstant:176.0],
+        [glow1.heightAnchor constraintEqualToConstant:176.0],
 
-        [glow2.centerXAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
-        [glow2.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor],
-        [glow2.widthAnchor constraintEqualToConstant:280.0],
-        [glow2.heightAnchor constraintEqualToConstant:280.0],
+        [glow2.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
+        [glow2.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:-28.0],
+        [glow2.widthAnchor constraintEqualToConstant:220.0],
+        [glow2.heightAnchor constraintEqualToConstant:220.0],
 
-        [glow3.centerXAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:100.0],
-        [glow3.centerYAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-120.0],
-        [glow3.widthAnchor constraintEqualToConstant:220.0],
-        [glow3.heightAnchor constraintEqualToConstant:220.0],
+        [glow3.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28.0],
+        [glow3.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-160.0],
+        [glow3.widthAnchor constraintEqualToConstant:160.0],
+        [glow3.heightAnchor constraintEqualToConstant:160.0],
 
       
     ]];

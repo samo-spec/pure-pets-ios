@@ -1253,6 +1253,13 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceSessionRefresh
                                                         completion:^(NSError * _Nullable sessionError) {
         if (sessionError) {
+            if (!didRetryAuth) {
+                [self pp_cancelPendingCheckoutOrder:order
+                                forceSessionRefresh:YES
+                                       didRetryAuth:YES
+                                         completion:completion];
+                return;
+            }
             NSError *publicError = [PPFirebaseSessionBridge publicErrorForError:sessionError
                                                                       fallbackKey:@"order_cancel_checkout_failed"];
             if (completion) completion(NO, NO, publicError);

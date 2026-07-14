@@ -501,13 +501,22 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
  
     // Manual layout for accent view
     BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
-    CGFloat diameter = 172.0;
     if (cornerGlow) {
-        self.accentView.frame = CGRectMake(-58.0, -66.0, diameter, diameter);
+        CGFloat availableWidth = CGRectGetWidth(self.bounds);
+        CGFloat availableHeight = CGRectGetHeight(self.bounds);
+        CGFloat diameter = MIN(172.0, MAX(84.0, MIN(availableWidth, availableHeight) * 0.68));
+        CGFloat x = [Language isRTL] ? -(diameter * 0.38) : (availableWidth - (diameter * 0.62));
+        CGFloat y = -(diameter * 0.28);
+        self.accentView.frame = CGRectMake(x, y, diameter, diameter);
+        self.accentView.layer.cornerRadius = diameter * 0.5;
+        self.accentView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.accentView.bounds].CGPath;
     } else {
         CGFloat leadingConstant = 38.0;
         CGFloat x = [Language isRTL] ? (CGRectGetWidth(self.bounds) - leadingConstant - 44.0) : leadingConstant;
         self.accentView.frame = CGRectMake(x, 0.0, 44.0, 4.0);
+        self.accentView.layer.cornerRadius = 2.0;
+        self.accentView.layer.shadowPath = nil;
     }
  
     if (CGRectIsEmpty(self.bounds)) {
@@ -632,15 +641,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 - (void)pp_applyAccentStyle
 {
     BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
-    CGFloat diameter = 172.0;
- 
-    self.accentView.layer.cornerRadius = cornerGlow ? diameter * 0.5 : 2.0;
     self.accentView.clipsToBounds = !cornerGlow;
     self.accentView.layer.masksToBounds = !cornerGlow;
     self.accentView.layer.shadowOffset = CGSizeZero;
-    self.accentView.layer.shadowPath = cornerGlow
-        ? [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0.0, 0.0, diameter, diameter)].CGPath
-        : nil;
     [self setNeedsLayout];
 }
 
