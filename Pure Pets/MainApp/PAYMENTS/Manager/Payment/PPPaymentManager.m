@@ -480,17 +480,12 @@ static NSString *PPPaymentFunctionsRegion(void)
 
 static FIRFunctions *PPPaymentQIBFunctionsClient(void)
 {
-    static FIRFunctions *functions = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
-        if (customDomain.length > 0) {
-            functions = [FIRFunctions functionsForCustomDomain:customDomain];
-        } else {
-            functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
-        }
-    });
-    return functions;
+    NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+    if (customDomain.length > 0) {
+        return [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        return [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
+    }
 }
 
 

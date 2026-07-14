@@ -7871,10 +7871,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             cell.onTap = ^{
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
-                [self pp_selectHomeMainKind:self.selectedCategory
-                                      isAll:(self.selectedCategory == nil)
-                                    persist:NO
-                                   navigate:YES];
+                [self pp_openMarketplaceProvidersListFromHero];
             };
 
             pp_stageCell(cell); return cell;
@@ -9541,10 +9538,7 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
 
     switch (section) {
         case PPHomeSectionMarketplaceHero:
-            [self pp_selectHomeMainKind:self.selectedCategory
-                                  isAll:(self.selectedCategory == nil)
-                                persist:NO
-                               navigate:YES];
+            [self pp_openMarketplaceProvidersListFromHero];
             return;
 
         case PPHomeSectionProviderCategoryNav: {
@@ -9857,8 +9851,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    // Build input object for PPDataViewVC
-    PPDataViewInput *input = [PPDataViewInput inputWithMainKind:kind sourceTarget:PPDeepLinkTargetAds source:PPInputSourceHomeMainKindsSection];
+    // MainKinds rail is an ads/category browse entry. Do not let a previously
+    // saved marketplace section force this fresh route into Accessories.
+    PPDataViewInput *input = [PPDataViewInput inputWithMainKind:kind
+                                                   sourceTarget:PPDeepLinkTargetAds
+                                                         source:PPInputSourceHomeMainKindsSection];
+    input.mainKindsArr = self.mainKinds ?: @[];
+    input.initialSectionOverride = @(PPDataSectionAds);
     PPDataViewVC *vc =  [[PPDataViewVC alloc] initWithInput:input];
     vc.pp_transitionStyle = PPTransitionStyleNone;
     if (![PPHomeHelper pushViewControllerSafely:vc from:self animated:YES]) {
@@ -10135,7 +10134,19 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_openMarketplaceProvidersListFromHero
 {
-    [self pp_handleProviderCategorySelection:[self pp_marketplaceProviderCategoryItem]];
+    MainKindsModel *selectedMainKind = self.selectedCategory;
+    [self pp_emitSelectionHaptic];
+
+    PPDataViewInput *input =
+        [PPDataViewInput inputWithMainKind:selectedMainKind
+                              sourceTarget:PPDeepLinkTargetAccessories
+                                    source:PPInputSourceHomeAccessoriesSection];
+    input.mainKindsArr = self.mainKinds ?: @[];
+    input.initialSectionOverride = @(PPDataSectionAccessories);
+
+    PPDataViewVC *vc = [[PPDataViewVC alloc] initWithInput:input];
+    vc.pp_transitionStyle = PPTransitionStyleNone;
+    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
 }
 
 - (void)pp_refreshProviderCategoryNavigationSection

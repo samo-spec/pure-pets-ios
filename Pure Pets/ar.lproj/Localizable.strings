@@ -3469,6 +3469,22 @@
 "dataview_provider_context_products" = "كل منتجات المزودين";
 "dataview_provider_context_services" = "كل خدمات المزودين";
 "dataview_provider_context_listings" = "كل عروض السوق";
+"dataview_filter_context_products" = "كل منتجات السوق";
+"dataview_filter_context_services" = "كل خدمات المزودين";
+"dataview_filter_context_listings" = "كل عروض السوق";
+"dataview_filter_context_selected_provider_format" = "المزود: %@";
+"dataview_filter_by_provider" = "تصفية حسب المزود";
+"dataview_provider_filter_empty_title" = "لا يوجد مزودون بعد";
+"dataview_provider_filter_empty_message" = "لا يوجد مزودون لديهم عناصر في هذا القسم حالياً.";
+"dataview_provider_filter_count_format" = "%ld مزوداً لديهم عناصر";
+"dataview_provider_filter_selected_subtitle" = "اضغط على المزود المحدد مرة أخرى لمسح الفلتر";
+"dataview_provider_sheet_eyebrow" = "مزودو السوق";
+"dataview_provider_sheet_title" = "اختر المزود";
+"dataview_provider_sheet_subtitle" = "يظهر فقط المزودون الذين لديهم عناصر مرئية في هذا القسم.";
+"dataview_provider_sheet_badge_format" = "%ld متاح";
+"dataview_provider_sheet_item_count_one" = "%ld عنصر";
+"dataview_provider_sheet_item_count_many" = "%ld عنصر";
+"dataview_provider_fallback_name_format" = "مزود %@";
 "dataview_filters_collapse_accessibility" = "إخفاء الفلاتر";
 "dataview_filters_expand_accessibility" = "إظهار الفلاتر";
 

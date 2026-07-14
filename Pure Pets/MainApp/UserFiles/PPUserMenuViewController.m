@@ -619,6 +619,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) UIButton *primaryHeroButton;
 @property (nonatomic, assign) BOOL preparedEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
+@property (nonatomic, assign) BOOL didCaptureNavigationBarHiddenState;
+@property (nonatomic, assign) BOOL previousNavigationBarHiddenState;
 @property (nonatomic, strong) NSLayoutConstraint *cardTopConstraint;
 @end
 
@@ -631,8 +633,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [super viewDidLoad];
     self.view.backgroundColor = PPUserMenuCanvasColor();
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    //self.navigationItem.title = PPUserMenuLocalized(@"user_menu_title");
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:NO];
+    self.navigationItem.title = nil;
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:nil showBack:NO];
 
     [self pp_buildTableView];
     [self pp_buildHeader];
@@ -644,9 +646,9 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_applyMenuNavigationChromeAnimated:animated];
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:NO];
     [self pp_rebuildSections];
     [self pp_refreshHeaderContent];
     [self.tableView reloadData];
@@ -675,6 +677,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [self pp_restoreMenuNavigationChromeIfNeededAnimated:animated];
     [self pp_stopHeroBackgroundMotion];
 }
 
@@ -693,6 +696,43 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [self.tableView reloadData];
 }
 
+#pragma mark - Navigation Chrome
+
+- (BOOL)pp_isPresentedAsRootTab
+{
+    return self.tabBarController != nil &&
+           self.navigationController != nil &&
+           self.navigationController.viewControllers.firstObject == self;
+}
+
+- (void)pp_applyMenuNavigationChromeAnimated:(BOOL)animated
+{
+    self.navigationItem.title = nil;
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItems = nil;
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:nil showBack:NO];
+
+    if (![self pp_isPresentedAsRootTab]) {
+        return;
+    }
+
+    if (!self.didCaptureNavigationBarHiddenState) {
+        self.previousNavigationBarHiddenState = self.navigationController.navigationBarHidden;
+        self.didCaptureNavigationBarHiddenState = YES;
+    }
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
+}
+
+- (void)pp_restoreMenuNavigationChromeIfNeededAnimated:(BOOL)animated
+{
+    if (!self.didCaptureNavigationBarHiddenState || !self.navigationController) {
+        return;
+    }
+
+    [self.navigationController setNavigationBarHidden:self.previousNavigationBarHiddenState animated:animated];
+    self.didCaptureNavigationBarHiddenState = NO;
+}
+
 #pragma mark - Setup
 
 - (void)pp_buildTableView
@@ -707,8 +747,11 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
     tableView.rowHeight = UITableViewAutomaticDimension;
     tableView.estimatedRowHeight = 82.0;
-    tableView.contentInset = UIEdgeInsetsMake(PPSpaceSM, 0.0, 104.0, 0.0);
+    tableView.contentInset = UIEdgeInsetsMake(0.0, 0.0, 104.0, 0.0);
     tableView.scrollIndicatorInsets = tableView.contentInset;
+    if (@available(iOS 11.0, *)) {
+        tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
     if (@available(iOS 15.0, *)) {
         tableView.sectionHeaderTopPadding = 0.0;
     }

@@ -23,6 +23,8 @@
 #import "PPSearchViewController.h"
 #import "PPHUD.h"
 #import "UIView+Badge.h"
+#import "PPSelectOptionViewController.h"
+#import "OptionModel.h"
 #import <QuartzCore/QuartzCore.h>
 #import <math.h>
 
@@ -34,9 +36,13 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 58.0;
 static const CGFloat kPPAccessoryFilterHeight = 52.0;
-static const CGFloat kPPProviderFilterContextBarHeight = 42.0;
+static const CGFloat kPPProviderFilterChipHeight = 48.0;
+static const CGFloat kPPFilterContextBarHeight = 36.0;
 static const CGFloat kPPFilterCollapseHandleHeight = 28.0;
-static const CGFloat kPPFilterExpandedBottomInset = 12.0;
+static const CGFloat kPPFilterIslandToCollectionGap = 16.0;
+static const CGFloat kPPFilterIslandTopPadding = 4.0;
+static const CGFloat kPPFilterIslandRowSpacing = 8.0;
+static const CGFloat kPPFilterIslandBottomPadding = 10.0;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -885,7 +891,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             config.background.strokeWidth =  (active || action) ? 0.75 : 0.25;
             self.configuration = config;
             
-    
+
         }
         else
         {
@@ -975,15 +981,22 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) PPCollectionLayoutManager *layoutManager;
 @property (nonatomic, strong) PPDataViewControlIslandView *sectionsFiltersContainer;
-@property (nonatomic, strong) UIView *providerFilterContextBar;
-@property (nonatomic, strong) UIView *providerFilterContextBadgeView;
-@property (nonatomic, strong) UIImageView *providerFilterContextIconView;
-@property (nonatomic, strong) UILabel *providerFilterContextLabel;
+@property (nonatomic, strong) UIView *filterContextBar;
+@property (nonatomic, strong) UIView *filterContextBadgeView;
+@property (nonatomic, strong) UIImageView *filterContextIconView;
+@property (nonatomic, strong) UILabel *filterContextLabel;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
+@property (nonatomic, strong) UIButton *providerFilterChipButton;
+@property (nonatomic, strong) UIImageView *providerFilterChipAvatarView;
+@property (nonatomic, strong) UIImageView *providerFilterChipTrailingIconView;
+@property (nonatomic, strong) UILabel *providerFilterChipTitleLabel;
+@property (nonatomic, strong) UILabel *providerFilterChipRatingLabel;
+@property (nonatomic, strong) UILabel *providerFilterChipSubtitleLabel;
 @property (nonatomic, strong) PPPremiumCollapseButton *filterCollapseButton;
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSString *> *selectedProviderIDsBySection;
 // Scroll restore
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *scrollOffsetsBySection;
 @property (nonatomic, strong) id imageLoader;
@@ -1009,10 +1022,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) NSLayoutConstraint *mainKindsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *providerFilterContextBarHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterContextBarHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterChipStackHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipTopConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *filterChipBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *providerFilterChipTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *providerFilterChipHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
@@ -1070,9 +1085,32 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)syncFilterChipsForSection:(PPDataSection)section;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
-- (void)updateProviderFilterContextBarForSection:(PPDataSection)section;
-- (NSString *)providerFilterContextTitleForSection:(PPDataSection)section;
-- (void)pp_applyProviderFilterContextBarAppearance;
+- (void)updateFilterContextBarForSection:(PPDataSection)section;
+- (void)updateProviderFilterChipForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)providerFilterChipTapped:(UIButton *)sender;
+- (NSString *)filterContextTitleForSection:(PPDataSection)section;
+- (void)pp_applyFilterContextBarAppearance;
+- (BOOL)pp_sectionSupportsProviderFilter:(PPDataSection)section;
+- (NSArray<OptionModel *> *)providerOptionsForCurrentSection;
+- (NSArray<OptionModel *> *)providerOptionsForSection:(PPDataSection)section sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (NSString *)selectedProviderIDForSection:(PPDataSection)section;
+- (void)setSelectedProviderID:(NSString *)providerID forSection:(PPDataSection)section;
+- (void)clearSelectedProviderForSection:(PPDataSection)section;
+- (BOOL)pp_reconcileSelectedProviderForSection:(PPDataSection)section sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (void)pp_applyProviderChipContentForSection:(PPDataSection)section providerCount:(NSInteger)providerCount;
+- (void)pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:(BOOL)animated;
+- (NSString *)pp_providerIDForViewModel:(PPUniversalCellViewModel *)viewModel;
+- (NSString *)pp_providerTitleForViewModel:(PPUniversalCellViewModel *)viewModel fallbackID:(NSString *)providerID;
+- (NSString *)pp_providerRatingBadgeTextForProviderID:(NSString *)providerID sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (NSString *)pp_providerPhotoURLForProviderID:(NSString *)providerID sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (NSString *)pp_providerPhotoURLForViewModel:(PPUniversalCellViewModel *)viewModel fallbackID:(NSString *)providerID;
+- (UIImage *)pp_providerPlaceholderImage;
+- (void)pp_updateProviderChipAvatarForProviderID:(NSString *)providerID title:(NSString *)title sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
+- (NSString *)pp_providerSheetSubtitleForCount:(NSInteger)count;
+- (NSString *)pp_shortProviderIdentifier:(NSString *)providerID;
+- (CGFloat)pp_currentCollectionLayoutTopInset;
+- (BOOL)pp_shouldPinCollectionTopForChromeOffset:(CGPoint)currentOffset
+                              previousTopOffsetY:(CGFloat)previousTopOffsetY;
 - (void)pp_updateCollectionContentInsetPreservingTopAnchor;
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated;
@@ -1253,7 +1291,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (self.sectionsFiltersContainer) {
         [self.view bringSubviewToFront:self.sectionsFiltersContainer];
     }
-    [self updateCollectionContentInset];
+    [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -1969,12 +2007,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (@available(iOS 13.0, *)) {
         self.sectionsSegmentedControl.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self pp_applyProviderFilterContextBarAppearance];
+    [self pp_applyFilterContextBarAppearance];
 }
 
-- (void)pp_applyProviderFilterContextBarAppearance
+- (void)pp_applyFilterContextBarAppearance
 {
-    if (!self.providerFilterContextBar) {
+    if (!self.filterContextBar) {
         return;
     }
 
@@ -1982,39 +2020,128 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
     UIColor *surface = PPDataViewDynamicColor([UIColor colorWithRed:1.000 green:0.982 blue:0.988 alpha:0.78],
                                              [UIColor colorWithRed:0.150 green:0.090 blue:0.116 alpha:0.84]);
-    UIColor *badgeSurface = PPDataViewBlendColor(surface,
+    UIColor *badgeSurface = PPDataViewBlendColor(AppPrimaryClrDarker,
                                                 accent,
-                                                darkMode ? 0.20 : 0.13,
+                                                darkMode ? 0.20 : 0.04,
                                                 self.traitCollection);
     UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.70];
 
-    self.providerFilterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.providerFilterContextBar.backgroundColor = surface;
-    self.providerFilterContextBar.layer.cornerRadius = 18.0;
-    self.providerFilterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.providerFilterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
-    self.providerFilterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
-    self.providerFilterContextBar.layer.shadowOpacity = darkMode ? 0.10 : 0.07;
-    self.providerFilterContextBar.layer.shadowRadius = 10.0;
-    self.providerFilterContextBar.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.filterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.filterContextBar.backgroundColor = badgeSurface;//surface;
+    self.filterContextBar.layer.cornerRadius = 18.0;
+    self.filterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.filterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
+    self.filterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
+    self.filterContextBar.layer.shadowOpacity = darkMode ? 0.10 : 0.07;
+    self.filterContextBar.layer.shadowRadius = 10.0;
+    self.filterContextBar.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+
     if (@available(iOS 13.0, *)) {
-        self.providerFilterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
+        self.filterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.providerFilterContextBadgeView.backgroundColor = badgeSurface;
-    self.providerFilterContextBadgeView.layer.cornerRadius = 14.0;
-    self.providerFilterContextBadgeView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.providerFilterContextBadgeView.layer.borderColor =
+    self.filterContextBadgeView.backgroundColor = AppClearClr;//badgeSurface
+    self.filterContextBadgeView.layer.cornerRadius = 14.0;
+    self.filterContextBadgeView.layer.borderWidth = 0.0 / UIScreen.mainScreen.scale;
+    self.filterContextBadgeView.layer.borderColor =
         PPDataViewResolvedColor([UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.14 : 0.78],
                                 self.traitCollection).CGColor;
     if (@available(iOS 13.0, *)) {
-        self.providerFilterContextBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.filterContextBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.providerFilterContextIconView.tintColor = accent;
-    self.providerFilterContextLabel.textColor = PPDataViewChromeTextColor();
-    self.providerFilterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.filterContextIconView.tintColor = accent;
+    self.filterContextLabel.textColor = PPDataViewChromeTextColor();
+    self.filterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.filterCollapseButton.tintColor = PPDataViewAccentColor();
+
+    if (self.providerFilterChipButton) {
+        BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+        UIColor *chipSurface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
+                                                     [UIColor colorWithWhite:1.0 alpha:0.105]);
+        UIColor *chipStroke = PPDataViewBlendColor(chipSurface,
+                                                  accent,
+                                                  dark ? 0.26 : 0.18,
+                                                  self.traitCollection);
+        self.providerFilterChipButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+        self.providerFilterChipButton.tintColor = accent;
+        self.providerFilterChipButton.backgroundColor = chipSurface;
+        self.providerFilterChipButton.layer.cornerRadius = 18.0;
+        self.providerFilterChipButton.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.providerFilterChipButton.layer.borderColor = PPDataViewResolvedColor(chipStroke, self.traitCollection).CGColor;
+        self.providerFilterChipButton.layer.shadowColor = [accent colorWithAlphaComponent:0.32].CGColor;
+        self.providerFilterChipButton.layer.shadowOpacity = dark ? 0.08 : 0.055;
+        self.providerFilterChipButton.layer.shadowRadius = 10.0;
+        self.providerFilterChipButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+        if (@available(iOS 13.0, *)) {
+            self.providerFilterChipButton.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *configuration = self.providerFilterChipButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+            configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+            configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+            configuration.image = nil;
+            configuration.imagePadding = 0.0;
+            configuration.title = @"";
+            configuration.subtitle = @"";
+            configuration.baseForegroundColor = accent;
+            configuration.background.backgroundColor = UIColor.clearColor;
+            configuration.background.strokeColor = UIColor.clearColor;
+            configuration.titleTextAttributesTransformer =
+            ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+                NSMutableDictionary *attributes = [incoming mutableCopy];
+                attributes[NSFontAttributeName] = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+                return attributes;
+            };
+            configuration.subtitleTextAttributesTransformer =
+            ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+                NSMutableDictionary *attributes = [incoming mutableCopy];
+                attributes[NSFontAttributeName] = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
+                attributes[NSForegroundColorAttributeName] = PPDataViewChromeSecondaryTextColor();
+                return attributes;
+            };
+            self.providerFilterChipButton.configuration = configuration;
+        } else {
+            [self.providerFilterChipButton setTitleColor:accent forState:UIControlStateNormal];
+            [self.providerFilterChipButton setImage:nil forState:UIControlStateNormal];
+            [self.providerFilterChipButton setTitle:@"" forState:UIControlStateNormal];
+            self.providerFilterChipButton.contentEdgeInsets = UIEdgeInsetsZero;
+            self.providerFilterChipButton.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+        }
+        self.providerFilterChipTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+        self.providerFilterChipTitleLabel.textColor = accent;
+        self.providerFilterChipTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+        self.providerFilterChipRatingLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightBold];
+        self.providerFilterChipRatingLabel.textColor = accent;
+        self.providerFilterChipRatingLabel.backgroundColor =
+            PPDataViewBlendColor(chipSurface, accent, dark ? 0.30 : 0.13, self.traitCollection);
+        self.providerFilterChipRatingLabel.layer.cornerRadius = 9.0;
+        self.providerFilterChipRatingLabel.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.providerFilterChipRatingLabel.layer.borderColor =
+            PPDataViewResolvedColor([accent colorWithAlphaComponent:dark ? 0.30 : 0.18],
+                                    self.traitCollection).CGColor;
+        self.providerFilterChipRatingLabel.clipsToBounds = YES;
+        self.providerFilterChipSubtitleLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
+        self.providerFilterChipSubtitleLabel.textColor = PPDataViewChromeSecondaryTextColor();
+        self.providerFilterChipSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+        self.providerFilterChipAvatarView.backgroundColor =
+            PPDataViewBlendColor(chipSurface, accent, dark ? 0.20 : 0.12, self.traitCollection);
+        self.providerFilterChipAvatarView.layer.cornerRadius = 17.0;
+        self.providerFilterChipAvatarView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.providerFilterChipAvatarView.layer.borderColor =
+            PPDataViewResolvedColor([UIColor.whiteColor colorWithAlphaComponent:dark ? 0.12 : 0.78],
+                                    self.traitCollection).CGColor;
+        self.providerFilterChipAvatarView.clipsToBounds = YES;
+        self.providerFilterChipTrailingIconView.backgroundColor =
+            PPDataViewBlendColor(chipSurface, accent, dark ? 0.24 : 0.14, self.traitCollection);
+        self.providerFilterChipTrailingIconView.tintColor = accent;
+        self.providerFilterChipTrailingIconView.layer.cornerRadius = 14.0;
+        self.providerFilterChipTrailingIconView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.providerFilterChipTrailingIconView.layer.borderColor =
+            PPDataViewResolvedColor([UIColor.whiteColor colorWithAlphaComponent:dark ? 0.10 : 0.70],
+                                    self.traitCollection).CGColor;
+        self.providerFilterChipTrailingIconView.clipsToBounds = YES;
+    }
 }
 
 - (void)pp_updatePremiumChromeShadowPaths
@@ -2054,12 +2181,20 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.sectionsSegmentedControl.layer.shadowPath = nil;
     }
 
-    if (self.providerFilterContextBar && !CGRectIsEmpty(self.providerFilterContextBar.bounds)) {
-        CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.providerFilterContextBar.bounds), 18.0));
-        self.providerFilterContextBar.layer.cornerRadius = radius;
-        self.providerFilterContextBar.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.providerFilterContextBar.bounds
+    if (self.filterContextBar && !CGRectIsEmpty(self.filterContextBar.bounds)) {
+        CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.filterContextBar.bounds), 18.0));
+        self.filterContextBar.layer.cornerRadius = radius;
+        self.filterContextBar.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.filterContextBar.bounds
                                        cornerRadius:radius].CGPath;
+    }
+
+    if (self.providerFilterChipButton && !CGRectIsEmpty(self.providerFilterChipButton.bounds)) {
+        CGFloat radius = MIN(18.0, PPDataViewPillRadiusForHeight(CGRectGetHeight(self.providerFilterChipButton.bounds), 18.0));
+        self.providerFilterChipButton.layer.cornerRadius = radius;
+        self.providerFilterChipButton.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.providerFilterChipButton.bounds
+                                   cornerRadius:radius].CGPath;
     }
 
 
@@ -2939,10 +3074,6 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
 
-        if (cv.contentSize.height <= cv.bounds.size.height) {
-            return; // nothing to scroll
-        }
-
         CGPoint topOffset = CGPointMake(0, [self preferredTopContentOffsetY]);
         [cv setContentOffset:topOffset animated:animated];
     });
@@ -2989,7 +3120,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         if (isTransitionResetPhase) {
             [weakSelf showSkeleton];
             [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
-            [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
+            [weakSelf pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
             [weakSelf syncFilterChipsForCurrentSection];
             [weakSelf persistCurrentSection];
             [weakSelf updateCollectionContentInset];
@@ -3020,7 +3151,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             weakSelf.didApplyInitialSnapshot = YES;
         }
         [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
-        [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
+        [weakSelf pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
         [weakSelf syncFilterChipsForCurrentSection];
         // ✅ THIS IS THE FIX
           [weakSelf persistCurrentSection];
@@ -3059,6 +3190,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.viewModel.onInitialSectionsDataLoaded = ^{
         [weakSelf pp_runSectionsSegmentedEntranceIfNeeded];
+        [weakSelf pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
     };
 
     self.viewModel.onAppendData = ^(NSArray<NSIndexPath *> *indexPaths) {
@@ -3070,6 +3202,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         [weakSelf refreshPresentedItemsAnimated:YES scrollToTop:NO];
         [weakSelf updateEmptyState];
         [weakSelf syncFilterChipsForCurrentSection];
+        [weakSelf pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
         //[weakSelf updateNavSectionTitle];
 
         [weakSelf refreshsubKindsMenu];
@@ -3094,25 +3227,77 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     if (!self.collectionView) { return; }
 
+    // Resolve the complete filter island before measuring its clearance. The
+    // island is fixed to the view while the collection scrolls underneath it.
+    [self.view layoutIfNeeded];
+
     BOOL fullDetails = [self pp_isFullDetailsLayoutMode];
-    CGFloat targetTopInset =
-    [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
-    ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + kPPFilterCollapseHandleHeight + 18.0)
-    : (PPCurrentSectionsTabBarHeight()
-       + ([self sectionHasFilterChipBarForSection:self.viewModel.currentSection] ? kPPFilterCollapseHandleHeight : 0.0)
-       + (PPIOS26() ? 2.0 : 12.0));
-    CGRect sectionsFrame = self.sectionsFiltersContainer.frame;
+    CGFloat layoutTopInset = fullDetails ? 0.0 : [self pp_currentCollectionLayoutTopInset];
+    CGFloat desiredIslandToFirstCellGap = fullDetails ? 0.0 : kPPFilterIslandToCollectionGap;
+    CGFloat automaticTopAdjustment =
+        MAX(0.0, self.collectionView.adjustedContentInset.top - self.collectionView.contentInset.top);
+    CGRect collectionFrame = self.collectionView.superview
+        ? [self.collectionView.superview convertRect:self.collectionView.frame toView:self.view]
+        : self.collectionView.frame;
+    CGFloat collectionTopY = CGRectGetMinY(collectionFrame);
+    CGFloat targetTopInset = 0.0;
+
+    if (!fullDetails) {
+        CGFloat providerHeight = self.providerFilterChipHeightConstraint
+            ? MAX(0.0, self.providerFilterChipHeightConstraint.constant)
+            : 0.0;
+        CGFloat providerTop = providerHeight > 0.5
+            ? MAX(kPPFilterIslandRowSpacing,
+                  self.providerFilterChipTopConstraint ? self.providerFilterChipTopConstraint.constant : 0.0)
+            : 0.0;
+        CGFloat filterHeight = self.filterChipHeightConstraint
+            ? MAX(0.0, self.filterChipHeightConstraint.constant)
+            : 0.0;
+        CGFloat filterTop = filterHeight > 0.5
+            ? MAX(kPPFilterIslandRowSpacing,
+                  self.filterChipTopConstraint ? self.filterChipTopConstraint.constant : 0.0)
+            : 0.0;
+        CGFloat contextHeight = self.filterContextBarHeightConstraint
+            ? MAX(kPPFilterContextBarHeight, self.filterContextBarHeightConstraint.constant)
+            : kPPFilterContextBarHeight;
+        CGFloat estimatedIslandHeight =
+            kPPFilterIslandTopPadding +
+            PPCurrentSectionsTabBarHeight() +
+            providerTop + providerHeight +
+            filterTop + filterHeight +
+            kPPFilterIslandRowSpacing + contextHeight +
+            kPPFilterIslandBottomPadding;
+        CGFloat estimatedIslandTopFromSafeArea = PPIOS26() ? 8.0 : 12.0;
+        CGFloat safeAreaTopY = CGRectGetMinY(self.view.safeAreaLayoutGuide.layoutFrame);
+        CGFloat estimatedFirstCellY =
+            safeAreaTopY +
+            estimatedIslandTopFromSafeArea +
+            estimatedIslandHeight +
+            desiredIslandToFirstCellGap -
+            collectionTopY;
+        targetTopInset = MAX(0.0,
+                             estimatedFirstCellY -
+                             layoutTopInset -
+                             automaticTopAdjustment);
+    }
+
+    CGRect sectionsFrame = CGRectZero;
+    if (self.sectionsFiltersContainer.superview) {
+        sectionsFrame = [self.sectionsFiltersContainer.superview convertRect:self.sectionsFiltersContainer.frame
+                                                                        toView:self.view];
+    }
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
 
     if (!CGRectIsEmpty(sectionsFrame) && (!CGRectIsEmpty(safeAreaFrame) || fullDetails)) {
-        CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
-        CGFloat filtersToContentGap = fullDetails ? 0.0 : 14.0;
-        CGFloat referenceTopY = fullDetails
-        ? CGRectGetMinY(self.collectionView.frame)
-        : CGRectGetMinY(safeAreaFrame);
-
-        targetTopInset =
-        MAX(0.0, maxVisibleY - referenceTopY + filtersToContentGap);
+        CGFloat measuredFirstCellY =
+            CGRectGetMaxY(sectionsFrame) +
+            desiredIslandToFirstCellGap -
+            collectionTopY;
+        CGFloat measuredTopInset = MAX(0.0,
+                                       measuredFirstCellY -
+                                       layoutTopInset -
+                                       automaticTopAdjustment);
+        targetTopInset = fullDetails ? measuredTopInset : MAX(targetTopInset, measuredTopInset);
     }
 
     CGFloat targetBottomInset = 16.0;
@@ -3186,6 +3371,38 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+- (CGFloat)pp_currentCollectionLayoutTopInset
+{
+    UICollectionViewLayout *layout = self.collectionView.collectionViewLayout;
+    if ([layout isKindOfClass:UICollectionViewFlowLayout.class]) {
+        return MAX(0.0, ((UICollectionViewFlowLayout *)layout).sectionInset.top);
+    }
+    if ([layout isKindOfClass:PPPinterestLayout.class]) {
+        return MAX(0.0, ((PPPinterestLayout *)layout).sectionInset.top);
+    }
+    return 0.0;
+}
+
+- (BOOL)pp_shouldPinCollectionTopForChromeOffset:(CGPoint)currentOffset
+                              previousTopOffsetY:(CGFloat)previousTopOffsetY
+{
+    if (!self.collectionView ||
+        self.collectionView.isDragging ||
+        self.collectionView.isDecelerating) {
+        return NO;
+    }
+
+    if (currentOffset.y <= previousTopOffsetY + 1.0) {
+        return YES;
+    }
+
+    if (currentOffset.y <= 1.0) {
+        return YES;
+    }
+
+    return NO;
+}
+
 - (void)pp_updateCollectionContentInsetPreservingTopAnchor
 {
     if (!self.collectionView) {
@@ -3195,9 +3412,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     CGFloat previousTopOffsetY = [self preferredTopContentOffsetY];
     CGPoint currentOffset = self.collectionView.contentOffset;
     BOOL shouldPinToChrome =
-        !self.collectionView.isDragging &&
-        !self.collectionView.isDecelerating &&
-        currentOffset.y <= previousTopOffsetY + 1.0;
+        [self pp_shouldPinCollectionTopForChromeOffset:currentOffset
+                                    previousTopOffsetY:previousTopOffsetY];
 
     [self updateCollectionContentInset];
 
@@ -3330,6 +3546,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if (scrollView == self.collectionView && !decelerate) {
         if ([self pp_isFullDetailsLayoutMode]) {
             [self pp_settleFullDetailsCarouselIfNeededAnimated:YES];
+        } else {
+            [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
@@ -3340,6 +3558,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if (scrollView == self.collectionView) {
         if ([self pp_isFullDetailsLayoutMode]) {
             [self pp_settleFullDetailsCarouselIfNeededAnimated:YES];
+        } else {
+            [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
@@ -3348,6 +3568,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
 {
     if (scrollView == self.collectionView) {
+        if (![self pp_isFullDetailsLayoutMode]) {
+            [self pp_updateCollectionContentInsetPreservingTopAnchor];
+        }
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -3806,9 +4029,31 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (NSArray<PPUniversalCellViewModel *> *)filteredPresentedItemsFromSourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
 {
     // The VM now applies all data-model-level filters (condition, gender, service type,
-    // hasOffer, price, sort).  The VC simply passes items through — this method is kept
-    // as an integration point for any future presentation-only transforms.
-    return sourceItems ?: @[];
+    // hasOffer, price, sort).  Provider filtering stays presentation-only so it can
+    // use the currently loaded marketplace rows without introducing a second query.
+    NSArray<PPUniversalCellViewModel *> *items = sourceItems ?: @[];
+    PPDataSection section = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
+    if (![self pp_sectionSupportsProviderFilter:section]) {
+        [self clearSelectedProviderForSection:section];
+        return items;
+    }
+    BOOL didClearProvider = [self pp_reconcileSelectedProviderForSection:section sourceItems:items];
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    if (selectedProviderID.length == 0) {
+        if (didClearProvider) {
+            [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:self.view.window != nil];
+        }
+        return items;
+    }
+
+    NSMutableArray<PPUniversalCellViewModel *> *filtered = [NSMutableArray arrayWithCapacity:items.count];
+    for (PPUniversalCellViewModel *viewModel in items) {
+        NSString *providerID = [self pp_providerIDForViewModel:viewModel];
+        if ([providerID isEqualToString:selectedProviderID]) {
+            [filtered addObject:viewModel];
+        }
+    }
+    return filtered.copy;
 }
 
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop
@@ -4183,7 +4428,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     PPFilterState *state = [self pp_filterStateForSection:section];
     NSInteger activeFilterCount = canShowFilters ? state.activeFilterCount : 0;
     [self.sectionsFiltersContainer pp_applyActiveFilterCount:activeFilterCount animated:animated && self.view.window != nil];
-    [self updateProviderFilterContextBarForSection:section];
+    [self updateFilterContextBarForSection:section];
+    [self updateProviderFilterChipForSection:section expanded:shouldShow animated:animated];
     [self updateFilterCollapseButtonForSection:section expanded:shouldShow animated:animated];
 
     self.filterChipContainer.hidden = NO;
@@ -4192,9 +4438,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     void (^layoutChanges)(void) = ^{
-        self.filterChipTopConstraint.constant = shouldShow ? 8.0 : 0.0;
+        BOOL providerChipVisible = self.providerFilterChipHeightConstraint.constant > 0.5;
+        self.providerFilterChipTopConstraint.constant = providerChipVisible ? kPPFilterIslandRowSpacing : 0.0;
+        self.filterChipTopConstraint.constant = shouldShow ? kPPFilterIslandRowSpacing : 0.0;
         self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
-        self.filterChipBottomConstraint.constant = canShowFilters ? -kPPFilterExpandedBottomInset : -10.0;
+        self.filterChipStackHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight - 8.0 : 0.0;
         self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
         self.filterChipContainer.transform = shouldShow
             ? CGAffineTransformIdentity
@@ -4239,33 +4487,718 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }];
 }
 
-- (void)updateProviderFilterContextBarForSection:(PPDataSection)section
+- (void)pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:(BOOL)animated
 {
-    if (!self.providerFilterContextBar || !self.providerFilterContextLabel) {
+    if (!self.viewModel || !self.providerFilterChipButton) {
+        [self updateCollectionContentInset];
         return;
     }
 
-    BOOL hasFilters = [self sectionHasFilterChipBarForSection:section];
-    NSString *title = [self providerFilterContextTitleForSection:section];
-    self.providerFilterContextLabel.text = title;
-    self.providerFilterContextBarHeightConstraint.constant = hasFilters ? kPPProviderFilterContextBarHeight : 0.0;
-    self.providerFilterContextBar.hidden = !hasFilters;
-    self.providerFilterContextBar.alpha = hasFilters ? 1.0 : 0.0;
-    self.providerFilterContextBar.accessibilityLabel = title;
-    [self pp_applyProviderFilterContextBarAppearance];
+    BOOL shouldAnimate = animated && self.view.window != nil;
+    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:shouldAnimate];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.providerFilterChipTitleLabel invalidateIntrinsicContentSize];
+        [self.providerFilterChipRatingLabel invalidateIntrinsicContentSize];
+        [self.providerFilterChipSubtitleLabel invalidateIntrinsicContentSize];
+        [self.providerFilterChipButton setNeedsLayout];
+        [self.providerFilterChipButton layoutIfNeeded];
+        [self.sectionsFiltersContainer setNeedsLayout];
+        [self.sectionsFiltersContainer layoutIfNeeded];
+        [self pp_updatePremiumChromeShadowPaths];
+        [self pp_updateCollectionContentInsetPreservingTopAnchor];
+    });
 }
 
-- (NSString *)providerFilterContextTitleForSection:(PPDataSection)section
+- (void)updateFilterContextBarForSection:(PPDataSection)section
 {
-    NSString *key = @"dataview_provider_context_products";
+    if (!self.filterContextBar || !self.filterContextLabel) {
+        return;
+    }
+
+    NSString *title = [self filterContextTitleForSection:section];
+    self.filterContextLabel.text = title;
+    self.filterContextBarHeightConstraint.constant = kPPFilterContextBarHeight;
+    self.filterContextBar.hidden = NO;
+    self.filterContextBar.alpha = 1.0;
+    self.filterContextBar.accessibilityLabel = title;
+    [self pp_applyFilterContextBarAppearance];
+}
+
+- (void)updateProviderFilterChipForSection:(PPDataSection)section
+                                  expanded:(BOOL)expanded
+                                  animated:(BOOL)animated
+{
+    if (!self.providerFilterChipButton || !self.providerFilterChipHeightConstraint) {
+        return;
+    }
+
+    BOOL supportsProviderFilter = [self pp_sectionSupportsProviderFilter:section];
+    if (!supportsProviderFilter) {
+        [self clearSelectedProviderForSection:section];
+    }
+    NSArray<OptionModel *> *providerOptions =
+        supportsProviderFilter ? [self providerOptionsForSection:section sourceItems:self.viewModel.items ?: @[]] : @[];
+    NSInteger providerCount = providerOptions.count;
+    BOOL shouldShow = supportsProviderFilter && expanded && providerCount > 0;
+    [self pp_applyProviderChipContentForSection:section providerCount:providerCount];
+    self.providerFilterChipTopConstraint.constant = shouldShow ? kPPFilterIslandRowSpacing : 0.0;
+    self.providerFilterChipHeightConstraint.constant = shouldShow ? kPPProviderFilterChipHeight : 0.0;
+    self.providerFilterChipButton.accessibilityElementsHidden = !shouldShow;
+    self.providerFilterChipButton.hidden = NO;
+
+    void (^updates)(void) = ^{
+        self.providerFilterChipButton.alpha = shouldShow ? 1.0 : 0.0;
+        self.providerFilterChipButton.transform = shouldShow
+            ? CGAffineTransformIdentity
+            : (UIAccessibilityIsReduceMotionEnabled()
+               ? CGAffineTransformIdentity
+               : CGAffineTransformMakeTranslation(0.0, -4.0));
+        [self.view layoutIfNeeded];
+    };
+
+    if (!animated || self.view.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
+        updates();
+        self.providerFilterChipButton.hidden = !shouldShow;
+        return;
+    }
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseInOut
+                     animations:updates
+                     completion:^(__unused BOOL finished) {
+        self.providerFilterChipButton.hidden = !shouldShow;
+    }];
+}
+
+- (void)providerFilterChipTapped:(UIButton *)sender
+{
+    if (![self pp_sectionSupportsProviderFilter:self.viewModel.currentSection]) {
+        return;
+    }
+    NSArray<OptionModel *> *options = [self providerOptionsForCurrentSection];
+    if (options.count == 0) {
+        [PPHUD showInfo:kLang(@"dataview_provider_filter_empty_message") ?: @""];
+        return;
+    }
+
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:0.10
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            sender.transform = CGAffineTransformMakeScale(0.985, 0.985);
+        } completion:^(__unused BOOL finished) {
+            [UIView animateWithDuration:0.18
+                                  delay:0.0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                sender.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+    }
+
+    PPDataSection section = self.viewModel.currentSection;
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    OptionModel *selectedOption = nil;
+    for (OptionModel *option in options) {
+        if (selectedProviderID.length > 0 && [option.optID isEqualToString:selectedProviderID]) {
+            selectedOption = option;
+            break;
+        }
+    }
+
+    __weak typeof(self) weakSelf = self;
+    PPSelectOptionViewController *vc =
+    [[PPSelectOptionViewController alloc] initWithOptions:options
+                                                    title:kLang(@"dataview_provider_sheet_title")
+                                                      row:nil
+                                        presentationStyle:PPSelectOptionPresentationSheet
+                                            showSearchBar:NO
+                                               completion:^(id  _Nullable selectedObject) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || ![selectedObject isKindOfClass:OptionModel.class]) {
+                return;
+            }
+            OptionModel *option = (OptionModel *)selectedObject;
+            NSString *currentProviderID = [self selectedProviderIDForSection:section];
+            if (currentProviderID.length > 0 && [currentProviderID isEqualToString:option.optID]) {
+                [self clearSelectedProviderForSection:section];
+            } else {
+                [self setSelectedProviderID:option.optID forSection:section];
+            }
+            [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
+            [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:YES];
+            [self updateEmptyState];
+        });
+    }];
+    vc.selectedOption = selectedOption;
+    vc.usesCompactPremiumHero = YES;
+    vc.usesCompactOptionIcons = YES;
+    vc.preferredPremiumDetentFraction = options.count > 6 ? 0.74 : 0.62;
+    vc.premiumHeroAccentColor = PPDataViewProviderPillAccentColor(self.traitCollection);
+    [vc configurePremiumHeroWithEyebrow:kLang(@"dataview_provider_sheet_eyebrow")
+                                  title:kLang(@"dataview_provider_sheet_title")
+                               subtitle:kLang(@"dataview_provider_sheet_subtitle")
+                             symbolName:@"storefront.fill"
+                              badgeText:[NSString stringWithFormat:kLang(@"dataview_provider_sheet_badge_format"), (long)options.count]];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (NSString *)filterContextTitleForSection:(PPDataSection)section
+{
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    if ([self pp_sectionSupportsProviderFilter:section] && selectedProviderID.length > 0) {
+        for (OptionModel *option in [self providerOptionsForCurrentSection]) {
+            if ([option.optID isEqualToString:selectedProviderID]) {
+                NSString *format = kLang(@"dataview_filter_context_selected_provider_format");
+                return format.length > 0
+                    ? [NSString stringWithFormat:format, option.title ?: @""]
+                    : option.title;
+            }
+        }
+    }
+
+    NSString *key = @"dataview_filter_context_products";
     if (section == PPDataSectionAds) {
-        key = @"dataview_provider_context_listings";
+        key = @"dataview_filter_context_listings";
     } else if (section == PPDataSectionServices) {
-        key = @"dataview_provider_context_services";
+        key = @"dataview_filter_context_services";
     }
 
     NSString *localized = kLang(key);
     return localized.length > 0 ? localized : @"All provider products";
+}
+
+- (BOOL)pp_sectionSupportsProviderFilter:(PPDataSection)section
+{
+    return section == PPDataSectionAccessories || section == PPDataSectionFood;
+}
+
+- (NSArray<OptionModel *> *)providerOptionsForCurrentSection
+{
+    PPDataSection section = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
+    NSArray<PPUniversalCellViewModel *> *sourceItems = self.viewModel.items ?: @[];
+    return [self providerOptionsForSection:section sourceItems:sourceItems];
+}
+
+- (NSArray<OptionModel *> *)providerOptionsForSection:(PPDataSection)section
+                                           sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (![self pp_sectionSupportsProviderFilter:section]) {
+        return @[];
+    }
+    NSMutableDictionary<NSString *, NSMutableDictionary<NSString *, id> *> *providersByID = [NSMutableDictionary dictionary];
+    NSMutableArray<NSString *> *orderedIDs = [NSMutableArray array];
+    for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+        if (viewModel.isSkeleton) {
+            continue;
+        }
+        NSString *providerID = [self pp_providerIDForViewModel:viewModel];
+        if (providerID.length == 0) {
+            continue;
+        }
+        NSMutableDictionary<NSString *, id> *entry = providersByID[providerID];
+        if (!entry) {
+            NSString *title = [self pp_providerTitleForViewModel:viewModel fallbackID:providerID];
+            entry = [@{
+                @"title": title.length > 0 ? title : providerID,
+                @"count": @0
+            } mutableCopy];
+            providersByID[providerID] = entry;
+            [orderedIDs addObject:providerID];
+        }
+        NSInteger count = [entry[@"count"] integerValue] + 1;
+        entry[@"count"] = @(count);
+    }
+
+    [orderedIDs sortUsingComparator:^NSComparisonResult(NSString *left, NSString *right) {
+        NSInteger leftCount = [providersByID[left][@"count"] integerValue];
+        NSInteger rightCount = [providersByID[right][@"count"] integerValue];
+        if (leftCount != rightCount) {
+            return leftCount > rightCount ? NSOrderedAscending : NSOrderedDescending;
+        }
+        NSString *leftTitle = providersByID[left][@"title"] ?: @"";
+        NSString *rightTitle = providersByID[right][@"title"] ?: @"";
+        return [leftTitle localizedCaseInsensitiveCompare:rightTitle];
+    }];
+
+    NSMutableArray<OptionModel *> *options = [NSMutableArray arrayWithCapacity:orderedIDs.count];
+    for (NSString *providerID in orderedIDs) {
+        NSDictionary<NSString *, id> *entry = providersByID[providerID];
+        NSInteger count = [entry[@"count"] integerValue];
+        OptionModel *option =
+        [[OptionModel alloc] initWithID:providerID
+                                  title:entry[@"title"] ?: providerID
+                               subtitle:[self pp_providerSheetSubtitleForCount:count]
+                              imageName:@"providers.png"
+                        systemImageName:nil];
+        option.sortOrder = options.count;
+        [options addObject:option];
+    }
+    return options.copy;
+}
+
+- (NSString *)selectedProviderIDForSection:(PPDataSection)section
+{
+    NSString *providerID = self.selectedProviderIDsBySection[@(section)];
+    return [providerID isKindOfClass:NSString.class] ? providerID : @"";
+}
+
+- (void)setSelectedProviderID:(NSString *)providerID forSection:(PPDataSection)section
+{
+    if (![self pp_sectionSupportsProviderFilter:section]) {
+        [self clearSelectedProviderForSection:section];
+        return;
+    }
+    if (!self.selectedProviderIDsBySection) {
+        self.selectedProviderIDsBySection = [NSMutableDictionary dictionary];
+    }
+    NSString *cleanProviderID =
+    [providerID isKindOfClass:NSString.class]
+    ? [providerID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+    : @"";
+    if (cleanProviderID.length == 0) {
+        [self clearSelectedProviderForSection:section];
+        return;
+    }
+    self.selectedProviderIDsBySection[@(section)] = cleanProviderID;
+}
+
+- (void)clearSelectedProviderForSection:(PPDataSection)section
+{
+    [self.selectedProviderIDsBySection removeObjectForKey:@(section)];
+}
+
+- (BOOL)pp_reconcileSelectedProviderForSection:(PPDataSection)section
+                                   sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (![self pp_sectionSupportsProviderFilter:section]) {
+        BOOL hadSelection = ([self selectedProviderIDForSection:section].length > 0);
+        [self clearSelectedProviderForSection:section];
+        return hadSelection;
+    }
+
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    if (selectedProviderID.length == 0) {
+        return NO;
+    }
+
+    for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+        NSString *providerID = [self pp_providerIDForViewModel:viewModel];
+        if ([providerID isEqualToString:selectedProviderID]) {
+            return NO;
+        }
+    }
+    [self clearSelectedProviderForSection:section];
+    return YES;
+}
+
+- (void)pp_applyProviderChipContentForSection:(PPDataSection)section providerCount:(NSInteger)providerCount
+{
+    if (!self.providerFilterChipButton) {
+        return;
+    }
+
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    NSString *title = kLang(@"dataview_filter_by_provider");
+    NSString *subtitle = providerCount > 0
+        ? [NSString stringWithFormat:kLang(@"dataview_provider_filter_count_format"), (long)providerCount]
+        : kLang(@"dataview_provider_filter_empty_title");
+    NSString *ratingText = @"";
+    NSArray<OptionModel *> *providerOptions =
+        [self providerOptionsForSection:section sourceItems:self.viewModel.items ?: @[]];
+
+    if (selectedProviderID.length > 0) {
+        for (OptionModel *option in providerOptions) {
+            if ([option.optID isEqualToString:selectedProviderID]) {
+                title = option.title ?: title;
+                subtitle = kLang(@"dataview_provider_filter_selected_subtitle");
+                ratingText = [self pp_providerRatingBadgeTextForProviderID:selectedProviderID
+                                                                sourceItems:self.viewModel.items ?: @[]] ?: @"";
+                break;
+            }
+        }
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = self.providerFilterChipButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        configuration.image = nil;
+        configuration.title = @"";
+        configuration.subtitle = @"";
+        self.providerFilterChipButton.configuration = configuration;
+    } else {
+        [self.providerFilterChipButton setTitle:@"" forState:UIControlStateNormal];
+        [self.providerFilterChipButton setImage:nil forState:UIControlStateNormal];
+    }
+    self.providerFilterChipTitleLabel.text = title;
+    self.providerFilterChipSubtitleLabel.text = subtitle;
+    self.providerFilterChipRatingLabel.text = ratingText;
+    self.providerFilterChipRatingLabel.hidden = (ratingText.length == 0);
+    [self.providerFilterChipTitleLabel invalidateIntrinsicContentSize];
+    [self.providerFilterChipRatingLabel invalidateIntrinsicContentSize];
+    [self.providerFilterChipSubtitleLabel invalidateIntrinsicContentSize];
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    NSString *symbolName = selectedProviderID.length > 0 ? @"checkmark.seal.fill" : @"storefront.fill";
+    self.providerFilterChipTrailingIconView.image =
+        [[UIImage systemImageNamed:symbolName withConfiguration:iconConfig]
+         imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [self pp_updateProviderChipAvatarForProviderID:selectedProviderID
+                                             title:title
+                                       sourceItems:self.viewModel.items ?: @[]];
+    self.providerFilterChipButton.accessibilityLabel =
+        ratingText.length > 0 ? [NSString stringWithFormat:@"%@ %@", title, ratingText] : title;
+    self.providerFilterChipButton.accessibilityHint = subtitle;
+}
+
+- (NSString *)pp_providerRatingBadgeTextForProviderID:(NSString *)providerID
+                                          sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (providerID.length == 0) {
+        return @"";
+    }
+
+    double rating = 0.0;
+    UserModel *cachedUser = [UserManager userModelForID:providerID];
+    if (cachedUser.providerRatingValue > 0.0) {
+        rating = cachedUser.providerRatingValue;
+    }
+
+    if (rating <= 0.0) {
+        for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+            NSString *itemProviderID = [self pp_providerIDForViewModel:viewModel];
+            if (![itemProviderID isEqualToString:providerID]) {
+                continue;
+            }
+            id model = viewModel.ModelObject;
+            NSArray<NSString *> *ratingSelectors = @[
+                @"providerRatingValue",
+                @"providerRating",
+                @"averageProviderRating",
+                @"ownerRatingValue",
+                @"sellerRatingValue"
+            ];
+            for (NSString *selectorName in ratingSelectors) {
+                SEL selector = NSSelectorFromString(selectorName);
+                if (![model respondsToSelector:selector]) {
+                    continue;
+                }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                id value = [model performSelector:selector];
+#pragma clang diagnostic pop
+                if ([value respondsToSelector:@selector(doubleValue)] && [value doubleValue] > 0.0) {
+                    rating = [value doubleValue];
+                    break;
+                }
+            }
+            if (rating > 0.0) {
+                break;
+            }
+        }
+    }
+
+    if (rating <= 0.0) {
+        return @"";
+    }
+    rating = MAX(0.0, MIN(5.0, rating));
+    NSString *ratingValue = [NSString stringWithFormat:@"%.1f", rating];
+    return [NSString stringWithFormat:@"  ★ %@  ", ratingValue];
+}
+
+- (NSString *)pp_providerIDForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    id model = viewModel.ModelObject;
+    if ([model isKindOfClass:PetAd.class]) {
+        return ((PetAd *)model).ownerID ?: @"";
+    }
+    if ([model isKindOfClass:PetAccessory.class]) {
+        return ((PetAccessory *)model).ownerID ?: @"";
+    }
+    if ([model isKindOfClass:ServiceModel.class]) {
+        return ((ServiceModel *)model).serviceOwnerID ?: @"";
+    }
+    NSArray<NSString *> *selectors = @[@"ownerID", @"providerID", @"providerId", @"userID", @"sellerID"];
+    for (NSString *selectorName in selectors) {
+        SEL selector = NSSelectorFromString(selectorName);
+        if ([model respondsToSelector:selector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            id value = [model performSelector:selector];
+#pragma clang diagnostic pop
+            if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+                return value;
+            }
+        }
+    }
+    return @"";
+}
+
+- (NSString *)pp_providerTitleForViewModel:(PPUniversalCellViewModel *)viewModel fallbackID:(NSString *)providerID
+{
+    NSCharacterSet *trimSet = NSCharacterSet.whitespaceAndNewlineCharacterSet;
+    NSString *cleanProviderID = [providerID isKindOfClass:NSString.class]
+        ? [providerID stringByTrimmingCharactersInSet:trimSet]
+        : @"";
+    BOOL (^isDisplayableName)(NSString *) = ^BOOL(NSString *value) {
+        NSString *trimmed = [value isKindOfClass:NSString.class]
+            ? [value stringByTrimmingCharactersInSet:trimSet]
+            : @"";
+        if (trimmed.length == 0) {
+            return NO;
+        }
+        return cleanProviderID.length == 0 || ![trimmed isEqualToString:cleanProviderID];
+    };
+
+    id model = viewModel.ModelObject;
+    if ([model isKindOfClass:PetAd.class]) {
+        NSString *ownerName = [((PetAd *)model).ownerName stringByTrimmingCharactersInSet:trimSet] ?: @"";
+        if (isDisplayableName(ownerName)) {
+            return ownerName;
+        }
+    }
+
+    NSArray<NSString *> *selectors = @[
+        @"providerDisplayName",
+        @"providerName",
+        @"providerBusinessName",
+        @"ownerDisplayName",
+        @"ownerName",
+        @"sellerDisplayName",
+        @"sellerName",
+        @"storeName",
+        @"shopName",
+        @"companyName",
+        @"CompanyName",
+        @"businessName",
+        @"legalName"
+    ];
+    for (NSString *selectorName in selectors) {
+        SEL selector = NSSelectorFromString(selectorName);
+        if ([model respondsToSelector:selector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            id value = [model performSelector:selector];
+#pragma clang diagnostic pop
+            if ([value isKindOfClass:NSString.class]) {
+                NSString *title = [(NSString *)value stringByTrimmingCharactersInSet:trimSet];
+                if (isDisplayableName(title)) {
+                    return title;
+                }
+            }
+        }
+    }
+
+    if ([model isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dictionary = (NSDictionary *)model;
+        NSArray<NSString *> *keys = @[
+            @"providerDisplayName",
+            @"providerName",
+            @"providerBusinessName",
+            @"ownerDisplayName",
+            @"ownerName",
+            @"sellerDisplayName",
+            @"sellerName",
+            @"storeName",
+            @"shopName",
+            @"companyName",
+            @"CompanyName",
+            @"businessName",
+            @"legalName"
+        ];
+        for (NSString *key in keys) {
+            id value = dictionary[key];
+            if ([value isKindOfClass:NSString.class]) {
+                NSString *title = [(NSString *)value stringByTrimmingCharactersInSet:trimSet];
+                if (isDisplayableName(title)) {
+                    return title;
+                }
+            }
+        }
+    }
+
+    if (cleanProviderID.length > 0) {
+        UserModel *cachedUser = [UserManager userModelForID:cleanProviderID];
+        NSArray<NSString *> *cachedNames = @[
+            cachedUser.UserName ?: @"",
+            cachedUser.FirstName.length > 0 && cachedUser.LastName.length > 0
+                ? [NSString stringWithFormat:@"%@ %@", cachedUser.FirstName, cachedUser.LastName]
+                : @"",
+            cachedUser.FirstName ?: @"",
+            [cachedUser respondsToSelector:@selector(bestDisplayName)]
+                ? ([cachedUser bestDisplayName] ?: @"")
+                : @""
+        ];
+        for (NSString *candidate in cachedNames) {
+            NSString *title = [candidate stringByTrimmingCharactersInSet:trimSet];
+            if (isDisplayableName(title)) {
+                return title;
+            }
+        }
+    }
+
+    NSString *genericProviderTitle = kLang(@"service_view_provider_title");
+    return genericProviderTitle.length > 0 ? genericProviderTitle : @"Provider";
+}
+
+- (NSString *)pp_providerPhotoURLForProviderID:(NSString *)providerID
+                                   sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (providerID.length == 0) {
+        return @"";
+    }
+
+    UserModel *cachedUser = [UserManager userModelForID:providerID];
+    NSString *cachedURL = cachedUser.UserImageUrl.absoluteString ?: @"";
+    if (cachedURL.length > 0) {
+        return cachedURL;
+    }
+
+    for (PPUniversalCellViewModel *viewModel in sourceItems ?: @[]) {
+        NSString *itemProviderID = [self pp_providerIDForViewModel:viewModel];
+        if ([itemProviderID isEqualToString:providerID]) {
+            NSString *photoURL = [self pp_providerPhotoURLForViewModel:viewModel fallbackID:providerID];
+            if (photoURL.length > 0) {
+                return photoURL;
+            }
+        }
+    }
+    return @"";
+}
+
+- (NSString *)pp_providerPhotoURLForViewModel:(PPUniversalCellViewModel *)viewModel
+                                   fallbackID:(NSString *)providerID
+{
+    if (providerID.length > 0) {
+        UserModel *cachedUser = [UserManager userModelForID:providerID];
+        NSString *cachedURL = cachedUser.UserImageUrl.absoluteString ?: @"";
+        if (cachedURL.length > 0) {
+            return cachedURL;
+        }
+    }
+
+    id model = viewModel.ModelObject;
+    NSArray<NSString *> *selectors = @[
+        @"providerImageURL",
+        @"providerImageUrl",
+        @"providerPhotoURL",
+        @"providerPhotoUrl",
+        @"providerLogoURL",
+        @"providerLogoUrl",
+        @"ownerImageURL",
+        @"ownerImageUrl",
+        @"ownerPhotoURL",
+        @"ownerPhotoUrl",
+        @"ownerLogoURL",
+        @"ownerLogoUrl",
+        @"sellerImageURL",
+        @"sellerImageUrl",
+        @"sellerPhotoURL",
+        @"sellerPhotoUrl",
+        @"storeImageURL",
+        @"storeImageUrl",
+        @"storeLogoURL",
+        @"storeLogoUrl",
+        @"companyLogoURL",
+        @"companyLogoUrl"
+    ];
+    for (NSString *selectorName in selectors) {
+        SEL selector = NSSelectorFromString(selectorName);
+        if ([model respondsToSelector:selector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            id value = [model performSelector:selector];
+#pragma clang diagnostic pop
+            if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+                return value;
+            }
+            if ([value isKindOfClass:NSURL.class] && [(NSURL *)value absoluteString].length > 0) {
+                return [(NSURL *)value absoluteString];
+            }
+        }
+    }
+    return @"";
+}
+
+- (UIImage *)pp_providerPlaceholderImage
+{
+    UIImage *placeholder = [UIImage imageNamed:@"providers.png"];
+    if (!placeholder) {
+        placeholder = [UIImage imageNamed:@"providers"];
+    }
+    if (!placeholder) {
+        placeholder = [UIImage imageNamed:@"providers_placeholder"];
+    }
+    if (!placeholder) {
+        placeholder = [UIImage systemImageNamed:@"storefront.fill"];
+    }
+    return placeholder;
+}
+
+- (void)pp_updateProviderChipAvatarForProviderID:(NSString *)providerID
+                                           title:(NSString *)title
+                                     sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
+{
+    if (!self.providerFilterChipAvatarView) {
+        return;
+    }
+
+    UIImage *placeholder = [self pp_providerPlaceholderImage];
+    self.providerFilterChipAvatarView.image = placeholder;
+    self.providerFilterChipAvatarView.contentMode = UIViewContentModeScaleAspectFill;
+
+    NSString *photoURL = [self pp_providerPhotoURLForProviderID:providerID sourceItems:sourceItems];
+    if (providerID.length == 0 || photoURL.length == 0) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    NSString *expectedProviderID = [providerID copy];
+    [PPImageLoaderManager.shared setImageOnImageView:self.providerFilterChipAvatarView
+                                                 url:photoURL
+                                         placeholder:placeholder
+                                          complation:^(__unused UIImage * _Nonnull image,
+                                                       __unused NSString * _Nullable urlString) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        NSString *currentProviderID = [self selectedProviderIDForSection:self.viewModel.currentSection];
+        if (![currentProviderID isEqualToString:expectedProviderID]) {
+            self.providerFilterChipAvatarView.image = [self pp_providerPlaceholderImage];
+            return;
+        }
+        self.providerFilterChipAvatarView.contentMode = UIViewContentModeScaleAspectFill;
+        self.providerFilterChipAvatarView.accessibilityLabel = title ?: @"";
+    }];
+}
+
+- (NSString *)pp_providerSheetSubtitleForCount:(NSInteger)count
+{
+    NSString *format = (count == 1)
+        ? kLang(@"dataview_provider_sheet_item_count_one")
+        : kLang(@"dataview_provider_sheet_item_count_many");
+    return [NSString stringWithFormat:format, (long)count];
+}
+
+- (NSString *)pp_shortProviderIdentifier:(NSString *)providerID
+{
+    NSString *cleanID = [providerID isKindOfClass:NSString.class] ? providerID : @"";
+    if (cleanID.length <= 6) {
+        return cleanID.length > 0 ? cleanID : @"--";
+    }
+    return [cleanID substringToIndex:6];
 }
 
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated
@@ -4342,7 +5275,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     self.filterBadgesCollapsed = !self.filterBadgesCollapsed;
     [PPFunc triggerLightHaptic];
-    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:YES];
+    [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:YES];
 }
 
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated
@@ -4357,12 +5290,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
     if (self.filterBadgesCollapsed) {
-        [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:NO];
+        [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
         return;
     }
 
     self.filterBadgesCollapsed = YES;
-    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:animated];
+    [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:animated];
 }
 
 - (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated
@@ -4373,7 +5306,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         self.filterBadgesCollapsedBeforeFullDetails = NO;
     }
 
-    [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:animated];
+    [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:animated];
 }
 
 // ---------- Dynamic filter menu builder ----------
@@ -5476,7 +6409,7 @@ presentingViewController:self
         if (leavingFullDetails) {
             [self pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:NO];
         } else {
-            [self updateFilterChipVisibilityForSection:self.viewModel.currentSection animated:NO];
+            [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
         }
     }
 
@@ -5690,29 +6623,29 @@ presentingViewController:self
 
     [NSLayoutConstraint activateConstraints:@[
         [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 8.0 : 12.0],
-        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
-        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-        [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:4.0],
+        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? 20.0 : 16.0],
+        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -20.0 :  -16.0],
+        [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:kPPFilterIslandTopPadding],
         [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:4.0],
         [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-4.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
 
-    UIView *providerContextBar = [[UIView alloc] init];
-    providerContextBar.translatesAutoresizingMaskIntoConstraints = NO;
-    providerContextBar.backgroundColor = UIColor.clearColor;
-    providerContextBar.clipsToBounds = NO;
-    providerContextBar.accessibilityIdentifier = @"pp.data.filters.providerContextBar";
-    self.providerFilterContextBar = providerContextBar;
-    [controlIsland addSubview:providerContextBar];
+    UIView *filterContextBar = [[UIView alloc] init];
+    filterContextBar.translatesAutoresizingMaskIntoConstraints = NO;
+    filterContextBar.backgroundColor = UIColor.clearColor;
+    filterContextBar.clipsToBounds = NO;
+    filterContextBar.accessibilityIdentifier = @"pp.data.filters.filterContextBar";
+    self.filterContextBar = filterContextBar;
+    [controlIsland addSubview:filterContextBar];
 
-    UIView *providerBadgeView = [[UIView alloc] init];
-    providerBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    providerBadgeView.backgroundColor = UIColor.clearColor;
-    providerBadgeView.clipsToBounds = YES;
-    providerBadgeView.userInteractionEnabled = NO;
-    self.providerFilterContextBadgeView = providerBadgeView;
-    [providerContextBar addSubview:providerBadgeView];
+    UIView *filterBadgeView = [[UIView alloc] init];
+    filterBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    filterBadgeView.backgroundColor = UIColor.clearColor;
+    filterBadgeView.clipsToBounds = YES;
+    filterBadgeView.userInteractionEnabled = NO;
+    self.filterContextBadgeView = filterBadgeView;
+    [filterContextBar addSubview:filterBadgeView];
 
     UIImageSymbolConfiguration *contextIconConfig =
         [UIImageSymbolConfiguration configurationWithPointSize:12.5
@@ -5724,8 +6657,8 @@ presentingViewController:self
                                       imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
     contextIconView.translatesAutoresizingMaskIntoConstraints = NO;
     contextIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.providerFilterContextIconView = contextIconView;
-    [providerBadgeView addSubview:contextIconView];
+    self.filterContextIconView = contextIconView;
+    [filterBadgeView addSubview:contextIconView];
 
     UILabel *contextLabel = [[UILabel alloc] init];
     contextLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -5733,9 +6666,9 @@ presentingViewController:self
     contextLabel.adjustsFontForContentSizeCategory = YES;
     contextLabel.numberOfLines = 1;
     contextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    contextLabel.text = [self providerFilterContextTitleForSection:self.viewModel.currentSection];
-    self.providerFilterContextLabel = contextLabel;
-    [providerBadgeView addSubview:contextLabel];
+    contextLabel.text = [self filterContextTitleForSection:self.viewModel.currentSection];
+    self.filterContextLabel = contextLabel;
+    [filterBadgeView addSubview:contextLabel];
     
     UIView *filterContainer = [[UIView alloc] init];
     filterContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -5747,6 +6680,140 @@ presentingViewController:self
     self.filterChipContainer = filterContainer;
 
     [controlIsland addSubview:filterContainer];
+
+    UIButton *providerFilterChip = [UIButton buttonWithType:UIButtonTypeSystem];
+    providerFilterChip.translatesAutoresizingMaskIntoConstraints = NO;
+    providerFilterChip.accessibilityIdentifier = @"pp.data.filters.providerChip";
+    providerFilterChip.accessibilityTraits = UIAccessibilityTraitButton;
+    providerFilterChip.hidden = YES;
+    providerFilterChip.alpha = 0.0;
+    providerFilterChip.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+    providerFilterChip.adjustsImageWhenHighlighted = NO;
+    providerFilterChip.clipsToBounds = NO;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+        configuration.image = nil;
+        configuration.imagePadding = 0.0;
+        configuration.baseForegroundColor = PPDataViewProviderPillAccentColor(self.traitCollection);
+        configuration.title = @"";
+        configuration.subtitle = @"";
+        providerFilterChip.configuration = configuration;
+    } else {
+        [providerFilterChip setTitle:@"" forState:UIControlStateNormal];
+        [providerFilterChip setImage:nil forState:UIControlStateNormal];
+        providerFilterChip.tintColor = PPDataViewProviderPillAccentColor(self.traitCollection);
+        providerFilterChip.contentEdgeInsets = UIEdgeInsetsZero;
+        providerFilterChip.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    }
+    UIImageView *providerAvatarView = [[UIImageView alloc] initWithImage:[self pp_providerPlaceholderImage]];
+    providerAvatarView.translatesAutoresizingMaskIntoConstraints = NO;
+    providerAvatarView.userInteractionEnabled = NO;
+    providerAvatarView.contentMode = UIViewContentModeScaleAspectFill;
+    providerAvatarView.isAccessibilityElement = NO;
+    self.providerFilterChipAvatarView = providerAvatarView;
+    [providerFilterChip addSubview:providerAvatarView];
+
+    UIImageSymbolConfiguration *providerTrailingIconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    UIImageView *providerTrailingIconView =
+        [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"storefront.fill"
+                                                    withConfiguration:providerTrailingIconConfig]
+                                      imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    providerTrailingIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    providerTrailingIconView.userInteractionEnabled = NO;
+    providerTrailingIconView.contentMode = UIViewContentModeCenter;
+    providerTrailingIconView.isAccessibilityElement = NO;
+    self.providerFilterChipTrailingIconView = providerTrailingIconView;
+    [providerFilterChip addSubview:providerTrailingIconView];
+
+    UILabel *providerTitleLabel = [[UILabel alloc] init];
+    providerTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    providerTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    providerTitleLabel.textColor = PPDataViewProviderPillAccentColor(self.traitCollection);
+    providerTitleLabel.adjustsFontForContentSizeCategory = YES;
+    providerTitleLabel.numberOfLines = 1;
+    providerTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    providerTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    providerTitleLabel.text = kLang(@"dataview_filter_by_provider");
+    [providerTitleLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                          forAxis:UILayoutConstraintAxisHorizontal];
+    [providerTitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                        forAxis:UILayoutConstraintAxisHorizontal];
+    self.providerFilterChipTitleLabel = providerTitleLabel;
+
+    UILabel *providerRatingLabel = [[UILabel alloc] init];
+    providerRatingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    providerRatingLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightBold];
+    providerRatingLabel.textColor = PPDataViewProviderPillAccentColor(self.traitCollection);
+    providerRatingLabel.textAlignment = NSTextAlignmentCenter;
+    providerRatingLabel.adjustsFontForContentSizeCategory = YES;
+    providerRatingLabel.numberOfLines = 1;
+    providerRatingLabel.lineBreakMode = NSLineBreakByClipping;
+    providerRatingLabel.hidden = YES;
+    providerRatingLabel.isAccessibilityElement = NO;
+    providerRatingLabel.layer.cornerRadius = 9.0;
+    providerRatingLabel.clipsToBounds = YES;
+    [providerRatingLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisHorizontal];
+    [providerRatingLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [providerRatingLabel.heightAnchor constraintGreaterThanOrEqualToConstant:18.0].active = YES;
+    self.providerFilterChipRatingLabel = providerRatingLabel;
+
+    UILabel *providerSubtitleLabel = [[UILabel alloc] init];
+    providerSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    providerSubtitleLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
+    providerSubtitleLabel.textColor = PPDataViewChromeSecondaryTextColor();
+    providerSubtitleLabel.adjustsFontForContentSizeCategory = YES;
+    providerSubtitleLabel.numberOfLines = 1;
+    providerSubtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    providerSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    providerSubtitleLabel.text = kLang(@"dataview_provider_filter_empty_title");
+    self.providerFilterChipSubtitleLabel = providerSubtitleLabel;
+
+    UIView *providerTitleSpacer = [[UIView alloc] init];
+    providerTitleSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    providerTitleSpacer.userInteractionEnabled = NO;
+    [providerTitleSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                           forAxis:UILayoutConstraintAxisHorizontal];
+    [providerTitleSpacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+
+    UIStackView *providerTitleRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        providerTitleLabel,
+        providerRatingLabel,
+        providerTitleSpacer
+    ]];
+    providerTitleRowStack.translatesAutoresizingMaskIntoConstraints = NO;
+    providerTitleRowStack.axis = UILayoutConstraintAxisHorizontal;
+    providerTitleRowStack.alignment = UIStackViewAlignmentCenter;
+    providerTitleRowStack.distribution = UIStackViewDistributionFill;
+    providerTitleRowStack.spacing = 6.0;
+    providerTitleRowStack.userInteractionEnabled = NO;
+    providerTitleRowStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    UIStackView *providerTextStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        providerTitleRowStack,
+        providerSubtitleLabel
+    ]];
+    providerTextStack.translatesAutoresizingMaskIntoConstraints = NO;
+    providerTextStack.axis = UILayoutConstraintAxisVertical;
+    providerTextStack.alignment = UIStackViewAlignmentFill;
+    providerTextStack.distribution = UIStackViewDistributionFill;
+    providerTextStack.spacing = 1.0;
+    providerTextStack.userInteractionEnabled = NO;
+    providerTextStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [providerFilterChip addSubview:providerTextStack];
+
+    [providerFilterChip addTarget:self
+                           action:@selector(providerFilterChipTapped:)
+                 forControlEvents:UIControlEventTouchUpInside];
+    self.providerFilterChipButton = providerFilterChip;
+    [controlIsland addSubview:providerFilterChip];
 
     PPPremiumCollapseButton *collapseButton = [PPPremiumCollapseButton buttonWithType:UIButtonTypeCustom];
     collapseButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -5781,50 +6848,75 @@ presentingViewController:self
     }
     
     self.filterCollapseButton = collapseButton;
-    [providerContextBar addSubview:collapseButton];
+    [filterContextBar addSubview:collapseButton];
 
     self.filterChipHeightConstraint =
     [filterContainer.heightAnchor constraintEqualToConstant:0.0];
     self.filterChipHeightConstraint.active = YES;
     self.filterChipTopConstraint =
-    [filterContainer.topAnchor constraintEqualToAnchor:providerContextBar.bottomAnchor constant:0.0];
+    [filterContainer.topAnchor constraintEqualToAnchor:providerFilterChip.bottomAnchor constant:0.0];
     self.filterChipTopConstraint.active = YES;
-
-    self.filterChipBottomConstraint = [filterContainer.bottomAnchor constraintEqualToAnchor:controlIsland.bottomAnchor constant:-10.0];
-    self.filterChipBottomConstraint.active = YES;
-    self.providerFilterContextBarHeightConstraint =
-        [providerContextBar.heightAnchor constraintEqualToConstant:kPPProviderFilterContextBarHeight];
-    self.providerFilterContextBarHeightConstraint.active = YES;
+    self.providerFilterChipTopConstraint =
+        [providerFilterChip.topAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor constant:0.0];
+    self.providerFilterChipTopConstraint.active = YES;
+    self.providerFilterChipHeightConstraint =
+        [providerFilterChip.heightAnchor constraintEqualToConstant:0.0];
+    self.providerFilterChipHeightConstraint.active = YES;
+    self.filterContextBarHeightConstraint =
+        [filterContextBar.heightAnchor constraintEqualToConstant:kPPFilterContextBarHeight];
+    self.filterContextBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [providerContextBar.topAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor constant:8.0],
-        [providerContextBar.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
-        [providerContextBar.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
+        [filterContextBar.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
+        [filterContextBar.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
 
-        [providerBadgeView.leadingAnchor constraintEqualToAnchor:providerContextBar.leadingAnchor constant:8.0],
-        [providerBadgeView.centerYAnchor constraintEqualToAnchor:providerContextBar.centerYAnchor],
-        [providerBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:collapseButton.leadingAnchor constant:-8.0],
-        [providerBadgeView.heightAnchor constraintEqualToConstant:28.0],
+        [providerFilterChip.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
+        [providerFilterChip.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
 
-        [contextIconView.leadingAnchor constraintEqualToAnchor:providerBadgeView.leadingAnchor constant:10.0],
-        [contextIconView.centerYAnchor constraintEqualToAnchor:providerBadgeView.centerYAnchor],
+        [filterContextBar.topAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:kPPFilterIslandRowSpacing],
+        [controlIsland.bottomAnchor constraintEqualToAnchor:filterContextBar.bottomAnchor constant:kPPFilterIslandBottomPadding],
+
+        [providerAvatarView.leadingAnchor constraintEqualToAnchor:providerFilterChip.leadingAnchor constant:12.0],
+        [providerAvatarView.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
+        [providerAvatarView.widthAnchor constraintEqualToConstant:34.0],
+        [providerAvatarView.heightAnchor constraintEqualToConstant:34.0],
+
+        [providerTrailingIconView.trailingAnchor constraintEqualToAnchor:providerFilterChip.trailingAnchor constant:-12.0],
+        [providerTrailingIconView.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
+        [providerTrailingIconView.widthAnchor constraintEqualToConstant:28.0],
+        [providerTrailingIconView.heightAnchor constraintEqualToConstant:28.0],
+
+        [providerTextStack.leadingAnchor constraintEqualToAnchor:providerAvatarView.trailingAnchor constant:10.0],
+        [providerTextStack.trailingAnchor constraintEqualToAnchor:providerTrailingIconView.leadingAnchor constant:-10.0],
+        [providerTextStack.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
+        [providerTextStack.topAnchor constraintGreaterThanOrEqualToAnchor:providerFilterChip.topAnchor constant:6.0],
+        [providerTextStack.bottomAnchor constraintLessThanOrEqualToAnchor:providerFilterChip.bottomAnchor constant:-6.0],
+
+        [filterBadgeView.leadingAnchor constraintEqualToAnchor:filterContextBar.leadingAnchor constant:8.0],
+        [filterBadgeView.centerYAnchor constraintEqualToAnchor:filterContextBar.centerYAnchor],
+        [filterBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:collapseButton.leadingAnchor constant:-8.0],
+        [filterBadgeView.heightAnchor constraintEqualToConstant:28.0],
+
+        [contextIconView.leadingAnchor constraintEqualToAnchor:filterBadgeView.leadingAnchor constant:10.0],
+        [contextIconView.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
         [contextIconView.widthAnchor constraintEqualToConstant:14.0],
         [contextIconView.heightAnchor constraintEqualToConstant:14.0],
 
         [contextLabel.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:6.0],
-        [contextLabel.trailingAnchor constraintEqualToAnchor:providerBadgeView.trailingAnchor constant:-12.0],
-        [contextLabel.centerYAnchor constraintEqualToAnchor:providerBadgeView.centerYAnchor],
+        [contextLabel.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-12.0],
+        [contextLabel.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
 
         [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
         [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
-        [collapseButton.trailingAnchor constraintEqualToAnchor:providerContextBar.trailingAnchor constant:-8.0],
-        [collapseButton.centerYAnchor constraintEqualToAnchor:providerContextBar.centerYAnchor],
+        [collapseButton.trailingAnchor constraintEqualToAnchor:filterContextBar.trailingAnchor constant:-8.0],
+        [collapseButton.centerYAnchor constraintEqualToAnchor:filterContextBar.centerYAnchor],
         [collapseButton.heightAnchor constraintEqualToConstant:kPPFilterCollapseHandleHeight]
     ]];
     [collapseButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [collapseButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [providerBadgeView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    [self pp_applyProviderFilterContextBarAppearance];
+    [filterBadgeView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [providerFilterChip setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self pp_applyFilterContextBarAppearance];
 
     // Dynamic filter chips — created from PPFilterState for the initial section
     self.filterChips = [NSMutableArray array];
@@ -5843,13 +6935,16 @@ presentingViewController:self
         [chipsStack.trailingAnchor constraintEqualToAnchor:filterContainer.trailingAnchor],
         [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:-4.0],
     ]];
+    self.filterChipStackHeightConstraint = [chipsStack.heightAnchor constraintEqualToConstant:0.0];
+    self.filterChipStackHeightConstraint.active = YES;
 
     // Initialize per-section filter state dictionary
     self.filterStates = [NSMutableDictionary dictionary];
+    self.selectedProviderIDsBySection = [NSMutableDictionary dictionary];
 
     PPDataSection initialFilterSection = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
     [self syncFilterChipsForSection:initialFilterSection];
-    [self updateFilterChipVisibilityForSection:initialFilterSection animated:NO];
+    [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
 }
 
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender

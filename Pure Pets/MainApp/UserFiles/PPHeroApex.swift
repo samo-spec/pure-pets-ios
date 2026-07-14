@@ -77,7 +77,7 @@ private final class PPHeroPassiveTouchRecognizer: UIGestureRecognizer {
     }
 
     override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
-        true
+        false
     }
 }
 
@@ -173,6 +173,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let ambientContentView = UIView()
     private let overlayView = UIView()
     private let reactiveLightView = UIView()
+    private let touchLensView = UIView()
 
     private let baseGradientLayer = CAGradientLayer()
     private let depthGradientLayer = CAGradientLayer()
@@ -180,6 +181,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let auroraLayers = (0..<3).map { _ in CAGradientLayer() }
     private let particleLayers = (0..<3).map { _ in CAShapeLayer() }
     private let reactiveLightLayer = CAGradientLayer()
+    private let touchLensLayer = CAGradientLayer()
+    private let touchCoreLayer = CAGradientLayer()
     private let glassSheenLayer = CAGradientLayer()
     private let signatureSweepLayer = CAGradientLayer()
     private let accentBarLayer = CAGradientLayer()
@@ -262,7 +265,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func configureViewHierarchy() {
-        [materialView, baseView, ambientView, ambientContentView, overlayView, reactiveLightView]
+        [materialView, baseView, ambientView, ambientContentView, overlayView, reactiveLightView, touchLensView]
             .forEach { view in
                 view.isUserInteractionEnabled = false
                 view.isAccessibilityElement = false
@@ -277,6 +280,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ambientView.addSubview(ambientContentView)
         materialView.contentView.addSubview(overlayView)
         overlayView.addSubview(reactiveLightView)
+        overlayView.addSubview(touchLensView)
     }
 
     private func configureLayers() {
@@ -321,6 +325,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         reactiveLightLayer.locations = [0, 0.34, 1]
         reactiveLightLayer.drawsAsynchronously = true
         reactiveLightView.layer.addSublayer(reactiveLightLayer)
+
+        touchLensLayer.type = .radial
+        touchLensLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        touchLensLayer.endPoint = CGPoint(x: 1, y: 1)
+        touchLensLayer.locations = [0, 0.28, 0.62, 1]
+        touchLensLayer.drawsAsynchronously = true
+        touchLensView.layer.addSublayer(touchLensLayer)
+
+        touchCoreLayer.type = .radial
+        touchCoreLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        touchCoreLayer.endPoint = CGPoint(x: 1, y: 1)
+        touchCoreLayer.locations = [0, 0.36, 1]
+        touchCoreLayer.drawsAsynchronously = true
+        touchLensView.layer.addSublayer(touchCoreLayer)
+        touchLensView.alpha = 0
 
         glassSheenLayer.startPoint = CGPoint(x: 0, y: 0)
         glassSheenLayer.endPoint = CGPoint(x: 1, y: 1)
@@ -523,6 +542,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
         reactiveLightLayer.frame = reactiveLightView.bounds
         reactiveLightLayer.cornerRadius = diameter * 0.5
+
+        let lensDiameter = min(max(min(bounds.width, bounds.height) * 0.64, 92), 138)
+        touchLensView.bounds = CGRect(x: 0, y: 0, width: lensDiameter, height: lensDiameter)
+        touchLensView.center = reactiveLightView.center
+        touchLensLayer.frame = touchLensView.bounds
+        touchLensLayer.cornerRadius = lensDiameter * 0.5
+
+        let coreDiameter = lensDiameter * 0.44
+        touchCoreLayer.bounds = CGRect(x: 0, y: 0, width: coreDiameter, height: coreDiameter)
+        touchCoreLayer.position = CGPoint(x: touchLensView.bounds.midX, y: touchLensView.bounds.midY)
+        touchCoreLayer.cornerRadius = coreDiameter * 0.5
     }
 
     private func layoutSignatureSweep(in bounds: CGRect) {
@@ -636,6 +666,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             UIColor.clear.cgColor
         ]
         reactiveLightLayer.opacity = 0.84
+
+        touchLensLayer.colors = [
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.28 : 0.34).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
+            palette.accent.withAlphaComponent(isDark ? 0.045 : 0.035).cgColor,
+            UIColor.clear.cgColor
+        ]
+        touchCoreLayer.colors = [
+            UIColor.white.withAlphaComponent(isDark ? 0.24 : 0.36).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.08 : 0.12).cgColor,
+            UIColor.clear.cgColor
+        ]
 
         glassSheenLayer.colors = [
             UIColor.white.withAlphaComponent(isDark ? 0.15 : 0.34).cgColor,
@@ -1512,11 +1554,31 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             y: PPHeroApexMotionTokens.touchLightScale
         )
 
+        let defaultLightCenter = CGPoint(
+            x: bounds.width * defaultReactiveLightCenter.x,
+            y: bounds.height * defaultReactiveLightCenter.y
+        )
+        let touchSpeed = hypot(touchVelocity.dx, touchVelocity.dy)
+        let velocityBloom = min(
+            touchSpeed / PPHeroApexMotionTokens.touchVelocityForMaximumBloom,
+            1
+        )
+        let lensScale = PPHeroApexMotionTokens.touchLensBaseScale
+            + velocityBloom * PPHeroApexMotionTokens.touchLensVelocityBloom
+        let lensTranslation = CGAffineTransform(
+            translationX: localPoint.x - defaultLightCenter.x,
+            y: localPoint.y - defaultLightCenter.y
+        ).scaledBy(x: lensScale, y: lensScale)
+
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         ambientView.layer.transform = depthTransform
         CATransaction.commit()
-        reactiveLightView.transform = lightTranslation
+        UIView.performWithoutAnimation {
+            reactiveLightView.transform = lightTranslation
+            touchLensView.transform = lensTranslation
+            touchLensView.alpha = PPHeroApexMotionTokens.touchLensActiveAlpha
+        }
     }
 
     private func startInteractionRecovery(generation: UInt) {
@@ -1533,6 +1595,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         animator.addAnimations { [weak self] in
             self?.ambientView.layer.transform = CATransform3DIdentity
             self?.reactiveLightView.transform = .identity
+            self?.touchLensView.transform = .identity
+            self?.touchLensView.alpha = 0
         }
         animator.addCompletion { [weak self] position in
             guard let self else { return }
@@ -1562,6 +1626,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let ambientPresentationTransform = ambientView.layer.presentation()?.transform
         let lightPresentationTransform = reactiveLightView.layer.presentation()?.affineTransform()
+        let lensPresentationTransform = touchLensView.layer.presentation()?.affineTransform()
+        let lensPresentationOpacity = touchLensView.layer.presentation()?.opacity
 
         animator.stopAnimation(true)
         interactionRecoveryAnimator = nil
@@ -1583,6 +1649,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 reactiveLightView.transform = lightPresentationTransform
             }
         }
+        if let lensPresentationTransform {
+            UIView.performWithoutAnimation {
+                touchLensView.transform = lensPresentationTransform
+                if let lensPresentationOpacity {
+                    touchLensView.alpha = CGFloat(lensPresentationOpacity)
+                }
+            }
+        }
     }
 
     private func resetInteractiveTransforms() {
@@ -1593,6 +1667,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         UIView.performWithoutAnimation {
             reactiveLightView.transform = .identity
+            touchLensView.transform = .identity
+            touchLensView.alpha = 0
         }
         touchResponseActive = false
         previousTouchPoint = nil

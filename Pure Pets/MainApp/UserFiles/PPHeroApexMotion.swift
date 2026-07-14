@@ -151,7 +151,7 @@ enum PPHeroApexMotionTokens {
     static let overlayEntranceDuration: TimeInterval = 0.38
     static let overlayEntranceDelay: TimeInterval = 0.04
     static let accentTransitionDuration: CFTimeInterval = 0.22
-    static let interactionSettleDuration: TimeInterval = 0.24
+    static let interactionSettleDuration: TimeInterval = 0.34
     static let fieldDriftCycleDuration: CFTimeInterval = 8.2
     static let signatureSweepCycleDuration: CFTimeInterval = 4.8
 
@@ -162,9 +162,13 @@ enum PPHeroApexMotionTokens {
     static let maximumTouchTranslationX: CGFloat = 5.6
     static let maximumTouchTranslationY: CGFloat = 4.4
     static let maximumTouchRotation: CGFloat = 0.024
-    static let reactiveLightTravelRatio: CGFloat = 0.21
+    static let reactiveLightTravelRatio: CGFloat = 0.68
     static let touchDepthScale: CGFloat = 0.992
     static let touchLightScale: CGFloat = 1.045
+    static let touchLensBaseScale: CGFloat = 0.96
+    static let touchLensVelocityBloom: CGFloat = 0.10
+    static let touchLensActiveAlpha: CGFloat = 0.92
+    static let touchVelocityForMaximumBloom: CGFloat = 1_450
 
     static var entranceTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(

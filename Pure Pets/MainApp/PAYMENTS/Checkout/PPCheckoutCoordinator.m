@@ -273,25 +273,16 @@ static BOOL PPCheckoutAddressHasMinimumData(PPAddressModel *address)
 
 static FIRFunctions *PPCheckoutFunctionsClient(void)
 {
-    static FIRFunctions *functions = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        NSString *customDomain = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
-        if (customDomain.length > 0) {
-            functions = [FIRFunctions functionsForCustomDomain:customDomain];
-        } else {
-            NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
-            if (region.length == 0) {
-                region = @"us-central1";
-            }
-            functions = [FIRFunctions functionsForRegion:region];
+    NSString *customDomain = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+    if (customDomain.length > 0) {
+        return [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+        if (region.length == 0) {
+            region = @"us-central1";
         }
-    });
-    // App Check tokens are auto-attached by FIRFunctions when FIRAppCheck is
-    // configured globally in AppDelegate. The previous private-API invocation
-    // (setUseAppCheckLimitedUseTokens: via NSInvocation) was removed — it
-    // silently failed on SDK 12.12.0 and blocked token attachment entirely.
-    return functions;
+        return [FIRFunctions functionsForRegion:region];
+    }
 }
 
 NSNotificationName const PPAppDidBecomeActiveNotification = @"PPAppDidBecomeActive";

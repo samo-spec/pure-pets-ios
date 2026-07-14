@@ -3490,6 +3490,22 @@
 "dataview_provider_context_products" = "All provider products";
 "dataview_provider_context_services" = "All provider services";
 "dataview_provider_context_listings" = "All marketplace listings";
+"dataview_filter_context_products" = "All marketplace products";
+"dataview_filter_context_services" = "All provider services";
+"dataview_filter_context_listings" = "All marketplace listings";
+"dataview_filter_context_selected_provider_format" = "Provider: %@";
+"dataview_filter_by_provider" = "Filter by provider";
+"dataview_provider_filter_empty_title" = "No providers yet";
+"dataview_provider_filter_empty_message" = "No providers with items in this section yet.";
+"dataview_provider_filter_count_format" = "%ld providers with items";
+"dataview_provider_filter_selected_subtitle" = "Tap the selected provider again to clear";
+"dataview_provider_sheet_eyebrow" = "Marketplace provider";
+"dataview_provider_sheet_title" = "Choose provider";
+"dataview_provider_sheet_subtitle" = "Only providers with visible items in this section are shown.";
+"dataview_provider_sheet_badge_format" = "%ld available";
+"dataview_provider_sheet_item_count_one" = "%ld item";
+"dataview_provider_sheet_item_count_many" = "%ld items";
+"dataview_provider_fallback_name_format" = "Provider %@";
 "dataview_filters_collapse_accessibility" = "Hide filters";
 "dataview_filters_expand_accessibility" = "Show filters";
 

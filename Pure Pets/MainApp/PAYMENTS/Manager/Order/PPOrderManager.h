@@ -9,21 +9,14 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import "PPOrder.h"
+#import "OrderSupportFunc.h"
 @class PPAddressModel;
 @class FIRListenerRegistration;
 @class PPFulfillmentOrder;
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef NS_ENUM(NSInteger, PPOrderCustomerActionType) {
-    PPOrderCustomerActionTypeTrack,
-    PPOrderCustomerActionTypeCancel,
-    PPOrderCustomerActionTypeReturn,
-    PPOrderCustomerActionTypeRefund,
-    PPOrderCustomerActionTypeReplacement,
-    PPOrderCustomerActionTypeComplaint,
-    PPOrderCustomerActionTypeSupport
-};
+
 
 @interface PPOrderSupportAttachment : NSObject
 

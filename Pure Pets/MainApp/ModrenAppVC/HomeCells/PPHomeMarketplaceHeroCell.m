@@ -14,6 +14,7 @@ static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketpl
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
 static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
 static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
+static CGFloat const PPHomeMarketplaceHeroCTACornerRadius = 16.0;
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {
@@ -107,6 +108,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIView *ctaView;
 @property (nonatomic, strong) CAGradientLayer *ctaGradientLayer;
+@property (nonatomic, strong) CAShapeLayer *ctaGradientMaskLayer;
 @property (nonatomic, strong) UILabel *ctaLabel;
 @property (nonatomic, strong) UIImageView *ctaIconView;
 @property (nonatomic, strong) UIView *visualContainerView;
@@ -196,18 +198,26 @@ static BOOL PPMarketHeroReduceMotion(void)
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     CGRect ctaBounds = self.ctaView.bounds;
-    if (!CGRectIsEmpty(ctaBounds) && isfinite((double)CGRectGetHeight(ctaBounds))) {
-        self.ctaView.layer.cornerRadius = MAX(0.0, floor(CGRectGetHeight(ctaBounds) * 0.5));
+    BOOL ctaBoundsValid = !CGRectIsEmpty(ctaBounds) &&
+                          isfinite((double)CGRectGetWidth(ctaBounds)) &&
+                          isfinite((double)CGRectGetHeight(ctaBounds));
+    CGFloat ctaRadius = Language.isRTL ? PPHomeMarketplaceHeroCTACornerRadius : (PPHomeMarketplaceHeroCTACornerRadius - 2.0);
+    self.ctaGradientLayer.frame = ctaBoundsValid ? ctaBounds : CGRectZero;
+    self.ctaGradientLayer.cornerRadius = ctaRadius;
+    if (ctaBoundsValid) {
+        CGRect ctaMaskBounds = self.ctaGradientLayer.bounds;
+        UIBezierPath *ctaPath = [UIBezierPath bezierPathWithRoundedRect:ctaMaskBounds
+                                                            cornerRadius:ctaRadius];
+        self.ctaView.layer.cornerRadius = ctaRadius;
         self.ctaView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:ctaBounds
-                                                                   cornerRadius:self.ctaView.layer.cornerRadius].CGPath;
+                                                                   cornerRadius:ctaRadius].CGPath;
+        self.ctaGradientMaskLayer.frame = ctaMaskBounds;
+        self.ctaGradientMaskLayer.path = ctaPath.CGPath;
     } else {
         self.ctaView.layer.shadowPath = nil;
+        self.ctaGradientMaskLayer.frame = CGRectZero;
+        self.ctaGradientMaskLayer.path = nil;
     }
-    self.ctaGradientLayer.frame = (!CGRectIsEmpty(ctaBounds) &&
-                                   isfinite((double)CGRectGetWidth(ctaBounds)) &&
-                                   isfinite((double)CGRectGetHeight(ctaBounds))) ? ctaBounds : CGRectZero;
-    CGFloat ctaRadius = self.ctaView.layer.cornerRadius;
-    self.ctaGradientLayer.cornerRadius = isfinite((double)ctaRadius) ? MAX(0.0, ctaRadius) : 0.0;
     CGRect haloBounds = self.visualHaloView.bounds;
     self.visualHaloGradientLayer.frame = (!CGRectIsEmpty(haloBounds) &&
                                           isfinite((double)CGRectGetWidth(haloBounds)) &&
@@ -403,8 +413,8 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaGradientLayer.locations = @[@0.0, @1.0];
     self.ctaGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
     self.ctaGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
-    self.ctaView.layer.borderWidth = 0.6;
-    self.ctaView.layer.borderColor = [UIColor.whiteColor colorWithAlphaComponent:0.32].CGColor;
+    self.ctaView.layer.borderWidth = 0.0;
+    self.ctaView.layer.borderColor = UIColor.clearColor.CGColor;
     self.ctaView.layer.shadowColor = primaryAccent.CGColor;
     self.ctaView.layer.shadowOpacity = darkMode ? 0.18f : 0.13f;
     self.ctaView.layer.shadowRadius = 9.0f;
@@ -614,15 +624,20 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIView *cta = [[UIView alloc] init];
     cta.translatesAutoresizingMaskIntoConstraints = NO;
     cta.userInteractionEnabled = NO;
-    cta.layer.cornerRadius = 18.0;
-    cta.layer.borderWidth = 1.0;
+    CGFloat ctaRadius = Language.isRTL ? PPHomeMarketplaceHeroCTACornerRadius : (PPHomeMarketplaceHeroCTACornerRadius - 2.0);
+    cta.layer.cornerRadius = ctaRadius;
+    cta.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         cta.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.ctaView = cta;
 
     self.ctaGradientLayer = [CAGradientLayer layer];
-    self.ctaGradientLayer.drawsAsynchronously = YES;
+    self.ctaGradientLayer.drawsAsynchronously = NO;
+    self.ctaGradientLayer.cornerRadius = ctaRadius;
+    self.ctaGradientMaskLayer = [CAShapeLayer layer];
+    self.ctaGradientMaskLayer.fillColor = UIColor.blackColor.CGColor;
+    self.ctaGradientLayer.mask = self.ctaGradientMaskLayer;
     [cta.layer insertSublayer:self.ctaGradientLayer atIndex:0];
 
     UIView *ctaContainer = [[UIView alloc] init];
@@ -672,7 +687,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
-        [cta.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
+        [cta.widthAnchor constraintGreaterThanOrEqualToConstant:(Language.isRTL ? 136.0 : 156.0)],
 
         [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
