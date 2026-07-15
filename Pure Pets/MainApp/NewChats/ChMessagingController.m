@@ -5294,7 +5294,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self.premiumModalHeaderAvatarView pp_setBorderColor:
         dark ? [[UIColor whiteColor] colorWithAlphaComponent:0.18] : [[UIColor whiteColor] colorWithAlphaComponent:0.76]];
     [self.premiumModalHeaderStatusDotView pp_setBorderColor:
-        dark ? [UIColor colorWithWhite:0.10 alpha:1.0] : UIColor.whiteColor];
+     dark ? [UIColor colorWithWhite:0.10 alpha:0.0] : UIColor.clearColor];
     self.premiumModalHeaderNameLabel.textColor = UIColor.labelColor;
     self.premiumModalHeaderStatusLabel.textColor = PPChatPremiumHeaderSecondaryTextColor();
     self.premiumModalHeaderNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
