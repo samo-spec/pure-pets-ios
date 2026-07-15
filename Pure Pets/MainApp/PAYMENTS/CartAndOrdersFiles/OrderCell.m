@@ -147,7 +147,8 @@
     _blurView.translatesAutoresizingMaskIntoConstraints = NO;
     PPApplyContinuousCorners(_blurView, PPCornerCard);
     _blurView.clipsToBounds = YES;
-    _blurView.layer.borderWidth = 0.5;
+    _blurView.layer.borderWidth = 0.7;
+    _blurView.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.45].CGColor;
     _blurView.alpha = 0.4;
     [_cardView addSubview:_blurView];
 

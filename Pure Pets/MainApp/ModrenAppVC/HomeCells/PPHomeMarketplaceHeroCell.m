@@ -395,7 +395,7 @@ static BOOL PPMarketHeroReduceMotion(void)
                                              isAllContext);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
-    self.heroGlassBackground.accentColorOverride = primaryAccent;
+    self.heroGlassBackground.accentColorOverride = isAllContext ? nil : primaryAccent;
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.contentView.layer.shadowOpacity = darkMode ? 0.18f : 0.075f;
     self.contentView.layer.shadowRadius = darkMode ? 24.0f : 18.0f;

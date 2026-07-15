@@ -24,7 +24,7 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// - Optional logical-leading accent bar or physical top-right corner glow
 /// - Interruption-safe entrance, ambient, and touch-reactive motion
 /// - Reduce Motion, low-power, thermal, and offscreen lifecycle handling
-/// - Continuous corner radius, border, and shadow
+/// - Continuous corner radius and a restrained inner edge treatment
 ///
 /// Does NOT contain any profile-specific content (avatar, name, labels, buttons).
 ///

@@ -14,6 +14,8 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
+@class SDWebImagePrefetchToken;
+
 NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, PPImageTransitionStyle) {
@@ -50,6 +52,10 @@ typedef NS_ENUM(NSInteger, PPImageTransitionStyle) {
 
 /// Prefetch for feeds / galleries
 - (void)prefetchURLs:(NSArray<NSString *> *)urlStrings;
+- (nullable SDWebImagePrefetchToken *)prefetchURLsReturningToken:(NSArray<NSString *> *)urlStrings;
+- (nullable SDWebImagePrefetchToken *)prefetchURLsReturningToken:(NSArray<NSString *> *)urlStrings
+                                                       completion:(nullable dispatch_block_t)completion;
+- (void)cancelPrefetchToken:(SDWebImagePrefetchToken *)token;
 /// Cancel in-flight prefetch batch work (used when fast scrolling changes direction)
 - (void)cancelAllPrefetching;
 

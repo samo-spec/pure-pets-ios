@@ -763,6 +763,7 @@
 		F2E33F6A3006C4FF005E31C6 /* PPOrderTimelineViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */; };
 		F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F593006C200005E31C6 /* PPOrderProgressTimelineRowView.m */; };
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
+		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
 		F2E571E12EB5D9FC00F1DBDD /* PPDefaultLocationView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E571E02EB5D9EB00F1DBDD /* PPDefaultLocationView.m */; };
 		F2E78D612F18134800C5AE68 /* PPPetsTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */; };
 		F2E78D662F18757D00C5AE68 /* PPAdSubmitCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D652F18756E00C5AE68 /* PPAdSubmitCoordinator.m */; };
@@ -2316,6 +2317,7 @@
 		F2E33F623006C421005E31C6 /* PPOrderProgressTimelineView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderProgressTimelineView.m; sourceTree = "<group>"; };
 		F2E33F673006C4D6005E31C6 /* PPOrderSupportRequestListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderSupportRequestListViewController.m; sourceTree = "<group>"; };
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
+		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
 		F2E571DF2EB5D9E300F1DBDD /* PPDefaultLocationView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDefaultLocationView.h; sourceTree = "<group>"; };
 		F2E571E02EB5D9EB00F1DBDD /* PPDefaultLocationView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDefaultLocationView.m; sourceTree = "<group>"; };
 		F2E78D5F2F1812E100C5AE68 /* PPPetsTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetsTitleView.h; sourceTree = "<group>"; };
@@ -4270,6 +4272,7 @@
 				F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */,
 				F21D1B5D2E9C727E00220F72 /* PPUniversalCell.h */,
 				F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */,
+				F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */,
 				F276E5C52DE314BF00926D56 /* PetImageGalleryView.h */,
 				F276E5C62DE314D000926D56 /* PetImageGalleryView.m */,
 			);
@@ -5624,6 +5627,7 @@
 				F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */,
 				F2C223C82F061E58006DB76A /* PPHomeItem.m in Sources */,
 				F22CD3712C66F8710098B6E9 /* UITextField+QuickSecurityCode.m in Sources */,
+				F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */,
 				F2A2F1AA2EB0107800BD1261 /* PPPinterestLayout.m in Sources */,
 				F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */,
 				F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */,

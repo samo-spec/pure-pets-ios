@@ -437,6 +437,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     stack.spacing = 10.0;
     stack.distribution = UIStackViewDistributionFill;
     stack.userInteractionEnabled = YES;
+    stack.semanticContentAttribute = PPFormEngineSemanticAttribute();
 
     self.attachmentImageView = [[UIImageView alloc] init];
     self.attachmentImageView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -456,6 +457,7 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     textStack.axis = UILayoutConstraintAxisVertical;
     textStack.spacing = 3.0;
     textStack.alignment = UIStackViewAlignmentFill;
+    textStack.semanticContentAttribute = PPFormEngineSemanticAttribute();
     [stack addArrangedSubview:textStack];
 
     self.attachmentTitleLabel = [[UILabel alloc] init];
@@ -490,7 +492,8 @@ static NSTextAlignment PPFormEngineTextAlignment(void) {
     [self.attachmentRemoveButton.heightAnchor constraintEqualToConstant:28.0].active = YES;
 
     UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
-    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right" withConfiguration:iconConfig]];
+    NSString *chevronName = Language.isRTL ? @"chevron.left" : @"chevron.right";
+    UIImageView *chevron = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:chevronName withConfiguration:iconConfig]];
     chevron.translatesAutoresizingMaskIntoConstraints = NO;
     chevron.tintColor = [self.style.secondaryTextColor colorWithAlphaComponent:0.72];
     [stack addArrangedSubview:chevron];

@@ -24,7 +24,6 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     return [AppForgroundColr colorWithAlphaComponent:0.62] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
-static NSString * const PPModerHomeTapSheenAnimationKey = @"pp.moderHome.tapSheen";
 static NSString * const PPModerHomeTapHaloAnimationKey = @"pp.moderHome.tapHalo";
 static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowCommit";
 
@@ -40,7 +39,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomGlowLayer;
 @property (nonatomic, strong) CAGradientLayer *tapHaloLayer;
-@property (nonatomic, strong) CAGradientLayer *tapSheenLayer;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *kindImageWidthConstraint;
@@ -101,7 +99,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.surfaceView.userInteractionEnabled = NO;
     self.surfaceView.layer.cornerRadius = PPNewCornerMin + 0;
     self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 1.0;
+    self.surfaceView.layer.borderWidth = 0.70;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -134,14 +132,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         self.tapHaloLayer.type = kCAGradientLayerRadial;
     }
     [self.surfaceView.layer insertSublayer:self.tapHaloLayer above:self.bottomGlowLayer];
-
-    self.tapSheenLayer = [CAGradientLayer layer];
-    self.tapSheenLayer.name = @"PPMainKindsTapSheenLayer";
-    self.tapSheenLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.tapSheenLayer.endPoint = CGPointMake(1.0, 0.5);
-    self.tapSheenLayer.locations = @[@0.0, @0.46, @0.58, @1.0];
-    self.tapSheenLayer.opacity = 0.0;
-    [self.surfaceView.layer insertSublayer:self.tapSheenLayer above:self.tapHaloLayer];
 
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -341,7 +331,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
                                                    [AppForgroundColr colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([AppBackgroundClrLigter colorWithAlphaComponent:0.06],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.63]);
-    UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.045],
+    UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
     UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *subtleText = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
@@ -350,7 +340,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         (__bridge id)surfaceTop.CGColor,
         (__bridge id)surfaceBottom.CGColor
     ];
-    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.62];
+    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42];
     [self.surfaceView pp_setBorderColor:borderColor];
 
     [self pp_applyBottomGlowPalette];
@@ -436,7 +426,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    CGRect surfaceBounds = self.surfaceView.bounds;
+    CGRect surfaceBounds = self.contentView.bounds;
     if (CGRectIsEmpty(surfaceBounds)) {
         [CATransaction commit];
         return;
@@ -453,19 +443,11 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
                                                             glowDiameter));
     float corners = glowDiameter * 0.5;
     self.bottomGlowLayer.cornerRadius = corners;
-    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.36;
+    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.46;
     CGFloat haloX = (CGRectGetWidth(surfaceBounds) - haloDiameter) * 0.5;
     CGFloat haloY = CGRectGetHeight(surfaceBounds) - (haloDiameter * 0.74);
     self.tapHaloLayer.frame = CGRectIntegral(CGRectMake(haloX, haloY, haloDiameter, haloDiameter));
     self.tapHaloLayer.cornerRadius = haloDiameter * 0.5;
-
-    CGFloat sheenWidth = MAX(48.0, CGRectGetWidth(surfaceBounds) * 0.46);
-    CGFloat sheenHeight = MAX(96.0, CGRectGetHeight(surfaceBounds) * 1.52);
-    self.tapSheenLayer.anchorPoint = CGPointMake(0.5, 0.5);
-    self.tapSheenLayer.bounds = CGRectIntegral(CGRectMake(0.0, 0.0, sheenWidth, sheenHeight));
-    self.tapSheenLayer.position = CGPointMake(-sheenWidth * 0.58, CGRectGetMidY(surfaceBounds));
-    CGFloat sheenRotation = Language.isRTL ? 0.6981317008 : -0.6981317008;
-    self.tapSheenLayer.transform = CATransform3DMakeRotation(sheenRotation, 0.0, 0.0, 1.0);
 
     [self pp_applyBottomGlowPalette];
     self.layer.shadowPath =
@@ -480,8 +462,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     if (!accent) {
         self.bottomGlowLayer.colors = nil;
         self.tapHaloLayer.colors = nil;
-        self.tapSheenLayer.colors = nil;
-        return;
+         return;
     }
 
     BOOL isAll = self.isAllOption;
@@ -497,21 +478,13 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 {
     if (!accent) {
         self.tapHaloLayer.colors = nil;
-        self.tapSheenLayer.colors = nil;
         return;
     }
 
-    UIColor *white = UIColor.whiteColor;
     self.tapHaloLayer.colors = @[
         (__bridge id)[accent colorWithAlphaComponent:0.30].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.10].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
-    ];
-    self.tapSheenLayer.colors = @[
-        (__bridge id)[white colorWithAlphaComponent:0.0].CGColor,
-        (__bridge id)[white colorWithAlphaComponent:0.34].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.18].CGColor,
-        (__bridge id)[white colorWithAlphaComponent:0.0].CGColor
     ];
 }
 
@@ -534,7 +507,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
 - (CGFloat)pp_pressedGlowOpacityForSelected:(BOOL)selected
 {
-    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.10 : 0.16));
+    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.20 : 0.16));
 }
 
 - (CGAffineTransform)pp_restingTapTransform
@@ -544,7 +517,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
 - (CGAffineTransform)pp_pressedTapTransform
 {
-    CGFloat scale = self.isKindSelected ? 0.992 : 0.974;
+    CGFloat scale = self.isKindSelected ? 0.978 : 0.958;
     return CGAffineTransformMakeScale(scale, scale);
 }
 
@@ -603,8 +576,8 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     CGFloat velocity = pressed ? 0.0 : 0.42;
     void (^changes)(void) = ^{
         self.tapButton.transform = pressed ? [self pp_pressedTapTransform] : [self pp_restingTapTransform];
-        self.imagePlateView.transform = pressed ? CGAffineTransformMakeScale(0.925, 0.925) : CGAffineTransformIdentity;
-        self.kindImageView.transform = pressed ? CGAffineTransformMakeScale(0.965, 0.965) : CGAffineTransformIdentity;
+        self.imagePlateView.transform = pressed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
+        self.kindImageView.transform = pressed ? CGAffineTransformMakeScale(0.95, 0.95) : CGAffineTransformIdentity;
         self.titleLabel.transform = pressed ? CGAffineTransformMakeTranslation(0.0, 0.45) : CGAffineTransformIdentity;
         self.selectionIndicatorView.transform = pressed ? CGAffineTransformMakeScale(0.82, 1.0) : CGAffineTransformIdentity;
         self.cornerPinView.alpha = pressed ? MIN(1.0, (self.isKindSelected ? 1.0 : 0.36) + 0.18) : (self.isKindSelected ? 1.0 : 0.36);
@@ -632,7 +605,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         return;
     }
 
-    [self pp_performTapSheenMotion];
     [self pp_performHaloBurstMotion];
 
     CGFloat restingGlow = [self pp_restingGlowOpacityForSelected:self.isKindSelected];
@@ -649,11 +621,11 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
                                  options:UIViewKeyframeAnimationOptionAllowUserInteraction | UIViewKeyframeAnimationOptionBeginFromCurrentState | UIViewKeyframeAnimationOptionCalculationModeCubic
                               animations:^{
         [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
-            CGFloat liftScale = self.isKindSelected ? 1.026 : 1.018;
+            CGFloat liftScale = self.isKindSelected ? 1.038 : 1.028;
             self.tapButton.transform = CGAffineTransformMakeScale(liftScale, liftScale);
-            self.imagePlateView.transform = CGAffineTransformMakeScale(1.055, 1.055);
-            self.kindImageView.transform = CGAffineTransformMakeScale(1.028, 1.028);
-            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.18, 1.0);
+            self.imagePlateView.transform = CGAffineTransformMakeScale(1.08, 1.08);
+            self.kindImageView.transform = CGAffineTransformMakeScale(1.04, 1.04);
+            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.28, 1.0);
         }];
         [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{
             self.tapButton.transform = [self pp_restingTapTransform];
@@ -664,36 +636,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
             self.tapHaloLayer.opacity = 0.0;
         }];
     } completion:nil];
-}
-
-- (void)pp_performTapSheenMotion
-{
-    CGRect bounds = self.surfaceView.bounds;
-    if (CGRectIsEmpty(bounds)) {
-        return;
-    }
-
-    [self.tapSheenLayer removeAnimationForKey:PPModerHomeTapSheenAnimationKey];
-    self.tapSheenLayer.opacity = 0.0;
-
-    CGFloat travelPadding = MAX(CGRectGetWidth(self.tapSheenLayer.bounds) * 0.9, 54.0);
-    CGFloat fromX = Language.isRTL ? CGRectGetWidth(bounds) + travelPadding : -travelPadding;
-    CGFloat toX = Language.isRTL ? -travelPadding : CGRectGetWidth(bounds) + travelPadding;
-
-    CABasicAnimation *positionAnimation = [CABasicAnimation animationWithKeyPath:@"position.x"];
-    positionAnimation.fromValue = @(fromX);
-    positionAnimation.toValue = @(toX);
-
-    CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
-    opacityAnimation.values = @[@0.0, @0.78, @0.0];
-    opacityAnimation.keyTimes = @[@0.0, @0.42, @1.0];
-
-    CAAnimationGroup *group = [CAAnimationGroup animation];
-    group.animations = @[positionAnimation, opacityAnimation];
-    group.duration = 0.48;
-    group.timingFunction = [CAMediaTimingFunction functionWithControlPoints:0.18 :0.74 :0.24 :1.0];
-    group.removedOnCompletion = YES;
-    [self.tapSheenLayer addAnimation:group forKey:PPModerHomeTapSheenAnimationKey];
 }
 
 - (void)pp_performHaloBurstMotion
@@ -731,7 +673,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
 - (void)pp_resetTransientMotion
 {
-    [self.tapSheenLayer removeAnimationForKey:PPModerHomeTapSheenAnimationKey];
     [self.tapHaloLayer removeAnimationForKey:PPModerHomeTapHaloAnimationKey];
     [self.bottomGlowLayer removeAnimationForKey:PPModerHomeGlowCommitAnimationKey];
     self.isPressing = NO;
@@ -742,7 +683,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.titleLabel.transform = CGAffineTransformIdentity;
     self.selectionIndicatorView.transform = CGAffineTransformIdentity;
     self.tapHaloLayer.opacity = 0.0;
-    self.tapSheenLayer.opacity = 0.0;
 }
 
 - (void)pp_handleTouchDown
@@ -806,7 +746,6 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.bottomGlowLayer.opacity = 0.0;
     self.bottomGlowLayer.frame = CGRectZero;
     self.tapHaloLayer.frame = CGRectZero;
-    self.tapSheenLayer.frame = CGRectZero;
     [self pp_applyBaseTheme];
 }
 

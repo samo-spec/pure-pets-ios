@@ -5048,8 +5048,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
     button.layer.cornerRadius = 21.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
-    button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
     UIImageSymbolConfiguration *symbolConfig =
         [UIImageSymbolConfiguration configurationWithPointSize:15.5 weight:UIImageSymbolWeightSemibold];
     UIImage *image = [PPSYSImage(systemName) imageWithConfiguration:symbolConfig];
@@ -5161,16 +5159,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     avatarView.clipsToBounds = YES;
     avatarView.layer.cornerRadius = 25.0;
     avatarView.layer.cornerCurve = kCACornerCurveContinuous;
-    avatarView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    [avatarView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.60]];
     [profileControl addSubview:avatarView];
 
     UIView *statusDot = [[UIView alloc] init];
     statusDot.translatesAutoresizingMaskIntoConstraints = NO;
     statusDot.backgroundColor = UIColor.systemGreenColor;
     statusDot.layer.cornerRadius = 6.0;
-    statusDot.layer.borderWidth = 2.0;
-    [statusDot pp_setBorderColor:UIColor.systemBackgroundColor];
     statusDot.hidden = YES;
     [profileControl addSubview:statusDot];
 

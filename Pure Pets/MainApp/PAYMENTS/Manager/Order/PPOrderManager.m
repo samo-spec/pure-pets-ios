@@ -498,6 +498,18 @@ static NSDictionary *PPOrderSupportRedactedCallablePayload(NSDictionary *payload
     return redacted.copy;
 }
 
+static NSDictionary *PPOrderSupportPayloadByAddingAuthToken(NSDictionary *payload, NSString *idToken) {
+    NSMutableDictionary *result = [payload isKindOfClass:NSDictionary.class]
+        ? [payload mutableCopy]
+        : [NSMutableDictionary dictionary];
+    NSString *safeToken = PPOrderSupportSafeString(idToken);
+    if (safeToken.length > 0) {
+        result[PPOrderSupportCallableAuthTokenKey] = safeToken;
+        result[PPOrderSupportCallablePlainAuthTokenKey] = safeToken;
+    }
+    return result.copy;
+}
+
 static NSDate *PPOrderSupportDateFromValue(id value) {
     if ([value isKindOfClass:FIRTimestamp.class]) {
         return ((FIRTimestamp *)value).dateValue;
@@ -1813,12 +1825,34 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }];
     };
 
-    NSLog(@"[PP_CANCEL_FLOW] Preparing credentials via ensureFreshAuthSessionForcingRefresh:%d.", forceCredentialRefresh);
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceCredentialRefresh completion:^(NSError * _Nullable authError) {
-        NSLog(@"[PP_CANCEL_FLOW] ensureFreshAuthSessionForcingRefresh completed. authError=%@", authError);
-        if (authError) {
+    void (^failWithAuthError)(NSError * _Nullable, NSError * _Nullable) = ^(NSError * _Nullable primaryError, NSError * _Nullable secondaryError) {
+        if (!completion) return;
+        NSError *error = primaryError ?: secondaryError ?: [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                                               code:401
+                                                                           userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_session_refresh_failed")}];
+        completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:error
+                                                             fallbackKey:@"pp_order_support_submit_failed"]);
+    };
+
+    void (^fetchTokenAndCall)(BOOL, NSError * _Nullable) = ^(BOOL shouldForceTokenRefresh, NSError * _Nullable preflightError) {
+        FIRUser *user = [FIRAuth auth].currentUser;
+        if (!user.uid.length) {
+            NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                 code:401
+                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_sign_in_required")}];
+            failWithAuthError(error, preflightError);
+            return;
+        }
+
+        void (^callWithToken)(NSString *) = ^(NSString *idToken) {
+            NSDictionary *authenticatedPayload = PPOrderSupportPayloadByAddingAuthToken(payload, idToken);
+            NSLog(@"[PP_CANCEL_FLOW] Calling createOrderSupportRequest with embedded verified auth token fallback. forceCredentialRefresh=%d, uidPresent=%d, hadPreflightError=%d", shouldForceTokenRefresh, user.uid.length > 0, preflightError != nil);
+            callCreateRequest(authenticatedPayload);
+        };
+
+        void (^retryOrFail)(NSError * _Nullable, NSError * _Nullable) = ^(NSError * _Nullable tokenError, NSError * _Nullable cachedError) {
             if (!didRetryAuth) {
-                NSLog(@"[PP_CANCEL_FLOW] Auth session preflight failed. Retrying with forceCredentialRefresh=YES.");
+                NSLog(@"[PP_CANCEL_FLOW] Support callable auth token fetch failed before request. Retrying with forceCredentialRefresh=YES. preflightError=%@, tokenError=%@, cachedError=%@", preflightError, tokenError, cachedError);
                 [self pp_callCreateOrderSupportRequestWithPayload:payload
                                                             draft:draft
                                                             order:order
@@ -1828,48 +1862,50 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                                                        completion:completion];
                 return;
             }
-            if (completion) {
-                completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:authError
-                                                                     fallbackKey:@"pp_order_support_submit_failed"]);
-            }
-            return;
-        }
+            failWithAuthError(preflightError ?: tokenError, cachedError);
+        };
 
-        if (!didRetryAuth) {
-            callCreateRequest(payload ?: @{});
-            return;
-        }
-
-        FIRUser *user = [FIRAuth auth].currentUser;
-        if (!user.uid.length) {
-            if (completion) {
-                NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
-                                                     code:401
-                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_sign_in_required")}];
-                completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:error
-                                                                     fallbackKey:@"pp_order_support_submit_failed"]);
-            }
-            return;
-        }
-
-        [user getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
-            if (tokenError || idToken.length == 0) {
-                if (completion) {
-                    NSError *error = tokenError ?: [NSError errorWithDomain:PPOrderSupportErrorDomain
-                                                                       code:401
-                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_auth_session_refresh_failed")}];
-                    completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:error
-                                                                         fallbackKey:@"pp_order_support_submit_failed"]);
-                }
+        [user getIDTokenForcingRefresh:shouldForceTokenRefresh completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
+            if (!tokenError && idToken.length > 0) {
+                callWithToken(idToken);
                 return;
             }
 
-            NSMutableDictionary *retryPayload = [payload mutableCopy] ?: [NSMutableDictionary dictionary];
-            retryPayload[PPOrderSupportCallableAuthTokenKey] = idToken;
-            retryPayload[PPOrderSupportCallablePlainAuthTokenKey] = idToken;
-            NSLog(@"[PP_CANCEL_FLOW] Retrying createOrderSupportRequest with embedded verified auth token fallback. uidPresent=%d", user.uid.length > 0);
-            callCreateRequest(retryPayload.copy);
+            if (tokenError) {
+                NSLog(@"[PP_CANCEL_FLOW] Support callable ID token fetch failed. forceCredentialRefresh=%d, error=%@", shouldForceTokenRefresh, tokenError);
+            } else {
+                NSLog(@"[PP_CANCEL_FLOW] Support callable ID token fetch failed. forceCredentialRefresh=%d, token was empty", shouldForceTokenRefresh);
+            }
+
+            if (shouldForceTokenRefresh) {
+                FIRUser *currentUser = [FIRAuth auth].currentUser;
+                if (currentUser.uid.length > 0 && [currentUser.uid isEqualToString:user.uid]) {
+                    [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable cachedToken, NSError * _Nullable cachedError) {
+                        if (!cachedError && cachedToken.length > 0) {
+                            NSLog(@"[PP_CANCEL_FLOW] Using cached ID token after forced refresh failure for createOrderSupportRequest.");
+                            callWithToken(cachedToken);
+                            return;
+                        }
+                        retryOrFail(tokenError, cachedError);
+                    }];
+                    return;
+                }
+            }
+
+            retryOrFail(tokenError, nil);
         }];
+    };
+
+    NSLog(@"[PP_CANCEL_FLOW] Preparing credentials via ensureFreshAuthSessionForcingRefresh:%d.", forceCredentialRefresh);
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceCredentialRefresh completion:^(NSError * _Nullable authError) {
+        NSLog(@"[PP_CANCEL_FLOW] ensureFreshAuthSessionForcingRefresh completed. authError=%@", authError);
+        if (authError) {
+            NSLog(@"[PP_CANCEL_FLOW] Auth session preflight failed. Attempting verified cached token fallback before failing.");
+            fetchTokenAndCall(NO, authError);
+            return;
+        }
+
+        fetchTokenAndCall(forceCredentialRefresh, nil);
     }];
 }
 

@@ -164,15 +164,35 @@
 #pragma mark - Prefetching
 
 - (void)prefetchURLs:(NSArray<NSString *> *)urlStrings {
+    [self prefetchURLsReturningToken:urlStrings];
+}
+
+- (SDWebImagePrefetchToken *)prefetchURLsReturningToken:(NSArray<NSString *> *)urlStrings {
+    return [self prefetchURLsReturningToken:urlStrings completion:nil];
+}
+
+- (SDWebImagePrefetchToken *)prefetchURLsReturningToken:(NSArray<NSString *> *)urlStrings
+                                               completion:(dispatch_block_t)completion {
     NSMutableArray<NSURL *> *urls = [NSMutableArray array];
     for (NSString *string in urlStrings) {
         NSURL *url = [NSURL URLWithString:string];
         if (url) [urls addObject:url];
     }
 
-    if (urls.count == 0) return;
+    if (urls.count == 0) return nil;
 
-    [[SDWebImagePrefetcher sharedImagePrefetcher] prefetchURLs:urls];
+    return [[SDWebImagePrefetcher sharedImagePrefetcher]
+            prefetchURLs:urls
+                progress:nil
+               completed:^(__unused NSUInteger finishedCount, __unused NSUInteger skippedCount) {
+        if (completion) {
+            completion();
+        }
+    }];
+}
+
+- (void)cancelPrefetchToken:(SDWebImagePrefetchToken *)token {
+    [token cancel];
 }
 
 - (void)cancelAllPrefetching {

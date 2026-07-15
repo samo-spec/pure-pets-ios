@@ -30,6 +30,8 @@
 #import "PPModernAvatarRenderer.h"
 #import <FirebaseFirestore/FirebaseFirestore.h>
 #import <QuartzCore/QuartzCore.h>
+#import <SDWebImage/SDWebImagePrefetcher.h>
+#import <os/signpost.h>
 #import <math.h>
 
 #if DEBUG
@@ -60,6 +62,16 @@ static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 29.0;
 
 static NSString * const PPDataViewProviderIdentityTitleKey = @"title";
 static NSString * const PPDataViewProviderIdentityPhotoURLKey = @"photoURL";
+
+static os_log_t PPDataViewVCPerformanceLog(void)
+{
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "DataView");
+    });
+    return log;
+}
 
 static NSString *PPDataViewTrimmedString(id value)
 {
@@ -1082,7 +1094,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, assign) PPDataViewMotionReason pendingCellEntranceMotionReason;
 @property (nonatomic, assign) NSInteger pendingCellEntranceDirection;
 @property (nonatomic, assign) BOOL didRunSectionsSegmentedEntrance;
+@property (nonatomic, strong) NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *ownedPrefetchURLsByToken;
+@property (nonatomic, assign) BOOL didEmitFirstVisibleContentSignpost;
+@property (nonatomic, assign) BOOL pendingFilterScrollToTop;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
+- (NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *)pp_ownedPrefetchTokenMap;
+- (void)pp_cancelOwnedPrefetchesForIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
+- (void)pp_cancelAllOwnedPrefetches;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)pp_installPinterestHeightGuardIfNeeded;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
@@ -1366,26 +1384,31 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     MainKindsModel *mainKind = self.input.mainKind;
     if (!mainKind || mainKind.SubKindsArray.count == 0) return;
 
-    NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+    NSMutableArray<NSString *> *urlStrings = [NSMutableArray array];
 
     for (SubKindModel *subKind in mainKind.SubKindsArray) {
         if (subKind.subKindIconUrl.length) {
             NSURL *url = [NSURL URLWithString:subKind.subKindIconUrl];
-            if (url) [urls addObject:url];
+            if (url) [urlStrings addObject:url.absoluteString];
         }
     }
 
-    if (urls.count == 0) return;
-  
+    if (urlStrings.count == 0) return;
 
-    [[SDWebImagePrefetcher sharedImagePrefetcher]
-     prefetchURLs:urls
-     progress:nil
-     completed:^(NSUInteger finishedCount, NSUInteger skippedCount) {
-        PPDataViewLog(@"[SubKind Prefetch] done=%lu skipped=%lu",
-                      (unsigned long)finishedCount,
-                      (unsigned long)skippedCount);
+    __weak typeof(self) weakSelf = self;
+    __block SDWebImagePrefetchToken *token = nil;
+    token = [[PPImageLoaderManager shared]
+             prefetchURLsReturningToken:urlStrings
+                              completion:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (token) {
+                [weakSelf.ownedPrefetchURLsByToken removeObjectForKey:token];
+            }
+        });
     }];
+    if (token) {
+        [[self pp_ownedPrefetchTokenMap] setObject:[NSSet setWithArray:urlStrings] forKey:token];
+    }
 }
 
 
@@ -1462,6 +1485,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     dispatch_queue_create("com.purepets.blurhash.decode", DISPATCH_QUEUE_CONCURRENT);
     self.isPerformingCrossFade = NO;
     self.presentedItems = @[];
+    self.ownedPrefetchURLsByToken = [NSMapTable strongToStrongObjectsMapTable];
+    self.didEmitFirstVisibleContentSignpost = NO;
     self.pendingMotionReason = PPDataViewMotionReasonNone;
     self.pendingMotionDirection = 0;
     self.isAwaitingTransitionData = NO;
@@ -1487,12 +1512,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     [self bindViewModel];
     
-    __weak typeof(self) weakSelf = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (!weakSelf) return;
-        [weakSelf handleInitialRoute];
-        [weakSelf prefetchSubKindIcons];
-    });
+    // viewDidLoad is already on the main thread. Start the route transaction
+    // now so request creation is not delayed by another main-queue turn.
+    [self handleInitialRoute];
+    [self prefetchSubKindIcons];
     
     self.title=nil;
     
@@ -1522,7 +1545,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 - (void)dealloc
 {
-    [[PPImageLoaderManager shared] cancelAllPrefetching];
+    [self pp_cancelAllOwnedPrefetches];
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:PPAdDidFinishUploadNotification
                                                   object:nil];
@@ -2705,6 +2728,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 #pragma mark - Routing
 - (void)handleInitialRoute
 {
+    os_signpost_event_emit(PPDataViewVCPerformanceLog(), OS_SIGNPOST_ID_EXCLUSIVE,
+                           "DataViewRouteStart", "sourceTarget=%ld", (long)self.input.sourceTarget);
     PPDataViewLog(@"\n================ handleInitialRoute =================");
     PPDataViewLog(@"[VC] sourceTarget = %ld", (long)self.input.sourceTarget);
 
@@ -3092,7 +3117,6 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if (!cv) return;
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Force layout pass (CRITICAL for Pinterest)
         [cv layoutIfNeeded];
 
         if ([self pp_isFullDetailsLayoutMode]) {
@@ -3146,7 +3170,15 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             weakSelf.viewModel.items.count == 0;
 
         if (isTransitionResetPhase) {
-            [weakSelf showSkeleton];
+            BOOL alreadyShowingSkeleton = weakSelf.isShowingSkeleton;
+            if (!alreadyShowingSkeleton) {
+                [weakSelf showSkeleton];
+            }
+            if (alreadyShowingSkeleton) {
+                // Startup already installed the single skeleton snapshot. The
+                // VM loading signal must not rebuild it or force another layout.
+                return;
+            }
             [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
             [weakSelf pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
             [weakSelf syncFilterChipsForCurrentSection];
@@ -3157,25 +3189,23 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         }
 
         BOOL wasShowingSkeleton = weakSelf.isShowingSkeleton;
+        BOOL isInitialContentLoad = wasShowingSkeleton && !weakSelf.didApplyInitialSnapshot;
         [weakSelf hideSkeleton];
 
-        if (wasShowingSkeleton) {
+        BOOL shouldScrollToTop = weakSelf.pendingFilterScrollToTop;
+        weakSelf.pendingFilterScrollToTop = NO;
+        if (isInitialContentLoad) {
             weakSelf.pendingMotionReason = PPDataViewMotionReasonNone;
-            weakSelf.didApplyInitialSnapshot = YES;
         }
 
-        if (wasShowingSkeleton && !UIAccessibilityIsReduceMotionEnabled()) {
-            [UIView transitionWithView:weakSelf.collectionView
-                              duration:0.25
-                               options:UIViewAnimationOptionTransitionCrossDissolve |
-                                       UIViewAnimationOptionBeginFromCurrentState |
-                                       UIViewAnimationOptionAllowUserInteraction
-                            animations:^{
-                [weakSelf refreshPresentedItemsAnimated:NO scrollToTop:NO];
-            } completion:nil];
+        if (isInitialContentLoad) {
+            // The skeleton is replaced as soon as the VM transaction commits.
+            // The old fixed cross-dissolve made first content wait 250 ms.
+            [weakSelf refreshPresentedItemsAnimated:NO scrollToTop:shouldScrollToTop];
+            weakSelf.didApplyInitialSnapshot = YES;
         } else {
-            [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot
-                                         scrollToTop:NO];
+            [weakSelf refreshPresentedItemsAnimated:wasShowingSkeleton || weakSelf.didApplyInitialSnapshot
+                                         scrollToTop:shouldScrollToTop];
             weakSelf.didApplyInitialSnapshot = YES;
         }
         [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
@@ -3806,10 +3836,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         PPDataViewVC *strongSelf = weakSelf;
         if (!strongSelf) return;
         strongSelf.filterStates[@(strongSelf.viewModel.currentSection)] = applied;
+        strongSelf.pendingFilterScrollToTop = YES;
         [strongSelf.viewModel applyFilterState:applied];
         [strongSelf syncFilterChipsForCurrentSection];
         [strongSelf refreshFilterChipTitles];
-        [strongSelf refreshPresentedItemsAnimated:YES scrollToTop:YES];
 
     };
     [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleFull ];
@@ -3975,7 +4005,28 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if (urls.count == 0) {
         return;
     }
-    [[PPImageLoaderManager shared] prefetchURLs:urls];
+    __weak typeof(self) weakSelf = self;
+    __block SDWebImagePrefetchToken *token = nil;
+    token = [[PPImageLoaderManager shared]
+             prefetchURLsReturningToken:urls
+                              completion:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (token) {
+                [weakSelf.ownedPrefetchURLsByToken removeObjectForKey:token];
+            }
+        });
+    }];
+    if (token) {
+        [[self pp_ownedPrefetchTokenMap] setObject:[NSSet setWithArray:urls] forKey:token];
+    }
+}
+
+- (NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *)pp_ownedPrefetchTokenMap
+{
+    if (!self.ownedPrefetchURLsByToken) {
+        self.ownedPrefetchURLsByToken = [NSMapTable strongToStrongObjectsMapTable];
+    }
+    return self.ownedPrefetchURLsByToken;
 }
 
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit
@@ -4003,10 +4054,58 @@ prefetchItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     (void)collectionView;
-    if (indexPaths.count == 0) {
+    [self pp_cancelOwnedPrefetchesForIndexPaths:indexPaths];
+}
+
+- (void)pp_cancelOwnedPrefetchesForIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
+{
+    if (indexPaths.count == 0 || self.ownedPrefetchURLsByToken.count == 0) {
         return;
     }
-    [[PPImageLoaderManager shared] cancelAllPrefetching];
+
+    NSSet<NSString *> *cancelledURLs =
+    [NSSet setWithArray:[self pp_imageURLsFromIndexPaths:indexPaths]];
+    if (cancelledURLs.count == 0) {
+        return;
+    }
+
+    NSMutableArray<SDWebImagePrefetchToken *> *tokensToCancel = [NSMutableArray array];
+    NSEnumerator<SDWebImagePrefetchToken *> *keyEnumerator =
+    self.ownedPrefetchURLsByToken.keyEnumerator;
+    SDWebImagePrefetchToken *token = nil;
+    while ((token = keyEnumerator.nextObject)) {
+        NSSet<NSString *> *tokenURLs = [self.ownedPrefetchURLsByToken objectForKey:token];
+        // A batch can be shared by several index paths. Cancel it only when
+        // every URL owned by this controller is leaving the prefetch window.
+        if ([tokenURLs isSubsetOfSet:cancelledURLs]) {
+            [tokensToCancel addObject:token];
+        }
+    }
+
+    for (SDWebImagePrefetchToken *token in tokensToCancel) {
+        [[PPImageLoaderManager shared] cancelPrefetchToken:token];
+        [self.ownedPrefetchURLsByToken removeObjectForKey:token];
+    }
+}
+
+- (void)pp_cancelAllOwnedPrefetches
+{
+    if (self.ownedPrefetchURLsByToken.count == 0) {
+        return;
+    }
+
+    NSMutableArray<SDWebImagePrefetchToken *> *tokens = [NSMutableArray array];
+    NSEnumerator<SDWebImagePrefetchToken *> *keyEnumerator =
+    self.ownedPrefetchURLsByToken.keyEnumerator;
+    SDWebImagePrefetchToken *token = nil;
+    while ((token = keyEnumerator.nextObject)) {
+        [tokens addObject:token];
+    }
+
+    [self.ownedPrefetchURLsByToken removeAllObjects];
+    for (SDWebImagePrefetchToken *token in tokens) {
+        [[PPImageLoaderManager shared] cancelPrefetchToken:token];
+    }
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -4014,6 +4113,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
+    if (!self.didEmitFirstVisibleContentSignpost &&
+        !self.isShowingSkeleton &&
+        self.presentedItems.count > 0) {
+        self.didEmitFirstVisibleContentSignpost = YES;
+        os_signpost_event_emit(PPDataViewVCPerformanceLog(), OS_SIGNPOST_ID_EXCLUSIVE,
+                               "DataViewFirstVisibleContent", "item=%ld", (long)indexPath.item);
+    }
     [self pp_animateCellIfNeeded:cell atIndexPath:indexPath];
 }
 
@@ -4040,12 +4146,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         shouldAnimate = NO;
     }
 
-    if (!shouldAnimate && [self.dataSource respondsToSelector:@selector(applySnapshotUsingReloadData:)]) {
-        [self.dataSource applySnapshotUsingReloadData:snapshot];
-    } else {
-        [self.dataSource applySnapshot:snapshot
-                    animatingDifferences:shouldAnimate];
-    }
+    os_signpost_id_t snapshotSignpostID = os_signpost_id_generate(PPDataViewVCPerformanceLog());
+    os_signpost_interval_begin(PPDataViewVCPerformanceLog(), snapshotSignpostID, "DataViewSnapshotApply",
+                               "animated=%d items=%lu", shouldAnimate, (unsigned long)self.presentedItems.count);
+    [self.dataSource applySnapshot:snapshot animatingDifferences:shouldAnimate];
+    os_signpost_interval_end(PPDataViewVCPerformanceLog(), snapshotSignpostID, "DataViewSnapshotApply",
+                             "items=%lu", (unsigned long)self.presentedItems.count);
 }
 
 - (double)resolvedPriceForViewModel:(PPUniversalCellViewModel *)vm
@@ -5545,7 +5651,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (UIImage *)pp_providerPlaceholderImage
 {
     NSString *title = kLang(@"dataview_filter_by_provider") ?: kLang(@"service_view_provider_title") ?: @"Provider";
-    UIImage *avatar = [PPModernAvatarRenderer avatarImageForName:title size:34.0];
+    UIImage *avatar = [PPModernAvatarRenderer avatarImageForName:@"" size:34.0];
     if (avatar) {
         return avatar;
     }
@@ -5751,10 +5857,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     group.selectedValue = value;
 
     [PPFunc triggerLightHaptic];
+    self.pendingFilterScrollToTop = YES;
     [self.viewModel applyFilterState:state];
-    [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
-    [self pp_prefetchTopImagesWithLimit:12];
-    [self updateEmptyState];
 }
 
 - (PPFilterState *)pp_currentFilterState

@@ -147,28 +147,29 @@ struct PPHeroApexMotionStateMachine {
 }
 
 enum PPHeroApexMotionTokens {
-    static let entranceDuration: TimeInterval = 0.52
-    static let overlayEntranceDuration: TimeInterval = 0.38
-    static let overlayEntranceDelay: TimeInterval = 0.04
+    static let entranceDuration: TimeInterval = 0.46
+    static let overlayEntranceDuration: TimeInterval = 0.30
+    static let overlayEntranceDelay: TimeInterval = 0.05
     static let accentTransitionDuration: CFTimeInterval = 0.22
-    static let interactionSettleDuration: TimeInterval = 0.34
-    static let fieldDriftCycleDuration: CFTimeInterval = 8.2
+    static let paletteTransitionDuration: CFTimeInterval = 0.42
+    static let interactionSettleDuration: TimeInterval = 0.30
+    static let fieldDriftCycleDuration: CFTimeInterval = 31
     static let signatureSweepCycleDuration: CFTimeInterval = 4.8
 
-    static let entranceScale: CGFloat = 1.035
-    static let entranceTranslationY: CGFloat = 7
-    static let horizontalParallax: CGFloat = 4.2
-    static let verticalParallax: CGFloat = 3.2
-    static let maximumTouchTranslationX: CGFloat = 5.6
-    static let maximumTouchTranslationY: CGFloat = 4.4
-    static let maximumTouchRotation: CGFloat = 0.024
-    static let reactiveLightTravelRatio: CGFloat = 0.68
-    static let touchDepthScale: CGFloat = 0.992
-    static let touchLightScale: CGFloat = 1.045
-    static let touchLensBaseScale: CGFloat = 0.96
-    static let touchLensVelocityBloom: CGFloat = 0.10
-    static let touchLensActiveAlpha: CGFloat = 0.92
-    static let touchVelocityForMaximumBloom: CGFloat = 1_450
+    static let entranceScale: CGFloat = 1.022
+    static let entranceTranslationY: CGFloat = 4
+    static let horizontalParallax: CGFloat = 2.6
+    static let verticalParallax: CGFloat = 1.9
+    static let maximumTouchTranslationX: CGFloat = 4.0
+    static let maximumTouchTranslationY: CGFloat = 3.0
+    static let maximumTouchRotation: CGFloat = 0.018
+    static let reactiveLightTravelRatio: CGFloat = 0.20
+    static let touchDepthScale: CGFloat = 0.996
+    static let touchLightScale: CGFloat = 1.018
+    static let touchLensBaseScale: CGFloat = 0.985
+    static let touchLensVelocityBloom: CGFloat = 0.035
+    static let touchLensActiveAlpha: CGFloat = 0.48
+    static let touchVelocityForMaximumBloom: CGFloat = 1_600
 
     static var entranceTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(
@@ -192,7 +193,12 @@ enum PPHeroApexMotionTokens {
         CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
     }
 
+    static var paletteTimingFunction: CAMediaTimingFunction {
+        CAMediaTimingFunction(controlPoints: 0.32, 0, 0.18, 1)
+    }
+
     static var signatureSweepTimingFunction: CAMediaTimingFunction {
         CAMediaTimingFunction(controlPoints: 0.20, 0.78, 0.28, 1)
     }
+
 }

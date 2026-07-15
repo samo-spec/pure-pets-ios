@@ -7,6 +7,27 @@
 #import "PetAccessoryManager.h"
 #import "VetManager.h"
 #import "ServicesManager.h"
+#import <os/signpost.h>
+
+static os_log_t PPDataViewVMPerformanceLog(void)
+{
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "DataView");
+    });
+    return log;
+}
+
+static dispatch_queue_t PPDataViewVMBuildQueue(void)
+{
+    static dispatch_queue_t queue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        queue = dispatch_queue_create("com.purepets.dataview.vm-build", DISPATCH_QUEUE_CONCURRENT);
+    });
+    return queue;
+}
 
 @interface PPDataViewVM ()
 
@@ -27,6 +48,17 @@
 @property (nonatomic, copy) NSArray *latestRawResults;
 @property (nonatomic, assign) NSUInteger requestVersion;
 @property (nonatomic, assign) BOOL didNotifyInitialSectionsDataLoaded;
+
+- (void)pp_buildViewModelsFromResults:(NSArray *)results
+                              section:(PPDataSection)section
+                         filterState:(PPFilterState *)filterState
+                        requestToken:(NSUInteger)requestToken
+                          completion:(void (^)(NSArray<PPUniversalCellViewModel *> *viewModels))completion;
+- (NSArray *)pp_applyFiltersToResults:(NSArray *)results
+                          filterState:(PPFilterState *)state
+                             section:(PPDataSection)section;
+- (NSArray<PPUniversalCellViewModel *> *)buildViewModelsFromModels:(NSArray *)models
+                                                            section:(PPDataSection)section;
 
 @end
 
@@ -56,8 +88,9 @@
 }
 
 - (NSArray *)pp_resultsRespectingUsedAccessoryFlag:(NSArray *)results
+                                           section:(PPDataSection)section
 {
-    if (PPAllwedUsedAccessoriesEnabled() || self.currentSection != PPDataSectionAccessories) {
+    if (PPAllwedUsedAccessoriesEnabled() || section != PPDataSectionAccessories) {
         return results ?: @[];
     }
 
@@ -151,11 +184,10 @@
 
     _currentSection = section;
     [self pp_useStoredFilterStateForCurrentSection];
-    [self pp_beginRequest];
 
     // Reset data
     [self.mutableItems removeAllObjects];
-    self.latestRawResults = @[];
+    self.latestRawResults = nil;
     self.currentPage = 0;
     self.hasMore = YES;
     self.isLoading = YES;
@@ -271,7 +303,6 @@
     }
 
     self.mainKind = mainKind;
-    [self pp_beginRequest];
 
     // Reset pagination
     self.currentPage = 0;
@@ -282,6 +313,7 @@
     self.filterState = nil;
     [self.filterStatesBySection removeAllObjects];
     self.currentSubKindID = 0;
+    self.latestRawResults = nil;
 
     // Clear current items
     [self.mutableItems removeAllObjects];
@@ -314,12 +346,12 @@
    // }
 
     self.currentSubKindID = subKind.ID;
-    [self pp_beginRequest];
 
     // Reset pagination
     self.currentPage = 0;
     self.hasMore = YES;
     self.isLoading = YES;
+    self.latestRawResults = nil;
 
     // Clear items
     [self.mutableItems removeAllObjects];
@@ -358,18 +390,47 @@
 - (void)applyFilterState:(PPFilterState *)state
 {
     [self setFilterState:state forSection:self.currentSection];
-    [self pp_beginRequest];
-    [self refreshCurrentSection];
+
+    NSArray *sourceResults = [self.latestRawResults copy];
+    if (!sourceResults) {
+        // A filter selected while the initial fetch is still running is picked
+        // up by that transaction when it commits. Avoid starting another read.
+        if (!self.isLoading) {
+            [self refreshCurrentSection];
+        }
+        return;
+    }
+
+    NSUInteger requestToken = [self pp_beginRequest];
+    PPDataSection section = self.currentSection;
+    PPFilterState *filterState = [self.filterState copy];
+    __weak typeof(self) weakSelf = self;
+    [self pp_buildViewModelsFromResults:sourceResults
+                                section:section
+                           filterState:filterState
+                          requestToken:requestToken
+                            completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+        if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+            return;
+        }
+        [weakSelf.mutableItems removeAllObjects];
+        [weakSelf.mutableItems addObjectsFromArray:viewModels];
+        if (weakSelf.onReloadData) {
+            weakSelf.onReloadData();
+        }
+    }];
 }
 
 - (NSInteger)previewResultCountForFilterState:(PPFilterState *)state
 {
     NSArray *sourceResults = self.latestRawResults;
-    if (sourceResults.count == 0) {
+    if (!sourceResults) {
         return self.mutableItems.count;
     }
 
-    NSArray *filtered = [self pp_applyFiltersToResults:sourceResults filterState:state];
+    NSArray *filtered = [self pp_applyFiltersToResults:sourceResults
+                                             filterState:state
+                                                section:self.currentSection];
     return filtered.count;
 }
 
@@ -383,7 +444,6 @@
         self.pendingRestoreSection = NSNotFound;
     }
 
-    [self pp_beginRequest];
     [self refreshCurrentSection];
 }
 
@@ -400,20 +460,28 @@
     self.isLoading = YES;
     self.currentPage = 1;
     self.hasMore = YES;
+    PPDataSection section = self.currentSection;
+    PPFilterState *filterState = [self.filterState copy];
+    os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "DataViewRequest",
+                               "token=%lu section=%ld", (unsigned long)requestToken, (long)section);
 
     __weak typeof(self) weakSelf = self;
 
-    [self fetchRawDataForSection:self.currentSection
+    [self fetchRawDataForSection:section
                             page:1
                       completion:^(NSArray *results, NSError *error) {
         [weakSelf pp_dispatchMain:^{
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "stale=1");
                 return;
             }
 
-            weakSelf.isLoading = NO;
-
             if (error) {
+                weakSelf.isLoading = NO;
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "error=1");
                 if (weakSelf.onError) {
                     weakSelf.onError(error);
                 }
@@ -422,27 +490,36 @@
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
             weakSelf.latestRawResults = safeResults;
-            NSArray *filtered = [weakSelf applyFiltersToResults:safeResults];
-            NSArray *viewModels = [weakSelf buildViewModelsFromModels:filtered];
+            [weakSelf pp_buildViewModelsFromResults:safeResults
+                                            section:section
+                                       filterState:weakSelf.filterState ?: filterState
+                                      requestToken:requestToken
+                                        completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+                if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                    return;
+                }
 
-            [weakSelf.mutableItems removeAllObjects];
-            [weakSelf.mutableItems addObjectsFromArray:viewModels];
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "results=%lu", (unsigned long)safeResults.count);
+                weakSelf.isLoading = NO;
+                [weakSelf.mutableItems removeAllObjects];
+                [weakSelf.mutableItems addObjectsFromArray:viewModels];
+                weakSelf.currentPage = 1;
+                weakSelf.hasMore = NO;
 
-            weakSelf.currentPage = 1;
-            weakSelf.hasMore = NO;
+                BOOL shouldNotifyInitialSectionsDataLoaded = !weakSelf.didNotifyInitialSectionsDataLoaded;
+                if (shouldNotifyInitialSectionsDataLoaded) {
+                    weakSelf.didNotifyInitialSectionsDataLoaded = YES;
+                }
 
-            BOOL shouldNotifyInitialSectionsDataLoaded = !weakSelf.didNotifyInitialSectionsDataLoaded;
-            if (shouldNotifyInitialSectionsDataLoaded) {
-                weakSelf.didNotifyInitialSectionsDataLoaded = YES;
-            }
+                if (weakSelf.onReloadData) {
+                    weakSelf.onReloadData();
+                }
 
-            if (weakSelf.onReloadData) {
-                weakSelf.onReloadData();
-            }
-
-            if (shouldNotifyInitialSectionsDataLoaded && weakSelf.onInitialSectionsDataLoaded) {
-                weakSelf.onInitialSectionsDataLoaded();
-            }
+                if (shouldNotifyInitialSectionsDataLoaded && weakSelf.onInitialSectionsDataLoaded) {
+                    weakSelf.onInitialSectionsDataLoaded();
+                }
+            }];
         }];
     }];
 }
@@ -600,25 +677,73 @@
     }
 }
 
+#pragma mark - Background Result Processing
+
+- (void)pp_buildViewModelsFromResults:(NSArray *)results
+                              section:(PPDataSection)section
+                         filterState:(PPFilterState *)filterState
+                        requestToken:(NSUInteger)requestToken
+                          completion:(void (^)(NSArray<PPUniversalCellViewModel *> *viewModels))completion
+{
+    if (!completion) {
+        return;
+    }
+
+    os_signpost_id_t buildSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), buildSignpostID, "DataViewVMBuild",
+                               "token=%lu results=%lu", (unsigned long)requestToken, (unsigned long)results.count);
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(PPDataViewVMBuildQueue(), ^{
+        if (!weakSelf) {
+            os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
+                                     "DataViewVMBuild", "released=1");
+            return;
+        }
+
+        NSArray *filtered = [weakSelf pp_applyFiltersToResults:results
+                                                     filterState:filterState
+                                                        section:section];
+        NSArray<PPUniversalCellViewModel *> *viewModels =
+        [weakSelf buildViewModelsFromModels:filtered section:section];
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
+                                     "DataViewVMBuild", "filtered=%lu viewModels=%lu",
+                                     (unsigned long)filtered.count, (unsigned long)viewModels.count);
+            if (!weakSelf) {
+                return;
+            }
+            // Callers perform the final token check before mutating state. This
+            // also lets a stale request close its own request signpost.
+            completion(viewModels);
+        });
+    });
+}
+
 #pragma mark - Filtering
 
 - (NSArray *)applyFiltersToResults:(NSArray *)results
 {
-    return [self pp_applyFiltersToResults:results filterState:self.filterState];
+    return [self pp_applyFiltersToResults:results
+                               filterState:self.filterState
+                                  section:self.currentSection];
 }
 
-- (NSArray *)pp_applyFiltersToResults:(NSArray *)results filterState:(PPFilterState *)state
+- (NSArray *)pp_applyFiltersToResults:(NSArray *)results
+                          filterState:(PPFilterState *)state
+                             section:(PPDataSection)section
 {
-    NSArray *filtered = [self pp_resultsRespectingUsedAccessoryFlag:results];
+    NSArray *filtered = [self pp_resultsRespectingUsedAccessoryFlag:results section:section];
 
     if (!state || !state.hasActiveFilters) {
         return filtered;
     }
 
-    BOOL isAdsSection = (self.currentSection == PPDataSectionAds);
-    BOOL isAccessoriesSection = (self.currentSection == PPDataSectionAccessories);
-    BOOL isFoodSection = (self.currentSection == PPDataSectionFood);
-    BOOL isServicesSection = (self.currentSection == PPDataSectionServices);
+    BOOL isAdsSection = (section == PPDataSectionAds);
+    BOOL isAccessoriesSection = (section == PPDataSectionAccessories);
+    BOOL isFoodSection = (section == PPDataSectionFood);
+    BOOL isServicesSection = (section == PPDataSectionServices);
 
     // ── Condition filter (Accessories / Food) ──
     NSInteger condVal = [state valueForFilterID:PPFilterIDCondition];
@@ -744,7 +869,7 @@
     if ((isAdsSection || isFoodSection || isServicesSection) && priceVal != PPFilterPriceAll) {
         // Determine thresholds based on current section
         double lowCeiling = 0, midFloor = 0, midCeiling = 0;
-        switch (self.currentSection) {
+        switch (section) {
             case PPDataSectionAds:
                 lowCeiling = 500; midFloor = 500; midCeiling = 2000; break;
             case PPDataSectionServices:
@@ -861,14 +986,15 @@
  */
 #pragma mark - ViewModel Builder
 
-- (NSArray<PPUniversalCellViewModel *> *) buildViewModelsFromModels:(NSArray *)models
+- (NSArray<PPUniversalCellViewModel *> *)buildViewModelsFromModels:(NSArray *)models
+                                                            section:(PPDataSection)section
 {
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:models.count];
 
     for (id model in models) {
         PPCellContext cellContext = PPCellForAds;
 
-        switch (self.currentSection) {
+        switch (section) {
             case PPDataSectionAds:
                 cellContext = PPCellForAds;
                 break;
@@ -897,6 +1023,11 @@
 - (void)reloadDataWithCompletion:(void (^)(NSError * _Nullable error))completion
 {
     NSUInteger requestToken = [self pp_beginRequest];
+    PPDataSection section = self.currentSection;
+    PPFilterState *filterState = [self.filterState copy];
+    os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "DataViewRequest",
+                               "token=%lu section=%ld reload=1", (unsigned long)requestToken, (long)section);
 
     // Reset state
     self.currentPage = 0;
@@ -905,42 +1036,52 @@
 
     // Clear current items
     [self.mutableItems removeAllObjects];
+    self.latestRawResults = nil;
 
     __weak typeof(self) weakSelf = self;
 
     // Fetch first page of current section
-    [self fetchRawDataForSection:self.currentSection
+    [self fetchRawDataForSection:section
                             page:1
                       completion:^(NSArray *results, NSError *error) {
         [weakSelf pp_dispatchMain:^{
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "stale=1 reload=1");
                 return;
             }
 
-            weakSelf.isLoading = NO;
-
             if (error) {
+                weakSelf.isLoading = NO;
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "error=1 reload=1");
                 if (completion) completion(error);
                 return;
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
             weakSelf.latestRawResults = safeResults;
-            NSArray *filtered = [weakSelf applyFiltersToResults:safeResults];
-            NSArray *viewModels = [weakSelf buildViewModelsFromModels:filtered];
-
-            [weakSelf.mutableItems removeAllObjects];
-            [weakSelf.mutableItems addObjectsFromArray:viewModels];
-
-            weakSelf.currentPage = 1;
-            weakSelf.hasMore = NO;
-
-            // Notify VC
-            if (weakSelf.onReloadData) {
-                weakSelf.onReloadData();
-            }
-
-            if (completion) completion(nil);
+            [weakSelf pp_buildViewModelsFromResults:safeResults
+                                            section:section
+                                       filterState:weakSelf.filterState ?: filterState
+                                      requestToken:requestToken
+                                        completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
+                if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+                    return;
+                }
+                os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
+                                         "DataViewRequest", "results=%lu reload=1",
+                                         (unsigned long)safeResults.count);
+                weakSelf.isLoading = NO;
+                [weakSelf.mutableItems removeAllObjects];
+                [weakSelf.mutableItems addObjectsFromArray:viewModels];
+                weakSelf.currentPage = 1;
+                weakSelf.hasMore = NO;
+                if (weakSelf.onReloadData) {
+                    weakSelf.onReloadData();
+                }
+                if (completion) completion(nil);
+            }];
         }];
     }];
 }

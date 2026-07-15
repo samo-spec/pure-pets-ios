@@ -111,6 +111,44 @@ static NSArray<NSString *> *PPSupportUniqueStrings(NSArray<NSString *> *values) 
     return set.array ?: @[];
 }
 
+static BOOL PPSupportArrayContainsString(id value, NSString *needle) {
+    NSString *safeNeedle = PPSupportTrimmedString(needle);
+    if (![value isKindOfClass:NSArray.class] || safeNeedle.length == 0) {
+        return NO;
+    }
+    for (id candidate in (NSArray *)value) {
+        if ([PPSupportTrimmedString(candidate) isEqualToString:safeNeedle]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static BOOL PPSupportThreadDataCanAcceptCustomerMessage(NSDictionary *data,
+                                                        NSString *customerID,
+                                                        NSString *supportUserID) {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+
+    NSString *safeCustomerID = PPSupportTrimmedString(customerID);
+    NSString *safeSupportUserID = PPSupportTrimmedString(supportUserID).length > 0
+        ? PPSupportTrimmedString(supportUserID)
+        : PURE_PETS_OFFICIAL_USER_ID;
+    if (safeCustomerID.length == 0 || safeSupportUserID.length == 0) {
+        return NO;
+    }
+
+    BOOL hasCustomerUID = PPSupportArrayContainsString(data[@"participantUids"], safeCustomerID) ||
+        PPSupportArrayContainsString(data[@"members"], safeCustomerID);
+    BOOL hasSupportUID = PPSupportArrayContainsString(data[@"participantUids"], safeSupportUserID) ||
+        PPSupportArrayContainsString(data[@"members"], safeSupportUserID);
+    BOOL hasCustomerActor = PPSupportArrayContainsString(data[@"participantKeys"], PPSupportUserActorKey(safeCustomerID));
+    BOOL hasSupportActor = PPSupportArrayContainsString(data[@"participantKeys"], kPPSupportOfficialActorKey);
+
+    return hasCustomerUID && hasSupportUID && hasCustomerActor && hasSupportActor;
+}
+
 static NSDictionary *PPChatThreadV2Metadata(NSString *threadID,
                                             NSString *currentUID,
                                             NSString *otherUID,
@@ -360,7 +398,43 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable readError) {
             if (readError || !snapshot.exists) {
                 NSLog(@"❌ [SupportChat] Failed to read support thread after creation: %@", readError.localizedDescription);
-                PPSupportPresentUnavailableAlert(strongController, kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
+                [weakSelf pp_openSupportChatViaFirestoreFallbackWithSupportUser:supportUser
+                                                                     customerID:customerID
+                                                                     completion:^(ChatThreadModel * _Nullable fallbackThread, NSError * _Nullable fallbackError) {
+                    if (fallbackThread && !fallbackError) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [PPOverlayCoordinator pp_openChatThread:fallbackThread fromVC:strongController];
+                        });
+                        return;
+                    }
+
+                    NSString *fallbackMessage = fallbackError
+                        ? [PPFirebaseSessionBridge publicMessageForError:fallbackError fallbackKey:@"pp_support_open_failed"]
+                        : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
+                    PPSupportPresentUnavailableAlert(strongController, fallbackMessage);
+                }];
+                return;
+            }
+
+            NSDictionary *threadData = snapshot.data ?: @{};
+            if (!PPSupportThreadDataCanAcceptCustomerMessage(threadData, customerID, PURE_PETS_OFFICIAL_USER_ID)) {
+                NSLog(@"⚠️ [SupportChat] HTTP support thread %@ is missing canonical participants. Opening canonical fallback thread.",
+                      snapshot.documentID ?: @"");
+                [weakSelf pp_openSupportChatViaFirestoreFallbackWithSupportUser:supportUser
+                                                                     customerID:customerID
+                                                                     completion:^(ChatThreadModel * _Nullable fallbackThread, NSError * _Nullable fallbackError) {
+                    if (fallbackThread && !fallbackError) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            [PPOverlayCoordinator pp_openChatThread:fallbackThread fromVC:strongController];
+                        });
+                        return;
+                    }
+
+                    NSString *fallbackMessage = fallbackError
+                        ? [PPFirebaseSessionBridge publicMessageForError:fallbackError fallbackKey:@"pp_support_open_failed"]
+                        : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
+                    PPSupportPresentUnavailableAlert(strongController, fallbackMessage);
+                }];
                 return;
             }
 

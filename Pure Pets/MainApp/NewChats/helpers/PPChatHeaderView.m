@@ -412,8 +412,7 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.blurView.backgroundColor = UIColor.clearColor;
     self.blurView.clipsToBounds = YES;
-    self.blurView.layer.cornerRadius = PPCornerHero;
-    if (@available(iOS 13.0, *)) {
+     if (@available(iOS 13.0, *)) {
         self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
@@ -435,7 +434,7 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    [Styling addLiquidGlassBorderToView:self.blurView cornerRadius:PPCornerHero];
+  //  [Styling addLiquidGlassBorderToView:self.blurView cornerRadius:PPCornerHero];
 }
 
 #pragma mark - Actions

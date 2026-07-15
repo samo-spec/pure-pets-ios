@@ -9,7 +9,7 @@
 //  PPHUD.h
 //  PurePetsAdmin
 //
-//  Lightweight global HUD wrapper around JGProgressHUD.
+//  Lightweight global UIKit HUD with native material, progress, and terminal states.
 //  Usage (anywhere):
 //    [PPHUD showIndeterminateIn:self.view title:kLang(@"Please wait") subtitle:nil];
 //    [PPHUD showRingIn:self.view title:kLang(@"Uploading…") subtitle:nil];
@@ -26,11 +26,14 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PPHUD : NSObject
-+ (void)showInfo:(NSString * _Nullable)title;
+
 /// Indeterminate spinner (blocks touches while shown).
 + (void)showIndeterminateIn:(nullable UIView *)view
                       title:(nullable NSString *)title
                    subtitle:(nullable NSString *)subtitle;
++ (void)showLoading;
++ (void)showLoading:(nullable NSString *)title;
++ (void)showLoading:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 
 /// Ring progress HUD (determinate). Call setProgress: to update.
 + (void)showRingIn:(nullable UIView *)view
@@ -50,17 +53,17 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)showError:(nullable NSString *)title;
 + (void)showError:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
 + (void)showError:(nullable NSString *)title subtitle:(nullable NSString *)subtitle delay:(NSTimeInterval)delay;
-+ (void)showInfo:(NSString * _Nullable)title subtitle:(NSString * _Nullable)subtitle;
+
+/// Show a neutral informational state and auto-dismiss (default 1.2s).
++ (void)showInfo:(nullable NSString *)title;
++ (void)showInfo:(nullable NSString *)title subtitle:(nullable NSString *)subtitle;
++ (void)showInfo:(nullable NSString *)title subtitle:(nullable NSString *)subtitle delay:(NSTimeInterval)delay;
+
 /// Dismiss if visible (safe to call anytime).
 + (void)dismiss;
 
 /// Returns YES if currently visible.
 + (BOOL)isVisible;
-
-+ (void)showLoading:(NSString * _Nullable)title;
-+ (void)showLoading:(NSString * _Nullable)title subtitle:(NSString * _Nullable)subtitle;
-
-+ (void)showLoading;
 @end
 
 NS_ASSUME_NONNULL_END
