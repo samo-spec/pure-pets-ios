@@ -2,6 +2,7 @@
 #import "OrderModel.h"
 #import "GM.h"
 #import "PPChatsFunc.h"
+#import "PPOrderStatusAppearance.h"
 
 #pragma mark - PPOrderCellStatusLabel (Private Intercept Label)
 
@@ -79,6 +80,13 @@
 
 #pragma mark - OrderCell Implementation
 
+@interface OrderCell ()
+- (void)pp_applyStatusText:(NSString *)statusText
+                 statusKey:(nullable NSString *)statusKey
+                  dateText:(nullable NSString *)dateText
+             fallbackColor:(nullable UIColor *)fallbackColor;
+@end
+
 @implementation OrderCell {
     UIView *_cardView;
     UIVisualEffectView *_blurView;
@@ -89,9 +97,15 @@
     UIStackView *_statusRow;      // horizontal: statusPillContainer + customDateLabel + spacer
 
     UIView *_statusPillContainer;
+    CAGradientLayer *_statusPillGradientLayer;
     UILabel *_statusPillLabel;
     UILabel *_customDateLabel;
     UIImageView *_chevronImageView;
+
+    NSString *_currentStatusKey;
+    NSString *_currentStatusText;
+    NSString *_currentDateText;
+    UIColor *_currentFallbackStatusColor;
 
     BOOL _hasAnimatedEntrance;
 }
@@ -208,6 +222,13 @@
     _statusPillContainer = [[UIView alloc] initWithFrame:CGRectZero];
     _statusPillContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _statusPillContainer.hidden = YES;
+    _statusPillContainer.layer.cornerRadius = 9.0;
+    _statusPillContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    _statusPillContainer.layer.masksToBounds = YES;
+
+    _statusPillGradientLayer = [CAGradientLayer layer];
+    _statusPillGradientLayer.name = @"PPOrderHistoryStatusGradient";
+    [_statusPillContainer.layer insertSublayer:_statusPillGradientLayer atIndex:0];
 
     _statusPillLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     _statusPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -287,35 +308,68 @@
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
-        if (statusText.length > 0) {
-            strongSelf->_statusPillContainer.hidden = NO;
-            strongSelf->_statusPillLabel.text = statusText;
-
-            UIColor *baseColor = statusColor ?: GM.appPrimaryColor;
-            strongSelf->_statusPillContainer.backgroundColor = [baseColor colorWithAlphaComponent:0.08];
-            strongSelf->_statusPillLabel.textColor = baseColor;
-            strongSelf->_statusPillContainer.layer.borderColor = [baseColor colorWithAlphaComponent:0.2].CGColor;
-            strongSelf->_statusPillContainer.layer.borderWidth = 0.5;
-            strongSelf->_statusPillContainer.layer.cornerRadius = 8.0;
-            strongSelf->_statusPillContainer.layer.cornerCurve = kCACornerCurveContinuous;
-            strongSelf->_statusPillContainer.clipsToBounds = YES;
-        } else {
-            strongSelf->_statusPillContainer.hidden = YES;
-            strongSelf->_statusPillLabel.text = @"";
-        }
-
-        if (dateText.length > 0) {
-            strongSelf->_customDateLabel.hidden = NO;
-            strongSelf->_customDateLabel.text = dateText;
-        } else {
-            strongSelf->_customDateLabel.hidden = YES;
-            strongSelf->_customDateLabel.text = @"";
-        }
+        [strongSelf pp_applyStatusText:statusText
+                            statusKey:nil
+                             dateText:dateText
+                        fallbackColor:statusColor];
     };
+}
+
+- (void)configureStatusText:(NSString *)statusText
+                  statusKey:(NSString *)statusKey
+                   dateText:(NSString *)dateText
+{
+    [self pp_applyStatusText:statusText
+                   statusKey:statusKey
+                    dateText:dateText
+               fallbackColor:nil];
+}
+
+- (void)pp_applyStatusText:(NSString *)statusText
+                 statusKey:(NSString *)statusKey
+                  dateText:(NSString *)dateText
+             fallbackColor:(UIColor *)fallbackColor
+{
+    _currentStatusKey = [PPOrderStatusAppearanceNormalizedKey(statusKey) copy];
+    _currentStatusText = [statusText ?: @"" copy];
+    _currentDateText = [dateText ?: @"" copy];
+    _currentFallbackStatusColor = fallbackColor;
+
+    BOOL hasStatus = (_currentStatusText.length > 0);
+    _statusPillContainer.hidden = !hasStatus;
+    _statusPillLabel.text = hasStatus ? _currentStatusText : @"";
+    if (hasStatus) {
+        UIColor *accent = _currentStatusKey.length > 0
+            ? PPOrderStatusAccentColorForKey(_currentStatusKey)
+            : (fallbackColor ?: PPOrderStatusAccentColorForKey(@"pending"));
+        UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
+        _statusPillContainer.backgroundColor = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
+        _statusPillContainer.layer.borderWidth = 1.0;
+        _statusPillContainer.layer.borderColor = PPOrderStatusBorderColorForAccent(accent, self.traitCollection).CGColor;
+        _statusPillLabel.textColor = accent;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        PPOrderStatusConfigureGradientLayer(_statusPillGradientLayer,
+                                            _currentStatusKey,
+                                            resolvedAccent,
+                                            self.traitCollection,
+                                            [Language isRTL]);
+        [CATransaction commit];
+    }
+
+    _customDateLabel.hidden = (_currentDateText.length == 0);
+    _customDateLabel.text = _currentDateText;
+    [self setNeedsLayout];
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _statusPillGradientLayer.frame = _statusPillContainer.bounds;
+    _statusPillGradientLayer.cornerRadius = _statusPillContainer.layer.cornerRadius;
+    [CATransaction commit];
 
     BOOL isRTL = ([Language languageVal] == 1);
 
@@ -370,6 +424,19 @@
     _cardView.layer.shadowPath = path.CGPath;
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyStatusText:_currentStatusText
+                           statusKey:_currentStatusKey
+                            dateText:_currentDateText
+                       fallbackColor:_currentFallbackStatusColor];
+        }
+    }
+}
+
 #pragma mark - Interactive Selection Feedback
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -398,9 +465,24 @@
 
 #pragma mark - Cascade Entrance Animations
 
+- (void)willMoveToWindow:(UIWindow *)newWindow
+{
+    [super willMoveToWindow:newWindow];
+    if (newWindow && !_hasAnimatedEntrance && !UIAccessibilityIsReduceMotionEnabled()) {
+        self.contentView.alpha = 0.0;
+        self.contentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    }
+}
+
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window && !_hasAnimatedEntrance) {
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            _hasAnimatedEntrance = YES;
+            self.contentView.alpha = 1.0;
+            self.contentView.transform = CGAffineTransformIdentity;
+            return;
+        }
         [self performEntranceAnimation];
     }
 }
@@ -432,15 +514,11 @@
         return;
     }
 
-    // Initial prepared state before first render
-    self.contentView.alpha = 0.0;
-    self.contentView.transform = CGAffineTransformMakeTranslation(0, 8.0);
-
-    [UIView animateWithDuration:PPAnimDurationSlow
+    [UIView animateWithDuration:0.28
                           delay:delay
-         usingSpringWithDamping:0.85
-          initialSpringVelocity:0.4
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                        options:UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         self.contentView.alpha = 1.0;
         self.contentView.transform = CGAffineTransformIdentity;
@@ -459,8 +537,10 @@
     _statusPillLabel.text = @"";
     _statusPillContainer.hidden = YES;
     _customDateLabel.hidden = YES;
-
-    _hasAnimatedEntrance = NO;
+    _currentStatusKey = nil;
+    _currentStatusText = nil;
+    _currentDateText = nil;
+    _currentFallbackStatusColor = nil;
 
     self.contentView.alpha = 1.0;
     self.contentView.transform = CGAffineTransformIdentity;

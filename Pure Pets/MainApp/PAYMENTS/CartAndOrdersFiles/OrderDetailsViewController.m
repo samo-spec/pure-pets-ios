@@ -14,6 +14,7 @@
 #import "PPAddressesManager.h"
 #import "PPOrderProgressTimelineView.h"
 #import "PPOrderStatusStepperView.h"
+#import "PPOrderStatusAppearance.h"
 #import "PPOrderSupportComposerViewController.h"
 #import "PPOrderSupportRequestDetailsViewController.h"
 #import "PPOrderSupportRequestListViewController.h"
@@ -239,20 +240,22 @@ UIImage *PPOrderStepperImage(NSString *name)
 UIColor *PPOrderRequestStatusColor(NSString *status)
 {
     NSString *normalized = PPOrderStepperNormalizedKey(status);
-    if ([normalized isEqualToString:@"approved"] ||
-        [normalized isEqualToString:@"completed"] ||
-        [normalized isEqualToString:@"refunded"]) {
-        return UIColor.systemGreenColor;
+    if ([normalized isEqualToString:@"approved"]) {
+        return PPOrderStatusAccentColorForKey(@"paid");
+    }
+    if ([normalized isEqualToString:@"completed"]) {
+        return PPOrderStatusAccentColorForKey(@"completed");
+    }
+    if ([normalized isEqualToString:@"refunded"] ||
+        [normalized isEqualToString:@"partially_refunded"]) {
+        return PPOrderStatusAccentColorForKey(@"returned");
     }
     if ([normalized isEqualToString:@"rejected"] ||
         [normalized isEqualToString:@"cancelled"] ||
         [normalized isEqualToString:@"closed"]) {
-        return UIColor.systemRedColor;
+        return PPOrderStatusAccentColorForKey(@"delivery_cancelled");
     }
-    if ([normalized isEqualToString:@"partially_refunded"]) {
-        return UIColor.systemTealColor;
-    }
-    return UIColor.systemOrangeColor;
+    return PPOrderStatusAccentColorForKey(normalized.length > 0 ? normalized : @"pending");
 }
 
 NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
@@ -355,7 +358,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 
 
- 
+
 
 
 @interface OrderDetailsViewController () <UITableViewDataSource, UITableViewDelegate, MKMapViewDelegate>
@@ -382,9 +385,11 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @property (nonatomic, assign) BOOL ambientDotsLayoutRTL;
 @property (nonatomic, strong) UILabel *statusSummarySubtitleLabel;
 @property (nonatomic, strong) UIView *statusProgressChip;
+@property (nonatomic, strong) CAGradientLayer *statusProgressChipGradientLayer;
 @property (nonatomic, strong) UIImageView *statusProgressChipIconView;
 @property (nonatomic, strong) UILabel *statusProgressChipLabel;
 @property (nonatomic, strong) UIView *statusEtaChip;
+@property (nonatomic, strong) CAGradientLayer *statusEtaChipGradientLayer;
 @property (nonatomic, strong) UIImageView *statusEtaChipIconView;
 @property (nonatomic, strong) UILabel *statusEtaChipLabel;
 @property (nonatomic, strong) UILabel *progressTimelineTitleLabel;
@@ -399,6 +404,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @property (nonatomic, strong) UIButton *openMapButton;
 @property (nonatomic, strong) UIView *statusBadgeHaloView;
 @property (nonatomic, strong) UIView *statusBadge;
+@property (nonatomic, strong) CAGradientLayer *statusBadgeGradientLayer;
 @property (nonatomic, strong) UIImageView *statusIconView;
 @property (nonatomic, strong) UIView *summaryPanel;
 @property (nonatomic, strong) UIView *headerSeparatorTop;
@@ -741,20 +747,20 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 - (void)pp_refreshLiveBackgroundGlowColors
 {
     [self pp_installLiveBackgroundGlowLayersIfNeeded];
-    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
-    if (!accent) accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    NSString *statusKey = self.order ? [self customerDisplayStatusKeyForOrder:self.order] : @"pending";
+    UIColor *accent = PPOrderStatusResolvedColor([self statusAccentColorForStatusKey:statusKey], self.traitCollection);
+    UIColor *shine = PPOrderStatusResolvedColor(PPOrderStatusShineColorForKey(statusKey), self.traitCollection);
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     UIColor *ink = isDark ? [UIColor colorWithRed:0.01 green:0.02 blue:0.018 alpha:1.0] : [UIColor colorWithRed:0.04 green:0.055 blue:0.048 alpha:1.0];
-    UIColor *mint = [UIColor colorWithRed:0.36 green:0.92 blue:0.74 alpha:1.0];
-    UIColor *warm = [UIColor colorWithRed:0.98 green:0.70 blue:0.34 alpha:1.0];
+    UIColor *support = PPOrderStatusBlendColors(accent, shine, isDark ? 0.48 : 0.36, self.traitCollection);
 
     self.backgroundTopGlowLayer.colors = @[
-        (__bridge id)[mint colorWithAlphaComponent:isDark ? 0.32 : 0.25].CGColor,
+        (__bridge id)[shine colorWithAlphaComponent:isDark ? 0.30 : 0.22].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.21 : 0.16].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
     self.backgroundBottomGlowLayer.colors = @[
-        (__bridge id)[warm colorWithAlphaComponent:isDark ? 0.29 : 0.22].CGColor,
+        (__bridge id)[support colorWithAlphaComponent:isDark ? 0.27 : 0.20].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:isDark ? 0.18 : 0.14].CGColor,
         (__bridge id)[ink colorWithAlphaComponent:0.0].CGColor
     ];
@@ -989,10 +995,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     }
 
-    UIButton *supportButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"headphones.dots" target:self action:@selector(contactSupportTapped)];
-    UIBarButtonItem *supportItem = [[UIBarButtonItem alloc] initWithCustomView:supportButton];
-    UIButton *shareButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"square.and.arrow.up" target:self action:@selector(shareOrderTapped)];
-    UIBarButtonItem *shareItem = [[UIBarButtonItem alloc] initWithCustomView:shareButton];
+    UIBarButtonItem *supportItem =  [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"headphones.dots"] style:UIBarButtonItemStylePlain target:self action:@selector(contactSupportTapped)];
+    UIBarButtonItem *shareItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"square.and.arrow.up"] style:UIBarButtonItemStylePlain target:self action:@selector(shareOrderTapped)];
     self.navigationItem.rightBarButtonItems = @[shareItem, supportItem];
 }
 
@@ -1114,6 +1118,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.statusBadge.layer.masksToBounds = YES;
     [self.statusSummaryCard addSubview:self.statusBadge];
 
+    self.statusBadgeGradientLayer = [CAGradientLayer layer];
+    self.statusBadgeGradientLayer.name = @"PPOrderStatusBadgeGradient";
+    [self.statusBadge.layer insertSublayer:self.statusBadgeGradientLayer atIndex:0];
+
     self.statusIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.statusIconView.contentMode = UIViewContentModeScaleAspectFit;
     self.statusIconView.tintColor = [GM appPrimaryColor];
@@ -1138,6 +1146,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.statusProgressChip.layer.masksToBounds = YES;
     [self.statusSummaryCard addSubview:self.statusProgressChip];
 
+    self.statusProgressChipGradientLayer = [CAGradientLayer layer];
+    self.statusProgressChipGradientLayer.name = @"PPOrderStatusProgressGradient";
+    [self.statusProgressChip.layer insertSublayer:self.statusProgressChipGradientLayer atIndex:0];
+
     self.statusProgressChipIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.statusProgressChipIconView.contentMode = UIViewContentModeScaleAspectFit;
     self.statusProgressChipIconView.image = [UIImage systemImageNamed:@"circle.grid.2x2.fill"];
@@ -1151,6 +1163,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.statusEtaChip.layer.cornerRadius = 16.0;
     self.statusEtaChip.layer.masksToBounds = YES;
     [self.statusSummaryCard addSubview:self.statusEtaChip];
+
+    self.statusEtaChipGradientLayer = [CAGradientLayer layer];
+    self.statusEtaChipGradientLayer.name = @"PPOrderStatusETAGradient";
+    [self.statusEtaChip.layer insertSublayer:self.statusEtaChipGradientLayer atIndex:0];
 
     self.statusEtaChipIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.statusEtaChipIconView.contentMode = UIViewContentModeScaleAspectFit;
@@ -1526,6 +1542,11 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     CGFloat badgeX = isRTL ? statusCardInset : (separatorWidth - statusCardInset - badgeSize);
     self.statusBadge.frame = CGRectMake(badgeX, statusCardInset, badgeSize, badgeSize);
     self.statusBadge.layer.cornerRadius = badgeSize * 0.5;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.statusBadgeGradientLayer.frame = self.statusBadge.bounds;
+    self.statusBadgeGradientLayer.cornerRadius = self.statusBadge.layer.cornerRadius;
+    [CATransaction commit];
     self.statusBadgeHaloView.frame = CGRectInset(self.statusBadge.frame, -9.0, -9.0);
     self.statusBadgeHaloView.layer.cornerRadius = CGRectGetWidth(self.statusBadgeHaloView.bounds) * 0.5;
     self.statusIconView.frame = CGRectInset(self.statusBadge.bounds, 12.0, 12.0);
@@ -1588,6 +1609,13 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
         label.frame = CGRectMake(labelX, 7.0, labelWidth, 18.0);
         label.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     }
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.statusProgressChipGradientLayer.frame = self.statusProgressChip.bounds;
+    self.statusProgressChipGradientLayer.cornerRadius = self.statusProgressChip.layer.cornerRadius;
+    self.statusEtaChipGradientLayer.frame = self.statusEtaChip.bounds;
+    self.statusEtaChipGradientLayer.cornerRadius = self.statusEtaChip.layer.cornerRadius;
+    [CATransaction commit];
 
     CGFloat statusSummaryBottom = MAX(CGRectGetMaxY(self.statusProgressChip.frame), CGRectGetMaxY(self.statusEtaChip.frame));
     CGFloat statusSummaryHeight = statusSummaryBottom + statusCardInset;
@@ -1736,11 +1764,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 {
     if (!self.headerHeroLiquidBorderLayer && !self.headerHeroLiquidHaloLayer) return;
 
-    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
-    if (!accent) {
-        accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
-    }
-    UIColor *shine = AppForgroundColr ?: accent;
+    NSString *statusKey = self.order ? [self customerDisplayStatusKeyForOrder:self.order] : @"pending";
+    UIColor *accent = PPOrderStatusResolvedColor([self statusAccentColorForStatusKey:statusKey], self.traitCollection);
+    UIColor *shine = PPOrderStatusResolvedColor(PPOrderStatusShineColorForKey(statusKey), self.traitCollection);
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     CGFloat accentAlpha = isDark ? 0.50 : 0.38;
     CGFloat shineAlpha = isDark ? 0.42 : 0.32;
@@ -2133,15 +2159,16 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
     NSString *statusKey = [self customerDisplayStatusKeyForOrder:self.order];
     UIColor *accent = [self statusAccentColorForStatusKey:statusKey] ?: [GM appPrimaryColor];
+    UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
+    UIColor *glow = PPOrderStatusGlowColorForKey(statusKey, self.traitCollection);
     BOOL failure = [self isFailureStatusKey:statusKey];
-    CGFloat haloAlpha = failure ? 0.16 : (PPIOS26() ? 0.18 : 0.14);
 
-    self.statusBadgeHaloView.backgroundColor = [accent colorWithAlphaComponent:haloAlpha];
+    self.statusBadgeHaloView.backgroundColor = glow;
     self.statusBadgeHaloView.layer.borderWidth = 1.0;
-    [self.statusBadgeHaloView pp_setBorderColor:[accent colorWithAlphaComponent:failure ? 0.26 : 0.22]];
-    self.statusBadgeHaloView.layer.shadowColor = accent.CGColor;
-    self.statusBadgeHaloView.layer.shadowOpacity = failure ? 0.13 : 0.16;
-    self.statusBadgeHaloView.layer.shadowRadius = 10.0;
+    [self.statusBadgeHaloView pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:failure ? 0.34 : 0.28]];
+    self.statusBadgeHaloView.layer.shadowColor = resolvedAccent.CGColor;
+    self.statusBadgeHaloView.layer.shadowOpacity = failure ? 0.12 : 0.14;
+    self.statusBadgeHaloView.layer.shadowRadius = 12.0;
     self.statusBadgeHaloView.layer.shadowOffset = CGSizeZero;
     self.statusBadgeHaloView.hidden = UIAccessibilityIsReduceMotionEnabled();
 }
@@ -2156,41 +2183,18 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
     self.statusBadgeHaloView.hidden = NO;
 
-    [self pp_addSummaryScalePulseToLayer:self.statusBadge.layer
-                                     key:PPOrderSummaryStatusBadgeMotionKey
-                               fromScale:1.0
-                                 toScale:1.045
-                                duration:1.9
-                              beginDelay:0.0];
     [self pp_addSummaryScalePulseToLayer:self.statusBadgeHaloView.layer
                                      key:PPOrderSummaryStatusHaloScaleKey
-                               fromScale:0.96
-                                 toScale:1.15
-                                duration:2.85
-                              beginDelay:0.04];
+                               fromScale:0.99
+                                 toScale:1.08
+                                duration:3.2
+                              beginDelay:0.0];
     [self pp_addSummaryOpacityPulseToLayer:self.statusBadgeHaloView.layer
                                        key:PPOrderSummaryStatusHaloOpacityKey
-                                      from:0.36
-                                        to:0.82
-                                  duration:2.85
-                                beginDelay:0.04];
-    [self pp_addSummaryVerticalFloatToLayer:self.statusIconView.layer
-                                        key:PPOrderSummaryStatusIconMotionKey
-                                   distance:1.1
-                                   duration:2.05
-                                 beginDelay:0.12];
-    [self pp_addSummaryScalePulseToLayer:self.statusProgressChip.layer
-                                     key:PPOrderSummaryProgressChipMotionKey
-                               fromScale:1.0
-                                 toScale:1.018
-                                duration:2.6
-                              beginDelay:0.18];
-    [self pp_addSummaryOpacityPulseToLayer:self.progressTimelineProgressLabel.layer
-                                       key:PPOrderSummaryTimelineCounterMotionKey
-                                      from:0.76
-                                        to:1.0
-                                  duration:2.15
-                                beginDelay:0.22];
+                                      from:0.24
+                                        to:0.48
+                                  duration:3.2
+                                beginDelay:0.0];
 
     [self pp_startAmbientHeroDotsMotionIfNeeded];
 }
@@ -2218,21 +2222,16 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
     if (UIAccessibilityIsReduceMotionEnabled()) return;
 
-    self.statusSummaryCard.transform = CGAffineTransformIdentity;
-    [UIView animateKeyframesWithDuration:0.46
-                                   delay:0.0
-                                 options:UIViewKeyframeAnimationOptionCalculationModeCubic | UIViewKeyframeAnimationOptionAllowUserInteraction
-                              animations:^{
-        [UIView addKeyframeWithRelativeStartTime:0.0
-                                relativeDuration:0.42
-                                      animations:^{
-            self.statusSummaryCard.transform = CGAffineTransformMakeScale(1.012, 1.012);
-        }];
-        [UIView addKeyframeWithRelativeStartTime:0.42
-                                relativeDuration:0.58
-                                      animations:^{
-            self.statusSummaryCard.transform = CGAffineTransformIdentity;
-        }];
+    self.statusSummaryCard.alpha = 0.88;
+    self.statusSummaryCard.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.statusSummaryCard.alpha = 1.0;
+        self.statusSummaryCard.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -2423,48 +2422,76 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (void)refreshVisualTheme
 {
-    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
-    if (!accent) accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    NSString *statusKey = self.order ? [self customerDisplayStatusKeyForOrder:self.order] : @"pending";
+    UIColor *accent = [self statusAccentColorForStatusKey:statusKey];
+    UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
+    UIColor *surface = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
+    UIColor *strongSurface = PPOrderStatusStrongSurfaceColorForAccent(accent, self.traitCollection);
+    UIColor *border = PPOrderStatusBorderColorForAccent(accent, self.traitCollection);
     self.heroGlassBackground.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     self.heroGlassBackground.accentColorOverride = accent;
     self.headerCard.backgroundColor = PPOrderDetailsSurfaceColor();
     self.deliveryMapCard.backgroundColor = PPOrderDetailsSurfaceColor();
     self.statusSummaryCard.backgroundColor = AppClearClr; //PPOrderDetailsSubsurfaceColor();
     
-    self.ambientDot1.backgroundColor = accent;
-    self.ambientDot2.backgroundColor = accent;
-    self.ambientDot3.backgroundColor = accent;
+    self.ambientDot1.backgroundColor = resolvedAccent;
+    self.ambientDot2.backgroundColor = resolvedAccent;
+    self.ambientDot3.backgroundColor = resolvedAccent;
     self.ambientDot1.layer.opacity = 0.10;
     self.ambientDot2.layer.opacity = 0.07;
     self.ambientDot3.layer.opacity = 0.12;
-    self.ambientDot1.layer.shadowColor = accent.CGColor;
-    self.ambientDot2.layer.shadowColor = accent.CGColor;
-    self.ambientDot3.layer.shadowColor = accent.CGColor;
+    self.ambientDot1.layer.shadowColor = resolvedAccent.CGColor;
+    self.ambientDot2.layer.shadowColor = resolvedAccent.CGColor;
+    self.ambientDot3.layer.shadowColor = resolvedAccent.CGColor;
     
     self.statusSummaryCard.layer.borderWidth = 0.0;
     [self.statusSummaryCard pp_setBorderColor:[accent colorWithAlphaComponent:0.0]];
     
     self.summaryPanel.backgroundColor = PPOrderDetailsSurfaceColor();
-    self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:0.14];
-    self.statusProgressChip.backgroundColor = [accent colorWithAlphaComponent:0.10];
-    self.statusEtaChip.backgroundColor = [accent colorWithAlphaComponent:0.10];
+    self.statusBadge.backgroundColor = strongSurface;
+    self.statusBadge.layer.borderWidth = 1.0;
+    self.statusBadge.layer.borderColor = border.CGColor;
+    self.statusProgressChip.backgroundColor = surface;
+    self.statusProgressChip.layer.borderWidth = 1.0;
+    self.statusProgressChip.layer.borderColor = border.CGColor;
+    self.statusEtaChip.backgroundColor = surface;
+    self.statusEtaChip.layer.borderWidth = 1.0;
+    self.statusEtaChip.layer.borderColor = border.CGColor;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    PPOrderStatusConfigureGradientLayer(self.statusBadgeGradientLayer,
+                                        statusKey,
+                                        accent,
+                                        self.traitCollection,
+                                        [Language isRTL]);
+    PPOrderStatusConfigureGradientLayer(self.statusProgressChipGradientLayer,
+                                        statusKey,
+                                        accent,
+                                        self.traitCollection,
+                                        [Language isRTL]);
+    PPOrderStatusConfigureGradientLayer(self.statusEtaChipGradientLayer,
+                                        statusKey,
+                                        accent,
+                                        self.traitCollection,
+                                        [Language isRTL]);
+    [CATransaction commit];
     self.statusProgressChipIconView.tintColor = accent;
     self.statusEtaChipIconView.tintColor = accent;
     self.statusProgressChipLabel.textColor = UIColor.labelColor;
     self.statusEtaChipLabel.textColor = UIColor.labelColor;
     self.progressTimelineTitleLabel.textColor = UIColor.labelColor;
     self.progressTimelineProgressLabel.textColor = accent;
-    self.progressTimelineToggleButton.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.10];
+    self.progressTimelineToggleButton.backgroundColor = surface;
     self.progressTimelineToggleButton.tintColor = accent;
     self.progressTimelineToggleButton.layer.borderWidth = 1.0;
-    [self.progressTimelineToggleButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
+    [self.progressTimelineToggleButton pp_setBorderColor:border];
     self.progressTimelineToggleIconView.tintColor = accent;
     [self pp_refreshLiveBackgroundGlowColors];
     [self pp_refreshHeaderHeroLiquidBorderColors];
-    self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
+    self.openMapButton.backgroundColor = surface;
     self.openMapButton.tintColor = accent;
-    [self.openMapButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
-    [self.deliveryMapView pp_setBorderColor:[accent colorWithAlphaComponent:0.14]];
+    [self.openMapButton pp_setBorderColor:border];
+    [self.deliveryMapView pp_setBorderColor:[border colorWithAlphaComponent:0.72]];
     [self refreshActionButtonAppearances];
     [self pp_refreshCurrentStatusSummaryMotionColors];
     if (self.isOrderDetailsScreenVisible) {
@@ -2712,70 +2739,18 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (UIColor *)statusAccentColorForStatusKey:(NSString *)statusKey
 {
-    NSString *key = PPOrderStepperNormalizedKey(statusKey);
-    if ([key isEqualToString:@"delivery_cancelled"]) {
-        return UIColor.systemRedColor;
-    }
-    if ([key isEqualToString:@"delivery_delayed"]) {
-        return UIColor.systemOrangeColor;
-    }
-    if ([key isEqualToString:@"completed"]) {
-        return [GM appPrimaryColor];
-    }
-    if ([key isEqualToString:@"delivered"]) {
-        return UIColor.systemGreenColor;
-    }
-    if ([key isEqualToString:@"on_the_way"]) {
-        return UIColor.systemBlueColor;
-    }
-    if ([key isEqualToString:@"delivery_partner_assigned"]) {
-        if (@available(iOS 13.0, *)) {
-            return UIColor.systemIndigoColor;
-        }
-        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
-    }
-    if ([key isEqualToString:@"ready_for_delivery"]) {
-        return [GM appPrimaryColor];
-    }
-    if ([key isEqualToString:@"preparing_for_shipment"]) {
-        return UIColor.systemOrangeColor;
-    }
-    return UIColor.systemOrangeColor;
+    return PPOrderStatusAccentColorForKey(statusKey);
 }
 
 - (UIColor *)statusBadgeColorForStatusKey:(NSString *)statusKey
 {
-    return [[self statusAccentColorForStatusKey:statusKey] colorWithAlphaComponent:0.2];
+    return PPOrderStatusStrongSurfaceColorForAccent([self statusAccentColorForStatusKey:statusKey],
+                                                     self.traitCollection);
 }
 
 - (NSString *)statusIconNameForStatusKey:(NSString *)statusKey
 {
-    NSString *key = PPOrderStepperNormalizedKey(statusKey);
-    if ([key isEqualToString:@"delivery_cancelled"]) {
-        return @"xmark.circle.fill";
-    }
-    if ([key isEqualToString:@"delivery_delayed"]) {
-        return @"exclamationmark.triangle.fill";
-    }
-    if ([key isEqualToString:@"completed"]) {
-        return @"checkmark.seal.fill";
-    }
-    if ([key isEqualToString:@"delivered"]) {
-        return @"checkmark.circle.fill";
-    }
-    if ([key isEqualToString:@"on_the_way"]) {
-        return @"shippingbox.fill";
-    }
-    if ([key isEqualToString:@"delivery_partner_assigned"]) {
-        return @"person.crop.circle.fill";
-    }
-    if ([key isEqualToString:@"ready_for_delivery"]) {
-        return @"shippingbox.fill";
-    }
-    if ([key isEqualToString:@"preparing_for_shipment"]) {
-        return @"shippingbox.circle.fill";
-    }
-    return @"clock.fill";
+    return PPOrderStatusSymbolNameForKey(statusKey);
 }
 
 - (void)updateStatusStepper
@@ -2851,7 +2826,8 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             @"title": title ?: @"",
             @"subtitle": subtitle ?: @"",
             @"meta": metaText ?: @"",
-            @"icon": iconName ?: @"circle"
+            @"icon": iconName ?: @"circle",
+            @"tint": PPOrderStatusAccentColorForKey(resolvedKey)
         }];
         (void)stop;
     }];
@@ -4787,8 +4763,10 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     statusBadge.font = [GM boldFontWithSize:10];
     UIColor *sc = [self fulfillmentStatusColor:fo.status];
     statusBadge.textColor = sc;
-    statusBadge.backgroundColor = [sc colorWithAlphaComponent:0.12];
+    statusBadge.backgroundColor = PPOrderStatusSurfaceColorForAccent(sc, self.traitCollection);
     statusBadge.layer.cornerRadius = PPCornerSmall / 2.0;
+    statusBadge.layer.borderWidth = 1.0;
+    statusBadge.layer.borderColor = PPOrderStatusBorderColorForAccent(sc, self.traitCollection).CGColor;
     statusBadge.clipsToBounds = YES;
     statusBadge.translatesAutoresizingMaskIntoConstraints = NO;
     [group addSubview:statusBadge];
@@ -4851,6 +4829,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
             @"preparing":          kLang(@"fulfillment_status_preparing"),
             @"ready_for_pickup":   kLang(@"fulfillment_status_ready_for_pickup"),
             @"delivery_requested": kLang(@"fulfillment_status_delivery_requested"),
+            @"delivery_assigned":  kLang(@"fulfillment_status_delivery_assigned"),
             @"awaiting_handover":  kLang(@"fulfillment_status_awaiting_handover"),
             @"handed_over":        kLang(@"fulfillment_status_handed_over"),
             @"completed":          kLang(@"fulfillment_status_completed"),
@@ -4865,11 +4844,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 
 - (UIColor *)fulfillmentStatusColor:(NSString *)status
 {
-    NSString *s = status;
-    if ([s isEqualToString:@"accepted"] || [s isEqualToString:@"completed"] || [s isEqualToString:@"ready_for_pickup"]) return UIColor.systemGreenColor;
-    if ([s isEqualToString:@"new_request"] || [s isEqualToString:@"preparing"] || [s isEqualToString:@"delivery_requested"] || [s isEqualToString:@"awaiting_handover"]) return UIColor.systemOrangeColor;
-    if ([s isEqualToString:@"rejected"] || [s isEqualToString:@"cancelled"] || [s isEqualToString:@"failed"] || [s isEqualToString:@"returned"]) return UIColor.systemRedColor;
-    return UIColor.systemGrayColor;
+    return PPOrderStatusAccentColorForKey(status);
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -4877,6 +4852,9 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self updateStatusStyle];
+            [self updateStatusStepperAnimated:NO];
+            [self configureFulfillmentSection];
             [self pp_refreshLiveBackgroundGlowColors];
             if (self.isOrderDetailsScreenVisible) {
                 [self pp_startLiveBackgroundGlowsIfNeeded];

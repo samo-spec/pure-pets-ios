@@ -13,10 +13,37 @@
 static CGFloat const PPOrderSupportDetailsBottomComfortInset = 104.0;
 static CGFloat const PPOrderSupportDetailsAttachmentSize = 82.0;
 
+static CGFloat PPOrderSupportDetailsBaseFontSize(UIFontTextStyle textStyle)
+{
+    if ([textStyle isEqualToString:UIFontTextStyleTitle2]) {
+        return 22.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleTitle3]) {
+        return 20.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleHeadline]) {
+        return 17.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleBody]) {
+        return 16.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleSubheadline]) {
+        return 15.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleFootnote]) {
+        return 13.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleCaption1]) {
+        return 12.0;
+    }
+    return 15.0;
+}
+
 static UIFont *PPOrderSupportDetailsFont(UIFontTextStyle textStyle, UIFontWeight weight)
 {
-    UIFontDescriptor *descriptor = [UIFontDescriptor preferredFontDescriptorWithTextStyle:textStyle];
-    UIFont *font = [UIFont systemFontOfSize:descriptor.pointSize weight:weight];
+    CGFloat size = PPOrderSupportDetailsBaseFontSize(textStyle);
+    BOOL emphasized = weight >= UIFontWeightSemibold;
+    UIFont *font = emphasized ? [GM boldFontWithSize:size] : [GM MidFontWithSize:size];
     return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:font];
 }
 

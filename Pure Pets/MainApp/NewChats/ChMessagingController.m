@@ -154,8 +154,8 @@ static UIColor *PPChatPremiumHeaderBorderColor(void)
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         return dark
-            ? [UIColor colorWithWhite:1.0 alpha:0.12]
-            : [UIColor colorWithWhite:0.0 alpha:0.07];
+            ? [UIColor colorWithWhite:1.0 alpha:0.0]
+            : [UIColor colorWithWhite:0.0 alpha:0.0];
     }];
 }
 
@@ -5288,7 +5288,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     for (UIButton *button in buttons) {
         button.tintColor = AppPrimaryTextClr;
         button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
-        [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+       // [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
     }
 
     [self.premiumModalHeaderAvatarView pp_setBorderColor:
@@ -5989,7 +5989,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [super viewWillLayoutSubviews];
     [Styling addLiquidGlassBorderToView:self.typingIndicatorView cornerRadius:22];
     //[Styling addLiquidGlassBorderToView:self.self.navBottomBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.3]];
-    [Styling addLiquidGlassBorderToView:self.bottomFillBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.3]];
+    [Styling addLiquidGlassBorderToView:self.bottomFillBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.0]];
     self.navBottomBlurView.hidden = NO;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.showsHorizontalScrollIndicator = NO;

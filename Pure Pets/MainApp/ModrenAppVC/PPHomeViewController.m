@@ -57,6 +57,7 @@
 #import <math.h>
 #import <float.h>
 #import "PPHomeOrderStatusCell.h"
+#import "PPOrderStatusAppearance.h"
 #import "PPNovaChatViewController.h"
 #import "UIView+Badge.h"
 #import "PPHomeLocationSheetViewController.h"
@@ -5311,60 +5312,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (UIColor *)pp_homeOrderStatusColor:(PPOrder *)order
 {
-    NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
-        return UIColor.systemRedColor;
-    }
-    if ([statusKey isEqualToString:@"delivery_delayed"]) {
-        return UIColor.systemOrangeColor;
-    }
-    if ([statusKey isEqualToString:@"completed"]) {
-        return [GM appPrimaryColor];
-    }
-    if ([statusKey isEqualToString:@"delivered"]) {
-        return UIColor.systemGreenColor;
-    }
-    if ([statusKey isEqualToString:@"on_the_way"]) {
-        return UIColor.systemBlueColor;
-    }
-    if ([statusKey isEqualToString:@"ready_for_delivery"] ||
-        [statusKey isEqualToString:@"delivery_partner_assigned"]) {
-        if (@available(iOS 13.0, *)) {
-            return UIColor.systemIndigoColor;
-        }
-        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
-    }
-    return UIColor.systemOrangeColor;
+    return PPOrderStatusAccentColorForKey([self pp_homeOrderStatusKey:order]);
 }
 
 - (NSString *)pp_homeOrderStatusIconName:(PPOrder *)order
 {
-    NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
-        return @"xmark.circle.fill";
-    }
-    if ([statusKey isEqualToString:@"delivery_delayed"]) {
-        return @"exclamationmark.triangle.fill";
-    }
-    if ([statusKey isEqualToString:@"completed"]) {
-        return @"checkmark.seal.fill";
-    }
-    if ([statusKey isEqualToString:@"delivered"]) {
-        return @"checkmark.circle.fill";
-    }
-    if ([statusKey isEqualToString:@"on_the_way"]) {
-        return @"shippedtruck";
-    }
-    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
-        return @"shippingbox.fill";
-    }
-    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
-        return @"person.crop.circle.fill";
-    }
-    if ([statusKey isEqualToString:@"preparing_for_shipment"]) {
-        return @"shippingbox.circle.fill";
-    }
-    return @"clock.fill";
+    return PPOrderStatusSymbolNameForKey([self pp_homeOrderStatusKey:order]);
 }
 
 - (double)pp_homeOrderProgress:(PPOrder *)order
@@ -7793,6 +7746,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                          meta:[strongSelf pp_homeOrderMetaText:order]
                                   statusTitle:[strongSelf pp_homeOrderStatusTitle:order]
                                    statusHint:[strongSelf pp_homeOrderStatusHint:order]
+                                    statusKey:[strongSelf pp_homeOrderStatusKey:order]
                                      progress:[strongSelf pp_homeOrderProgress:order]
                                    footerText:[strongSelf pp_homeOrderFooterText:order]
                                   statusColor:[strongSelf pp_homeOrderStatusColor:order]
@@ -9007,6 +8961,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 - (void)pp_setCurrentOrdersExpanded:(BOOL)expanded animated:(BOOL)animated
 {
+    animated = animated && !UIAccessibilityIsReduceMotionEnabled();
     if (self.isCurrentOrdersExpanded == expanded &&
         (!self.layoutManager || self.layoutManager.isCurrentOrdersExpanded == expanded)) {
         [self refreshHeroSectionAppearance];
@@ -9071,9 +9026,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     };
 
     if (animated) {
-        [UIView animateWithDuration:0.4
+        [UIView animateWithDuration:0.28
                               delay:0.0
-             usingSpringWithDamping:0.88
+             usingSpringWithDamping:0.92
               initialSpringVelocity:0.0
                             options:UIViewAnimationOptionAllowUserInteraction |
                                     UIViewAnimationOptionBeginFromCurrentState

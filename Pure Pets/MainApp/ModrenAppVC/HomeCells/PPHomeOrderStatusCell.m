@@ -5,6 +5,7 @@
 //  Created by Mohammed Ahmed on 4/3/26.
 //
 #import "PPHomeOrderStatusCell.h"
+#import "PPOrderStatusAppearance.h"
 #import <math.h>
 
 @interface PPHomeOrderStatusCell ()
@@ -14,6 +15,7 @@
 @property (nonatomic, strong) UIView *overlayView;
 @property (nonatomic, strong) CAGradientLayer *overlayGradientLayer;
 @property (nonatomic, strong) UIView *chipView;
+@property (nonatomic, strong) CAGradientLayer *chipGradientLayer;
 @property (nonatomic, strong) UIImageView *chipIconView;
 @property (nonatomic, strong) UILabel *chipLabel;
 @property (nonatomic, strong) UILabel *orderKickerLabel;
@@ -22,6 +24,7 @@
 @property (nonatomic, strong) UILabel *hintLabel;
 @property (nonatomic, strong) UIView *progressTrackView;
 @property (nonatomic, strong) UIView *progressFillView;
+@property (nonatomic, strong) CAGradientLayer *progressGradientLayer;
 @property (nonatomic, strong) NSLayoutConstraint *progressFillWidthConstraint;
 @property (nonatomic, strong) UILabel *footerLabel;
 @property (nonatomic, strong) UIView *actionRailView;
@@ -38,6 +41,7 @@
 @property (nonatomic, strong) UILabel *collapsedOrderLabel;
 @property (nonatomic, strong) UILabel *collapsedSummaryLabel;
 @property (nonatomic, strong) UIView *collapsedStatusPillView;
+@property (nonatomic, strong) CAGradientLayer *collapsedStatusPillGradientLayer;
 @property (nonatomic, strong) UILabel *collapsedStatusPillLabel;
 @property (nonatomic, strong) UIView *collapsedChevronContainerView;
 @property (nonatomic, strong) UIVisualEffectView *collapsedChevronMaterialView;
@@ -48,8 +52,14 @@
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *expandedConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *collapsedConstraints;
 @property (nonatomic, strong) UIColor *currentStatusColor;
+@property (nonatomic, copy) NSString *currentStatusKey;
+@property (nonatomic, copy) NSString *currentOrderReference;
 @property (nonatomic, assign) CGFloat currentProgress;
 @property (nonatomic, assign) BOOL showsExpandedState;
+- (void)pp_applyStatusColor:(UIColor *)statusColor
+                  statusKey:(NSString *)statusKey
+                   animated:(BOOL)animated;
+- (void)pp_applyStatusColorImmediately:(UIColor *)statusColor statusKey:(NSString *)statusKey;
 @end
 
 static const CGFloat PPHomeOrderCellZPosition = 120.0;
@@ -103,10 +113,7 @@ static BOOL PPHomeOrderStatusTextContainsAnyKeyword(NSString *text, NSArray<NSSt
 
 static UIColor *PPHomeOrderProcessingAccentColor(void)
 {
-    if (@available(iOS 13.0, *)) {
-        return UIColor.systemIndigoColor;
-    }
-    return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
+    return PPOrderStatusAccentColorForKey(@"preparing_for_shipment");
 }
 
 static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
@@ -123,17 +130,17 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     if ([iconName containsString:@"xmark"] ||
         PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"failed", @"cancel", @"declined", @"rejected", @"voided", @"ملغي", @"مرفوض", @"فشل"])) {
-        return UIColor.systemRedColor;
+        return PPOrderStatusAccentColorForKey(@"delivery_cancelled");
     }
 
     if ([iconName containsString:@"checkmark"] ||
         PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"delivered", @"completed", @"fulfilled", @"تم التسليم", @"مكتمل"])) {
-        return UIColor.systemGreenColor;
+        return PPOrderStatusAccentColorForKey([iconName containsString:@"seal"] ? @"completed" : @"delivered");
     }
 
     if ([iconName containsString:@"shippedtruck"] ||
         PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"shipped", @"shipping", @"transit", @"out for delivery", @"out_for_delivery", @"في الطريق", @"تم الشحن"])) {
-        return UIColor.systemBlueColor;
+        return PPOrderStatusAccentColorForKey(@"on_the_way");
     }
 
     if ([iconName containsString:@"shippingbox"] ||
@@ -143,15 +150,15 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     if ([iconName containsString:@"creditcard"] ||
         PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"paid", @"payment", @"approved", @"captured", @"authorized", @"مدفوع", @"تم الدفع"])) {
-        return fallbackColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+        return PPOrderStatusAccentColorForKey(@"paid");
     }
 
     if ([iconName containsString:@"clock"] ||
         PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"pending", @"waiting", @"بانتظار", @"قيد الانتظار"])) {
-        return UIColor.systemOrangeColor;
+        return PPOrderStatusAccentColorForKey(@"pending");
     }
 
-    return fallbackColor ?: UIColor.systemBlueColor;
+    return PPOrderStatusAccentColorForKey(@"neutral");
 }
 
 
@@ -234,6 +241,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     }
     [self.surfaceView addSubview:self.chipView];
 
+    self.chipGradientLayer = [CAGradientLayer layer];
+    self.chipGradientLayer.name = @"PPHomeOrderStatusChipGradient";
+    [self.chipView.layer insertSublayer:self.chipGradientLayer atIndex:0];
+
     self.chipIconView = [[UIImageView alloc] init];
     self.chipIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipIconView.contentMode = UIViewContentModeScaleToFill;
@@ -299,6 +310,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
         self.progressFillView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.progressTrackView addSubview:self.progressFillView];
+
+    self.progressGradientLayer = [CAGradientLayer layer];
+    self.progressGradientLayer.name = @"PPHomeOrderProgressGradient";
+    [self.progressFillView.layer insertSublayer:self.progressGradientLayer atIndex:0];
 
     self.footerLabel = [[UILabel alloc] init];
     self.footerLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -430,6 +445,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
         self.collapsedStatusPillView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.collapsedContentView addSubview:self.collapsedStatusPillView];
+
+    self.collapsedStatusPillGradientLayer = [CAGradientLayer layer];
+    self.collapsedStatusPillGradientLayer.name = @"PPHomeOrderCollapsedStatusGradient";
+    [self.collapsedStatusPillView.layer insertSublayer:self.collapsedStatusPillGradientLayer atIndex:0];
 
     self.collapsedStatusPillLabel = [[UILabel alloc] init];
     self.collapsedStatusPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -599,7 +618,9 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     [self pp_setShowsExpandedState:NO];
     self.currentProgress = PPHomeOrderMinimumProgress;
-    [self pp_applyStatusColor:UIColor.systemBlueColor];
+    [self pp_applyStatusColor:PPOrderStatusAccentColorForKey(@"pending")
+                    statusKey:@"pending"
+                     animated:NO];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -616,7 +637,9 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 {
     [self.shadowView pp_setShadowColor:UIColor.blackColor];
      self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
-    [self pp_applyStatusColor:self.currentStatusColor];
+    [self pp_applyStatusColor:self.currentStatusColor
+                    statusKey:self.currentStatusKey
+                     animated:NO];
 }
 
 - (void)layoutSubviews
@@ -643,6 +666,12 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.overlayView.layer.cornerRadius = self.surfaceView.layer.cornerRadius;
     self.overlayGradientLayer.frame = self.overlayView.bounds;
     self.overlayGradientLayer.cornerRadius = self.surfaceView.layer.cornerRadius;
+    self.chipGradientLayer.frame = self.chipView.bounds;
+    self.chipGradientLayer.cornerRadius = self.chipView.layer.cornerRadius;
+    self.collapsedStatusPillGradientLayer.frame = self.collapsedStatusPillView.bounds;
+    self.collapsedStatusPillGradientLayer.cornerRadius = self.collapsedStatusPillView.layer.cornerRadius;
+    self.progressGradientLayer.frame = self.progressFillView.bounds;
+    self.progressGradientLayer.cornerRadius = self.progressFillView.layer.cornerRadius;
     CGRect shadowBounds = self.shadowView.bounds;
     CGFloat cornerRadius = self.surfaceView.layer.cornerRadius;
     if (!CGRectIsEmpty(shadowBounds) &&
@@ -842,6 +871,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.onTrackTap = nil;
     self.onHistoryTap = nil;
     self.onCollapseTap = nil;
+    self.currentStatusKey = @"";
+    self.currentOrderReference = @"";
     [self pp_resetReusablePresentation];
     [self pp_updateProgressWithValue:PPHomeOrderMinimumProgress];
     self.previewImageURLs = @[];
@@ -861,9 +892,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                                  meta:@"------"
                           statusTitle:(kLang(@"Pending") ?: @"Pending")
                            statusHint:@" "
+                            statusKey:@"pending"
                              progress:0.22
                            footerText:@" "
-                          statusColor:UIColor.systemOrangeColor
+                          statusColor:PPOrderStatusAccentColorForKey(@"pending")
                        statusIconName:@"clock.fill"
                           actionTitle:(kLang(@"order_action_track") ?: @"Track order")
                              expanded:expanded];
@@ -876,6 +908,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                                meta:(NSString *)meta
                         statusTitle:(NSString *)statusTitle
                          statusHint:(NSString *)statusHint
+                          statusKey:(NSString *)statusKey
                            progress:(double)progress
                          footerText:(NSString *)footerText
                         statusColor:(UIColor *)statusColor
@@ -883,6 +916,14 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                         actionTitle:(NSString *)actionTitle
                            expanded:(BOOL)expanded
 {
+    NSString *resolvedOrderReference = PPSafeString(orderReference);
+    NSString *resolvedStatusKey = PPOrderStatusAppearanceNormalizedKey(statusKey);
+    BOOL shouldAnimateStatusChange = self.window != nil &&
+                                     self.currentOrderReference.length > 0 &&
+                                     [self.currentOrderReference isEqualToString:resolvedOrderReference] &&
+                                     self.currentStatusKey.length > 0 &&
+                                     ![self.currentStatusKey isEqualToString:resolvedStatusKey] &&
+                                     !UIAccessibilityIsReduceMotionEnabled();
     [self pp_resetReusablePresentation];
     [self pp_applyCurrentLanguageDirection];
     [self pp_applyOrderReference:orderReference
@@ -898,7 +939,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                                                                   statusHint,
                                                                   statusIconName);
 
-    [self pp_applyStatusColor:resolvedStatusColor];
+    self.currentOrderReference = resolvedOrderReference;
+    [self pp_applyStatusColor:resolvedStatusColor
+                    statusKey:resolvedStatusKey
+                     animated:shouldAnimateStatusChange];
     [self pp_applyPreviewImageURLs:previewImageURLs];
     [self pp_setShowsExpandedState:expanded];
     [self pp_updateProgressWithValue:progress];
@@ -1071,7 +1115,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
 - (void)setExpandedState:(BOOL)expanded animated:(BOOL)animated
 {
-    if (!animated || self.showsExpandedState == expanded || !self.window) {
+    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
+    if (!shouldAnimate || self.showsExpandedState == expanded || !self.window) {
         [self pp_setShowsExpandedState:expanded];
         return;
     }
@@ -1096,36 +1141,37 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     if (expanded) {
         for (UIView *view in expandedViews) {
             view.alpha = 0.0;
-            view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+            view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
         }
         self.collapsedContentView.alpha = 1.0;
         self.collapsedContentView.transform = CGAffineTransformIdentity;
-        self.surfaceView.transform = CGAffineTransformMakeScale(0.98, 0.98);
+        self.surfaceView.transform = CGAffineTransformMakeScale(0.99, 0.99);
     } else {
         for (UIView *view in expandedViews) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
         self.collapsedContentView.alpha = 0.0;
-        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
     }
 
-    [UIView animateWithDuration:0.46
+    self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(0.98, 0.98);
+    [UIView animateWithDuration:0.28
                               delay:0.0
-             usingSpringWithDamping:0.90
-              initialSpringVelocity:0.28
+             usingSpringWithDamping:0.92
+              initialSpringVelocity:0.22
                             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             [self.contentView layoutIfNeeded];
             self.surfaceView.transform = CGAffineTransformIdentity;
             [self pp_updateChevronAppearanceForExpanded:expanded];
-            self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(1.04, 1.04);
+            self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
 
             for (UIView *view in expandedViews) {
                 view.alpha = expanded ? 1.0 : 0.0;
                 view.transform = expanded
                     ? CGAffineTransformIdentity
-                    : CGAffineTransformMakeTranslation(0.0, 10.0);
+                    : CGAffineTransformMakeTranslation(0.0, 6.0);
             }
 
             self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
@@ -1133,13 +1179,6 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                 ? CGAffineTransformMakeTranslation(0.0, -6.0)
                 : CGAffineTransformIdentity;
         } completion:^(__unused BOOL finished) {
-            [UIView animateWithDuration:0.18
-                                  delay:0.0
-                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
-                             animations:^{
-                self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
-            } completion:nil];
-
             if (self.showsExpandedState == expanded) {
                 [self pp_applyExpandedVisibilityState:expanded];
                 [self pp_updateDecorativeLayers];
@@ -1161,6 +1200,9 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                        isPrimary:(BOOL)isPrimary
 {
     UIColor *resolved = statusColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *primaryForeground = PPOrderStatusContrastingForegroundColor(resolved, self.traitCollection);
+    UIColor *secondarySurface = PPOrderStatusSurfaceColorForAccent(resolved, self.traitCollection);
+    UIColor *secondaryBorder = PPOrderStatusBorderColorForAccent(resolved, self.traitCollection);
     NSString *resolvedTitle = title.length > 0 ? title : @"";
     button.accessibilityLabel = resolvedTitle;
 
@@ -1174,61 +1216,118 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
         config.imagePadding = 6.0;
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         config.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-        config.baseForegroundColor = isPrimary ? UIColor.whiteColor : resolved;
+        config.baseForegroundColor = isPrimary ? primaryForeground : resolved;
         config.baseBackgroundColor = isPrimary
             ? resolved
-            : PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
+            : secondarySurface;
         config.attributedTitle = [[NSAttributedString alloc] initWithString:resolvedTitle attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold],
-            NSForegroundColorAttributeName: isPrimary ? UIColor.whiteColor : resolved
+            NSForegroundColorAttributeName: isPrimary ? primaryForeground : resolved
         }];
         button.configuration = config;
         return;
     }
 
     [button setTitle:resolvedTitle forState:UIControlStateNormal];
-    [button setTitleColor:isPrimary ? UIColor.whiteColor : resolved forState:UIControlStateNormal];
-    button.backgroundColor = isPrimary ? resolved : PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14);
+    [button setTitleColor:isPrimary ? primaryForeground : resolved forState:UIControlStateNormal];
+    button.backgroundColor = isPrimary ? resolved : secondarySurface;
     button.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
-    [button pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.18)];
+    [button pp_setBorderColor:secondaryBorder];
 }
 
 - (void)pp_applyStatusColor:(UIColor *)statusColor
+                  statusKey:(NSString *)statusKey
+                   animated:(BOOL)animated
 {
-    self.currentStatusColor = statusColor ?: UIColor.systemBlueColor;
-    UIColor *resolved = self.currentStatusColor;
-    UIColor *chipBackground = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.14 : 0.15);
-    UIColor *softOverlay = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
+    void (^updates)(void) = ^{
+        [self pp_applyStatusColorImmediately:statusColor statusKey:statusKey];
+    };
+    if (animated && self.window && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView transitionWithView:self.surfaceView
+                          duration:0.22
+                           options:UIViewAnimationOptionTransitionCrossDissolve |
+                                   UIViewAnimationOptionAllowAnimatedContent |
+                                   UIViewAnimationOptionBeginFromCurrentState |
+                                   UIViewAnimationOptionAllowUserInteraction
+                        animations:updates
+                        completion:nil];
+    } else {
+        updates();
+    }
+}
 
-    self.chipView.backgroundColor = chipBackground;
-    self.chipView.layer.borderWidth = 1.1;
-    [self.chipView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.08)];
-    self.chipLabel.textColor = resolved;
-    self.chipIconView.tintColor = resolved;
-    self.progressFillView.backgroundColor = resolved;
-    [self.surfaceView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.08 : 0.16)];
-    self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
-    [self.actionRailView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.50)];
-    self.collapsedIconBadgeView.backgroundColor = chipBackground;
+- (void)pp_applyStatusColorImmediately:(UIColor *)statusColor statusKey:(NSString *)statusKey
+{
+    self.currentStatusKey = PPOrderStatusAppearanceNormalizedKey(statusKey);
+    self.currentStatusColor = statusColor ?: PPOrderStatusAccentColorForKey(self.currentStatusKey);
+
+    UIColor *accent = self.currentStatusColor;
+    UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
+    UIColor *surface = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
+    UIColor *strongSurface = PPOrderStatusStrongSurfaceColorForAccent(accent, self.traitCollection);
+    UIColor *border = PPOrderStatusBorderColorForAccent(accent, self.traitCollection);
+    UIColor *shine = PPOrderStatusResolvedColor(PPOrderStatusShineColorForKey(self.currentStatusKey), self.traitCollection);
+    BOOL isRTL = [Language isRTL];
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+
+    self.chipView.backgroundColor = surface;
+    self.chipView.layer.borderWidth = 1.0;
+    [self.chipView pp_setBorderColor:border];
+    self.chipLabel.textColor = accent;
+    self.chipIconView.tintColor = accent;
+
+    self.progressFillView.backgroundColor = resolvedAccent;
+    [self.surfaceView pp_setBorderColor:[border colorWithAlphaComponent:isDark ? 0.62 : 0.72]];
+    self.actionRailView.backgroundColor = surface;
+    [self.actionRailView pp_setBorderColor:border];
+
+    self.collapsedIconBadgeView.backgroundColor = strongSurface;
     [self pp_applyCollapsedPreviewChromeForHasPreviewImages:(self.previewImageURLs.count > 0)];
-    self.collapsedIconView.tintColor = resolved;
-    self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.08 : 0.14);
-    self.collapsedStatusPillLabel.textColor = resolved;
-    [self.collapsedChevronContainerView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.09)];
-    self.collapsedChevronTintView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
-    self.collapsedChevronView.tintColor = resolved;
+    self.collapsedIconView.tintColor = accent;
+    self.collapsedStatusPillView.backgroundColor = surface;
+    self.collapsedStatusPillView.layer.borderWidth = 1.0;
+    [self.collapsedStatusPillView pp_setBorderColor:border];
+    self.collapsedStatusPillLabel.textColor = accent;
+    [self.collapsedChevronContainerView pp_setBorderColor:[border colorWithAlphaComponent:0.72]];
+    self.collapsedChevronTintView.backgroundColor = surface;
+    self.collapsedChevronView.tintColor = accent;
 
+    NSArray<UIColor *> *materialColors = PPOrderStatusGradientColors(self.currentStatusKey,
+                                                                     accent,
+                                                                     self.traitCollection);
+    UIColor *progressTail = PPOrderStatusBlendColors(resolvedAccent,
+                                                     UIColor.blackColor,
+                                                     isDark ? 0.08 : 0.13,
+                                                     self.traitCollection);
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
+    PPOrderStatusConfigureGradientLayer(self.chipGradientLayer,
+                                        self.currentStatusKey,
+                                        accent,
+                                        self.traitCollection,
+                                        isRTL);
+    PPOrderStatusConfigureGradientLayer(self.collapsedStatusPillGradientLayer,
+                                        self.currentStatusKey,
+                                        accent,
+                                        self.traitCollection,
+                                        isRTL);
+    self.progressGradientLayer.colors = @[(id)shine.CGColor,
+                                          (id)resolvedAccent.CGColor,
+                                          (id)progressTail.CGColor];
+    self.progressGradientLayer.locations = @[@0.0, @0.48, @1.0];
+    self.progressGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
+    self.progressGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
     self.overlayGradientLayer.colors = @[
-        (id)softOverlay.CGColor,
-        (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.09) CGColor],
-        (id)[UIColor clearColor].CGColor
+        (id)[materialColors[0] colorWithAlphaComponent:isDark ? 0.26 : 0.18].CGColor,
+        (id)[materialColors[2] colorWithAlphaComponent:isDark ? 0.18 : 0.11].CGColor,
+        (id)UIColor.clearColor.CGColor
     ];
-    [self.overlayGradientLayer setNeedsDisplay];
+    self.overlayGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+    self.overlayGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
     [CATransaction commit];
 
+    [self pp_configureActionsWithActionTitle:self.trackButton.accessibilityLabel statusColor:accent];
     [self setNeedsLayout];
 }
 

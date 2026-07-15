@@ -7,6 +7,7 @@
 
 #import "OrderHistoryViewController.h"
 #import "OrderCell.h"
+#import "PPOrderStatusAppearance.h"
 #import "OrderDetailsViewController.h"
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PPOrder.h"
@@ -1449,30 +1450,17 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     cell.preservesSuperviewLayoutMargins = NO;
     cell.layoutMargins = UIEdgeInsetsZero;
     
+    NSString *statusKey = [self customerStatusKeyForOrder:order];
     NSString *statusText = [self displayTitleForOrder:order];
-    UIColor *statusColor = [self statusColorForOrder:order];
     
     cell.nameLabel.text = [order displayOrderReference];
     cell.quantityLabel.text = [self primaryDescriptionForOrder:order];
     cell.priceLabel.text = [self formattedAmountForOrder:order];
     cell.priceLabel.textColor = UIColor.labelColor;
 
-    // Attributed string formatting containing status tint and date metadata
-    NSString *statusDisplay = [NSString stringWithFormat:@"● %@  %@", statusText ?: @"", [self formattedDate:order.createdAt] ?: @""];
-    NSMutableAttributedString *statusAttr = [[NSMutableAttributedString alloc] initWithString:statusDisplay];
-    if (statusDisplay.length > 0) {
-        [statusAttr addAttributes:@{
-            NSForegroundColorAttributeName: statusColor,
-            NSFontAttributeName: [GM boldFontWithSize:13.0]
-        } range:NSMakeRange(0, 1)];
-    }
-    if (statusDisplay.length > 1) {
-        [statusAttr addAttributes:@{
-            NSForegroundColorAttributeName: UIColor.secondaryLabelColor,
-            NSFontAttributeName: [GM MidFontWithSize:13.0]
-        } range:NSMakeRange(1, statusDisplay.length - 1)];
-    }
-    cell.dateLabel.attributedText = statusAttr;
+    [cell configureStatusText:statusText ?: @""
+                    statusKey:statusKey ?: @""
+                     dateText:[self formattedDate:order.createdAt] ?: @""];
 
     NSInteger quantity = [self totalQuantityForOrder:order];
     if (quantity > 0 && cell.quantityLabel.text.length == 0) {
@@ -1722,56 +1710,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (UIColor *)statusColorForOrder:(PPOrder *)order
 {
-    NSString *statusKey = [self customerStatusKeyForOrder:order];
-    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
-        return UIColor.systemRedColor;
-    }
-    if ([statusKey isEqualToString:@"delivery_delayed"]) {
-        return UIColor.systemOrangeColor;
-    }
-    if ([statusKey isEqualToString:@"completed"]) {
-        return [GM appPrimaryColor];
-    }
-    if ([statusKey isEqualToString:@"delivered"]) {
-        return UIColor.systemGreenColor;
-    }
-    if ([statusKey isEqualToString:@"on_the_way"]) {
-        return UIColor.systemBlueColor;
-    }
-    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
-        if (@available(iOS 13.0, *)) {
-            return UIColor.systemIndigoColor;
-        }
-        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
-    }
-    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
-        return [GM appPrimaryColor];
-    }
-    return UIColor.systemOrangeColor;
+    return PPOrderStatusAccentColorForKey([self customerStatusKeyForOrder:order]);
 }
 
 - (UIColor *)colorForStatusFilterKey:(NSString *)filterKey
 {
-    if ([filterKey isEqualToString:kOrderHistoryFilterPending]) {
-        return UIColor.systemOrangeColor;
-    }
-    if ([filterKey isEqualToString:kOrderHistoryFilterPaid]) {
-        return [GM appPrimaryColor];
-    }
-    if ([filterKey isEqualToString:kOrderHistoryFilterProcessing]) {
-        return UIColor.systemOrangeColor;
-    }
-    if ([filterKey isEqualToString:kOrderHistoryFilterShipped]) {
-        return UIColor.systemBlueColor;
-    }
-    if ([filterKey isEqualToString:kOrderHistoryFilterDelivered]) {
-        return UIColor.systemGreenColor;
-    }
-    if ([filterKey isEqualToString:kOrderHistoryFilterCancelled] ||
-        [filterKey isEqualToString:kOrderHistoryFilterFailed]) {
-        return UIColor.systemRedColor;
-    }
-    return UIColor.systemGrayColor;
+    return PPOrderStatusAccentColorForKey(filterKey);
 }
 
 #pragma mark - Accessory Preview Fetching

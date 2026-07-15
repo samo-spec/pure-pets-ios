@@ -19,5 +19,8 @@
 @property (nonatomic, strong) UILabel *priceLabel;
 
 - (void)configureWithItem:(CartItem *)item;
+- (void)configureStatusText:(NSString *)statusText
+                  statusKey:(NSString *)statusKey
+                   dateText:(NSString *)dateText;
 
 @end

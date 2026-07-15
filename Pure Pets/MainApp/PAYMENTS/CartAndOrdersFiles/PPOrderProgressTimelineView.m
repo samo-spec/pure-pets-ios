@@ -6,6 +6,7 @@
 //
 #import "PPOrderProgressTimelineView.h"
 #import "PPOrderProgressTimelineRowView.h"
+#import "PPOrderStatusAppearance.h"
 
 @interface PPOrderProgressTimelineView ()
 
@@ -79,20 +80,29 @@
             state = PPOrderProgressTimelineRowStateCurrent;
         }
 
+        UIColor *stepTint = [descriptor[@"tint"] isKindOfClass:UIColor.class]
+            ? descriptor[@"tint"]
+            : PPOrderStatusAccentColorForKey([descriptor[@"statusKey"] isKindOfClass:NSString.class]
+                                                    ? descriptor[@"statusKey"]
+                                                    : nil);
+
         [self.rowViews[index] configureWithTitle:[descriptor[@"title"] isKindOfClass:NSString.class] ? descriptor[@"title"] : @""
                                         subtitle:[descriptor[@"subtitle"] isKindOfClass:NSString.class] ? descriptor[@"subtitle"] : @""
                                         metaText:[descriptor[@"meta"] isKindOfClass:NSString.class] ? descriptor[@"meta"] : @""
                                       symbolName:[descriptor[@"icon"] isKindOfClass:NSString.class] ? descriptor[@"icon"] : @"circle"
                                            state:state
                                         expanded:expanded
-                                       tintColor:self.accentColor
+                                       tintColor:stepTint ?: self.accentColor
                                            isRTL:isRTL];
     }
 
-    if (animated) {
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
         [UIView transitionWithView:self
-                          duration:0.26
-                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                          duration:0.24
+                           options:UIViewAnimationOptionTransitionCrossDissolve |
+                                   UIViewAnimationOptionAllowAnimatedContent |
+                                   UIViewAnimationOptionBeginFromCurrentState |
+                                   UIViewAnimationOptionAllowUserInteraction
                         animations:^{
             [self setNeedsLayout];
             [self layoutIfNeeded];
@@ -153,7 +163,8 @@
     }
 
     self.trackView.hidden = (self.stepDescriptors.count < 2);
-    self.trackView.backgroundColor = [self.accentColor colorWithAlphaComponent:self.expanded ? 0.18 : 0.12];
+    UIColor *trackAccent = PPOrderStatusResolvedColor(self.accentColor, self.traitCollection);
+    self.trackView.backgroundColor = [trackAccent colorWithAlphaComponent:self.expanded ? 0.20 : 0.13];
     self.trackView.frame = CGRectMake(trackX - 1.0,
                                       firstMarkerY,
                                       2.0,

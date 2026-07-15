@@ -15,6 +15,7 @@
                                meta:(NSString *)meta
                         statusTitle:(NSString *)statusTitle
                          statusHint:(NSString *)statusHint
+                          statusKey:(NSString *)statusKey
                            progress:(double)progress
                         footerText:(NSString *)footerText
                         statusColor:(UIColor *)statusColor

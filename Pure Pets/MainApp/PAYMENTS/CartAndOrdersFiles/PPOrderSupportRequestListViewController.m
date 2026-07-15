@@ -14,10 +14,37 @@
 static CGFloat const PPOrderSupportListBottomComfortInset = 96.0;
 static CGFloat const PPOrderSupportListCardMinHeight = 116.0;
 
+static CGFloat PPOrderSupportListBaseFontSize(UIFontTextStyle textStyle)
+{
+    if ([textStyle isEqualToString:UIFontTextStyleTitle2]) {
+        return 22.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleTitle3]) {
+        return 20.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleHeadline]) {
+        return 17.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleBody]) {
+        return 16.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleSubheadline]) {
+        return 15.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleFootnote]) {
+        return 13.0;
+    }
+    if ([textStyle isEqualToString:UIFontTextStyleCaption1]) {
+        return 12.0;
+    }
+    return 15.0;
+}
+
 static UIFont *PPOrderSupportListFont(UIFontTextStyle textStyle, UIFontWeight weight)
 {
-    UIFontDescriptor *descriptor = [UIFontDescriptor preferredFontDescriptorWithTextStyle:textStyle];
-    UIFont *font = [UIFont systemFontOfSize:descriptor.pointSize weight:weight];
+    CGFloat size = PPOrderSupportListBaseFontSize(textStyle);
+    BOOL emphasized = weight >= UIFontWeightSemibold;
+    UIFont *font = emphasized ? [GM boldFontWithSize:size] : [GM MidFontWithSize:size];
     return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:font];
 }
 

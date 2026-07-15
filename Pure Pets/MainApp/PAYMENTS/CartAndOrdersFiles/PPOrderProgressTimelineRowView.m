@@ -6,6 +6,7 @@
 //
 #import "PPOrderProgressTimelineRowView.h"
 #import "OrderSupportFunc.h"
+#import "PPOrderStatusAppearance.h"
 
 @interface PPOrderProgressTimelineRowView ()
 
@@ -150,42 +151,18 @@
         return;
     }
 
-    BOOL isFailure = (self.rowState == PPOrderProgressTimelineRowStateFailure);
-    [self pp_addScalePulseToLayer:self.markerView.layer
-                              key:PPOrderTimelineCurrentMarkerMotionKey
-                        fromScale:1.0
-                          toScale:1.055
-                         duration:1.85
-                       beginDelay:0.0];
     [self pp_addScalePulseToLayer:self.markerHaloView.layer
                               key:PPOrderTimelineCurrentHaloScaleKey
-                        fromScale:1.0
-                          toScale:(isFailure ? 1.13 : 1.18)
-                         duration:2.75
-                       beginDelay:0.05];
+                        fromScale:0.99
+                          toScale:1.10
+                         duration:3.2
+                       beginDelay:0.0];
     [self pp_addOpacityPulseToLayer:self.markerHaloView.layer
                                 key:PPOrderTimelineCurrentHaloOpacityKey
-                               from:0.30
-                                 to:(isFailure ? 0.72 : 0.82)
-                           duration:2.75
-                         beginDelay:0.05];
-    [self pp_addScalePulseToLayer:self.markerIconView.layer
-                              key:PPOrderTimelineCurrentIconMotionKey
-                        fromScale:1.0
-                          toScale:1.08
-                         duration:1.85
-                       beginDelay:0.14];
-    [self pp_addVerticalFloatToLayer:self.titleLabel.layer
-                                 key:PPOrderTimelineCurrentTitleFloatKey
-                            distance:1.1
-                            duration:2.25
-                          beginDelay:0.12];
-    [self pp_addOpacityPulseToLayer:self.titleLabel.layer
-                                key:PPOrderTimelineCurrentTitleOpacityKey
-                               from:0.82
-                                 to:1.0
-                           duration:2.25
-                         beginDelay:0.12];
+                               from:0.24
+                                 to:0.50
+                           duration:3.2
+                         beginDelay:0.0];
 }
 
 - (void)configureWithTitle:(NSString *)title
@@ -214,8 +191,8 @@
     self.subtitleLabel.text = self.subtitleText;
     self.metaLabel.text = self.metaText;
 
-    UIColor *accent = self.accentColor ?: [GM appPrimaryColor];
-    UIColor *errorColor = UIColor.systemRedColor;
+    UIColor *accent = self.accentColor ?: PPOrderStatusAccentColorForKey(@"pending");
+    UIColor *errorColor = accent;
     UIColor *upcomingFill = [UIColor tertiarySystemFillColor];
     UIColor *upcomingBorder = [UIColor quaternaryLabelColor];
     UIColor *titleColor = UIColor.labelColor;
@@ -223,7 +200,7 @@
     UIColor *metaColor = UIColor.tertiaryLabelColor;
     UIColor *markerFill = accent;
     UIColor *markerBorder = accent;
-    UIColor *iconTint = UIColor.whiteColor;
+    UIColor *iconTint = PPOrderStatusContrastingForegroundColor(accent, self.traitCollection);
     BOOL showHalo = NO;
 
     switch (state) {
@@ -278,9 +255,11 @@
     self.markerIconView.tintColor = iconTint;
 
     self.markerHaloView.hidden = !showHalo;
-    self.markerHaloView.backgroundColor = [(showHalo ? markerFill : accent) colorWithAlphaComponent:0.18];
+    self.markerHaloView.backgroundColor = PPOrderStatusStrongSurfaceColorForAccent(showHalo ? markerFill : accent,
+                                                                                   self.traitCollection);
     self.markerHaloView.layer.borderWidth = 1.0;
-    [self.markerHaloView pp_setBorderColor:[(showHalo ? markerFill : accent) colorWithAlphaComponent:0.26]];
+    [self.markerHaloView pp_setBorderColor:PPOrderStatusBorderColorForAccent(showHalo ? markerFill : accent,
+                                                                            self.traitCollection)];
 
     BOOL showsSecondaryDetails = expanded;
     self.subtitleLabel.hidden = !showsSecondaryDetails || self.subtitleText.length == 0;
