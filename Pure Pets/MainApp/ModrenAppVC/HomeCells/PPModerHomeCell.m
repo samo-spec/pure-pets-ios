@@ -21,7 +21,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
-    return [AppForgroundColr colorWithAlphaComponent:0.62] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return [AppForgroundColr colorWithAlphaComponent:0.32] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
 static NSString * const PPModerHomeTapHaloAnimationKey = @"pp.moderHome.tapHalo";
