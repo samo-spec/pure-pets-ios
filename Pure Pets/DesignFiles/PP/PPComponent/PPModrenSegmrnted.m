@@ -5,10 +5,10 @@
 static const NSInteger PPModrenSegmrntedNoSelection = -1;
 static const CGFloat PPModrenSegmrntedOuterInset = 3.0;
 static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
-static const CGFloat PPModrenSegmrntedUnderlineHeight = 5.0;
-static const CGFloat PPModrenSegmrntedContainerCornerRadius = 24.0;
-static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 24.0;
-static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.16;
+static const CGFloat PPModrenSegmrntedUnderlineHeight = 6.0;
+static const CGFloat PPModrenSegmrntedContainerCornerRadius = 20.0;
+static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 20.0;
+static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.22;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {

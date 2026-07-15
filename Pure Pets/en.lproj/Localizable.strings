@@ -3517,8 +3517,8 @@
 
 /* Quick Access Settings */
 "quick_access_settings_section" = "Quick Access Settings";
-"Light Appearance" = "Light Appearance";
-"Dark Appearance" = "Dark Appearance";
+"Light Appearance" = "Light";
+"Dark Appearance" = "Dark";
 "Arabic" = "Arabic";
 "English" = "English";
 "Mute Alerts" = "Mute Alerts";

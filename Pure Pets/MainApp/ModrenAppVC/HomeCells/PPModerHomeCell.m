@@ -443,7 +443,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
                                                             glowDiameter));
     float corners = glowDiameter * 0.5;
     self.bottomGlowLayer.cornerRadius = corners;
-    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.46;
+    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.66;
     CGFloat haloX = (CGRectGetWidth(surfaceBounds) - haloDiameter) * 0.5;
     CGFloat haloY = CGRectGetHeight(surfaceBounds) - (haloDiameter * 0.74);
     self.tapHaloLayer.frame = CGRectIntegral(CGRectMake(haloX, haloY, haloDiameter, haloDiameter));

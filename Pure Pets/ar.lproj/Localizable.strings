@@ -3496,8 +3496,8 @@
 
 /* Quick Access Settings */
 "quick_access_settings_section" = "إعدادات الوصول السريع";
-"Light Appearance" = "المظهر الفاتح";
-"Dark Appearance" = "المظهر الداكن";
+"Light Appearance" = "لفاتح";
+"Dark Appearance" = "داكن";
 "Arabic" = "العربية";
 "English" = "الإنجليزية";
 "Mute Alerts" = "كتم التنبيهات";

@@ -472,6 +472,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func layoutAuroraLayers(in bounds: CGRect) {
         guard !bounds.isEmpty else { return }
 
+        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
             let size = CGSize(
@@ -479,8 +480,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 height: max(bounds.height * spec.size.height, 150)
             )
             layer.bounds = CGRect(origin: .zero, size: size)
+            let specCenterX = isRTL ? (1.0 - spec.center.x) : spec.center.x
             layer.position = CGPoint(
-                x: bounds.width * spec.center.x,
+                x: bounds.width * specCenterX,
                 y: bounds.height * spec.center.y
             )
             layer.cornerRadius = min(size.width, size.height) * 0.5
@@ -491,6 +493,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         guard !bounds.isEmpty else { return }
 
         let displayScale = max(UIScreen.main.scale, 1)
+        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
 
         for (groupIndex, layer) in particleLayers.enumerated() {
             layer.frame = bounds
@@ -502,7 +505,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
             for (pointIndex, normalizedPoint) in
                 normalizedParticlePointGroups[groupIndex].enumerated() {
-                let x = (bounds.width * normalizedPoint.x * displayScale).rounded() / displayScale
+                let resolvedX = isRTL ? (1.0 - normalizedPoint.x) : normalizedPoint.x
+                let x = (bounds.width * resolvedX * displayScale).rounded() / displayScale
                 let y = (bounds.height * normalizedPoint.y * displayScale).rounded() / displayScale
                 let diameter: CGFloat = (pointIndex + groupIndex).isMultiple(of: 4) ? 2.2 : 1.35
                 path.append(
@@ -528,8 +532,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             270
         )
         reactiveLightView.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let reactiveCenterX = isRTL ? (1.0 - defaultReactiveLightCenter.x) : defaultReactiveLightCenter.x
         reactiveLightView.center = CGPoint(
-            x: bounds.width * defaultReactiveLightCenter.x,
+            x: bounds.width * reactiveCenterX,
             y: bounds.height * defaultReactiveLightCenter.y
         )
         reactiveLightLayer.frame = reactiveLightView.bounds
@@ -550,6 +556,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func layoutSignatureSweep(in bounds: CGRect) {
         guard !bounds.isEmpty else { return }
 
+        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
         let sweepWidth = max(bounds.width * 0.40, 120)
         let sweepHeight = max(bounds.height * 2.0, 264)
         signatureSweepLayer.bounds = CGRect(
@@ -558,12 +565,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             width: sweepWidth,
             height: sweepHeight
         )
+        let sweepStartX = isRTL ? (bounds.width + sweepWidth) : -sweepWidth
         signatureSweepLayer.position = CGPoint(
-            x: -sweepWidth,
+            x: sweepStartX,
             y: bounds.midY
         )
+        let rotationAngle = isRTL ? 0.24 : -0.24
         signatureSweepLayer.setAffineTransform(
-            CGAffineTransform(rotationAngle: -0.24)
+            CGAffineTransform(rotationAngle: rotationAngle)
         )
     }
 
@@ -577,8 +586,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         accentBarLayer.frame = CGRect(x: barX, y: 0, width: barWidth, height: 3)
 
         let glowDiameter = max(min(bounds.width * 0.74, 230), 168)
+        let glowX = isRTL ? -glowDiameter * 0.38 : (bounds.width - glowDiameter * 0.62)
         accentGlowLayer.frame = CGRect(
-            x: bounds.width - glowDiameter * 0.62,
+            x: glowX,
             y: -glowDiameter * 0.30,
             width: glowDiameter,
             height: glowDiameter
@@ -689,9 +699,19 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ]
 
         let glowStrength = storedCornerGlowOpacityMultiplier
+        let middleGlowColor: UIColor
+        let middleGlowAlpha: CGFloat
+        if accentColorOverride == nil {
+            middleGlowColor = UIColor(red: 255.0 / 255.0, green: 248.0 / 255.0, blue: 245.0 / 255.0, alpha: 1.0)
+            middleGlowAlpha = (isDark ? 0.055 : 0.034) * glowStrength
+        } else {
+            middleGlowColor = blend(palette.accent, with: .white, amount: 0.5)
+            middleGlowAlpha = (isDark ? 0.055 : 0.034) * 0.6 * glowStrength
+        }
+
         accentGlowLayer.colors = [
             palette.accent.withAlphaComponent((isDark ? 0.17 : 0.115) * glowStrength).cgColor,
-            palette.accent.withAlphaComponent((isDark ? 0.055 : 0.034) * glowStrength).cgColor,
+            middleGlowColor.withAlphaComponent(middleGlowAlpha).cgColor,
             UIColor.clear.cgColor
         ]
 
@@ -1239,8 +1259,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let duration = PPHeroApexMotionTokens.signatureSweepCycleDuration
         let sweepWidth = signatureSweepLayer.bounds.width
-        let startX = -sweepWidth
-        let endX = overlayView.bounds.width + sweepWidth
+        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
+        let startX = isRTL ? (overlayView.bounds.width + sweepWidth) : -sweepWidth
+        let endX = isRTL ? -sweepWidth : (overlayView.bounds.width + sweepWidth)
         let startY = overlayView.bounds.midY + 20
         let endY = overlayView.bounds.midY - 18
 
