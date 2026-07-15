@@ -41,6 +41,7 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
 @property (nonatomic, assign) BOOL isGenderSelector; // for smaller icon size
 @property (nonatomic, assign) BOOL usesCompactOptionIcons;
 @property (nonatomic, assign) BOOL usesCompactPremiumHero;
+@property (nonatomic, assign) BOOL useUsersOption;
 @property (nonatomic, assign) CGFloat preferredMainDetentHeight;
 @property (nonatomic, assign) CGFloat preferredPremiumDetentFraction;
 @property (nonatomic, copy, nullable) NSString *premiumHeroEyebrow;

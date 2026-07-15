@@ -1893,9 +1893,19 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
     self.selectedCategory = nextCategory;
     if (persist) {
-        [self pp_saveSelectedHomeCategory:kind isAll:isAll];
+        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            [self pp_saveSelectedHomeCategory:kind isAll:isAll];
+        });
     }
-    [self pp_refreshHomeCategorySelectionAnimated:changed];
+
+    if (navigate) {
+        __weak typeof(self) weakSelf = self;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf pp_refreshHomeCategorySelectionAnimated:changed];
+        });
+    } else {
+        [self pp_refreshHomeCategorySelectionAnimated:changed];
+    }
 
     if (!navigate) {
         return;

@@ -2543,8 +2543,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
 
-        // Optional safety limit (adjust if needed)
-        // query = [query queryLimitedTo:50];
+        query = [query queryLimitedTo:50];
 
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {
@@ -2593,8 +2592,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         query = PPAccessoryRequirePublicMarketVisibility(query);
         query = [query queryOrderedByField:@"createdAt" descending:YES];
 
-        // Optional safety limit
-        // query = [query queryLimitedTo:50];
+        query = [query queryLimitedTo:50];
 
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                             NSError *error) {

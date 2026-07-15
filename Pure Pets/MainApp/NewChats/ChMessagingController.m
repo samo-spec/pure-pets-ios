@@ -151,12 +151,7 @@ static UIColor *PPChatPremiumHeaderControlSurfaceColor(void)
 
 static UIColor *PPChatPremiumHeaderBorderColor(void)
 {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        return dark
-            ? [UIColor colorWithWhite:1.0 alpha:0.0]
-            : [UIColor colorWithWhite:0.0 alpha:0.0];
-    }];
+    return [UIColor clearColor];
 }
 
 static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
@@ -5276,8 +5271,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     self.premiumModalHeaderView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.premiumModalHeaderProfileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.premiumModalHeaderView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
-    self.premiumModalHeaderGlassBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
+     self.premiumModalHeaderGlassBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
     self.premiumModalHeaderGlassBackgroundView.clipsToBounds = YES;
     self.premiumModalHeaderGlassBackgroundView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
     self.premiumModalHeaderGlassBackgroundView.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];

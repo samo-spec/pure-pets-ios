@@ -121,6 +121,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
         _preferredMainDetentHeight = 0.0;
         _preferredPremiumDetentFraction = PPPremiumOptionPickerDefaultDetentFraction;
         _usesCompactPremiumHero = YES;
+        _useUsersOption = NO;
     }
     return self;
 }
@@ -1040,7 +1041,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     BOOL premiumPicker = [self pp_usesPremiumPickerPresentation];
     cell.premiumCardStyleEnabled = premiumPicker;
     cell.preferredHorizontalInset = 0.0;
-    cell.isUserOption = NO;
+    cell.isUserOption = self.useUsersOption;
     if (!option) return cell;
 
     // --- Extract title, subtitle, and image safely ---

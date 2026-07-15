@@ -24,7 +24,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     static dispatch_queue_t queue;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        queue = dispatch_queue_create("com.purepets.dataview.vm-build", DISPATCH_QUEUE_CONCURRENT);
+        queue = dispatch_queue_create("com.purepets.dataview.vm-build", DISPATCH_QUEUE_SERIAL);
     });
     return queue;
 }
@@ -489,15 +489,16 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
-            weakSelf.latestRawResults = safeResults;
             [weakSelf pp_buildViewModelsFromResults:safeResults
                                             section:section
-                                       filterState:weakSelf.filterState ?: filterState
+                                       filterState:filterState
                                       requestToken:requestToken
                                         completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
                 if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                     return;
                 }
+
+                weakSelf.latestRawResults = safeResults;
 
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
                                          "DataViewRequest", "results=%lu", (unsigned long)safeResults.count);
@@ -695,15 +696,22 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
 
     __weak typeof(self) weakSelf = self;
     dispatch_async(PPDataViewVMBuildQueue(), ^{
-        if (!weakSelf) {
+        if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
-                                     "DataViewVMBuild", "released=1");
+                                     "DataViewVMBuild", "cancelled=1");
             return;
         }
 
         NSArray *filtered = [weakSelf pp_applyFiltersToResults:results
                                                      filterState:filterState
                                                         section:section];
+        
+        if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
+            os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
+                                     "DataViewVMBuild", "cancelled=2");
+            return;
+        }
+
         NSArray<PPUniversalCellViewModel *> *viewModels =
         [weakSelf buildViewModelsFromModels:filtered section:section];
 
@@ -711,7 +719,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
                                      "DataViewVMBuild", "filtered=%lu viewModels=%lu",
                                      (unsigned long)filtered.count, (unsigned long)viewModels.count);
-            if (!weakSelf) {
+            if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                 return;
             }
             // Callers perform the final token check before mutating state. This
@@ -1063,7 +1071,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             weakSelf.latestRawResults = safeResults;
             [weakSelf pp_buildViewModelsFromResults:safeResults
                                             section:section
-                                       filterState:weakSelf.filterState ?: filterState
+                                       filterState:filterState
                                       requestToken:requestToken
                                         completion:^(NSArray<PPUniversalCellViewModel *> *viewModels) {
                 if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {

@@ -209,8 +209,7 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
      queryOrderedByField:@"availableDate"
      descending:YES];
 
-    // Optional safety limit
-    // query = [query queryLimitedTo:50];
+    query = [query queryLimitedTo:50];
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot,
                                         NSError * _Nullable error)

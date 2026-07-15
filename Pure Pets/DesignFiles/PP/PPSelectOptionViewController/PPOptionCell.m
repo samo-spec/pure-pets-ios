@@ -364,12 +364,12 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
 - (void)pp_applyAvatarImage:(UIImage *)image {
     self.iconStyle = PPOptionCellIconStyleAvatar;
     if (self.isUserOption) {
-        self.iconPlateWidthConstraint.constant = 56.0;
-        self.iconPlateHeightConstraint.constant = 56.0;
-        self.circleImageWidthConstraint.constant = 38.0;
-        self.circleImageHeightConstraint.constant = 38.0;
-        self.iconPlateView.layer.cornerRadius = 28.0;
-        self.circleImageView.layer.cornerRadius = 28.0;
+        self.iconPlateWidthConstraint.constant = 44.0;
+        self.iconPlateHeightConstraint.constant = 44.0;
+        self.circleImageWidthConstraint.constant = 44.0;
+        self.circleImageHeightConstraint.constant = 44.0;
+        self.iconPlateView.layer.cornerRadius = 22.0;
+        self.circleImageView.layer.cornerRadius = 22.0;
     } else {
         self.iconPlateWidthConstraint.constant = 48.0;
         self.iconPlateHeightConstraint.constant = 48.0;
@@ -387,10 +387,19 @@ typedef NS_ENUM(NSInteger, PPOptionCellIconStyle) {
 
 - (void)pp_applySymbolNamed:(NSString *)imageNamed useSmallIcon:(BOOL)useSmallIcon {
     self.iconStyle = PPOptionCellIconStyleSymbol;
-    self.iconPlateView.layer.cornerRadius = self.premiumCardStyleEnabled ? 16.0 : 20.0;
-    self.circleImageView.layer.cornerRadius = 0.0;
-    self.circleImageView.clipsToBounds = NO;
-    self.circleImageView.contentMode = UIViewContentModeCenter;
+    if (self.isUserOption) {
+        self.iconPlateView.layer.cornerRadius = 22.0;
+        self.circleImageView.layer.cornerRadius = 22.0;
+        self.iconPlateWidthConstraint.constant = 44.0;
+        self.iconPlateHeightConstraint.constant = 44.0;
+        self.circleImageWidthConstraint.constant = 44.0;
+        self.circleImageHeightConstraint.constant = 44.0;
+    } else {
+        self.iconPlateView.layer.cornerRadius = self.premiumCardStyleEnabled ? 16.0 : 20.0;
+        self.circleImageView.layer.cornerRadius = 0.0;
+    }
+    self.circleImageView.clipsToBounds = self.isUserOption ? YES : NO;
+    self.circleImageView.contentMode = self.isUserOption ? UIViewContentModeScaleAspectFill : UIViewContentModeCenter;
     self.circleImageView.image = [self pp_symbolImageNamed:imageNamed useSmallIcon:useSmallIcon];
     self.circleImageView.tintColor = self.premiumCardStyleEnabled ? [self pp_accentColor] : AppButtonMixColorClr;
     [self pp_applyVisualStyle];

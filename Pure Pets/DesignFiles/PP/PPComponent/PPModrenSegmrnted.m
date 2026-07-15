@@ -8,7 +8,7 @@ static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
 static const CGFloat PPModrenSegmrntedUnderlineHeight = 5.0;
 static const CGFloat PPModrenSegmrntedContainerCornerRadius = 24.0;
 static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 24.0;
-static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.36;
+static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.16;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {
@@ -113,9 +113,11 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
 
     self.contentStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.iconView,
+        //self.iconView,
         self.titleLabel
     ]];
+    self.iconView.hidden = YES;
+    
     self.contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentStackView.axis = UILayoutConstraintAxisVertical;
     self.contentStackView.alignment = UIStackViewAlignmentCenter;
@@ -245,6 +247,8 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     } else {
         updates();
     }
+    self.iconView.hidden = YES;
+    
 
     UIAccessibilityTraits traits = UIAccessibilityTraitButton;
     if (selected) {

@@ -381,7 +381,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
 
 - (void)fetchAdsForAllMainKinds:(void (^)(NSArray<PetAd *> *ads))completion
 {
-    FIRQuery *query = PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection]);
+    FIRQuery *query = [[PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection]) queryOrderedByField:@"createdAt" descending:YES] queryLimitedTo:50];
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 

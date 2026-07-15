@@ -307,6 +307,7 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 @property (nonatomic, assign) NSInteger quantity;
 @property (nonatomic, assign) BOOL isEditingQuantity;
 @property (nonatomic, strong) NSTimer *stepperCollapseTimer;
+@property (nonatomic, strong) NSMutableArray<UIView *> *reusablePlateViews;
 @end
 
 @implementation BBDataViewFullDetailsCell
@@ -361,8 +362,8 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     self.favoriteButton.hidden = YES;
     self.favoriteButton.adID = nil;
     self.favoriteButton.collection = nil;
-    [self bb_removeAllArrangedSubviewsFromStack:self.highlightPlateStackView];
-    [self bb_removeAllArrangedSubviewsFromStack:self.socialMetricStackView];
+    [self bb_recyclePlateViewsFromStack:self.highlightPlateStackView];
+    [self bb_recyclePlateViewsFromStack:self.socialMetricStackView];
     self.highlightPlateStackView.hidden = YES;
     self.socialMetricStackView.hidden = YES;
     self.cardView.transform = CGAffineTransformIdentity;
@@ -1153,7 +1154,7 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 
 - (void)bb_configurePlateStack:(UIStackView *)plateStack withPlates:(NSArray<UIView *> *)plates
 {
-    [self bb_removeAllArrangedSubviewsFromStack:plateStack];
+    [self bb_recyclePlateViewsFromStack:plateStack];
     plateStack.hidden = plates.count == 0;
     if (plates.count == 0) { return; }
 
@@ -1165,23 +1166,78 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
 - (UIView *)bb_plateViewWithIconName:(NSString *)iconName
                                 text:(NSString *)text
                   accessibilityLabel:(NSString *)accessibilityLabel
-                           tintColor:(UIColor *)tintColor
-                          emphasized:(BOOL)emphasized
+                            tintColor:(UIColor *)tintColor
+                           emphasized:(BOOL)emphasized
 {
-    UIView *plate = [[UIView alloc] init];
-    plate.translatesAutoresizingMaskIntoConstraints = NO;
+    UIView *plate = nil;
+    UIStackView *stack = nil;
+    UIImageView *iconView = nil;
+    UILabel *label = nil;
+    
+    if (self.reusablePlateViews.count > 0) {
+        plate = self.reusablePlateViews.lastObject;
+        [self.reusablePlateViews removeLastObject];
+        
+        for (UIView *subview in plate.subviews) {
+            if ([subview isKindOfClass:[UIStackView class]]) {
+                stack = (UIStackView *)subview;
+                break;
+            }
+        }
+        if (stack && stack.arrangedSubviews.count >= 2) {
+            iconView = (UIImageView *)stack.arrangedSubviews[0];
+            label = (UILabel *)stack.arrangedSubviews[1];
+        }
+    }
+    
+    if (!plate || !stack || !iconView || !label) {
+        plate = [[UIView alloc] init];
+        plate.translatesAutoresizingMaskIntoConstraints = NO;
+        plate.layer.cornerRadius = 14.0;
+        plate.clipsToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            plate.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+
+        iconView = [[UIImageView alloc] init];
+        iconView.translatesAutoresizingMaskIntoConstraints = NO;
+        iconView.contentMode = UIViewContentModeScaleToFill;
+
+        label = [[UILabel alloc] init];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.numberOfLines = 1;
+        label.adjustsFontSizeToFitWidth = YES;
+        label.minimumScaleFactor = 0.82;
+        label.lineBreakMode = NSLineBreakByTruncatingTail;
+        label.textAlignment = Language.alignmentForCurrentLanguage;
+
+        stack = [[UIStackView alloc] initWithArrangedSubviews:@[iconView, label]];
+        stack.translatesAutoresizingMaskIntoConstraints = NO;
+        stack.axis = UILayoutConstraintAxisHorizontal;
+        stack.alignment = UIStackViewAlignmentCenter;
+        stack.distribution = UIStackViewDistributionFill;
+        stack.spacing = 4.0;
+        [plate addSubview:stack];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [stack.topAnchor constraintEqualToAnchor:plate.topAnchor constant:6.0],
+            [stack.leadingAnchor constraintEqualToAnchor:plate.leadingAnchor constant:7.0],
+            [stack.trailingAnchor constraintEqualToAnchor:plate.trailingAnchor constant:-7.0],
+            [stack.bottomAnchor constraintEqualToAnchor:plate.bottomAnchor constant:-6.0],
+            [iconView.widthAnchor constraintEqualToConstant:11.0],
+            [iconView.heightAnchor constraintEqualToConstant:11.0],
+            [plate.heightAnchor constraintGreaterThanOrEqualToConstant:28.0]
+        ]];
+
+        [plate setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+        [plate setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+        plate.isAccessibilityElement = YES;
+    }
+
     plate.backgroundColor = BBFullDetailsPlateSurfaceColor();
     plate.layer.borderWidth = emphasized ? 0.8 : 0.65;
     plate.layer.borderColor = BBFullDetailsPlateBorderColor().CGColor;
-    plate.layer.cornerRadius = 14.0;
-    plate.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        plate.layer.cornerCurve = kCACornerCurveContinuous;
-    }
 
-    UIImageView *iconView = [[UIImageView alloc] init];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleToFill;
     iconView.tintColor = tintColor ?: UIColor.secondaryLabelColor;
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration =
@@ -1192,40 +1248,12 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     }
     iconView.hidden = iconView.image == nil;
 
-    UILabel *label = [[UILabel alloc] init];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
     label.text = BBFullDetailsTrimmedString(text);
     label.textColor = emphasized ? (tintColor ?: UIColor.labelColor) : UIColor.labelColor;
     label.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
                   scaledFontForFont:([GM MidFontWithSize:(emphasized ? 11.5 : 11.0)] ?: [UIFont systemFontOfSize:(emphasized ? 11.5 : 11.0) weight:UIFontWeightSemibold])];
     label.adjustsFontForContentSizeCategory = YES;
-    label.numberOfLines = 1;
-    label.adjustsFontSizeToFitWidth = YES;
-    label.minimumScaleFactor = 0.82;
-    label.lineBreakMode = NSLineBreakByTruncatingTail;
-    label.textAlignment = Language.alignmentForCurrentLanguage;
 
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[iconView, label]];
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.alignment = UIStackViewAlignmentCenter;
-    stack.distribution = UIStackViewDistributionFill;
-    stack.spacing = 4.0;
-    [plate addSubview:stack];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:plate.topAnchor constant:6.0],
-        [stack.leadingAnchor constraintEqualToAnchor:plate.leadingAnchor constant:7.0],
-        [stack.trailingAnchor constraintEqualToAnchor:plate.trailingAnchor constant:-7.0],
-        [stack.bottomAnchor constraintEqualToAnchor:plate.bottomAnchor constant:-6.0],
-        [iconView.widthAnchor constraintEqualToConstant:11.0],
-        [iconView.heightAnchor constraintEqualToConstant:11.0],
-        [plate.heightAnchor constraintGreaterThanOrEqualToConstant:28.0]
-    ]];
-
-    [plate setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
-    [plate setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    plate.isAccessibilityElement = YES;
     plate.accessibilityLabel = accessibilityLabel;
     return plate;
 }
@@ -2368,6 +2396,19 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
     for (UIView *view in views) {
         [stack removeArrangedSubview:view];
         [view removeFromSuperview];
+    }
+}
+
+- (void)bb_recyclePlateViewsFromStack:(UIStackView *)stack
+{
+    if (!self.reusablePlateViews) {
+        self.reusablePlateViews = [NSMutableArray array];
+    }
+    NSArray<UIView *> *views = stack.arrangedSubviews.copy;
+    for (UIView *view in views) {
+        [stack removeArrangedSubview:view];
+        [view removeFromSuperview];
+        [self.reusablePlateViews addObject:view];
     }
 }
 

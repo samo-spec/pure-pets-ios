@@ -183,7 +183,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let reactiveLightLayer = CAGradientLayer()
     private let touchLensLayer = CAGradientLayer()
     private let touchCoreLayer = CAGradientLayer()
-    private let glassSheenLayer = CAGradientLayer()
     private let signatureSweepLayer = CAGradientLayer()
     private let accentBarLayer = CAGradientLayer()
     private let accentGlowLayer = CAGradientLayer()
@@ -217,7 +216,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let fieldDriftAnimationKey = "pp.hero.apex.field-drift"
     private let particleAnimationKey = "pp.hero.apex.particle"
     private let reactiveLightAnimationKey = "pp.hero.apex.reactive-light"
-    private let sheenAnimationKey = "pp.hero.apex.sheen"
     private let signatureSweepAnimationKey = "pp.hero.apex.signature-sweep"
     private let accentBarTransitionKey = "pp.hero.apex.accent-bar-transition"
     private let accentGlowTransitionKey = "pp.hero.apex.accent-glow-transition"
@@ -341,11 +339,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         touchLensView.layer.addSublayer(touchCoreLayer)
         touchLensView.alpha = 0
 
-        glassSheenLayer.startPoint = CGPoint(x: 0, y: 0)
-        glassSheenLayer.endPoint = CGPoint(x: 1, y: 1)
-        glassSheenLayer.locations = [0, 0.28, 0.72, 1]
-        overlayView.layer.addSublayer(glassSheenLayer)
-
         signatureSweepLayer.startPoint = CGPoint(x: 0, y: 0.5)
         signatureSweepLayer.endPoint = CGPoint(x: 1, y: 0.5)
         signatureSweepLayer.locations = [0, 0.18, 0.35, 0.50, 0.64, 0.82, 1]
@@ -435,7 +428,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         baseGradientLayer.frame = materialBounds
         depthGradientLayer.frame = materialBounds
         vignetteLayer.frame = materialBounds
-        glassSheenLayer.frame = overlayView.bounds
 
         layoutAuroraLayers(in: ambientContentView.bounds)
         layoutParticleLayers(in: ambientContentView.bounds)
@@ -679,14 +671,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             UIColor.clear.cgColor
         ]
 
-        glassSheenLayer.colors = [
-            UIColor.white.withAlphaComponent(isDark ? 0.15 : 0.34).cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.04 : 0.095).cgColor,
-            UIColor.clear.cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.025 : 0.045).cgColor
-        ]
-        glassSheenLayer.opacity = 0.78
-
         signatureSweepLayer.colors = [
             UIColor.clear.cgColor,
             UIColor.clear.cgColor,
@@ -771,7 +755,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             surfaceMiddle: middle,
             surfaceTail: tail,
             depth: blend(polishedSurfaceBase, with: .black, amount: isDark ? 0.30 : 0.07),
-            aurora: [warmLight, bottomLeftGlow, twilight],
+            aurora: [
+                accent,
+                bottomLeftGlow,
+                blend(
+                    UIColor(named: "AppPrimaryColorShainer") ?? twilight,
+                    with: .white,
+                    amount: 0.35
+                ).withAlphaComponent(0.45)
+            ],
             particle: [particlePrimary, particleSecondary, UIColor.white],
             reactiveLight: blend(accent, with: .white, amount: isDark ? 0.76 : 0.86),
             stroke: UIColor.white.withAlphaComponent(
@@ -1058,47 +1050,93 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
 
-            let transform = CAKeyframeAnimation(keyPath: "transform")
-            transform.values = [
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.18,
-                    y: spec.travel.height * 0.12,
-                    scale: spec.scaleRange.lowerBound
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: spec.travel.width,
-                    y: -spec.travel.height * 0.46,
-                    scale: spec.scaleRange.upperBound
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.54,
-                    y: spec.travel.height,
-                    scale: 0.992
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.18,
-                    y: spec.travel.height * 0.12,
-                    scale: spec.scaleRange.lowerBound
-                ))
-            ]
-            transform.keyTimes = [0, 0.34, 0.72, 1]
-            transform.calculationMode = .cubic
-            transform.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
+            let transform: CAKeyframeAnimation
+            let opacity: CAKeyframeAnimation
 
-            let opacity = CAKeyframeAnimation(keyPath: "opacity")
-            let lowOpacity = spec.opacityRange.lowerBound
-            let highOpacity = spec.opacityRange.upperBound
-            let returnOpacity = lowOpacity + (highOpacity - lowOpacity) * 0.42
-            opacity.values = [lowOpacity, highOpacity, returnOpacity, lowOpacity]
-            opacity.keyTimes = [0, 0.32, 0.72, 1]
-            opacity.calculationMode = .cubic
-            opacity.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
+            if index == 2 {
+                transform = CAKeyframeAnimation(keyPath: "transform")
+                transform.values = [
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.72,
+                        y: spec.travel.height * 0.22,
+                        scale: spec.scaleRange.lowerBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width * 0.78,
+                        y: -spec.travel.height * 0.28,
+                        scale: spec.scaleRange.upperBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0))
+                ]
+                transform.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
+                transform.calculationMode = .cubic
+                transform.timingFunctions = [
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    CAMediaTimingFunction(name: .easeOut),
+                    CAMediaTimingFunction(name: .linear)
+                ]
+
+                let lowOpacity = spec.opacityRange.lowerBound
+                let midOpacity = lowOpacity + (spec.opacityRange.upperBound - lowOpacity) * 0.55
+                opacity = CAKeyframeAnimation(keyPath: "opacity")
+                opacity.values = [lowOpacity, midOpacity, midOpacity, lowOpacity, lowOpacity, lowOpacity]
+                opacity.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
+                opacity.calculationMode = .cubic
+                opacity.timingFunctions = [
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    CAMediaTimingFunction(name: .easeOut),
+                    CAMediaTimingFunction(name: .linear),
+                    CAMediaTimingFunction(name: .linear)
+                ]
+            } else {
+                transform = CAKeyframeAnimation(keyPath: "transform")
+                transform.values = [
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.18,
+                        y: spec.travel.height * 0.12,
+                        scale: spec.scaleRange.lowerBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width,
+                        y: -spec.travel.height * 0.46,
+                        scale: spec.scaleRange.upperBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.54,
+                        y: spec.travel.height,
+                        scale: 0.992
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.18,
+                        y: spec.travel.height * 0.12,
+                        scale: spec.scaleRange.lowerBound
+                    ))
+                ]
+                transform.keyTimes = [0, 0.34, 0.72, 1]
+                transform.calculationMode = .cubic
+                transform.timingFunctions = Array(
+                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                    count: 3
+                )
+
+                let lowOpacity = spec.opacityRange.lowerBound
+                let highOpacity = spec.opacityRange.upperBound
+                let returnOpacity = lowOpacity + (highOpacity - lowOpacity) * 0.42
+                opacity = CAKeyframeAnimation(keyPath: "opacity")
+                opacity.values = [lowOpacity, highOpacity, returnOpacity, lowOpacity]
+                opacity.keyTimes = [0, 0.32, 0.72, 1]
+                opacity.calculationMode = .cubic
+                opacity.timingFunctions = Array(
+                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                    count: 3
+                )
+            }
 
             let group = makeRepeatingAnimationGroup(
                 animations: [transform, opacity],
@@ -1193,36 +1231,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
         reactiveLightLayer.add(reactiveGroup, forKey: reactiveLightAnimationKey)
 
-        let sheenBreath = CAKeyframeAnimation(keyPath: "opacity")
-        sheenBreath.values = [0.38, 0.96, 0.58, 0.38]
-        sheenBreath.keyTimes = [0, 0.38, 0.72, 1]
-        sheenBreath.calculationMode = .cubic
-        sheenBreath.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
-        )
-
-        let sheenTravel = CAKeyframeAnimation(keyPath: "locations")
-        sheenTravel.values = [
-            [0.00, 0.12, 0.38, 0.66],
-            [0.16, 0.42, 0.78, 1.00],
-            [0.34, 0.66, 0.94, 1.00],
-            [0.00, 0.12, 0.38, 0.66]
-        ]
-        sheenTravel.keyTimes = [0, 0.38, 0.72, 1]
-        sheenTravel.calculationMode = .cubic
-        sheenTravel.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
-        )
-
-        let sheenGroup = makeRepeatingAnimationGroup(
-            animations: [sheenBreath, sheenTravel],
-            duration: 6.0,
-            phase: 1.6
-        )
-        glassSheenLayer.add(sheenGroup, forKey: sheenAnimationKey)
-
         installSignatureSweepAnimation()
     }
 
@@ -1297,7 +1305,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
         particleLayers.forEach { $0.removeAnimation(forKey: particleAnimationKey) }
         reactiveLightLayer.removeAnimation(forKey: reactiveLightAnimationKey)
-        glassSheenLayer.removeAnimation(forKey: sheenAnimationKey)
         signatureSweepLayer.removeAnimation(forKey: signatureSweepAnimationKey)
 
         ambientTimelineInstalled = false
@@ -1786,7 +1793,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         reactiveLightLayer.opacity = reduced ? 0.70 : 0.78
-        glassSheenLayer.opacity = reduced ? 0.62 : 0.68
         signatureSweepLayer.opacity = 0
         CATransaction.commit()
 
@@ -1797,7 +1803,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         reactiveLightLayer.opacity = 0.84
-        glassSheenLayer.opacity = 0.78
         signatureSweepLayer.opacity = 0
         CATransaction.commit()
         applyAccentMode(animated: false)
@@ -1909,7 +1914,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 phase: 4.2
             ),
             AuroraSpec(
-                center: CGPoint(x: 0.56, y: 0.24),
+                center: CGPoint(x: 0.54, y: 0.40),
                 size: CGSize(width: 0.68, height: 1.08),
                 travel: CGSize(width: 38, height: 30),
                 scaleRange: 0.965...1.075,
@@ -2176,7 +2181,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let reactiveLightLayer = CAGradientLayer()
     private let touchLensLayer = CAGradientLayer()
     private let touchCoreLayer = CAGradientLayer()
-    private let glassSheenLayer = CAGradientLayer()
     private let accentBarLayer = CAGradientLayer()
     private let accentGlowLayer = CAGradientLayer()
     private let innerStrokeLayer = CAShapeLayer()
@@ -2329,11 +2333,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         touchLensView.layer.addSublayer(touchCoreLayer)
         touchLensView.alpha = 0
 
-        glassSheenLayer.startPoint = CGPoint(x: 0, y: 0)
-        glassSheenLayer.endPoint = CGPoint(x: 1, y: 1)
-        glassSheenLayer.locations = [0, 0.28, 0.72, 1]
-        overlayView.layer.addSublayer(glassSheenLayer)
-
         accentGlowLayer.type = .radial
         accentGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
         accentGlowLayer.endPoint = CGPoint(x: 1, y: 1)
@@ -2416,7 +2415,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         baseGradientLayer.frame = materialBounds
         depthGradientLayer.frame = materialBounds
         vignetteLayer.frame = materialBounds
-        glassSheenLayer.frame = overlayView.bounds
 
         layoutAuroraLayers(in: ambientContentView.bounds)
         layoutParticleLayers(in: ambientContentView.bounds)
@@ -2581,14 +2579,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             UIColor.clear.cgColor,
             UIColor.clear.cgColor
         ]
-
-        glassSheenLayer.colors = [
-            UIColor.white.withAlphaComponent(isDark ? 0.15 : 0.34).cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.04 : 0.095).cgColor,
-            UIColor.clear.cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.025 : 0.045).cgColor
-        ]
-        glassSheenLayer.opacity = 0.64
 
         layer.shadowOpacity = 0
 
@@ -3194,47 +3184,93 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
 
-            let transform = CAKeyframeAnimation(keyPath: "transform")
-            transform.values = [
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.18,
-                    y: spec.travel.height * 0.12,
-                    scale: spec.scaleRange.lowerBound
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: spec.travel.width,
-                    y: -spec.travel.height * 0.46,
-                    scale: spec.scaleRange.upperBound
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.54,
-                    y: spec.travel.height,
-                    scale: 0.992
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: -spec.travel.width * 0.18,
-                    y: spec.travel.height * 0.12,
-                    scale: spec.scaleRange.lowerBound
-                ))
-            ]
-            transform.keyTimes = [0, 0.34, 0.72, 1]
-            transform.calculationMode = .cubic
-            transform.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
+            let transform: CAKeyframeAnimation
+            let opacity: CAKeyframeAnimation
 
-            let opacity = CAKeyframeAnimation(keyPath: "opacity")
-            let lowOpacity = spec.opacityRange.lowerBound
-            let highOpacity = spec.opacityRange.upperBound
-            let returnOpacity = lowOpacity + (highOpacity - lowOpacity) * 0.42
-            opacity.values = [lowOpacity, highOpacity, returnOpacity, lowOpacity]
-            opacity.keyTimes = [0, 0.32, 0.72, 1]
-            opacity.calculationMode = .cubic
-            opacity.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
+            if index == 2 {
+                transform = CAKeyframeAnimation(keyPath: "transform")
+                transform.values = [
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.72,
+                        y: spec.travel.height * 0.22,
+                        scale: spec.scaleRange.lowerBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width * 0.78,
+                        y: -spec.travel.height * 0.28,
+                        scale: spec.scaleRange.upperBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
+                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0))
+                ]
+                transform.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
+                transform.calculationMode = .cubic
+                transform.timingFunctions = [
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    CAMediaTimingFunction(name: .easeOut),
+                    CAMediaTimingFunction(name: .linear)
+                ]
+
+                let lowOpacity = spec.opacityRange.lowerBound
+                let midOpacity = lowOpacity + (spec.opacityRange.upperBound - lowOpacity) * 0.55
+                opacity = CAKeyframeAnimation(keyPath: "opacity")
+                opacity.values = [lowOpacity, midOpacity, midOpacity, lowOpacity, lowOpacity, lowOpacity]
+                opacity.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
+                opacity.calculationMode = .cubic
+                opacity.timingFunctions = [
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    PPHeroApexMotionTokens.ambientTimingFunction,
+                    CAMediaTimingFunction(name: .easeOut),
+                    CAMediaTimingFunction(name: .linear),
+                    CAMediaTimingFunction(name: .linear)
+                ]
+            } else {
+                transform = CAKeyframeAnimation(keyPath: "transform")
+                transform.values = [
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.18,
+                        y: spec.travel.height * 0.12,
+                        scale: spec.scaleRange.lowerBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width,
+                        y: -spec.travel.height * 0.46,
+                        scale: spec.scaleRange.upperBound
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.54,
+                        y: spec.travel.height,
+                        scale: 0.992
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.18,
+                        y: spec.travel.height * 0.12,
+                        scale: spec.scaleRange.lowerBound
+                    ))
+                ]
+                transform.keyTimes = [0, 0.34, 0.72, 1]
+                transform.calculationMode = .cubic
+                transform.timingFunctions = Array(
+                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                    count: 3
+                )
+
+                let lowOpacity = spec.opacityRange.lowerBound
+                let highOpacity = spec.opacityRange.upperBound
+                let returnOpacity = lowOpacity + (highOpacity - lowOpacity) * 0.42
+                opacity = CAKeyframeAnimation(keyPath: "opacity")
+                opacity.values = [lowOpacity, highOpacity, returnOpacity, lowOpacity]
+                opacity.keyTimes = [0, 0.32, 0.72, 1]
+                opacity.calculationMode = .cubic
+                opacity.timingFunctions = Array(
+                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                    count: 3
+                )
+            }
 
             let group = makeRepeatingAnimationGroup(
                 animations: [transform, opacity],
@@ -3845,7 +3881,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         reactiveLightLayer.opacity = reduced ? 0.70 : 0.78
-        glassSheenLayer.opacity = reduced ? 0.54 : 0.64
         CATransaction.commit()
 
         applyAccentMode(animated: false)
@@ -3855,7 +3890,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         reactiveLightLayer.opacity = 0.84
-        glassSheenLayer.opacity = 0.64
         CATransaction.commit()
         applyAccentMode(animated: false)
     }
