@@ -3487,6 +3487,8 @@
 "dataview_provider_fallback_name_format" = "مزود %@";
 "dataview_filters_collapse_accessibility" = "إخفاء الفلاتر";
 "dataview_filters_expand_accessibility" = "إظهار الفلاتر";
+"dataview_filters_expand_active_count_format" = "إظهار الفلاتر · %ld";
+"dataview_filters_active_count_accessibility_format" = "%ld فلاتر مفعّلة";
 
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "اختر الفئة الأساسية المناسبة للإعلان.";

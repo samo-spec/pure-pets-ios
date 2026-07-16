@@ -14,7 +14,7 @@ static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketpl
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
 static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
 static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
-static CGFloat const PPHomeMarketplaceHeroCTACornerRadius = 16.0;
+static CGFloat const PPHomeMarketplaceHeroCTACornerRadius = 14.0;
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {

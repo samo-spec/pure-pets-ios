@@ -491,7 +491,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UIView *ctaView = [[UIView alloc] init];
     ctaView.translatesAutoresizingMaskIntoConstraints = NO;
-    ctaView.layer.cornerRadius = 16.0;
+    ctaView.layer.cornerRadius = 14.0;
     ctaView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         ctaView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -1407,6 +1407,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, assign) BOOL nearbyServicesShowingLatest;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
 @property (nonatomic, assign) BOOL didResolveInitialHomeCategory;
+@property (nonatomic, assign) BOOL didCenterInitialMainKindSelection;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPHomeItem *> *dataSource;
@@ -1526,6 +1527,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                       persist:(BOOL)persist
                      navigate:(BOOL)navigate;
 - (void)pp_refreshHomeCategorySelectionAnimated:(BOOL)animated;
+- (void)pp_centerInitialSelectedMainKindIfNeededAnimated:(BOOL)animated;
+- (NSInteger)pp_indexOfSelectedMainKindInRail;
 - (NSArray<PPHomeItem *> *)pp_safeItemsInSection:(PPHomeSection)section
                                     fromSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
 - (void)pp_refreshProviderCategoryNavigationSection;
@@ -1790,6 +1793,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (void)setInitialSelectedMainKindID:(NSInteger)initialSelectedMainKindID
 {
     _initialSelectedMainKindID = initialSelectedMainKindID;
+    self.didCenterInitialMainKindSelection = NO;
     if (!self.isViewLoaded) {
         return;
     }
@@ -1888,6 +1892,81 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
     }
     [self pp_refreshVisibleMarketplaceHeroAnimated:animated];
+}
+
+- (NSInteger)pp_indexOfSelectedMainKindInRail
+{
+    if (!self.selectedCategory) {
+        return 0;
+    }
+
+    NSArray<MainKindsModel *> *railItems = [self pp_mainKindsRailDataSource];
+    for (NSUInteger idx = 0; idx < railItems.count; idx++) {
+        MainKindsModel *kind = railItems[idx];
+        if ([kind isKindOfClass:MainKindsModel.class] &&
+            kind.ID == self.selectedCategory.ID) {
+            return (NSInteger)idx;
+        }
+    }
+    return NSNotFound;
+}
+
+- (void)pp_centerInitialSelectedMainKindIfNeededAnimated:(BOOL)animated
+{
+    if (self.didCenterInitialMainKindSelection ||
+        self.isMainKindsExpanded ||
+        !self.isViewLoaded ||
+        !self.collectionView ||
+        !self.dataSource ||
+        self.isPremiumHomeEntranceAnimating) {
+        return;
+    }
+
+    NSInteger selectedIndex = [self pp_indexOfSelectedMainKindInRail];
+    if (selectedIndex == NSNotFound || selectedIndex < 1) {
+        self.didCenterInitialMainKindSelection = YES;
+        return;
+    }
+
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionMainKinds];
+    if (sectionIndex == NSNotFound) {
+        return;
+    }
+
+    if ([self.collectionView numberOfSections] <= sectionIndex ||
+        [self.collectionView numberOfItemsInSection:sectionIndex] <= selectedIndex) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self ||
+            self.didCenterInitialMainKindSelection ||
+            self.isMainKindsExpanded ||
+            self.isPremiumHomeEntranceAnimating) {
+            return;
+        }
+
+        NSInteger currentSelectedIndex = [self pp_indexOfSelectedMainKindInRail];
+        NSInteger currentSectionIndex = [self sectionIndexForType:PPHomeSectionMainKinds];
+        if (currentSelectedIndex == NSNotFound ||
+            currentSelectedIndex < 1 ||
+            currentSectionIndex == NSNotFound ||
+            [self.collectionView numberOfSections] <= currentSectionIndex ||
+            [self.collectionView numberOfItemsInSection:currentSectionIndex] <= currentSelectedIndex) {
+            return;
+        }
+
+        [self.collectionView layoutIfNeeded];
+        self.didCenterInitialMainKindSelection = YES;
+        BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:currentSelectedIndex
+                                                     inSection:currentSectionIndex];
+        [self.collectionView scrollToItemAtIndexPath:indexPath
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:shouldAnimate];
+    });
 }
 
 - (void)pp_selectHomeMainKind:(MainKindsModel *)kind
@@ -2899,6 +2978,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     } else if (isFirstContentApply && sections.count > 0) {
         [self pp_preparePremiumHomeEntranceStateIfNeeded];
     }
+    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -7210,6 +7290,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     if ([self pp_isInitialHomeRevealSettled]) {
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     }
+    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
     [self pp_centerNearbySectionIfPossible];
     [self updateCartQuantityBadge];
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -10805,6 +10886,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             chromeView.transform = CGAffineTransformIdentity;
         }
         [self pp_refreshInitialHomeRevealDependentContent];
+        [self pp_centerInitialSelectedMainKindIfNeededAnimated:NO];
         return;
     }
 
@@ -10841,6 +10923,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.isPremiumHomeEntranceAnimating = NO;
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
         [self pp_refreshInitialHomeRevealDependentContent];
+        [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
         [self pp_centerNearbySectionIfPossible];
     });
 }
@@ -13086,6 +13169,7 @@ presentingViewController:self
     }
     [self pp_installOrthogonalGestureGatesIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
+    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
 }
 
 

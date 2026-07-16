@@ -3508,6 +3508,8 @@
 "dataview_provider_fallback_name_format" = "Provider %@";
 "dataview_filters_collapse_accessibility" = "Hide filters";
 "dataview_filters_expand_accessibility" = "Show filters";
+"dataview_filters_expand_active_count_format" = "Show filters · %ld";
+"dataview_filters_active_count_accessibility_format" = "%ld active filters";
 
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "Choose the main category that fits this ad.";

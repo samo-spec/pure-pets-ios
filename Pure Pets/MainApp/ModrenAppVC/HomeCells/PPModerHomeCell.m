@@ -2,13 +2,6 @@
 #import "MainKindsModel.h"
 #import "PPImageLoaderManager.h"
 
-/// iPad shows these cells much larger, so the plate + kind artwork looked tiny at
-/// the phone sizing. Scale them up on iPad only; phones stay unchanged.
-static inline CGFloat PPModerHomeImageSizeScale(void)
-{
-    return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 2.0 : 1.4;
-}
-
 static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
     if (@available(iOS 13.0, *)) {
@@ -19,37 +12,39 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     return lightColor;
 }
 
-static inline UIColor *PPModerHomeLightSurfaceColor(void)
+static inline CGFloat PPModerHomePlateDimension(void)
 {
-    return [AppForgroundColr colorWithAlphaComponent:0.06] ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad ? 96.0 : 72.0;
 }
 
-static NSString * const PPModerHomeTapHaloAnimationKey = @"pp.moderHome.tapHalo";
-static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowCommit";
+static inline CGFloat PPModerHomeArtworkDimension(BOOL isAll)
+{
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        return isAll ? 40.0 : 82.0;
+    }
+    return isAll ? 28.0 : 58.0;
+}
 
 @interface PPModerHomeCell ()
 
 @property (nonatomic, strong) UIButton *tapButton;
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *materialView;
 @property (nonatomic, strong) UIView *imagePlateView;
 @property (nonatomic, strong) UIImageView *kindImageView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UIView *selectionIndicatorView;
-@property (nonatomic, strong) UIView *cornerPinView;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *bottomGlowLayer;
-@property (nonatomic, strong) CAGradientLayer *tapHaloLayer;
-@property (nonatomic, strong) NSLayoutConstraint *imagePlateWidthConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *imagePlateHeightConstraint;
+@property (nonatomic, strong) CAGradientLayer *accentWashLayer;
+@property (nonatomic, strong) CAShapeLayer *surfaceStrokeLayer;
 @property (nonatomic, strong) NSLayoutConstraint *kindImageWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *kindImageHeightConstraint;
 @property (nonatomic, strong, nullable) MainKindsModel *currentKind;
 @property (nonatomic, assign) BOOL isAllOption;
 @property (nonatomic, assign) BOOL isKindSelected;
+@property (nonatomic, assign) BOOL isPressing;
 @property (nonatomic, strong) UIColor *currentAccentColor;
 @property (nonatomic, copy, nullable) NSString *currentImageURL;
-@property (nonatomic, assign) BOOL didRunEntrance;
-@property (nonatomic, assign) BOOL isPressing;
 
 @end
 
@@ -84,8 +79,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.tapButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.tapButton.adjustsImageWhenHighlighted = NO;
     self.tapButton.backgroundColor = UIColor.clearColor;
-    self.tapButton.clipsToBounds = NO;
-    self.tapButton.layer.masksToBounds = NO;
+    self.tapButton.accessibilityTraits = UIAccessibilityTraitButton;
     [self.tapButton addTarget:self action:@selector(pp_handleTap) forControlEvents:UIControlEventTouchUpInside];
     [self.tapButton addTarget:self action:@selector(pp_handleTouchDown) forControlEvents:UIControlEventTouchDown];
     [self.tapButton addTarget:self action:@selector(pp_handleTouchDown) forControlEvents:UIControlEventTouchDragEnter];
@@ -97,88 +91,81 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCornerMin + 0;
-    self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 0.70;
-    if (@available(iOS 13.0, *)) {
-        self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    self.surfaceView.backgroundColor = UIColor.clearColor;
+    self.surfaceView.layer.masksToBounds = NO;
+    PPApplyContinuousCorners(self.surfaceView, PPCornerCard);
     [self.tapButton addSubview:self.surfaceView];
 
+    self.materialView = [[UIView alloc] init];
+    self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.materialView.userInteractionEnabled = NO;
+    self.materialView.clipsToBounds = YES;
+    PPApplyContinuousCorners(self.materialView, PPCornerCard);
+    [self.surfaceView addSubview:self.materialView];
+
     self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.surfaceGradientLayer.opacity = 0;
-    [self.surfaceView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.15, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(0.85, 1.0);
+    [self.materialView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
 
-    self.bottomGlowLayer = [CAGradientLayer layer];
-    self.bottomGlowLayer.name = @"PPMainKindsBottomGlowCircleLayer";
-    self.bottomGlowLayer.startPoint = CGPointMake(0.5, 0.5);
-    self.bottomGlowLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.bottomGlowLayer.locations = @[@0.0, @0.56, @1.0];
-    self.bottomGlowLayer.opacity = 0.0;
-    if (@available(iOS 12.0, *)) {
-        self.bottomGlowLayer.type = kCAGradientLayerRadial;
-    }
-    [self.surfaceView.layer insertSublayer:self.bottomGlowLayer above:self.surfaceGradientLayer];
+    self.accentWashLayer = [CAGradientLayer layer];
+    self.accentWashLayer.startPoint = CGPointMake(0.5, 1.0);
+    self.accentWashLayer.endPoint = CGPointMake(0.5, 0.0);
+    self.accentWashLayer.locations = @[@0.0, @0.54, @1.0];
+    [self.materialView.layer insertSublayer:self.accentWashLayer above:self.surfaceGradientLayer];
 
-    self.tapHaloLayer = [CAGradientLayer layer];
-    self.tapHaloLayer.name = @"PPMainKindsTapHaloLayer";
-    self.tapHaloLayer.startPoint = CGPointMake(0.5, 0.5);
-    self.tapHaloLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.tapHaloLayer.locations = @[@0.0, @0.48, @1.0];
-    self.tapHaloLayer.opacity = 0.0;
-    if (@available(iOS 12.0, *)) {
-        self.tapHaloLayer.type = kCAGradientLayerRadial;
-    }
-    [self.surfaceView.layer insertSublayer:self.tapHaloLayer above:self.bottomGlowLayer];
+    self.surfaceStrokeLayer = [CAShapeLayer layer];
+    self.surfaceStrokeLayer.fillColor = UIColor.clearColor.CGColor;
+    self.surfaceStrokeLayer.lineJoin = kCALineJoinRound;
+    self.surfaceStrokeLayer.contentsScale = UIScreen.mainScreen.scale;
+    [self.surfaceView.layer addSublayer:self.surfaceStrokeLayer];
 
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imagePlateView.userInteractionEnabled = NO;
-    self.imagePlateView.layer.cornerRadius = 26.0 * PPModerHomeImageSizeScale();
-    self.imagePlateView.layer.masksToBounds = YES;
-    self.imagePlateView.layer.borderWidth = 1.0;
-    if (@available(iOS 13.0, *)) {
-        self.imagePlateView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.imagePlateView];
+    self.imagePlateView.clipsToBounds = YES;
+    PPApplyContinuousCorners(self.imagePlateView, PPModerHomePlateDimension() * 0.5);
+    [self.materialView addSubview:self.imagePlateView];
 
     self.kindImageView = [[UIImageView alloc] init];
     self.kindImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.kindImageView.contentMode = UIViewContentModeScaleAspectFit;
     self.kindImageView.clipsToBounds = NO;
+    self.kindImageView.isAccessibilityElement = NO;
     [self.imagePlateView addSubview:self.kindImageView];
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    UIFont *baseTitleFont = [GM boldFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+    if (@available(iOS 11.0, *)) {
+        self.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+                                scaledFontForFont:baseTitleFont
+                                maximumPointSize:18.0];
+    } else {
+        self.titleLabel.font = baseTitleFont;
+    }
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.titleLabel.minimumScaleFactor = 0.92;
     self.titleLabel.userInteractionEnabled = NO;
-    [self.surfaceView addSubview:self.titleLabel];
+    self.titleLabel.isAccessibilityElement = NO;
+    [self.materialView addSubview:self.titleLabel];
 
     self.selectionIndicatorView = [[UIView alloc] init];
     self.selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
     self.selectionIndicatorView.userInteractionEnabled = NO;
-    self.selectionIndicatorView.layer.cornerRadius = 1.75;
+    self.selectionIndicatorView.layer.cornerRadius = 1.5;
     self.selectionIndicatorView.layer.masksToBounds = YES;
-    [self.surfaceView addSubview:self.selectionIndicatorView];
+    [self.materialView addSubview:self.selectionIndicatorView];
 
-    self.cornerPinView = [[UIView alloc] init];
-    self.cornerPinView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cornerPinView.userInteractionEnabled = NO;
-    self.cornerPinView.layer.cornerRadius = 3.0;
-    self.cornerPinView.layer.masksToBounds = YES;
-    [self.surfaceView addSubview:self.cornerPinView];
-
-    self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:68.0];
-    self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:68.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:76.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:76.0];
+    CGFloat plateDimension = PPModerHomePlateDimension();
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:PPModerHomeArtworkDimension(NO)];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:PPModerHomeArtworkDimension(NO)];
+    NSLayoutConstraint *titleTopConstraint =
+        [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor
+                                                               constant:PPSpaceXS];
+    titleTopConstraint.priority = 999;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -191,37 +178,34 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.tapButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.tapButton.bottomAnchor],
 
-        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:9.5],
-        [self.imagePlateView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
-        self.imagePlateWidthConstraint,
-        self.imagePlateHeightConstraint,
+        [self.materialView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.materialView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.materialView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.materialView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+
+        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.materialView.topAnchor constant:PPSpaceSM],
+        [self.imagePlateView.centerXAnchor constraintEqualToAnchor:self.materialView.centerXAnchor],
+        [self.imagePlateView.widthAnchor constraintEqualToConstant:plateDimension],
+        [self.imagePlateView.heightAnchor constraintEqualToConstant:plateDimension],
 
         [self.kindImageView.centerXAnchor constraintEqualToAnchor:self.imagePlateView.centerXAnchor],
         [self.kindImageView.centerYAnchor constraintEqualToAnchor:self.imagePlateView.centerYAnchor],
         self.kindImageWidthConstraint,
         self.kindImageHeightConstraint,
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:6.0],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-6.0],
-       // [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor constant:4.0],
-        [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-14.0],
+        titleTopConstraint,
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.materialView.leadingAnchor constant:PPSpaceSM],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.materialView.trailingAnchor constant:-PPSpaceSM],
+        [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.materialView.bottomAnchor constant:-PPSpaceMD],
 
-        [self.selectionIndicatorView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
-        [self.selectionIndicatorView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-5.0],
-        [self.selectionIndicatorView.widthAnchor constraintEqualToConstant:30.0],
-        [self.selectionIndicatorView.heightAnchor constraintEqualToConstant:3.0],
-
-        [self.cornerPinView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:10.0],
-        [self.cornerPinView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
-        [self.cornerPinView.widthAnchor constraintEqualToConstant:6.0],
-        [self.cornerPinView.heightAnchor constraintEqualToConstant:6.0],
+        [self.selectionIndicatorView.centerXAnchor constraintEqualToAnchor:self.materialView.centerXAnchor],
+        [self.selectionIndicatorView.bottomAnchor constraintEqualToAnchor:self.materialView.bottomAnchor constant:-PPSpaceXS],
+        [self.selectionIndicatorView.widthAnchor constraintEqualToConstant:28.0],
+        [self.selectionIndicatorView.heightAnchor constraintEqualToConstant:3.0]
     ]];
 
-    [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.075;
-    self.layer.shadowRadius = 15.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 9.0);
-    [self pp_applyBaseTheme];
+    [self pp_applyPalette];
+    [self pp_applySelection:NO animated:NO];
 }
 
 #pragma mark - Configure
@@ -236,39 +220,36 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
            (long)kind.ID,
            PPSafeString(kind.KindName),
            PPSafeString(kind.KindImageUrl)];
-    BOOL isSameBoundCell = [PPSafeString(self.boundCellID) isEqualToString:PPSafeString(nextCellID)];
-    BOOL shouldAnimateSelection = isSameBoundCell && self.window != nil && self.isKindSelected != selected;
-    BOOL shouldRefreshImage =
-        !isSameBoundCell ||
-        self.kindImageView.image == nil;
+    BOOL sameBinding = [PPSafeString(self.boundCellID) isEqualToString:PPSafeString(nextCellID)];
+    BOOL shouldAnimateSelection = sameBinding && self.window != nil && self.isKindSelected != selected;
+    BOOL shouldRefreshImage = !sameBinding || self.kindImageView.image == nil;
 
     self.boundCellID = nextCellID;
     self.currentKind = kind;
     self.isAllOption = isAll;
-    self.isKindSelected = selected;
     self.currentImageURL = PPSafeString(kind.KindImageUrl);
-    self.currentAccentColor = isAll ? [AppPrimaryClr colorWithAlphaComponent:0.78] : [self pp_accentColorForKind:kind isAll:isAll];
-
+    self.currentAccentColor = [self pp_accentColorForKind:kind isAll:isAll];
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     NSString *title = isAll ? (kLang(@"all") ?: @"all") : PPSafeString(kind.KindName);
     self.titleLabel.text = title;
     self.tapButton.accessibilityLabel = title;
+    self.tapButton.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
+
+    CGFloat artworkDimension = PPModerHomeArtworkDimension(isAll);
+    self.kindImageWidthConstraint.constant = artworkDimension;
+    self.kindImageHeightConstraint.constant = artworkDimension;
 
     if (shouldRefreshImage) {
         [self pp_configureImageForKind:kind isAll:isAll accent:self.currentAccentColor];
-    } else {
+    } else if (isAll) {
         self.kindImageView.tintColor = self.currentAccentColor;
     }
-    [self pp_applyBaseTheme];
-    [self pp_applySelection:selected animated:shouldAnimateSelection];
-    [self pp_updateImageSizingForAll:isAll];
 
+    [self pp_applyPalette];
+    [self pp_applySelection:selected animated:shouldAnimateSelection];
     [self setNeedsLayout];
-    [self.contentView setNeedsLayout];
-    [self layoutIfNeeded];
-    [self pp_runEntranceIfNeeded];
 }
 
 - (void)pp_configureImageForKind:(MainKindsModel *)kind
@@ -281,11 +262,15 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         UIImage *gridImage = [UIImage imageNamed:@"square-layout"];
         if (!gridImage) {
             if (@available(iOS 13.0, *)) {
-                gridImage = [UIImage systemImageNamed:@"square.grid.2x2.fill"];
+                UIImageSymbolConfiguration *configuration =
+                    [UIImageSymbolConfiguration configurationWithPointSize:24.0
+                                                                    weight:UIImageSymbolWeightSemibold
+                                                                     scale:UIImageSymbolScaleMedium];
+                gridImage = [UIImage systemImageNamed:@"square.grid.2x2.fill" withConfiguration:configuration];
             }
         }
         self.kindImageView.image = [gridImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        self.kindImageView.tintColor = accent ?: (AppPrimaryClr ?: UIColor.labelColor);
+        self.kindImageView.tintColor = accent;
         return;
     }
 
@@ -296,19 +281,25 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     if (!placeholder && kind.KindIconName.length > 0) {
         placeholder = [UIImage imageNamed:kind.KindIconName];
     }
+
+    BOOL usesTemplatePlaceholder = NO;
     if (!placeholder && kind.KindIconName.length > 0) {
         if (@available(iOS 13.0, *)) {
             placeholder = [UIImage systemImageNamed:kind.KindIconName];
+            usesTemplatePlaceholder = placeholder != nil;
         }
     }
     if (!placeholder) {
         if (@available(iOS 13.0, *)) {
             placeholder = [UIImage systemImageNamed:@"pawprint.fill"];
+            usesTemplatePlaceholder = YES;
         }
     }
 
     self.kindImageView.tintColor = accent;
-    self.kindImageView.image = [placeholder imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal] ?: placeholder;
+    self.kindImageView.image = usesTemplatePlaceholder
+        ? [placeholder imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]
+        : [placeholder imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
 
     if (self.currentImageURL.length > 0) {
         [[PPImageLoaderManager shared] setImageOnImageView:self.kindImageView
@@ -319,99 +310,99 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     }
 }
 
-#pragma mark - Theme
-
-- (void)pp_applyBaseTheme
-{
-    UIColor *surfaceTop = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
-                                                  [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
-    UIColor *surfaceBottom = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
-                                                     [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
-    UIColor *borderColor = PPModerHomeDynamicColor([AppForgroundColr colorWithAlphaComponent:0.95],
-                                                   [AppForgroundColr colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = PPModerHomeDynamicColor([AppBackgroundClrLigter colorWithAlphaComponent:0.06],
-                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.63]);
-    UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
-                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.07]);
-    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *subtleText = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-
-    self.surfaceGradientLayer.colors = @[
-        (__bridge id)surfaceTop.CGColor,
-        (__bridge id)surfaceBottom.CGColor
-    ];
-    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42];
-    [self.surfaceView pp_setBorderColor:borderColor];
-
-    [self pp_applyBottomGlowPalette];
-
-    self.imagePlateView.backgroundColor = plateColor;
-    [self.imagePlateView pp_setBorderColor:plateBorder];
-    self.titleLabel.textColor = titleColor;
-    self.cornerPinView.backgroundColor = [subtleText colorWithAlphaComponent:0.20];
-}
+#pragma mark - Appearance
 
 - (UIColor *)pp_accentColorForKind:(MainKindsModel *)kind isAll:(BOOL)isAll
 {
     if (isAll || !kind) {
-        return AppPrimaryClr ?: [GM appPrimaryColor] ?: PPModerHomeDynamicColor([UIColor colorWithRed:0.788 green:0.188 blue:0.322 alpha:1.0],
-                                                                                [UIColor colorWithRed:1.000 green:0.608 blue:0.702 alpha:1.0]);
+        return AppPrimaryClr ?: [GM appPrimaryColor] ?: [UIColor systemPinkColor];
     }
+    return kind.kindColor ?: PPModerHomeDynamicColor(
+        [UIColor colorWithRed:0.38 green:0.42 blue:0.48 alpha:1.0],
+        [UIColor colorWithRed:0.72 green:0.75 blue:0.80 alpha:1.0]
+    );
+}
 
-    UIColor *modelColor = kind.kindColor;
-    if (modelColor) {
-        return modelColor;
-    }
-    return PPModerHomeDynamicColor([UIColor colorWithRed:0.38 green:0.42 blue:0.48 alpha:1.0],
-                                   [UIColor colorWithRed:0.72 green:0.75 blue:0.80 alpha:1.0]);
+- (void)pp_applyPalette
+{
+    UIColor *surfaceTop = PPModerHomeDynamicColor(
+        [UIColor colorWithWhite:1.0 alpha:0.92],
+        [UIColor colorWithRed:0.13 green:0.14 blue:0.16 alpha:0.96]
+    );
+    UIColor *surfaceBottom = PPModerHomeDynamicColor(
+        [UIColor colorWithWhite:0.985 alpha:0.78],
+        [UIColor colorWithRed:0.08 green:0.09 blue:0.11 alpha:0.94]
+    );
+    UIColor *plateColor = PPModerHomeDynamicColor(
+        [UIColor colorWithWhite:1.0 alpha:0.84],
+        [UIColor colorWithWhite:1.0 alpha:0.075]
+    );
+
+    self.materialView.backgroundColor = PPModerHomeDynamicColor(
+        [AppForgroundColr colorWithAlphaComponent:0.38] ?: [UIColor colorWithWhite:1.0 alpha:0.72],
+        [UIColor colorWithRed:0.08 green:0.09 blue:0.11 alpha:0.92]
+    );
+    self.surfaceGradientLayer.colors = @[
+        (__bridge id)surfaceTop.CGColor,
+        (__bridge id)surfaceBottom.CGColor
+    ];
+    self.imagePlateView.backgroundColor = plateColor;
+    self.titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    [self pp_updateAccentWashColors];
+}
+
+- (void)pp_updateAccentWashColors
+{
+    UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
+    CGFloat leadingAlpha = self.isKindSelected ? 0.17 : 0.065;
+    CGFloat middleAlpha = self.isKindSelected ? 0.065 : 0.018;
+    self.accentWashLayer.colors = @[
+        (__bridge id)[accent colorWithAlphaComponent:leadingAlpha].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:middleAlpha].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+    ];
 }
 
 - (void)pp_applySelection:(BOOL)selected animated:(BOOL)animated
 {
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    UIColor *selectedBorder = self.isAllOption ? [accent colorWithAlphaComponent:0.42] : [accent colorWithAlphaComponent:0.62];
-    UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
-                                                     [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
-    UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
-                                                  [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
-    CGFloat glowOpacity = [self pp_restingGlowOpacityForSelected:selected];
+    UIColor *regularStroke = PPModerHomeDynamicColor(
+        [UIColor.blackColor colorWithAlphaComponent:0.055],
+        [UIColor.whiteColor colorWithAlphaComponent:0.11]
+    );
+    UIColor *selectedStroke = [accent colorWithAlphaComponent:self.isAllOption ? 0.58 : 0.48];
 
-    void (^changes)(void) = ^{
-        self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
-        self.cornerPinView.alpha = selected ? 1.0 : 0.36;
-        self.selectionIndicatorView.backgroundColor = accent;
-        self.cornerPinView.backgroundColor = [accent colorWithAlphaComponent:selected ? 0.78 : 0.26];
+    void (^updates)(void) = ^{
         self.titleLabel.textColor = selected ? accent : (AppPrimaryTextClr ?: UIColor.labelColor);
-        [self.surfaceView pp_setBorderColor:selected ? selectedBorder : regularBorder];
-        self.imagePlateView.backgroundColor = plateColor;
-        self.layer.shadowOpacity = selected ? 0.12 : 0.075;
-        self.layer.shadowRadius = selected ? 19.0 : 15.0;
-        self.layer.shadowOffset = selected ? CGSizeMake(0.0, 11.0) : CGSizeMake(0.0, 9.0);
-        self.bottomGlowLayer.opacity = self.isPressing ? [self pp_pressedGlowOpacityForSelected:selected] : glowOpacity;
-        self.tapButton.transform = self.isPressing ? [self pp_pressedTapTransform] : [self pp_restingTapTransform];
+        self.selectionIndicatorView.backgroundColor = accent;
+        self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
+        self.surfaceStrokeLayer.strokeColor = (selected ? selectedStroke : regularStroke).CGColor;
+        self.surfaceStrokeLayer.lineWidth = selected ? 1.25 : (1.0 / UIScreen.mainScreen.scale);
+        self.surfaceView.layer.shadowOpacity = selected ? 0.075 : 0.035;
+        self.surfaceView.layer.shadowRadius = selected ? 16.0 : 12.0;
+        self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, selected ? 8.0 : 6.0);
+        self.tapButton.transform = self.isPressing ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
+        self.imagePlateView.transform = self.isPressing ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
+        self.accentWashLayer.opacity = 1.0;
     };
+
+    [self pp_updateAccentWashColors];
+    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.tapButton.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
 
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
         [UIView animateWithDuration:0.24
                               delay:0.0
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.48
-                            options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                         animations:changes
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.20
+                            options:UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionBeginFromCurrentState
+                         animations:updates
                          completion:nil];
     } else {
-        changes();
+        updates();
     }
-}
-
-- (void)pp_updateImageSizingForAll:(BOOL)isAll
-{
-    CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
-    self.imagePlateWidthConstraint.constant = (isAll ? 54.0 : 54.0) * scale;
-    self.imagePlateHeightConstraint.constant = (isAll ? 54.0 : 54.0) * scale;
-    self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
-    self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 46.0) * scale;
 }
 
 #pragma mark - Layout
@@ -420,301 +411,78 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 {
     [super layoutSubviews];
 
-    // Force Auto Layout to resolve surfaceView bounds before reading them
-    [self.tapButton layoutIfNeeded];
-    [self.surfaceView layoutIfNeeded];
+    CGRect bounds = self.surfaceView.bounds;
+    if (CGRectIsEmpty(bounds)) {
+        return;
+    }
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    CGRect surfaceBounds = self.contentView.bounds;
-    if (CGRectIsEmpty(surfaceBounds)) {
-        [CATransaction commit];
-        return;
-    }
-    self.surfaceGradientLayer.frame = surfaceBounds;
-    CGFloat glowDiameter = MIN(116.0, MAX(86.0, CGRectGetHeight(surfaceBounds) * 0.90));
-    CGFloat glowX = Language.isRTL
-        ? CGRectGetWidth(surfaceBounds) - glowDiameter + 24.0
-        : -24.0;
-    CGFloat glowY = CGRectGetHeight(surfaceBounds) - glowDiameter + 40.0;
-    self.bottomGlowLayer.frame = CGRectIntegral(CGRectMake(glowX,
-                                                            glowY,
-                                                            glowDiameter,
-                                                            glowDiameter));
-    float corners = glowDiameter * 0.5;
-    self.bottomGlowLayer.cornerRadius = corners;
-    CGFloat haloDiameter = MAX(CGRectGetWidth(surfaceBounds), CGRectGetHeight(surfaceBounds)) * 1.66;
-    CGFloat haloX = (CGRectGetWidth(surfaceBounds) - haloDiameter) * 0.5;
-    CGFloat haloY = CGRectGetHeight(surfaceBounds) - (haloDiameter * 0.74);
-    self.tapHaloLayer.frame = CGRectIntegral(CGRectMake(haloX, haloY, haloDiameter, haloDiameter));
-    self.tapHaloLayer.cornerRadius = haloDiameter * 0.5;
+    self.surfaceGradientLayer.frame = self.materialView.bounds;
+    self.accentWashLayer.frame = self.materialView.bounds;
 
-    [self pp_applyBottomGlowPalette];
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                    cornerRadius:corners].CGPath;
+    CGFloat inset = MAX(0.5, self.surfaceStrokeLayer.lineWidth * 0.5);
+    CGRect strokeBounds = CGRectInset(bounds, inset, inset);
+    CGFloat strokeRadius = MAX(0.0, PPCornerCard - inset);
+    self.surfaceStrokeLayer.frame = bounds;
+    self.surfaceStrokeLayer.path = [UIBezierPath bezierPathWithRoundedRect:strokeBounds
+                                                             cornerRadius:strokeRadius].CGPath;
+    self.surfaceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:bounds
+                                                                  cornerRadius:PPCornerCard].CGPath;
     [CATransaction commit];
 }
 
-- (void)pp_applyBottomGlowPalette
-{
-    UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    if (!accent) {
-        self.bottomGlowLayer.colors = nil;
-        self.tapHaloLayer.colors = nil;
-         return;
-    }
-
-    BOOL isAll = self.isAllOption;
-    self.bottomGlowLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.30 : 0.38].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.13 : 0.19].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
-    ];
-    [self pp_applyMotionLayerPaletteWithAccent:accent];
-}
-
-- (void)pp_applyMotionLayerPaletteWithAccent:(UIColor *)accent
-{
-    if (!accent) {
-        self.tapHaloLayer.colors = nil;
-        return;
-    }
-
-    self.tapHaloLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:0.30].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.10].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
-    ];
-}
-
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
-{
-    [super applyLayoutAttributes:layoutAttributes];
-    [self setNeedsLayout];
-    [self.contentView setNeedsLayout];
-}
-
-#pragma mark - Motion
-
-- (CGFloat)pp_restingGlowOpacityForSelected:(BOOL)selected
-{
-    if (selected) {
-        return self.isAllOption ? 0.50 : 0.82;
-    }
-    return self.isAllOption ? 0.18 : 0.52;
-}
-
-- (CGFloat)pp_pressedGlowOpacityForSelected:(BOOL)selected
-{
-    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.20 : 0.16));
-}
-
-- (CGAffineTransform)pp_restingTapTransform
-{
-    return self.isKindSelected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
-}
-
-- (CGAffineTransform)pp_pressedTapTransform
-{
-    CGFloat scale = self.isKindSelected ? 0.978 : 0.958;
-    return CGAffineTransformMakeScale(scale, scale);
-}
-
-- (void)didMoveToWindow
-{
-    [super didMoveToWindow];
-    if (self.window) {
-        [self pp_runEntranceIfNeeded];
-    }
-}
-
-- (void)pp_runEntranceIfNeeded
-{
-    if (self.didRunEntrance || !self.window) {
-        return;
-    }
-    self.didRunEntrance = YES;
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.alpha = 1.0;
-        self.contentView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    self.alpha = 0.0;
-    self.contentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    [UIView animateWithDuration:0.34
-                          delay:0.02
-         usingSpringWithDamping:0.92
-          initialSpringVelocity:0.18
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.alpha = 1.0;
-        self.contentView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-- (void)pp_applyPressed:(BOOL)pressed animated:(BOOL)animated
-{
-    self.isPressing = pressed;
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        if (!pressed) {
-            self.tapButton.transform = [self pp_restingTapTransform];
-            self.imagePlateView.transform = CGAffineTransformIdentity;
-            self.kindImageView.transform = CGAffineTransformIdentity;
-            self.titleLabel.transform = CGAffineTransformIdentity;
-            self.selectionIndicatorView.transform = CGAffineTransformIdentity;
-            self.tapHaloLayer.opacity = 0.0;
-            self.bottomGlowLayer.opacity = [self pp_restingGlowOpacityForSelected:self.isKindSelected];
-        }
-        return;
-    }
-
-    NSTimeInterval duration = pressed ? 0.11 : (animated ? 0.24 : 0.0);
-    CGFloat damping = pressed ? 1.0 : 0.82;
-    CGFloat velocity = pressed ? 0.0 : 0.42;
-    void (^changes)(void) = ^{
-        self.tapButton.transform = pressed ? [self pp_pressedTapTransform] : [self pp_restingTapTransform];
-        self.imagePlateView.transform = pressed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
-        self.kindImageView.transform = pressed ? CGAffineTransformMakeScale(0.95, 0.95) : CGAffineTransformIdentity;
-        self.titleLabel.transform = pressed ? CGAffineTransformMakeTranslation(0.0, 0.45) : CGAffineTransformIdentity;
-        self.selectionIndicatorView.transform = pressed ? CGAffineTransformMakeScale(0.82, 1.0) : CGAffineTransformIdentity;
-        self.cornerPinView.alpha = pressed ? MIN(1.0, (self.isKindSelected ? 1.0 : 0.36) + 0.18) : (self.isKindSelected ? 1.0 : 0.36);
-        self.bottomGlowLayer.opacity = pressed ? [self pp_pressedGlowOpacityForSelected:self.isKindSelected] : [self pp_restingGlowOpacityForSelected:self.isKindSelected];
-        self.tapHaloLayer.opacity = pressed ? 0.28 : 0.0;
-    };
-
-    if (!animated || duration <= 0.0) {
-        changes();
-        return;
-    }
-
-    [UIView animateWithDuration:duration
-                          delay:0.0
-         usingSpringWithDamping:damping
-          initialSpringVelocity:velocity
-                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
-                     animations:changes
-                     completion:nil];
-}
-
-- (void)pp_performTapCommitMotion
-{
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        return;
-    }
-
-    [self pp_performHaloBurstMotion];
-
-    CGFloat restingGlow = [self pp_restingGlowOpacityForSelected:self.isKindSelected];
-    CABasicAnimation *glowAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    glowAnimation.fromValue = @(MIN(1.0, restingGlow + 0.18));
-    glowAnimation.toValue = @(restingGlow);
-    glowAnimation.duration = 0.36;
-    glowAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    self.bottomGlowLayer.opacity = restingGlow;
-    [self.bottomGlowLayer addAnimation:glowAnimation forKey:PPModerHomeGlowCommitAnimationKey];
-
-    [UIView animateKeyframesWithDuration:0.42
-                                   delay:0.0
-                                 options:UIViewKeyframeAnimationOptionAllowUserInteraction | UIViewKeyframeAnimationOptionBeginFromCurrentState | UIViewKeyframeAnimationOptionCalculationModeCubic
-                              animations:^{
-        [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
-            CGFloat liftScale = self.isKindSelected ? 1.038 : 1.028;
-            self.tapButton.transform = CGAffineTransformMakeScale(liftScale, liftScale);
-            self.imagePlateView.transform = CGAffineTransformMakeScale(1.08, 1.08);
-            self.kindImageView.transform = CGAffineTransformMakeScale(1.04, 1.04);
-            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.28, 1.0);
-        }];
-        [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{
-            self.tapButton.transform = [self pp_restingTapTransform];
-            self.imagePlateView.transform = CGAffineTransformIdentity;
-            self.kindImageView.transform = CGAffineTransformIdentity;
-            self.titleLabel.transform = CGAffineTransformIdentity;
-            self.selectionIndicatorView.transform = CGAffineTransformIdentity;
-            self.tapHaloLayer.opacity = 0.0;
-        }];
-    } completion:nil];
-}
-
-- (void)pp_performHaloBurstMotion
-{
-    [self.tapHaloLayer removeAnimationForKey:PPModerHomeTapHaloAnimationKey];
-    self.tapHaloLayer.opacity = 0.0;
-
-    CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
-    opacityAnimation.values = @[@0.0, @0.42, @0.0];
-    opacityAnimation.keyTimes = @[@0.0, @0.22, @1.0];
-
-    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scaleAnimation.fromValue = @0.72;
-    scaleAnimation.toValue = @1.18;
-
-    CAAnimationGroup *group = [CAAnimationGroup animation];
-    group.animations = @[opacityAnimation, scaleAnimation];
-    group.duration = 0.40;
-    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-    group.removedOnCompletion = YES;
-    [self.tapHaloLayer addAnimation:group forKey:PPModerHomeTapHaloAnimationKey];
-}
-
-- (void)pp_emitTapHaptic
-{
-    if (@available(iOS 10.0, *)) {
-        UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-        if (@available(iOS 13.0, *)) {
-            [generator impactOccurredWithIntensity:0.62];
-        } else {
-            [generator impactOccurred];
-        }
-    }
-}
-
-- (void)pp_resetTransientMotion
-{
-    [self.tapHaloLayer removeAnimationForKey:PPModerHomeTapHaloAnimationKey];
-    [self.bottomGlowLayer removeAnimationForKey:PPModerHomeGlowCommitAnimationKey];
-    self.isPressing = NO;
-    self.contentView.transform = CGAffineTransformIdentity;
-    self.tapButton.transform = [self pp_restingTapTransform];
-    self.imagePlateView.transform = CGAffineTransformIdentity;
-    self.kindImageView.transform = CGAffineTransformIdentity;
-    self.titleLabel.transform = CGAffineTransformIdentity;
-    self.selectionIndicatorView.transform = CGAffineTransformIdentity;
-    self.tapHaloLayer.opacity = 0.0;
-}
+#pragma mark - Interaction
 
 - (void)pp_handleTouchDown
 {
-    [self pp_applyPressed:YES animated:YES];
+    [self pp_setPressed:YES animated:YES];
 }
 
 - (void)pp_handleTouchUp
 {
-    [self pp_applyPressed:NO animated:YES];
+    [self pp_setPressed:NO animated:YES];
+}
+
+- (void)pp_setPressed:(BOOL)pressed animated:(BOOL)animated
+{
+    self.isPressing = pressed;
+    CGAffineTransform cardTransform = pressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
+    CGAffineTransform imageTransform = pressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
+    CGFloat washOpacity = pressed ? 0.78 : 1.0;
+
+    void (^updates)(void) = ^{
+        self.tapButton.transform = cardTransform;
+        self.imagePlateView.transform = imageTransform;
+        self.accentWashLayer.opacity = washOpacity;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:pressed ? 0.09 : 0.20
+                          delay:0.0
+         usingSpringWithDamping:pressed ? 1.0 : 0.86
+          initialSpringVelocity:pressed ? 0.0 : 0.28
+                        options:UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionBeginFromCurrentState
+                     animations:updates
+                     completion:nil];
 }
 
 - (void)pp_handleTap
 {
-    [self pp_applyPressed:NO animated:YES];
-    [self pp_emitTapHaptic];
-    [self pp_performTapCommitMotion];
-
-    void (^selection)(MainKindsModel *_Nullable, BOOL) = [self.onSelect copy];
-    if (!selection) {
-        return;
+    [self pp_setPressed:NO animated:YES];
+    if (@available(iOS 10.0, *)) {
+        UISelectionFeedbackGenerator *feedback = [[UISelectionFeedbackGenerator alloc] init];
+        [feedback selectionChanged];
     }
 
-    MainKindsModel *kind = self.currentKind;
-    BOOL isAll = self.isAllOption;
-    NSTimeInterval routeDelay = UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.055;
-    if (routeDelay <= 0.0) {
-        selection(kind, isAll);
-    } else {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(routeDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            selection(kind, isAll);
-        });
+    void (^selection)(MainKindsModel *_Nullable, BOOL) = [self.onSelect copy];
+    if (selection) {
+        selection(self.currentKind, self.isAllOption);
     }
 }
 
@@ -732,21 +500,17 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.currentAccentColor = nil;
     self.isAllOption = NO;
     self.isKindSelected = NO;
-    self.didRunEntrance = NO;
     self.isPressing = NO;
-
     self.titleLabel.text = nil;
-    self.tapButton.accessibilityLabel = nil;
     self.kindImageView.image = nil;
-    self.kindImageView.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    self.alpha = 1.0;
-    [self pp_resetTransientMotion];
+    self.tapButton.accessibilityLabel = nil;
+    self.tapButton.accessibilityTraits = UIAccessibilityTraitButton;
+    self.tapButton.transform = CGAffineTransformIdentity;
+    self.imagePlateView.transform = CGAffineTransformIdentity;
     self.selectionIndicatorView.alpha = 0.0;
-    self.cornerPinView.alpha = 0.36;
-    self.bottomGlowLayer.opacity = 0.0;
-    self.bottomGlowLayer.frame = CGRectZero;
-    self.tapHaloLayer.frame = CGRectZero;
-    [self pp_applyBaseTheme];
+    self.accentWashLayer.opacity = 1.0;
+    [self pp_applyPalette];
+    [self pp_applySelection:NO animated:NO];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -754,16 +518,11 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyBaseTheme];
+            [self pp_applyPalette];
             [self pp_applySelection:self.isKindSelected animated:NO];
+            [self setNeedsLayout];
         }
     }
-}
-
-- (void)setSelected:(BOOL)selected
-{
-    [super setSelected:selected];
-    [self pp_applySelection:selected animated:YES];
 }
 
 @end

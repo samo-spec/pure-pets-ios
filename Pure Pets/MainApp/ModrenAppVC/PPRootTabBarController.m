@@ -2371,9 +2371,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             return;
         }
         UIImageSymbolConfiguration *symbolConfiguration =
-            [UIImageSymbolConfiguration configurationWithPointSize:centerAction ? 23.0 : 20.0
-                                                             weight:centerAction ? UIImageSymbolWeightSemibold : UIImageSymbolWeightMedium
-                                                              scale:UIImageSymbolScaleMedium];
+            [UIImageSymbolConfiguration configurationWithPointSize:centerAction ? 21.0 : 18.0
+                                                         weight:centerAction ? UIImageSymbolWeightSemibold : UIImageSymbolWeightMedium
+                                                          scale:UIImageSymbolScaleMedium];
         item.image = [[item.image imageWithConfiguration:symbolConfiguration]
             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         item.selectedImage = [[item.selectedImage imageWithConfiguration:symbolConfiguration]
@@ -3059,7 +3059,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         normalSymbolName = @"cart.badge.clock";
         selectedSymbolName = @"cart.badge.clock.fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
-                             pointSize:selected ? 20.0 : 18.0
+                             pointSize:selected ? 19.0 : 17.0
                                 weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
                                   scale:UIImageSymbolScaleMedium
                                 palette:@[selected ? (AppPrimaryClr ?: UIColor.systemTealColor) : UIColor.secondaryLabelColor]
@@ -3082,9 +3082,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             break;
     }
     UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 19.0 : 17.0
+        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 18.0 : 16.0
                                                          weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
-                                                          scale:UIImageSymbolScaleMedium];
+                                                         scale:UIImageSymbolScaleDefault];
     return [UIImage imageNamed:(selected ? selectedSymbolName : normalSymbolName)] ?: [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];
 }
