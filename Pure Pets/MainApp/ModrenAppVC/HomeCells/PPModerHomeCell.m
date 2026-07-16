@@ -354,8 +354,8 @@ static inline CGFloat PPModerHomeArtworkDimension(BOOL isAll)
 - (void)pp_updateAccentWashColors
 {
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    CGFloat leadingAlpha = self.isKindSelected ? 0.17 : 0.065;
-    CGFloat middleAlpha = self.isKindSelected ? 0.065 : 0.018;
+    CGFloat leadingAlpha = self.isKindSelected ? 0.26 : 0.065;
+    CGFloat middleAlpha = self.isKindSelected ? 0.105 : 0.018;
     self.accentWashLayer.colors = @[
         (__bridge id)[accent colorWithAlphaComponent:leadingAlpha].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:middleAlpha].CGColor,
@@ -403,6 +403,44 @@ static inline CGFloat PPModerHomeArtworkDimension(BOOL isAll)
     } else {
         updates();
     }
+}
+
+- (void)playRestoredSelectionAnimation
+{
+    if (!self.window || !self.isKindSelected || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [self.layer removeAnimationForKey:@"pp.home.kind.restored.scale"];
+    [self.surfaceStrokeLayer removeAnimationForKey:@"pp.home.kind.restored.stroke"];
+    [self.accentWashLayer removeAnimationForKey:@"pp.home.kind.restored.wash"];
+
+    CABasicAnimation *strokeAnimation = [CABasicAnimation animationWithKeyPath:@"lineWidth"];
+    strokeAnimation.fromValue = @(0.45);
+    strokeAnimation.toValue = @(self.surfaceStrokeLayer.lineWidth);
+    strokeAnimation.duration = 0.34;
+    strokeAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [self.surfaceStrokeLayer addAnimation:strokeAnimation forKey:@"pp.home.kind.restored.stroke"];
+
+    CABasicAnimation *washAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    washAnimation.fromValue = @(0.38);
+    washAnimation.toValue = @(1.0);
+    washAnimation.duration = 0.38;
+    washAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    [self.accentWashLayer addAnimation:washAnimation forKey:@"pp.home.kind.restored.wash"];
+
+    self.selectionIndicatorView.transform = CGAffineTransformMakeScale(0.72, 1.0);
+    self.surfaceView.transform = CGAffineTransformMakeScale(0.992, 0.992);
+    [UIView animateWithDuration:0.38
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.22
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.selectionIndicatorView.transform = CGAffineTransformIdentity;
+        self.surfaceView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 #pragma mark - Layout
@@ -506,9 +544,13 @@ static inline CGFloat PPModerHomeArtworkDimension(BOOL isAll)
     self.tapButton.accessibilityLabel = nil;
     self.tapButton.accessibilityTraits = UIAccessibilityTraitButton;
     self.tapButton.transform = CGAffineTransformIdentity;
+    self.surfaceView.transform = CGAffineTransformIdentity;
     self.imagePlateView.transform = CGAffineTransformIdentity;
+    self.selectionIndicatorView.transform = CGAffineTransformIdentity;
     self.selectionIndicatorView.alpha = 0.0;
     self.accentWashLayer.opacity = 1.0;
+    [self.surfaceStrokeLayer removeAnimationForKey:@"pp.home.kind.restored.stroke"];
+    [self.accentWashLayer removeAnimationForKey:@"pp.home.kind.restored.wash"];
     [self pp_applyPalette];
     [self pp_applySelection:NO animated:NO];
 }

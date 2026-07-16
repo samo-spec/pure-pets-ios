@@ -7704,7 +7704,7 @@ presentingViewController:self
         [filterContextBar.topAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:kPPFilterIslandRowSpacing],
         [controlIsland.bottomAnchor constraintEqualToAnchor:filterContextBar.bottomAnchor constant:kPPFilterIslandBottomPadding],
 
-        [providerAvatarView.leadingAnchor constraintEqualToAnchor:providerFilterChip.leadingAnchor constant:12.0],
+        [providerAvatarView.leadingAnchor constraintEqualToAnchor:providerFilterChip.leadingAnchor constant:14.0],
         [providerAvatarView.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
         [providerAvatarView.widthAnchor constraintEqualToConstant:32.0],
         [providerAvatarView.heightAnchor constraintEqualToConstant:32.0],
@@ -7714,7 +7714,7 @@ presentingViewController:self
         [providerTrailingIconView.widthAnchor constraintEqualToConstant:28.0],
         [providerTrailingIconView.heightAnchor constraintEqualToConstant:28.0],
 
-        [providerTextStack.leadingAnchor constraintEqualToAnchor:providerAvatarView.trailingAnchor constant:10.0],
+        [providerTextStack.leadingAnchor constraintEqualToAnchor:providerAvatarView.trailingAnchor constant:8.0],
         [providerTextStack.trailingAnchor constraintEqualToAnchor:providerTrailingIconView.leadingAnchor constant:-10.0],
         [providerTextStack.centerYAnchor constraintEqualToAnchor:providerFilterChip.centerYAnchor],
         [providerTextStack.topAnchor constraintGreaterThanOrEqualToAnchor:providerFilterChip.topAnchor constant:4.0],

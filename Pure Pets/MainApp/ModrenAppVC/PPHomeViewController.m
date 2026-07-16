@@ -1407,7 +1407,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, assign) BOOL nearbyServicesShowingLatest;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
 @property (nonatomic, assign) BOOL didResolveInitialHomeCategory;
-@property (nonatomic, assign) BOOL didCenterInitialMainKindSelection;
+@property (nonatomic, assign) BOOL didPositionInitialMainKindSelection;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPHomeItem *> *dataSource;
@@ -1527,7 +1527,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                       persist:(BOOL)persist
                      navigate:(BOOL)navigate;
 - (void)pp_refreshHomeCategorySelectionAnimated:(BOOL)animated;
-- (void)pp_centerInitialSelectedMainKindIfNeededAnimated:(BOOL)animated;
+- (void)pp_positionInitialSelectedMainKindIfNeededAnimated:(BOOL)animated;
 - (NSInteger)pp_indexOfSelectedMainKindInRail;
 - (NSArray<PPHomeItem *> *)pp_safeItemsInSection:(PPHomeSection)section
                                     fromSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
@@ -1793,7 +1793,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (void)setInitialSelectedMainKindID:(NSInteger)initialSelectedMainKindID
 {
     _initialSelectedMainKindID = initialSelectedMainKindID;
-    self.didCenterInitialMainKindSelection = NO;
+    self.didPositionInitialMainKindSelection = NO;
     if (!self.isViewLoaded) {
         return;
     }
@@ -1911,9 +1911,9 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     return NSNotFound;
 }
 
-- (void)pp_centerInitialSelectedMainKindIfNeededAnimated:(BOOL)animated
+- (void)pp_positionInitialSelectedMainKindIfNeededAnimated:(BOOL)animated
 {
-    if (self.didCenterInitialMainKindSelection ||
+    if (self.didPositionInitialMainKindSelection ||
         self.isMainKindsExpanded ||
         !self.isViewLoaded ||
         !self.collectionView ||
@@ -1924,7 +1924,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
     NSInteger selectedIndex = [self pp_indexOfSelectedMainKindInRail];
     if (selectedIndex == NSNotFound || selectedIndex < 1) {
-        self.didCenterInitialMainKindSelection = YES;
+        self.didPositionInitialMainKindSelection = YES;
         return;
     }
 
@@ -1942,7 +1942,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self ||
-            self.didCenterInitialMainKindSelection ||
+            self.didPositionInitialMainKindSelection ||
             self.isMainKindsExpanded ||
             self.isPremiumHomeEntranceAnimating) {
             return;
@@ -1959,13 +1959,35 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         }
 
         [self.collectionView layoutIfNeeded];
-        self.didCenterInitialMainKindSelection = YES;
+        self.didPositionInitialMainKindSelection = YES;
         BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
+        UICollectionViewScrollPosition leadingPosition = Language.isRTL
+            ? UICollectionViewScrollPositionRight
+            : UICollectionViewScrollPositionLeft;
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:currentSelectedIndex
                                                      inSection:currentSectionIndex];
         [self.collectionView scrollToItemAtIndexPath:indexPath
-                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                    atScrollPosition:leadingPosition
                                             animated:shouldAnimate];
+        [self pp_refreshHomeCategorySelectionAnimated:NO];
+        void (^animateRestoredSelection)(PPHomeViewController *) = ^(PPHomeViewController *host) {
+            UICollectionViewCell *visibleCell = [host.collectionView cellForItemAtIndexPath:indexPath];
+            if ([visibleCell isKindOfClass:PPModerHomeCell.class]) {
+                [(PPModerHomeCell *)visibleCell playRestoredSelectionAnimation];
+            }
+        };
+        if (shouldAnimate) {
+            __weak typeof(self) weakSelf = self;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.32 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) { return; }
+                [self pp_refreshHomeCategorySelectionAnimated:NO];
+                animateRestoredSelection(self);
+            });
+        } else {
+            animateRestoredSelection(self);
+        }
     });
 }
 
@@ -2978,7 +3000,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     } else if (isFirstContentApply && sections.count > 0) {
         [self pp_preparePremiumHomeEntranceStateIfNeeded];
     }
-    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
+    [self pp_positionInitialSelectedMainKindIfNeededAnimated:YES];
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -7290,7 +7312,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     if ([self pp_isInitialHomeRevealSettled]) {
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     }
-    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
+    [self pp_positionInitialSelectedMainKindIfNeededAnimated:YES];
     [self pp_centerNearbySectionIfPossible];
     [self updateCartQuantityBadge];
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -10211,6 +10233,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     MainKindsModel *selectedMainKind = self.selectedCategory;
     [self pp_emitSelectionHaptic];
 
+    if (!selectedMainKind) {
+        ProviderCompaniesListVC *vc = [[ProviderCompaniesListVC alloc] init];
+        [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+        return;
+    }
+
     PPDataViewInput *input =
         [PPDataViewInput inputWithMainKind:selectedMainKind
                               sourceTarget:PPDeepLinkTargetAccessories
@@ -10886,7 +10914,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             chromeView.transform = CGAffineTransformIdentity;
         }
         [self pp_refreshInitialHomeRevealDependentContent];
-        [self pp_centerInitialSelectedMainKindIfNeededAnimated:NO];
+        [self pp_positionInitialSelectedMainKindIfNeededAnimated:NO];
         return;
     }
 
@@ -10923,7 +10951,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.isPremiumHomeEntranceAnimating = NO;
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
         [self pp_refreshInitialHomeRevealDependentContent];
-        [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
+        [self pp_positionInitialSelectedMainKindIfNeededAnimated:YES];
         [self pp_centerNearbySectionIfPossible];
     });
 }
@@ -13169,7 +13197,7 @@ presentingViewController:self
     }
     [self pp_installOrthogonalGestureGatesIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
-    [self pp_centerInitialSelectedMainKindIfNeededAnimated:YES];
+    [self pp_positionInitialSelectedMainKindIfNeededAnimated:YES];
 }
 
 
