@@ -10,6 +10,7 @@
 #import "ChatAudioMessageCell.h"
 #import "ChatImageMessageCell.h"
 #import "ChatVideoMessageCell.h"
+#import "ChatStickerMessageCell.h"
 #import "PPChatsFunc.h"
 #import "ChMessagingController+Record.h"
 

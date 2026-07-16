@@ -12,6 +12,7 @@
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
+static NSString * const PPHomeMarketplaceHeroTapHaloAnimationKey = @"pp.marketplaceHero.tapHalo";
 static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
 static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
 static CGFloat const PPHomeMarketplaceHeroCTACornerRadius = 14.0;
@@ -131,6 +132,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong, nullable) UIColor *contextAccentColor;
 @property (nonatomic, copy) NSString *currentContextIdentifier;
 @property (nonatomic, copy, nullable) NSString *currentArtworkImageURL;
+@property (nonatomic, strong) CAGradientLayer *tapHaloLayer;
+@property (nonatomic, assign) BOOL isPressing;
 
 - (void)pp_applyArtworkSizingForAllContext:(BOOL)isAll
                                   animated:(BOOL)animated;
@@ -170,6 +173,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.contentView.transform = CGAffineTransformIdentity;
     self.surfaceControl.alpha = 1.0;
     self.surfaceControl.transform = CGAffineTransformIdentity;
+    [self.tapHaloLayer removeAnimationForKey:PPHomeMarketplaceHeroTapHaloAnimationKey];
+    self.tapHaloLayer.opacity = 0.0;
+    self.isPressing = NO;
     [self configureDefaultContent];
 }
 
@@ -230,6 +236,13 @@ static BOOL PPMarketHeroReduceMotion(void)
                                           isfinite((double)CGRectGetHeight(plateBounds))) ? plateBounds : CGRectZero;
     CGFloat plateRadius = self.storefrontPlateView.layer.cornerRadius;
     self.storefrontGradientLayer.cornerRadius = isfinite((double)plateRadius) ? MAX(0.0, plateRadius) : 0.0;
+
+    CGRect surfaceBounds = self.surfaceControl.bounds;
+    self.tapHaloLayer.frame = (!CGRectIsEmpty(surfaceBounds) &&
+                               isfinite((double)CGRectGetWidth(surfaceBounds)) &&
+                               isfinite((double)CGRectGetHeight(surfaceBounds))) ? surfaceBounds : CGRectZero;
+    CGFloat tapHaloDiameter = CGRectGetWidth(surfaceBounds);
+    self.tapHaloLayer.cornerRadius = (isfinite((double)tapHaloDiameter) && tapHaloDiameter > 0.0) ? tapHaloDiameter * 0.5 : 0.0;
     [CATransaction commit];
 
     CGRect surfaceFrame = self.surfaceControl.frame;
@@ -431,6 +444,12 @@ static BOOL PPMarketHeroReduceMotion(void)
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
 
+    self.tapHaloLayer.colors = @[
+        (id)[primaryAccent colorWithAlphaComponent:0.30].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:0.10].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:0.0].CGColor
+    ];
+
     self.storefrontGradientLayer.colors = @[
         (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.42 : 0.34].CGColor,
         (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.90 : 0.78].CGColor
@@ -532,12 +551,24 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleBar;
+    glass.accentStyle = PPHeroGlassAccentStyleFullScreen;
     glass.cornerGlowOpacityMultiplier = 0.88;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
+
+    CAGradientLayer *halo = [CAGradientLayer layer];
+    halo.name = @"PPHomeMarketplaceHeroTapHaloLayer";
+    halo.startPoint = CGPointMake(0.5, 0.5);
+    halo.endPoint = CGPointMake(1.0, 1.0);
+    halo.locations = @[@0.0, @0.48, @1.0];
+    halo.opacity = 0.0;
+    if (@available(iOS 12.0, *)) {
+        halo.type = kCAGradientLayerRadial;
+    }
+    [glass.layer addSublayer:halo];
+    self.tapHaloLayer = halo;
 
     [self pp_buildContentStackInSurface:surface];
     [self pp_buildVisualClusterInSurface:surface];
@@ -917,41 +948,101 @@ static BOOL PPMarketHeroReduceMotion(void)
 
 - (void)pp_touchDown
 {
-    if (PPMarketHeroReduceMotion()) {
-        self.surfaceControl.alpha = 0.94;
-        return;
-    }
-
-    [UIView animateWithDuration:0.10
-                          delay:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.surfaceControl.transform = CGAffineTransformMakeScale(0.985, 0.985);
-    } completion:nil];
+    [self pp_applyPressed:YES];
 }
 
 - (void)pp_touchUp
 {
+    [self pp_applyPressed:NO];
+}
+
+- (void)pp_applyPressed:(BOOL)pressed
+{
+    self.isPressing = pressed;
     if (PPMarketHeroReduceMotion()) {
-        self.surfaceControl.alpha = 1.0;
+        if (!pressed) {
+            self.surfaceControl.alpha = 1.0;
+            self.surfaceControl.transform = CGAffineTransformIdentity;
+            self.tapHaloLayer.opacity = 0.0;
+        } else {
+            self.surfaceControl.alpha = 0.94;
+        }
         return;
     }
 
-    [UIView animateWithDuration:0.22
+    NSTimeInterval duration = pressed ? 0.10 : 0.22;
+    CGFloat damping = pressed ? 1.0 : 0.88;
+    CGFloat velocity = pressed ? 0.0 : 0.12;
+    void (^updates)(void) = ^{
+        self.surfaceControl.transform = pressed ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
+        self.tapHaloLayer.opacity = pressed ? 0.28 : 0.0;
+    };
+
+    if (duration <= 0.0) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:duration
                           delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.12
+         usingSpringWithDamping:damping
+          initialSpringVelocity:velocity
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.surfaceControl.transform = CGAffineTransformIdentity;
-    } completion:nil];
+                     animations:updates
+                     completion:nil];
 }
 
 - (void)pp_handleTap
 {
+    [self pp_performTapCommitMotion];
     if (self.onTap) {
         self.onTap();
     }
+}
+
+- (void)pp_performTapCommitMotion
+{
+    if (PPMarketHeroReduceMotion() || !self.tapHaloLayer) {
+        return;
+    }
+
+    [self pp_performHaloBurstMotion];
+
+    [UIView animateKeyframesWithDuration:0.42
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionAllowUserInteraction |
+                                         UIViewKeyframeAnimationOptionBeginFromCurrentState |
+                                         UIViewKeyframeAnimationOptionCalculationModeCubic
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
+            self.surfaceControl.transform = CGAffineTransformMakeScale(1.025, 1.025);
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{
+            self.surfaceControl.transform = CGAffineTransformIdentity;
+            self.tapHaloLayer.opacity = 0.0;
+        }];
+    } completion:nil];
+}
+
+- (void)pp_performHaloBurstMotion
+{
+    [self.tapHaloLayer removeAnimationForKey:PPHomeMarketplaceHeroTapHaloAnimationKey];
+    self.tapHaloLayer.opacity = 0.0;
+
+    CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.values = @[@0.0, @0.42, @0.0];
+    opacityAnimation.keyTimes = @[@0.0, @0.22, @1.0];
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scaleAnimation.fromValue = @0.72;
+    scaleAnimation.toValue = @1.18;
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[opacityAnimation, scaleAnimation];
+    group.duration = 0.40;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    group.removedOnCompletion = YES;
+    [self.tapHaloLayer addAnimation:group forKey:PPHomeMarketplaceHeroTapHaloAnimationKey];
 }
 
 - (void)pp_startAmbientMotionIfNeeded

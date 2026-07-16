@@ -17,6 +17,7 @@
 @implementation PPHeroGlassBackgroundView
 
 @synthesize accentColorOverride = _accentColorOverride;
+@synthesize overrideCenterGlowColor = _overrideCenterGlowColor;
 @synthesize accentStyle = _accentStyle;
 @synthesize cornerGlowOpacityMultiplier = _cornerGlowOpacityMultiplier;
 @synthesize glowDirection = _glowDirection;
@@ -48,6 +49,7 @@
     self.clipsToBounds = NO;
 
     _accentStyle = PPHeroGlassAccentStyleBar;
+    self.apexView.overrideCenterGlowColor = nil;
     _cornerGlowOpacityMultiplier = 1.0;
     _glowDirection = 0; // Default: systemDirection
     _PPHeroApexUseShimmer = NO;
@@ -85,6 +87,17 @@
 
     _accentColorOverride = accentColorOverride;
     self.apexView.accentColorOverride = accentColorOverride;
+}
+
+- (void)setOverrideCenterGlowColor:(UIColor *)overrideCenterGlowColor
+{
+    if (_overrideCenterGlowColor == overrideCenterGlowColor ||
+        [_overrideCenterGlowColor isEqual:overrideCenterGlowColor]) {
+        return;
+    }
+
+    _overrideCenterGlowColor = overrideCenterGlowColor;
+    self.apexView.overrideCenterGlowColor = overrideCenterGlowColor;
 }
 
 - (void)setAccentStyle:(PPHeroGlassAccentStyle)accentStyle

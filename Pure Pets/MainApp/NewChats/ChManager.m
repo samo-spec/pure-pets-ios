@@ -865,6 +865,9 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             case ChatMessageTypeFile:
                 lastMessageText = kLang(@"File");
                 break;
+            case ChatMessageTypeSticker:
+                lastMessageText = kLang(@"chat_sticker_message");
+                break;
             default:
                 break;
         }

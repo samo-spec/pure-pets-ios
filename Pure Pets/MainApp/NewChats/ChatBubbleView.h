@@ -47,6 +47,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface ChatMediaBubbleView : UIView
 @property (nonatomic, assign) BOOL isIncoming;
 @property (nonatomic, assign) PPChatGroupPosition groupPosition;
+@property (nonatomic, assign) CGFloat preferredMaximumCornerRadius;
 @end
 
 NS_ASSUME_NONNULL_END

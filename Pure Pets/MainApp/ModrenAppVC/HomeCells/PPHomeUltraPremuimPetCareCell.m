@@ -13,11 +13,11 @@ static NSString * const PPUltraCarePulseAnimationKey = @"pp.home.ultraCare.pulse
 static NSString * const PPUltraCareFloatingCircleAnimationKeyPrefix = @"pp.home.ultraCare.floatingCircle";
 static BOOL const PPUltraCareGlowsFaded = YES;
 static CGFloat const PPUltraCareSurfaceCornerRadius = 26.0;
-static CGFloat const PPUltraCareHeroPortalSize = 84.0;
-static CGFloat const PPUltraCareOrbitCarrierSize = 72.0;
-static CGFloat const PPUltraCareHeroInnerSize = 62.0;
-static CGFloat const PPUltraCareFallbackIconSize = 28.0;
-static CGFloat const PPUltraCareAnimationSize = 116.0;
+static CGFloat const PPUltraCareHeroPortalSize = 94.0;
+static CGFloat const PPUltraCareOrbitCarrierSize = 78.0;
+static CGFloat const PPUltraCareHeroInnerSize = 66.0;
+static CGFloat const PPUltraCareFallbackIconSize = 27.0;
+static CGFloat const PPUltraCareAnimationSize = 122.0;
 
 static UIColor *PPUltraCareDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
@@ -245,7 +245,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _eyebrowLabel.layer.borderWidth = 0.2;
     _eyebrowLabel.layer.masksToBounds = YES;
-    _eyebrowLabel.textInsets = UIEdgeInsetsMake(1, 4, 1, 4);
+    _eyebrowLabel.textInsets = UIEdgeInsetsMake(3.0, 10.0, 3.0, 10.0);
     if (@available(iOS 13.0, *)) {
         _eyebrowLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -333,11 +333,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
         [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:22.0],
         [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
-        [_topAccentLineView.widthAnchor constraintEqualToConstant:44.0],
+        [_topAccentLineView.widthAnchor constraintEqualToConstant:54.0],
         [_topAccentLineView.heightAnchor constraintEqualToConstant:4.0],
 
-        [_heroPortalView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
-        [_heroPortalView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18],
+        [_heroPortalView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:18.0],
+        [_heroPortalView.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor constant:1.0],
         [_heroPortalView.widthAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
         [_heroPortalView.heightAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
 
@@ -366,24 +366,25 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_lottieHeaderView.widthAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
         [_lottieHeaderView.heightAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
 
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:18.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
-        [_eyebrowLabel.heightAnchor constraintEqualToConstant:22.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_heroPortalView.leadingAnchor constant:-14.0],
+        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroPortalView.trailingAnchor constant:16.0],
+        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
+        [_eyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
+        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
 
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
         [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:5.0],
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
         [_subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_ctaView.topAnchor constant:-PPSpaceXS],
 
-        [_ctaView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:PPSpaceBase],
+        [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-14.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:32.0],
-        //[_ctaView.trailingAnchor constraintEqualToAnchor:_heroPortalView.leadingAnchor constant:-PPSpaceMD],
+        [_ctaView.heightAnchor constraintEqualToConstant:34.0],
+        [_ctaView.widthAnchor constraintLessThanOrEqualToAnchor:_titleLabel.widthAnchor],
+        [_ctaView.widthAnchor constraintGreaterThanOrEqualToConstant:128.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:PPSpaceMD],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],

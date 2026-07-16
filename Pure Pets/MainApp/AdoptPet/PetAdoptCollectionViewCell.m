@@ -200,7 +200,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
     _badgeLabel = [[UILabel alloc] init];
     _badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _badgeLabel.font = [GM boldFontWithSize:12.5];
+    _badgeLabel.font = [GM boldFontWithSize:11.5];
     _badgeLabel.numberOfLines = 1;
     _badgeLabel.adjustsFontSizeToFitWidth = YES;
     _badgeLabel.minimumScaleFactor = 0.78;
@@ -208,14 +208,14 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:26.0];
+    _titleLabel.font = [GM boldFontWithSize:24.0];
     _titleLabel.numberOfLines = 2;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     [_contentWrapView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:14.5];
+    _subtitleLabel.font = [GM MidFontWithSize:14.0];
     _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     [_contentWrapView addSubview:_subtitleLabel];
@@ -231,7 +231,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
     _ctaLabel = [[UILabel alloc] init];
     _ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _ctaLabel.font = [GM boldFontWithSize:15.5];
+    _ctaLabel.font = [GM boldFontWithSize:14.0];
     _ctaLabel.numberOfLines = 1;
     _ctaLabel.adjustsFontSizeToFitWidth = YES;
     _ctaLabel.minimumScaleFactor = 0.78;
@@ -262,8 +262,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     UILayoutGuide *layoutGuide = self.contentView.layoutMarginsGuide;
     self.contentView.layoutMargins = UIEdgeInsetsMake(0, 0, 0, 0);
 
-    self.visualWidthConstraint = [_visualStageView.widthAnchor constraintEqualToConstant:150.0];
-    self.visualHeightConstraint = [_visualStageView.heightAnchor constraintEqualToAnchor:_cardSurfaceView.heightAnchor multiplier:0.92];
+    self.visualWidthConstraint = [_visualStageView.widthAnchor constraintEqualToConstant:136.0];
+    self.visualHeightConstraint = [_visualStageView.heightAnchor constraintEqualToAnchor:_cardSurfaceView.heightAnchor multiplier:0.84];
 
     [NSLayoutConstraint activateConstraints:@[
         [_cardSurfaceView.topAnchor constraintEqualToAnchor:layoutGuide.topAnchor],
@@ -281,16 +281,16 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         [_hairlineView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor],
         [_hairlineView.heightAnchor constraintEqualToConstant:1.0],
 
-        [_contentWrapView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor constant:20.0],
-        [_contentWrapView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor constant:-20.0],
-        [_contentWrapView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor constant:22.0],
+        [_contentWrapView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor constant:22.0],
+        [_contentWrapView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor constant:-22.0],
+        [_contentWrapView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor constant:-22.0],
 
         [_visualStageView.centerYAnchor constraintEqualToAnchor:_cardSurfaceView.centerYAnchor],
-        [_visualStageView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor constant:-8.0],
+        [_visualStageView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor constant:16.0],
         self.visualWidthConstraint,
         self.visualHeightConstraint,
 
-        [_contentWrapView.trailingAnchor constraintEqualToAnchor:_visualStageView.leadingAnchor constant:-14.0],
+        [_contentWrapView.leadingAnchor constraintEqualToAnchor:_visualStageView.trailingAnchor constant:16.0],
 
         [_visualOrbView.centerXAnchor constraintEqualToAnchor:_visualStageView.centerXAnchor],
         [_visualOrbView.centerYAnchor constraintEqualToAnchor:_visualStageView.centerYAnchor constant:6.0],
@@ -299,51 +299,51 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
         [_visualGlassView.centerXAnchor constraintEqualToAnchor:_visualStageView.centerXAnchor],
         [_visualGlassView.centerYAnchor constraintEqualToAnchor:_visualStageView.centerYAnchor],
-        [_visualGlassView.widthAnchor constraintEqualToAnchor:_visualStageView.widthAnchor multiplier:0.94],
-        [_visualGlassView.heightAnchor constraintEqualToAnchor:_visualStageView.heightAnchor multiplier:0.82],
+        [_visualGlassView.widthAnchor constraintEqualToAnchor:_visualStageView.widthAnchor multiplier:0.90],
+        [_visualGlassView.heightAnchor constraintEqualToAnchor:_visualStageView.heightAnchor multiplier:0.78],
 
         [_seedImageView.centerXAnchor constraintEqualToAnchor:_visualGlassView.centerXAnchor],
-        [_seedImageView.bottomAnchor constraintEqualToAnchor:_visualGlassView.bottomAnchor constant:-12.0],
-        [_seedImageView.widthAnchor constraintEqualToAnchor:_visualGlassView.widthAnchor multiplier:0.58],
-        [_seedImageView.heightAnchor constraintEqualToAnchor:_visualGlassView.heightAnchor multiplier:0.30],
+        [_seedImageView.bottomAnchor constraintEqualToAnchor:_visualGlassView.bottomAnchor constant:-10.0],
+        [_seedImageView.widthAnchor constraintEqualToAnchor:_visualGlassView.widthAnchor multiplier:0.54],
+        [_seedImageView.heightAnchor constraintEqualToAnchor:_visualGlassView.heightAnchor multiplier:0.28],
 
         [_lottieHeaderView.centerXAnchor constraintEqualToAnchor:_visualGlassView.centerXAnchor],
         [_lottieHeaderView.centerYAnchor constraintEqualToAnchor:_visualGlassView.centerYAnchor constant:-1.0],
-        [_lottieHeaderView.widthAnchor constraintEqualToAnchor:_visualGlassView.widthAnchor multiplier:1.58],
-        [_lottieHeaderView.heightAnchor constraintEqualToAnchor:_visualGlassView.heightAnchor multiplier:1.58],
+        [_lottieHeaderView.widthAnchor constraintEqualToAnchor:_visualGlassView.widthAnchor multiplier:1.48],
+        [_lottieHeaderView.heightAnchor constraintEqualToAnchor:_visualGlassView.heightAnchor multiplier:1.48],
 
         [_badgePillView.topAnchor constraintEqualToAnchor:_contentWrapView.topAnchor],
         [_badgePillView.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_badgePillView.trailingAnchor constraintLessThanOrEqualToAnchor:_contentWrapView.trailingAnchor],
 
-        [_badgeLabel.topAnchor constraintEqualToAnchor:_badgePillView.topAnchor constant:7.0],
-        [_badgeLabel.leadingAnchor constraintEqualToAnchor:_badgePillView.leadingAnchor constant:12.0],
-        [_badgeLabel.trailingAnchor constraintEqualToAnchor:_badgePillView.trailingAnchor constant:-12.0],
-        [_badgeLabel.bottomAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:-7.0],
+        [_badgeLabel.topAnchor constraintEqualToAnchor:_badgePillView.topAnchor constant:6.0],
+        [_badgeLabel.leadingAnchor constraintEqualToAnchor:_badgePillView.leadingAnchor constant:11.0],
+        [_badgeLabel.trailingAnchor constraintEqualToAnchor:_badgePillView.trailingAnchor constant:-11.0],
+        [_badgeLabel.bottomAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:-6.0],
 
-        [_titleLabel.topAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:10.0],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:9.0],
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_titleLabel.trailingAnchor constraintEqualToAnchor:_contentWrapView.trailingAnchor],
 
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:5.0],
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_contentWrapView.trailingAnchor],
-        [_subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_ctaPillView.topAnchor constant:-10.0],
+        [_subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_ctaPillView.topAnchor constant:-9.0],
 
         [_ctaPillView.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_ctaPillView.bottomAnchor constraintEqualToAnchor:_contentWrapView.bottomAnchor],
-        [_ctaPillView.heightAnchor constraintEqualToConstant:44.0],
+        [_ctaPillView.heightAnchor constraintEqualToConstant:42.0],
         [_ctaPillView.widthAnchor constraintLessThanOrEqualToAnchor:_contentWrapView.widthAnchor],
-        [_ctaPillView.widthAnchor constraintGreaterThanOrEqualToConstant:142.0],
+        [_ctaPillView.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
 
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaPillView.centerYAnchor],
-        [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaPillView.leadingAnchor constant:18.0],
+        [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaPillView.leadingAnchor constant:16.0],
 
-        [_ctaIconView.leadingAnchor constraintEqualToAnchor:_ctaLabel.trailingAnchor constant:10.0],
-        [_ctaIconView.trailingAnchor constraintEqualToAnchor:_ctaPillView.trailingAnchor constant:-14.0],
+        [_ctaIconView.leadingAnchor constraintEqualToAnchor:_ctaLabel.trailingAnchor constant:9.0],
+        [_ctaIconView.trailingAnchor constraintEqualToAnchor:_ctaPillView.trailingAnchor constant:-13.0],
         [_ctaIconView.centerYAnchor constraintEqualToAnchor:_ctaPillView.centerYAnchor],
-        [_ctaIconView.widthAnchor constraintEqualToConstant:18.0],
-        [_ctaIconView.heightAnchor constraintEqualToConstant:18.0],
+        [_ctaIconView.widthAnchor constraintEqualToConstant:15.0],
+        [_ctaIconView.heightAnchor constraintEqualToConstant:15.0],
     ]];
 }
 
@@ -443,10 +443,10 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     CGFloat cornerRadius = 30.0;
     CGFloat width = CGRectGetWidth(self.bounds);
     BOOL compact = width > 0.0 && width < 370.0;
-    self.titleLabel.font = [GM boldFontWithSize:compact ? 22.0 : 26.0];
-    self.subtitleLabel.font = [GM MidFontWithSize:compact ? 13.5 : 14.5];
-    CGFloat visualWidth = CGRectGetWidth(self.cardSurfaceView.bounds) * (compact ? 0.36 : 0.40);
-    self.visualWidthConstraint.constant = MAX(compact ? 112.0 : 132.0, MIN(visualWidth, compact ? 138.0 : 168.0));
+    self.titleLabel.font = [GM boldFontWithSize:compact ? 21.0 : 24.0];
+    self.subtitleLabel.font = [GM MidFontWithSize:compact ? 13.0 : 14.0];
+    CGFloat visualWidth = CGRectGetWidth(self.cardSurfaceView.bounds) * (compact ? 0.32 : 0.34);
+    self.visualWidthConstraint.constant = MAX(compact ? 112.0 : 124.0, MIN(visualWidth, compact ? 132.0 : 150.0));
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];

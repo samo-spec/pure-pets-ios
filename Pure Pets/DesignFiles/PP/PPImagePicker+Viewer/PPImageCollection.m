@@ -2835,6 +2835,17 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         if (videoURL && presenter) {
             PPPremiumVideoPlayerViewController *playerVC =
             [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+            if (self.allowsEditing) {
+                self.selectedForEdit = index;
+                __weak typeof(self) weakSelf = self;
+                playerVC.editHandler = ^(PPPremiumVideoPlayerViewController *viewer, NSURL *url) {
+                    __strong typeof(weakSelf) self = weakSelf;
+                    if (!self) return;
+                    [self.editorBridge presentEditorFromViewController:viewer
+                                                          withVideoURL:url
+                                                             useArabic:self.useArabic];
+                };
+            }
             [presenter presentViewController:playerVC animated:YES completion:nil];
         }
         return;
@@ -2846,23 +2857,30 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         return;
     }
     
-    if (self.allowsEditing) {
-        // Store selection and open editor
-        self.selectedForEdit = index;
-
-        // Present editor through the parent view controller
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:index inSection:0];
+    PP_ImageCell *cell = (PP_ImageCell *)[self.collectionView cellForItemAtIndexPath:indexPath];
+    UIImageView *sourceImageView = [cell isKindOfClass:PP_ImageCell.class] ? cell.imageView : nil;
+    if (!sourceImageView.window) {
         if ([self.delegate respondsToSelector:@selector(imageCollection:didSelectImage:AtIndex:)]) {
             [self.delegate imageCollection:self didSelectImage:image AtIndex:index];
         }
-        
-        // You can also present editor directly if you have access to view controller
-        //[self.editorBridge presentEditorFromViewController:AppMgr.topViewController withImage:image useArabic:self.useArabic];
-    } else {
-        // Just notify delegate
-        if ([self.delegate respondsToSelector:@selector(imageCollection:didSelectImage:AtIndex:)]) {
-            [self.delegate imageCollection:self didSelectImage:image AtIndex:index];
-        }
+        return;
     }
+
+    FullScreenImageViewerController *viewer =
+        [[FullScreenImageViewerController alloc] initWithImage:image];
+    if (self.allowsEditing) {
+        self.selectedForEdit = index;
+        __weak typeof(self) weakSelf = self;
+        viewer.editHandler = ^(FullScreenImageViewerController *preview, UIImage *previewImage) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self.editorBridge presentEditorFromViewController:preview
+                                                     withImage:previewImage
+                                                     useArabic:self.useArabic];
+        };
+    }
+    [viewer presentFullScreenFromImageView:sourceImageView];
 }
  
 
@@ -3393,10 +3411,12 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 - (void)editorDidFinish:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     UIImage *editedImage = userInfo[@"image"];
+    NSURL *editedURL = userInfo[@"url"];
+    BOOL isVideoResult = [userInfo[@"mediaType"] isEqualToString:@"video"];
     
     if (!editedImage) {
         // Try to get from URL
-        NSURL *fileURL = userInfo[@"url"];
+        NSURL *fileURL = editedURL;
         if (fileURL) {
             NSData *imageData = [NSData dataWithContentsOfURL:fileURL];
             editedImage = [UIImage imageWithData:imageData];
@@ -3407,7 +3427,16 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
     
     if (self.selectedForEdit >= 0 && self.selectedForEdit < [self imageCount]) {
         // Replace existing image
-        [self replaceImageAtIndex:self.selectedForEdit withImage:editedImage];
+        NSInteger index = self.selectedForEdit;
+        [self replaceImageAtIndex:index withImage:editedImage];
+        if (isVideoResult && editedURL) {
+            [self.arrayLock lock];
+            [self pp_ensureMutableCollections];
+            if (index < self.mediaTypeArray.count) self.mediaTypeArray[index] = @(PHAssetMediaTypeVideo);
+            if (index < self.videoURLArray.count) self.videoURLArray[index] = editedURL;
+            [self.arrayLock unlock];
+            [self.collectionView reloadItemsAtIndexPaths:@[[NSIndexPath indexPathForItem:index inSection:0]]];
+        }
     } else {
         // Add new image
         [self addImage:editedImage];

@@ -89,6 +89,7 @@ static os_log_t PPHomePerformanceLog(void) {
 @end
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
+static BOOL const PPHomeUseHeroApex = YES;
 static NSString * const PPHomeLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
@@ -329,7 +330,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIView *avatarShellView = [[UIView alloc] init];
     avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarShellView.backgroundColor = UIColor.clearColor;
-    avatarShellView.layer.cornerRadius = 39.0;
+    avatarShellView.layer.cornerRadius = 32.0;
     avatarShellView.layer.borderWidth = 0.0;
     [avatarShellView pp_setShadowColor:UIColor.clearColor];
     avatarShellView.layer.shadowOpacity = 0.0f;
@@ -343,7 +344,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
     avatarImageView.clipsToBounds = YES;
-    avatarImageView.layer.cornerRadius = 33.0;
+    avatarImageView.layer.cornerRadius = 27.0;
     avatarImageView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         avatarImageView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -390,7 +391,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:23.0] ?: [UIFont systemFontOfSize:23.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     titleLabel.numberOfLines = 1;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -402,7 +403,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
+    subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
     subtitleLabel.numberOfLines = 2;
     subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
@@ -436,7 +437,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     metaStackView.translatesAutoresizingMaskIntoConstraints = NO;
     metaStackView.axis = UILayoutConstraintAxisHorizontal;
     metaStackView.alignment = UIStackViewAlignmentFill;
-    metaStackView.spacing = 12.0;
+    metaStackView.spacing = 10.0;
     metaStackView.distribution = UIStackViewDistributionFillEqually;
     [detailsView addSubview:metaStackView];
     _metaStackView = metaStackView;
@@ -518,7 +519,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     UIButton *expandButton = [UIButton buttonWithType:UIButtonTypeCustom];
     expandButton.translatesAutoresizingMaskIntoConstraints = NO;
-    expandButton.layer.cornerRadius = 22.0;
+    expandButton.layer.cornerRadius = 21.0;
     expandButton.layer.borderWidth = 0.0;
     expandButton.accessibilityTraits = UIAccessibilityTraitButton;
     expandButton.isAccessibilityElement = NO;
@@ -555,59 +556,59 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [accentRailView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:20.0],
+        [accentRailView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
         [accentRailView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
-        [accentRailView.widthAnchor constraintEqualToConstant:44.0],
+        [accentRailView.widthAnchor constraintEqualToConstant:54.0],
         [accentRailView.heightAnchor constraintEqualToConstant:3.0],
 
-        [avatarShellView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
-        [avatarShellView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
-        [avatarShellView.widthAnchor constraintEqualToConstant:78.0],
-        [avatarShellView.heightAnchor constraintEqualToConstant:78.0],
+        [avatarShellView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:20.0],
+        [avatarShellView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
+        [avatarShellView.widthAnchor constraintEqualToConstant:108.0],
+        [avatarShellView.heightAnchor constraintEqualToConstant:108.0],
 
         [avatarImageView.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
         [avatarImageView.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
-        [avatarImageView.widthAnchor constraintEqualToConstant:66.0],
-        [avatarImageView.heightAnchor constraintEqualToConstant:66.0],
+        [avatarImageView.widthAnchor constraintEqualToConstant:84.0],
+        [avatarImageView.heightAnchor constraintEqualToConstant:84.0],
 
         [avatarAnimationView.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
         [avatarAnimationView.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
-        [avatarAnimationView.widthAnchor constraintEqualToConstant:66.0],
-        [avatarAnimationView.heightAnchor constraintEqualToConstant:66.0],
+        [avatarAnimationView.widthAnchor constraintEqualToConstant:88.0],
+        [avatarAnimationView.heightAnchor constraintEqualToConstant:88.0],
 
         [loadingIndicator.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
         [loadingIndicator.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
 
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
-        [eyebrowLabel.heightAnchor constraintEqualToConstant:22.0],
-        [eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:avatarShellView.trailingAnchor constant:16.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:23.0],
+        [eyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
+        [eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-20.0],
 
-        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:7.0],
-        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:eyebrowLabel.leadingAnchor],
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:8.0],
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:27.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-20.0],
 
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:5.0],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [collapsedSummaryLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [collapsedSummaryLabel.trailingAnchor constraintLessThanOrEqualToAnchor:expandButton.leadingAnchor constant:-12.0],
-        [collapsedSummaryLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-20.0],
+        [collapsedSummaryLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [collapsedSummaryLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [collapsedSummaryLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-22.0],
 
-        [expandButton.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
-        [expandButton.topAnchor constraintEqualToAnchor:avatarShellView.bottomAnchor constant:8.0],
-        [expandButton.widthAnchor constraintEqualToConstant:44.0],
-        [expandButton.heightAnchor constraintEqualToConstant:44.0],
+        [expandButton.trailingAnchor constraintEqualToAnchor:avatarShellView.trailingAnchor constant:4.0],
+        [expandButton.bottomAnchor constraintEqualToAnchor:avatarShellView.bottomAnchor constant:4.0],
+        [expandButton.widthAnchor constraintEqualToConstant:42.0],
+        [expandButton.heightAnchor constraintEqualToConstant:42.0],
 
         [expandImageView.centerXAnchor constraintEqualToAnchor:expandButton.centerXAnchor],
         [expandImageView.centerYAnchor constraintEqualToAnchor:expandButton.centerYAnchor],
         [expandImageView.widthAnchor constraintEqualToConstant:15.0],
         [expandImageView.heightAnchor constraintEqualToConstant:15.0],
 
-        [detailsView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [detailsView.trailingAnchor constraintEqualToAnchor:expandButton.leadingAnchor constant:-12.0],
+        [detailsView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [detailsView.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
         [detailsView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
 
         [detailsDividerView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
@@ -617,29 +618,29 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
         [metaStackView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
         [metaStackView.trailingAnchor constraintEqualToAnchor:detailsView.trailingAnchor],
-        [metaStackView.topAnchor constraintEqualToAnchor:detailsDividerView.bottomAnchor constant:12.0],
-        [metaStackView.heightAnchor constraintEqualToConstant:26.0],
+        [metaStackView.topAnchor constraintEqualToAnchor:detailsDividerView.bottomAnchor constant:10.0],
+        [metaStackView.heightAnchor constraintEqualToConstant:24.0],
 
         [metaPrimaryIconView.leadingAnchor constraintEqualToAnchor:metaPrimaryView.leadingAnchor],
         [metaPrimaryIconView.centerYAnchor constraintEqualToAnchor:metaPrimaryView.centerYAnchor],
-        [metaPrimaryIconView.widthAnchor constraintEqualToConstant:16.0],
-        [metaPrimaryIconView.heightAnchor constraintEqualToConstant:16.0],
-        [metaPrimaryLabel.leadingAnchor constraintEqualToAnchor:metaPrimaryIconView.trailingAnchor constant:7.0],
+        [metaPrimaryIconView.widthAnchor constraintEqualToConstant:15.0],
+        [metaPrimaryIconView.heightAnchor constraintEqualToConstant:15.0],
+        [metaPrimaryLabel.leadingAnchor constraintEqualToAnchor:metaPrimaryIconView.trailingAnchor constant:6.0],
         [metaPrimaryLabel.trailingAnchor constraintEqualToAnchor:metaPrimaryView.trailingAnchor],
         [metaPrimaryLabel.centerYAnchor constraintEqualToAnchor:metaPrimaryView.centerYAnchor],
 
         [metaSecondaryIconView.leadingAnchor constraintEqualToAnchor:metaSecondaryView.leadingAnchor],
         [metaSecondaryIconView.centerYAnchor constraintEqualToAnchor:metaSecondaryView.centerYAnchor],
-        [metaSecondaryIconView.widthAnchor constraintEqualToConstant:16.0],
-        [metaSecondaryIconView.heightAnchor constraintEqualToConstant:16.0],
-        [metaSecondaryLabel.leadingAnchor constraintEqualToAnchor:metaSecondaryIconView.trailingAnchor constant:7.0],
+        [metaSecondaryIconView.widthAnchor constraintEqualToConstant:15.0],
+        [metaSecondaryIconView.heightAnchor constraintEqualToConstant:15.0],
+        [metaSecondaryLabel.leadingAnchor constraintEqualToAnchor:metaSecondaryIconView.trailingAnchor constant:6.0],
         [metaSecondaryLabel.trailingAnchor constraintEqualToAnchor:metaSecondaryView.trailingAnchor],
         [metaSecondaryLabel.centerYAnchor constraintEqualToAnchor:metaSecondaryView.centerYAnchor],
 
         [ctaView.leadingAnchor constraintEqualToAnchor:detailsView.leadingAnchor],
         [ctaView.trailingAnchor constraintEqualToAnchor:detailsView.trailingAnchor],
         [ctaView.bottomAnchor constraintEqualToAnchor:detailsView.bottomAnchor],
-        [ctaView.heightAnchor constraintEqualToConstant:44.0],
+        [ctaView.heightAnchor constraintEqualToConstant:42.0],
 
         [ctaLabel.leadingAnchor constraintEqualToAnchor:ctaView.leadingAnchor constant:14.0],
         [ctaLabel.centerYAnchor constraintEqualToAnchor:ctaView.centerYAnchor],
@@ -650,6 +651,16 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
         [ctaImageView.widthAnchor constraintEqualToConstant:13.0],
         [ctaImageView.heightAnchor constraintEqualToConstant:13.0],
     ]];
+
+    NSLayoutConstraint *collapsedSummaryTopConstraint =
+        [collapsedSummaryLabel.topAnchor constraintGreaterThanOrEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0];
+    collapsedSummaryTopConstraint.priority = UILayoutPriorityDefaultHigh;
+    collapsedSummaryTopConstraint.active = YES;
+
+    NSLayoutConstraint *detailsTopConstraint =
+        [detailsView.topAnchor constraintGreaterThanOrEqualToAnchor:subtitleLabel.bottomAnchor constant:12.0];
+    detailsTopConstraint.priority = UILayoutPriorityDefaultHigh;
+    detailsTopConstraint.active = YES;
 
     _detailsHeightConstraint = [detailsView.heightAnchor constraintEqualToConstant:96.0];
     _detailsHeightConstraint.active = YES;
@@ -1447,6 +1458,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewBottom;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeHorizontalUniversalIdentifiers;
@@ -10862,27 +10874,19 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded
 {
-    if (self.didStartPremiumBackgroundGlowMotion ||
-        [self pp_shouldReduceHomeMotion] ||
-        !self.isHomeScreenVisible ||
-        self.view.window == nil ||
-        self.pp_premiumBackgroundGlowViewMid.hidden ||
-        CGRectIsEmpty(self.pp_premiumBackgroundGlowViewMid.bounds)) {
-        return;
-    }
-    self.didStartPremiumBackgroundGlowMotion = YES;
-    if (self.backgroundGlowsFadedByHomeConfig) {
-        [self pp_addRandomizedMiddleBackgroundGlowPositionMotion];
-    } else {
-        [self pp_addPremiumMiddleBackgroundGlowPeekMotionIfNeeded];
-    }
+     
+    [self.ambientBackgroundView startAnimations];
 }
 
 - (void)pp_stopPremiumBackgroundGlowMotion
 {
-    self.didStartPremiumBackgroundGlowMotion = NO;
-    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
-    [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPeekMotionKey];
+    if (PPHomeUseHeroApex) {
+        [self.ambientBackgroundView stopAnimations];
+    } else {
+        self.didStartPremiumBackgroundGlowMotion = NO;
+        [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPositionMotionKey];
+        [self.pp_premiumBackgroundGlowViewMid.layer removeAnimationForKey:PPHomeMiddleBackgroundGlowPeekMotionKey];
+    }
 }
 
 - (void)pp_beginPremiumHomeEntranceIfNeeded
@@ -13041,47 +13045,77 @@ presentingViewController:self
 
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded
 {
-    if (!self.pp_premiumBackgroundCanvasView) {
-        UIView *canvasView = [[UIView alloc] initWithFrame:CGRectZero];
-        canvasView.translatesAutoresizingMaskIntoConstraints = NO;
-        canvasView.userInteractionEnabled = NO;
-        canvasView.isAccessibilityElement = NO;
-        canvasView.accessibilityElementsHidden = YES;
-        canvasView.clipsToBounds = YES;
-        canvasView.opaque = YES;
-        self.pp_premiumBackgroundCanvasView = canvasView;
-        [self.view insertSubview:canvasView atIndex:0];
-        [NSLayoutConstraint activateConstraints:@[
-            [canvasView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            [canvasView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [canvasView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            [canvasView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-        ]];
-    } else if (self.pp_premiumBackgroundCanvasView.superview != self.view) {
-        [self.view insertSubview:self.pp_premiumBackgroundCanvasView atIndex:0];
-    }
+    if (PPHomeUseHeroApex) {
+        self.pp_premiumBackgroundCanvasView.hidden = YES;
+        if (!self.ambientBackgroundView) {
+            self.ambientBackgroundView = [[PPHeroGlassBackgroundView alloc] init];
+            self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+            self.ambientBackgroundView.userInteractionEnabled = NO;
+            self.ambientBackgroundView.PPHeroApexUseShimmer = NO;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+            self.ambientBackgroundView.accentColorOverride = [[UIColor colorNamed:@"AppBageGlows"] colorWithAlphaComponent:0.92];
+            self.ambientBackgroundView.overrideCenterGlowColor = [AppPrimaryClrDarker colorWithAlphaComponent:0.08];
 
-    if (!self.pp_premiumBackgroundGlowViewTop) {
-        self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
-    }
-    if (!self.pp_premiumBackgroundGlowViewMid) {
-        self.pp_premiumBackgroundGlowViewMid = [self pp_makePremiumBackgroundGlowView];
-    }
-    if (!self.pp_premiumBackgroundGlowViewBottom) {
-        self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
-    }
-
-    for (PPHomeAmbientGlowView *glowView in @[
-        self.pp_premiumBackgroundGlowViewBottom,
-        self.pp_premiumBackgroundGlowViewMid,
-        self.pp_premiumBackgroundGlowViewTop
-    ]) {
-        if (glowView.superview != self.pp_premiumBackgroundCanvasView) {
-            [self.pp_premiumBackgroundCanvasView addSubview:glowView];
+            self.ambientBackgroundView.cornerGlowOpacityMultiplier = 0.36;
+            [self.view insertSubview:self.ambientBackgroundView atIndex:0];
+            [NSLayoutConstraint activateConstraints:@[
+                [self.ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                [self.ambientBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+                [self.ambientBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+                [self.ambientBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+            ]];
+        } else if (self.ambientBackgroundView.superview != self.view) {
+            [self.view insertSubview:self.ambientBackgroundView atIndex:0];
         }
-    }
+        self.ambientBackgroundView.hidden = NO;
+        [self.view sendSubviewToBack:self.ambientBackgroundView];
+    } else {
+        if (self.ambientBackgroundView) {
+            self.ambientBackgroundView.hidden = YES;
+        }
+        if (!self.pp_premiumBackgroundCanvasView) {
+            UIView *canvasView = [[UIView alloc] initWithFrame:CGRectZero];
+            canvasView.translatesAutoresizingMaskIntoConstraints = NO;
+            canvasView.userInteractionEnabled = NO;
+            canvasView.isAccessibilityElement = NO;
+            canvasView.accessibilityElementsHidden = YES;
+            canvasView.clipsToBounds = YES;
+            canvasView.opaque = YES;
+            self.pp_premiumBackgroundCanvasView = canvasView;
+            [self.view insertSubview:canvasView atIndex:0];
+            [NSLayoutConstraint activateConstraints:@[
+                [canvasView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                [canvasView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+                [canvasView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+                [canvasView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+            ]];
+        } else if (self.pp_premiumBackgroundCanvasView.superview != self.view) {
+            [self.view insertSubview:self.pp_premiumBackgroundCanvasView atIndex:0];
+        }
+        self.pp_premiumBackgroundCanvasView.hidden = NO;
 
-    [self.view sendSubviewToBack:self.pp_premiumBackgroundCanvasView];
+        if (!self.pp_premiumBackgroundGlowViewTop) {
+            self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
+        }
+        if (!self.pp_premiumBackgroundGlowViewMid) {
+            self.pp_premiumBackgroundGlowViewMid = [self pp_makePremiumBackgroundGlowView];
+        }
+        if (!self.pp_premiumBackgroundGlowViewBottom) {
+            self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
+        }
+
+        for (PPHomeAmbientGlowView *glowView in @[
+            self.pp_premiumBackgroundGlowViewBottom,
+            self.pp_premiumBackgroundGlowViewMid,
+            self.pp_premiumBackgroundGlowViewTop
+        ]) {
+            if (glowView.superview != self.pp_premiumBackgroundCanvasView) {
+                [self.pp_premiumBackgroundCanvasView addSubview:glowView];
+            }
+        }
+
+        [self.view sendSubviewToBack:self.pp_premiumBackgroundCanvasView];
+    }
 }
 
 - (void)pp_applyPremiumGlowView:(PPHomeAmbientGlowView *)glowView
@@ -13105,101 +13139,110 @@ presentingViewController:self
 
 - (void)pp_updatePremiumBackgroundGlowAppearance
 {
-    BOOL isDark = NO;
-    if (@available(iOS 12.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    if (PPHomeUseHeroApex) {
+        [self.ambientBackgroundView reapplyPalette];
+    } else {
+        BOOL isDark = NO;
+        if (@available(iOS 12.0, *)) {
+            isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+        }
+
+        BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
+        BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
+        CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
+
+        UIColor *signatureColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+        UIColor *centerGlowColor = AppPrimaryClr ?: signatureColor;
+        self.pp_premiumBackgroundGlowViewTop.hidden = NO;
+        self.pp_premiumBackgroundGlowViewMid.hidden = NO;
+        self.pp_premiumBackgroundGlowViewBottom.hidden = NO;
+        [self pp_stopPremiumBackgroundGlowMotion];
+
+        [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+                                color:signatureColor
+                            peakAlpha:(isDark ? 0.112 : 0.032) * accessibilityScale
+                          middleAlpha:(isDark ? 0.048 : 0.018) * accessibilityScale];
+
+        //[self.pp_premiumBackgroundGlowViewMid pp_setNeedsLayout];
+        [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                                color:centerGlowColor
+                            peakAlpha:(isDark ? 0.074 : 0.021) * accessibilityScale
+                          middleAlpha:(isDark ? 0.030 : (self.backgroundGlowsFadedByHomeConfig ? 0.021 : 0.017)) * accessibilityScale];
+
+        [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+                                color:signatureColor
+                            peakAlpha:(isDark ? 0.16 : 0.040) * accessibilityScale
+                          middleAlpha:(isDark ? 0.052 : 0.030) * accessibilityScale];
     }
-
-    BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
-    BOOL increaseContrast = UIAccessibilityDarkerSystemColorsEnabled();
-    CGFloat accessibilityScale = (reduceTransparency || increaseContrast) ? 0.70 : 1.0;
-
-    UIColor *signatureColor = AppPrimaryClrShiner ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *centerGlowColor = AppPrimaryClr ?: signatureColor;
-    self.pp_premiumBackgroundGlowViewTop.hidden = NO;
-    self.pp_premiumBackgroundGlowViewMid.hidden = NO;
-    self.pp_premiumBackgroundGlowViewBottom.hidden = NO;
-    [self pp_stopPremiumBackgroundGlowMotion];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:signatureColor
-                        peakAlpha:(isDark ? 0.112 : 0.032) * accessibilityScale
-                      middleAlpha:(isDark ? 0.048 : 0.018) * accessibilityScale];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:centerGlowColor
-                        peakAlpha:(isDark ? 0.074 : 0.021) * accessibilityScale
-                      middleAlpha:(isDark ? 0.030 : (self.backgroundGlowsFadedByHomeConfig ? 0.021 : 0.017)) * accessibilityScale];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:signatureColor
-                        peakAlpha:(isDark ? 0.16 : 0.040) * accessibilityScale
-                      middleAlpha:(isDark ? 0.052 : 0.030) * accessibilityScale];
 }
 
 - (void)pp_layoutPremiumBackgroundGlowViews
 {
-    CGRect bounds = self.view.bounds;
-    if (!PPHomeRectIsFiniteAndNotEmpty(bounds)) {
-        return;
-    }
-
-    CGFloat width = CGRectGetWidth(bounds);
-    CGFloat height = CGRectGetHeight(bounds);
-    CGFloat safeTop = self.view.safeAreaInsets.top;
-    if (!PPHomeFiniteCGFloat(width) || !PPHomeFiniteCGFloat(height) || !PPHomeFiniteCGFloat(safeTop)) {
-        return;
-    }
-    CGSize canvasSize = bounds.size;
-    BOOL motionLayoutChanged = (fabs(canvasSize.width - self.premiumBackgroundGlowMotionCanvasSize.width) > 0.5 ||
-                                fabs(canvasSize.height - self.premiumBackgroundGlowMotionCanvasSize.height) > 0.5);
-    if (motionLayoutChanged && self.didStartPremiumBackgroundGlowMotion) {
-        [self pp_stopPremiumBackgroundGlowMotion];
-    }
-    self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
-
-    CGFloat topSize = MIN(228.0, MAX(176.0, width * 0.72));
-    CGFloat midSize = MIN(340.0, MAX(150.0, width * 0.86));
-    CGFloat bottomSize = MIN(260.0, MAX(280.0, width * 1.12));
-    if (!PPHomeFiniteCGFloat(topSize) || !PPHomeFiniteCGFloat(midSize) || !PPHomeFiniteCGFloat(bottomSize)) {
-        return;
-    }
-    BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-
-    self.pp_premiumBackgroundGlowViewTop.bounds = CGRectMake(0.0, 0.0, topSize, topSize);
-    self.pp_premiumBackgroundGlowViewTop.center = CGPointMake(
-        isRTL ? topSize * 0.22 : width - (topSize * 0.22),
-        safeTop + (topSize * 0.10)
-    );
-
-    self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
-    CGFloat middleY = MAX(180.0, height * 0.52);
-    if (self.backgroundGlowsFadedByHomeConfig) {
-        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds) + 40, middleY);
+    if (PPHomeUseHeroApex) {
+        // Hero Apex fills view via Auto Layout
     } else {
-        self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
-            isRTL ? width - (midSize * 0.10) : midSize * 0.10,
-            middleY
+        CGRect bounds = self.view.bounds;
+        if (!PPHomeRectIsFiniteAndNotEmpty(bounds)) {
+            return;
+        }
+
+        CGFloat width = CGRectGetWidth(bounds);
+        CGFloat height = CGRectGetHeight(bounds);
+        CGFloat safeTop = self.view.safeAreaInsets.top;
+        if (!PPHomeFiniteCGFloat(width) || !PPHomeFiniteCGFloat(height) || !PPHomeFiniteCGFloat(safeTop)) {
+            return;
+        }
+        CGSize canvasSize = bounds.size;
+        BOOL motionLayoutChanged = (fabs(canvasSize.width - self.premiumBackgroundGlowMotionCanvasSize.width) > 0.5 ||
+                                    fabs(canvasSize.height - self.premiumBackgroundGlowMotionCanvasSize.height) > 0.5);
+        if (motionLayoutChanged && self.didStartPremiumBackgroundGlowMotion) {
+            [self pp_stopPremiumBackgroundGlowMotion];
+        }
+        self.premiumBackgroundGlowMotionCanvasSize = canvasSize;
+
+        CGFloat topSize = MIN(228.0, MAX(176.0, width * 0.72));
+        CGFloat midSize = MIN(340.0, MAX(150.0, width * 0.86));
+        CGFloat bottomSize = MIN(260.0, MAX(280.0, width * 1.12));
+        if (!PPHomeFiniteCGFloat(topSize) || !PPHomeFiniteCGFloat(midSize) || !PPHomeFiniteCGFloat(bottomSize)) {
+            return;
+        }
+        BOOL isRTL = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+
+        self.pp_premiumBackgroundGlowViewTop.bounds = CGRectMake(0.0, 0.0, topSize, topSize);
+        self.pp_premiumBackgroundGlowViewTop.center = CGPointMake(
+            isRTL ? topSize * 0.22 : width - (topSize * 0.22),
+            safeTop + (topSize * 0.10)
         );
-    }
 
-    self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
-    self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
-        isRTL ? width - (bottomSize * 0.34) : bottomSize * 0.34,
-        height - (bottomSize * 0.07)
-    );
+        self.pp_premiumBackgroundGlowViewMid.bounds = CGRectMake(0.0, 0.0, midSize, midSize);
+        CGFloat middleY = MAX(180.0, height * 0.52);
+        if (self.backgroundGlowsFadedByHomeConfig) {
+            self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(CGRectGetMidX(bounds) + 40, middleY);
+        } else {
+            self.pp_premiumBackgroundGlowViewMid.center = CGPointMake(
+                isRTL ? width - (midSize * 0.10) : midSize * 0.10,
+                middleY
+            );
+        }
 
-    [CATransaction commit];
+        self.pp_premiumBackgroundGlowViewBottom.bounds = CGRectMake(0.0, 0.0, bottomSize, bottomSize);
+        self.pp_premiumBackgroundGlowViewBottom.center = CGPointMake(
+            isRTL ? width - (bottomSize * 0.34) : bottomSize * 0.34,
+            height - (bottomSize * 0.07)
+        );
 
-    [self.pp_premiumBackgroundGlowViewTop setNeedsLayout];
-    [self.pp_premiumBackgroundGlowViewMid setNeedsLayout];
-    [self.pp_premiumBackgroundGlowViewBottom setNeedsLayout];
+        [CATransaction commit];
 
-    if (motionLayoutChanged && self.isHomeScreenVisible) {
-        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+        [self.pp_premiumBackgroundGlowViewTop setNeedsLayout];
+        [self.pp_premiumBackgroundGlowViewMid setNeedsLayout];
+        [self.pp_premiumBackgroundGlowViewBottom setNeedsLayout];
+
+        if (motionLayoutChanged && self.isHomeScreenVisible) {
+            [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+        }
     }
 }
 

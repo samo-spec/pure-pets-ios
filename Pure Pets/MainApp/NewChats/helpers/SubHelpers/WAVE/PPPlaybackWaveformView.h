@@ -8,13 +8,18 @@
 
 #import <UIKit/UIKit.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
+/// A reusable, RTL-aware playback waveform with adaptive sampling and motion-safe progress.
 @interface PPPlaybackWaveformView : UIView
 
-- (void)setSamples:(NSArray<NSNumber *> *)samples;   // called ONCE
-- (void)setPlaybackProgress:(CGFloat)progress;       // 0..1
+- (void)setSamples:(nullable NSArray<NSNumber *> *)samples;
+- (void)setPlaybackProgress:(CGFloat)progress; // Clamped to 0...1.
 - (void)reset;
 + (NSArray<NSNumber *> *)idleSamples;
-@property (nonatomic, strong) UIColor *activeColor;
-@property (nonatomic, strong) UIColor *inactiveColor;
+@property (nonatomic, strong, nullable) UIColor *activeColor;
+@property (nonatomic, strong, nullable) UIColor *inactiveColor;
 
 @end
+
+NS_ASSUME_NONNULL_END

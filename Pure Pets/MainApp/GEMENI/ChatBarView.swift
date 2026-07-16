@@ -67,12 +67,14 @@ struct ChatBarView: View {
     var onCameraTap: () -> Void
     var onVideoTap: () -> Void
     var onContactTap: () -> Void
+    var onStickerTap: (PPChatSticker) -> Void = { _ in }
     var onSendAudio: (URL, Double) -> Void
     var onCancelReply: () -> Void = {}
 
     // MARK: - Composer State
 
     @State private var attachmentsExpanded = false
+    @State private var stickerPickerPresented = false
 
     // MARK: - Recording Gesture State
 
@@ -237,6 +239,11 @@ struct ChatBarView: View {
         }
         .frame(height: state.hasReply ? expandedComposerHeight : chatBarHeight, alignment: .bottom)
         .animation(stateAnimation, value: state.hasReply)
+        .sheet(isPresented: $stickerPickerPresented) {
+            PPStickerPickerSheet { sticker in
+                onStickerTap(sticker)
+            }
+        }
     }
 
     private var composerBody: some View {
@@ -258,21 +265,6 @@ struct ChatBarView: View {
                     Capsule(style: .continuous)
                         .fill(composerSurfaceColor)
                 }
-        }
-        .overlay {
-            Capsule(style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.50),
-                            .white.opacity(0.14),
-                            Color(uiColor: .separator).opacity(0.24)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.0
-                )
         }
         .shadow(
             color: .black.opacity(0.075),
@@ -420,12 +412,13 @@ struct ChatBarView: View {
 
             AttachmentButton(
                 needsRotation: .constant(false),
-                iconName: "rectangle.stack.person.crop",
+                iconName: stickerIconName,
                 iconSize: 17
             ) {
                 closeAttachments()
-                onContactTap()
+                stickerPickerPresented = true
             }
+            .accessibilityLabel(Text(localized("chat_stickers_button_accessibility")))
 
             AttachmentButton(
                 needsRotation: .constant(false),
@@ -1311,6 +1304,13 @@ struct ChatBarView: View {
             return preferredName
         }
         return fallback
+    }
+
+    private var stickerIconName: String {
+        if UIImage(systemName: "sticker") != nil {
+            return "sticker"
+        }
+        return "face.smiling"
     }
 
     // MARK: - Shared Controls

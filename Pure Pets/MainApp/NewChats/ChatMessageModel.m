@@ -77,6 +77,7 @@
         _blurHash     = dict[@"blurHash"] ?: dict[@"blur_hash"];
         _thumbnailURL = dict[@"thumbnailURL"] ?: dict[@"thumbnail_url"];
         _mimeType     = dict[@"mimeType"] ?: dict[@"mime_type"];
+        _stickerStoragePath = dict[@"stickerStoragePath"] ?: dict[@"sticker_storage_path"];
         _fileSize = [dict[@"fileSize"] ?: dict[@"file_size"] integerValue];
         _mediaDuration = [dict[@"mediaDuration"] ?: dict[@"media_duration"] doubleValue];
         
@@ -149,6 +150,7 @@
     if (self.fileURL)        dict[@"fileURL"] = self.fileURL;
     if (self.thumbnailURL)   dict[@"thumbnailURL"] = self.thumbnailURL;
     if (self.blurHash)       dict[@"blurHash"] = self.blurHash;
+    if (self.stickerStoragePath.length > 0) dict[@"stickerStoragePath"] = self.stickerStoragePath;
     
     if (self.mimeType)       dict[@"mimeType"] = self.mimeType;
     if (self.fileSize > 0)   dict[@"fileSize"] = @(self.fileSize);
@@ -167,7 +169,8 @@
         dict[@"mediaAspectRatio"] = @(self.mediaAspectRatio);
 
     if (self.messageType == ChatMessageTypeVideo ||
-        self.messageType == ChatMessageTypeImage) {
+        self.messageType == ChatMessageTypeImage ||
+        self.messageType == ChatMessageTypeSticker) {
         dict[@"hasMedia"] = @YES;
     }
     
@@ -216,6 +219,7 @@
     [coder encodeObject:self.fileURL forKey:@"fileURL"];
     [coder encodeObject:self.thumbnailURL forKey:@"thumbnailURL"];
     [coder encodeObject:self.mimeType forKey:@"mimeType"];
+    [coder encodeObject:self.stickerStoragePath forKey:@"stickerStoragePath"];
     [coder encodeInteger:self.fileSize forKey:@"fileSize"];
     [coder encodeDouble:self.mediaDuration forKey:@"mediaDuration"];
     [coder encodeDouble:self.mediaWidth forKey:@"mediaWidth"];
@@ -262,6 +266,7 @@
         _fileURL = [coder decodeObjectOfClass:NSString.class forKey:@"fileURL"];
         _thumbnailURL = [coder decodeObjectOfClass:NSString.class forKey:@"thumbnailURL"];
         _mimeType = [coder decodeObjectOfClass:NSString.class forKey:@"mimeType"];
+        _stickerStoragePath = [coder decodeObjectOfClass:NSString.class forKey:@"stickerStoragePath"];
         _fileSize = [coder decodeIntegerForKey:@"fileSize"];
         _mediaDuration = [coder decodeDoubleForKey:@"mediaDuration"];
         _mediaWidth = [coder decodeDoubleForKey:@"mediaWidth"];
@@ -314,6 +319,11 @@
 - (BOOL)isFileMessage
 {
     return self.messageType == ChatMessageTypeFile;
+}
+
+- (BOOL)isStickerMessage
+{
+    return self.messageType == ChatMessageTypeSticker;
 }
 
 /*
@@ -378,6 +388,11 @@
     NSString *thumbURL = dict[@"thumbnailURL"] ?: dict[@"thumbnail_url"];
     if (thumbURL.length > 0) {
         self.thumbnailURL = thumbURL;
+    }
+
+    NSString *stickerPath = dict[@"stickerStoragePath"] ?: dict[@"sticker_storage_path"];
+    if (stickerPath.length > 0) {
+        self.stickerStoragePath = stickerPath;
     }
 
     NSString *blurHash = dict[@"blurHash"] ?: dict[@"blur_hash"];
@@ -446,6 +461,7 @@
             self.localImage = nil;
             self.localVideoURL = nil;
             self.blurHash = nil;
+            self.stickerStoragePath = nil;
             self.waveformSamples = @[];
             self.mimeType = nil;
             self.fileSize = 0;

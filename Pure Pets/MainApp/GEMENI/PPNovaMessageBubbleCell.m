@@ -230,8 +230,13 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.bubbleMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bubbleMaterialView.layer.cornerRadius = PPNovaBubbleCornerRadius;
     self.bubbleMaterialView.layer.masksToBounds = YES;
+    self.bubbleMaterialView.clipsToBounds = YES;
+    self.bubbleMaterialView.contentView.layer.cornerRadius = PPNovaBubbleCornerRadius;
+    self.bubbleMaterialView.contentView.layer.masksToBounds = YES;
+    self.bubbleMaterialView.contentView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.bubbleMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.bubbleMaterialView.contentView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contentView addSubview:self.bubbleMaterialView];
 
@@ -1427,7 +1432,17 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     }
     self.bubbleMaterialView.effect = assistantEffect;
     self.bubbleMaterialView.contentView.backgroundColor = assistant ? assistantFill : userFill;
-    self.bubbleMaterialView.layer.cornerRadius = typing ? 21.0 : PPNovaBubbleCornerRadius;
+    CGFloat radius = typing ? 21.0 : PPNovaBubbleCornerRadius;
+    self.bubbleMaterialView.layer.cornerRadius = radius;
+    self.bubbleMaterialView.clipsToBounds = YES;
+    self.bubbleMaterialView.layer.masksToBounds = YES;
+    self.bubbleMaterialView.contentView.layer.cornerRadius = radius;
+    self.bubbleMaterialView.contentView.clipsToBounds = YES;
+    self.bubbleMaterialView.contentView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.bubbleMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.bubbleMaterialView.contentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     self.bubbleMaterialView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     self.bubbleMaterialView.layer.borderColor = (assistant ? assistantBorder : userBorder).CGColor;
 

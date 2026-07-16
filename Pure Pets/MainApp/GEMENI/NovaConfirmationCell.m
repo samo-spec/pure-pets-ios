@@ -61,6 +61,10 @@
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.clipsToBounds = YES;
     self.cardView.layer.cornerRadius = 24.0;
+    self.cardView.layer.masksToBounds = YES;
+    self.cardView.contentView.layer.cornerRadius = 24.0;
+    self.cardView.contentView.clipsToBounds = YES;
+    self.cardView.contentView.layer.masksToBounds = YES;
     self.cardView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
     self.cardView.layer.borderColor = [brandColor colorWithAlphaComponent:0.20].CGColor;
@@ -70,6 +74,7 @@
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.cardView.contentView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contentView addSubview:self.cardView];
 

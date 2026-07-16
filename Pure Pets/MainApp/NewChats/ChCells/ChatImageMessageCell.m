@@ -19,7 +19,6 @@
 @property (nonatomic, strong) UIImageView *statusIcon;
 @property (nonatomic, strong) UIView *bottomBlurView;
 @property (nonatomic, strong) UIVisualEffectView *mediaActionRail;
-@property (nonatomic, strong) UIButton *viewMediaButton;
 @property (nonatomic, strong) UIButton *downloadMediaButton;
 @property (nonatomic, strong) UIView *replyPreviewView;
 @property (nonatomic, strong) UIView *replyAccentView;
@@ -220,6 +219,10 @@
             [self.retryButton.heightAnchor constraintEqualToConstant:44],
         ]];
 
+        UITapGestureRecognizer *bubbleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onViewMediaTapped)];
+        [self.bubbleView addGestureRecognizer:bubbleTap];
+        self.bubbleView.userInteractionEnabled = YES;
+
         [self setupPremiumMediaActions];
         [self setupReplyPreview];
         
@@ -240,43 +243,34 @@
     }
     [self.bubbleView addSubview:self.mediaActionRail];
 
-    self.viewMediaButton = [self pp_mediaActionButtonWithSystemName:@"eye.fill"
-                                                 accessibilityTitle:kLang(@"chat_media_view")];
-    [self.viewMediaButton addTarget:self
-                             action:@selector(onViewMediaTapped)
-                   forControlEvents:UIControlEventTouchUpInside];
-
     self.downloadMediaButton = [self pp_mediaActionButtonWithSystemName:@"arrow.down"
-                                                      accessibilityTitle:kLang(@"chat_media_download")];
+                                                       accessibilityTitle:kLang(@"chat_media_download")];
     [self.downloadMediaButton addTarget:self
                                  action:@selector(onDownloadMediaTapped)
                        forControlEvents:UIControlEventTouchUpInside];
 
     UIStackView *stack =
         [[UIStackView alloc] initWithArrangedSubviews:@[
-            self.viewMediaButton,
             self.downloadMediaButton
         ]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
     stack.alignment = UIStackViewAlignmentCenter;
     stack.distribution = UIStackViewDistributionEqualSpacing;
-    stack.spacing = 4.0;
+    stack.spacing = 0.0;
     [self.mediaActionRail.contentView addSubview:stack];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.mediaActionRail.topAnchor constraintEqualToAnchor:self.bubbleView.topAnchor constant:10.0],
         [self.mediaActionRail.trailingAnchor constraintEqualToAnchor:self.bubbleView.trailingAnchor constant:-10.0],
         [self.mediaActionRail.heightAnchor constraintEqualToConstant:40.0],
-        [self.mediaActionRail.widthAnchor constraintEqualToConstant:84.0],
+        [self.mediaActionRail.widthAnchor constraintEqualToConstant:40.0],
 
-        [stack.leadingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.leadingAnchor constant:4.0],
-        [stack.trailingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.trailingAnchor constant:-4.0],
+        [stack.leadingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.leadingAnchor constant:2.0],
+        [stack.trailingAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.trailingAnchor constant:-2.0],
         [stack.topAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.topAnchor constant:2.0],
         [stack.bottomAnchor constraintEqualToAnchor:self.mediaActionRail.contentView.bottomAnchor constant:-2.0],
 
-        [self.viewMediaButton.widthAnchor constraintEqualToConstant:36.0],
-        [self.viewMediaButton.heightAnchor constraintEqualToConstant:36.0],
         [self.downloadMediaButton.widthAnchor constraintEqualToConstant:36.0],
         [self.downloadMediaButton.heightAnchor constraintEqualToConstant:36.0],
     ]];
@@ -587,17 +581,14 @@
 
 - (void)updateMediaActionsForMessage:(ChatMessageModel *)message animated:(BOOL)animated
 {
-    BOOL canView = (message.localImage != nil || message.fileURL.length > 0 || self.imageViewMsg.image != nil);
     BOOL canDownload = (message.fileURL.length > 0 || message.localImage != nil || self.imageViewMsg.image != nil);
-    self.viewMediaButton.enabled = canView;
     self.downloadMediaButton.enabled = canDownload && !message.isUploading;
-    self.viewMediaButton.alpha = canView ? 1.0 : 0.45;
     self.downloadMediaButton.alpha = self.downloadMediaButton.enabled ? 1.0 : 0.45;
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     void (^changes)(void) = ^{
-        self.mediaActionRail.alpha = canView ? 1.0 : 0.0;
-        self.mediaActionRail.transform = canView
+        self.mediaActionRail.alpha = canDownload ? 1.0 : 0.0;
+        self.mediaActionRail.transform = canDownload
             ? CGAffineTransformIdentity
             : CGAffineTransformMakeScale(0.94, 0.94);
     };
@@ -799,7 +790,6 @@
     [self hideOfflinePlaceholderAnimated:NO];
     self.mediaActionRail.alpha = 0.0;
     self.mediaActionRail.transform = CGAffineTransformMakeScale(0.94, 0.94);
-    self.viewMediaButton.transform = CGAffineTransformIdentity;
     self.downloadMediaButton.transform = CGAffineTransformIdentity;
     [self clearReplyPreview];
     

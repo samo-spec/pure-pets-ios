@@ -121,7 +121,7 @@
     self.replyPreviewView.hidden = YES;
     self.replyPreviewView.clipsToBounds = YES;
     self.replyPreviewView.layer.cornerRadius = 12.0;
-    self.replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.replyPreviewView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         self.replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -464,6 +464,15 @@
     return ceil(measured.width);
 }
 
+- (CGFloat)pp_singleLineMessageContentWidth
+{
+    CGFloat width = [self pp_singleLineTextWidth];
+    if (self.isDeleted && !self.deletedIconView.hidden) {
+        width += 24.0;
+    }
+    return width;
+}
+
 - (CGFloat)pp_metadataWidth
 {
     CGFloat width = ceil([self.timeLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)].width);
@@ -476,14 +485,14 @@
 - (BOOL)pp_shouldInlineMessageMetadata
 {
     NSString *text = self.messageLabel.text ?: @"";
-    if (text.length == 0 || self.isDeleted || [self pp_isEmojiOnlyText:text]) return NO;
+    if (text.length == 0 || [self pp_isEmojiOnlyText:text]) return NO;
     if ([text rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound) return NO;
 
     CGFloat horizontalContentInsets = 22.0;
     CGFloat availableContentWidth = MAX(0.0, self.maxBubbleWidth - horizontalContentInsets);
     CGFloat metadataWidth = [self pp_metadataWidth];
     CGFloat availableTextWidth = availableContentWidth - metadataWidth - 7.0;
-    return [self pp_singleLineTextWidth] <= floor(availableTextWidth + 0.5);
+    return [self pp_singleLineMessageContentWidth] <= floor(availableTextWidth + 0.5);
 }
 
 - (void)pp_updateMessageMetadataLayout

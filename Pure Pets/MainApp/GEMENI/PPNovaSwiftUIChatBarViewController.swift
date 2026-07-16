@@ -33,6 +33,7 @@ public protocol PPNovaSwiftUIChatBarViewControllerDelegate: AnyObject {
     @objc func swiftUIChatBarDidTapCamera()
     @objc func swiftUIChatBarDidTapVideo()
     @objc func swiftUIChatBarDidTapContact()
+    @objc optional func swiftUIChatBarDidSelectSticker(_ sticker: PPChatSticker)
     @objc optional func swiftUIChatBarDidChangeText(_ text: String)
     @objc optional func swiftUIChatBarDidSendAudioWithURL(_ audioURL: URL, duration: Double)
     @objc optional func swiftUIChatBarDidCancelReply()
@@ -94,6 +95,9 @@ public final class PPNovaSwiftUIChatBarViewController: UIViewController {
             },
             onContactTap: { [weak self] in
                 self?.delegate?.swiftUIChatBarDidTapContact()
+            },
+            onStickerTap: { [weak self] sticker in
+                self?.delegate?.swiftUIChatBarDidSelectSticker?(sticker)
             },
             onSendAudio: { [weak self] url, duration in
                 guard let sendAudio = self?.delegate?

@@ -60,6 +60,10 @@
 	<string>Pure Pets uses your photo library so you can choose an image for visual search. يستخدم بيور بيتس مكتبة الصور لاختيار صورة للبحث المرئي.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Pure Pets may save selected media when you choose to keep shared photos. قد يحفظ بيور بيتس الوسائط عند اختيارك الاحتفاظ بالصور المشتركة.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Talk to Nova using your microphone. تحدث مع نوفا باستخدام الميكروفون.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Convert your speech into text so Nova can answer you. تحويل صوتك إلى نص لترد عليك نوفا.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Beiruti-Medium.ttf</string>

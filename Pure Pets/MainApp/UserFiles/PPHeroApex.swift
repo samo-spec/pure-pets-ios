@@ -95,6 +95,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private enum AccentMode: Int {
         case bar = 0
         case cornerGlow = 1
+        case fullScreen = 2
     }
 
     private enum AuroraRole: Int {
@@ -136,6 +137,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             if let oldValue,
                let accentColorOverride,
                oldValue.isEqual(accentColorOverride) {
+                return
+            }
+            reapplyPalette()
+        }
+    }
+
+    @objc
+    public var overrideCenterGlowColor: UIColor? {
+        didSet {
+            if oldValue == nil && overrideCenterGlowColor == nil {
+                return
+            }
+            if let oldValue,
+               let overrideCenterGlowColor,
+               oldValue.isEqual(overrideCenterGlowColor) {
                 return
             }
             reapplyPalette()
@@ -701,9 +717,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let restingOpacity = index < auroraSpecs.count
                 ? auroraSpecs[index].opacityRange.upperBound
                 : 1
-            let leadingAlpha: CGFloat = reduceTransparency
-                ? (isDark ? 0.19 : 0.14)
-                : (isDark ? 0.28 : 0.19)
+            let leadingAlpha: CGFloat
+            if storedAccentMode == .fullScreen {
+                leadingAlpha = reduceTransparency
+                    ? (isDark ? 0.24 : 0.18)
+                    : (isDark ? 0.38 : 0.26)
+            } else {
+                leadingAlpha = reduceTransparency
+                    ? (isDark ? 0.19 : 0.14)
+                    : (isDark ? 0.28 : 0.19)
+            }
             let targetColors: [CGColor]
 
             if index == AuroraRole.bottomTrailing.rawValue {
@@ -852,11 +875,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             with: accent,
             amount: explicitAccent == nil ? 0.34 : 0.72
         )
-        let middleGlow = blend(
-            accent,
-            with: shine,
-            amount: explicitAccent == nil ? 0.52 : 0.18
-        )
+        let middleGlow: UIColor
+        if let centerGlowOverride = overrideCenterGlowColor {
+            middleGlow = resolvedColor(centerGlowOverride)
+        } else {
+            middleGlow = blend(
+                accent,
+                with: shine,
+                amount: explicitAccent == nil ? 0.52 : 0.18
+            )
+        }
         let particlePrimary = blend(accent, with: .white, amount: isDark ? 0.66 : 0.52)
         let particleSecondary = blend(bottomTrailingGlow, with: .white, amount: isDark ? 0.56 : 0.66)
 
@@ -866,7 +894,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             surfaceMiddle: middle,
             surfaceTail: tail,
             depth: blend(polishedSurfaceBase, with: .black, amount: isDark ? 0.30 : 0.07),
-            aurora: [
+            aurora: storedAccentMode == .fullScreen ? [
+                accent,
+                blend(accent, with: .systemPink, amount: 0.5),
+                blend(accent, with: .systemIndigo, amount: 0.6),
+                blend(accent, with: .systemTeal, amount: 0.7),
+                UIColor(red: 255.0/255.0, green: 198.0/255.0, blue: 84.0/255.0, alpha: 1.0),
+                bottomTrailingGlow,
+                middleGlow
+            ] : [
                 accent,
                 bottomTrailingGlow,
                 middleGlow
@@ -1189,7 +1225,62 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let transform: CAKeyframeAnimation
             let opacity: CAKeyframeAnimation
 
-            if index == AuroraRole.bottomTrailing.rawValue {
+            if storedAccentMode == .fullScreen {
+                transform = CAKeyframeAnimation(keyPath: "transform")
+                let rotationDirection: CGFloat = index == AuroraRole.middle.rawValue ? -1 : 1
+                transform.values = [
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.25,
+                        y: spec.travel.height * 0.25,
+                        scale: spec.scaleRange.lowerBound,
+                        angle: 0
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width * 0.50,
+                        y: -spec.travel.height * 0.25,
+                        scale: 1.025,
+                        angle: rotationDirection * CGFloat.pi * 0.5
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: spec.travel.width * 0.85,
+                        y: spec.travel.height * 0.25,
+                        scale: spec.scaleRange.upperBound,
+                        angle: rotationDirection * CGFloat.pi
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.15,
+                        y: -spec.travel.height * 0.15,
+                        scale: 1.015,
+                        angle: rotationDirection * CGFloat.pi * 1.5
+                    )),
+                    NSValue(caTransform3D: ambientTransform(
+                        x: -spec.travel.width * 0.25,
+                        y: spec.travel.height * 0.25,
+                        scale: spec.scaleRange.lowerBound,
+                        angle: rotationDirection * CGFloat.pi * 2.0
+                    ))
+                ]
+                transform.keyTimes = [0, 0.25, 0.50, 0.75, 1]
+                transform.calculationMode = .cubic
+                transform.timingFunctions = Array(
+                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                    count: 4
+                )
+
+                let lowOpacity = spec.opacityRange.lowerBound
+                let highOpacity = spec.opacityRange.upperBound
+                opacity = CAKeyframeAnimation(keyPath: "opacity")
+                opacity.values = [
+                    lowOpacity,
+                    lowOpacity + (highOpacity - lowOpacity) * 0.65,
+                    highOpacity,
+                    lowOpacity + (highOpacity - lowOpacity) * 0.45,
+                    lowOpacity
+                ]
+                opacity.keyTimes = [0, 0.25, 0.50, 0.75, 1]
+                opacity.calculationMode = .cubic
+                opacity.timingFunctions = transform.timingFunctions
+            } else if index == AuroraRole.bottomTrailing.rawValue {
                 transform = CAKeyframeAnimation(keyPath: "transform")
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
@@ -1564,9 +1655,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         layer.beginTime = 0
     }
 
-    private func ambientTransform(x: CGFloat, y: CGFloat, scale: CGFloat) -> CATransform3D {
+    private func ambientTransform(x: CGFloat, y: CGFloat, scale: CGFloat, angle: CGFloat = 0) -> CATransform3D {
         var transform = CATransform3DIdentity
         transform = CATransform3DTranslate(transform, x, y, 0)
+        if angle != 0 {
+            transform = CATransform3DRotate(transform, angle, 0, 0, 1)
+        }
         transform = CATransform3DScale(transform, scale, scale, 1)
         return transform
     }
@@ -2302,6 +2396,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private enum AccentMode: Int {
         case bar = 0
         case cornerGlow = 1
+        case fullScreen = 2
     }
 
     private struct AuroraSpec {
@@ -2847,9 +2942,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let restingOpacity = index < auroraSpecs.count
                 ? auroraSpecs[index].opacityRange.upperBound
                 : 1
-            let leadingAlpha: CGFloat = reduceTransparency
-                ? (isDark ? 0.19 : 0.14)
-                : (isDark ? 0.28 : 0.19)
+            let leadingAlpha: CGFloat
+            if storedAccentMode == .fullScreen {
+                leadingAlpha = reduceTransparency
+                    ? (isDark ? 0.24 : 0.18)
+                    : (isDark ? 0.38 : 0.26)
+            } else {
+                leadingAlpha = reduceTransparency
+                    ? (isDark ? 0.19 : 0.14)
+                    : (isDark ? 0.28 : 0.19)
+            }
             setGradientColors([
                 color.withAlphaComponent(leadingAlpha).cgColor,
                 color.withAlphaComponent(leadingAlpha * 0.32).cgColor,

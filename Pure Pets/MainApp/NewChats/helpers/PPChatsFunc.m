@@ -339,7 +339,14 @@ bubble.layer.mask = mask;
     if (CGRectIsEmpty(b)) return;
 
     // === Radius system ===
-    CGFloat R = MIN(20.0, floor(MIN(b.size.width, b.size.height) * 0.5));
+    CGFloat maximumRadius = 20.0;
+    if ([bubble isKindOfClass:ChatMediaBubbleView.class]) {
+        ChatMediaBubbleView *mediaBubble = (ChatMediaBubbleView *)bubble;
+        maximumRadius = mediaBubble.preferredMaximumCornerRadius > 0.0
+            ? mediaBubble.preferredMaximumCornerRadius
+            : 26.0;
+    }
+    CGFloat R = MIN(maximumRadius, floor(MIN(b.size.width, b.size.height) * 0.5));
     CGFloat S = MIN(6.0, R);    // stacked / connected radius
 
     CGFloat tl = R, tr = R, bl = R, br = R;
@@ -451,19 +458,7 @@ bubble.layer.mask = mask;
         blurView.contentView.backgroundColor =
             [resolvedSurface colorWithAlphaComponent:materialAlpha];
 
-        if (!strokeLayer) {
-            strokeLayer = [CAShapeLayer layer];
-            strokeLayer.name = PPChatBubbleStrokeLayerName;
-            strokeLayer.fillColor = UIColor.clearColor.CGColor;
-            strokeLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
-            [bubble.layer insertSublayer:strokeLayer above:blurView.layer];
-        }
-        strokeLayer.hidden = NO;
-        strokeLayer.frame = b;
-        strokeLayer.path = path.CGPath;
-        strokeLayer.strokeColor =
-            PPChatResolvedColor([self bubbleStrokeColorForIncoming:isIncoming],
-                                bubble.traitCollection).CGColor;
+        strokeLayer.hidden = YES;
     } else {
         if (gradientLayer) {
             gradientLayer.hidden = YES;

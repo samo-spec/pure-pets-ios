@@ -12,7 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
     PPHeroGlassAccentStyleBar = 0,
-    PPHeroGlassAccentStyleCornerGlow
+    PPHeroGlassAccentStyleCornerGlow,
+    PPHeroGlassAccentStyleFullScreen
 };
 
 /// A reusable background-only UIView that renders the premium hero glass surface
@@ -42,6 +43,7 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// follow local state (for example, an order status color).
 /// Leave nil to preserve the default shared hero accent palette.
 @property (nonatomic, strong, nullable) UIColor *accentColorOverride;
+@property (nonatomic, strong, nullable) UIColor *overrideCenterGlowColor;
 
 /// Controls how the accent is rendered. Defaults to the original slim top bar.
 @property (nonatomic, assign) PPHeroGlassAccentStyle accentStyle;

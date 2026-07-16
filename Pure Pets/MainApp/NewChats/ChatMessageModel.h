@@ -45,6 +45,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, readonly) BOOL isAudioMessage;
 @property (nonatomic, readonly) BOOL isVideoMessage;
 @property (nonatomic, readonly) BOOL isFileMessage;
+@property (nonatomic, readonly) BOOL isStickerMessage;
 @property (nonatomic, copy)   NSString *blurHash;
 // Common
 @property (nonatomic, strong, nullable) NSString *fileURL;
@@ -55,6 +56,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Media (Audio / Image / Video)
 @property (nonatomic, assign) NSTimeInterval mediaDuration; // seconds (audio/video)
+@property (nonatomic, strong, nullable) NSString *stickerStoragePath;
 
 // Image / Video dimensions (for layout & aspect ratio)
 @property (nonatomic, assign) CGFloat mediaWidth;   // px

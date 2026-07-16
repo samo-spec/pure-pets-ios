@@ -3564,3 +3564,47 @@
 "nova_voice_unavailable" = "Voice messages are not supported by the AI Assistant";
 "chat_input_placeholder" = "Type a message...";
 "chat_send_message" = "Send message";
+
+/* Chat Attachments */
+"chat_attachment_picker_eyebrow" = "Media";
+"chat_attachment_picker_title" = "Attach";
+"chat_attachment_picker_subtitle" = "Choose what you want to send.";
+"chat_attachment_photo_title" = "Photo";
+"chat_attachment_photo_subtitle" = "Take or choose a photo.";
+"chat_attachment_video_title" = "Video";
+"chat_attachment_video_subtitle" = "Record or choose a video.";
+"chat_attachment_source_eyebrow" = "Source";
+"chat_attachment_photo_source_title" = "Choose photo source";
+"chat_attachment_photo_source_subtitle" = "Select a saved photo or capture a new one.";
+"chat_attachment_video_source_title" = "Choose video source";
+"chat_attachment_video_source_subtitle" = "Select a saved video or record a new one.";
+"chat_attachment_photo_library_title" = "Photo library";
+"chat_attachment_photo_library_subtitle" = "Choose an existing photo.";
+"chat_attachment_video_library_title" = "Video library";
+"chat_attachment_video_library_subtitle" = "Choose an existing video.";
+"chat_attachment_take_photo_title" = "Take photo";
+"chat_attachment_take_photo_subtitle" = "Open camera to capture.";
+"chat_attachment_record_video_title" = "Record video";
+"chat_attachment_record_video_subtitle" = "Open camera to record.";
+"chat_stickers_button_accessibility" = "Stickers";
+"chat_stickers_title" = "Stickers";
+"chat_stickers_subtitle" = "Choose a transparent sticker to send.";
+"chat_stickers_loading_title" = "Loading stickers";
+"chat_stickers_loading_subtitle" = "Fetching the latest transparent stickers.";
+"chat_stickers_empty_title" = "No stickers yet";
+"chat_stickers_empty_subtitle" = "Add transparent stickers to Firebase Storage folder sticker/.";
+"chat_stickers_offline_title" = "You are offline";
+"chat_stickers_offline_subtitle" = "Connect to download stickers, or reopen after they have been cached.";
+"chat_stickers_offline_cached" = "Offline. Showing cached stickers.";
+"chat_stickers_error_title" = "Stickers could not load";
+"chat_stickers_error_subtitle" = "Please try again in a moment.";
+"chat_stickers_retry" = "Retry";
+"chat_stickers_send_accessibility" = "Send sticker";
+"chat_sticker_message" = "Sticker";
+"chat_reply_sticker" = "Sticker";
+
+/* Media Preview */
+"media_preview_play" = "Play";
+"media_preview_pause" = "Pause";
+"media_preview_mute" = "Mute";
+"media_preview_unmute" = "Unmute";

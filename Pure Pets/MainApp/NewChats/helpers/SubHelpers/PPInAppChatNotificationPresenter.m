@@ -52,6 +52,8 @@ static NSString *PPChatNoticePreviewForMessage(ChatMessageModel *message)
             return PPChatNoticeLocalizedValue(@"VideoFile", PPChatNoticeLocalizedValue(@"Message", @""));
         case ChatMessageTypeFile:
             return PPChatNoticeLocalizedValue(@"chat_notification_file", PPChatNoticeLocalizedValue(@"Message", @""));
+        case ChatMessageTypeSticker:
+            return PPChatNoticeLocalizedValue(@"chat_sticker_message", PPChatNoticeLocalizedValue(@"Message", @""));
         case ChatMessageTypeText:
         default:
             return PPChatNoticeLocalizedValue(@"Message", @"");

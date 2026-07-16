@@ -8,12 +8,16 @@
 #import "PPChatInputBarView.h"
 #import "PPChatsFunc.h"
 #import "Styling.h"
+#import "OptionModel.h"
+#import "PPSelectOptionViewController.h"
 
 
  
 static CGFloat const kLockThreshold   = 60.0;
 static CGFloat const kCancelThreshold = 120.0;
 static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
+static NSString * const PPChatAttachmentOptionPhoto = @"chat_attachment_photo";
+static NSString * const PPChatAttachmentOptionVideo = @"chat_attachment_video";
 
 static BOOL PPChatInputBarIsDark(UITraitCollection *traitCollection)
 {
@@ -95,6 +99,15 @@ static UIColor *PPChatInputBarAccentColor(void)
     return [PPChatsFunc chatNeutralAccentColor];
 }
 
+static NSString *PPChatInputBarLocalizedString(NSString *key, NSString *fallback)
+{
+    NSString *value = kLang(key);
+    if ([value isKindOfClass:NSString.class] && value.length > 0 && ![value isEqualToString:key]) {
+        return value;
+    }
+    return fallback ?: @"";
+}
+
 static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewController *preferredPresenter)
 {
     UIViewController *presenter = preferredPresenter;
@@ -152,6 +165,8 @@ static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewCon
 - (void)pp_setReplyPreviewVisible:(BOOL)visible animated:(BOOL)animated;
 - (void)pp_iconTouchDown:(UIButton *)sender;
 - (void)pp_iconTouchUp:(UIButton *)sender;
+- (NSArray<OptionModel *> *)pp_attachmentOptionModels;
+- (void)pp_handleSelectedAttachmentOption:(OptionModel *)option;
 @end
 
 @implementation PPChatInputBarView
@@ -1438,57 +1453,75 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
 // === Modern Composer Actions ===
 - (void)onAttachTapped
 {
-    UIAlertController *alert =
-        [UIAlertController alertControllerWithTitle:nil
-                                            message:nil
-                                     preferredStyle:UIAlertControllerStyleActionSheet];
-
-    // 🖼 Image
-    UIAlertAction *imageAction =
-        [UIAlertAction actionWithTitle:kLang(@"imageFile")
-                                 style:UIAlertActionStyleDefault
-                               handler:^(UIAlertAction * _Nonnull action) {
-        //[self presentMediaPickerForType:UTTypeImage.identifier];
-            
-            if ([self.delegate respondsToSelector:@selector(inputBarDidTapAttachImage:)]) {
-                [self.delegate inputBarDidTapAttachImage:self];
-            }
-            
-    }];
-     
-    // 🎬 Video
-    UIAlertAction *videoAction =
-        [UIAlertAction actionWithTitle:kLang(@"VideoFile")
-                                 style:UIAlertActionStyleDefault
-                               handler:^(UIAlertAction * _Nonnull action) {
-       //
-            if ([self.delegate respondsToSelector:@selector(inputBarDidTapAttachVideo:)]) {
-                [self.delegate inputBarDidTapAttachVideo:self];
-            }
-    }];
-
-    // ❌ Cancel
-    UIAlertAction *cancelAction =
-        [UIAlertAction actionWithTitle:kLang(@"cancel")
-                                 style:UIAlertActionStyleCancel
-                               handler:nil];
-
-    [alert addAction:imageAction];
-    [alert addAction:videoAction];
-    [alert addAction:cancelAction];
-
-    // iPad safety
-    alert.popoverPresentationController.sourceView = self.mediaButton;
-    alert.popoverPresentationController.sourceRect = self.mediaButton.bounds;
-
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *presenter = PPChatInputBarResolvedPresenter(self, self.parentContainerViewController);
         if (!presenter) {
-            NSLog(@"[PPChatInputBarView] Unable to present attachment sheet: missing presenter");
+            NSLog(@"[PPChatInputBarView] Unable to present attachment picker: missing presenter");
             return;
         }
-        [presenter presentViewController:alert animated:YES completion:nil];
+        if (presenter.presentedViewController) {
+            return;
+        }
+
+        __weak typeof(self) weakSelf = self;
+        PPSelectOptionViewController *picker =
+            [[PPSelectOptionViewController alloc] initWithOptions:[self pp_attachmentOptionModels]
+                                                            title:PPChatInputBarLocalizedString(@"chat_attachment_picker_title", @"Attach")
+                                                              row:nil
+                                                presentationStyle:PPSelectOptionPresentationMain
+                                                   showSearchBar:NO
+                                                      completion:^(id _Nullable selectedObject) {
+            if (![selectedObject isKindOfClass:OptionModel.class]) return;
+            [weakSelf pp_handleSelectedAttachmentOption:(OptionModel *)selectedObject];
+        }];
+        picker.usesCompactPremiumHero = YES;
+        picker.preferredMainDetentHeight = 330.0;
+        picker.preferredPremiumDetentFraction = 0.36;
+        picker.optionCellBackgroundColor = PPChatInputBarControlSurfaceColor(self.traitCollection);
+        picker.premiumHeroAccentColor = PPChatInputBarAccentColor();
+        [picker configurePremiumHeroWithEyebrow:PPChatInputBarLocalizedString(@"chat_attachment_picker_eyebrow", @"Media")
+                                          title:PPChatInputBarLocalizedString(@"chat_attachment_picker_title", @"Attach")
+                                       subtitle:PPChatInputBarLocalizedString(@"chat_attachment_picker_subtitle", @"Choose what you want to send.")
+                                     symbolName:@"paperclip"
+                                      badgeText:nil];
+
+        [presenter presentViewController:picker animated:YES completion:nil];
     });
+}
+
+- (NSArray<OptionModel *> *)pp_attachmentOptionModels
+{
+    OptionModel *photo =
+        [OptionModel optionWithID:PPChatAttachmentOptionPhoto
+                            title:PPChatInputBarLocalizedString(@"chat_attachment_photo_title", @"Photo")
+                      systemImage:@"photo.on.rectangle.angled"];
+    photo.subtitle = PPChatInputBarLocalizedString(@"chat_attachment_photo_subtitle", @"Take or choose a photo.");
+    photo.sortOrder = 0;
+
+    OptionModel *video =
+        [OptionModel optionWithID:PPChatAttachmentOptionVideo
+                            title:PPChatInputBarLocalizedString(@"chat_attachment_video_title", @"Video")
+                      systemImage:@"video.fill"];
+    video.subtitle = PPChatInputBarLocalizedString(@"chat_attachment_video_subtitle", @"Record or choose a video.");
+    video.sortOrder = 1;
+
+    return @[photo, video];
+}
+
+- (void)pp_handleSelectedAttachmentOption:(OptionModel *)option
+{
+    if ([option.optID isEqualToString:PPChatAttachmentOptionPhoto]) {
+        if ([self.delegate respondsToSelector:@selector(inputBarDidTapAttachImage:)]) {
+            [self.delegate inputBarDidTapAttachImage:self];
+        }
+        return;
+    }
+
+    if ([option.optID isEqualToString:PPChatAttachmentOptionVideo]) {
+        if ([self.delegate respondsToSelector:@selector(inputBarDidTapAttachVideo:)]) {
+            [self.delegate inputBarDidTapAttachVideo:self];
+        }
+    }
 }
 
 - (void)appendRecordingWaveSample:(float)level

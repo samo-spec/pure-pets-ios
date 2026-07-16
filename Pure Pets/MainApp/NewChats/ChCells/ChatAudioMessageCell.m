@@ -90,6 +90,7 @@
     // Bubble
     self.bubbleView = [[ChatMediaBubbleView alloc] init];
     self.bubbleView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bubbleView.preferredMaximumCornerRadius = 32.0;
     //self.bubbleView.layer.cornerRadius = 18;
     self.bubbleView.layer.cornerCurve = kCACornerCurveContinuous;
     //self.bubbleView.clipsToBounds = YES;
@@ -255,7 +256,7 @@
     self.replyPreviewView.clipsToBounds = YES;
     self.replyPreviewView.layer.cornerRadius = 12.0;
     self.replyPreviewView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.replyPreviewView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.replyPreviewView.layer.borderWidth = 0.0;
     [self.bubbleView addSubview:self.replyPreviewView];
 
     self.replyAccentView = [UIView new];
@@ -590,7 +591,7 @@ self.groupPosition = groupPosition;
     // Update shadow path for correct rounded shadow after layout
     self.bubbleView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bubbleView.bounds
-                                   cornerRadius:12].CGPath;
+                                   cornerRadius:self.bubbleView.preferredMaximumCornerRadius].CGPath;
     
     [self layoutIfNeeded];
     [self setNeedsLayout];

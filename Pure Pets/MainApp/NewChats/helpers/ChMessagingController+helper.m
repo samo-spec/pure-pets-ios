@@ -36,6 +36,8 @@
            forCellReuseIdentifier:@"ChatImageMessageCell"];
     [self.tableView registerClass:ChatVideoMessageCell.class
            forCellReuseIdentifier:@"ChatVideoMessageCell"];
+    [self.tableView registerClass:ChatStickerMessageCell.class
+           forCellReuseIdentifier:@"ChatStickerMessageCell"];
 
     
   

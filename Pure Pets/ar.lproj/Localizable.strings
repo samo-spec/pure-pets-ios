@@ -3543,3 +3543,47 @@
 "nova_voice_unavailable" = "التسجيل الصوتي غير متاح مع المساعد الذكي";
 "chat_input_placeholder" = "اكتب رسالتك...";
 "chat_send_message" = "إرسال الرسالة";
+
+/* Chat Attachments */
+"chat_attachment_picker_eyebrow" = "وسائط";
+"chat_attachment_picker_title" = "إرفاق";
+"chat_attachment_picker_subtitle" = "اختر ما تريد إرساله.";
+"chat_attachment_photo_title" = "صورة";
+"chat_attachment_photo_subtitle" = "التقط صورة أو اختر صورة.";
+"chat_attachment_video_title" = "فيديو";
+"chat_attachment_video_subtitle" = "سجّل فيديو أو اختر فيديو.";
+"chat_attachment_source_eyebrow" = "المصدر";
+"chat_attachment_photo_source_title" = "اختر مصدر الصورة";
+"chat_attachment_photo_source_subtitle" = "اختر صورة محفوظة أو التقط صورة جديدة.";
+"chat_attachment_video_source_title" = "اختر مصدر الفيديو";
+"chat_attachment_video_source_subtitle" = "اختر فيديو محفوظاً أو سجّل فيديو جديداً.";
+"chat_attachment_photo_library_title" = "مكتبة الصور";
+"chat_attachment_photo_library_subtitle" = "اختر صورة موجودة.";
+"chat_attachment_video_library_title" = "مكتبة الفيديو";
+"chat_attachment_video_library_subtitle" = "اختر فيديو موجوداً.";
+"chat_attachment_take_photo_title" = "التقاط صورة";
+"chat_attachment_take_photo_subtitle" = "افتح الكاميرا لالتقاط صورة.";
+"chat_attachment_record_video_title" = "تسجيل فيديو";
+"chat_attachment_record_video_subtitle" = "افتح الكاميرا للتسجيل.";
+"chat_stickers_button_accessibility" = "الملصقات";
+"chat_stickers_title" = "الملصقات";
+"chat_stickers_subtitle" = "اختر ملصقاً شفافاً لإرساله.";
+"chat_stickers_loading_title" = "جارٍ تحميل الملصقات";
+"chat_stickers_loading_subtitle" = "نجلب أحدث الملصقات الشفافة.";
+"chat_stickers_empty_title" = "لا توجد ملصقات بعد";
+"chat_stickers_empty_subtitle" = "أضف ملصقات شفافة إلى مجلد sticker/ في Firebase Storage.";
+"chat_stickers_offline_title" = "أنت غير متصل";
+"chat_stickers_offline_subtitle" = "اتصل بالإنترنت لتنزيل الملصقات، أو افتحها بعد تخزينها مؤقتاً.";
+"chat_stickers_offline_cached" = "غير متصل. نعرض الملصقات المخزنة.";
+"chat_stickers_error_title" = "تعذر تحميل الملصقات";
+"chat_stickers_error_subtitle" = "حاول مرة أخرى بعد قليل.";
+"chat_stickers_retry" = "إعادة المحاولة";
+"chat_stickers_send_accessibility" = "إرسال ملصق";
+"chat_sticker_message" = "ملصق";
+"chat_reply_sticker" = "ملصق";
+
+/* Media Preview */
+"media_preview_play" = "تشغيل";
+"media_preview_pause" = "إيقاف مؤقت";
+"media_preview_mute" = "كتم الصوت";
+"media_preview_unmute" = "تشغيل الصوت";

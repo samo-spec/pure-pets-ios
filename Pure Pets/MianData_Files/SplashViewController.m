@@ -7,6 +7,7 @@
 
 #import "SplashViewController.h"
 #import <QuartzCore/QuartzCore.h>
+#import "PPHeroGlassBackgroundView.h"
 
 @import FirebaseFirestore;
 
@@ -32,6 +33,7 @@ static UIColor *SplashViewControllerGoldColor(void) {
 @property (nonatomic, strong) UIImageView *patternView;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) PPHeroGlassBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIView *logoPlateView;
 @property (nonatomic, strong) UIView *logoInnerSurfaceView;
@@ -97,15 +99,6 @@ static UIColor *SplashViewControllerGoldColor(void) {
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-
-    self.backgroundGradientLayer.frame = self.view.bounds;
-    self.topGlowView.layer.cornerRadius = CGRectGetHeight(self.topGlowView.bounds) * 0.5;
-    self.bottomGlowView.layer.cornerRadius = CGRectGetHeight(self.bottomGlowView.bounds) * 0.5;
-    
-    self.backgroundGradientLayer.opacity = 0.3;
-    //self.bottomGlowView.alpha = 0.5;
-    
-    //[self.logoAnimationView play];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -133,32 +126,13 @@ static UIColor *SplashViewControllerGoldColor(void) {
     self.view.semanticContentAttribute = GM.setSemantic;
     self.view.clipsToBounds = YES;
     
-    UIImage *bgImage = [[UIImage imageNamed:@"lunch_light"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-    UIImageView *bgImageView = [[UIImageView alloc] initWithImage:bgImage];
-    bgImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    bgImageView.contentMode = UIViewContentModeScaleAspectFill;
-    bgImageView.userInteractionEnabled = NO;
-    [self.view addSubview:bgImageView];
-  
-    
-
-    CAGradientLayer *backgroundGradientLayer = [CAGradientLayer layer];
-    backgroundGradientLayer.startPoint = CGPointMake(0.08, 0.0);
-    backgroundGradientLayer.endPoint = CGPointMake(0.92, 1.0);
-    [self.view.layer insertSublayer:backgroundGradientLayer atIndex:0];
-    self.backgroundGradientLayer = backgroundGradientLayer;
-
-    UIView *topGlowView = [[UIView alloc] init];
-    topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlowView.userInteractionEnabled = NO;
-    [self.view addSubview:topGlowView];
-    self.topGlowView = topGlowView;
-
-    UIView *bottomGlowView = [[UIView alloc] init];
-    bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlowView.userInteractionEnabled = NO;
-    [self.view addSubview:bottomGlowView];
-    self.bottomGlowView = bottomGlowView;
+    PPHeroGlassBackgroundView *ambientBackgroundView = [[PPHeroGlassBackgroundView alloc] init];
+    ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientBackgroundView.userInteractionEnabled = NO;
+    ambientBackgroundView.PPHeroApexUseShimmer = NO;
+    ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+    [self.view addSubview:ambientBackgroundView];
+    self.ambientBackgroundView = ambientBackgroundView;
 
     UIImage *patternImage = [[UIImage imageNamed:@"chat3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     UIImageView *patternView = [[UIImageView alloc] initWithImage:patternImage];
@@ -322,21 +296,11 @@ static UIColor *SplashViewControllerGoldColor(void) {
     
     [NSLayoutConstraint activateConstraints:@[
         
-        [bgImageView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [bgImageView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [bgImageView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [bgImageView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.ambientBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.ambientBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.ambientBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         
-        [topGlowView.widthAnchor constraintEqualToConstant:292.0],
-        [topGlowView.heightAnchor constraintEqualToConstant:292.0],
-        [topGlowView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:116.0],
-        [topGlowView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-118.0],
-
-        [bottomGlowView.widthAnchor constraintEqualToConstant:252.0],
-        [bottomGlowView.heightAnchor constraintEqualToConstant:252.0],
-        [bottomGlowView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:-132.0],
-        [bottomGlowView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:138.0],
-
         [patternView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [patternView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [patternView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -383,28 +347,10 @@ static UIColor *SplashViewControllerGoldColor(void) {
     UIColor *whiteTint = UIColor.whiteColor;
 
     self.view.backgroundColor = surfaceColor;
-    self.backgroundGradientLayer.colors = @[
-        (__bridge id)[surfaceColor colorWithAlphaComponent:1.0].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.96 : 0.98].CGColor,
-        (__bridge id)[primaryColor colorWithAlphaComponent:isDark ? 0.16 : 0.10].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:1.0].CGColor
-    ];
-    self.backgroundGradientLayer.locations = @[@0.0, @0.38, @0.78, @1.0];
+    [self.ambientBackgroundView reapplyPalette];
 
     self.patternView.tintColor = primaryColor;
     self.patternView.alpha = isDark ? 0.05 : 0.035;
-
-    self.topGlowView.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
-    [self.topGlowView pp_setShadowColor:primaryColor];
-    self.topGlowView.layer.shadowOpacity = isDark ? 0.18f : 0.12f;
-    self.topGlowView.layer.shadowRadius = 60.0f;
-    self.topGlowView.layer.shadowOffset = CGSizeZero;
-
-    self.bottomGlowView.backgroundColor = [[UIColor colorWithHexString:@"#6D2E4D"] colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    [self.bottomGlowView pp_setShadowColor:[UIColor colorWithHexString:@"#6D2E4D"]];
-    self.bottomGlowView.layer.shadowOpacity = isDark ? 0.16f : 0.10f;
-    self.bottomGlowView.layer.shadowRadius = 54.0f;
-    self.bottomGlowView.layer.shadowOffset = CGSizeZero;
 
     self.logoPlateView.backgroundColor = [whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.42];
     self.logoPlateView.layer.borderWidth = 1.0f;
@@ -490,28 +436,6 @@ static UIColor *SplashViewControllerGoldColor(void) {
         pulse.repeatCount = HUGE_VALF;
         pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
         [self.logoPlateView.layer addAnimation:pulse forKey:@"pp.splash.logoPulse"];
-    }
-
-    if (![self.topGlowView.layer animationForKey:@"pp.splash.topGlow"]) {
-        CABasicAnimation *topDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        topDriftX.fromValue = @(-10.0);
-        topDriftX.toValue = @(12.0);
-        topDriftX.duration = 6.4;
-        topDriftX.autoreverses = YES;
-        topDriftX.repeatCount = HUGE_VALF;
-        topDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.topGlowView.layer addAnimation:topDriftX forKey:@"pp.splash.topGlow"];
-    }
-
-    if (![self.bottomGlowView.layer animationForKey:@"pp.splash.bottomGlow"]) {
-        CABasicAnimation *bottomDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        bottomDriftX.fromValue = @(10.0);
-        bottomDriftX.toValue = @(-12.0);
-        bottomDriftX.duration = 7.2;
-        bottomDriftX.autoreverses = YES;
-        bottomDriftX.repeatCount = HUGE_VALF;
-        bottomDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.bottomGlowView.layer addAnimation:bottomDriftX forKey:@"pp.splash.bottomGlow"];
     }
 }
 
@@ -957,12 +881,14 @@ static UIColor *SplashViewControllerGoldColor(void) {
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [self.ambientBackgroundView stopAnimations];
     [self pp_cancelLaunchTimeout];
     [PPHUD dismiss];
 }
 
 - (void)dealloc
 {
+    [self.ambientBackgroundView stopAnimations];
     [self pp_cancelLaunchTimeout];
     [PPHUD dismiss];
 }
@@ -972,6 +898,7 @@ static UIColor *SplashViewControllerGoldColor(void) {
     [super viewDidAppear:animated];
     NSLog(@"[Splash] viewDidAppear - start data loading");
 
+    [self.ambientBackgroundView startAnimations];
     [self pp_beginSplashAnimationsIfNeeded];
     [self startInitialDataLoad];
 }

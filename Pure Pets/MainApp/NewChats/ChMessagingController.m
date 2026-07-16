@@ -28,6 +28,7 @@ do { \
 #import "ChMessagingController.h"
 #import "ChatImageMessageCell.h"
 #import "ChatVideoMessageCell.h"
+#import "ChatStickerMessageCell.h"
 #import "PPChatsFunc.h"
  
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -40,7 +41,6 @@ do { \
 #import <QuartzCore/QuartzCore.h>
 #import "ChMessagingController+helper.h"
 #import "WaveformGenerator.h"
-#import "PPMediaPreviewController.h"
 #import "PPHUD.h"
 #import "PPChatFeedbackManager.h"
 #import "PPStoriesManager.h"
@@ -50,8 +50,22 @@ do { \
 #import "PPModernAvatarRenderer.h"
 #import "PPFirebaseSessionBridge.h"
 #import "FullScreenImageViewerController.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "OptionModel.h"
+#import "PPSelectOptionViewController.h"
 #import "Pure_Pets-Swift.h"
+
+static NSString * const PPChatSourceOptionPhotoLibrary = @"chat_source_photo_library";
+static NSString * const PPChatSourceOptionVideoLibrary = @"chat_source_video_library";
+static NSString * const PPChatSourceOptionCamera = @"chat_source_camera";
+
+static NSString *PPChatLocalizedString(NSString *key, NSString *fallback)
+{
+    NSString *value = kLang(key);
+    if ([value isKindOfClass:NSString.class] && value.length > 0 && ![value isEqualToString:key]) {
+        return value;
+    }
+    return fallback ?: @"";
+}
 
 
 static CGFloat ChatMediaHeight(CGFloat maxWidth,
@@ -126,7 +140,7 @@ static NSString *PPChatLocalizedStringOrFallback(NSString *key, NSString *fallba
 }
 
 static NSString * const PPChatPremiumHeaderSupportAvatarToken = @"purepets://support-logo";
-static const CGFloat PPChatPremiumModalHeaderCornerRadius = 26.0;
+static const CGFloat PPChatPremiumModalHeaderCornerRadius = 30.0;
 
 static BOOL PPChatPremiumHeaderUsesSupportLogo(UserModel * _Nullable user)
 {
@@ -144,8 +158,8 @@ static UIColor *PPChatPremiumHeaderControlSurfaceColor(void)
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         return dark
-            ? [UIColor colorWithWhite:1.0 alpha:0.10]
-            : [UIColor colorWithWhite:0.0 alpha:0.045];
+            ? [UIColor colorWithWhite:1.0 alpha:0.115]
+            : [UIColor colorWithWhite:1.0 alpha:0.58];
     }];
 }
 
@@ -156,21 +170,44 @@ static UIColor *PPChatPremiumHeaderBorderColor(void)
 
 static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        return dark
-            ? [UIColor colorWithWhite:1.0 alpha:0.58]
-            : [UIColor colorWithWhite:0.0 alpha:0.50];
-    }];
+    return UIColor.secondaryLabelColor;
 }
 
-static UIColor *PPChatPremiumHeaderSurfaceOverlayColor(void)
+static UIBlurEffect *PPChatPremiumHeaderCardMaterialEffect(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    }
+    return [UIBlurEffect effectWithStyle:UIBlurEffectStyleExtraLight];
+}
+
+static UIColor *PPChatPremiumHeaderCardWashColor(void)
 {
     return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
         BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
         return dark
-            ? [UIColor colorWithWhite:0.0 alpha:0.20]
-            : [UIColor colorWithWhite:1.0 alpha:0.32];
+            ? [UIColor colorWithWhite:0.04 alpha:0.54]
+            : [UIColor colorWithWhite:1.0 alpha:0.62];
+    }];
+}
+
+static UIColor *PPChatPremiumHeaderProfilePlateColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.07]
+            : [UIColor colorWithWhite:1.0 alpha:0.44];
+    }];
+}
+
+static UIColor *PPChatPremiumHeaderAvatarWellColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.09]
+            : [UIColor colorWithWhite:0.0 alpha:0.035];
     }];
 }
 
@@ -227,6 +264,11 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
 @property (nonatomic, assign) CGFloat fixedMediaMaxWidth;
 @property (nonatomic, strong) UIButton *navBottomBlurView;
+@property (nonatomic, strong, nullable) UINavigationBarAppearance *previousStandardNavigationAppearance;
+@property (nonatomic, strong, nullable) UINavigationBarAppearance *previousScrollEdgeNavigationAppearance;
+@property (nonatomic, strong, nullable) UINavigationBarAppearance *previousCompactNavigationAppearance;
+@property (nonatomic, assign) BOOL hasAppliedBorderlessChatNavigationAppearance;
+@property (nonatomic, strong) PPEditorBridge *chatMediaEditorBridge;
 - (BOOL)isNearBottom;
  @property (nonatomic, strong) PPAmazingBar *amazingBar;
  @property (nonatomic, assign) BOOL isViewVisible;
@@ -264,7 +306,9 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 @property (nonatomic, assign) BOOL pendingBottomScrollAfterLayout;
 @property (nonatomic, assign) BOOL isOpeningHeaderStory;
 @property (nonatomic, strong) UIView *premiumModalHeaderView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *premiumModalHeaderGlassBackgroundView;
+@property (nonatomic, strong) UIVisualEffectView *premiumModalHeaderMaterialView;
+@property (nonatomic, strong) UIView *premiumModalHeaderProfilePlateView;
+@property (nonatomic, strong) UIView *premiumModalHeaderAvatarWellView;
 @property (nonatomic, strong) UIButton *premiumModalHeaderCloseButton;
 @property (nonatomic, strong) UIButton *premiumModalHeaderMoreButton;
 @property (nonatomic, strong) UIControl *premiumModalHeaderProfileControl;
@@ -308,6 +352,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     if (self.bottomFillBlurView) return;
 
     self.bottomFillBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
+    self.bottomFillBlurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomFillBlurView.hidden = YES;
     
     UIButtonConfiguration *cfg = self.bottomFillBlurView.configuration;
@@ -617,7 +662,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     self.chatEmptyStateView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.chatEmptyStateBlurView.backgroundColor = PPChatEmptyStateSurfaceColor();
     self.chatEmptyStateBlurView.layer.cornerRadius = 28.0;
-    self.chatEmptyStateBlurView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.chatEmptyStateBlurView.layer.borderWidth = 0;
     self.chatEmptyStateBlurView.layer.borderColor = PPChatPremiumHeaderBorderColor().CGColor;
     if (@available(iOS 13.0, *)) {
         self.chatEmptyStateBlurView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -625,7 +670,7 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
     self.chatEmptyStateIconContainerView.backgroundColor = PPChatEmptyStateIconSurfaceColor();
     self.chatEmptyStateIconContainerView.layer.cornerRadius = 22.0;
-    self.chatEmptyStateIconContainerView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.chatEmptyStateIconContainerView.layer.borderWidth = 0;
     self.chatEmptyStateIconContainerView.layer.borderColor = PPChatPremiumHeaderBorderColor().CGColor;
     if (@available(iOS 13.0, *)) {
         self.chatEmptyStateIconContainerView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -1423,6 +1468,11 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     [self presentSourcePickerForMediaType:UTTypeImage.identifier];
 }
 
+- (void)swiftUIChatBarDidSelectSticker:(PPChatSticker *)sticker
+{
+    [self sendStickerMessage:sticker];
+}
+
 - (void)swiftUIChatBarDidChangeText:(NSString *)text {
     [self.typingController userDidType];
 }
@@ -1550,6 +1600,8 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
             return kLang(@"chat_reply_video");
         case ChatMessageTypeAudio:
             return kLang(@"chat_reply_audio");
+        case ChatMessageTypeSticker:
+            return kLang(@"chat_reply_sticker");
         case ChatMessageTypeText:
         default: {
             NSString *text = [message.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -1711,6 +1763,9 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     }
     if ([cell isKindOfClass:ChatAudioMessageCell.class]) {
         return [(ChatAudioMessageCell *)cell messageInteractionView];
+    }
+    if ([cell isKindOfClass:ChatStickerMessageCell.class]) {
+        return [(ChatStickerMessageCell *)cell messageInteractionView];
     }
     return cell.contentView;
 }
@@ -3616,43 +3671,89 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 
 
 
- - (void)presentSourcePickerForMediaType:(NSString *)mediaType
+- (void)presentSourcePickerForMediaType:(NSString *)mediaType
 {
-    UIAlertController *sheet =
-        [UIAlertController alertControllerWithTitle:nil
-                                            message:nil
-                                     preferredStyle:UIAlertControllerStyleActionSheet];
-
     BOOL isVideo = [mediaType isEqualToString:UTTypeMovie.identifier];
-    NSString *cameraTitle = isVideo ? @"Record video" : @"Take photo";
-    NSString *libraryTitle = isVideo ? kLang(@"VideoFile") : kLang(@"imageFile");
+    NSMutableArray<OptionModel *> *options = [NSMutableArray array];
 
+    NSString *libraryOptionID = isVideo ? PPChatSourceOptionVideoLibrary : PPChatSourceOptionPhotoLibrary;
+    NSString *libraryTitle = isVideo
+        ? PPChatLocalizedString(@"chat_attachment_video_library_title", @"Video library")
+        : PPChatLocalizedString(@"chat_attachment_photo_library_title", @"Photo library");
+    NSString *librarySubtitle = isVideo
+        ? PPChatLocalizedString(@"chat_attachment_video_library_subtitle", @"Choose an existing video.")
+        : PPChatLocalizedString(@"chat_attachment_photo_library_subtitle", @"Choose an existing photo.");
+    NSString *libraryIcon = isVideo ? @"film.stack.fill" : @"photo.stack.fill";
+    OptionModel *libraryOption =
+        [OptionModel optionWithID:libraryOptionID
+                            title:libraryTitle
+                      systemImage:libraryIcon];
+    libraryOption.subtitle = librarySubtitle;
+    libraryOption.sortOrder = 0;
+    [options addObject:libraryOption];
+
+    BOOL cameraAvailable = [UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera];
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
-        [sheet addAction:[UIAlertAction actionWithTitle:cameraTitle
-                                                  style:UIAlertActionStyleDefault
-                                                handler:^(__unused UIAlertAction * _Nonnull action) {
+        NSString *cameraTitle = isVideo
+            ? PPChatLocalizedString(@"chat_attachment_record_video_title", @"Record video")
+            : PPChatLocalizedString(@"chat_attachment_take_photo_title", @"Take photo");
+        NSString *cameraSubtitle = isVideo
+            ? PPChatLocalizedString(@"chat_attachment_record_video_subtitle", @"Open camera to record.")
+            : PPChatLocalizedString(@"chat_attachment_take_photo_subtitle", @"Open camera to capture.");
+        OptionModel *cameraOption =
+            [OptionModel optionWithID:PPChatSourceOptionCamera
+                                title:cameraTitle
+                          systemImage:(isVideo ? @"video.badge.plus" : @"camera.fill")];
+        cameraOption.subtitle = cameraSubtitle;
+        cameraOption.sortOrder = 1;
+        [options addObject:cameraOption];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    PPSelectOptionViewController *picker =
+        [[PPSelectOptionViewController alloc] initWithOptions:options
+                                                        title:(isVideo
+                                                               ? PPChatLocalizedString(@"chat_attachment_video_source_title", @"Choose video source")
+                                                               : PPChatLocalizedString(@"chat_attachment_photo_source_title", @"Choose photo source"))
+                                                          row:nil
+                                            presentationStyle:PPSelectOptionPresentationMain
+                                               showSearchBar:NO
+                                                  completion:^(id _Nullable selectedObject) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || ![selectedObject isKindOfClass:OptionModel.class]) return;
+
+        OptionModel *selected = (OptionModel *)selectedObject;
+        if ([selected.optID isEqualToString:PPChatSourceOptionCamera]) {
             [PPPermissionHelper requestCameraPermissionFromViewController:self
                                                               completion:^(BOOL granted) {
                 if (granted) {
                     [self presentCameraForMediaType:mediaType];
                 }
             }];
-        }]];
-    }
+            return;
+        }
 
-    [sheet addAction:[UIAlertAction actionWithTitle:libraryTitle
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction * _Nonnull action) {
         [self presentMediaPickerForType:mediaType];
-    }]];
+    }];
 
-    [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
+    picker.usesCompactPremiumHero = YES;
+    picker.preferredMainDetentHeight = cameraAvailable ? 350.0 : 292.0;
+    picker.preferredPremiumDetentFraction = cameraAvailable ? 0.39 : 0.32;
+    picker.premiumHeroAccentColor = [PPChatsFunc chatNeutralAccentColor];
+    [picker configurePremiumHeroWithEyebrow:PPChatLocalizedString(@"chat_attachment_source_eyebrow", @"Source")
+                                      title:(isVideo
+                                             ? PPChatLocalizedString(@"chat_attachment_video_source_title", @"Choose video source")
+                                             : PPChatLocalizedString(@"chat_attachment_photo_source_title", @"Choose photo source"))
+                                   subtitle:(isVideo
+                                             ? PPChatLocalizedString(@"chat_attachment_video_source_subtitle", @"Select a saved video or record a new one.")
+                                             : PPChatLocalizedString(@"chat_attachment_photo_source_subtitle", @"Select a saved photo or capture a new one."))
+                                 symbolName:(isVideo ? @"video.fill" : @"photo.fill")
+                                  badgeText:nil];
 
-    sheet.popoverPresentationController.sourceView = self.inputbar;
-    sheet.popoverPresentationController.sourceRect = self.inputbar.bounds;
-    [self presentViewController:sheet animated:YES completion:nil];
+    if (self.presentedViewController) {
+        return;
+    }
+    [self presentViewController:picker animated:YES completion:nil];
 }
 
 - (void)presentCameraForMediaType:(NSString *)mediaType
@@ -3675,17 +3776,67 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
     [self presentViewController:picker animated:YES completion:nil];
 }
 
+- (PPEditorBridge *)pp_chatMediaEditorBridge
+{
+    if (!self.chatMediaEditorBridge) {
+        self.chatMediaEditorBridge = [[PPEditorBridge alloc] init];
+    }
+    return self.chatMediaEditorBridge;
+}
+
+- (void)pp_dismissDraftPreviewController:(UIViewController *)previewController
+                              completion:(void (^)(void))completion
+{
+    if (!previewController) {
+        if (completion) completion();
+        return;
+    }
+
+    [previewController dismissViewControllerAnimated:!UIAccessibilityIsReduceMotionEnabled()
+                                          completion:completion];
+}
+
+- (void)pp_presentDraftImageEditorForImage:(UIImage *)image
+{
+    if (!image) return;
+    [[self pp_chatMediaEditorBridge] presentEditorFromViewController:self
+                                                           withImage:image
+                                                          useArabic:Language.isRTL];
+}
+
+- (void)pp_presentDraftVideoEditorForURL:(NSURL *)videoURL
+{
+    if (!videoURL) return;
+    [[self pp_chatMediaEditorBridge] presentEditorFromViewController:self
+                                                        withVideoURL:videoURL
+                                                           useArabic:Language.isRTL];
+}
+
 - (void)presentImagePreviewWithImage:(UIImage *)image
 {
     if (!image) return;
 
-    PPMediaPreviewController *vc =
-        [[PPMediaPreviewController alloc] initWithImage:image];
-
     __weak typeof(self) weakSelf = self;
-    vc.onSendImage = ^(UIImage *previewImage) {
-        [weakSelf sendImageFile:previewImage];
-    };
+    __block __weak UIViewController *weakPreviewController = nil;
+    UIViewController *vc =
+        [PPMediaPreviewFactory draftImageControllerWithImage:image
+                                                  closeLabel:kLang(@"Cancel")
+                                                   editLabel:kLang(@"Edit")
+                                                   sendLabel:kLang(@"Send")
+                                                     onClose:^{
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:nil];
+    }
+                                                      onEdit:^{
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:^{
+            [weakSelf pp_presentDraftImageEditorForImage:image];
+        }];
+    }
+                                                      onSend:^(UIImage *previewImage) {
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:^{
+            [weakSelf sendImageFile:previewImage];
+        }];
+    }];
+    weakPreviewController = vc;
 
     [self presentViewController:vc animated:YES completion:nil];
 }
@@ -3772,14 +3923,30 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 }
 - (void)presentVideoPreviewWithLocalURL:(NSURL *)localURL
 {
-    PPMediaPreviewController *vc =
-        [[PPMediaPreviewController alloc] initWithVideoURL:localURL];
+    if (!localURL) return;
 
     __weak typeof(self) weakSelf = self;
-
-    vc.onSendVideo = ^(NSURL *url) {
-        [weakSelf handleConfirmedVideoSendWithURL:url];
-    };
+    __block __weak UIViewController *weakPreviewController = nil;
+    UIViewController *vc =
+        [PPMediaPreviewFactory draftVideoControllerWithURL:localURL
+                                                closeLabel:kLang(@"Cancel")
+                                                 editLabel:kLang(@"Edit")
+                                                 sendLabel:kLang(@"Send")
+                                                retryLabel:kLang(@"Retry")
+                                                   onClose:^{
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:nil];
+    }
+                                                    onEdit:^{
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:^{
+            [weakSelf pp_presentDraftVideoEditorForURL:localURL];
+        }];
+    }
+                                                    onSend:^(NSURL *url) {
+        [weakSelf pp_dismissDraftPreviewController:weakPreviewController completion:^{
+            [weakSelf handleConfirmedVideoSendWithURL:url];
+        }];
+    }];
+    weakPreviewController = vc;
 
     [self presentViewController:vc animated:YES completion:nil];
 }
@@ -4324,6 +4491,64 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     });
 }
 
+- (void)sendStickerMessage:(PPChatSticker *)sticker
+{
+    if (!sticker || sticker.downloadURLString.length == 0) return;
+
+    ChatMessageModel *msg = [[ChatMessageModel alloc] init];
+    msg.ID = [GM cleanID];
+    if (![self pp_applyOutgoingIdentityToMessage:msg]) return;
+    msg.text = @"";
+    msg.timestamp = [NSDate date];
+    msg.status = ChatMessageStatusSending;
+    msg.messageType = ChatMessageTypeSticker;
+    msg.fileURL = sticker.downloadURLString;
+    msg.stickerStoragePath = sticker.storagePath;
+    msg.mimeType = @"image/png";
+    msg.mediaWidth = 1.0;
+    msg.mediaHeight = 1.0;
+    msg.mediaAspectRatio = 1.0;
+    msg.isLocalPending = YES;
+    msg.transferProgress = 1.0f;
+    [self pp_applyPendingReplyToMessage:msg clearAfterApplying:YES];
+
+    [self insertOutgoingMessageImmediately:msg];
+    [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventOutgoingSend];
+
+    [self performSendStickerMessage:msg];
+}
+
+- (void)performSendStickerMessage:(ChatMessageModel *)msg
+{
+    if (!msg) return;
+
+    __weak typeof(self) weakSelf = self;
+    [self ensureThreadThen:^(NSString *threadID) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        [[ChManager sharedManager]
+         sendMessage:msg
+         inThread:threadID
+         senderID:msg.senderID
+         completion:^(NSError *error) {
+            if (error) {
+                [strongSelf handleSendFailureForMessage:msg
+                                                  error:error
+                                            retryAction:^{
+                    [strongSelf performSendStickerMessage:msg];
+                }];
+                return;
+            }
+
+            msg.status = ChatMessageStatusSent;
+            msg.isLocalPending = NO;
+            msg.transferProgress = 1.0f;
+            [strongSelf updateMessageStatus:msg];
+         }];
+    }];
+}
+
 - (void)sendChatMessageText:(NSString *)text
 {
     if (text.length == 0) return;
@@ -4674,6 +4899,16 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
             return cell;
         }
 
+        case ChatMessageTypeSticker: {
+            ChatStickerMessageCell *cell =
+                [tableView dequeueReusableCellWithIdentifier:@"ChatStickerMessageCell"
+                                                forIndexPath:indexPath];
+            BOOL stickerIsIncoming = ![self pp_currentUserOwnsMessage:msg];
+            [cell configureWithMessage:msg isIncoming:stickerIsIncoming];
+            [self pp_prepareInteractionsForCell:cell message:msg];
+            return cell;
+        }
+
         case ChatMessageTypeText:
         default:
             break;
@@ -4786,12 +5021,23 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)editorDidFinish:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
+    NSString *mediaType = userInfo[@"mediaType"];
+    NSURL *fileURL = userInfo[@"url"];
+
+    if ([mediaType isEqualToString:@"video"]) {
+        if ([fileURL isKindOfClass:NSURL.class]) {
+            [self handleConfirmedVideoSendWithURL:fileURL];
+        } else {
+            [PPHUD showError:kLang(@"SomethingWentWrong")];
+        }
+        return;
+    }
+
     UIImage *editedImage = userInfo[@"image"];
     
     if (!editedImage) {
         // Try to get from URL
-        NSURL *fileURL = userInfo[@"url"];
-        if (fileURL) {
+        if ([fileURL isKindOfClass:NSURL.class]) {
             NSData *imageData = [NSData dataWithContentsOfURL:fileURL];
             editedImage = [UIImage imageWithData:imageData];
         }
@@ -4851,7 +5097,11 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
         if (message.replyToMessageID.length > 0) {
             return accessibilitySize ? 150.0 : 138.0;
         }
-        return accessibilitySize ? 86.0 : 78.0;
+        return accessibilitySize ? 76.0 : 68.0;
+    }
+
+    if (message.messageType == ChatMessageTypeSticker) {
+        return [ChatStickerMessageCell preferredCellHeight] + [self spacingForRowAtIndexPath:indexPath];
     }
 
     // 🖼 Media
@@ -4884,6 +5134,10 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
             case ChatMessageTypeImage:
             case ChatMessageTypeVideo:
                 baseHeight = message.cachedMediaHeight > 0 ? message.cachedMediaHeight : 240.0;
+                break;
+
+            case ChatMessageTypeSticker:
+                baseHeight = [ChatStickerMessageCell preferredCellHeight];
                 break;
                 
             case ChatMessageTypeText:
@@ -4952,7 +5206,30 @@ heightForRowAtIndexPath:(NSIndexPath *)indexPath
         cellHeight += 51.0;
     }
     
-    BOOL isSingleLine = (ceil(textRect.size.height) <= ceil(font.lineHeight + 1.0)) && (message.replyToMessageID.length == 0);
+    UIFont *captionFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
+        scaledFontForFont:([GM fontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5])
+        maximumPointSize:15.0];
+    static NSDateFormatter *timeFormatter;
+    static dispatch_once_t timeFormatterOnceToken;
+    dispatch_once(&timeFormatterOnceToken, ^{
+        timeFormatter = [NSDateFormatter new];
+        timeFormatter.timeStyle = NSDateFormatterShortStyle;
+        timeFormatter.dateStyle = NSDateFormatterNoStyle;
+    });
+    timeFormatter.locale = NSLocale.currentLocale;
+    NSString *timeText = [timeFormatter stringFromDate:message.timestamp ?: NSDate.date];
+    CGFloat metadataWidth = ceil([timeText sizeWithAttributes:@{NSFontAttributeName: captionFont}].width);
+    BOOL showsStatusIcon = !message.isDeleted &&
+        [message.senderID isEqualToString:UserManager.sharedManager.currentUser.ID];
+    if (showsStatusIcon) {
+        metadataWidth += 16.0;
+    }
+    CGFloat inlineMessageWidth = ceil(textRect.size.width) + (message.isDeleted ? 24.0 : 0.0);
+    CGFloat inlineAvailableWidth = maxBubbleWidth - 22.0 - metadataWidth - 7.0;
+    BOOL canInlineMetadata = inlineMessageWidth <= floor(inlineAvailableWidth + 0.5);
+    BOOL isSingleLine = (ceil(textRect.size.height) <= ceil(font.lineHeight + 1.0)) &&
+        (message.replyToMessageID.length == 0) &&
+        canInlineMetadata;
     if (isSingleLine) {
         return 40.0 + (PPChatBubblePad * 2.0);
     }
@@ -5039,10 +5316,12 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.adjustsImageWhenHighlighted = NO;
-    button.tintColor = AppPrimaryTextClr;
+    button.tintColor = UIColor.labelColor;
     button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
     button.layer.cornerRadius = 21.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
+    button.layer.borderWidth = 0.0;
+    button.layer.shadowOpacity = 0.0;
     UIImageSymbolConfiguration *symbolConfig =
         [UIImageSymbolConfiguration configurationWithPointSize:15.5 weight:UIImageSymbolWeightSemibold];
     UIImage *image = [PPSYSImage(systemName) imageWithConfiguration:symbolConfig];
@@ -5108,24 +5387,28 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     header.clipsToBounds = YES;
     header.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
     header.layer.cornerCurve = kCACornerCurveContinuous;
+    header.layer.borderWidth = 0.0;
+    header.layer.shadowOpacity = 0.0;
 
-    PPHeroGlassBackgroundView *glassBackground = [PPHeroGlassBackgroundView new];
-    glassBackground.translatesAutoresizingMaskIntoConstraints = NO;
-    glassBackground.accentStyle = PPHeroGlassAccentStyleBar;
-    glassBackground.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
-    glassBackground.clipsToBounds = YES;
-    glassBackground.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
-    glassBackground.layer.cornerCurve = kCACornerCurveContinuous;
-    [header insertSubview:glassBackground atIndex:0];
+    UIVisualEffectView *materialView =
+        [[UIVisualEffectView alloc] initWithEffect:PPChatPremiumHeaderCardMaterialEffect()];
+    materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    materialView.userInteractionEnabled = NO;
+    materialView.clipsToBounds = YES;
+    materialView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    materialView.layer.cornerCurve = kCACornerCurveContinuous;
+    materialView.contentView.backgroundColor = PPChatPremiumHeaderCardWashColor();
+    [header insertSubview:materialView atIndex:0];
 
-    UIView *surfaceOverlay = [[UIView alloc] init];
-    surfaceOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceOverlay.userInteractionEnabled = NO;
-    surfaceOverlay.backgroundColor = PPChatPremiumHeaderSurfaceOverlayColor();
-    surfaceOverlay.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
-    surfaceOverlay.layer.cornerCurve = kCACornerCurveContinuous;
-    surfaceOverlay.clipsToBounds = YES;
-    [header insertSubview:surfaceOverlay aboveSubview:glassBackground];
+    UIView *profilePlateView = [[UIView alloc] init];
+    profilePlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    profilePlateView.userInteractionEnabled = NO;
+    profilePlateView.backgroundColor = PPChatPremiumHeaderProfilePlateColor();
+    profilePlateView.layer.cornerRadius = 24.0;
+    profilePlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    profilePlateView.layer.borderWidth = 0.0;
+    profilePlateView.layer.shadowOpacity = 0.0;
+    [header addSubview:profilePlateView];
 
     UIButton *closeButton = [self pp_premiumModalHeaderButtonWithSystemName:@"xmark"];
     closeButton.accessibilityLabel = kLang(@"Close");
@@ -5148,11 +5431,21 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_addPremiumModalHeaderPressMotionToControl:profileControl];
     [header addSubview:profileControl];
 
+    UIView *avatarWellView = [[UIView alloc] init];
+    avatarWellView.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarWellView.userInteractionEnabled = NO;
+    avatarWellView.backgroundColor = PPChatPremiumHeaderAvatarWellColor();
+    avatarWellView.layer.cornerRadius = 27.0;
+    avatarWellView.layer.cornerCurve = kCACornerCurveContinuous;
+    avatarWellView.layer.borderWidth = 0.0;
+    avatarWellView.layer.shadowOpacity = 0.0;
+    [profileControl addSubview:avatarWellView];
+
     UIImageView *avatarView = [[UIImageView alloc] init];
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarView.contentMode = UIViewContentModeScaleAspectFill;
     avatarView.clipsToBounds = YES;
-    avatarView.layer.cornerRadius = 25.0;
+    avatarView.layer.cornerRadius = 24.0;
     avatarView.layer.cornerCurve = kCACornerCurveContinuous;
     [profileControl addSubview:avatarView];
 
@@ -5160,6 +5453,8 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     statusDot.translatesAutoresizingMaskIntoConstraints = NO;
     statusDot.backgroundColor = UIColor.systemGreenColor;
     statusDot.layer.cornerRadius = 6.0;
+    statusDot.layer.borderWidth = 0.0;
+    statusDot.layer.shadowOpacity = 0.0;
     statusDot.hidden = YES;
     [profileControl addSubview:statusDot];
 
@@ -5196,7 +5491,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
                                          constant:[self pp_premiumModalChatHeaderTopPadding]];
     self.premiumModalHeaderHeightConstraint =
-        [header.heightAnchor constraintEqualToConstant:78.0];
+        [header.heightAnchor constraintEqualToConstant:82.0];
 
     [NSLayoutConstraint activateConstraints:@[
         self.premiumModalHeaderTopConstraint,
@@ -5204,15 +5499,10 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-14.0],
         self.premiumModalHeaderHeightConstraint,
 
-        [glassBackground.topAnchor constraintEqualToAnchor:header.topAnchor],
-        [glassBackground.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
-        [glassBackground.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
-        [glassBackground.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
-
-        [surfaceOverlay.topAnchor constraintEqualToAnchor:header.topAnchor],
-        [surfaceOverlay.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
-        [surfaceOverlay.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
-        [surfaceOverlay.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+        [materialView.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [materialView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
+        [materialView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
+        [materialView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
 
         [closeButton.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:14.0],
         [closeButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
@@ -5226,26 +5516,38 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
         [profileControl.leadingAnchor constraintEqualToAnchor:closeButton.trailingAnchor constant:10.0],
         [profileControl.trailingAnchor constraintEqualToAnchor:moreButton.leadingAnchor constant:-10.0],
-        [profileControl.topAnchor constraintEqualToAnchor:header.topAnchor constant:9.0],
-        [profileControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-9.0],
+        [profileControl.topAnchor constraintEqualToAnchor:header.topAnchor constant:8.0],
+        [profileControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0],
 
-        [avatarView.leadingAnchor constraintEqualToAnchor:profileControl.leadingAnchor],
-        [avatarView.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor],
-        [avatarView.widthAnchor constraintEqualToConstant:50.0],
-        [avatarView.heightAnchor constraintEqualToConstant:50.0],
+        [profilePlateView.topAnchor constraintEqualToAnchor:profileControl.topAnchor],
+        [profilePlateView.leadingAnchor constraintEqualToAnchor:profileControl.leadingAnchor],
+        [profilePlateView.trailingAnchor constraintEqualToAnchor:profileControl.trailingAnchor],
+        [profilePlateView.bottomAnchor constraintEqualToAnchor:profileControl.bottomAnchor],
+
+        [avatarWellView.leadingAnchor constraintEqualToAnchor:profileControl.leadingAnchor constant:4.0],
+        [avatarWellView.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor],
+        [avatarWellView.widthAnchor constraintEqualToConstant:54.0],
+        [avatarWellView.heightAnchor constraintEqualToConstant:54.0],
+
+        [avatarView.centerXAnchor constraintEqualToAnchor:avatarWellView.centerXAnchor],
+        [avatarView.centerYAnchor constraintEqualToAnchor:avatarWellView.centerYAnchor],
+        [avatarView.widthAnchor constraintEqualToConstant:48.0],
+        [avatarView.heightAnchor constraintEqualToConstant:48.0],
 
         [statusDot.widthAnchor constraintEqualToConstant:12.0],
         [statusDot.heightAnchor constraintEqualToConstant:12.0],
         [statusDot.trailingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:-1.0],
         [statusDot.bottomAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:-1.0],
 
-        [labelsStack.leadingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:13.0],
-        [labelsStack.trailingAnchor constraintEqualToAnchor:profileControl.trailingAnchor],
+        [labelsStack.leadingAnchor constraintEqualToAnchor:avatarWellView.trailingAnchor constant:12.0],
+        [labelsStack.trailingAnchor constraintEqualToAnchor:profileControl.trailingAnchor constant:-10.0],
         [labelsStack.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor]
     ]];
 
     self.premiumModalHeaderView = header;
-    self.premiumModalHeaderGlassBackgroundView = glassBackground;
+    self.premiumModalHeaderMaterialView = materialView;
+    self.premiumModalHeaderProfilePlateView = profilePlateView;
+    self.premiumModalHeaderAvatarWellView = avatarWellView;
     self.premiumModalHeaderCloseButton = closeButton;
     self.premiumModalHeaderMoreButton = moreButton;
     self.premiumModalHeaderProfileControl = profileControl;
@@ -5268,44 +5570,42 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     self.premiumModalHeaderView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.premiumModalHeaderView.backgroundColor = UIColor.clearColor;
+    self.premiumModalHeaderView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderView.layer.shadowOpacity = 0.0;
+    self.premiumModalHeaderView.layer.shadowPath = nil;
     self.premiumModalHeaderProfileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-     self.premiumModalHeaderGlassBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
-    self.premiumModalHeaderGlassBackgroundView.clipsToBounds = YES;
-    self.premiumModalHeaderGlassBackgroundView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
-    self.premiumModalHeaderGlassBackgroundView.accentColorOverride = [PPChatsFunc chatNeutralAccentColor];
-    [self.premiumModalHeaderGlassBackgroundView reapplyPalette];
-    self.premiumModalHeaderGlassBackgroundView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    self.premiumModalHeaderMaterialView.effect = PPChatPremiumHeaderCardMaterialEffect();
+    self.premiumModalHeaderMaterialView.contentView.backgroundColor = PPChatPremiumHeaderCardWashColor();
+    self.premiumModalHeaderMaterialView.layer.cornerRadius = PPChatPremiumModalHeaderCornerRadius;
+    self.premiumModalHeaderMaterialView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderMaterialView.layer.shadowOpacity = 0.0;
+    self.premiumModalHeaderProfilePlateView.backgroundColor = PPChatPremiumHeaderProfilePlateColor();
+    self.premiumModalHeaderProfilePlateView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderProfilePlateView.layer.shadowOpacity = 0.0;
+    self.premiumModalHeaderAvatarWellView.backgroundColor = PPChatPremiumHeaderAvatarWellColor();
+    self.premiumModalHeaderAvatarWellView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderAvatarWellView.layer.shadowOpacity = 0.0;
 
     NSArray<UIButton *> *buttons = @[self.premiumModalHeaderCloseButton, self.premiumModalHeaderMoreButton];
     for (UIButton *button in buttons) {
-        button.tintColor = AppPrimaryTextClr;
+        button.tintColor = UIColor.labelColor;
         button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
-       // [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+        button.layer.borderWidth = 0.0;
+        button.layer.shadowOpacity = 0.0;
     }
 
-    [self.premiumModalHeaderAvatarView pp_setBorderColor:
-        dark ? [[UIColor whiteColor] colorWithAlphaComponent:0.18] : [[UIColor whiteColor] colorWithAlphaComponent:0.76]];
-    [self.premiumModalHeaderStatusDotView pp_setBorderColor:
-     dark ? [UIColor colorWithWhite:0.10 alpha:0.0] : UIColor.clearColor];
+    self.premiumModalHeaderAvatarView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderAvatarView.layer.borderColor = nil;
+    self.premiumModalHeaderAvatarView.layer.shadowOpacity = 0.0;
+    self.premiumModalHeaderStatusDotView.layer.borderWidth = 0.0;
+    self.premiumModalHeaderStatusDotView.layer.borderColor = nil;
+    self.premiumModalHeaderStatusDotView.layer.shadowOpacity = 0.0;
     self.premiumModalHeaderNameLabel.textColor = UIColor.labelColor;
     self.premiumModalHeaderStatusLabel.textColor = PPChatPremiumHeaderSecondaryTextColor();
     self.premiumModalHeaderNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.premiumModalHeaderStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
-}
-
-- (void)pp_updatePremiumModalChatHeaderShadowPath
-{
-    if (!self.premiumModalHeaderView ||
-        CGRectIsEmpty(self.premiumModalHeaderView.bounds)) {
-        return;
-    }
-
-    UIBezierPath *path =
-        [UIBezierPath bezierPathWithRoundedRect:self.premiumModalHeaderView.bounds
-                                   cornerRadius:PPChatPremiumModalHeaderCornerRadius];
-    self.premiumModalHeaderView.layer.shadowPath = path.CGPath;
 }
 
 - (void)pp_bringChatHeaderToFront
@@ -5436,7 +5736,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_updatePremiumModalChatHeaderVisibility
 {
     if (![self pp_shouldAttachPremiumModalChatHeader]) {
-        [self.premiumModalHeaderGlassBackgroundView stopAnimations];
         self.premiumModalHeaderView.hidden = YES;
         self.didAnimatePremiumModalHeader = NO;
         [self pp_updatePremiumModalChatHeaderInsets];
@@ -5449,7 +5748,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self pp_applyPremiumModalChatHeaderTheme];
     [self pp_updatePremiumModalChatHeaderContentAnimated:NO];
     [self.premiumModalHeaderView layoutIfNeeded];
-    [self.premiumModalHeaderGlassBackgroundView startAnimations];
     [self pp_bringChatHeaderToFront];
     [self pp_updatePremiumModalChatHeaderInsets];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
@@ -5581,6 +5879,49 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         self.navigationController.interactivePopGestureRecognizer.delegate =
             (id<UIGestureRecognizerDelegate>)self;
     }
+}
+
+- (void)pp_applyBorderlessChatNavigationAppearanceIfNeeded
+{
+    if (self.hasAppliedBorderlessChatNavigationAppearance ||
+        ![self pp_shouldAttachPremiumModalChatHeader] ||
+        !self.navigationController.navigationBar) {
+        return;
+    }
+
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    self.previousStandardNavigationAppearance = navigationBar.standardAppearance.copy;
+    self.previousScrollEdgeNavigationAppearance = navigationBar.scrollEdgeAppearance.copy;
+    self.previousCompactNavigationAppearance = navigationBar.compactAppearance.copy;
+
+    UINavigationBarAppearance *borderlessAppearance = navigationBar.standardAppearance.copy;
+    [borderlessAppearance configureWithTransparentBackground];
+    borderlessAppearance.backgroundColor = UIColor.clearColor;
+    borderlessAppearance.shadowColor = UIColor.clearColor;
+
+    navigationBar.standardAppearance = borderlessAppearance;
+    navigationBar.scrollEdgeAppearance = borderlessAppearance;
+    navigationBar.compactAppearance = borderlessAppearance;
+    self.hasAppliedBorderlessChatNavigationAppearance = YES;
+}
+
+- (void)pp_restorePreviousNavigationAppearanceIfNeeded
+{
+    if (!self.hasAppliedBorderlessChatNavigationAppearance ||
+        !self.navigationController.navigationBar) {
+        return;
+    }
+
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    if (self.previousStandardNavigationAppearance) {
+        navigationBar.standardAppearance = self.previousStandardNavigationAppearance;
+    }
+    navigationBar.scrollEdgeAppearance = self.previousScrollEdgeNavigationAppearance;
+    navigationBar.compactAppearance = self.previousCompactNavigationAppearance;
+    self.previousStandardNavigationAppearance = nil;
+    self.previousScrollEdgeNavigationAppearance = nil;
+    self.previousCompactNavigationAppearance = nil;
+    self.hasAppliedBorderlessChatNavigationAppearance = NO;
 }
 
 - (void)pp_attachStoryTapToHeader:(UIView *)header
@@ -5886,6 +6227,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self setupNavBottomBlur];
     
     [self configureBackUX];
+    [self pp_applyBorderlessChatNavigationAppearanceIfNeeded];
     [self pp_bringChatHeaderToFront];
 }
 
@@ -5936,6 +6278,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
  
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    [self pp_restorePreviousNavigationAppearanceIfNeeded];
     // 🔄 restore normal behavior
       self.additionalSafeAreaInsets = UIEdgeInsetsZero;
 
@@ -5965,8 +6308,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self unregisterAppStateObservers];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidFinish" object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidCancel" object:nil];
-    [self.premiumModalHeaderGlassBackgroundView stopAnimations];
-    
     if (self.authListenerHandle) {
         [[FIRAuth auth] removeAuthStateDidChangeListener:self.authListenerHandle];
         self.authListenerHandle = 0;
@@ -5981,9 +6322,9 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
-    [Styling addLiquidGlassBorderToView:self.typingIndicatorView cornerRadius:22];
+   // [Styling addLiquidGlassBorderToView:self.typingIndicatorView cornerRadius:22];
     //[Styling addLiquidGlassBorderToView:self.self.navBottomBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.3]];
-    [Styling addLiquidGlassBorderToView:self.bottomFillBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.0]];
+   // [Styling addLiquidGlassBorderToView:self.bottomFillBlurView cornerRadius:0 color:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.0]];
     self.navBottomBlurView.hidden = NO;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.showsHorizontalScrollIndicator = NO;
@@ -6025,7 +6366,6 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         [self scrollToBottomAnimated:NO];
     }
 
-    [self pp_updatePremiumModalChatHeaderShadowPath];
     [self pp_updatePremiumModalChatHeaderInsets];
     [self pp_updateChatEmptyStateAnimated:NO];
     [self pp_animatePremiumModalChatHeaderIfNeeded];
