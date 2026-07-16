@@ -415,7 +415,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
     BOOL isAll = self.isAllOption;
     self.bottomGlowLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.30 : 0.38].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.28].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.13 : 0.19].CGColor,
         (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
     ];
