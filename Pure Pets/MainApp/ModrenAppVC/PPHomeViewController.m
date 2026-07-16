@@ -1408,6 +1408,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
 @property (nonatomic, assign) BOOL didResolveInitialHomeCategory;
 @property (nonatomic, assign) BOOL didPositionInitialMainKindSelection;
+@property (nonatomic, assign) BOOL usesRestoredMainKindSelectionAppearance;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPHomeItem *> *dataSource;
@@ -1794,6 +1795,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 {
     _initialSelectedMainKindID = initialSelectedMainKindID;
     self.didPositionInitialMainKindSelection = NO;
+    self.usesRestoredMainKindSelectionAppearance = NO;
     if (!self.isViewLoaded) {
         return;
     }
@@ -1842,17 +1844,21 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
     if (self.initialSelectedMainKindID == PPHomeAllMainKindID) {
         self.selectedCategory = nil;
+        self.usesRestoredMainKindSelectionAppearance = YES;
         return;
     }
     if (self.initialSelectedMainKindID > 0) {
         MainKindsModel *navigationKind = [self resolveMainKindWithID:self.initialSelectedMainKindID];
         if (navigationKind) {
             self.selectedCategory = navigationKind;
+            self.usesRestoredMainKindSelectionAppearance = NO;
             return;
         }
     }
 
-    self.selectedCategory = [self pp_resolvedSavedHomeCategory];
+    MainKindsModel *savedCategory = [self pp_resolvedSavedHomeCategory];
+    self.selectedCategory = savedCategory;
+    self.usesRestoredMainKindSelectionAppearance = YES;
 }
 
 - (void)pp_saveSelectedHomeCategory:(MainKindsModel *)kind
@@ -1923,7 +1929,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     }
 
     NSInteger selectedIndex = [self pp_indexOfSelectedMainKindInRail];
-    if (selectedIndex == NSNotFound || selectedIndex < 1) {
+    if (selectedIndex == NSNotFound || selectedIndex < 0) {
         self.didPositionInitialMainKindSelection = YES;
         return;
     }
@@ -1951,7 +1957,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         NSInteger currentSelectedIndex = [self pp_indexOfSelectedMainKindInRail];
         NSInteger currentSectionIndex = [self sectionIndexForType:PPHomeSectionMainKinds];
         if (currentSelectedIndex == NSNotFound ||
-            currentSelectedIndex < 1 ||
+            currentSelectedIndex < 0 ||
             currentSectionIndex == NSNotFound ||
             [self.collectionView numberOfSections] <= currentSectionIndex ||
             [self.collectionView numberOfItemsInSection:currentSectionIndex] <= currentSelectedIndex) {
@@ -1959,7 +1965,6 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         }
 
         [self.collectionView layoutIfNeeded];
-        self.didPositionInitialMainKindSelection = YES;
         BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
         UICollectionViewScrollPosition leadingPosition = Language.isRTL
             ? UICollectionViewScrollPositionRight
@@ -1969,12 +1974,21 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         [self.collectionView scrollToItemAtIndexPath:indexPath
                                     atScrollPosition:leadingPosition
                                             animated:shouldAnimate];
-        [self pp_refreshHomeCategorySelectionAnimated:NO];
-        void (^animateRestoredSelection)(PPHomeViewController *) = ^(PPHomeViewController *host) {
+        void (^applyRestoredSelectionLayout)(PPHomeViewController *) = ^(PPHomeViewController *host) {
+            [host.collectionView.collectionViewLayout invalidateLayout];
+            [host.collectionView setNeedsLayout];
+            [host.collectionView layoutIfNeeded];
+            [host pp_refreshHomeCategorySelectionAnimated:NO];
+            [host.collectionView layoutIfNeeded];
             UICollectionViewCell *visibleCell = [host.collectionView cellForItemAtIndexPath:indexPath];
             if ([visibleCell isKindOfClass:PPModerHomeCell.class]) {
+                [visibleCell setNeedsLayout];
+                [visibleCell.contentView setNeedsLayout];
+                [visibleCell.contentView layoutIfNeeded];
+                [visibleCell layoutIfNeeded];
                 [(PPModerHomeCell *)visibleCell playRestoredSelectionAnimation];
             }
+            host.didPositionInitialMainKindSelection = YES;
         };
         if (shouldAnimate) {
             __weak typeof(self) weakSelf = self;
@@ -1982,11 +1996,10 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                            dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) self = weakSelf;
                 if (!self) { return; }
-                [self pp_refreshHomeCategorySelectionAnimated:NO];
-                animateRestoredSelection(self);
+                applyRestoredSelectionLayout(self);
             });
         } else {
-            animateRestoredSelection(self);
+            applyRestoredSelectionLayout(self);
         }
     });
 }
@@ -2003,6 +2016,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                     self.selectedCategory.ID != nextCategory.ID);
 
     self.selectedCategory = nextCategory;
+    self.usesRestoredMainKindSelectionAppearance = NO;
     if (persist) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             [self pp_saveSelectedHomeCategory:kind isAll:isAll];
@@ -4266,6 +4280,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionMarketplaceHero ||
+        section == PPHomeSectionMainKinds ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
@@ -8210,7 +8225,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     // skeleton cell
                         [cell configureWithMainKind:nil
                                               isAll:YES
-                                          selected:(strongSelf.selectedCategory == nil)];
+                                           selected:(strongSelf.selectedCategory == nil)];
                         pp_stageCell(cell); return cell;
                     }
 
@@ -8230,9 +8245,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                     NSLog(@"[Home][MainKinds][Cell] ✅ SELECTED → %@", kind.KindName);
                 }
 
+                BOOL restoredSelectionAppearance =
+                    selected && strongSelf.usesRestoredMainKindSelectionAppearance;
                 [cell configureWithMainKind:kind
-                                        isAll:isAll
-                                    selected:selected];
+                                      isAll:isAll
+                                   selected:selected
+                restoredSelectionAppearance:restoredSelectionAppearance];
 
                 __weak typeof(strongSelf) weakStrongSelf = strongSelf;
                 cell.onSelect = ^(MainKindsModel *kind, BOOL isAll) {
@@ -9787,6 +9805,7 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionMarketplaceHero ||
+        section == PPHomeSectionMainKinds ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         if ([self pp_isInitialHomeRevealSettled]) {
