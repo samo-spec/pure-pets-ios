@@ -12,6 +12,16 @@
 
 #import "PPImageLoaderManager.h"
 #import <SDWebImage/SDWebImage.h>
+#import <os/signpost.h>
+
+static os_log_t PPImagePerformanceLog(void) {
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "DataView");
+    });
+    return log;
+}
 
 @implementation PPImageLoaderManager
 
@@ -99,14 +109,24 @@
 
     if (urlString.length == 0) {
         imageView.image = placeholder;
+        if (complation) {
+            complation(nil, nil);
+        }
         return;
     }
 
     NSURL *url = [NSURL URLWithString:urlString];
     if (!url) {
         imageView.image = placeholder;
+        if (complation) {
+            complation(nil, nil);
+        }
         return;
     }
+
+    os_log_t log = PPImagePerformanceLog();
+    os_signpost_id_t imageSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, imageSignpostID, "image.fetch", "url=%{public}@", urlString ?: @"");
 
     SDWebImageOptions options =
         SDWebImageRetryFailed |
@@ -124,13 +144,30 @@
                                      SDImageCacheType cacheType,
                                      NSURL * _Nullable imageURL) {
 
-        if (!image || !weakImageView) return;
+        os_signpost_interval_end(log, imageSignpostID, "image.fetch", "cached=%d error=%d", (cacheType != SDImageCacheTypeNone), (error != nil));
+        NSString *completedURLString = imageURL.absoluteString ?: urlString;
+
+        if (!image || !weakImageView) {
+            if (complation) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    complation(image, completedURLString);
+                });
+            }
+            return;
+        }
+
+        os_signpost_id_t displaySignpostID = os_signpost_id_generate(log);
+        os_signpost_interval_begin(log, displaySignpostID, "image.display", "width=%f height=%f", image.size.width, image.size.height);
 
         dispatch_async(dispatch_get_main_queue(), ^{
             [self applyImage:image
                  toImageView:weakImageView
                transitionStyle:transitionStyle
                      fromCache:(cacheType != SDImageCacheTypeNone)];
+            os_signpost_interval_end(log, displaySignpostID, "image.display");
+            if (complation) {
+                complation(image, completedURLString);
+            }
         });
     }];
 }

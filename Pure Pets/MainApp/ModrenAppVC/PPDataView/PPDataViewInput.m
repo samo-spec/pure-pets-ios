@@ -18,8 +18,8 @@
 }
 
 + (instancetype)inputWithMainKind:(MainKindsModel *)mainKind
-                     sourceTarget:(PPDeepLinkTarget)sourceTarget
-                           source:(PPInputSource)source
+                      sourceTarget:(PPDeepLinkTarget)sourceTarget
+                            source:(PPInputSource)source
 {
     PPDataViewInput *input = [[self alloc] init];
     if (!input) { return nil; }
@@ -29,13 +29,14 @@
     input.sourceTarget = sourceTarget;
     input.source = source;
     input.title = mainKind.KindName ?: @"";
+    input.accentColor = (mainKind && mainKind.kindColor) ? mainKind.kindColor : nil;
     input.initialSectionOverride = nil;
     return input;
 }
 
 + (instancetype)inputWithMainKindsArr:(NSArray<MainKindsModel *> *)mainKindsArr
-                          sourceTarget:(PPDeepLinkTarget)sourceTarget
-                                source:(PPInputSource)source
+                      sourceTarget:(PPDeepLinkTarget)sourceTarget
+                            source:(PPInputSource)source
 {
     PPDataViewInput *input = [[self alloc] init];
     if (!input) { return nil; }
@@ -50,6 +51,7 @@
     input.title = (sourceTarget == PPDeepLinkTargetAllCategories)
         ? (kLang(@"AllCategories") ?: kLang(@"All") ?: @"")
         : (input.mainKind.KindName ?: @"");
+    input.accentColor = (input.mainKind && input.mainKind.kindColor) ? input.mainKind.kindColor : nil;
     input.initialSectionOverride = nil;
     return input;
 }

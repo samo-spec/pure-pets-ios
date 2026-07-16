@@ -965,6 +965,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (BOOL)pp_prefersContainedProductImageForViewModel:(PPUniversalCellViewModel *)vm;
 - (BOOL)pp_usesQuantityControl;
 - (BOOL)pp_usesHorizontalRowPresentation;
+- (void)pp_setAvailabilityLeadingAfterServiceMeta:(BOOL)afterServiceMeta;
 
 @end
 
@@ -1052,8 +1053,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.serviceMetaLabel.text = @"";
     self.serviceMetaLabel.attributedText = nil;
     self.serviceMetaLabel.hidden = YES;
-    self.availabilityLeadingToBodyConstraint.active = YES;
-    self.availabilityLeadingToMetaConstraint.active = NO;
+    [self pp_setAvailabilityLeadingAfterServiceMeta:NO];
     self.serviceMetaCollapsedConstraint.active = YES;
     self.reasonBadgeLabel.hidden = YES;
     self.hideTopBadge = NO;
@@ -1139,14 +1139,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
-    UICollectionViewLayoutAttributes *attributes = [super preferredLayoutAttributesFittingAttributes:layoutAttributes];
     if (PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
-        CGRect frame = attributes.frame;
-        frame.size.height = PPUniversalCellAdsPinterestHeight(CGRectGetWidth(frame),
-                                                              self.vm,
-                                                              [self pp_usesDataViewAdPresentation]);
-        attributes.frame = frame;
+        return layoutAttributes;
     }
+
+    UICollectionViewLayoutAttributes *attributes = [super preferredLayoutAttributesFittingAttributes:layoutAttributes];
     return attributes;
 }
 
@@ -2417,8 +2414,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             self.serviceMetaLabel.attributedText = nil;
             self.serviceMetaLabel.hidden = YES;
             self.serviceMetaCollapsedConstraint.active = YES;
-            self.availabilityLeadingToBodyConstraint.active = YES;
-            self.availabilityLeadingToMetaConstraint.active = NO;
+            [self pp_setAvailabilityLeadingAfterServiceMeta:NO];
             return;
         }
     }
@@ -2538,8 +2534,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     BOOL tieAvailabilityToServiceMeta = showsMeta && !shouldHideAvailability;
-    self.availabilityLeadingToBodyConstraint.active = !tieAvailabilityToServiceMeta;
-    self.availabilityLeadingToMetaConstraint.active = tieAvailabilityToServiceMeta;
+    [self pp_setAvailabilityLeadingAfterServiceMeta:tieAvailabilityToServiceMeta];
+}
+
+- (void)pp_setAvailabilityLeadingAfterServiceMeta:(BOOL)afterServiceMeta
+{
+    self.availabilityLeadingToBodyConstraint.active = NO;
+    self.availabilityLeadingToMetaConstraint.active = NO;
+
+    if (afterServiceMeta) {
+        self.availabilityLeadingToMetaConstraint.active = YES;
+    } else {
+        self.availabilityLeadingToBodyConstraint.active = YES;
+    }
 }
 
 - (NSString *)pp_cityLocationBadgeTextForViewModel:(PPUniversalCellViewModel *)vm

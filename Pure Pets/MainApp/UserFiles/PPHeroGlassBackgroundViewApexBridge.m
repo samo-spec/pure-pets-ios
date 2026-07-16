@@ -19,6 +19,9 @@
 @synthesize accentColorOverride = _accentColorOverride;
 @synthesize accentStyle = _accentStyle;
 @synthesize cornerGlowOpacityMultiplier = _cornerGlowOpacityMultiplier;
+@synthesize glowDirection = _glowDirection;
+@synthesize PPHeroApexUseShimmer = _PPHeroApexUseShimmer;
+@synthesize PPHeroApexUseUnderFingerMotion = _PPHeroApexUseUnderFingerMotion;
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -46,11 +49,17 @@
 
     _accentStyle = PPHeroGlassAccentStyleBar;
     _cornerGlowOpacityMultiplier = 1.0;
+    _glowDirection = 0; // Default: systemDirection
+    _PPHeroApexUseShimmer = NO;
+    _PPHeroApexUseUnderFingerMotion = NO;
 
     PPHeroApexView *apexView = [[PPHeroApexView alloc] initWithFrame:self.bounds];
     apexView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     apexView.accentStyle = _accentStyle;
     apexView.cornerGlowOpacityMultiplier = _cornerGlowOpacityMultiplier;
+    apexView.glowDirection = _glowDirection;
+    apexView.PPHeroApexUseShimmer = _PPHeroApexUseShimmer;
+    apexView.PPHeroApexUseUnderFingerMotion = _PPHeroApexUseUnderFingerMotion;
     [self addSubview:apexView];
     self.apexView = apexView;
 }
@@ -97,6 +106,36 @@
 
     _cornerGlowOpacityMultiplier = clamped;
     self.apexView.cornerGlowOpacityMultiplier = clamped;
+}
+
+- (void)setGlowDirection:(NSInteger)glowDirection
+{
+    if (_glowDirection == glowDirection) {
+        return;
+    }
+
+    _glowDirection = glowDirection;
+    self.apexView.glowDirection = (PPHeroGlowDirection)glowDirection;
+}
+
+- (void)setPPHeroApexUseShimmer:(BOOL)PPHeroApexUseShimmer
+{
+    if (_PPHeroApexUseShimmer == PPHeroApexUseShimmer) {
+        return;
+    }
+
+    _PPHeroApexUseShimmer = PPHeroApexUseShimmer;
+    self.apexView.PPHeroApexUseShimmer = PPHeroApexUseShimmer;
+}
+
+- (void)setPPHeroApexUseUnderFingerMotion:(BOOL)PPHeroApexUseUnderFingerMotion
+{
+    if (_PPHeroApexUseUnderFingerMotion == PPHeroApexUseUnderFingerMotion) {
+        return;
+    }
+
+    _PPHeroApexUseUnderFingerMotion = PPHeroApexUseUnderFingerMotion;
+    self.apexView.PPHeroApexUseUnderFingerMotion = PPHeroApexUseUnderFingerMotion;
 }
 
 - (void)startAnimations

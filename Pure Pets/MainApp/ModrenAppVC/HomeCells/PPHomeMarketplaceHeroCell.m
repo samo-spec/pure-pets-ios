@@ -395,6 +395,8 @@ static BOOL PPMarketHeroReduceMotion(void)
                                              isAllContext);
 
     self.surfaceControl.backgroundColor = [UIColor clearColor];
+    
+    
     self.heroGlassBackground.accentColorOverride = isAllContext ? nil : primaryAccent;
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.contentView.layer.shadowOpacity = darkMode ? 0.18f : 0.075f;
@@ -530,8 +532,10 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glass.accentStyle = PPHeroGlassAccentStyleBar;
     glass.cornerGlowOpacityMultiplier = 0.88;
+    glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
+    glass.PPHeroApexUseShimmer = NO;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 

@@ -7,7 +7,9 @@
 
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import "EnumValues.h"
+#import "MainKindsModel.h"
 
    
 NS_ASSUME_NONNULL_BEGIN
@@ -15,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PPDataViewInput : NSObject
 
 @property (nonatomic, strong, nullable) MainKindsModel *mainKind;
+@property (nonatomic, strong, nullable) UIColor *accentColor;
 @property (nonatomic, assign) PPDeepLinkTarget sourceTarget;
 @property (nonatomic, assign) PPInputSource source;
 @property (nonatomic, copy, nullable) NSString *title;

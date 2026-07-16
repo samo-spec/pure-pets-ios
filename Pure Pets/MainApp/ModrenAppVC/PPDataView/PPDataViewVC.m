@@ -490,11 +490,15 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @end
 
 @interface PPDataViewControlIslandView : UIView
+@property (nonatomic, assign) BOOL useAccentColor;
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated;
+- (void)pp_applyAccentColor:(UIColor *)accentColor animated:(BOOL)animated;
+- (UIColor *)pp_contentAccentColorForTraitCollection:(UITraitCollection *)traitCollection;
 @end
 
 @interface PPDataViewControlIslandView ()
 @property (nonatomic, strong) PPHeroGlassBackgroundView *heroBackgroundView;
+@property (nonatomic, strong, nullable) UIColor *baseAccentColorOverride;
 @property (nonatomic, assign) NSInteger activeFilterCount;
 @end
 
@@ -515,8 +519,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.48;
+    glass.accentStyle = PPHeroGlassAccentStyleBar;
+    glass.cornerGlowOpacityMultiplier = 0.18;
+    glass.glowDirection = PPHeroGlowDirectionLeftDirect;
+    glass.tintColor = AppPrimaryClr;
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
 
@@ -529,6 +535,16 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     [self pp_applyActiveFilterCount:0 animated:NO];
     return self;
+}
+
+- (void)setUseAccentColor:(BOOL)useAccentColor
+{
+    if (_useAccentColor == useAccentColor) {
+        return;
+    }
+
+    _useAccentColor = useAccentColor;
+    [self pp_applyActiveFilterCount:self.activeFilterCount animated:self.window != nil];
 }
 
 - (void)layoutSubviews
@@ -556,16 +572,52 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_applyActiveFilterCount:self.activeFilterCount animated:NO];
 }
 
+- (void)pp_applyAccentColor:(UIColor *)accentColor animated:(BOOL)animated
+{
+    self.baseAccentColorOverride = accentColor;
+
+    void (^updates)(void) = ^{
+        if (self.activeFilterCount <= 0) {
+            self.heroBackgroundView.accentColorOverride = self.baseAccentColorOverride;
+        }
+        [self.heroBackgroundView reapplyPalette];
+    };
+
+    if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        updates();
+        [CATransaction commit];
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setAnimationDuration:0.22];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    updates();
+    [CATransaction commit];
+}
+
+- (UIColor *)pp_contentAccentColorForTraitCollection:(UITraitCollection *)traitCollection
+{
+    UIColor *fallback = PPDataViewProviderPillAccentColor(traitCollection);
+    if (!self.useAccentColor) {
+        return fallback;
+    }
+    return self.baseAccentColorOverride ?: fallback;
+}
+
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated
 {
     self.activeFilterCount = MAX(0, count);
     BOOL selected = self.activeFilterCount > 0;
 
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
-    UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
+    UIColor *accent = [self pp_contentAccentColorForTraitCollection:self.traitCollection];
+    UIColor *resolvedAccent = selected ? accent : self.baseAccentColorOverride;
 
     void (^updates)(void) = ^{
-        self.heroBackgroundView.accentColorOverride = selected ? accent : nil;
+        self.heroBackgroundView.accentColorOverride = resolvedAccent;
         [self.heroBackgroundView reapplyPalette];
         self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.layer.borderColor = PPDataViewResolvedColor(
@@ -600,6 +652,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, copy) NSString *chipIconName;
 @property (nonatomic, assign) BOOL ppHidesTrailingChevron;
 @property (nonatomic, assign) BOOL ppUsesActionSurface;
+@property (nonatomic, assign) BOOL ppUseAccentColor;
+@property (nonatomic, strong, nullable) UIColor *ppAccentColorOverride;
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active;
 @end
 
@@ -687,6 +741,34 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_applyPremiumLayerStateAnimated:NO];
 }
 
+- (void)setPPUseAccentColor:(BOOL)ppUseAccentColor
+{
+    if (_ppUseAccentColor == ppUseAccentColor) {
+        return;
+    }
+
+    _ppUseAccentColor = ppUseAccentColor;
+    [self pp_applyPremiumLayerStateAnimated:self.window != nil];
+}
+
+- (void)setPPAccentColorOverride:(UIColor *)ppAccentColorOverride
+{
+    if (_ppAccentColorOverride == ppAccentColorOverride ||
+        [_ppAccentColorOverride isEqual:ppAccentColorOverride]) {
+        return;
+    }
+
+    _ppAccentColorOverride = ppAccentColorOverride;
+    [self pp_applyPremiumLayerStateAnimated:self.window != nil];
+}
+
+- (UIColor *)pp_effectiveAccentColor
+{
+    return (self.ppUseAccentColor && self.ppAccentColorOverride)
+        ? self.ppAccentColorOverride
+        : PPDataViewAccentColor();
+}
+
 - (void)setHighlighted:(BOOL)highlighted
 {
     [super setHighlighted:highlighted];
@@ -712,7 +794,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.alpha = 1.0;
 
     NSString *safeTitle = title.length > 0 ? title : @"";
-    UIColor *brand = PPDataViewAccentColor();
+    UIColor *brand = [self pp_effectiveAccentColor];
     BOOL action = self.ppUsesActionSurface;
     UIColor *premiumText = PPDataViewDynamicColor([UIColor colorWithRed:0.105 green:0.104 blue:0.132 alpha:1.0],
                                                   [UIColor colorWithWhite:0.94 alpha:1.0]);
@@ -817,7 +899,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 - (void)pp_applyPremiumLayerStateAnimated:(BOOL)animated
 {
-    UIColor *brand = PPDataViewAccentColor();
+    UIColor *brand = [self pp_effectiveAccentColor];
     BOOL active = self.isPPActive;
 
     // ─── iOS 26+ non-active: glass handles all visuals ───
@@ -862,9 +944,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         if (@available(iOS 26.0, *)) {
              
             self.surfaceGradientLayer.colors = @[
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.18].CGColor,
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.04].CGColor,
-                (__bridge id)[AppPrimaryClr colorWithAlphaComponent:0.18].CGColor
+                (__bridge id)[brand colorWithAlphaComponent:0.18].CGColor,
+                (__bridge id)[brand colorWithAlphaComponent:0.04].CGColor,
+                (__bridge id)[brand colorWithAlphaComponent:0.18].CGColor
             ];
             
             UIButtonConfiguration *config = self.configuration;
@@ -1050,6 +1132,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *ownedPrefetchURLsByToken;
 @property (nonatomic, assign) BOOL didEmitFirstVisibleContentSignpost;
 @property (nonatomic, assign) BOOL pendingFilterScrollToTop;
+@property (nonatomic, assign) BOOL  DidFinishLayout;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *)pp_ownedPrefetchTokenMap;
 - (void)pp_cancelOwnedPrefetchesForIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
@@ -1082,6 +1165,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)providerFilterChipTapped:(UIButton *)sender;
 - (NSString *)filterContextTitleForSection:(PPDataSection)section;
 - (void)pp_applyFilterContextBarAppearance;
+- (BOOL)pp_controlIslandUsesAccentColor;
+- (UIColor *)pp_controlIslandAccentColor;
+- (UIColor *)pp_controlIslandContentAccentColor;
 - (BOOL)pp_sectionSupportsProviderFilter:(PPDataSection)section;
 - (NSArray<OptionModel *> *)providerOptionsForCurrentSection;
 - (NSArray<OptionModel *> *)providerOptionsForSection:(PPDataSection)section sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
@@ -1113,8 +1199,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_updateCollectionContentInsetPreservingTopAnchor;
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated;
-- (void)toggleFilterBadgesCollapsed:(UIButton *)sender;
+- (void)toggleFilterBadgesCollapsed:(id)sender;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
+- (BOOL)pp_presentedItemsContainOnlySkeletons;
+- (void)pp_clearSkeletonPresentationForEmptyStateIfNeeded;
 - (void)refreshFilterChipTitles;
 - (void)refreshFilterChipTitlesForSection:(PPDataSection)section;
 - (void)openFilters;
@@ -1374,7 +1462,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self = [super initWithNibName:nil bundle:nil];
     if (!self) return nil;
 
+    os_log_t log = PPDataViewVCPerformanceLog();
+    os_signpost_id_t initSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, initSignpostID, "destination.init");
+
     _input = input;
+
+    os_signpost_interval_end(log, initSignpostID, "destination.init");
     return self;
 }
 
@@ -1423,7 +1517,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 - (void)viewDidLoad
 {
+    os_log_t log = PPDataViewVCPerformanceLog();
+    os_signpost_id_t viewDidLoadSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, viewDidLoadSignpostID, "destination.viewDidLoad");
+
     [super viewDidLoad];
+    self.DidFinishLayout = NO;
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     if (@available(iOS 13.0, *)) {
@@ -1493,6 +1592,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
      object:nil];
     
      
+    os_signpost_interval_end(log, viewDidLoadSignpostID, "destination.viewDidLoad");
 }
 
 - (void)dealloc
@@ -1994,15 +2094,15 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.sectionsSegmentedControl.hidesContainerChrome = YES;
     self.sectionsSegmentedControl.normalTextColor = PPDataViewChromeSecondaryTextColor();
     self.sectionsSegmentedControl.selectedTextColor = PPDataViewChromeTextColor();
-    UIColor *accentBase = PPDataViewAccentColor();
+    UIColor *accentBase = [self pp_controlIslandContentAccentColor];
     CGFloat h, s, b, a;
     if ([accentBase getHue:&h saturation:&s brightness:&b alpha:&a]) {
         self.sectionsSegmentedControl.selectedSegmentColor = [UIColor colorWithHue:h saturation:MIN(s * 1.12, 1.0) brightness:MIN(b * 1.06, 1.0) alpha:a];
     } else {
         self.sectionsSegmentedControl.selectedSegmentColor = accentBase;
     }
-    self.sectionsSegmentedControl.normalFont = [GM MidFontWithSize:13.2];
-    self.sectionsSegmentedControl.selectedFont = [GM boldFontWithSize:13.6];
+    self.sectionsSegmentedControl.normalFont = [GM MidFontWithSize:14.2];
+    self.sectionsSegmentedControl.selectedFont = [GM boldFontWithSize:14.6];
     CGFloat segmentedRadius =
         PPDataViewPillRadiusForHeight(CGRectGetHeight(self.sectionsSegmentedControl.bounds),
                                       kPPDataViewSectionsSegmentedCornerRadius);
@@ -2019,6 +2119,28 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_applyFilterContextBarAppearance];
 }
 
+- (BOOL)pp_controlIslandUsesAccentColor
+{
+    return self.sectionsFiltersContainer.useAccentColor;
+}
+
+- (UIColor *)pp_controlIslandAccentColor
+{
+    UIColor *inputAccent = self.input.accentColor;
+    if (self.input.mainKind.ID == 1) {
+        inputAccent = AppPrimaryClr ?: inputAccent;
+    }
+    return inputAccent ?: PPDataViewAccentColor();
+}
+
+- (UIColor *)pp_controlIslandContentAccentColor
+{
+    if ([self pp_controlIslandUsesAccentColor]) {
+        return [self pp_controlIslandAccentColor];
+    }
+    return PPDataViewProviderPillAccentColor(self.traitCollection);
+}
+
 - (void)pp_applyFilterContextBarAppearance
 {
     if (!self.filterContextBar) {
@@ -2026,7 +2148,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
-    UIColor *accent = PPDataViewProviderPillAccentColor(self.traitCollection);
+    UIColor *accent = [self pp_controlIslandContentAccentColor];
     UIColor *surface = PPDataViewDynamicColor([AppPrimaryClrShiner colorWithAlphaComponent:0.03],
                                              [UIColor colorWithRed:0.150 green:0.090 blue:0.116 alpha:0.84]);
     UIColor *badgeSurface = PPDataViewBlendColor(surface,
@@ -2060,9 +2182,13 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     self.filterContextIconView.tintColor = accent;
-    self.filterContextLabel.textColor = PPDataViewChromeTextColor();
+    self.filterContextLabel.textColor = [self pp_controlIslandUsesAccentColor]
+        ? accent
+        : PPDataViewChromeTextColor();
     self.filterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.filterCollapseButton.tintColor = PPDataViewAccentColor();
+    self.filterCollapseButton.tintColor = [self pp_controlIslandUsesAccentColor]
+        ? accent
+        : PPDataViewAccentColor();
 
     if (self.providerFilterChipButton) {
         BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
@@ -2106,7 +2232,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
                 NSMutableDictionary *attributes = [incoming mutableCopy];
                 attributes[NSFontAttributeName] = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
-                attributes[NSForegroundColorAttributeName] = PPDataViewChromeSecondaryTextColor();
+                attributes[NSForegroundColorAttributeName] = [self pp_controlIslandUsesAccentColor]
+                    ? PPDataViewBlendColor(PPDataViewChromeSecondaryTextColor(), accent, dark ? 0.36 : 0.28, self.traitCollection)
+                    : PPDataViewChromeSecondaryTextColor();
                 return attributes;
             };
             self.providerFilterChipButton.configuration = configuration;
@@ -2131,7 +2259,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                     self.traitCollection).CGColor;
         self.providerFilterChipRatingLabel.clipsToBounds = YES;
         self.providerFilterChipSubtitleLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
-        self.providerFilterChipSubtitleLabel.textColor = PPDataViewChromeSecondaryTextColor();
+        self.providerFilterChipSubtitleLabel.textColor = [self pp_controlIslandUsesAccentColor]
+            ? PPDataViewBlendColor(PPDataViewChromeSecondaryTextColor(), accent, dark ? 0.36 : 0.28, self.traitCollection)
+            : PPDataViewChromeSecondaryTextColor();
         self.providerFilterChipSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
         self.providerFilterChipAvatarView.backgroundColor =
             PPDataViewBlendColor(chipSurface, accent, dark ? 0.20 : 0.12, self.traitCollection);
@@ -2754,25 +2884,57 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self.viewModel reloadDataWithCompletion:^(NSError * _Nullable error) {
         if (!error) { return; }
         [weakSelf hideSkeleton];
+        [weakSelf pp_clearSkeletonPresentationForEmptyStateIfNeeded];
         [weakSelf updateEmptyState];
     }];
 }
  
- - (void)updateEmptyState {
-    if (self.isShowingSkeleton || self.isPerformingCrossFade) return;
+- (BOOL)pp_presentedItemsContainOnlySkeletons
+{
+    if (self.presentedItems.count == 0) {
+        return NO;
+    }
+
+    for (PPUniversalCellViewModel *viewModel in self.presentedItems) {
+        if (!viewModel.isSkeleton) {
+            return NO;
+        }
+    }
+
+    return YES;
+}
+
+- (void)pp_clearSkeletonPresentationForEmptyStateIfNeeded
+{
+    if (self.viewModel.isLoading || ![self pp_presentedItemsContainOnlySkeletons]) {
+        return;
+    }
+
+    self.presentedItems = @[];
+    self.layoutManager.items = @[];
+    [self applySnapshotAnimated:NO];
+}
+
+- (void)updateEmptyState {
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self updateEmptyState];
         });
         return;
     }
+
+    if (self.isShowingSkeleton || self.isPerformingCrossFade) return;
+
+    [self pp_clearSkeletonPresentationForEmptyStateIfNeeded];
+
     [PPEmptyStateHelper updateEmptyStateForListView:self.collectionView
                                           dataCount:self.presentedItems.count
-                                             config:self.emptyStateConfig];
+                                             config:self.emptyStateConfig
+                                     delayWhenEmpty:NO];
     if (self.presentedItems.count == 0) {
         [[NovaAmbientAssistantCoordinator sharedCoordinator] emptyStateDidAppear];
     }
- }
+}
 
 - (void)setupCollectionView
 {
@@ -3066,17 +3228,21 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [self pp_applyPremiumDataViewBackgroundAppearance];
-    [self pp_layoutPremiumBackgroundGlowViews];
-    [self pp_applyPremiumNavigationChromeAppearance];
-    [self pp_applyPremiumSectionsSegmentedAppearance];
-    [self pp_updatePremiumChromeShadowPaths];
-    [self updateCollectionContentInset];
-    [self pp_anchorSkeletonLoadingBelowChromeIfNeeded];
-    [self updateSectionsTabBarSelectionIndicatorIfNeeded];
-    [self reloadNavigationCenterViewLayout];
-    if ([self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
-        [(BBDataViewFullDetailsLayout *)self.collectionView.collectionViewLayout invalidateForViewportChange];
+    if(!self.DidFinishLayout)
+    {
+        [self pp_applyPremiumDataViewBackgroundAppearance];
+        [self pp_layoutPremiumBackgroundGlowViews];
+        [self pp_applyPremiumNavigationChromeAppearance];
+        [self pp_applyPremiumSectionsSegmentedAppearance];
+        [self pp_updatePremiumChromeShadowPaths];
+        [self updateCollectionContentInset];
+        [self pp_anchorSkeletonLoadingBelowChromeIfNeeded];
+        [self updateSectionsTabBarSelectionIndicatorIfNeeded];
+        [self reloadNavigationCenterViewLayout];
+        if ([self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
+            [(BBDataViewFullDetailsLayout *)self.collectionView.collectionViewLayout invalidateForViewportChange];
+        }
+        self.DidFinishLayout = YES;
     }
 }
 
@@ -3176,10 +3342,19 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         }
 
         if (isInitialContentLoad) {
+            os_log_t log = PPDataViewVCPerformanceLog();
+            os_signpost_id_t firstFrameSignpostID = os_signpost_id_generate(log);
+            os_signpost_interval_begin(log, firstFrameSignpostID, "destination.firstFrame");
+            os_signpost_id_t meaningfulContentSignpostID = os_signpost_id_generate(log);
+            os_signpost_interval_begin(log, meaningfulContentSignpostID, "ui.firstMeaningfulContent");
+
             // The skeleton is replaced as soon as the VM transaction commits.
             // The old fixed cross-dissolve made first content wait 250 ms.
             [weakSelf refreshPresentedItemsAnimated:NO scrollToTop:shouldScrollToTop];
             weakSelf.didApplyInitialSnapshot = YES;
+
+            os_signpost_interval_end(log, firstFrameSignpostID, "destination.firstFrame", "itemsCount=%ld", (long)weakSelf.presentedItems.count);
+            os_signpost_interval_end(log, meaningfulContentSignpostID, "ui.firstMeaningfulContent", "itemsCount=%ld", (long)weakSelf.presentedItems.count);
         } else {
             [weakSelf refreshPresentedItemsAnimated:wasShowingSkeleton || weakSelf.didApplyInitialSnapshot
                                          scrollToTop:shouldScrollToTop];
@@ -3250,6 +3425,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     self.viewModel.onError = ^(NSError * _Nonnull error) {
         PPDataViewLog(@"[PPDataViewVC] data error: %@", error.localizedDescription ?: @"unknown");
         [weakSelf hideSkeleton];
+        [weakSelf pp_clearSkeletonPresentationForEmptyStateIfNeeded];
         [weakSelf updateEmptyState];
     };
 }
@@ -4056,6 +4232,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
+    os_log_t log = PPDataViewVCPerformanceLog();
+
+    os_signpost_id_t buildSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, buildSignpostID, "ui.snapshotBuild");
+
     NSDiffableDataSourceSnapshot<NSNumber *, PPUniversalCellViewModel *> *snapshot =
     [NSDiffableDataSourceSnapshot new];
 
@@ -4064,17 +4245,23 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [snapshot appendItemsWithIdentifiers:self.presentedItems
                intoSectionWithIdentifier:section];
 
+    os_signpost_interval_end(log, buildSignpostID, "ui.snapshotBuild");
+
     BOOL shouldAnimate = animated && self.view.window != nil;
     if (self.presentedItems.count > 120) {
         shouldAnimate = NO;
     }
 
-    os_signpost_id_t snapshotSignpostID = os_signpost_id_generate(PPDataViewVCPerformanceLog());
-    os_signpost_interval_begin(PPDataViewVCPerformanceLog(), snapshotSignpostID, "DataViewSnapshotApply",
+    os_signpost_id_t snapshotSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, snapshotSignpostID, "ui.snapshotApply",
                                "animated=%d items=%lu", shouldAnimate, (unsigned long)self.presentedItems.count);
     [self.dataSource applySnapshot:snapshot animatingDifferences:shouldAnimate];
-    os_signpost_interval_end(PPDataViewVCPerformanceLog(), snapshotSignpostID, "DataViewSnapshotApply",
+    os_signpost_interval_end(log, snapshotSignpostID, "ui.snapshotApply",
                              "items=%lu", (unsigned long)self.presentedItems.count);
+
+    // Also emit a reload event for general ui update tracking
+    os_signpost_id_t reloadSignpostID = os_signpost_id_generate(log);
+    os_signpost_event_emit(log, reloadSignpostID, "ui.reload", "itemsCount=%lu", (unsigned long)self.presentedItems.count);
 }
 
 - (double)resolvedPriceForViewModel:(PPUniversalCellViewModel *)vm
@@ -4373,8 +4560,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
-    // Clear previous empty state immediately upon starting section switch
-    [PPEmptyStateHelper removeEmptyStateFromListView:self.collectionView];
+    os_log_t log = PPDataViewVCPerformanceLog();
+    os_signpost_id_t switchSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, switchSignpostID, "section.switch", "fromSection=%ld toSection=%ld", (long)self.viewModel.currentSection, (long)section);
 
     BOOL isSameSection = (section == self.viewModel.currentSection);
     BOOL shouldSwitchSection = !isSameSection || self.viewModel.items.count == 0;
@@ -4385,11 +4573,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [PPFunc triggerLightHaptic];
     }
 
+    // Clear previous empty state after the section control has accepted the tap.
+    [PPEmptyStateHelper removeEmptyStateFromListView:self.collectionView];
+
     if (!shouldSwitchSection) {
         if (userInitiated) {
             [self pp_applyFeedbackPulseToView:self.sectionsSegmentedControl];
         }
         [self scrollCollectionViewToTopAfterReload:YES];
+        os_signpost_interval_end(log, switchSignpostID, "section.switch", "status=no_switch");
         return;
     }
 
@@ -4409,6 +4601,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.viewModel setFilterState:[self pp_filterStateForSection:section] forSection:section];
     [self.viewModel switchToSection:section];
     [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:userInitiated];
+
+    os_signpost_interval_end(log, switchSignpostID, "section.switch", "status=switched");
 }
 
 - (BOOL)sectionHasFilterChipBarForSection:(PPDataSection)section
@@ -5743,10 +5937,25 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (![self sectionHasFilterChipBarForSection:self.viewModel.currentSection]) {
         return;
     }
-    
+
     self.filterBadgesCollapsed = !self.filterBadgesCollapsed;
+
+    os_log_t log = PPDataViewVCPerformanceLog();
+    os_signpost_id_t filterToggleSignpostID = os_signpost_id_generate(log);
+    if (!self.filterBadgesCollapsed) {
+        os_signpost_interval_begin(log, filterToggleSignpostID, "filter.expand");
+    } else {
+        os_signpost_interval_begin(log, filterToggleSignpostID, "filter.collapse");
+    }
+
     [PPFunc triggerLightHaptic];
     [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:YES];
+
+    if (!self.filterBadgesCollapsed) {
+        os_signpost_interval_end(log, filterToggleSignpostID, "filter.expand");
+    } else {
+        os_signpost_interval_end(log, filterToggleSignpostID, "filter.collapse");
+    }
 }
 
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated
@@ -5814,9 +6023,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     PPFilterGroup *group = state.groups[chipIndex];
     group.selectedValue = value;
 
+    os_log_t log = PPDataViewVCPerformanceLog();
+    os_signpost_id_t applyFilterSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, applyFilterSignpostID, "filter.apply", "filterID=%{public}@", group.filterID ?: @"");
+
     [PPFunc triggerLightHaptic];
     self.pendingFilterScrollToTop = YES;
     [self.viewModel applyFilterState:state];
+
+    os_signpost_interval_end(log, applyFilterSignpostID, "filter.apply");
 }
 
 - (PPFilterState *)pp_currentFilterState
@@ -6118,7 +6333,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.cartButtonWidthConstraint =
     [self.cartButton.widthAnchor constraintEqualToConstant:1.0];
     self.navContainerWidthConstraint =
-    [self.navContainerView.widthAnchor constraintEqualToConstant:220];
+    [self.navContainerView.widthAnchor constraintEqualToConstant:267];
     self.centerCapsuleMinWidthConstraint =
     [self.centerCapsuleButton.widthAnchor constraintGreaterThanOrEqualToConstant:140.0];
     self.mainKindsWidthConstraint.priority = UILayoutPriorityRequired;
@@ -6231,15 +6446,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.subKindsButton invalidateIntrinsicContentSize];
         [self.cartButton invalidateIntrinsicContentSize];
 
-        CGFloat inset = 5.0;
         CGFloat visibleChromeWidth = MAX(176.0, self.navContainerWidthConstraint.constant);
-        CGFloat hiddenCartWidth = self.isCartButtonVisible ? 36.0 : 1.0;
-        CGFloat insetCount = self.isCartButtonVisible ? 4.0 : 3.0;
-        CGFloat availableSelectorWidth = MAX(150.0, visibleChromeWidth - (inset * insetCount) - hiddenCartWidth);
-        CGFloat mainWidth = floor(availableSelectorWidth * 0.5);
+        CGFloat outerInset = 3.0;
+        CGFloat separatorGap = 4.0;
+        CGFloat separatorWidth = 1.0;
         CGFloat cartWidth = self.isCartButtonVisible ? 36.0 : 1.0;
-        CGFloat chromeWidth = (inset * insetCount) + mainWidth + cartWidth;
-        CGFloat sectionWidth = MAX(0.0, visibleChromeWidth - chromeWidth);
+        CGFloat fixedChromeWidth = (outerInset * 2.0) + (separatorGap * 2.0) + separatorWidth;
+        if (self.isCartButtonVisible) {
+            fixedChromeWidth += outerInset + cartWidth;
+        }
+        CGFloat availableSelectorWidth = MAX(0.0, visibleChromeWidth - fixedChromeWidth);
+        CGFloat mainWidth = floor(availableSelectorWidth * 0.5);
+        CGFloat sectionWidth = MAX(0.0, availableSelectorWidth - mainWidth);
 
         self.mainKindsWidthConstraint.constant = mainWidth;
         self.sectionsWidthConstraint.constant = sectionWidth;
@@ -6466,6 +6684,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     } completion:^(BOOL finished) {
         self.collectionView.userInteractionEnabled = YES;
         self.isPerformingCrossFade = NO;
+        [self updateEmptyState];
     }];
 }
 
@@ -7081,6 +7300,10 @@ presentingViewController:self
     controlIsland.translatesAutoresizingMaskIntoConstraints = NO;
     controlIsland.accessibilityIdentifier = @"pp.data.sectionsFiltersIsland";
     self.sectionsFiltersContainer = controlIsland;
+
+    if (self.input.accentColor) {
+        [controlIsland pp_applyAccentColor:self.input.mainKind.ID == 1 ? AppPrimaryClr : self.input.accentColor animated:NO];
+    }
 
     [self.view addSubview:controlIsland];
     [controlIsland addSubview:sectionsControl];

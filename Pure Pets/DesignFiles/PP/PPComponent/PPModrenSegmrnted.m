@@ -565,6 +565,10 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
         resolvedIndex = MAX(0, MIN(selectedIndex, (NSInteger)self.items.count - 1));
     }
 
+    if (_selectedIndex == resolvedIndex) {
+        return;
+    }
+
     _selectedIndex = resolvedIndex;
     [self pp_refreshAppearanceAnimated:animated];
 }
@@ -771,6 +775,11 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
                             selectedFont:selectedFont];
     }];
 
+    BOOL shouldAnimate = animated && self.window != nil && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        [self layoutIfNeeded];
+    }
+
     [self pp_updateSelectionIndicatorMetrics];
 
     NSString *selectedTitle = hasSelection ? self.items[self.selectedIndex].title : nil;
@@ -785,7 +794,6 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
         [self layoutIfNeeded];
     };
 
-    BOOL shouldAnimate = animated && self.window != nil && !UIAccessibilityIsReduceMotionEnabled();
     if (shouldAnimate) {
         [UIView animateWithDuration:PPModrenSegmrntedAnimationDuration
                               delay:0.0

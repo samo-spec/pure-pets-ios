@@ -3059,8 +3059,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         normalSymbolName = @"cart.badge.clock";
         selectedSymbolName = @"cart.badge.clock.fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
-                              pointSize:20.0
-                                 weight:selected ? UIImageSymbolWeightBold : UIImageSymbolWeightSemibold
+                             pointSize:selected ? 20.0 : 18.0
+                                weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
                                   scale:UIImageSymbolScaleMedium
                                 palette:@[selected ? (AppPrimaryClr ?: UIColor.systemTealColor) : UIColor.secondaryLabelColor]
                            makeTemplate:YES];
@@ -3082,8 +3082,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             break;
     }
     UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:19.0
-                                                         weight:UIImageSymbolWeightMedium
+        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 19.0 : 17.0
+                                                         weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
                                                           scale:UIImageSymbolScaleMedium];
     return [UIImage imageNamed:(selected ? selectedSymbolName : normalSymbolName)] ?: [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];

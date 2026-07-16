@@ -25,6 +25,21 @@ static const void *kPPEmptyStateTokenKey = &kPPEmptyStateTokenKey;
                           dataCount:(NSInteger)count
                              config:(PPEmptyStateConfig *)config
 {
+    [self updateEmptyStateForListView:listView
+                            dataCount:count
+                               config:config
+                       delayWhenEmpty:YES];
+}
+
++ (void)updateEmptyStateForListView:(UICollectionView *)listView
+                          dataCount:(NSInteger)count
+                             config:(PPEmptyStateConfig *)config
+                      delayWhenEmpty:(BOOL)delayWhenEmpty
+{
+    if (!listView) {
+        return;
+    }
+
     // 🔒 Invalidate previous pending updates immediately
     NSNumber *token = objc_getAssociatedObject(listView, kPPEmptyStateTokenKey);
     NSInteger newToken = token.integerValue + 1;
@@ -110,7 +125,7 @@ static const void *kPPEmptyStateTokenKey = &kPPEmptyStateTokenKey;
         }
     };
 
-    if (count == 0) {
+    if (count == 0 && delayWhenEmpty) {
         // ⏱ Delay ONLY when empty
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
                                      (int64_t)(1.0 * NSEC_PER_SEC)),

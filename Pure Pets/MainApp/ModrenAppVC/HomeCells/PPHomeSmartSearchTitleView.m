@@ -143,7 +143,9 @@ static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
     }
     [self addSubview:chromeView];
     _chromeView = chromeView;
-    [chromeView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+    if (![self pp_usesSystemGlassChrome]) {
+        [chromeView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+    }
 
     if (![self pp_usesSystemGlassChrome]) {
         // Legacy frosted fallback for pre-iOS 26 runtimes.
@@ -303,11 +305,25 @@ static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
     [trailingOrbView addSubview:chevronView];
     _chevronView = chevronView;
 
+    // Apply chromeView positioning constraints based on iOS version
+    if (@available(iOS 26.0, *)) {
+        // iOS 26+: Glass button uses intrinsic size, center vertically in parent
+        [NSLayoutConstraint activateConstraints:@[
+            [chromeView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+            [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        ]];
+    } else {
+        // Older iOS: chromeView fills the entire view
+        [NSLayoutConstraint activateConstraints:@[
+            [chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
+            [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+            [chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        ]];
+    }
+
     [NSLayoutConstraint activateConstraints:@[
-        [chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
         [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
         [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],

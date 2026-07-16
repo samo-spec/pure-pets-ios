@@ -50,6 +50,16 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// `PPHeroGlassAccentStyleCornerGlow`. Defaults to 1.0.
 @property (nonatomic, assign) CGFloat cornerGlowOpacityMultiplier;
 
+/// Controls the alignment and layout direction of the decorative glows.
+/// Defaults to system direction (standard swapped layout).
+@property (nonatomic, assign) NSInteger glowDirection;
+
+/// Enables the optional premium signature shimmer sweep. Defaults to NO.
+@property (nonatomic, assign) BOOL PPHeroApexUseShimmer;
+
+/// Enables optional under-finger depth and lens motion. Defaults to NO.
+@property (nonatomic, assign) BOOL PPHeroApexUseUnderFingerMotion;
+
 /// Requests the semantic motion timeline. Safe to call repeatedly; animation
 /// identity and phase are preserved whenever the view is only suspended.
 - (void)startAnimations;

@@ -463,7 +463,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     PPDataSection section = self.currentSection;
     PPFilterState *filterState = [self.filterState copy];
     os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
-    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "DataViewRequest",
+    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "data.request",
                                "token=%lu section=%ld", (unsigned long)requestToken, (long)section);
 
     __weak typeof(self) weakSelf = self;
@@ -474,14 +474,14 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         [weakSelf pp_dispatchMain:^{
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "stale=1");
+                                         "data.request", "stale=1");
                 return;
             }
 
             if (error) {
                 weakSelf.isLoading = NO;
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "error=1");
+                                         "data.request", "error=1");
                 if (weakSelf.onError) {
                     weakSelf.onError(error);
                 }
@@ -501,7 +501,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 weakSelf.latestRawResults = safeResults;
 
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "results=%lu", (unsigned long)safeResults.count);
+                                         "data.request", "results=%lu", (unsigned long)safeResults.count);
                 weakSelf.isLoading = NO;
                 [weakSelf.mutableItems removeAllObjects];
                 [weakSelf.mutableItems addObjectsFromArray:viewModels];
@@ -702,9 +702,14 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             return;
         }
 
+        os_signpost_id_t filterSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+        os_signpost_interval_begin(PPDataViewVMPerformanceLog(), filterSignpostID, "data.filter", "count=%lu", (unsigned long)results.count);
+
         NSArray *filtered = [weakSelf pp_applyFiltersToResults:results
                                                      filterState:filterState
                                                         section:section];
+
+        os_signpost_interval_end(PPDataViewVMPerformanceLog(), filterSignpostID, "data.filter", "filteredCount=%lu", (unsigned long)filtered.count);
         
         if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
@@ -712,8 +717,13 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
             return;
         }
 
+        os_signpost_id_t transformSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+        os_signpost_interval_begin(PPDataViewVMPerformanceLog(), transformSignpostID, "data.transform", "count=%lu", (unsigned long)filtered.count);
+
         NSArray<PPUniversalCellViewModel *> *viewModels =
         [weakSelf buildViewModelsFromModels:filtered section:section];
+
+        os_signpost_interval_end(PPDataViewVMPerformanceLog(), transformSignpostID, "data.transform", "viewModelsCount=%lu", (unsigned long)viewModels.count);
 
         dispatch_async(dispatch_get_main_queue(), ^{
             os_signpost_interval_end(PPDataViewVMPerformanceLog(), buildSignpostID,
@@ -906,6 +916,9 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         ? [state valueForFilterID:PPFilterIDSort]
         : PPFilterSortRecommended;
     if (sortVal != PPFilterSortRecommended) {
+        os_signpost_id_t sortSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
+        os_signpost_interval_begin(PPDataViewVMPerformanceLog(), sortSignpostID, "data.sort", "count=%lu", (unsigned long)filtered.count);
+
         filtered = [filtered sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
             switch (sortVal) {
                 case PPFilterSortPriceLowToHigh: {
@@ -936,6 +949,8 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                 default: return NSOrderedSame;
             }
         }];
+
+        os_signpost_interval_end(PPDataViewVMPerformanceLog(), sortSignpostID, "data.sort");
     }
 
     return filtered;
@@ -1034,7 +1049,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
     PPDataSection section = self.currentSection;
     PPFilterState *filterState = [self.filterState copy];
     os_signpost_id_t requestSignpostID = os_signpost_id_generate(PPDataViewVMPerformanceLog());
-    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "DataViewRequest",
+    os_signpost_interval_begin(PPDataViewVMPerformanceLog(), requestSignpostID, "data.request",
                                "token=%lu section=%ld reload=1", (unsigned long)requestToken, (long)section);
 
     // Reset state
@@ -1055,14 +1070,14 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
         [weakSelf pp_dispatchMain:^{
             if (!weakSelf || ![weakSelf pp_isCurrentRequest:requestToken]) {
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "stale=1 reload=1");
+                                         "data.request", "stale=1 reload=1");
                 return;
             }
 
             if (error) {
                 weakSelf.isLoading = NO;
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "error=1 reload=1");
+                                         "data.request", "error=1 reload=1");
                 if (completion) completion(error);
                 return;
             }
@@ -1078,7 +1093,7 @@ static dispatch_queue_t PPDataViewVMBuildQueue(void)
                     return;
                 }
                 os_signpost_interval_end(PPDataViewVMPerformanceLog(), requestSignpostID,
-                                         "DataViewRequest", "results=%lu reload=1",
+                                         "data.request", "results=%lu reload=1",
                                          (unsigned long)safeResults.count);
                 weakSelf.isLoading = NO;
                 [weakSelf.mutableItems removeAllObjects];

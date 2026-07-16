@@ -38,6 +38,16 @@
 #import "OrderHistoryViewController.h"
 #import "PurchasedItemsViewController.h"
 #import "PPOrder.h"
+#import <os/signpost.h>
+
+static os_log_t PPHomePerformanceLog(void) {
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets", "DataView");
+    });
+    return log;
+}
 #import "PPRolePermission.h"
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
@@ -9816,6 +9826,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    os_log_t log = PPHomePerformanceLog();
+    os_signpost_id_t tapSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, tapSignpostID, "home.category.tap", "kind=%{public}@", kind.KindName ?: @"");
+
+    os_signpost_id_t prepSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, prepSignpostID, "navigation.prepare");
+
     // MainKinds rail is an ads/category browse entry. Do not let a previously
     // saved marketplace section force this fresh route into Accessories.
     PPDataViewInput *input = [PPDataViewInput inputWithMainKind:kind
@@ -9825,9 +9842,20 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     input.initialSectionOverride = @(PPDataSectionAds);
     PPDataViewVC *vc =  [[PPDataViewVC alloc] initWithInput:input];
     vc.pp_transitionStyle = PPTransitionStyleNone;
+
+    os_signpost_interval_end(log, prepSignpostID, "navigation.prepare");
+
+    os_signpost_id_t pushSignpostID = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, pushSignpostID, "navigation.push_or_present");
+
     if (![PPHomeHelper pushViewControllerSafely:vc from:self animated:YES]) {
+        os_signpost_interval_end(log, pushSignpostID, "navigation.push_or_present", "status=failed");
+        os_signpost_interval_end(log, tapSignpostID, "home.category.tap", "status=failed");
         return;
     }
+
+    os_signpost_interval_end(log, pushSignpostID, "navigation.push_or_present", "status=success");
+    os_signpost_interval_end(log, tapSignpostID, "home.category.tap", "status=success");
 }
 
 - (void)handleDeepLinkWithTarget:(PPDeepLinkTarget)target

@@ -27,6 +27,11 @@
                           dataCount:(NSInteger)count
                              config:(PPEmptyStateConfig *)config;
 
++ (void)updateEmptyStateForListView:(UICollectionView *)listView
+                          dataCount:(NSInteger)count
+                             config:(PPEmptyStateConfig *)config
+                      delayWhenEmpty:(BOOL)delayWhenEmpty;
+
 /// Force-remove the empty state (if any).
 + (void)removeEmptyStateFromListView:(UIView *)listView;
 @end
