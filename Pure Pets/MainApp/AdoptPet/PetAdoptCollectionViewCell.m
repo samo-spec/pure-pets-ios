@@ -140,7 +140,9 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     _heroBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     _heroBackgroundView.cornerGlowOpacityMultiplier = 0.72;
+    _heroBackgroundView.PPHeroApexUseShimmer = NO;
     _heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
+    _heroBackgroundView.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     [_cardSurfaceView insertSubview:_heroBackgroundView atIndex:0];
 
     _hairlineView = [[UIView alloc] init];

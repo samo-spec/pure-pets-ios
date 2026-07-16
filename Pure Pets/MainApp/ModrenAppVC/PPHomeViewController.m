@@ -89,7 +89,7 @@ static os_log_t PPHomePerformanceLog(void) {
 @end
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
-static BOOL const PPHomeUseHeroApex = YES;
+static BOOL const PPHomeUseHeroApex = NO;
 static NSString * const PPHomeLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
@@ -309,6 +309,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     glass.cornerGlowOpacityMultiplier = 0.48;
+    glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
+    glass.PPHeroApexUseShimmer = NO;
     [cardView insertSubview:glass atIndex:0];
     _heroGlassBackground = glass;
 

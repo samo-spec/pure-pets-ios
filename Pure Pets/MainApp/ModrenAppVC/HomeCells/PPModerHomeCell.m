@@ -441,7 +441,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
     UIColor *regularStroke = PPModerHomeDynamicColor(
-        [UIColor.blackColor colorWithAlphaComponent:0.055],
+        [UIColor.blackColor colorWithAlphaComponent:0.080],
         [UIColor.whiteColor colorWithAlphaComponent:0.11]
     );
     UIColor *selectedStroke = [accent colorWithAlphaComponent:self.isAllOption ? 0.58 : 0.48];
@@ -675,9 +675,9 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
             CGFloat liftScale = self.isKindSelected ? 1.038 : 1.028;
             self.tapButton.transform = CGAffineTransformMakeScale(liftScale, liftScale);
-            self.imagePlateView.transform = CGAffineTransformMakeScale(1.08, 1.08);
-            self.kindImageView.transform = CGAffineTransformMakeScale(1.04, 1.04);
-            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.28, 1.0);
+            self.imagePlateView.transform = CGAffineTransformMakeScale(1.82, 1.82);
+            self.kindImageView.transform = CGAffineTransformMakeScale(1.052, 1.052);
+            self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.38, 1.0);
         }];
         [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{
             self.tapButton.transform = [self pp_restingTapTransform];
