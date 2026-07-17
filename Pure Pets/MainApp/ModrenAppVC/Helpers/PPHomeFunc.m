@@ -27,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Home section spacing uses a local visual rhythm so adjacent compositional
 // sections do not accidentally double the visible gap.
 
-static const CGFloat PPHomeVerticalInnerSpacing   = 0.0;
+static const CGFloat PPHomeVerticalInnerSpacing   = 8.0;
 static const CGFloat PPHomeEdgeSpacing   = 16.0;
 static const CGFloat PPHomeSpacingBase    = 16.0;
 static const CGFloat PPInner = 16.0;
@@ -981,7 +981,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) - 10.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) - 20.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);

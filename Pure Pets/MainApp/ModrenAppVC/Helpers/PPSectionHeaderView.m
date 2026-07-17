@@ -21,7 +21,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 @interface PPSectionHeaderView () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong, readwrite) UILabel *titleLabel;
-@property (nonatomic, strong, readwrite) UILabel *subtitleLabel;
+@property (nonatomic, strong, readwrite) PPInsetLabel *subtitleLabel;
 @property (nonatomic, strong, readwrite) UIButton *actionButton;
 
 @property (nonatomic, strong) UIView *surfaceView;
@@ -186,7 +186,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                      forAxis:UILayoutConstraintAxisVertical];
 
-    self.subtitleLabel = [[UILabel alloc] init];
+    self.subtitleLabel = [[PPInsetLabel alloc] init];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtitleLabel.font = [self pp_subtitleFont];
     self.subtitleLabel.textColor = [self pp_subtitleColor];
@@ -195,9 +195,10 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.subtitleLabel.hidden = YES;
+    
     [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                         forAxis:UILayoutConstraintAxisVertical];
-
+    
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 }
@@ -270,12 +271,12 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.contentStackView.axis = UILayoutConstraintAxisVertical;
     self.contentStackView.alignment = UIStackViewAlignmentFill;
     self.contentStackView.distribution = UIStackViewDistributionFill;
-    self.contentStackView.spacing = -4.0;
+    self.contentStackView.spacing = -2.0;
     self.contentStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     [self.contentStackView setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
-
+    [self.subtitleLabel.heightAnchor constraintEqualToConstant:12].active = YES;
     [self.surfaceView addSubview:self.contentStackView];
 
     NSLayoutConstraint *contentTopConstraint =
