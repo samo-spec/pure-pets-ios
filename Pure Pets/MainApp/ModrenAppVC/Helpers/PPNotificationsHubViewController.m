@@ -7,7 +7,7 @@
 
 #import "PPNotificationsHubViewController.h"
 #import "PPPetRemindersViewController.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "UserChatsViewController.h"
 #import "OrderDetailsViewController.h"
 #import "PPOrder.h"
@@ -1220,7 +1220,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
+@property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -1471,7 +1471,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     }
     [self.heroContainerView addSubview:self.heroSurfaceView];
 
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     [self.heroSurfaceView insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;

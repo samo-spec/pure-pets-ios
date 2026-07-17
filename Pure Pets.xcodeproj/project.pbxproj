@@ -47,7 +47,7 @@
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
-		A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */; };
+		A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */; };
 		A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */; };
 		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
@@ -577,9 +577,9 @@
 		F2A0BBC12F1F0BA4003715F0 /* ChatVideoMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC02F1F0BA4003715F0 /* ChatVideoMessageCell.m */; };
 		F2A0BBC42F1FD9BB003715F0 /* PPAudioPlaybackController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */; };
 		F2A0BBC72F1FDAF2003715F0 /* ChatAudioMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC62F1FDAD9003715F0 /* ChatAudioMessageCell.m */; };
-		F2A0BBD22FFAA111003715F0 /* ChatStickerMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */; };
 		F2A0BBCD2F203B1E003715F0 /* TypingIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */; };
 		F2A0BBD02F203D81003715F0 /* ChMessagingController+Video.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBCF2F203D81003715F0 /* ChMessagingController+Video.m */; };
+		F2A0BBD22FFAA111003715F0 /* ChatStickerMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */; };
 		F2A0F5F22CC842D300B38F14 /* KBSwipeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */; };
 		F2A1B2C32F45111100FFA0B8 /* QIBPayment.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = F273148B2F31540B00FFA0B8 /* QIBPayment.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A1DD5D2D03058F009F0B62 /* YIInnerShadowView.m */; };
@@ -944,7 +944,7 @@
 		A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechSpeaker.swift; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
-		A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHeroGlassBackgroundViewApexBridge.m; sourceTree = "<group>"; };
+		A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundViewApexBridge.m; sourceTree = "<group>"; };
 		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
@@ -1937,8 +1937,6 @@
 		F2A0BBBD2F1F0B71003715F0 /* ChatImageMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatImageMessageCell.m; sourceTree = "<group>"; };
 		F2A0BBBF2F1F0B9A003715F0 /* ChatVideoMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatVideoMessageCell.h; sourceTree = "<group>"; };
 		F2A0BBC02F1F0BA4003715F0 /* ChatVideoMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatVideoMessageCell.m; sourceTree = "<group>"; };
-		F2A0BBD02FFAA111003715F0 /* ChatStickerMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatStickerMessageCell.h; sourceTree = "<group>"; };
-		F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatStickerMessageCell.m; sourceTree = "<group>"; };
 		F2A0BBC22F1FD99A003715F0 /* PPAudioPlaybackController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAudioPlaybackController.h; sourceTree = "<group>"; };
 		F2A0BBC32F1FD9AA003715F0 /* PPAudioPlaybackController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAudioPlaybackController.m; sourceTree = "<group>"; };
 		F2A0BBC52F1FDACD003715F0 /* ChatAudioMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatAudioMessageCell.h; sourceTree = "<group>"; };
@@ -1947,6 +1945,8 @@
 		F2A0BBCC2F203B0D003715F0 /* TypingIndicatorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TypingIndicatorView.m; sourceTree = "<group>"; };
 		F2A0BBCE2F203D81003715F0 /* ChMessagingController+Video.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Video.h"; sourceTree = "<group>"; };
 		F2A0BBCF2F203D81003715F0 /* ChMessagingController+Video.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Video.m"; sourceTree = "<group>"; };
+		F2A0BBD02FFAA111003715F0 /* ChatStickerMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatStickerMessageCell.h; sourceTree = "<group>"; };
+		F2A0BBD12FFAA111003715F0 /* ChatStickerMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatStickerMessageCell.m; sourceTree = "<group>"; };
 		F2A0F5F02CC842D300B38F14 /* KBSwipeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = KBSwipeCell.h; sourceTree = "<group>"; };
 		F2A0F5F12CC842D300B38F14 /* KBSwipeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KBSwipeCell.m; sourceTree = "<group>"; };
 		F2A1DD5A2D03058F009F0B62 /* YIInnerShadowLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = YIInnerShadowLayer.h; sourceTree = "<group>"; };
@@ -1958,8 +1958,8 @@
 		F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UserNotifications.framework; path = System/Library/Frameworks/UserNotifications.framework; sourceTree = SDKROOT; };
 		F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
 		F2A1DD7B2D043A79009F0B62 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHeroGlassBackgroundView.h; sourceTree = "<group>"; };
-		F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHeroGlassBackgroundView.m; sourceTree = "<group>"; };
+		F2A24AD03002DA7F003AB79D /* PPBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBackgroundView.h; sourceTree = "<group>"; };
+		F2A24AD13002DA7F003AB79D /* PPBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundView.m; sourceTree = "<group>"; };
 		F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPInfoPillsView.h; sourceTree = "<group>"; };
 		F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPInfoPillsView.m; sourceTree = "<group>"; };
 		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
@@ -2441,7 +2441,7 @@
 		F2FFDB012FCDCFD00025B5A9 /* PPFulfillmentOrder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFulfillmentOrder.m; sourceTree = "<group>"; };
 		F2FFDB022FCDCFD00025B5A9 /* PPFulfillmentOrder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFulfillmentOrder.h; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
-		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
+		F56AEC9C060B7F98E8DD47E0 /* Speech.framework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.framework; name = Speech.framework; path = System/Library/Frameworks/Speech.framework; sourceTree = SDKROOT; };
 		F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoicePermissionManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -3498,11 +3498,6 @@
 		F25373E42E33AFEA00CD93E7 /* UserFiles */ = {
 			isa = PBXGroup;
 			children = (
-				F2A24AD03002DA7F003AB79D /* PPHeroGlassBackgroundView.h */,
-				F2A24AD13002DA7F003AB79D /* PPHeroGlassBackgroundView.m */,
-				A5E100012FF1000100A5E001 /* PPHeroApex.swift */,
-				A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */,
-				A5E100032FF1000100A5E003 /* PPHeroGlassBackgroundViewApexBridge.m */,
 				F256E4E22FE0C70C004E1E2E /* PPUserMenuViewController.h */,
 				F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */,
 				F27365F92F85D5AB000AB3DD /* UsesHelpers */,
@@ -3519,6 +3514,18 @@
 				F28CBB6B2D3077F0002993F0 /* SettingVC.m */,
 			);
 			path = UserFiles;
+			sourceTree = "<group>";
+		};
+		F25CC3A03009BDA2007D24AB /* PPBackground */ = {
+			isa = PBXGroup;
+			children = (
+				F2A24AD03002DA7F003AB79D /* PPBackgroundView.h */,
+				F2A24AD13002DA7F003AB79D /* PPBackgroundView.m */,
+				A5E100012FF1000100A5E001 /* PPHeroApex.swift */,
+				A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */,
+				A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */,
+			);
+			path = PPBackground;
 			sourceTree = "<group>";
 		};
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
@@ -4700,6 +4707,7 @@
 				5567B37190496A6732104BBC /* PPRatingView.m */,
 				EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */,
 				88157B791FE37AB03DA1B1F5 /* PPProductCard.m */,
+				F56AEC9C060B7F98E8DD47E0 /* Speech.framework */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -4785,6 +4793,7 @@
 		F2B1A62C2E6EA63F0019FC7C /* PP */ = {
 			isa = PBXGroup;
 			children = (
+				F25CC3A03009BDA2007D24AB /* PPBackground */,
 				F2A7E6B92FF722F800BDC981 /* PPFormEngine */,
 				F281B47E2FCB6735009118F2 /* PPComponent */,
 				F2A83AD02F88781B00930857 /* PPNAV */,
@@ -5653,7 +5662,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -5873,7 +5883,7 @@
 				A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */,
 				F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */,
 				F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */,
-				A5E100042FF1000100A5E004 /* PPHeroGlassBackgroundViewApexBridge.m in Sources */,
+				A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */,
 				F259DDDD2D29622E005524F8 /* XLFormButtonCell.m in Sources */,
 				F20956762F85679C007C4ABA /* PPPetReminder.m in Sources */,
 				F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */,
@@ -6611,7 +6621,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6721,7 +6731,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6827,7 +6837,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6845,7 +6855,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6862,7 +6872,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6879,7 +6889,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 204;
+				CURRENT_PROJECT_VERSION = 205;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

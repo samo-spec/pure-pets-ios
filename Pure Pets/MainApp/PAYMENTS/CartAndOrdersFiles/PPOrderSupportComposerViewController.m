@@ -9,7 +9,7 @@
 #import "PPOrderManager.h"
 #import "OrderSupportFunc.h"
 #import "PPFirebaseSessionBridge.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPFormEngine.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
@@ -41,7 +41,7 @@ static CGFloat PPOrderSupportPremiumTabBarClearance(void)
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
 @property (nonatomic, strong) UIView *heroContentView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *heroBackgroundView;
 @property (nonatomic, strong) UIButton *heroBackButton;
 @property (nonatomic, strong) UILabel *heroKickerLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
@@ -247,7 +247,7 @@ static CGFloat PPOrderSupportPremiumTabBarClearance(void)
     PPApplyContinuousCorners(self.heroSurfaceView, PPCornerHero);
     [self.view insertSubview:self.heroSurfaceView belowSubview:self.actionBar];
 
-    self.heroBackgroundView = [PPHeroGlassBackgroundView new];
+    self.heroBackgroundView = [PPBackgroundView new];
     self.heroBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     self.heroBackgroundView.cornerGlowOpacityMultiplier = 0.56;

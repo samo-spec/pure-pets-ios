@@ -7,14 +7,14 @@
 
 #import "PetAdoptCollectionViewCell.h"
 #import "AppClasses.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 
 static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
 @interface PetAdoptCollectionViewCell () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) UIView *cardSurfaceView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *heroBackgroundView;
 @property (nonatomic, strong) UIView *contentWrapView;
 @property (nonatomic, strong) UIView *visualStageView;
 @property (nonatomic, strong) UIView *visualGlassView;
@@ -136,7 +136,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     _cardSurfaceView.accessibilityTraits = UIAccessibilityTraitButton;
     [self.contentView addSubview:_cardSurfaceView];
 
-    _heroBackgroundView = [PPHeroGlassBackgroundView new];
+    _heroBackgroundView = [PPBackgroundView new];
     _heroBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     _heroBackgroundView.cornerGlowOpacityMultiplier = 0.72;

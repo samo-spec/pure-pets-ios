@@ -1,5 +1,5 @@
 //
-//  PPHeroGlassBackgroundView.h
+//  PPBackgroundView.h
 //  Pure Pets
 //
 //  Reusable decorative glass background extracted from PPUserMenuViewController.
@@ -31,13 +31,13 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 ///
 /// Usage:
 /// @code
-///   PPHeroGlassBackgroundView *bg = [PPHeroGlassBackgroundView new];
+///   PPBackgroundView *bg = [PPBackgroundView new];
 ///   bg.translatesAutoresizingMaskIntoConstraints = NO;
 ///   [myCard insertSubview:bg atIndex:0];
 ///   // pin to all edges of myCard ...
 ///   [bg startAnimations];
 /// @endcode
-@interface PPHeroGlassBackgroundView : UIView
+@interface PPBackgroundView : UIView
 
 /// Optional accent override for screens that need the hero glass surface to
 /// follow local state (for example, an order status color).

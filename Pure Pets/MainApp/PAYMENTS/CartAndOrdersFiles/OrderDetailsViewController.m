@@ -23,7 +23,7 @@
 #import "OrderSupportFunc.h"
 #import "AppClasses.h"
 #import "PPAlertHelper.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "UserManager.h"
 #import "ChManager.h"
 #import "PPSelectOptionViewController.h"
@@ -376,7 +376,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
 @property (nonatomic, strong) UIView *statusSummaryCard;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
+@property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UIView *ambientDotsContainerView;
 @property (nonatomic, strong) UIView *ambientDot1;
 @property (nonatomic, strong) UIView *ambientDot2;
@@ -1074,7 +1074,7 @@ NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
     self.statusSummaryCard.layer.masksToBounds = NO;
     [self.headerCard addSubview:self.statusSummaryCard];
 
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     [self.statusSummaryCard insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;

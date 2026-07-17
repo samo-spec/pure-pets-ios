@@ -3,7 +3,7 @@
 //  Pure Pets
 //
 //  Flagship-grade, background-only hero material. The Objective-C
-//  PPHeroGlassBackgroundView contract stays stable while this view owns
+//  PPBackgroundView contract stays stable while this view owns
 //  rendering, accessibility, interaction, and motion lifecycle.
 //
 
@@ -2309,7 +2309,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 //  Pure Pets
 //
 //  Flagship-grade, background-only hero material. The Objective-C
-//  PPHeroGlassBackgroundView contract stays stable while this view owns
+//  PPBackgroundView contract stays stable while this view owns
 //  rendering, accessibility, interaction, and motion lifecycle.
 //
 /*

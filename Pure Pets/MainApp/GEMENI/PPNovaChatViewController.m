@@ -4,7 +4,7 @@
 //
 
 #import "PPNovaChatViewController.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "ChatMessageModel.h"
 #import "PPAgentClient.h"
 #import "PPNovaGenkitService.h"
@@ -754,7 +754,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate, NovaConfirmationCellDelegate, PPNovaSwiftUIChatBarViewControllerDelegate, NovaVoiceObjCMessageSending, NovaVoiceObjCBridgeDelegate>
 
 @property (nonatomic, strong) UIView *novaHeaderContentView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *ambientBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaHeaderView;
 @property (nonatomic, strong) UIView *novaHeaderChromeView;
 @property (nonatomic, strong) CAShapeLayer *novaHeaderLiquidBorderLayer;
@@ -4621,7 +4621,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)setupAmbientBackground {
-    PPHeroGlassBackgroundView *backgroundView = [[PPHeroGlassBackgroundView alloc] init];
+    PPBackgroundView *backgroundView = [[PPBackgroundView alloc] init];
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = YES;
     backgroundView.PPHeroApexUseShimmer = NO;

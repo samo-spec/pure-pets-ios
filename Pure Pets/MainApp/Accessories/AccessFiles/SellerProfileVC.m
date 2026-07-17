@@ -21,7 +21,7 @@
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PPModernAvatarRenderer.h"
 #import "UIViewController+PPBottomSurface.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import <QuartzCore/QuartzCore.h>
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -635,7 +635,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *heroSurfaceView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *heroGlassBackgroundView;
 @property (nonatomic, strong) UIView *topFadeView;
 @property (nonatomic, strong) CAGradientLayer *heroBottomFadeLayer;
 @property (nonatomic, strong) UIButton *heroBackButton;
@@ -973,7 +973,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
         }
     }
 
-    PPHeroGlassBackgroundView *glassBg = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glassBg = [PPBackgroundView new];
     glassBg.translatesAutoresizingMaskIntoConstraints = NO;
     glassBg.layer.cornerRadius = kSPSurfaceCornerRadius;
     glassBg.layer.masksToBounds = YES;

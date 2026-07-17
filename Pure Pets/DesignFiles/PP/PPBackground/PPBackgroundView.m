@@ -1,12 +1,12 @@
 //
-//  PPHeroGlassBackgroundView.m
+//  PPBackgroundView.m
 //  Pure Pets
 //
 //  Reusable decorative glass background extracted from PPUserMenuViewController hero card.
 //  The constellation uses restrained, lifecycle-safe ambient motion for premium depth.
 //
 
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPMarketplaceHeroCardStyle.h"
 #import "Language.h"
 
@@ -186,7 +186,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 #pragma mark - Implementation
 
-@interface PPHeroGlassBackgroundView ()
+@interface PPBackgroundView ()
 @property (nonatomic, strong) UIView *materialView;
 @property (nonatomic, strong) CAGradientLayer *gradientLayer;
 @property (nonatomic, strong) CAGradientLayer *depthLayer;
@@ -211,7 +211,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 - (void)pp_applicationDidBecomeActive:(NSNotification *)notification;
 @end
 
-@implementation PPHeroGlassBackgroundView
+@implementation PPBackgroundView
 
 #pragma mark - Init
 

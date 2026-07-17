@@ -6,7 +6,7 @@
 #import "PPHomeMarketplaceHeroCell.h"
 #import "MainKindsModel.h"
 #import "PetCareHelpers.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPImageLoaderManager.h"
 #import "PPMarketplaceHeroCardStyle.h"
 
@@ -100,7 +100,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 @interface PPHomeMarketplaceHeroCell ()
 
 @property (nonatomic, strong) UIControl *surfaceControl;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
+@property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIView *eyebrowPillView;
 @property (nonatomic, strong) UIImageView *eyebrowIconView;
@@ -549,7 +549,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     [self.contentView addSubview:surface];
     self.surfaceControl = surface;
 
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleFullScreen;
     glass.cornerGlowOpacityMultiplier = 0.48;

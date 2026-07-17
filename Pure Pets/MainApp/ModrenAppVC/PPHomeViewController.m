@@ -75,7 +75,7 @@ static os_log_t PPHomePerformanceLog(void) {
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPHomeMarketplaceHeroCell.h"
 #import "ProviderCompaniesListVC.h"
 #import "PPHomeProviderCategoryPillCell.h"
@@ -266,7 +266,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     UIImageView *_ctaImageView;
     UIButton *_expandButton;
     UIImageView *_expandImageView;
-    PPHeroGlassBackgroundView *_heroGlassBackground;
+    PPBackgroundView *_heroGlassBackground;
     NSLayoutConstraint *_detailsHeightConstraint;
     BOOL _expanded;
     BOOL _backgroundGlowsFaded;
@@ -305,7 +305,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     [self.contentView addSubview:cardView];
     _cardView = cardView;
 
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     glass.cornerGlowOpacityMultiplier = 0.48;
@@ -702,7 +702,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     _avatarShellView.transform = CGAffineTransformIdentity;
     _detailsHeightConstraint.constant = 96.0;
     [_avatarShellView.layer removeAllAnimations];
-    // Sheen/Glow handled by PPHeroGlassBackgroundView
+    // Sheen/Glow handled by PPBackgroundView
     self.onToggleExpanded = nil;
 }
 
@@ -1460,7 +1460,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) PPHomeAmbientGlowView *pp_premiumBackgroundGlowViewBottom;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *ambientBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeHorizontalUniversalIdentifiers;
@@ -13050,7 +13050,7 @@ presentingViewController:self
     if (PPHomeUseHeroApex) {
         self.pp_premiumBackgroundCanvasView.hidden = YES;
         if (!self.ambientBackgroundView) {
-            self.ambientBackgroundView = [[PPHeroGlassBackgroundView alloc] init];
+            self.ambientBackgroundView = [[PPBackgroundView alloc] init];
             self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
             self.ambientBackgroundView.userInteractionEnabled = NO;
             self.ambientBackgroundView.PPHeroApexUseShimmer = NO;

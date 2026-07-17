@@ -18,7 +18,7 @@
 #import "CountryModel.h"
 #import "PPS.h"
 #import "CartManager.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPOrderSupportComposerViewController.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -136,7 +136,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, strong) UIView *heroSurfaceView;
 @property (nonatomic, strong) UIButton *searchToggleButton;
 @property (nonatomic, assign) BOOL searchExpanded;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroGlassBackground;
+@property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -543,8 +543,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     [self.heroCard addSubview:self.heroSurfaceView];
 
     // Complete hero-card background. Keep all legacy blur/gradient/orb material out
-    // of this surface so PPHeroGlassBackgroundView is the single background source.
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    // of this surface so PPBackgroundView is the single background source.
+    PPBackgroundView *glass = [PPBackgroundView new];
     [self.heroSurfaceView insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 

@@ -19,7 +19,7 @@
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <UserNotifications/UserNotifications.h>
 #import "PPHUD.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 
 typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionProfile = 0,
@@ -608,7 +608,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) NSArray<PPUserMenuSection *> *sections;
 @property (nonatomic, strong) UIView *headerRootView;
 @property (nonatomic, strong) UIView *headerCardView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *headerBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *headerBackgroundView;
 @property (nonatomic, strong) UIView *avatarFrameView;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
@@ -877,7 +877,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [root addSubview:card];
     self.headerCardView = card;
 
-    PPHeroGlassBackgroundView *bg = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *bg = [PPBackgroundView new];
     bg.translatesAutoresizingMaskIntoConstraints = NO;
     bg.hidden = NO;
     bg.alpha = 1.0;

@@ -1,20 +1,20 @@
 //
-//  PPHeroGlassBackgroundViewApexBridge.m
+//  PPBackgroundViewApexBridge.m
 //  Pure Pets
 //
 //  Objective-C compatibility adapter for the Swift PPHeroApexView. The
-//  PPHeroGlassBackgroundView.h contract remains unchanged so existing
+//  PPBackgroundView.h contract remains unchanged so existing
 //  hero call sites keep their current ownership and layout behavior.
 //
 
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import <Pure_Pets-Swift.h>
 
-@interface PPHeroGlassBackgroundView ()
+@interface PPBackgroundView ()
 @property (nonatomic, strong) PPHeroApexView *apexView;
 @end
 
-@implementation PPHeroGlassBackgroundView
+@implementation PPBackgroundView
 
 @synthesize accentColorOverride = _accentColorOverride;
 @synthesize overrideCenterGlowColor = _overrideCenterGlowColor;

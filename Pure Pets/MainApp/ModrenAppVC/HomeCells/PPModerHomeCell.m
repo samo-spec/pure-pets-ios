@@ -440,16 +440,13 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 {
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
-    UIColor *regularStroke = PPModerHomeDynamicColor(
-        [UIColor.blackColor colorWithAlphaComponent:0.080],
-        [UIColor.whiteColor colorWithAlphaComponent:0.11]
-    );
+    UIColor *regularStroke = [UIColor.whiteColor colorWithAlphaComponent:0.11];
     UIColor *selectedStroke = [accent colorWithAlphaComponent:self.isAllOption ? 0.58 : 0.48];
     BOOL borderlessRestoredSelection = selected && self.usesRestoredSelectionAppearance;
     CGFloat glowOpacity = [self pp_restingGlowOpacityForSelected:selected];
 
     void (^updates)(void) = ^{
-        self.titleLabel.textColor = selected ? accent : (AppPrimaryTextClr ?: UIColor.labelColor);
+        self.titleLabel.textColor = selected ? AppSecondaryTextClr : (AppPrimaryTextClr ?: UIColor.labelColor);
         self.selectionIndicatorView.backgroundColor = accent;
         self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
         self.surfaceStrokeLayer.strokeColor = (borderlessRestoredSelection
@@ -574,14 +571,14 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 - (CGFloat)pp_restingGlowOpacityForSelected:(BOOL)selected
 {
     if (selected) {
-        return self.isAllOption ? 0.50 : 0.82;
+        return self.isAllOption ? 0.68 : 0.82;
     }
-    return self.isAllOption ? 0.14 : 0.46;
+    return self.isAllOption ? 0.14 : 0.26;
 }
 
 - (CGFloat)pp_pressedGlowOpacityForSelected:(BOOL)selected
 {
-    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.20 : 0.16));
+    return MIN(1.0, [self pp_restingGlowOpacityForSelected:selected] + (selected ? 0.20 : 0.04));
 }
 
 - (CGAffineTransform)pp_restingTapTransform
@@ -675,8 +672,8 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
         [UIView addKeyframeWithRelativeStartTime:0.0 relativeDuration:0.32 animations:^{
             CGFloat liftScale = self.isKindSelected ? 1.038 : 1.028;
             self.tapButton.transform = CGAffineTransformMakeScale(liftScale, liftScale);
-            self.imagePlateView.transform = CGAffineTransformMakeScale(1.82, 1.82);
-            self.kindImageView.transform = CGAffineTransformMakeScale(1.052, 1.052);
+            self.imagePlateView.transform = CGAffineTransformMakeScale(1.082, 1.082);
+            self.kindImageView.transform = CGAffineTransformMakeScale(1.044, 1.044);
             self.selectionIndicatorView.transform = CGAffineTransformMakeScale(1.38, 1.0);
         }];
         [UIView addKeyframeWithRelativeStartTime:0.32 relativeDuration:0.68 animations:^{

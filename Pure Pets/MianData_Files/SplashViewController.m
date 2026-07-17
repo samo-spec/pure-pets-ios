@@ -7,7 +7,7 @@
 
 #import "SplashViewController.h"
 #import <QuartzCore/QuartzCore.h>
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 
 @import FirebaseFirestore;
 
@@ -33,7 +33,7 @@ static UIColor *SplashViewControllerGoldColor(void) {
 @property (nonatomic, strong) UIImageView *patternView;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
-@property (nonatomic, strong) PPHeroGlassBackgroundView *ambientBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *ambientBackgroundView;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIView *logoPlateView;
 @property (nonatomic, strong) UIView *logoInnerSurfaceView;
@@ -126,7 +126,7 @@ static UIColor *SplashViewControllerGoldColor(void) {
     self.view.semanticContentAttribute = GM.setSemantic;
     self.view.clipsToBounds = YES;
     
-    PPHeroGlassBackgroundView *ambientBackgroundView = [[PPHeroGlassBackgroundView alloc] init];
+    PPBackgroundView *ambientBackgroundView = [[PPBackgroundView alloc] init];
     ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     ambientBackgroundView.userInteractionEnabled = NO;
     ambientBackgroundView.PPHeroApexUseShimmer = NO;

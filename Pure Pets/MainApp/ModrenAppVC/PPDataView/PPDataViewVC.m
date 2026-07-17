@@ -23,7 +23,7 @@
 #import "PPSearchViewController.h"
 #import "PPHUD.h"
 #import "UIView+Badge.h"
-#import "PPHeroGlassBackgroundView.h"
+#import "PPBackgroundView.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
 #import "UserManager.h"
@@ -498,7 +498,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @end
 
 @interface PPDataViewControlIslandView ()
-@property (nonatomic, strong) PPHeroGlassBackgroundView *heroBackgroundView;
+@property (nonatomic, strong) PPBackgroundView *heroBackgroundView;
 @property (nonatomic, strong, nullable) UIColor *baseAccentColorOverride;
 @property (nonatomic, assign) NSInteger activeFilterCount;
 @end
@@ -518,7 +518,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    PPHeroGlassBackgroundView *glass = [PPHeroGlassBackgroundView new];
+    PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleBar;
     glass.cornerGlowOpacityMultiplier = 0.18;
