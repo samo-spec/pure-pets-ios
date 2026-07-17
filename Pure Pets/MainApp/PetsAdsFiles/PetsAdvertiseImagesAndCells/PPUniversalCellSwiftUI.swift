@@ -280,6 +280,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isHighlighted = false
     @Published var isSelected = false
     @Published var isRightToLeft: Bool
+    @Published var isSuggestionsAd = false
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -332,10 +333,16 @@ private final class PPUniversalCardStore: ObservableObject {
         dataViewPresentation: Bool
     ) {
         let previousID = model.id
+        let isAdLike = PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel)
+        let isSuggestions = PPUniversalCellSwiftUIBridge.isSuggestionsSection(for: viewModel, delegate: self.delegate)
+        let isSuggestionsAd = isSuggestions && isAdLike
+        self.isSuggestionsAd = isSuggestionsAd
+
         let resolvedLayout = Self.resolvedLayout(
             objcLayout,
             viewModel: viewModel,
-            dataViewPresentation: dataViewPresentation
+            dataViewPresentation: dataViewPresentation,
+            isSuggestionsAd: isSuggestionsAd
         )
         let horizontal = resolvedLayout.isHorizontal
         let resolvedContext = Self.cardContext(objcContext)
@@ -351,8 +358,6 @@ private final class PPUniversalCardStore: ObservableObject {
         let cartQuantity = usesQuantity
             ? PPUniversalCellSwiftUIBridge.cartQuantity(for: viewModel)
             : 0
-        let isAdLike =
-            PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel)
         let supportsDiscount =
             PPUniversalCellSwiftUIBridge.showsDiscountPresentation(for: viewModel)
         let finalPrice = viewModel.finalPrice?.decimalValue ?? viewModel.price?.decimalValue
@@ -660,11 +665,13 @@ private final class PPUniversalCardStore: ObservableObject {
         PPUniversalCellSwiftUIBridge.registerStockNotification(
             for: viewModel
         ) { [weak self] succeeded in
-            guard let self, self.notifyItemID == itemID else {
-                return
+            Task { @MainActor [weak self] in
+                guard let self, self.notifyItemID == itemID else {
+                    return
+                }
+                self.isNotifyInFlight = false
+                self.notifySucceeded = succeeded
             }
-            self.isNotifyInFlight = false
-            self.notifySucceeded = succeeded
         }
     }
 
@@ -720,10 +727,17 @@ private final class PPUniversalCardStore: ObservableObject {
     private static func resolvedLayout(
         _ layout: PPManagerCellLayoutMode,
         viewModel: PPUniversalCellViewModel,
-        dataViewPresentation: Bool
+        dataViewPresentation: Bool,
+        isSuggestionsAd: Bool = false
     ) -> PPUniversalCardLayout {
+        if isSuggestionsAd {
+            return .market
+        }
         if layout == .cellLayoutModeHorizontalRow && !dataViewPresentation {
             if PPUniversalCellSwiftUIBridge.isAccessoryViewModel(viewModel) {
+                return .market
+            }
+            if PPUniversalCellSwiftUIBridge.isServiceLike(viewModel) {
                 return .market
             }
             if PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel) {
@@ -806,8 +820,8 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private let cardRadius: CGFloat = 22
-    private let imageRadius: CGFloat = 18
+    private let cardRadius: CGFloat = 16
+    private let imageRadius: CGFloat = 13
 
     var body: some View {
         Group {
@@ -823,8 +837,8 @@ private struct PPUniversalCardRenderer: View {
                 }
             }
         }
-        .padding(.horizontal, 2)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 3)
+        .padding(.vertical, 2)
         .environment(
             \.layoutDirection,
             store.isRightToLeft ? .rightToLeft : .leftToRight
@@ -838,32 +852,27 @@ private struct PPUniversalCardRenderer: View {
     private func cardLayout(size: CGSize) -> some View {
         let card = Group {
             if store.layout.isHorizontal {
-                HStack(spacing: 14) {
+                HStack(spacing: 11) {
                     media
                         .frame(
                             width: min(
-                                store.layout == .fullWidth ? 156 : 142,
-                                max(116, size.width * 0.36)
+                                store.layout == .fullWidth ? 148 : 134,
+                                max(112, size.width * 0.35)
                             )
                         )
                     information
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(12)
+                .padding(9)
             } else {
                 VStack(spacing: 0) {
                     media
-                        .frame(
-                            height: min(
-                                max(124, (size.width - 8) * imageHeightRatio),
-                                max(124, size.height * 0.58)
-                            )
-                        )
+                        .frame(height: verticalMediaHeight(for: size))
                     information
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 10)
-                        .padding(.bottom, 12)
+                        .padding(.horizontal, 9)
+                        .padding(.top, 7)
+                        .padding(.bottom, 8)
                 }
                 .padding(4)
             }
@@ -875,9 +884,9 @@ private struct PPUniversalCardRenderer: View {
             .clipShape(cardShape)
             .overlay(cardBorder)
             .shadow(
-                color: .black.opacity(colorScheme == .dark ? 0.20 : 0.075),
-                radius: colorScheme == .dark ? 14 : 12,
-                y: colorScheme == .dark ? 7 : 6
+                color: .black.opacity(colorScheme == .dark ? 0.14 : 0.045),
+                radius: colorScheme == .dark ? 9 : 7,
+                y: colorScheme == .dark ? 4 : 3
             )
             .scaleEffect(
                 store.isHighlighted && !reduceMotion ? 0.98 : 1
@@ -902,15 +911,23 @@ private struct PPUniversalCardRenderer: View {
 
     private var media: some View {
         ZStack {
-            PPUniversalImageRepresentable(
-                references: store.uiReferences,
-                signature: store.imageSignature,
-                imageURL: store.model.imageURL?.absoluteString,
-                placeholder: store.imagePlaceholder,
-                placeholderSystemImage: store.model.placeholderSystemImage,
-                contained: store.model.prefersContainedImage,
-                imageLoader: store.imageLoader
-            )
+            if store.model.imageURL == nil && store.model.videoURL == nil {
+                emptyMedia
+            } else {
+                PPUniversalImageRepresentable(
+                    references: store.uiReferences,
+                    signature: store.imageSignature,
+                    imageURL: store.model.imageURL?.absoluteString,
+                    placeholder: store.imagePlaceholder,
+                    placeholderSystemImage: store.model.placeholderSystemImage,
+                    contained: store.model.prefersContainedImage,
+                    fillsEmptyAreaWithImageBackground:
+                        store.layout == .market &&
+                        store.model.prefersContainedImage,
+                    imageLoader: store.imageLoader
+                )
+                .padding(mediaContentInset)
+            }
 
             if store.isVideoPlaying, let player = store.player {
                 VideoPlayer(player: player)
@@ -920,7 +937,7 @@ private struct PPUniversalCardRenderer: View {
             LinearGradient(
                 colors: [
                     .clear,
-                    .black.opacity(colorScheme == .dark ? 0.12 : 0.055)
+                    .black.opacity(colorScheme == .dark ? 0.08 : 0.025)
                 ],
                 startPoint: .center,
                 endPoint: .bottom
@@ -939,6 +956,18 @@ private struct PPUniversalCardRenderer: View {
         )
         .clipped()
         .accessibilityElement(children: .contain)
+    }
+
+    private var emptyMedia: some View {
+        ZStack {
+            store.palette.groupedSurface
+
+            Image(systemName: store.model.placeholderSystemImage)
+                .font(.system(size: 28, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(store.palette.primary.opacity(0.48))
+                .accessibilityHidden(true)
+        }
     }
 
     private var mediaOverlay: some View {
@@ -978,7 +1007,7 @@ private struct PPUniversalCardRenderer: View {
                     }
                 }
             }
-            .padding(8)
+            .padding(6)
 
             if store.model.videoURL != nil && !store.isVideoPlaying {
                 Button {
@@ -1017,12 +1046,12 @@ private struct PPUniversalCardRenderer: View {
                 .font(
                     .custom(
                         "Beiruti-Bold",
-                        size: store.layout.isHorizontal ? 17 : 16,
+                        size: store.layout.isHorizontal ? 17 : 15.5,
                         relativeTo: .headline
                     )
                 )
                 .foregroundStyle(store.palette.ink)
-                .lineLimit(store.layout.isHorizontal ? 2 : 1)
+                .lineLimit(2)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(.isHeader)
@@ -1034,7 +1063,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Medium",
-                            size: 14,
+                            size: store.layout.isHorizontal ? 14 : 12,
                             relativeTo: .subheadline
                         )
                     )
@@ -1047,36 +1076,65 @@ private struct PPUniversalCardRenderer: View {
 
             if hasPrice {
                 priceRow
-                    .padding(.top, store.model.subtitle == nil ? 6 : 5)
+                    .padding(.top, store.model.subtitle == nil ? 4 : 2)
             }
 
-            Spacer(minLength: store.layout.isHorizontal ? 5 : 7)
+            Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
-            primaryAction
+            if store.model.usesQuantityControl {
+                primaryAction
 
-            if let availability = store.model.availability,
-               !availability.text.isEmpty,
-               !usesCompressedAccessibilityLayout {
-                availabilityRow(availability)
-                    .padding(.top, 7)
+                if let availability = store.model.availability,
+                   !availability.text.isEmpty,
+                   !usesCompressedAccessibilityLayout {
+                    availabilityRow(availability)
+                        .padding(.top, 5)
+                }
+            } else {
+                detailsFooter
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var priceRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 7) {
-            Text(displayPrice)
-                .font(
-                    .custom(
-                        "Beiruti-Black",
-                        size: store.layout.isHorizontal ? 22 : 24,
-                        relativeTo: .title3
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            if let price = store.model.price {
+                Text(formattedNumber(price))
+                    .font(
+                        .custom(
+                            "Beiruti-Black",
+                            size: store.layout.isHorizontal ? 22 : 20,
+                            relativeTo: .title3
+                        )
                     )
-                )
-                .foregroundStyle(store.palette.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
+                    .foregroundStyle(store.palette.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Text(normalizedCurrency)
+                    .font(
+                        .custom(
+                            "Beiruti-Bold",
+                            size: 11.5,
+                            relativeTo: .caption
+                        )
+                    )
+                    .foregroundStyle(store.palette.primary.opacity(0.82))
+                    .lineLimit(1)
+            } else {
+                Text(displayPrice)
+                    .font(
+                        .custom(
+                            "Beiruti-Black",
+                            size: store.layout.isHorizontal ? 22 : 20,
+                            relativeTo: .title3
+                        )
+                    )
+                    .foregroundStyle(store.palette.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
 
             if let originalPrice = store.model.originalPrice {
                 Text(formattedPrice(originalPrice))
@@ -1113,6 +1171,128 @@ private struct PPUniversalCardRenderer: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var detailsFooter: some View {
+        HStack(spacing: detailsFooterSpacing) {
+            if let availability = store.model.availability,
+               !usesCompressedAccessibilityLayout {
+                compactMetadata(availability)
+            }
+
+            detailsFooterGap
+
+            if store.isSuggestionsAd,
+               let location = store.viewModel?.location,
+               !location.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(location)
+                        .font(
+                            .custom(
+                                "Beiruti-Bold",
+                                size: 12.5,
+                                relativeTo: .callout
+                            )
+                        )
+                        .lineLimit(1)
+                }
+                .foregroundStyle(store.palette.secondaryInk)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 34)
+            } else {
+                Button {
+                    PPUniversalHaptics.light()
+                    store.handlePrimaryAction()
+                } label: {
+                    Group {
+                        if store.layout.isHorizontal {
+                            HStack(spacing: 5) {
+                                Text(primaryActionTitle)
+                                    .font(
+                                        .custom(
+                                            "Beiruti-Bold",
+                                            size: 12.5,
+                                            relativeTo: .callout
+                                        )
+                                    )
+                                    .lineLimit(1)
+
+                                detailsArrow
+                            }
+                            .padding(.horizontal, 10)
+                            .frame(minHeight: 34)
+                            .background(
+                                store.palette.primary.opacity(
+                                    colorScheme == .dark ? 0.16 : 0.075
+                                ),
+                                in: Capsule()
+                            )
+                        } else {
+                            detailsArrow
+                                .frame(width: 34, height: 34)
+                                .background(
+                                    store.palette.primary.opacity(
+                                        colorScheme == .dark ? 0.16 : 0.075
+                                    ),
+                                    in: Circle()
+                                )
+                        }
+                    }
+                    .foregroundStyle(store.palette.primary)
+                }
+                .buttonStyle(PPUniversalScaleButtonStyle())
+                .accessibilityLabel(primaryActionTitle)
+            }
+        }
+        .frame(minHeight: 34)
+    }
+
+    @ViewBuilder
+    private var detailsFooterGap: some View {
+        if store.context.isAdvertisement || store.isSuggestionsAd {
+            Color.clear.frame(width: 2)
+        } else {
+            Spacer(minLength: 4)
+        }
+    }
+
+    private var detailsFooterSpacing: CGFloat {
+        store.context.isAdvertisement || store.isSuggestionsAd ? 4 : 7
+    }
+
+    private var detailsArrow: some View {
+        Image(
+            systemName: store.isRightToLeft
+                ? "arrow.up.left"
+                : "arrow.up.right"
+        )
+        .font(.system(size: 10.5, weight: .bold))
+    }
+
+    private func compactMetadata(
+        _ availability: PPUniversalAvailability
+    ) -> some View {
+        let metadata = availability.metaText.flatMap {
+            $0.isEmpty ? nil : $0
+        }
+        let text = metadata ?? availability.text
+        let foreground = metadata != nil
+            ? metaForeground(availability)
+            : availabilityForeground(availability.tone)
+
+        return PPUniversalPill(
+            text: text,
+            systemImage: metadata != nil
+                ? availability.metaSystemImage
+                : nil,
+            foreground: foreground,
+            background: foreground.opacity(
+                colorScheme == .dark ? 0.16 : 0.09
+            ),
+            border: foreground.opacity(0.14)
+        )
+    }
+
     @ViewBuilder
     private var primaryAction: some View {
         if store.model.usesQuantityControl &&
@@ -1147,7 +1327,7 @@ private struct PPUniversalCardRenderer: View {
                 }
                 .foregroundStyle(primaryActionForeground)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 44)
+                .frame(minHeight: 42)
                 .background(primaryActionBackground, in: actionShape)
                 .overlay(
                     actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
@@ -1198,7 +1378,7 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .padding(.horizontal, 4)
-        .frame(minHeight: 44)
+        .frame(minHeight: 42)
         .background(
             store.palette.primary.opacity(colorScheme == .dark ? 0.18 : 0.08),
             in: actionShape
@@ -1227,7 +1407,7 @@ private struct PPUniversalCardRenderer: View {
                         ? store.palette.destructive
                         : store.palette.primary
                 )
-                .frame(width: 44, height: 44)
+                .frame(width: 42, height: 42)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
@@ -1274,7 +1454,7 @@ private struct PPUniversalCardRenderer: View {
                 collection: store.favoriteCollection,
                 isRightToLeft: store.isRightToLeft
             )
-            .frame(width: 44, height: 44)
+            .frame(width: 40, height: 40)
         } else {
             Button {
                 var next = store.model
@@ -1293,7 +1473,7 @@ private struct PPUniversalCardRenderer: View {
                         ? store.palette.destructive
                         : store.palette.ink
                 )
-                .frame(width: 44, height: 44)
+                .frame(width: 40, height: 40)
                 .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(PPUniversalScaleButtonStyle())
@@ -1358,22 +1538,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var cardBackground: some View {
-        ZStack {
-            if reduceTransparency {
-                store.palette.surface
-            } else {
-                store.palette.surface.opacity(colorScheme == .dark ? 0.96 : 0.98)
-            }
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(colorScheme == .dark ? 0.025 : 0.20),
-                    Color.clear,
-                    store.palette.accent.opacity(colorScheme == .dark ? 0.025 : 0.018)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        }
+        store.palette.surface.opacity(
+            reduceTransparency || colorScheme == .dark ? 1 : 0.98
+        )
     }
 
     private var cardBorder: some View {
@@ -1385,20 +1552,41 @@ private struct PPUniversalCardRenderer: View {
         )
     }
 
-    private var imageHeightRatio: CGFloat {
-        if store.layout == .pinterest {
-            return min(max(store.model.preferredAspectRatio, 0.78), 1.24)
-        }
-        if store.context == .adopt {
-            return 0.94
-        }
+    private func verticalMediaHeight(for size: CGSize) -> CGFloat {
+        let maximumFraction: CGFloat
+        let preferredRatio: CGFloat
+
         if store.context.isAdvertisement {
-            return 0.90
+            maximumFraction = 0.44
+            preferredRatio = min(
+                max(store.model.preferredAspectRatio, 0.78),
+                0.92
+            )
+        } else if store.context == .adopt {
+            maximumFraction = 0.46
+            preferredRatio = 0.88
+        } else if store.context.isServiceLike {
+            maximumFraction = 0.43
+            preferredRatio = 0.72
+        } else {
+            maximumFraction = 0.43
+            preferredRatio = min(
+                max(store.model.preferredAspectRatio, 0.70),
+                0.82
+            )
         }
-        if store.context.isServiceLike {
-            return 0.74
+
+        let preferred = max(112, (size.width - 8) * preferredRatio)
+        let maximum = max(112, size.height * maximumFraction)
+        return min(preferred, maximum)
+    }
+
+    private var mediaContentInset: CGFloat {
+        guard store.model.prefersContainedImage,
+              !store.context.isAdvertisement else {
+            return 0
         }
-        return min(max(store.model.preferredAspectRatio, 0.72), 0.96)
+        return 9
     }
 
     private var hasPrice: Bool {
@@ -1408,28 +1596,35 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var displayPrice: String {
+        if let price = store.model.price {
+            return formattedPrice(price)
+        }
         if let priceText = store.model.priceText,
            !priceText.isEmpty {
             return priceText
-        }
-        if let price = store.model.price {
-            return formattedPrice(price)
         }
         return ""
     }
 
     private func formattedPrice(_ value: Decimal) -> String {
+        let number = formattedNumber(value)
+        return store.isRightToLeft
+            ? "\(number) \(normalizedCurrency)"
+            : "\(normalizedCurrency) \(number)"
+    }
+
+    private func formattedNumber(_ value: Decimal) -> String {
         let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = normalizedCurrency
-        formatter.locale = Locale(
-            identifier: store.isRightToLeft ? "ar_QA" : "en_QA"
-        )
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_QA")
         formatter.maximumFractionDigits = 2
-        formatter.minimumFractionDigits = 0
-        return formatter.string(
-            from: NSDecimalNumber(decimal: value)
-        ) ?? NSDecimalNumber(decimal: value).stringValue
+        let decimalNumber = NSDecimalNumber(decimal: value)
+        formatter.minimumFractionDigits =
+            decimalNumber.doubleValue.truncatingRemainder(dividingBy: 1) == 0
+            ? 0
+            : 2
+        return formatter.string(from: decimalNumber) ??
+            decimalNumber.stringValue
     }
 
     private var normalizedCurrency: String {
@@ -1561,11 +1756,22 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var actionShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: 16, style: .continuous)
+        RoundedRectangle(cornerRadius: 13, style: .continuous)
     }
 }
 
 // MARK: - UIKit-backed Media and Favorite Controls
+
+@available(iOS 16.0, *)
+private final class PPUniversalMirroredImageView: UIImageView {
+    weak var mirroredBackgroundImageView: UIImageView?
+
+    override var image: UIImage? {
+        didSet {
+            mirroredBackgroundImageView?.image = image
+        }
+    }
+}
 
 @available(iOS 16.0, *)
 private struct PPUniversalImageRepresentable: UIViewRepresentable {
@@ -1575,6 +1781,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let placeholder: UIImage?
     let placeholderSystemImage: String
     let contained: Bool
+    let fillsEmptyAreaWithImageBackground: Bool
     let imageLoader: PPImageLoader?
 
     func makeCoordinator() -> Coordinator {
@@ -1583,24 +1790,59 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
 
     func makeUIView(context: Context) -> PPUniversalGradientView {
         let container = PPUniversalGradientView()
+        container.translatesAutoresizingMaskIntoConstraints = true
         container.backgroundColor = .clear
         container.clipsToBounds = true
         container.isAccessibilityElement = false
 
-        let imageView = UIImageView()
+        let backgroundImageView = UIImageView()
+        backgroundImageView.translatesAutoresizingMaskIntoConstraints = false
+        backgroundImageView.clipsToBounds = true
+        backgroundImageView.contentMode = .scaleAspectFill
+        backgroundImageView.alpha = 0
+        backgroundImageView.isHidden = true
+        backgroundImageView.transform = CGAffineTransform(scaleX: 1.08, y: 1.08)
+        container.addSubview(backgroundImageView)
+
+        let washView = UIView()
+        washView.translatesAutoresizingMaskIntoConstraints = false
+        washView.isUserInteractionEnabled = false
+        washView.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor.black.withAlphaComponent(0.18)
+                : UIColor.white.withAlphaComponent(0.38)
+        }
+        washView.alpha = 0
+        washView.isHidden = true
+        container.addSubview(washView)
+
+        let imageView = PPUniversalMirroredImageView()
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.clipsToBounds = true
         imageView.backgroundColor = .clear
-        imageView.adjustsImageSizeForAccessibilityContentSizeCategory = true
+        imageView.mirroredBackgroundImageView = backgroundImageView
         container.addSubview(imageView)
 
         NSLayoutConstraint.activate([
+            backgroundImageView.topAnchor.constraint(equalTo: container.topAnchor),
+            backgroundImageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            backgroundImageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            backgroundImageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
+            washView.topAnchor.constraint(equalTo: container.topAnchor),
+            washView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            washView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            washView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+
             imageView.topAnchor.constraint(equalTo: container.topAnchor),
             imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
             imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
             imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
 
+        context.coordinator.backgroundImageView = backgroundImageView
+        context.coordinator.washView = washView
+        context.coordinator.imageView = imageView
         references.imageContainer = container
         references.imageView = imageView
         return container
@@ -1610,17 +1852,13 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         _ container: PPUniversalGradientView,
         context: Context
     ) {
-        guard let imageView = references.imageView else {
+        guard let imageView = context.coordinator.imageView ?? references.imageView else {
             return
         }
+        let fillsEmptyArea =
+            contained && fillsEmptyAreaWithImageBackground
         imageView.contentMode = contained ? .scaleAspectFit : .scaleAspectFill
-        let inset: CGFloat = contained ? 10 : 0
-        imageView.layoutMargins = UIEdgeInsets(
-            top: inset,
-            left: inset,
-            bottom: inset,
-            right: inset
-        )
+        context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
 
         guard context.coordinator.signature != signature else {
             return
@@ -1634,6 +1872,8 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
 
         if let imageLoader {
             imageLoader(imageView, imageURL, placeholder, container)
+            imageView.contentMode = contained ? .scaleAspectFit : .scaleAspectFill
+            context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
             return
         }
 
@@ -1673,6 +1913,21 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     final class Coordinator {
         var signature = ""
         var task: URLSessionDataTask?
+        weak var imageView: UIImageView?
+        weak var backgroundImageView: UIImageView?
+        weak var washView: UIView?
+
+        func setImageBackgroundVisible(_ visible: Bool) {
+            backgroundImageView?.isHidden = !visible
+            washView?.isHidden = !visible
+            backgroundImageView?.alpha = visible ? 0.24 : 0
+            washView?.alpha = visible ? 1 : 0
+            if visible {
+                backgroundImageView?.image = imageView?.image
+            } else {
+                backgroundImageView?.image = nil
+            }
+        }
     }
 }
 
@@ -1906,7 +2161,8 @@ private enum PPUniversalHaptics {
 // MARK: - UICollectionView Bridge
 
 @available(iOS 16.0, *)
-@objc public final class PPUniversalCardHostingCell: UICollectionViewCell {
+@objc(PPUniversalCardHostingCell)
+public final class PPUniversalCardHostingCell: UICollectionViewCell {
     @objc public static let bridgeReuseIdentifier = "PPUniversalCell"
 
     private let store: PPUniversalCardStore
@@ -2174,7 +2430,9 @@ private enum PPUniversalHaptics {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.store.refreshCartQuantity()
+                Task { @MainActor [weak self] in
+                    self?.store.refreshCartQuantity()
+                }
             }
         )
         observers.append(
@@ -2183,7 +2441,9 @@ private enum PPUniversalHaptics {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                self?.store.stopMediaPlayback()
+                Task { @MainActor [weak self] in
+                    self?.store.stopMediaPlayback()
+                }
             }
         )
         observers.append(

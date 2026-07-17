@@ -967,7 +967,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 20.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) -20,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);
@@ -981,7 +981,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) + 20.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) - 10.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);

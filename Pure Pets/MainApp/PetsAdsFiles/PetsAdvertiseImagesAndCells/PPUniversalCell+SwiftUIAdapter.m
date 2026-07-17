@@ -3,11 +3,23 @@
 
 @implementation PPUniversalCell (SwiftUIAdapter)
 
++ (Class)pp_swiftUICellClass
+{
+    Class swiftCell = NSClassFromString(@"PPUniversalCardHostingCell");
+    if (swiftCell) {
+        return swiftCell;
+    }
+
+    // Compatibility with artifacts built before the Swift host received its
+    // stable Objective-C runtime name.
+    return NSClassFromString(@"Pure_Pets.PPUniversalCardHostingCell");
+}
+
 + (Class)pp_cellClass
 {
     if (@available(iOS 16.0, *)) {
         if (BBUniversalCellUseSwiftUI) {
-            Class swiftCell = NSClassFromString(@"PurePets.PPUniversalCardHostingCell");
+            Class swiftCell = [self pp_swiftUICellClass];
             if (swiftCell) return swiftCell;
         }
     }
@@ -33,7 +45,7 @@
     if ([cell isKindOfClass:[PPUniversalCell class]]) return YES;
     if (@available(iOS 16.0, *)) {
         if (BBUniversalCellUseSwiftUI) {
-            Class swiftCell = NSClassFromString(@"PurePets.PPUniversalCardHostingCell");
+            Class swiftCell = [self pp_swiftUICellClass];
             if (swiftCell && [cell isKindOfClass:swiftCell]) return YES;
         }
     }

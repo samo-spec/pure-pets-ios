@@ -35,7 +35,7 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
 
 + (BOOL)isAccessoryViewModel:(PPUniversalCellViewModel *)viewModel;
 + (BOOL)isAdvertisementViewModel:(PPUniversalCellViewModel *)viewModel;
-+ (BOOL)isServiceLikeViewModel:(PPUniversalCellViewModel *)viewModel;
++ (BOOL)isServiceLike:(PPUniversalCellViewModel *)viewModel;
 + (BOOL)isUsedAccessoryViewModel:(PPUniversalCellViewModel *)viewModel;
 + (BOOL)usesQuantityControlForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (BOOL)prefersContainedImageForViewModel:(PPUniversalCellViewModel *)viewModel;
@@ -58,6 +58,9 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
                                                      context:(PPCellContext)context;
 + (nullable NSString *)metadataTextForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)metadataSystemImageForViewModel:(PPUniversalCellViewModel *)viewModel;
+
++ (BOOL)isSuggestionsSectionForViewModel:(PPUniversalCellViewModel *)viewModel
+                                delegate:(nullable id)delegate;
 
 + (void)registerStockNotificationForViewModel:(PPUniversalCellViewModel *)viewModel
                                     completion:(void (^)(BOOL succeeded))completion;

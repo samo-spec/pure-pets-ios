@@ -2688,12 +2688,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
         PPHomeConfigCacheBackgroundGlowsFadedKey : @(glowsFaded),
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit),
-        PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar)
+        PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar),
+        @"BBUniversalCellUseSwiftUI" : @(BBUniversalCellUseSwiftUI)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
     [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
                                             forKey:PPNovaFloatingVisibleDefaultsKey];
     [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
+    [[NSUserDefaults standardUserDefaults] setBool:BBUniversalCellUseSwiftUI forKey:@"BBUniversalCellUseSwiftUI"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     // We also set it individually so other view controllers can read it easily
@@ -2736,6 +2738,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         useLegacyBar = [cachedUseLegacyBar boolValue];
     }
     [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
+
+    BOOL useSwiftUICells = YES;
+    id cachedUseSwiftUICells = payload[@"BBUniversalCellUseSwiftUI"];
+    if ([cachedUseSwiftUICells respondsToSelector:@selector(boolValue)]) {
+        useSwiftUICells = [cachedUseSwiftUICells boolValue];
+    }
+    BBUniversalCellUseSwiftUI = useSwiftUICells;
+    [[NSUserDefaults standardUserDefaults] setBool:useSwiftUICells forKey:@"BBUniversalCellUseSwiftUI"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     NSString *cachedMode = payload[PPHomeConfigCacheTitleModeKey];
@@ -5187,10 +5197,19 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         useLegacyBar = [remoteUseLegacyBar boolValue];
     }
 
+    BOOL useSwiftUICells = YES;
+    id remoteUseSwiftUICells = data[@"BBUniversalCellUseSwiftUI"];
+    if ([remoteUseSwiftUICells respondsToSelector:@selector(boolValue)]) {
+        useSwiftUICells = [remoteUseSwiftUICells boolValue];
+    }
+
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
+
+        BBUniversalCellUseSwiftUI = useSwiftUICells;
+        [[NSUserDefaults standardUserDefaults] setBool:useSwiftUICells forKey:@"BBUniversalCellUseSwiftUI"];
 
         NSString *previousSignature = strongSelf.lastAppliedHomeConfigOrderSignature ?: @"";
         if (previousSignature.length == 0 && strongSelf.dataSource) {
@@ -6385,7 +6404,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     cell.accessibilityElements = nil;
 }
 
-- (void)pp_applyUnavailableBuyAgainCoverToCell:(PPUniversalCell *)cell
+- (void)pp_applyUnavailableBuyAgainCoverToCell:(UICollectionViewCell *)cell
                                   snapshotItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem
 {
     if (!cell || ![snapshotItem isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
@@ -6524,10 +6543,15 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [stackView addArrangedSubview:button];
     [button.heightAnchor constraintGreaterThanOrEqualToConstant:32.0].active = YES;
     [button.widthAnchor constraintLessThanOrEqualToConstant:156.0].active = YES;
-    cell.imageView.alpha = 0.7;
+
+    CGFloat contentHeight = CGRectGetHeight(cell.contentView.bounds);
+    CGFloat coverTopInset = contentHeight > 1.0
+        ? MAX(86.0, MIN(156.0, floor(contentHeight * 0.44)))
+        : 112.0;
+
     [cell.contentView addSubview:cover];
     [NSLayoutConstraint activateConstraints:@[
-        [cover.topAnchor constraintEqualToAnchor:cell.imageContainer.bottomAnchor constant:9.0],
+        [cover.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:coverTopInset],
         [cover.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:6.0],
         [cover.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-6.0],
         [cover.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-6.0],

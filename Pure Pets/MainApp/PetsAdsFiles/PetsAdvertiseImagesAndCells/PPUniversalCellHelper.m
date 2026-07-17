@@ -156,7 +156,7 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
            viewModel.modelContext == PPCellForHomeAds;
 }
 
-+ (BOOL)isServiceLikeViewModel:(PPUniversalCellViewModel *)viewModel
++ (BOOL)isServiceLike:(PPUniversalCellViewModel *)viewModel
 {
     return [viewModel.ModelObject isKindOfClass:ServiceModel.class] ||
            [viewModel.ModelObject isKindOfClass:VetModel.class] ||
@@ -448,6 +448,30 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
             }
         });
     }];
+}
+
++ (BOOL)isSuggestionsSectionForViewModel:(PPUniversalCellViewModel *)viewModel
+                                delegate:(nullable id)delegate
+{
+    if (!viewModel || !delegate || !viewModel.indexPath) {
+        return NO;
+    }
+    SEL sel = NSSelectorFromString(@"sectionTypeForIndexPath:");
+    if ([delegate respondsToSelector:sel]) {
+        NSMethodSignature *sig = [delegate methodSignatureForSelector:sel];
+        if (sig) {
+            NSInvocation *inv = [NSInvocation invocationWithMethodSignature:sig];
+            [inv setSelector:sel];
+            [inv setTarget:delegate];
+            NSIndexPath *ip = viewModel.indexPath;
+            [inv setArgument:&ip atIndex:2];
+            [inv invoke];
+            NSInteger result = 0;
+            [inv getReturnValue:&result];
+            return result == PPHomeSectionSuggestions;
+        }
+    }
+    return NO;
 }
 
 @end
