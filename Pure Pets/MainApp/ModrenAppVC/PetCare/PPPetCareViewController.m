@@ -2005,7 +2005,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                           cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.delegate = self;
         cell.indexPath = indexPath;
         cell.hideTopBadge = YES;

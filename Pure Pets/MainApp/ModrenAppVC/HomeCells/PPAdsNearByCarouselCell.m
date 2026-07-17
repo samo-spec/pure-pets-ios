@@ -120,7 +120,7 @@ static inline CGSize PPNearbyCardMetrics(CGSize boundsSize)
     cv.dataSource = self;
     cv.delegate   = self;
 
-    [PPUniversalCell pp_registerInCollectionView:self.mainCollectionView];
+    [PPUniversalCell pp_registerInCollectionView:cv];
 
     [self.contentView addSubview:cv];
     self.collectionView = cv;
@@ -203,7 +203,7 @@ static inline CGSize PPNearbyCardMetrics(CGSize boundsSize)
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
                            cellForItemAtIndexPath:(NSIndexPath *)indexPath {
 
-    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
 
     PPUniversalCellViewModel *vm = self.items[indexPath.item];
     cell.alpha = 1.0;

@@ -1416,7 +1416,7 @@ UINavigationControllerDelegate>
                                                                       NSIndexPath *indexPath,
                                                                       PPUniversalCellViewModel *viewModel) {
         __strong typeof(weakSelf) self = weakSelf;
-        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         viewModel.indexPath = indexPath;
         [cell applyViewModel:viewModel
                      context:viewModel.modelContext

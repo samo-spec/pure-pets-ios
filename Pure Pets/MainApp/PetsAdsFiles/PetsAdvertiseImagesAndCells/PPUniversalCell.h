@@ -62,6 +62,9 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 
 /// Shows the subtitle label when set to YES (default NO — subtitle hidden).
 @property (nonatomic, assign) BOOL showsSubtitle;
+/// Marks the owning presentation as PPDataView so horizontal-row and ad
+/// subtitle rules match that screen instead of embedded carousel rules.
+@property (nonatomic, assign) BOOL dataViewPresentation;
 /// YES keeps the current liquid inner/outer borders. NO restores the pre-liquid layer borders. Default YES.
 @property (nonatomic, assign) BOOL userBordersV2;
 @property (nonatomic, strong) UIImageView *imageView;

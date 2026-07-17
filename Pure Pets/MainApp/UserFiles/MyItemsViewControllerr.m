@@ -1435,7 +1435,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         [cell pp_applyOwnerMode:self.mode == MyItemsModeMyAds animated:NO];
         resolvedCell = cell;
     } else {
-        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.delegate = self;
         cell.forceShowsOwnerMenuButton = self.mode == MyItemsModeMyAds;
         cell.showsSubtitle = YES;

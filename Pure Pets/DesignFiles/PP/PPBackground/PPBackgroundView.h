@@ -44,6 +44,7 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// Leave nil to preserve the default shared hero accent palette.
 @property (nonatomic, strong, nullable) UIColor *accentColorOverride;
 @property (nonatomic, strong, nullable) UIColor *overrideCenterGlowColor;
+@property (nonatomic, strong, nullable) UIColor *overrideBottomGlowColor;
 
 /// Controls how the accent is rendered. Defaults to the original slim top bar.
 @property (nonatomic, assign) PPHeroGlassAccentStyle accentStyle;

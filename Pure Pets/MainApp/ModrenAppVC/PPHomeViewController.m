@@ -8330,7 +8330,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
 
-            id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+            PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
             [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
             cell.delegate = strongSelf;
             cell.delegate = self;

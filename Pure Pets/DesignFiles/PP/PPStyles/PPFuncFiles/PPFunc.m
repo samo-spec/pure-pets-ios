@@ -5740,13 +5740,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
      CellSectionServices
  };
 
- typedef NS_ENUM(NSInteger, PPCellContext) {
-     PPCellForMarket = 0,
-     PPCellForAds,
-     PPCellForFood,
-     PPCellForVets,
-     PPCellForServices
- };
+
 
 
 
@@ -5854,7 +5848,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
      self.dataSource =  [[UICollectionViewDiffableDataSource alloc] initWithCollectionView:self.collectionView
                                                                               cellProvider:^PPUniversalCell * _Nullable(UICollectionView *collectionView, NSIndexPath *indexPath, PPItem *item) {
          
-         id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+         PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
          if (![PPUniversalCell pp_isUniversalCell:item.universalViewModel])
          {  NSLog(@"⚠️ Expected PPUniversalCellViewModel but got %@", [item.universalViewModel class]); return cell; }
          

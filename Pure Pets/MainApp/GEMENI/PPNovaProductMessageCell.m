@@ -281,7 +281,7 @@
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     cell.transform = CGAffineTransformIdentity;
     cell.alpha = 1.0;
     if (indexPath.item >= self.products.count) {

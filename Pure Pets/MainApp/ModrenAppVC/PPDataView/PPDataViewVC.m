@@ -520,9 +520,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleBar;
-    glass.cornerGlowOpacityMultiplier = 0.18;
-    glass.glowDirection = PPHeroGlowDirectionLeftDirect;
+    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glass.cornerGlowOpacityMultiplier = 0.15;
+    glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.tintColor = AppPrimaryClr;
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
@@ -563,7 +563,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 {
     [super didMoveToWindow];
     if (self.window) {
-        [self.heroBackgroundView startAnimations];
+       // [self.heroBackgroundView startAnimations];
     }
 }
 
@@ -579,7 +579,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     void (^updates)(void) = ^{
         if (self.activeFilterCount <= 0) {
-            self.heroBackgroundView.accentColorOverride = self.baseAccentColorOverride;
+            self.heroBackgroundView.overrideCenterGlowColor = self.baseAccentColorOverride;
+            self.heroBackgroundView.overrideBottomGlowColor = self.baseAccentColorOverride;
         }
         [self.heroBackgroundView reapplyPalette];
     };
@@ -618,7 +619,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *resolvedAccent = selected ? accent : self.baseAccentColorOverride;
 
     void (^updates)(void) = ^{
-        self.heroBackgroundView.accentColorOverride = resolvedAccent;
+        self.heroBackgroundView.overrideCenterGlowColor = resolvedAccent;
+        self.heroBackgroundView.overrideBottomGlowColor = resolvedAccent;
+        
         [self.heroBackgroundView reapplyPalette];
         self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.layer.borderColor = PPDataViewResolvedColor(
@@ -1102,6 +1105,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
+@property (nonatomic, strong) NSCache<NSString *, UIColor *> *pp_topCellColorCache;
+@property (nonatomic, strong) NSMutableSet<NSString *> *pp_inFlightColorExtractions;
 
 
 @property (nonatomic, assign) CGFloat lastContentOffsetY;
@@ -1566,6 +1571,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.useCapsuleNavigation = NO;
     self.blurHashCache = [NSCache new];
     self.blurHashCache.countLimit = 200;
+    self.pp_topCellColorCache = [NSCache new];
+    self.pp_topCellColorCache.countLimit = 100;
+    self.pp_inFlightColorExtractions = [NSMutableSet set];
     self.blurHashQueue =
     dispatch_queue_create("com.purepets.blurhash.decode", DISPATCH_QUEUE_CONCURRENT);
     self.isPerformingCrossFade = NO;
@@ -3727,6 +3735,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if (ABS(y - self.lastContentOffsetY) < 6.0) { return; }
     self.lastContentOffsetY = y;
     [self saveCurrentSectionScrollOffset];
+    [self pp_updateMirrorColorForScrollOffset];
 }
 
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
@@ -4044,7 +4053,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             return fullDetailsCell;
         }
 
-        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
 
         if (!vm) {
             cell.hidden = YES;
@@ -4056,6 +4065,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
         BOOL isAdContext = (vm.modelContext == PPCellForAds || vm.modelContext == PPCellForHomeAds);
         cell.delegate = weakSelf;
+        cell.dataViewPresentation = YES;
         cell.hideTopBadge = isAdContext;
         cell.showsSubtitle = YES;
 
@@ -8240,6 +8250,194 @@ presentingViewController:self
             if (completion) completion(img);
         });
     });
+}
+
+#pragma mark - Mirror Top Cell Image Color
+
+- (void)pp_updateMirrorColorForScrollOffset
+{
+    if (!self.collectionView) {
+        return;
+    }
+    
+    CGPoint topPoint = CGPointMake(CGRectGetMidX(self.collectionView.bounds),
+                                   self.collectionView.contentOffset.y + self.collectionView.adjustedContentInset.top + 20.0);
+    
+    NSIndexPath *indexPath = [self.collectionView indexPathForItemAtPoint:topPoint];
+    
+    if (!indexPath) {
+        NSArray<NSIndexPath *> *visibleIndexPaths = [self.collectionView indexPathsForVisibleItems];
+        if (visibleIndexPaths.count > 0) {
+            NSIndexPath *minIP = visibleIndexPaths.firstObject;
+            for (NSIndexPath *ip in visibleIndexPaths) {
+                if (ip.section < minIP.section || (ip.section == minIP.section && ip.item < minIP.item)) {
+                    minIP = ip;
+                }
+            }
+            indexPath = minIP;
+        }
+    }
+    
+    if (!indexPath) {
+        return;
+    }
+    
+    UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+    if (![PPUniversalCell pp_isUniversalCell:cell]) {
+        return;
+    }
+    
+    PPUniversalCell *universalCell = (PPUniversalCell *)cell;
+    UIImage *image = universalCell.imageView.image;
+    if (!image) {
+        return;
+    }
+    
+    PPUniversalCellViewModel *vm = [self.dataSource itemIdentifierForIndexPath:indexPath];
+    if (!vm) {
+        return;
+    }
+    
+    NSString *cacheKey = vm.imageURL ?: vm.ModelID;
+    if (!cacheKey) {
+        return;
+    }
+    
+    UIColor *cachedColor = [self.pp_topCellColorCache objectForKey:cacheKey];
+    if (cachedColor) {
+        [self pp_applyMirrorColorToIslandBackground:cachedColor];
+    } else {
+        if ([self.pp_inFlightColorExtractions containsObject:cacheKey]) {
+            return;
+        }
+        
+        [self.pp_inFlightColorExtractions addObject:cacheKey];
+        __weak typeof(self) weakSelf = self;
+        [self pp_extractAverageColorFromImage:image completion:^(UIColor * _Nullable color) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            
+            [strongSelf.pp_inFlightColorExtractions removeObject:cacheKey];
+            if (color) {
+                [strongSelf.pp_topCellColorCache setObject:color forKey:cacheKey];
+                
+                CGPoint currentTopPoint = CGPointMake(CGRectGetMidX(strongSelf.collectionView.bounds),
+                                                     strongSelf.collectionView.contentOffset.y + strongSelf.collectionView.adjustedContentInset.top + 20.0);
+                NSIndexPath *currentIP = [strongSelf.collectionView indexPathForItemAtPoint:currentTopPoint];
+                if ([currentIP isEqual:indexPath]) {
+                    [strongSelf pp_applyMirrorColorToIslandBackground:color];
+                }
+            }
+        }];
+    }
+}
+
+- (void)pp_extractAverageColorFromImage:(UIImage *)image completion:(void(^)(UIColor * _Nullable color))completion
+{
+    if (!image) {
+        if (completion) completion(nil);
+        return;
+    }
+    
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        int width = 8;
+        int height = 8;
+        int numPixels = width * height;
+        unsigned char rgba[8 * 8 * 4] = {0};
+        CGContextRef context = CGBitmapContextCreate(rgba, width, height, 8, width * 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+        
+        if (context) {
+            CGContextDrawImage(context, CGRectMake(0, 0, width, height), image.CGImage);
+            CGContextRelease(context);
+        }
+        CGColorSpaceRelease(colorSpace);
+        
+        double sumR = 0, sumG = 0, sumB = 0, sumA = 0;
+        CGFloat maxScore = -1.0;
+        UIColor *vibrantColor = nil;
+        
+        for (int i = 0; i < numPixels; i++) {
+            int offset = i * 4;
+            CGFloat r = ((CGFloat)rgba[offset]) / 255.0;
+            CGFloat g = ((CGFloat)rgba[offset+1]) / 255.0;
+            CGFloat b = ((CGFloat)rgba[offset+2]) / 255.0;
+            CGFloat a = ((CGFloat)rgba[offset+3]) / 255.0;
+            
+            sumR += r * a;
+            sumG += g * a;
+            sumB += b * a;
+            sumA += a;
+            
+            if (a < 0.3) {
+                continue;
+            }
+            
+            CGFloat maxVal = MAX(r, MAX(g, b));
+            CGFloat minVal = MIN(r, MIN(g, b));
+            CGFloat delta = maxVal - minVal;
+            CGFloat saturation = (maxVal > 0) ? (delta / maxVal) : 0.0;
+            
+            // Penalize background neutrals (pure white background, dark black shadows)
+            CGFloat brightness = maxVal;
+            CGFloat weight = 1.0;
+            if (brightness > 0.85) {
+                weight = MAX(0.0, (1.0 - brightness) / 0.15);
+            } else if (brightness < 0.15) {
+                weight = MAX(0.0, brightness / 0.15);
+            }
+            
+            CGFloat score = saturation * weight;
+            if (score > maxScore) {
+                maxScore = score;
+                vibrantColor = [UIColor colorWithRed:r green:g blue:b alpha:1.0];
+            }
+        }
+        
+        UIColor *finalColor = nil;
+        if (maxScore > 0.12 && vibrantColor) {
+            finalColor = vibrantColor;
+        } else if (sumA > 0) {
+            finalColor = [UIColor colorWithRed:sumR / sumA
+                                         green:sumG / sumA
+                                          blue:sumB / sumA
+                                         alpha:1.0];
+        }
+        
+        if (finalColor) {
+            CGFloat h = 0, s = 0, v = 0, al = 0;
+            if ([finalColor getHue:&h saturation:&s brightness:&v alpha:&al]) {
+                // Boost saturation by 45% and ensure brightness is high (for a vibrant glow)
+                s = MIN(1.0, s * 1.45);
+                v = MIN(1.0, MAX(0.70, v * 1.15));
+                finalColor = [UIColor colorWithHue:h saturation:s brightness:v alpha:al];
+            }
+        }
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) {
+                completion(finalColor);
+            }
+        });
+    });
+}
+
+- (void)pp_applyMirrorColorToIslandBackground:(UIColor *)color
+{
+    if (!color) return;
+    
+    UIColor *currentOverride = self.sectionsFiltersContainer.heroBackgroundView.overrideCenterGlowColor;
+    if ([currentOverride isEqual:color]) {
+        return;
+    }
+    
+    [UIView transitionWithView:self.sectionsFiltersContainer.heroBackgroundView
+                      duration:0.35
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
+                    animations:^{
+        self.sectionsFiltersContainer.heroBackgroundView.overrideCenterGlowColor = color;
+        self.sectionsFiltersContainer.heroBackgroundView.overrideBottomGlowColor = color;
+    } completion:nil];
 }
 
 @end

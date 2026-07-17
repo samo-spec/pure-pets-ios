@@ -1071,7 +1071,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     if (indexPath.item >= (NSInteger)self.filteredItems.count) return cell;
 
     AdoptPetModel *model = self.filteredItems[indexPath.item];

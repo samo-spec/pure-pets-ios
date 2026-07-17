@@ -224,7 +224,7 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
                            cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     
-    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     
     PPUniversalCellViewModel *vm = self.items[indexPath.item];
     vm.indexPath = indexPath;

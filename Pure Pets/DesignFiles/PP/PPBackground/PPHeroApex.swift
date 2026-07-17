@@ -158,6 +158,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    @objc
+    public var overrideBottomGlowColor: UIColor? {
+        didSet {
+            if oldValue == nil && overrideBottomGlowColor == nil {
+                return
+            }
+            if let oldValue,
+               let overrideBottomGlowColor,
+               oldValue.isEqual(overrideBottomGlowColor) {
+                return
+            }
+            reapplyPalette()
+        }
+    }
+
     public var accentStyle: Int {
         get { storedAccentMode.rawValue }
         set {
@@ -870,11 +885,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let twilight = blend(accent, with: resolvedColor(.systemIndigo), amount: 0.44)
         let shine = explicitAccent ?? resolvedColor(UIColor(named: "AppPrimaryColorShainer") ?? twilight)
-        let bottomTrailingGlow = blend(
-            shine,
-            with: accent,
-            amount: explicitAccent == nil ? 0.34 : 0.72
-        )
+        let bottomTrailingGlow: UIColor
+        if let bottomGlowOverride = overrideBottomGlowColor {
+            bottomTrailingGlow = resolvedColor(bottomGlowOverride)
+        } else {
+            bottomTrailingGlow = blend(
+                shine,
+                with: accent,
+                amount: explicitAccent == nil ? 0.34 : 0.72
+            )
+        }
         let middleGlow: UIColor
         if let centerGlowOverride = overrideCenterGlowColor {
             middleGlow = resolvedColor(centerGlowOverride)

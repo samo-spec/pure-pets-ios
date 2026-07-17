@@ -681,7 +681,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
                                                                                                                           NSIndexPath *indexPath,
                                                                                                                           PPUniversalCellViewModel *universalModel) {
         
-        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.indexPath = indexPath;
         
         if (![universalModel isKindOfClass:[PPUniversalCellViewModel class]]) {

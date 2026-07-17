@@ -153,7 +153,7 @@ static UIColor *PPHeroGlassBackgroundAccentColor(UIColor *primaryAccent,
 {
     return PPMarketplaceHeroCardBlend(primaryAccent,
                                       surfaceBase,
-                                      darkMode ? 0.12 : 0.18,
+                                      darkMode ? 0.32 : 0.40,
                                       traitCollection);
 }
 
@@ -164,7 +164,7 @@ static UIColor *PPHeroGlassSurfaceTintColor(UIColor *surfaceBase,
 {
     return PPMarketplaceHeroCardBlend(surfaceBase,
                                       backgroundAccent,
-                                      darkMode ? 0.095 : 0.038,
+                                      darkMode ? 0.22 : 0.12,
                                       traitCollection);
 }
 
@@ -175,7 +175,7 @@ static UIColor *PPHeroGlassSurfaceTailColor(UIColor *surfaceTint,
 {
     return PPMarketplaceHeroCardBlend(surfaceTint,
                                       backgroundAccent,
-                                      darkMode ? 0.062 : 0.024,
+                                      darkMode ? 0.15 : 0.08,
                                       traitCollection);
 }
 

@@ -2838,14 +2838,14 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     if (indexPath.item >= self.itemViewModels.count) return cell;
 
     PPUniversalCellViewModel *viewModel = self.itemViewModels[indexPath.item];
     viewModel.indexPath = indexPath;
-    cell.delegate = self;
-    cell.showsSubtitle = YES;
-    cell.hideTopBadge = NO;
+    [(PPUniversalCell *)cell setDelegate:self];
+    [(PPUniversalCell *)cell setShowsSubtitle:YES];
+    [(PPUniversalCell *)cell setHideTopBadge:NO];
 
     PetAccessory *item = (PetAccessory *)viewModel.ModelObject;
     PPCellContext context = item.accessKindType == AccessTypeFood ? PPCellForFood : PPCellForMarket;
