@@ -920,10 +920,12 @@ private struct PPUniversalCardRenderer: View {
                     imageURL: store.model.imageURL?.absoluteString,
                     placeholder: store.imagePlaceholder,
                     placeholderSystemImage: store.model.placeholderSystemImage,
-                    contained: store.model.prefersContainedImage,
+                    contained:
+                        store.model.prefersContainedImage &&
+                        !shouldFillMediaImage,
                     fillsEmptyAreaWithImageBackground:
-                        store.layout == .market &&
-                        store.model.prefersContainedImage,
+                        store.model.prefersContainedImage &&
+                        !shouldFillMediaImage,
                     imageLoader: store.imageLoader
                 )
                 .padding(mediaContentInset)
@@ -1583,10 +1585,14 @@ private struct PPUniversalCardRenderer: View {
 
     private var mediaContentInset: CGFloat {
         guard store.model.prefersContainedImage,
-              !store.context.isAdvertisement else {
+              !shouldFillMediaImage else {
             return 0
         }
         return 9
+    }
+
+    private var shouldFillMediaImage: Bool {
+        store.layout == .market || store.context.isAdvertisement
     }
 
     private var hasPrice: Bool {
@@ -2037,7 +2043,7 @@ private struct PPUniversalSkeletonCard: View {
                 HStack(spacing: 14) {
                     skeletonMedia
                         .frame(width: 138)
-                    skeletonBody
+                    horizontalSkeletonBody
                 }
                 .padding(12)
             } else {
@@ -2084,6 +2090,26 @@ private struct PPUniversalSkeletonCard: View {
             skeletonBar(width: 0.52, height: 22)
             skeletonBar(width: 1, height: 44)
             skeletonBar(width: 0.62, height: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var horizontalSkeletonBody: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            skeletonBar(width: 0.85, height: 14)
+            skeletonBar(width: 0.60, height: 11)
+            
+            Spacer(minLength: 4)
+            
+            HStack {
+                Capsule()
+                    .fill(skeletonColor)
+                    .frame(width: 64, height: 16)
+                Spacer()
+                Capsule()
+                    .fill(skeletonColor)
+                    .frame(width: 34, height: 20)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

@@ -315,6 +315,8 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionPremiumSearch = 15,
     PPHomeSectionProviderCategoryNav = 16,
     PPHomeSectionMarketplaceHero = 17,
+    PPHomeSectionSuggestionAds = 18,
+    PPHomeSectionSuggestionAccessories = 19,
 };
 
 typedef NS_ENUM(NSInteger, PPDataSection) {

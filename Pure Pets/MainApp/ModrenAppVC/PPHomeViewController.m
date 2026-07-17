@@ -2439,6 +2439,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionAccessories),
+        @(PPHomeSectionSuggestionAds),
+        @(PPHomeSectionSuggestionAccessories),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionLastFood),
@@ -2476,6 +2478,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 @"PPHomeSectionCarousel" : @(PPHomeSectionCarousel),
                 @"PPHomeSectionMainKinds" : @(PPHomeSectionMainKinds),
                 @"PPHomeSectionSuggestions" : @(PPHomeSectionSuggestions),
+                @"PPHomeSectionSuggestionAds" : @(PPHomeSectionSuggestionAds),
+                @"PPHomeSectionSuggestionAccessories" : @(PPHomeSectionSuggestionAccessories),
                 @"PPHomeSectionAccessories" : @(PPHomeSectionAccessories),
                 @"PPHomeSectionPetProfile" : @(PPHomeSectionPetProfile),
                 @"PPHomeSectionPremiumCare" : @(PPHomeSectionPremiumCare),
@@ -2999,6 +3003,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     // Dynamic sections (Suggestions, Accessories, LastFood, NearbyServices, AdsNearBy)
     NSArray<NSNumber *> *dynamicSections = @[
+        @(PPHomeSectionSuggestionAds),
+        @(PPHomeSectionSuggestionAccessories),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
@@ -3612,6 +3618,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     self.lastHomeSuggestionsAppearanceSignature = signature;
     [self reloadSection:PPHomeSectionSuggestions];
+    [self reloadSection:PPHomeSectionSuggestionAds];
+    [self reloadSection:PPHomeSectionSuggestionAccessories];
 }
 
 - (NSString *)pp_homeDateSignaturePart:(nullable NSDate *)date
@@ -4156,6 +4164,68 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             break;
         }
 
+        case PPHomeSectionSuggestionAds: {
+            NSMutableSet<NSString *> *seen = [NSMutableSet set];
+            NSDictionary *latestEvent =
+                [[PPBrowseHistoryManager shared] latestEvent];
+            NSArray<NSString *> *orderedAccessoryIDs =
+                [self pp_buyAgainAccessoryIDsFromOrders:self.recentOrders
+                                                  limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
+
+            for (PetAd *ad in self.nearbyAds) {
+                NSString *adID = PPSafeString(ad.adID);
+                NSString *key = [NSString stringWithFormat:@"ad:%@", adID];
+                if (adID.length == 0 || [seen containsObject:key]) continue;
+                [seen addObject:key];
+
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:ad
+                                                            context:PPCellForAds];
+                vm.ModelObject = ad;
+                NSDictionary<NSString *, NSString *> *reason =
+                    [self pp_suggestionReasonForModel:ad
+                                          latestEvent:latestEvent
+                                    orderedAccessoryIDs:orderedAccessoryIDs];
+                vm.contextualReasonText = PPSafeString(reason[@"text"]);
+                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            break;
+        }
+
+        case PPHomeSectionSuggestionAccessories: {
+            NSMutableSet<NSString *> *seen = [NSMutableSet set];
+            NSDictionary *latestEvent =
+                [[PPBrowseHistoryManager shared] latestEvent];
+            NSArray<NSString *> *orderedAccessoryIDs =
+                [self pp_buyAgainAccessoryIDsFromOrders:self.recentOrders
+                                                  limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
+
+            for (PetAccessory *acc in self.accessories) {
+                NSString *accessoryID = PPSafeString(acc.accessoryID);
+                NSString *key = [NSString stringWithFormat:@"acc:%@", accessoryID];
+                if (accessoryID.length == 0 || [seen containsObject:key]) continue;
+                [seen addObject:key];
+
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:acc
+                                                            context:PPCellForMarket];
+                vm.ModelObject = acc;
+                NSDictionary<NSString *, NSString *> *reason =
+                    [self pp_suggestionReasonForModel:acc
+                                          latestEvent:latestEvent
+                                    orderedAccessoryIDs:orderedAccessoryIDs];
+                vm.contextualReasonText = PPSafeString(reason[@"text"]);
+                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            break;
+        }
+
         default:
             break;
     }
@@ -4172,7 +4242,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     NSNumber *sectionIdentifier = @(section);
     CGPoint preservedOffset = CGPointZero;
-    BOOL preserveOffset = (section == PPHomeSectionSuggestions);
+    BOOL preserveOffset = (section == PPHomeSectionSuggestions || section == PPHomeSectionSuggestionAds || section == PPHomeSectionSuggestionAccessories);
 
     if (preserveOffset) {
         preservedOffset = self.collectionView.contentOffset;
@@ -4211,7 +4281,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     if (canReconfigureInPlace && items.count > 0) {
         [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
 
-        if (section == PPHomeSectionSuggestions) {
+        if (section == PPHomeSectionSuggestions || section == PPHomeSectionSuggestionAds || section == PPHomeSectionSuggestionAccessories) {
             self.lastHomeSuggestionsAppearanceSignature = [self pp_homeSuggestionsRefreshSignature];
         }
 
@@ -4279,6 +4349,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     BOOL animate = YES;
 
     if (section == PPHomeSectionSuggestions ||
+        section == PPHomeSectionSuggestionAds ||
+        section == PPHomeSectionSuggestionAccessories ||
         section == PPHomeSectionAdsNearBy ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
@@ -4291,13 +4363,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         section == PPHomeSectionMainKinds) {
         // 🔒 Prevent visual jumping on sections that fill from empty.
         animate = NO;
-        if (section == PPHomeSectionSuggestions) {
+        if (section == PPHomeSectionSuggestions || section == PPHomeSectionSuggestionAds || section == PPHomeSectionSuggestionAccessories) {
             self.didFillSuggestionsOnce = YES;
         }
     }
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
-    if (section == PPHomeSectionSuggestions) {
+    if (section == PPHomeSectionSuggestions || section == PPHomeSectionSuggestionAds || section == PPHomeSectionSuggestionAccessories) {
         self.lastHomeSuggestionsAppearanceSignature = [self pp_homeSuggestionsRefreshSignature];
     }
 
@@ -6271,7 +6343,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             }
 
             [seenAccessoryIDs addObject:accessoryID];
-            if (accessory.quantity > 0) {
+            BOOL shouldUseNormalNoStockMode =
+                accessory.quantity <= 0 &&
+                accessory.showInAppMarket &&
+                !accessory.isDeleted &&
+                !accessory.isBlocked &&
+                !accessory.isDisabled;
+            if (accessory.quantity > 0 || shouldUseNormalNoStockMode) {
                 [orderedEntries addObject:accessory];
             } else {
                 if (snapshotItem.mainKindID <= 0) {
@@ -7508,6 +7586,44 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             break;
         }
 
+        case PPHomeSectionSuggestionAds: {
+            cfg.hidden = NO;
+            NSString *titlePrefix = kLang(@"home_header_picks_for_you") ?: kLang(@"SuggestedForYou");
+            NSString *typeSuffix = kLang(@"BrowseType_Ads") ?: @"Ads";
+            cfg.title = [NSString stringWithFormat:@"%@ - %@", titlePrefix, typeSuffix];
+            cfg.iconName = arrowImage;
+            cfg.subtitle = kLang(@"RecommendedForYouHint");
+
+            NSDictionary *event = [[PPBrowseHistoryManager shared] latestEvent];
+            if (event) {
+                NSInteger kindID = [event[@"kind"] integerValue];
+                MainKindsModel *kind = [self resolveMainKindWithID:kindID];
+                if (kind) {
+                    cfg.subtitle = [NSString stringWithFormat:kLang(@"BecauseYouViewedFormat"), typeSuffix, kind.KindName];
+                }
+            }
+            break;
+        }
+
+        case PPHomeSectionSuggestionAccessories: {
+            cfg.hidden = NO;
+            NSString *titlePrefix = kLang(@"home_header_picks_for_you") ?: kLang(@"SuggestedForYou");
+            NSString *typeSuffix = kLang(@"BrowseType_Accessories") ?: @"Accessories";
+            cfg.title = [NSString stringWithFormat:@"%@ - %@", titlePrefix, typeSuffix];
+            cfg.iconName = arrowImage;
+            cfg.subtitle = kLang(@"RecommendedForYouHint");
+
+            NSDictionary *event = [[PPBrowseHistoryManager shared] latestEvent];
+            if (event) {
+                NSInteger kindID = [event[@"kind"] integerValue];
+                MainKindsModel *kind = [self resolveMainKindWithID:kindID];
+                if (kind) {
+                    cfg.subtitle = [NSString stringWithFormat:kLang(@"BecauseYouViewedFormat"), typeSuffix, kind.KindName];
+                }
+            }
+            break;
+        }
+
         case PPHomeSectionCurrentOrders: {
             cfg.hidden = !self.isCurrentOrdersExpanded ||
                          ![self pp_shouldRenderCurrentOrdersSection];
@@ -8177,7 +8293,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             pp_stageCell(cell); return cell;
         }
 
-                if (section == PPHomeSectionSuggestions) {
+                if (section == PPHomeSectionSuggestions || section == PPHomeSectionSuggestionAds || section == PPHomeSectionSuggestionAccessories) {
 
                 if (item.payload == [NSNull null]) {
                     PPUniversalCell *cell =
@@ -9749,7 +9865,9 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
 
-        case PPHomeSectionSuggestions: {
+        case PPHomeSectionSuggestions:
+        case PPHomeSectionSuggestionAds:
+        case PPHomeSectionSuggestionAccessories: {
             [self pp_emitSelectionHaptic];
             PPUniversalCellViewModel *vm = item.universalViewModel;
             id model = vm.ModelObject;
@@ -11168,6 +11286,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (BOOL)pp_homeSectionUsesHorizontalUniversalCards:(PPHomeSection)section
 {
     return section == PPHomeSectionSuggestions ||
+           section == PPHomeSectionSuggestionAds ||
+           section == PPHomeSectionSuggestionAccessories ||
            section == PPHomeSectionAccessories ||
            section == PPHomeSectionLastFood ||
            section == PPHomeSectionAdsNearBy ||

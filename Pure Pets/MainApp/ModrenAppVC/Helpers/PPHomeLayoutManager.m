@@ -50,6 +50,8 @@
                 @(PPHomeSectionMainKinds),
                 @(PPHomeSectionCurrentOrders),
                 @(PPHomeSectionAccessories),
+                @(PPHomeSectionSuggestionAds),
+                @(PPHomeSectionSuggestionAccessories),
                 @(PPHomeSectionSuggestions),
                 @(PPHomeSectionCarousel),
                 @(PPHomeSectionLastFood),
@@ -72,6 +74,8 @@
         }
 
         BOOL isDynamicSection = (sectionType == PPHomeSectionSuggestions ||
+                                 sectionType == PPHomeSectionSuggestionAds ||
+                                 sectionType == PPHomeSectionSuggestionAccessories ||
                                  sectionType == PPHomeSectionAdsNearBy ||
                                  sectionType == PPHomeSectionNearbyServices ||
                                  sectionType == PPHomeSectionAccessories ||
@@ -118,6 +122,8 @@
                 return [PPHomeFunc adoptSectionForWidth:availableWidth];
 
             case PPHomeSectionSuggestions:
+            case PPHomeSectionSuggestionAds:
+            case PPHomeSectionSuggestionAccessories:
                 return [PPHomeFunc suggestionsSectionForWidth:availableWidth];
 
             case PPHomeSectionAccessories:
