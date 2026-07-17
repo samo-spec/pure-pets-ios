@@ -109,7 +109,7 @@
     self.collectionView.dataSource = self;
     self.collectionView.clipsToBounds = NO;
     self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier]];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
 
     [self.contentView addSubview:self.collectionView];
 
@@ -281,7 +281,7 @@
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
+    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     cell.transform = CGAffineTransformIdentity;
     cell.alpha = 1.0;
     if (indexPath.item >= self.products.count) {

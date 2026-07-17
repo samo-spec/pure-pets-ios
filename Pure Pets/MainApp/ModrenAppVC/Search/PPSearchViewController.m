@@ -1329,7 +1329,7 @@ UINavigationControllerDelegate>
     collectionView.delegate = self;
     collectionView.showsVerticalScrollIndicator = NO;
     collectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    [collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
 
     [self.view addSubview:collectionView];
     [self pp_sendBackdropGlowsToBack];
@@ -1415,8 +1415,8 @@ UINavigationControllerDelegate>
                        cellProvider:^UICollectionViewCell * _Nullable(UICollectionView *collectionView,
                                                                       NSIndexPath *indexPath,
                                                                       PPUniversalCellViewModel *viewModel) {
-        PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
-                                                                           forIndexPath:indexPath];
+        __strong typeof(weakSelf) self = weakSelf;
+        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         viewModel.indexPath = indexPath;
         [cell applyViewModel:viewModel
                      context:viewModel.modelContext
@@ -1434,7 +1434,7 @@ UINavigationControllerDelegate>
                  transitionStyle:PPImageTransitionStyleNone
                         complation:nil];
         }];
-        cell.delegate = weakSelf;
+        [cell setDelegate:self];
         return cell;
     }];
 

@@ -753,7 +753,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     _collectionView.dataSource = self;
     _collectionView.delegate = self;
     _collectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    [_collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [_collectionView registerClass:PPPetCareVetCell.class forCellWithReuseIdentifier:PPPetCareVetCell.reuseIdentifier];
     [contentView addSubview:_collectionView];
 
@@ -2005,8 +2005,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
                           cellForItemAtIndexPath:(NSIndexPath *)indexPath
 {
     if (self.selectedSection == PPPetCareInitialSectionMedicines) {
-        PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier
-                                                                          forIndexPath:indexPath];
+        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.delegate = self;
         cell.indexPath = indexPath;
         cell.hideTopBadge = YES;

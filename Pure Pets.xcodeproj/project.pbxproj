@@ -44,6 +44,7 @@
 		A11CE2502FEB500000000003 /* PPHomeProviderUnifiedCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */; };
 		A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */; };
 		A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */ = {isa = PBXBuildFile; fileRef = A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */; };
+		A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
 		A5E100022FF1000100A5E002 /* PPHeroApex.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E100012FF1000100A5E001 /* PPHeroApex.swift */; };
@@ -133,6 +134,8 @@
 		F20F31C02D177602001D1D57 /* PGDatePickManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31982D177602001D1D57 /* PGDatePickManager.m */; };
 		F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31A12D177602001D1D57 /* PGPickerTableView.m */; };
 		F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31852D177602001D1D57 /* PGDatePicker+MonthDay.m */; };
+		F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */; };
+		F21066CF3009E652002F6A68 /* PPUniversalCellFlags.m in Sources */ = {isa = PBXBuildFile; fileRef = F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */; };
 		F213021F2F0C6573006E71AB /* PPSearchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F213021E2F0C655F006E71AB /* PPSearchViewController.m */; };
 		F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302212F0C6629006E71AB /* BBNavigationBar.m */; };
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
@@ -941,6 +944,7 @@
 		A11D00032FFD100000000003 /* PPBottomSurfaceCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomSurfaceCoordinator.m; sourceTree = "<group>"; };
 		A11D00052FFD100000000005 /* UIViewController+PPBottomSurface.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPBottomSurface.h"; sourceTree = "<group>"; };
 		A11D00062FFD100000000006 /* UIViewController+PPBottomSurface.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPBottomSurface.m"; sourceTree = "<group>"; };
+		A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeOrderStatusSwiftUI.swift; sourceTree = "<group>"; };
 		A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechSpeaker.swift; sourceTree = "<group>"; };
 		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A5E100012FF1000100A5E001 /* PPHeroApex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApex.swift; sourceTree = "<group>"; };
@@ -1097,6 +1101,10 @@
 		F20F31A32D177602001D1D57 /* PGPickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PGPickerView.m; sourceTree = "<group>"; };
 		F20F31A42D177602001D1D57 /* UIColor+PGHex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+PGHex.h"; sourceTree = "<group>"; };
 		F20F31A52D177602001D1D57 /* UIColor+PGHex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+PGHex.m"; sourceTree = "<group>"; };
+		F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PPUniversalCell+SwiftUIAdapter.h"; sourceTree = "<group>"; };
+		F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPUniversalCell+SwiftUIAdapter.m"; sourceTree = "<group>"; };
+		F21066CC3009E652002F6A68 /* PPUniversalCellFlags.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellFlags.h; sourceTree = "<group>"; };
+		F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellFlags.m; sourceTree = "<group>"; };
 		F213021D2F0C6556006E71AB /* PPSearchViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchViewController.h; sourceTree = "<group>"; };
 		F213021E2F0C655F006E71AB /* PPSearchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchViewController.m; sourceTree = "<group>"; };
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
@@ -2583,6 +2591,7 @@
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
 				F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */,
+				A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */,
 				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
 				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
 				A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */,
@@ -4317,6 +4326,10 @@
 		F29949812ED37AF1003C6A52 /* PetsAdvertiseImagesAndCells */ = {
 			isa = PBXGroup;
 			children = (
+				F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */,
+				F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */,
+				F21066CC3009E652002F6A68 /* PPUniversalCellFlags.h */,
+				F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */,
 				F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */,
 				F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */,
 				F28A0A072EE9C77600EE5055 /* EllipsePageControl.m */,
@@ -5814,6 +5827,7 @@
 				F27146872CCE6B5300F7F3BA /* XLFormStepCounterCell.m in Sources */,
 				F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */,
 				F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */,
+				A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */,
 				F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
 				F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */,
@@ -5892,6 +5906,8 @@
 				F2ADE54D2E26BECA004EE79B /* VetCollectionViewCell.m in Sources */,
 				F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */,
 				F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */,
+				F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */,
+				F21066CF3009E652002F6A68 /* PPUniversalCellFlags.m in Sources */,
 				F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */,
 				F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */,
 				F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */,
@@ -6621,7 +6637,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6731,7 +6747,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6837,7 +6853,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6855,7 +6871,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6872,7 +6888,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6889,7 +6905,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 205;
+				CURRENT_PROJECT_VERSION = 206;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;

@@ -1038,8 +1038,18 @@ private struct PPShimmer: ViewModifier {
 // MARK: - UIKit Collection View Bridge
 
 @available(iOS 16.0, *)
-public final class PPUniversalCardHostingCell: UICollectionViewCell {
-    public static let reuseIdentifier = "PPUniversalCardHostingCell"
+@objc public final class PPUniversalCardHostingCell: UICollectionViewCell {
+    @objc public static let bridgeReuseIdentifier = "PPUniversalCell"
+
+    private weak var bridgeDelegate: PPUniversalCellDelegate?
+    private var bridgeViewModel: PPUniversalCellViewModel?
+    private var bridgeContext: PPCellContext = PPCellForAds
+    private var bridgeLayout: PPUniversalCardLayout = .market
+    private var bridgeDiscountStyle: PPUniversalCardDiscountStyle = .badge
+
+    @objc public var hideTopBadge: Bool = false
+    @objc public var showsSubtitle: Bool = false
+    @objc public var forceShowsOwnerMenuButton: Bool = false
 
     public override init(frame: CGRect) {
         super.init(frame: frame)
@@ -1054,23 +1064,47 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
         fatalError("PPUniversalCardHostingCell must be created programmatically.")
     }
 
-    @MainActor
-    public func configure(
-        model: PPUniversalCardModel,
-        context: PPUniversalCardContext,
-        layout: PPUniversalCardLayout,
-        discountStyle: PPUniversalCardDiscountStyle = .badge,
-        palette: PPUniversalCardPalette = .purePets,
-        actions: PPUniversalCardActions = .init()
+    @objc public static func reuseIdentifier() -> String {
+        return "PPUniversalCell"
+    }
+
+    @objc public func stopMediaPlayback() { }
+
+    @objc public func refreshThemeAppearance() {
+        setNeedsUpdateConfiguration()
+    }
+
+    @objc public func setQuantity(_ quantity: Int, animated: Bool) { }
+
+    @objc public func collapseStepper(_ animated: Bool) { }
+
+    @objc public func applyViewModel(
+        _ vm: PPUniversalCellViewModel,
+        context: PPCellContext,
+        layoutMode: PPManagerCellLayoutMode,
+        discountStyle: PPDiscountStyle,
+        imageLoader: PPImageLoader?
     ) {
+        bridgeViewModel = vm
+        bridgeContext = context
+        bridgeDiscountStyle = discountStyle == PPDiscountStyleInline ? .inline : .badge
+
+        switch layoutMode {
+        case PPCellLayoutModePinterest: bridgeLayout = .pinterest
+        case PPCellLayoutModeMarket: bridgeLayout = .market
+        case PPCellLayoutModeFullWidth: bridgeLayout = .fullWidth
+        case PPCellLayoutModeHorizontalRow: bridgeLayout = .horizontalRow
+        default: bridgeLayout = .market
+        }
+
         contentConfiguration = UIHostingConfiguration {
             PPUniversalCardView(
-                model: model,
-                context: context,
-                layout: layout,
-                discountStyle: discountStyle,
-                palette: palette,
-                actions: actions
+                model: Self.bridgeModel(from: vm),
+                context: Self.bridgeContext(from: context),
+                layout: bridgeLayout,
+                discountStyle: bridgeDiscountStyle,
+                palette: .purePets,
+                actions: Self.bridgeActions(viewModel: vm, delegate: bridgeDelegate)
             )
         }
         .margins(.all, 0)
@@ -1080,10 +1114,130 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
         backgroundConfiguration = background
     }
 
+    @objc public func setDelegate(_ delegate: PPUniversalCellDelegate?) {
+        bridgeDelegate = delegate
+    }
+
+    @objc public weak var delegate: PPUniversalCellDelegate? {
+        get { bridgeDelegate }
+        set { setDelegate(newValue) }
+    }
+
     public override func prepareForReuse() {
         super.prepareForReuse()
         contentConfiguration = nil
         backgroundConfiguration = .clear()
+        bridgeViewModel = nil
+        bridgeDelegate = nil
+        hideTopBadge = false
+        showsSubtitle = false
+        forceShowsOwnerMenuButton = false
+    }
+
+    // MARK: - Bridge Converters
+
+    private static func bridgeContext(from objc: PPCellContext) -> PPUniversalCardContext {
+        switch objc {
+        case PPCellForAds: return .ads
+        case PPCellForHomeAds: return .homeAds
+        case PPCellForMarket, PPCellForContextAccessory: return .market
+        case PPCellForFood: return .food
+        case PPCellForServices: return .services
+        case PPCellForVets: return .vets
+        case PPCellForAdopt: return .adopt
+        default: return .ads
+        }
+    }
+
+    private static func bridgeModel(from vm: PPUniversalCellViewModel) -> PPUniversalCardModel {
+        let price: Decimal? = vm.finalPrice?.decimalValue ?? vm.price?.decimalValue
+        let originalPrice: Decimal? = vm.price?.decimalValue
+
+        let imageURL: URL? = {
+            guard let urlStr = vm.imageURL, !urlStr.isEmpty else { return nil }
+            return URL(string: urlStr)
+        }()
+
+        let videoURL: URL? = {
+            guard vm.isVideoMedia, let urlStr = vm.videoURL, !urlStr.isEmpty else { return nil }
+            return URL(string: urlStr)
+        }()
+
+        let availability: PPUniversalAvailability? = {
+            if vm.availabilityText.isEmpty { return nil }
+            let lower = vm.availabilityText.lowercased()
+            let tone: PPUniversalAvailability.Tone
+            if lower.contains("out") || lower.contains("sold") || lower.contains("نف") || lower.contains("غير") {
+                tone = .unavailable
+            } else if lower.contains("only") || lower.contains("متبقي") {
+                tone = .limited
+            } else {
+                tone = .available
+            }
+            return PPUniversalAvailability(text: vm.availabilityText, tone: tone)
+        }()
+
+        let prefersContained = vm.modelObject is PetAccessory ||
+                               vm.cellSection == CellSectionAccessories ||
+                               vm.cellSection == CellSectionFood
+
+        return PPUniversalCardModel(
+            id: vm.modelID ?? UUID().uuidString,
+            title: vm.title,
+            subtitle: vm.subtitle.isEmpty ? nil : vm.subtitle,
+            imageURL: imageURL,
+            videoURL: videoURL,
+            placeholderSystemImage: "pawprint.fill",
+            price: price,
+            originalPrice: (originalPrice != nil && originalPrice != price) ? originalPrice : nil,
+            priceText: vm.priceText.isEmpty ? nil : vm.priceText,
+            currencyCode: vm.currencyCode.isEmpty ? "QAR" : vm.currencyCode,
+            badgeText: vm.badgeText.isEmpty ? nil : vm.badgeText,
+            reasonText: vm.contextualReasonText?.isEmpty == false ? vm.contextualReasonText : nil,
+            discountText: vm.discountText.isEmpty ? nil : vm.discountText,
+            availability: availability,
+            isFavorite: false,
+            isOwner: vm.isOwner,
+            isPubliclyVisible: vm.isPubliclyVisible,
+            isSkeleton: vm.isSkeleton,
+            quantity: max(0, vm.itemQuantitiy),
+            stock: nil,
+            usesQuantityControl: vm.modelObject is PetAccessory,
+            prefersContainedImage: prefersContained,
+            preferredAspectRatio: CGFloat(vm.preferredAspectRatio)
+        )
+    }
+
+    private static func bridgeActions(
+        viewModel: PPUniversalCellViewModel,
+        delegate: PPUniversalCellDelegate?
+    ) -> PPUniversalCardActions {
+        PPUniversalCardActions(
+            onTap: { _ in
+                delegate?.PPUniversalCell_tapCard?(viewModel)
+            },
+            onShare: { _ in
+                delegate?.PPUniversalCell_tapShare?(viewModel)
+            },
+            onFavorite: { _, _ in
+                delegate?.PPUniversalCell_tapFavorite?(viewModel)
+            },
+            onEdit: { _ in
+                delegate?.PPUniversalCell_tapEdit?(viewModel)
+            },
+            onVisibilityToggle: { _ in
+                delegate?.PPUniversalCell_tapVisibilityToggle?(viewModel)
+            },
+            onDelete: { _ in
+                delegate?.PPUniversalCell_tapDelete?(viewModel)
+            },
+            onQuantityChange: { _, qty in
+                delegate?.PPUniversalCell_changeQuantity?(viewModel, quantity: qty)
+            },
+            onNotifyWhenAvailable: { _ in
+                false
+            }
+        )
     }
 }
 

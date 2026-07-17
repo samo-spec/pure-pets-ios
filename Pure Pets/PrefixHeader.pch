@@ -201,6 +201,8 @@
 #import "PPHomeActionCell.h"
 #import "PPHomeServicesCell.h"
 #import "PPUniversalCell.h"
+#import "PPUniversalCellFlags.h"
+#import "PPUniversalCell+SwiftUIAdapter.h"
 #import "PPBannerCollectionCell.h"
 #import "CustomButtonCell.h"
 #import "PetAdoptView.h"

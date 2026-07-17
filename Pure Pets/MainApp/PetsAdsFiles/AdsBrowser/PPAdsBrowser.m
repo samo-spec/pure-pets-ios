@@ -159,7 +159,7 @@ static CGFloat PPAdsBrowserPinterestHeightForViewModel(PPUniversalCellViewModel 
     _adsCollectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _adsCollectionView.backgroundColor = UIColor.clearColor;
     _adsCollectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    [_adsCollectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [PPUniversalCell pp_registerInCollectionView:_adsCollectionView];
     _adsCollectionView.delegate = self;
     [self addSubview:_adsCollectionView];
     
@@ -681,8 +681,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
                                                                                                                           NSIndexPath *indexPath,
                                                                                                                           PPUniversalCellViewModel *universalModel) {
         
-        PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
-                                                                          forIndexPath:indexPath];
+        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.indexPath = indexPath;
         
         if (![universalModel isKindOfClass:[PPUniversalCellViewModel class]]) {

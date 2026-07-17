@@ -774,7 +774,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
     self.collectionView.alwaysBounceVertical = YES;
-    [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier]];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     self.collectionView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
 
     self.collectionView.dataSource = self;
@@ -1071,7 +1071,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
+    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     if (indexPath.item >= (NSInteger)self.filteredItems.count) return cell;
 
     AdoptPetModel *model = self.filteredItems[indexPath.item];

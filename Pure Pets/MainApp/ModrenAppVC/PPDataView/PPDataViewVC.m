@@ -1724,7 +1724,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     for (__kindof UICollectionViewCell *cell in self.collectionView.visibleCells) {
-        if ([cell isKindOfClass:PPUniversalCell.class]) {
+        if ([PPUniversalCell pp_isUniversalCell:cell]) {
             [(PPUniversalCell *)cell refreshThemeAppearance];
         } else {
             [cell setNeedsLayout];
@@ -3014,7 +3014,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (@available(iOS 13.0, *)) {
        // self.collectionView.automaticallyAdjustsScrollIndicatorInsets = NO;
     }
-    [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [self.collectionView registerClass:[BBDataViewFullDetailsCell class]
             forCellWithReuseIdentifier:[BBDataViewFullDetailsCell reuseIdentifier]];
     [self configureDataSource];
@@ -4044,9 +4044,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
             return fullDetailsCell;
         }
 
-        PPUniversalCell *cell =
-        [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
-                                                  forIndexPath:indexPath];
+        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
 
         if (!vm) {
             cell.hidden = YES;

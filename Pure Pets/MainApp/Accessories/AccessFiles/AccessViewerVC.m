@@ -2952,7 +2952,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
+    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     if (indexPath.item >= (NSInteger)self.suggestedAccessories.count) return cell;
 
     PetAccessory *accessory = self.suggestedAccessories[indexPath.item];

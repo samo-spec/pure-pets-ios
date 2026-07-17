@@ -487,7 +487,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 {
     [super viewWillDisappear:animated];
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
-        if ([cell isKindOfClass:PPUniversalCell.class]) {
+        if ([PPUniversalCell pp_isUniversalCell:cell]) {
             [(PPUniversalCell *)cell stopMediaPlayback];
         }
     }
@@ -808,8 +808,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     self.collectionView.contentInset =
         UIEdgeInsetsMake(0.0, 0.0, PPSpaceXL + self.view.safeAreaInsets.bottom, 0.0);
 
-    [self.collectionView registerClass:PPUniversalCell.class
-            forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [self.collectionView registerClass:AdoptPetCell.class
             forCellWithReuseIdentifier:@"AdoptPetCell"];
     [self.collectionView registerClass:PPMyItemsSkeletonCell.class
@@ -1436,9 +1435,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         [cell pp_applyOwnerMode:self.mode == MyItemsModeMyAds animated:NO];
         resolvedCell = cell;
     } else {
-        PPUniversalCell *cell =
-            [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
-                                                      forIndexPath:indexPath];
+        id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
         cell.delegate = self;
         cell.forceShowsOwnerMenuButton = self.mode == MyItemsModeMyAds;
         cell.showsSubtitle = YES;
@@ -1502,7 +1499,7 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
 {
     if ([cell isKindOfClass:PPMyItemsSkeletonCell.class]) {
         [(PPMyItemsSkeletonCell *)cell stopAnimating];
-    } else if ([cell isKindOfClass:PPUniversalCell.class]) {
+    } else if ([PPUniversalCell pp_isUniversalCell:cell]) {
         [(PPUniversalCell *)cell stopMediaPlayback];
     }
 }

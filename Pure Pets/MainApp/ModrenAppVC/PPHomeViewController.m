@@ -7701,7 +7701,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPHomeOrderStatusCell.class
             forCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier];
     [self.collectionView registerClass:PPCategoryCardCell.class forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
-    [self.collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [self.collectionView registerClass:PPModerHomeCell.class
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
@@ -8330,7 +8330,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
 
-            PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
+            id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
             [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
             cell.delegate = strongSelf;
             cell.delegate = self;
@@ -11155,7 +11155,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                                       atIndexPath:(NSIndexPath *)indexPath
                                           section:(PPHomeSection)section
 {
-    if (!cell || !indexPath || ![cell isKindOfClass:PPUniversalCell.class]) {
+    if (!cell || !indexPath || ![PPUniversalCell pp_isUniversalCell:cell]) {
         return;
     }
 

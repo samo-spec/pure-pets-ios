@@ -1183,7 +1183,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
     self.itemsCollectionView.showsVerticalScrollIndicator = NO;
     self.itemsCollectionView.dataSource = self;
     self.itemsCollectionView.delegate = self;
-    [self.itemsCollectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
+    [PPUniversalCell pp_registerInCollectionView:self.itemsCollectionView];
     [self.contentView addSubview:self.itemsCollectionView];
 }
 
@@ -2838,8 +2838,7 @@ typedef void (^SPProviderRatingSubmitBlock)(NSInteger rating, NSString *comment)
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier
-                                                                      forIndexPath:indexPath];
+    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     if (indexPath.item >= self.itemViewModels.count) return cell;
 
     PPUniversalCellViewModel *viewModel = self.itemViewModels[indexPath.item];

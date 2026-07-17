@@ -82,8 +82,7 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
         self.collectionView.prefetchingEnabled = NO;
     }
     
-    [self.collectionView registerClass:PPUniversalCell.class
-            forCellWithReuseIdentifier:@"PPUniversalCell"];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     
     [self addSubview:self.titleLabel];
     [self addSubview:self.collectionView];
@@ -225,9 +224,7 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
                            cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     
-    PPUniversalCell *cell =
-    [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell"
-                                              forIndexPath:indexPath];
+    id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     
     PPUniversalCellViewModel *vm = self.items[indexPath.item];
     vm.indexPath = indexPath;

@@ -2,118 +2,50 @@
 //  PPHomeOrderStatusCell.m
 //  Pure Pets
 //
-//  Created by Mohammed Ahmed on 4/3/26.
+//  UIKit collection-view bridge for the SwiftUI order status experience.
 //
+
 #import "PPHomeOrderStatusCell.h"
 #import "PPOrderStatusAppearance.h"
-#import <math.h>
+#import <Pure_Pets-Swift.h>
 
 @interface PPHomeOrderStatusCell ()
-@property (nonatomic, strong) UIView *shadowView;
-@property (nonatomic, strong) UIView *surfaceView;
-@property (nonatomic, strong) UIVisualEffectView *materialView;
-@property (nonatomic, strong) UIView *overlayView;
-@property (nonatomic, strong) CAGradientLayer *overlayGradientLayer;
-@property (nonatomic, strong) UIView *chipView;
-@property (nonatomic, strong) CAGradientLayer *chipGradientLayer;
-@property (nonatomic, strong) UIImageView *chipIconView;
-@property (nonatomic, strong) UILabel *chipLabel;
-@property (nonatomic, strong) UILabel *orderKickerLabel;
-@property (nonatomic, strong) UILabel *orderLabel;
-@property (nonatomic, strong) UILabel *metaLabel;
-@property (nonatomic, strong) UILabel *hintLabel;
-@property (nonatomic, strong) UIView *progressTrackView;
-@property (nonatomic, strong) UIView *progressFillView;
-@property (nonatomic, strong) CAGradientLayer *progressGradientLayer;
-@property (nonatomic, strong) NSLayoutConstraint *progressFillWidthConstraint;
-@property (nonatomic, strong) UILabel *footerLabel;
-@property (nonatomic, strong) UIView *actionRailView;
-@property (nonatomic, strong) UIStackView *actionsStackView;
-@property (nonatomic, strong) UIButton *trackButton;
-@property (nonatomic, strong) UIButton *historyButton;
-@property (nonatomic, strong) UIView *collapsedContentView;
-@property (nonatomic, strong) UIView *collapsedIconBadgeView;
-@property (nonatomic, strong) UIImageView *collapsedIconView;
-@property (nonatomic, copy) NSArray<NSString *> *previewImageURLs;
-@property (nonatomic, copy) NSArray<UIImageView *> *collapsedPreviewImageViews;
-@property (nonatomic, strong) UIStackView *collapsedTextStackView;
-@property (nonatomic, strong) UILabel *collapsedKickerLabel;
-@property (nonatomic, strong) UILabel *collapsedOrderLabel;
-@property (nonatomic, strong) UILabel *collapsedSummaryLabel;
-@property (nonatomic, strong) UIView *collapsedStatusPillView;
-@property (nonatomic, strong) CAGradientLayer *collapsedStatusPillGradientLayer;
-@property (nonatomic, strong) UILabel *collapsedStatusPillLabel;
-@property (nonatomic, strong) UIView *collapsedChevronContainerView;
-@property (nonatomic, strong) UIVisualEffectView *collapsedChevronMaterialView;
-@property (nonatomic, strong) UIView *collapsedChevronTintView;
-@property (nonatomic, strong) UIImageView *collapsedChevronView;
-@property (nonatomic, strong) NSLayoutConstraint *collapsedChevronTopConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *collapsedChevronCenterYConstraint;
-@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *expandedConstraints;
-@property (nonatomic, copy) NSArray<NSLayoutConstraint *> *collapsedConstraints;
-@property (nonatomic, strong) UIColor *currentStatusColor;
-@property (nonatomic, copy) NSString *currentStatusKey;
+@property (nonatomic, strong) PPHomeOrderStatusHostingView *hostingView;
 @property (nonatomic, copy) NSString *currentOrderReference;
-@property (nonatomic, assign) CGFloat currentProgress;
-@property (nonatomic, assign) BOOL showsExpandedState;
-- (void)pp_applyStatusColor:(UIColor *)statusColor
-                  statusKey:(NSString *)statusKey
-                   animated:(BOOL)animated;
-- (void)pp_applyStatusColorImmediately:(UIColor *)statusColor statusKey:(NSString *)statusKey;
+@property (nonatomic, copy) NSString *currentStatusKey;
 @end
 
-static const CGFloat PPHomeOrderCellZPosition = 120.0;
-static const CGFloat PPHomeOrderMinimumProgress = 0.08;
-static const CGFloat PPHomeOrderFallbackProgressWidth = 96.0;
-static const CGFloat PPHomeOrderCardCornerRadius = PPNewCorner;
-static const CGFloat PPHomeOrderSmallCornerRadius = 14.0;
 static NSString * const PPHomeOrderDefaultStatusIconName = @"shippingbox.circle.fill";
-static NSString * const PPHomeOrderChevronIconName = @"chevron.down";
-static NSString * const PPHomeOrderPreviewPlaceholderName = @"placeholder";
 
-static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallbackColor, CGFloat alpha)
+static inline NSString *PPHomeOrderTrimmedString(NSString *value)
 {
-    UIColor *resolved = baseColor ?: fallbackColor ?: UIColor.systemBlueColor;
-    return [resolved colorWithAlphaComponent:alpha];
-}
-
-static inline CGFloat PPHomeOrderClampedProgress(double progress)
-{
-    if (!isfinite(progress)) {
-        return PPHomeOrderMinimumProgress;
+    if (![value isKindOfClass:NSString.class]) {
+        return @"";
     }
-    return (CGFloat)fmax(PPHomeOrderMinimumProgress, fmin(1.0, progress));
+    return [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 
 static inline NSString *PPHomeOrderResolvedSymbolName(NSString *symbolName)
 {
-    NSString *trimmed = [PPSafeString(symbolName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *trimmed = PPHomeOrderTrimmedString(symbolName);
     return trimmed.length > 0 ? trimmed : PPHomeOrderDefaultStatusIconName;
 }
 
-static BOOL PPHomeOrderStatusTextContainsAnyKeyword(NSString *text, NSArray<NSString *> *keywords)
+static BOOL PPHomeOrderStatusTextContainsAnyKeyword(NSString *text,
+                                                     NSArray<NSString *> *keywords)
 {
-    NSString *normalizedText = [[text ?: @"" lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *normalizedText = [PPHomeOrderTrimmedString(text) lowercaseString];
     if (normalizedText.length == 0 || keywords.count == 0) {
         return NO;
     }
 
     for (NSString *keyword in keywords) {
-        NSString *candidate = [[keyword ?: @"" lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (candidate.length == 0) {
-            continue;
-        }
-        if ([normalizedText containsString:candidate]) {
+        NSString *candidate = [PPHomeOrderTrimmedString(keyword) lowercaseString];
+        if (candidate.length > 0 && [normalizedText containsString:candidate]) {
             return YES;
         }
     }
-
     return NO;
-}
-
-static UIColor *PPHomeOrderProcessingAccentColor(void)
-{
-    return PPOrderStatusAccentColorForKey(@"preparing_for_shipment");
 }
 
 static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
@@ -125,42 +57,47 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
         return fallbackColor;
     }
 
-    NSString *iconName = [[statusIconName ?: @"" lowercaseString] copy];
-    NSString *combinedText = [NSString stringWithFormat:@"%@ %@", statusTitle ?: @"", statusHint ?: @""];
+    NSString *iconName = [PPHomeOrderTrimmedString(statusIconName) lowercaseString];
+    NSString *combinedText = [NSString stringWithFormat:@"%@ %@",
+                              PPHomeOrderTrimmedString(statusTitle),
+                              PPHomeOrderTrimmedString(statusHint)];
 
     if ([iconName containsString:@"xmark"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"failed", @"cancel", @"declined", @"rejected", @"voided", @"ملغي", @"مرفوض", @"فشل"])) {
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"failed", @"cancel", @"declined", @"rejected", @"voided",
+                                                  @"ملغي", @"مرفوض", @"فشل"])) {
         return PPOrderStatusAccentColorForKey(@"delivery_cancelled");
     }
-
     if ([iconName containsString:@"checkmark"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"delivered", @"completed", @"fulfilled", @"تم التسليم", @"مكتمل"])) {
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"delivered", @"completed", @"fulfilled", @"تم التسليم", @"مكتمل"])) {
         return PPOrderStatusAccentColorForKey([iconName containsString:@"seal"] ? @"completed" : @"delivered");
     }
-
     if ([iconName containsString:@"shippedtruck"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"shipped", @"shipping", @"transit", @"out for delivery", @"out_for_delivery", @"في الطريق", @"تم الشحن"])) {
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"shipped", @"shipping", @"transit", @"out for delivery",
+                                                  @"out_for_delivery", @"في الطريق", @"تم الشحن"])) {
         return PPOrderStatusAccentColorForKey(@"on_the_way");
     }
-
     if ([iconName containsString:@"shippingbox"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"processing", @"preparing", @"packed", @"confirmed", @"قيد المعالجة", @"التجهيز", @"جاري تجهيز", @"تم التأكيد"])) {
-        return PPHomeOrderProcessingAccentColor();
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"processing", @"preparing", @"packed", @"confirmed",
+                                                  @"قيد المعالجة", @"التجهيز", @"جاري تجهيز", @"تم التأكيد"])) {
+        return PPOrderStatusAccentColorForKey(@"preparing_for_shipment");
     }
-
     if ([iconName containsString:@"creditcard"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"paid", @"payment", @"approved", @"captured", @"authorized", @"مدفوع", @"تم الدفع"])) {
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"paid", @"payment", @"approved", @"captured", @"authorized",
+                                                  @"مدفوع", @"تم الدفع"])) {
         return PPOrderStatusAccentColorForKey(@"paid");
     }
-
     if ([iconName containsString:@"clock"] ||
-        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"pending", @"waiting", @"بانتظار", @"قيد الانتظار"])) {
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText,
+                                                @[@"pending", @"waiting", @"بانتظار", @"قيد الانتظار"])) {
         return PPOrderStatusAccentColorForKey(@"pending");
     }
-
     return PPOrderStatusAccentColorForKey(@"neutral");
 }
-
 
 @implementation PPHomeOrderStatusCell
 
@@ -172,697 +109,63 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
-    if (!self) return nil;
-
-    [self pp_setupUI];
+    if (!self) {
+        return nil;
+    }
+    [self pp_setupHostingView];
     return self;
 }
 
-- (void)pp_setupUI
+- (void)pp_setupHostingView
 {
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
-    self.layer.zPosition = PPHomeOrderCellZPosition;
-    self.contentView.layer.zPosition = PPHomeOrderCellZPosition;
+    self.clipsToBounds = NO;
+    self.isAccessibilityElement = NO;
+    self.contentView.isAccessibilityElement = NO;
 
-    self.shadowView = [[UIView alloc] init];
-    self.shadowView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.shadowView.backgroundColor = UIColor.clearColor;
-    [self.shadowView pp_setShadowColor:UIColor.blackColor];
-    self.shadowView.layer.shadowOpacity = 0.08;
-    self.shadowView.layer.shadowRadius = 18.0;
-    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    self.shadowView.layer.cornerRadius = PPHomeOrderCardCornerRadius;
-    if (@available(iOS 13.0, *)) {
-        self.shadowView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.contentView addSubview:self.shadowView];
-
-    self.surfaceView = [[UIView alloc] init];
-    self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.98)];
-    self.surfaceView.layer.cornerRadius = PPHomeOrderCardCornerRadius;
-    self.surfaceView.layer.borderWidth = 1.0;
-    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)]];
-    self.surfaceView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.shadowView addSubview:self.surfaceView];
-
-    UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemThinMaterial;
-    self.materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
-    self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.materialView.userInteractionEnabled = NO;
-    self.materialView.alpha = PPIOS26() ? 0.68 : 0.96;
-    [self.surfaceView addSubview:self.materialView];
-
-    self.overlayView = [[UIView alloc] init];
-    self.overlayView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.overlayView.userInteractionEnabled = NO;
-    self.overlayView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.85];
-    self.overlayView.layer.masksToBounds = YES;
-    [self.surfaceView addSubview:self.overlayView];
-
-    self.overlayGradientLayer = [CAGradientLayer layer];
-    self.overlayGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.overlayGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.overlayGradientLayer.locations = @[@0.0, @0.38, @1.0];
-    self.overlayGradientLayer.needsDisplayOnBoundsChange = YES;
-    [self.overlayView.layer addSublayer:self.overlayGradientLayer];
-
-    self.chipView = [[UIView alloc] init];
-    self.chipView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chipView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
-    self.chipView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.chipView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.chipView];
-
-    self.chipGradientLayer = [CAGradientLayer layer];
-    self.chipGradientLayer.name = @"PPHomeOrderStatusChipGradient";
-    [self.chipView.layer insertSublayer:self.chipGradientLayer atIndex:0];
-
-    self.chipIconView = [[UIImageView alloc] init];
-    self.chipIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chipIconView.contentMode = UIViewContentModeScaleToFill;
-    [self.chipView addSubview:self.chipIconView];
-
-    self.chipLabel = [[UILabel alloc] init];
-    self.chipLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chipLabel.font = [GM boldFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    self.chipLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.chipLabel.adjustsFontSizeToFitWidth = YES;
-    self.chipLabel.minimumScaleFactor = 0.82;
-    [self.chipView addSubview:self.chipLabel];
-
-    self.orderKickerLabel = [[UILabel alloc] init];
-    self.orderKickerLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orderKickerLabel.font = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
-    self.orderKickerLabel.textColor = UIColor.secondaryLabelColor;
-    self.orderKickerLabel.numberOfLines = 1;
-    self.orderKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.surfaceView addSubview:self.orderKickerLabel];
-
-    self.orderLabel = [[UILabel alloc] init];
-    self.orderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orderLabel.font = [GM boldFontWithSize:21] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
-    self.orderLabel.textColor = UIColor.labelColor;
-    self.orderLabel.numberOfLines = 1;
-    self.orderLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.orderLabel.adjustsFontSizeToFitWidth = YES;
-    self.orderLabel.minimumScaleFactor = 0.82;
-    [self.surfaceView addSubview:self.orderLabel];
-
-    self.metaLabel = [[UILabel alloc] init];
-    self.metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.metaLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
-    self.metaLabel.textColor = UIColor.secondaryLabelColor;
-    self.metaLabel.numberOfLines = 1;
-    self.metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.surfaceView addSubview:self.metaLabel];
-
-    self.hintLabel = [[UILabel alloc] init];
-    self.hintLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.hintLabel.font = [GM MidFontWithSize:14] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    self.hintLabel.textColor = UIColor.labelColor;
-    self.hintLabel.numberOfLines = 2;
-    self.hintLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.surfaceView addSubview:self.hintLabel];
-
-    self.progressTrackView = [[UIView alloc] init];
-    self.progressTrackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.progressTrackView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.16 : 0.38)];
-    self.progressTrackView.layer.cornerRadius = 4.0;
-    self.progressTrackView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.progressTrackView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.progressTrackView];
-
-    self.progressFillView = [[UIView alloc] init];
-    self.progressFillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.progressFillView.layer.cornerRadius = 4.0;
-    self.progressFillView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.progressFillView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.progressTrackView addSubview:self.progressFillView];
-
-    self.progressGradientLayer = [CAGradientLayer layer];
-    self.progressGradientLayer.name = @"PPHomeOrderProgressGradient";
-    [self.progressFillView.layer insertSublayer:self.progressGradientLayer atIndex:0];
-
-    self.footerLabel = [[UILabel alloc] init];
-    self.footerLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.footerLabel.font = [GM MidFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-    self.footerLabel.textColor = UIColor.tertiaryLabelColor;
-    self.footerLabel.numberOfLines = 1;
-    self.footerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.surfaceView addSubview:self.footerLabel];
-
-    self.actionRailView = [[UIView alloc] init];
-    self.actionRailView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionRailView.layer.cornerRadius = PPCornerMedium;
-    self.actionRailView.layer.borderWidth = 1.5;
-    self.actionRailView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.actionRailView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.actionRailView];
-
-    self.actionsStackView = [[UIStackView alloc] init];
-    self.actionsStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionsStackView.axis = UILayoutConstraintAxisHorizontal;
-    self.actionsStackView.alignment = UIStackViewAlignmentFill;
-    self.actionsStackView.distribution = UIStackViewDistributionFillEqually;
-    self.actionsStackView.spacing = 8.0;
-    [self.actionRailView addSubview:self.actionsStackView];
-
-    self.trackButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.trackButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.trackButton.layer.cornerRadius = 17.0;
-    self.trackButton.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.trackButton.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    self.trackButton.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.trackButton.titleLabel.minimumScaleFactor = 0.82;
-    [self.trackButton addTarget:self action:@selector(pp_handleTrackTap) forControlEvents:UIControlEventTouchUpInside];
-    [self.actionsStackView addArrangedSubview:self.trackButton];
-
-    self.historyButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    self.historyButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.historyButton.layer.cornerRadius = 17.0;
-    self.historyButton.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.historyButton.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    self.historyButton.titleLabel.adjustsFontSizeToFitWidth = YES;
-    self.historyButton.titleLabel.minimumScaleFactor = 0.82;
-    [self.historyButton addTarget:self action:@selector(pp_handleHistoryTap) forControlEvents:UIControlEventTouchUpInside];
-    [self.actionsStackView addArrangedSubview:self.historyButton];
-
-    self.collapsedContentView = [[UIView alloc] init];
-    self.collapsedContentView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedContentView.backgroundColor = UIColor.clearColor;
-    [self.surfaceView addSubview:self.collapsedContentView];
-
-    self.collapsedIconBadgeView = [[UIView alloc] init];
-    self.collapsedIconBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedIconBadgeView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
-    self.collapsedIconBadgeView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.collapsedIconBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.collapsedContentView addSubview:self.collapsedIconBadgeView];
-
-    self.collapsedIconView = [[UIImageView alloc] init];
-    self.collapsedIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedIconView.contentMode = UIViewContentModeScaleAspectFit;
-    [self.collapsedIconBadgeView addSubview:self.collapsedIconView];
-
-    NSMutableArray<UIImageView *> *collapsedPreviewImageViews = [NSMutableArray array];
-    for (NSInteger index = 0; index < 3; index++) {
-        UIImageView *previewImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
-        previewImageView.translatesAutoresizingMaskIntoConstraints = YES;
-        previewImageView.contentMode = UIViewContentModeScaleAspectFill;
-        previewImageView.clipsToBounds = YES;
-        previewImageView.layer.masksToBounds = YES;
-        previewImageView.backgroundColor = [UIColor colorWithWhite:0.92 alpha:1.0];
-        if (@available(iOS 13.0, *)) {
-            previewImageView.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        previewImageView.hidden = YES;
-        [self.collapsedIconBadgeView addSubview:previewImageView];
-        [collapsedPreviewImageViews addObject:previewImageView];
-    }
-    self.collapsedPreviewImageViews = collapsedPreviewImageViews.copy;
-
-    self.collapsedTextStackView = [[UIStackView alloc] init];
-    self.collapsedTextStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedTextStackView.axis = UILayoutConstraintAxisVertical;
-    self.collapsedTextStackView.alignment = UIStackViewAlignmentFill;
-    self.collapsedTextStackView.distribution = UIStackViewDistributionFill;
-    self.collapsedTextStackView.spacing = 3.0;
-    [self.collapsedContentView addSubview:self.collapsedTextStackView];
-
-    self.collapsedKickerLabel = [[UILabel alloc] init];
-    self.collapsedKickerLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedKickerLabel.font = [GM MidFontWithSize:10] ?: [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
-    self.collapsedKickerLabel.textColor = UIColor.tertiaryLabelColor;
-    self.collapsedKickerLabel.numberOfLines = 1;
-    self.collapsedKickerLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.collapsedKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.collapsedTextStackView addArrangedSubview:self.collapsedKickerLabel];
-
-    self.collapsedOrderLabel = [[UILabel alloc] init];
-    self.collapsedOrderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedOrderLabel.font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
-    self.collapsedOrderLabel.textColor = UIColor.labelColor;
-    self.collapsedOrderLabel.numberOfLines = 1;
-    self.collapsedOrderLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.collapsedOrderLabel.adjustsFontSizeToFitWidth = YES;
-    self.collapsedOrderLabel.minimumScaleFactor = 0.84;
-    [self.collapsedTextStackView addArrangedSubview:self.collapsedOrderLabel];
-
-    self.collapsedSummaryLabel = [[UILabel alloc] init];
-    self.collapsedSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedSummaryLabel.font = [GM MidFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    self.collapsedSummaryLabel.textColor = UIColor.secondaryLabelColor;
-    self.collapsedSummaryLabel.numberOfLines = 1;
-    self.collapsedSummaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.collapsedSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    [self.collapsedTextStackView addArrangedSubview:self.collapsedSummaryLabel];
-
-    self.collapsedStatusPillView = [[UIView alloc] init];
-    self.collapsedStatusPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedStatusPillView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
-    self.collapsedStatusPillView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.collapsedStatusPillView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.collapsedContentView addSubview:self.collapsedStatusPillView];
-
-    self.collapsedStatusPillGradientLayer = [CAGradientLayer layer];
-    self.collapsedStatusPillGradientLayer.name = @"PPHomeOrderCollapsedStatusGradient";
-    [self.collapsedStatusPillView.layer insertSublayer:self.collapsedStatusPillGradientLayer atIndex:0];
-
-    self.collapsedStatusPillLabel = [[UILabel alloc] init];
-    self.collapsedStatusPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedStatusPillLabel.font = [GM boldFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    self.collapsedStatusPillLabel.textAlignment = NSTextAlignmentCenter;
-    self.collapsedStatusPillLabel.adjustsFontSizeToFitWidth = YES;
-    self.collapsedStatusPillLabel.minimumScaleFactor = 0.82;
-    [self.collapsedStatusPillView addSubview:self.collapsedStatusPillLabel];
-
-    self.collapsedChevronContainerView = [[UIView alloc] init];
-    self.collapsedChevronContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedChevronContainerView.layer.cornerRadius = 17.0;
-    self.collapsedChevronContainerView.layer.borderWidth = 1.0;
-    self.collapsedChevronContainerView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.collapsedChevronContainerView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.surfaceView addSubview:self.collapsedChevronContainerView];
-
-    UIBlurEffectStyle chevronBlurStyle = UIBlurEffectStyleSystemThinMaterial;
-    if (@available(iOS 13.0, *)) {
-        chevronBlurStyle = UIBlurEffectStyleSystemChromeMaterial;
-    }
-    self.collapsedChevronMaterialView =
-        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:chevronBlurStyle]];
-    self.collapsedChevronMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedChevronMaterialView.userInteractionEnabled = NO;
-    [self.collapsedChevronContainerView addSubview:self.collapsedChevronMaterialView];
-
-    self.collapsedChevronTintView = [[UIView alloc] init];
-    self.collapsedChevronTintView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedChevronTintView.userInteractionEnabled = NO;
-    [self.collapsedChevronContainerView addSubview:self.collapsedChevronTintView];
-
-    self.collapsedChevronView = [[UIImageView alloc] init];
-    self.collapsedChevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedChevronView.contentMode = UIViewContentModeScaleAspectFit;
-    self.collapsedChevronView.tintColor = UIColor.labelColor;
-    if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *chevronConfig =
-            [UIImageSymbolConfiguration configurationWithPointSize:11.0
-                                                            weight:UIImageSymbolWeightBold
-                                                             scale:UIImageSymbolScaleMedium];
-        self.collapsedChevronView.preferredSymbolConfiguration = chevronConfig;
-    }
-    self.collapsedChevronView.image = [UIImage systemImageNamed:PPHomeOrderChevronIconName];
-    [self.collapsedChevronContainerView addSubview:self.collapsedChevronView];
-    self.collapsedChevronContainerView.userInteractionEnabled = YES;
-    self.collapsedChevronContainerView.isAccessibilityElement = YES;
-    self.collapsedChevronContainerView.accessibilityTraits = UIAccessibilityTraitButton;
-    UITapGestureRecognizer *collapseTapGesture =
-        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleCollapseTap)];
-    collapseTapGesture.cancelsTouchesInView = YES;
-    [self.collapsedChevronContainerView addGestureRecognizer:collapseTapGesture];
-
-    self.progressFillWidthConstraint = [self.progressFillView.widthAnchor constraintEqualToConstant:0.0];
-    self.collapsedChevronTopConstraint =
-        [self.collapsedChevronContainerView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:14.0];
-    self.collapsedChevronCenterYConstraint =
-        [self.collapsedChevronContainerView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor];
+    self.hostingView = [[PPHomeOrderStatusHostingView alloc] initWithFrame:CGRectZero];
+    self.hostingView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.hostingView.backgroundColor = UIColor.clearColor;
+    [self.contentView addSubview:self.hostingView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.shadowView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [self.shadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [self.shadowView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.shadowView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.surfaceView.topAnchor constraintEqualToAnchor:self.shadowView.topAnchor],
-        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.shadowView.leadingAnchor],
-        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.shadowView.trailingAnchor],
-        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.shadowView.bottomAnchor],
-        [self.materialView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
-        [self.materialView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
-        [self.materialView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
-        [self.materialView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
-        [self.overlayView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
-        [self.overlayView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
-        [self.overlayView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
-        [self.overlayView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
-        [self.collapsedChevronContainerView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-14.0],
-        [self.collapsedChevronContainerView.widthAnchor constraintEqualToConstant:34.0],
-        [self.collapsedChevronContainerView.heightAnchor constraintEqualToConstant:34.0],
-        [self.collapsedChevronMaterialView.topAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.topAnchor],
-        [self.collapsedChevronMaterialView.leadingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.leadingAnchor],
-        [self.collapsedChevronMaterialView.trailingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.trailingAnchor],
-        [self.collapsedChevronMaterialView.bottomAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.bottomAnchor],
-        [self.collapsedChevronTintView.topAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.topAnchor],
-        [self.collapsedChevronTintView.leadingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.leadingAnchor],
-        [self.collapsedChevronTintView.trailingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.trailingAnchor],
-        [self.collapsedChevronTintView.bottomAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.bottomAnchor],
-        [self.collapsedChevronView.centerXAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.centerXAnchor],
-        [self.collapsedChevronView.centerYAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.centerYAnchor],
-        [self.collapsedChevronView.widthAnchor constraintEqualToConstant:12.0],
-        [self.collapsedChevronView.heightAnchor constraintEqualToConstant:12.0],
+        [self.hostingView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [self.hostingView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.hostingView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [self.hostingView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
     ]];
 
-    self.expandedConstraints = @[
-        [self.chipView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
-        [self.chipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-        [self.chipView.heightAnchor constraintEqualToConstant:30.0],
-        [self.chipView.trailingAnchor constraintLessThanOrEqualToAnchor:self.collapsedChevronContainerView.leadingAnchor constant:-12.0],
-        [self.chipIconView.leadingAnchor constraintEqualToAnchor:self.chipView.leadingAnchor constant:10.0],
-        [self.chipIconView.centerYAnchor constraintEqualToAnchor:self.chipView.centerYAnchor],
-        [self.chipIconView.widthAnchor constraintEqualToConstant:16.0],
-        [self.chipIconView.heightAnchor constraintEqualToConstant:16.0],
-        [self.chipLabel.leadingAnchor constraintEqualToAnchor:self.chipIconView.trailingAnchor constant:6.0],
-        [self.chipLabel.trailingAnchor constraintEqualToAnchor:self.chipView.trailingAnchor constant:-12.0],
-        [self.chipLabel.centerYAnchor constraintEqualToAnchor:self.chipView.centerYAnchor],
-        [self.orderKickerLabel.topAnchor constraintEqualToAnchor:self.chipView.bottomAnchor constant:12.0],
-        [self.orderKickerLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-        [self.orderKickerLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
-        [self.orderLabel.topAnchor constraintEqualToAnchor:self.orderKickerLabel.bottomAnchor constant:2.0],
-        [self.orderLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-        [self.orderLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
-        [self.metaLabel.topAnchor constraintEqualToAnchor:self.orderLabel.bottomAnchor constant:4.0],
-        [self.metaLabel.leadingAnchor constraintEqualToAnchor:self.orderLabel.leadingAnchor],
-        [self.metaLabel.trailingAnchor constraintEqualToAnchor:self.orderLabel.trailingAnchor],
-        [self.hintLabel.topAnchor constraintEqualToAnchor:self.metaLabel.bottomAnchor constant:8.0],
-        [self.hintLabel.leadingAnchor constraintEqualToAnchor:self.orderLabel.leadingAnchor],
-        [self.hintLabel.trailingAnchor constraintEqualToAnchor:self.orderLabel.trailingAnchor],
-        [self.progressTrackView.topAnchor constraintEqualToAnchor:self.hintLabel.bottomAnchor constant:12.0],
-        [self.progressTrackView.leadingAnchor constraintEqualToAnchor:self.orderLabel.leadingAnchor],
-        [self.progressTrackView.trailingAnchor constraintEqualToAnchor:self.orderLabel.trailingAnchor],
-        [self.progressTrackView.heightAnchor constraintEqualToConstant:6.0],
-        [self.progressFillView.topAnchor constraintEqualToAnchor:self.progressTrackView.topAnchor],
-        [self.progressFillView.leadingAnchor constraintEqualToAnchor:self.progressTrackView.leadingAnchor],
-        [self.progressFillView.bottomAnchor constraintEqualToAnchor:self.progressTrackView.bottomAnchor],
-        self.progressFillWidthConstraint,
-        [self.footerLabel.topAnchor constraintEqualToAnchor:self.progressTrackView.bottomAnchor constant:10.0],
-        [self.footerLabel.leadingAnchor constraintEqualToAnchor:self.orderLabel.leadingAnchor],
-        [self.footerLabel.trailingAnchor constraintEqualToAnchor:self.orderLabel.trailingAnchor],
-        [self.actionRailView.topAnchor constraintEqualToAnchor:self.footerLabel.bottomAnchor constant:14.0],
-        [self.actionRailView.leadingAnchor constraintEqualToAnchor:self.orderLabel.leadingAnchor],
-        [self.actionRailView.trailingAnchor constraintEqualToAnchor:self.orderLabel.trailingAnchor],
-        [self.actionRailView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
-        [self.actionRailView.heightAnchor constraintEqualToConstant:42.0],
-        [self.actionsStackView.leadingAnchor constraintEqualToAnchor:self.actionRailView.leadingAnchor constant:4.0],
-        [self.actionsStackView.trailingAnchor constraintEqualToAnchor:self.actionRailView.trailingAnchor constant:-4.0],
-        [self.actionsStackView.topAnchor constraintEqualToAnchor:self.actionRailView.topAnchor constant:4.0],
-        [self.actionsStackView.bottomAnchor constraintEqualToAnchor:self.actionRailView.bottomAnchor constant:-4.0],
-    ];
-
-    self.collapsedConstraints = @[
-        [self.collapsedContentView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:12.0],
-        [self.collapsedContentView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
-        [self.collapsedContentView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [self.collapsedContentView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-12.0],
-        [self.collapsedIconBadgeView.leadingAnchor constraintEqualToAnchor:self.collapsedContentView.leadingAnchor],
-        [self.collapsedIconBadgeView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor],
-        [self.collapsedIconBadgeView.widthAnchor constraintEqualToConstant:52.0],
-        [self.collapsedIconBadgeView.heightAnchor constraintEqualToConstant:52.0],
-        [self.collapsedIconView.centerXAnchor constraintEqualToAnchor:self.collapsedIconBadgeView.centerXAnchor],
-        [self.collapsedIconView.centerYAnchor constraintEqualToAnchor:self.collapsedIconBadgeView.centerYAnchor],
-        [self.collapsedIconView.widthAnchor constraintEqualToConstant:22.0],
-        [self.collapsedIconView.heightAnchor constraintEqualToConstant:22.0],
-        [self.collapsedStatusPillView.trailingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.leadingAnchor constant:-10.0],
-        [self.collapsedStatusPillView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor],
-        [self.collapsedStatusPillView.heightAnchor constraintEqualToConstant:28.0],
-        [self.collapsedStatusPillLabel.leadingAnchor constraintEqualToAnchor:self.collapsedStatusPillView.leadingAnchor constant:12.0],
-        [self.collapsedStatusPillLabel.trailingAnchor constraintEqualToAnchor:self.collapsedStatusPillView.trailingAnchor constant:-12.0],
-        [self.collapsedStatusPillLabel.centerYAnchor constraintEqualToAnchor:self.collapsedStatusPillView.centerYAnchor],
-        [self.collapsedTextStackView.leadingAnchor constraintEqualToAnchor:self.collapsedIconBadgeView.trailingAnchor constant:12.0],
-        [self.collapsedTextStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.collapsedStatusPillView.leadingAnchor constant:-12.0],
-        [self.collapsedTextStackView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor],
-        [self.collapsedTextStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.collapsedContentView.topAnchor],
-        [self.collapsedTextStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.collapsedContentView.bottomAnchor],
-    ];
-
-    [self pp_setShowsExpandedState:NO];
-    self.currentProgress = PPHomeOrderMinimumProgress;
-    [self pp_applyStatusColor:PPOrderStatusAccentColorForKey(@"pending")
-                    statusKey:@"pending"
-                     animated:NO];
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyThemeColors];
+    __weak typeof(self) weakSelf = self;
+    self.hostingView.onTrackTap = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (self.onTrackTap) {
+            self.onTrackTap();
         }
-    }
-}
+    };
+    self.hostingView.onHistoryTap = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (self.onHistoryTap) {
+            self.onHistoryTap();
+        }
+    };
+    self.hostingView.onCollapseTap = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (self.onCollapseTap) {
+            self.onCollapseTap();
+        }
+    };
 
-- (void)pp_applyThemeColors
-{
-    [self.shadowView pp_setShadowColor:UIColor.blackColor];
-     self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
-    [self pp_applyStatusColor:self.currentStatusColor
-                    statusKey:self.currentStatusKey
-                     animated:NO];
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    [self pp_updateDecorativeLayers];
-}
-
-- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
-{
-    CGSize previousSize = self.bounds.size;
-    [super applyLayoutAttributes:layoutAttributes];
-    self.layer.zPosition = MAX(self.layer.zPosition, PPHomeOrderCellZPosition);
-    self.contentView.layer.zPosition = self.layer.zPosition;
-    if (!CGSizeEqualToSize(previousSize, self.bounds.size)) {
-        [self setNeedsLayout];
-    }
-}
-
-- (void)pp_updateDecorativeLayers
-{
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.overlayView.layer.cornerRadius = self.surfaceView.layer.cornerRadius;
-    self.overlayGradientLayer.frame = self.overlayView.bounds;
-    self.overlayGradientLayer.cornerRadius = self.surfaceView.layer.cornerRadius;
-    self.chipGradientLayer.frame = self.chipView.bounds;
-    self.chipGradientLayer.cornerRadius = self.chipView.layer.cornerRadius;
-    self.collapsedStatusPillGradientLayer.frame = self.collapsedStatusPillView.bounds;
-    self.collapsedStatusPillGradientLayer.cornerRadius = self.collapsedStatusPillView.layer.cornerRadius;
-    self.progressGradientLayer.frame = self.progressFillView.bounds;
-    self.progressGradientLayer.cornerRadius = self.progressFillView.layer.cornerRadius;
-    CGRect shadowBounds = self.shadowView.bounds;
-    CGFloat cornerRadius = self.surfaceView.layer.cornerRadius;
-    if (!CGRectIsEmpty(shadowBounds) &&
-        isfinite((double)CGRectGetWidth(shadowBounds)) &&
-        isfinite((double)CGRectGetHeight(shadowBounds)) &&
-        isfinite((double)cornerRadius)) {
-        self.shadowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:shadowBounds
-                                       cornerRadius:MAX(0.0, cornerRadius)].CGPath;
-    } else {
-        self.shadowView.layer.shadowPath = nil;
-    }
-    [self pp_updateProgressFillWidth];
-    [self pp_updateCollapsedPreviewLayout];
-    [CATransaction commit];
-}
-
-- (void)refreshDecorativeLayersForCurrentBounds
-{
-    [self pp_updateDecorativeLayers];
-}
-
-- (void)pp_updateProgressWithValue:(double)progress
-{
-    self.currentProgress = PPHomeOrderClampedProgress(progress);
-    [self pp_updateProgressFillWidth];
-}
-
-- (void)pp_updateProgressFillWidth
-{
-    CGFloat trackWidth = CGRectGetWidth(self.progressTrackView.bounds);
-    if (!isfinite((double)trackWidth) || trackWidth <= 0.0) {
-        trackWidth = PPHomeOrderFallbackProgressWidth;
-    }
-    self.progressFillWidthConstraint.constant = floor(trackWidth * self.currentProgress);
-}
-
-- (void)pp_resetReusablePresentation
-{
-    self.orderLabel.alpha = 1.0;
-    self.orderKickerLabel.alpha = 1.0;
-    self.metaLabel.alpha = 1.0;
-    self.hintLabel.alpha = 1.0;
-    self.footerLabel.alpha = 1.0;
-    self.chipView.alpha = 1.0;
-    self.collapsedContentView.alpha = 1.0;
-    self.actionRailView.alpha = 1.0;
-
-    self.trackButton.hidden = NO;
-    self.historyButton.hidden = NO;
-    self.trackButton.enabled = YES;
-    self.historyButton.enabled = YES;
-
-    self.surfaceView.transform = CGAffineTransformIdentity;
-    self.shadowView.transform = CGAffineTransformIdentity;
-    self.collapsedContentView.transform = CGAffineTransformIdentity;
-    self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
-    self.collapsedChevronView.transform = CGAffineTransformIdentity;
-}
-
-- (void)pp_applyPlaceholderPresentation
-{
-    self.orderLabel.alpha = 0.55;
-    self.orderKickerLabel.alpha = 0.45;
-    self.metaLabel.alpha = 0.45;
-    self.hintLabel.alpha = 0.35;
-    self.footerLabel.alpha = 0.35;
-    self.chipView.alpha = 0.72;
-    self.trackButton.hidden = YES;
-    self.historyButton.hidden = YES;
-    self.actionRailView.alpha = 0.45;
-    self.collapsedContentView.alpha = 0.72;
+    [self pp_applyCurrentLanguageDirection];
 }
 
 - (void)pp_applyCurrentLanguageDirection
 {
-    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
-    NSTextAlignment textAlignment = Language.alignmentForCurrentLanguage;
-
-    self.semanticContentAttribute = semanticAttribute;
-    self.contentView.semanticContentAttribute = semanticAttribute;
-    self.surfaceView.semanticContentAttribute = semanticAttribute;
-    self.chipView.semanticContentAttribute = semanticAttribute;
-    self.actionRailView.semanticContentAttribute = semanticAttribute;
-    self.actionsStackView.semanticContentAttribute = semanticAttribute;
-    self.collapsedContentView.semanticContentAttribute = semanticAttribute;
-    self.collapsedTextStackView.semanticContentAttribute = semanticAttribute;
-
-    for (UILabel *label in [self pp_directionalLabels]) {
-        label.textAlignment = textAlignment;
-    }
-}
-
-- (NSArray<UILabel *> *)pp_directionalLabels
-{
-    return @[
-        self.chipLabel,
-        self.orderKickerLabel,
-        self.orderLabel,
-        self.metaLabel,
-        self.hintLabel,
-        self.footerLabel,
-        self.collapsedKickerLabel,
-        self.collapsedOrderLabel,
-        self.collapsedSummaryLabel
-    ];
-}
-
-- (void)pp_applyOrderReference:(NSString *)orderReference
-              orderKickerTitle:(NSString *)orderKickerTitle
-                          meta:(NSString *)meta
-                   statusTitle:(NSString *)statusTitle
-                    statusHint:(NSString *)statusHint
-                    footerText:(NSString *)footerText
-                statusIconName:(NSString *)statusIconName
-{
-    NSString *safeOrderReference = PPSafeString(orderReference);
-    NSString *safeKickerTitle = PPSafeString(orderKickerTitle);
-    NSString *safeMeta = PPSafeString(meta);
-    NSString *safeStatusTitle = PPSafeString(statusTitle);
-    NSString *safeStatusHint = PPSafeString(statusHint);
-    NSString *safeFooterText = PPSafeString(footerText);
-    UIImage *statusIcon = [UIImage systemImageNamed:PPHomeOrderResolvedSymbolName(statusIconName)];
-
-    self.orderKickerLabel.text = safeKickerTitle;
-    self.collapsedKickerLabel.text = safeKickerTitle;
-    self.orderLabel.text = safeOrderReference;
-    self.metaLabel.text = safeMeta;
-    self.hintLabel.text = safeStatusHint;
-    self.footerLabel.text = safeFooterText;
-    self.chipLabel.text = safeStatusTitle;
-    self.chipIconView.image = statusIcon;
-    self.collapsedOrderLabel.text = safeOrderReference;
-    self.collapsedSummaryLabel.text = [self pp_collapsedSummaryWithMeta:safeMeta
-                                                             footerText:safeFooterText
-                                                             statusHint:safeStatusHint];
-    self.collapsedStatusPillLabel.text = safeStatusTitle;
-    self.collapsedIconView.image = statusIcon;
-    self.collapsedChevronView.image = [UIImage systemImageNamed:PPHomeOrderChevronIconName];
-}
-
-- (void)pp_configureActionsWithActionTitle:(NSString *)actionTitle
-                               statusColor:(UIColor *)statusColor
-{
-    NSString *resolvedActionTitle = actionTitle.length > 0 ? actionTitle : (kLang(@"order_action_track") ?: @"Track order");
-    NSString *historyActionTitle = kLang(@"OrderHistory") ?: @"Order history";
-
-    [self pp_configureActionButton:self.trackButton
-                             title:resolvedActionTitle
-                          iconName:@"location.fill"
-                       statusColor:statusColor
-                         isPrimary:YES];
-    [self pp_configureActionButton:self.historyButton
-                             title:historyActionTitle
-                         iconName:@"clock.fill"
-                       statusColor:statusColor
-                         isPrimary:NO];
-}
-
-- (void)pp_updateAccessibilityForExpanded:(BOOL)expanded
-{
-    NSMutableArray<NSString *> *spokenParts = [NSMutableArray array];
-    for (NSString *part in @[
-        PPSafeString(self.orderKickerLabel.text),
-        PPSafeString(self.orderLabel.text),
-        PPSafeString(self.chipLabel.text),
-        PPSafeString(expanded ? self.hintLabel.text : self.collapsedSummaryLabel.text)
-    ]) {
-        if (part.length > 0) {
-            [spokenParts addObject:part];
-        }
-    }
-
-    self.accessibilityLabel = [spokenParts componentsJoinedByString:@", "];
-    self.collapsedChevronContainerView.accessibilityLabel = expanded
-        ? (kLang(@"ShowLess") ?: PPSafeString(self.orderLabel.text))
-        : PPSafeString(self.orderLabel.text);
-    self.collapsedChevronContainerView.accessibilityValue = PPSafeString(self.chipLabel.text);
-    self.collapsedChevronContainerView.accessibilityHint = PPSafeString(self.hintLabel.text);
-}
-
-- (void)pp_applyCollapsedPreviewChromeForHasPreviewImages:(BOOL)hasPreviewImages
-{
-    if (hasPreviewImages) {
-        self.collapsedIconBadgeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.18 : 0.94)];
-        self.collapsedIconBadgeView.layer.borderWidth = 1.0;
-        [self.collapsedIconBadgeView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.64]];
-    } else {
-        self.collapsedIconBadgeView.layer.borderWidth = 0.0;
-        [self.collapsedIconBadgeView pp_setBorderColor:UIColor.clearColor];
-    }
+    UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
+    self.semanticContentAttribute = semantic;
+    self.contentView.semanticContentAttribute = semantic;
+    self.hostingView.semanticContentAttribute = semantic;
 }
 
 - (void)prepareForReuse
@@ -871,35 +174,41 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.onTrackTap = nil;
     self.onHistoryTap = nil;
     self.onCollapseTap = nil;
-    self.currentStatusKey = @"";
     self.currentOrderReference = @"";
-    [self pp_resetReusablePresentation];
-    [self pp_updateProgressWithValue:PPHomeOrderMinimumProgress];
-    self.previewImageURLs = @[];
-    self.collapsedIconView.hidden = NO;
-    self.collapsedIconView.image = nil;
-    for (UIImageView *imageView in self.collapsedPreviewImageViews ?: @[]) {
-        imageView.hidden = YES;
-        imageView.image = [UIImage imageNamed:PPHomeOrderPreviewPlaceholderName];
+    self.currentStatusKey = @"";
+    [self.hostingView prepareForReuse];
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+    [self.hostingView setHighlighted:highlighted animated:self.window != nil];
+}
+
+- (void)setSelected:(BOOL)selected
+{
+    [super setSelected:selected];
+    if (!selected) {
+        [self.hostingView setHighlighted:NO animated:self.window != nil];
     }
 }
 
 - (void)configurePlaceholderExpanded:(BOOL)expanded
 {
-    [self configureWithOrderReference:@"----"
-                      orderKickerTitle:(kLang(@"Home_CurrentOrdersTitle") ?: (kLang(@"Home_LastOrderTitle") ?: @""))
-                       previewImageURLs:@[]
-                                 meta:@"------"
-                          statusTitle:(kLang(@"Pending") ?: @"Pending")
-                           statusHint:@" "
-                            statusKey:@"pending"
-                             progress:0.22
-                           footerText:@" "
-                          statusColor:PPOrderStatusAccentColorForKey(@"pending")
-                       statusIconName:@"clock.fill"
-                          actionTitle:(kLang(@"order_action_track") ?: @"Track order")
-                             expanded:expanded];
-    [self pp_applyPlaceholderPresentation];
+    [self pp_configureWithOrderReference:@"----"
+                        orderKickerTitle:(kLang(@"Home_CurrentOrdersTitle") ?: (kLang(@"Home_LastOrderTitle") ?: @""))
+                         previewImageURLs:@[]
+                                    meta:@"------"
+                             statusTitle:(kLang(@"Pending") ?: @"")
+                              statusHint:@" "
+                               statusKey:@"pending"
+                                progress:0.22
+                              footerText:@" "
+                             statusColor:PPOrderStatusAccentColorForKey(@"pending")
+                          statusIconName:@"clock.fill"
+                             actionTitle:(kLang(@"order_action_track") ?: @"")
+                                expanded:expanded
+                             placeholder:YES];
 }
 
 - (void)configureWithOrderReference:(NSString *)orderReference
@@ -916,440 +225,113 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                         actionTitle:(NSString *)actionTitle
                            expanded:(BOOL)expanded
 {
-    NSString *resolvedOrderReference = PPSafeString(orderReference);
-    NSString *resolvedStatusKey = PPOrderStatusAppearanceNormalizedKey(statusKey);
-    BOOL shouldAnimateStatusChange = self.window != nil &&
-                                     self.currentOrderReference.length > 0 &&
-                                     [self.currentOrderReference isEqualToString:resolvedOrderReference] &&
-                                     self.currentStatusKey.length > 0 &&
-                                     ![self.currentStatusKey isEqualToString:resolvedStatusKey] &&
-                                     !UIAccessibilityIsReduceMotionEnabled();
-    [self pp_resetReusablePresentation];
-    [self pp_applyCurrentLanguageDirection];
-    [self pp_applyOrderReference:orderReference
-                orderKickerTitle:orderKickerTitle
-                            meta:meta
-                     statusTitle:statusTitle
-                      statusHint:statusHint
-                      footerText:footerText
-                  statusIconName:statusIconName];
-
-    UIColor *resolvedStatusColor = PPHomeOrderResolvedStatusColor(statusColor,
-                                                                  statusTitle,
-                                                                  statusHint,
-                                                                  statusIconName);
-
-    self.currentOrderReference = resolvedOrderReference;
-    [self pp_applyStatusColor:resolvedStatusColor
-                    statusKey:resolvedStatusKey
-                     animated:shouldAnimateStatusChange];
-    [self pp_applyPreviewImageURLs:previewImageURLs];
-    [self pp_setShowsExpandedState:expanded];
-    [self pp_updateProgressWithValue:progress];
-    [self pp_configureActionsWithActionTitle:actionTitle statusColor:resolvedStatusColor];
-
-    [self setNeedsLayout];
-    [self layoutIfNeeded];
+    [self pp_configureWithOrderReference:orderReference
+                        orderKickerTitle:orderKickerTitle
+                         previewImageURLs:previewImageURLs
+                                    meta:meta
+                             statusTitle:statusTitle
+                              statusHint:statusHint
+                               statusKey:statusKey
+                                progress:progress
+                              footerText:footerText
+                             statusColor:statusColor
+                          statusIconName:statusIconName
+                             actionTitle:actionTitle
+                                expanded:expanded
+                             placeholder:NO];
 }
 
-- (void)pp_applyPreviewImageURLs:(NSArray<NSString *> *)previewImageURLs
+- (void)pp_configureWithOrderReference:(NSString *)orderReference
+                      orderKickerTitle:(NSString *)orderKickerTitle
+                       previewImageURLs:(NSArray<NSString *> *)previewImageURLs
+                                  meta:(NSString *)meta
+                           statusTitle:(NSString *)statusTitle
+                            statusHint:(NSString *)statusHint
+                             statusKey:(NSString *)statusKey
+                              progress:(double)progress
+                            footerText:(NSString *)footerText
+                           statusColor:(UIColor *)statusColor
+                        statusIconName:(NSString *)statusIconName
+                           actionTitle:(NSString *)actionTitle
+                              expanded:(BOOL)expanded
+                           placeholder:(BOOL)placeholder
 {
-    NSMutableArray<NSString *> *resolvedURLs = [NSMutableArray array];
-    NSMutableOrderedSet<NSString *> *dedupedURLs = [NSMutableOrderedSet orderedSet];
-    for (NSString *rawURL in previewImageURLs ?: @[]) {
-        NSString *value = [rawURL isKindOfClass:NSString.class]
-            ? [rawURL stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
-            : @"";
-        if (value.length == 0 || [dedupedURLs containsObject:value]) {
+    [self pp_applyCurrentLanguageDirection];
+
+    NSString *resolvedOrderReference = PPHomeOrderTrimmedString(orderReference);
+    NSString *resolvedStatusKey = PPOrderStatusAppearanceNormalizedKey(statusKey);
+    BOOL animateStatusChange = !placeholder &&
+                               self.window != nil &&
+                               self.currentOrderReference.length > 0 &&
+                               [self.currentOrderReference isEqualToString:resolvedOrderReference] &&
+                               self.currentStatusKey.length > 0 &&
+                               ![self.currentStatusKey isEqualToString:resolvedStatusKey] &&
+                               !UIAccessibilityIsReduceMotionEnabled();
+
+    NSMutableArray<NSString *> *resolvedImageURLs = [NSMutableArray arrayWithCapacity:3];
+    NSMutableSet<NSString *> *seenImageURLs = [NSMutableSet setWithCapacity:3];
+    for (id rawValue in previewImageURLs ?: @[]) {
+        NSString *imageURL = PPHomeOrderTrimmedString(rawValue);
+        if (imageURL.length == 0 || [seenImageURLs containsObject:imageURL]) {
             continue;
         }
-        [dedupedURLs addObject:value];
-        [resolvedURLs addObject:value];
-        if (resolvedURLs.count >= self.collapsedPreviewImageViews.count) {
+        [seenImageURLs addObject:imageURL];
+        [resolvedImageURLs addObject:imageURL];
+        if (resolvedImageURLs.count == 3) {
             break;
         }
     }
 
-    BOOL didChangePreviewURLs = ![self.previewImageURLs isEqualToArray:resolvedURLs];
-    self.previewImageURLs = resolvedURLs.copy;
-
-    UIImage *placeholder = [UIImage imageNamed:PPHomeOrderPreviewPlaceholderName];
-    BOOL hasPreviewImages = (self.previewImageURLs.count > 0);
-    self.collapsedIconView.hidden = hasPreviewImages;
-
-    for (NSInteger index = 0; index < self.collapsedPreviewImageViews.count; index++) {
-        UIImageView *imageView = self.collapsedPreviewImageViews[index];
-        imageView.hidden = (index >= (NSInteger)self.previewImageURLs.count);
-        if (imageView.hidden) {
-            imageView.image = nil;
-            continue;
-        }
-
-        NSString *imageURL = self.previewImageURLs[index];
-        if (didChangePreviewURLs) {
-            imageView.image = placeholder;
-        }
-        if (imageURL.length > 0 && (didChangePreviewURLs || imageView.image == nil)) {
-            [GM setImageFromUrlString:imageURL imageView:imageView phImage:PPHomeOrderPreviewPlaceholderName];
-        }
+    UIColor *resolvedColor = PPHomeOrderResolvedStatusColor(statusColor,
+                                                            statusTitle,
+                                                            statusHint,
+                                                            statusIconName);
+    NSString *resolvedActionTitle = PPHomeOrderTrimmedString(actionTitle);
+    if (resolvedActionTitle.length == 0) {
+        resolvedActionTitle = kLang(@"order_action_track") ?: @"";
     }
 
-    [self pp_applyCollapsedPreviewChromeForHasPreviewImages:hasPreviewImages];
+    self.currentOrderReference = resolvedOrderReference;
+    self.currentStatusKey = resolvedStatusKey;
 
-    [self setNeedsLayout];
-}
-
-- (void)pp_updateCollapsedPreviewLayout
-{
-    CGRect bounds = self.collapsedIconBadgeView.bounds;
-    if (CGRectIsEmpty(bounds)) {
-        return;
-    }
-
-    NSUInteger visibleCount = MIN(self.previewImageURLs.count, self.collapsedPreviewImageViews.count);
-    CGFloat width = CGRectGetWidth(bounds);
-    CGFloat height = CGRectGetHeight(bounds);
-
-    for (UIImageView *imageView in self.collapsedPreviewImageViews ?: @[]) {
-        imageView.hidden = YES;
-    }
-
-    if (visibleCount == 0) {
-        return;
-    }
-
-    NSArray<NSValue *> *frames = @[];
-    if (visibleCount == 1) {
-        frames = @[[NSValue valueWithCGRect:CGRectMake(0.0, 0.0, width, height)]];
-    } else if (visibleCount == 2) {
-        CGFloat size = MIN(width, height) - 8.0;
-        CGFloat y = floor((height - size) * 0.5);
-        frames = @[
-            [NSValue valueWithCGRect:CGRectMake(1.0, y - 2.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, y + 2.0, size, size)]
-        ];
-    } else {
-        CGFloat size = MIN(width, height) - 14.0;
-        frames = @[
-            [NSValue valueWithCGRect:CGRectMake(1.0, height - size - 1.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(floor((width - size) * 0.5), 1.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, height - size - 1.0, size, size)]
-        ];
-    }
-
-    for (NSInteger index = 0; index < (NSInteger)visibleCount; index++) {
-        UIImageView *imageView = self.collapsedPreviewImageViews[index];
-        imageView.hidden = NO;
-        imageView.frame = frames[index].CGRectValue;
-        imageView.layer.cornerRadius = MIN(8.0, floor(CGRectGetWidth(imageView.bounds) * 0.22));
-    }
-}
-
-- (NSString *)pp_collapsedSummaryWithMeta:(NSString *)meta
-                               footerText:(NSString *)footerText
-                               statusHint:(NSString *)statusHint
-{
-    NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    if (meta.length > 0) {
-        [parts addObject:meta];
-    }
-    if (footerText.length > 0) {
-        [parts addObject:footerText];
-    }
-    if (parts.count == 0 && statusHint.length > 0) {
-        [parts addObject:statusHint];
-    }
-    return [parts componentsJoinedByString:@" | "];
-}
-
-- (NSArray<UIView *> *)pp_expandedContentViews
-{
-    return @[
-        self.chipView,
-        self.orderKickerLabel,
-        self.orderLabel,
-        self.metaLabel,
-        self.hintLabel,
-        self.progressTrackView,
-        self.footerLabel,
-        self.actionRailView
-    ];
-}
-
-- (void)pp_applyExpandedConstraintState:(BOOL)expanded
-{
-    if (expanded) {
-        [NSLayoutConstraint deactivateConstraints:self.collapsedConstraints];
-        [NSLayoutConstraint activateConstraints:self.expandedConstraints];
-    } else {
-        [NSLayoutConstraint deactivateConstraints:self.expandedConstraints];
-        [NSLayoutConstraint activateConstraints:self.collapsedConstraints];
-    }
-
-    self.collapsedChevronTopConstraint.active = expanded;
-    self.collapsedChevronCenterYConstraint.active = !expanded;
-}
-
-- (void)pp_updateChevronAppearanceForExpanded:(BOOL)expanded
-{
-    self.collapsedChevronView.transform = expanded
-        ? CGAffineTransformMakeRotation((CGFloat)M_PI)
-        : CGAffineTransformIdentity;
-    self.collapsedChevronTintView.alpha = expanded ? 1.0 : 0.86;
-}
-
-- (void)pp_applyExpandedVisibilityState:(BOOL)expanded
-{
-    for (UIView *view in [self pp_expandedContentViews]) {
-        view.hidden = !expanded;
-        view.alpha = expanded ? 1.0 : 0.0;
-        view.transform = CGAffineTransformIdentity;
-    }
-
-    self.collapsedContentView.hidden = expanded;
-    self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
-    self.collapsedContentView.transform = CGAffineTransformIdentity;
-    [self pp_updateChevronAppearanceForExpanded:expanded];
-    [self pp_updateAccessibilityForExpanded:expanded];
+    [self.hostingView configureWithOrderReference:resolvedOrderReference
+                                orderKickerTitle:PPHomeOrderTrimmedString(orderKickerTitle)
+                                 previewImageURLs:resolvedImageURLs.copy
+                                            meta:PPHomeOrderTrimmedString(meta)
+                                     statusTitle:PPHomeOrderTrimmedString(statusTitle)
+                                      statusHint:PPHomeOrderTrimmedString(statusHint)
+                                       statusKey:resolvedStatusKey
+                                        progress:progress
+                                      footerText:PPHomeOrderTrimmedString(footerText)
+                                     statusColor:resolvedColor
+                                  statusIconName:PPHomeOrderResolvedSymbolName(statusIconName)
+                                     actionTitle:resolvedActionTitle
+                                    historyTitle:(kLang(@"OrderHistory") ?: @"")
+                      loadingAccessibilityLabel:(kLang(@"Loading") ?: @"")
+                        toggleAccessibilityLabel:(kLang(@"order_tracking_toggle_accessibility_label") ?: @"")
+                         toggleAccessibilityHint:(kLang(@"order_tracking_toggle_accessibility_hint") ?: @"")
+                             expandedStateValue:(kLang(@"order_tracking_toggle_expanded") ?: @"")
+                            collapsedStateValue:(kLang(@"order_tracking_toggle_collapsed") ?: @"")
+                                        expanded:expanded
+                                     placeholder:placeholder
+                                        animated:animateStatusChange];
 }
 
 - (void)setExpandedState:(BOOL)expanded animated:(BOOL)animated
 {
-    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
-    if (!shouldAnimate || self.showsExpandedState == expanded || !self.window) {
-        [self pp_setShowsExpandedState:expanded];
-        return;
+    BOOL shouldAnimate = animated && self.window != nil && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        UIImpactFeedbackGenerator *generator =
+            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [generator prepare];
+        [generator impactOccurred];
     }
-
-    _showsExpandedState = expanded;
-
-    UIImpactFeedbackGenerator *haptic =
-        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [haptic prepare];
-    [haptic impactOccurred];
-
-    NSArray<UIView *> *expandedViews = [self pp_expandedContentViews];
-
-    [self.contentView layoutIfNeeded];
-    [self pp_applyExpandedConstraintState:expanded];
-
-    for (UIView *view in expandedViews) {
-        view.hidden = NO;
-    }
-    self.collapsedContentView.hidden = NO;
-
-    if (expanded) {
-        for (UIView *view in expandedViews) {
-            view.alpha = 0.0;
-            view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-        }
-        self.collapsedContentView.alpha = 1.0;
-        self.collapsedContentView.transform = CGAffineTransformIdentity;
-        self.surfaceView.transform = CGAffineTransformMakeScale(0.99, 0.99);
-    } else {
-        for (UIView *view in expandedViews) {
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        }
-        self.collapsedContentView.alpha = 0.0;
-        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
-    }
-
-    self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(0.98, 0.98);
-    [UIView animateWithDuration:0.28
-                              delay:0.0
-             usingSpringWithDamping:0.92
-              initialSpringVelocity:0.22
-                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            [self.contentView layoutIfNeeded];
-            self.surfaceView.transform = CGAffineTransformIdentity;
-            [self pp_updateChevronAppearanceForExpanded:expanded];
-            self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
-
-            for (UIView *view in expandedViews) {
-                view.alpha = expanded ? 1.0 : 0.0;
-                view.transform = expanded
-                    ? CGAffineTransformIdentity
-                    : CGAffineTransformMakeTranslation(0.0, 6.0);
-            }
-
-            self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
-            self.collapsedContentView.transform = expanded
-                ? CGAffineTransformMakeTranslation(0.0, -6.0)
-                : CGAffineTransformIdentity;
-        } completion:^(__unused BOOL finished) {
-            if (self.showsExpandedState == expanded) {
-                [self pp_applyExpandedVisibilityState:expanded];
-                [self pp_updateDecorativeLayers];
-            }
-        }];
+    [self.hostingView setExpanded:expanded animated:shouldAnimate];
 }
 
-- (void)pp_setShowsExpandedState:(BOOL)expanded
+- (void)refreshDecorativeLayersForCurrentBounds
 {
-    _showsExpandedState = expanded;
-    [self pp_applyExpandedConstraintState:expanded];
-    [self pp_applyExpandedVisibilityState:expanded];
-}
-
-- (void)pp_configureActionButton:(UIButton *)button
-                           title:(NSString *)title
-                        iconName:(NSString *)iconName
-                     statusColor:(UIColor *)statusColor
-                       isPrimary:(BOOL)isPrimary
-{
-    UIColor *resolved = statusColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
-    UIColor *primaryForeground = PPOrderStatusContrastingForegroundColor(resolved, self.traitCollection);
-    UIColor *secondarySurface = PPOrderStatusSurfaceColorForAccent(resolved, self.traitCollection);
-    UIColor *secondaryBorder = PPOrderStatusBorderColorForAccent(resolved, self.traitCollection);
-    NSString *resolvedTitle = title.length > 0 ? title : @"";
-    button.accessibilityLabel = resolvedTitle;
-
-    if (@available(iOS 15.0, *)) {
-        UIButtonConfiguration *config =
-            isPrimary ? [UIButtonConfiguration filledButtonConfiguration]
-                      : [UIButtonConfiguration tintedButtonConfiguration];
-        config.title = resolvedTitle;
-        config.image = [UIImage systemImageNamed:iconName];
-        config.imagePlacement = NSDirectionalRectEdgeLeading;
-        config.imagePadding = 6.0;
-        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-        config.baseForegroundColor = isPrimary ? primaryForeground : resolved;
-        config.baseBackgroundColor = isPrimary
-            ? resolved
-            : secondarySurface;
-        config.attributedTitle = [[NSAttributedString alloc] initWithString:resolvedTitle attributes:@{
-            NSFontAttributeName: [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold],
-            NSForegroundColorAttributeName: isPrimary ? primaryForeground : resolved
-        }];
-        button.configuration = config;
-        return;
-    }
-
-    [button setTitle:resolvedTitle forState:UIControlStateNormal];
-    [button setTitleColor:isPrimary ? primaryForeground : resolved forState:UIControlStateNormal];
-    button.backgroundColor = isPrimary ? resolved : secondarySurface;
-    button.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
-    [button pp_setBorderColor:secondaryBorder];
-}
-
-- (void)pp_applyStatusColor:(UIColor *)statusColor
-                  statusKey:(NSString *)statusKey
-                   animated:(BOOL)animated
-{
-    void (^updates)(void) = ^{
-        [self pp_applyStatusColorImmediately:statusColor statusKey:statusKey];
-    };
-    if (animated && self.window && !UIAccessibilityIsReduceMotionEnabled()) {
-        [UIView transitionWithView:self.surfaceView
-                          duration:0.22
-                           options:UIViewAnimationOptionTransitionCrossDissolve |
-                                   UIViewAnimationOptionAllowAnimatedContent |
-                                   UIViewAnimationOptionBeginFromCurrentState |
-                                   UIViewAnimationOptionAllowUserInteraction
-                        animations:updates
-                        completion:nil];
-    } else {
-        updates();
-    }
-}
-
-- (void)pp_applyStatusColorImmediately:(UIColor *)statusColor statusKey:(NSString *)statusKey
-{
-    self.currentStatusKey = PPOrderStatusAppearanceNormalizedKey(statusKey);
-    self.currentStatusColor = statusColor ?: PPOrderStatusAccentColorForKey(self.currentStatusKey);
-
-    UIColor *accent = self.currentStatusColor;
-    UIColor *resolvedAccent = PPOrderStatusResolvedColor(accent, self.traitCollection);
-    UIColor *surface = PPOrderStatusSurfaceColorForAccent(accent, self.traitCollection);
-    UIColor *strongSurface = PPOrderStatusStrongSurfaceColorForAccent(accent, self.traitCollection);
-    UIColor *border = PPOrderStatusBorderColorForAccent(accent, self.traitCollection);
-    UIColor *shine = PPOrderStatusResolvedColor(PPOrderStatusShineColorForKey(self.currentStatusKey), self.traitCollection);
-    BOOL isRTL = [Language isRTL];
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-
-    self.chipView.backgroundColor = surface;
-    self.chipView.layer.borderWidth = 1.0;
-    [self.chipView pp_setBorderColor:border];
-    self.chipLabel.textColor = accent;
-    self.chipIconView.tintColor = accent;
-
-    self.progressFillView.backgroundColor = resolvedAccent;
-    [self.surfaceView pp_setBorderColor:[border colorWithAlphaComponent:isDark ? 0.62 : 0.72]];
-    self.actionRailView.backgroundColor = surface;
-    [self.actionRailView pp_setBorderColor:border];
-
-    self.collapsedIconBadgeView.backgroundColor = strongSurface;
-    [self pp_applyCollapsedPreviewChromeForHasPreviewImages:(self.previewImageURLs.count > 0)];
-    self.collapsedIconView.tintColor = accent;
-    self.collapsedStatusPillView.backgroundColor = surface;
-    self.collapsedStatusPillView.layer.borderWidth = 1.0;
-    [self.collapsedStatusPillView pp_setBorderColor:border];
-    self.collapsedStatusPillLabel.textColor = accent;
-    [self.collapsedChevronContainerView pp_setBorderColor:[border colorWithAlphaComponent:0.72]];
-    self.collapsedChevronTintView.backgroundColor = surface;
-    self.collapsedChevronView.tintColor = accent;
-
-    NSArray<UIColor *> *materialColors = PPOrderStatusGradientColors(self.currentStatusKey,
-                                                                     accent,
-                                                                     self.traitCollection);
-    UIColor *progressTail = PPOrderStatusBlendColors(resolvedAccent,
-                                                     UIColor.blackColor,
-                                                     isDark ? 0.08 : 0.13,
-                                                     self.traitCollection);
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    PPOrderStatusConfigureGradientLayer(self.chipGradientLayer,
-                                        self.currentStatusKey,
-                                        accent,
-                                        self.traitCollection,
-                                        isRTL);
-    PPOrderStatusConfigureGradientLayer(self.collapsedStatusPillGradientLayer,
-                                        self.currentStatusKey,
-                                        accent,
-                                        self.traitCollection,
-                                        isRTL);
-    self.progressGradientLayer.colors = @[(id)shine.CGColor,
-                                          (id)resolvedAccent.CGColor,
-                                          (id)progressTail.CGColor];
-    self.progressGradientLayer.locations = @[@0.0, @0.48, @1.0];
-    self.progressGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
-    self.progressGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
-    self.overlayGradientLayer.colors = @[
-        (id)[materialColors[0] colorWithAlphaComponent:isDark ? 0.26 : 0.18].CGColor,
-        (id)[materialColors[2] colorWithAlphaComponent:isDark ? 0.18 : 0.11].CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
-    self.overlayGradientLayer.startPoint = isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    self.overlayGradientLayer.endPoint = isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
-    [CATransaction commit];
-
-    [self pp_configureActionsWithActionTitle:self.trackButton.accessibilityLabel statusColor:accent];
-    [self setNeedsLayout];
-}
-
-- (void)pp_handleTrackTap
-{
-    if (self.onTrackTap) {
-        self.onTrackTap();
-    }
-}
-
-- (void)pp_handleHistoryTap
-{
-    if (self.onHistoryTap) {
-        self.onHistoryTap();
-    }
-}
-
-- (void)pp_handleCollapseTap
-{
-    if (self.onCollapseTap) {
-        self.onCollapseTap();
-    }
+    [self.hostingView refreshForCurrentBounds];
 }
 
 @end

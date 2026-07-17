@@ -5854,8 +5854,8 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
      self.dataSource =  [[UICollectionViewDiffableDataSource alloc] initWithCollectionView:self.collectionView
                                                                               cellProvider:^PPUniversalCell * _Nullable(UICollectionView *collectionView, NSIndexPath *indexPath, PPItem *item) {
          
-         PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell" forIndexPath:indexPath];
-         if (![item.universalViewModel isKindOfClass:[PPUniversalCellViewModel class]])
+         id cell = [PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+         if (![PPUniversalCell pp_isUniversalCell:item.universalViewModel])
          {  NSLog(@"⚠️ Expected PPUniversalCellViewModel but got %@", [item.universalViewModel class]); return cell; }
          
          PPUniversalCellViewModel *universalModel = (PPUniversalCellViewModel *)item.universalViewModel;

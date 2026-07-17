@@ -166,29 +166,43 @@ static inline CGFloat PPHomeHeroHeight(CGFloat width)
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
 {
+    UIContentSizeCategory contentSizeCategory =
+        UIApplication.sharedApplication.preferredContentSizeCategory;
+    BOOL usesAccessibilityText = UIContentSizeCategoryIsAccessibilityCategory(contentSizeCategory);
+    CGFloat bodyScale = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+        scaledValueForValue:100.0] / 100.0;
+
+    if (usesAccessibilityText) {
+        if (expanded) {
+            return PPHomeWidthIsTablet(width) ? 332.0 : 344.0;
+        }
+        return PPHomeWidthIsTablet(width) ? 124.0 : 132.0;
+    }
+
+    CGFloat largeTextAdjustment = bodyScale > 1.14 ? (expanded ? 28.0 : 14.0) : 0.0;
     if (expanded) {
         if (PPHomeWidthIsTablet(width)) {
-            return 264.0;
+            return 264.0 + largeTextAdjustment;
         }
         if (PPHomeWidthIsWidePhone(width)) {
-            return 238.0;
+            return 238.0 + largeTextAdjustment;
         }
         if (PPHomeWidthIsCompactPhone(width)) {
-            return 224.0;
+            return 224.0 + largeTextAdjustment;
         }
-        return kCurrentOrdersExpandedItemHeight;
+        return kCurrentOrdersExpandedItemHeight + largeTextAdjustment;
     }
 
     if (PPHomeWidthIsTablet(width)) {
-        return 96.0;
+        return 96.0 + largeTextAdjustment;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 88.0;
+        return 88.0 + largeTextAdjustment;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 80.0;
+        return 80.0 + largeTextAdjustment;
     }
-    return kCurrentOrdersCollapsedItemHeight;
+    return kCurrentOrdersCollapsedItemHeight + largeTextAdjustment;
 }
 
 static inline CGFloat PPHomeMainKindsHorizontalItemWidth(CGFloat width)
