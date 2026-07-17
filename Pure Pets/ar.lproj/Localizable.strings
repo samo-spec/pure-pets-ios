@@ -2733,6 +2733,8 @@
 "home_pet_profile_open_editor_cta" = "فتح محرر الحيوانات";
 "home_pet_profile_empty_title" = "أنشئ ملف حيوانك الأليف";
 "home_pet_profile_empty_subtitle" = "حوّل البطاقة إلى لوحة للسلالة والتطعيمات والتذكيرات ورفيقك الافتراضي.";
+"home_pet_profile_empty_compact_title" = "أنشئ ملف حيوانك";
+"home_pet_profile_empty_compact_subtitle" = "اجمع الرعاية والتطعيمات والتذكيرات في مكان واحد.";
 "home_pet_profile_meta_vaccines" = "التطعيمات";
 "home_pet_profile_meta_reminders" = "التذكيرات";
 "home_pet_profile_open_hint" = "يفتح محرر ملف الحيوان الأليف";
@@ -2741,6 +2743,8 @@
 "home_pet_profile_collapse" = "طي";
 "home_pet_profile_expand_hint" = "يعرض تفاصيل ملف الحيوان";
 "home_pet_profile_collapse_hint" = "يعرض تفاصيل أقل لملف الحيوان";
+"home_adopt_title" = "تعرّف إلى رفيقك القادم";
+"home_adopt_subtitle" = "حيوانات تنتظر بيتاً محباً";
 "alert_eyebrow_success" = "تم بنجاح";
 "alert_eyebrow_error" = "يتطلب إجراء";
 "alert_eyebrow_warning" = "يرجى المراجعة";
@@ -3587,3 +3591,5 @@
 "media_preview_pause" = "إيقاف مؤقت";
 "media_preview_mute" = "كتم الصوت";
 "media_preview_unmute" = "تشغيل الصوت";
+
+"ad_no_location_placeholder" = "الموقع غير محدد";

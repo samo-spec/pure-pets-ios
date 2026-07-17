@@ -37,6 +37,7 @@ public enum PPUniversalCardContext: Equatable {
 
 public enum PPUniversalCardLayout: Equatable {
     case pinterest
+    case vertical
     case market
     case fullWidth
     case horizontalRow
@@ -196,7 +197,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.stock = stock.map { max(0, $0) }
         self.usesQuantityControl = usesQuantityControl
         self.prefersContainedImage = prefersContainedImage
-        self.preferredAspectRatio = min(max(preferredAspectRatio, 0.68), 1.24)
+        self.preferredAspectRatio = preferredAspectRatio
     }
 }
 
@@ -389,6 +390,19 @@ private final class PPUniversalCardStore: ObservableObject {
             dataViewPresenter: dataViewPresentation,
             showsSubtitle: showsSubtitle
         )
+        var resolvedSubtitle: String? = nil
+        if dataViewPresentation {
+            if isAdLike {
+                let loc = viewModel.location ?? ""
+                if !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    resolvedSubtitle = loc
+                } else {
+                    resolvedSubtitle = Self.localized("ad_no_location_placeholder", fallback: "Location not specified")
+                }
+            } else {
+                resolvedSubtitle = subtitle
+            }
+        }
         let availabilityText = PPUniversalCellSwiftUIBridge.availabilityText(
             for: viewModel,
             context: objcContext,
@@ -409,14 +423,15 @@ private final class PPUniversalCardStore: ObservableObject {
             ? Self.localized("listing_hidden_badge", fallback: "Hidden")
             : nil
 
-        var resolvedMetadata = metadata
-        var resolvedMetadataIcon = metadataIcon
+        var resolvedMetadata = isAdLike ? nil : metadata
+        var resolvedMetadataIcon = isAdLike ? nil : metadataIcon
 
-        if isSuggestionsAd {
-            let loc = viewModel.location
-            if !loc.isEmpty {
-                resolvedMetadata = loc
-                resolvedMetadataIcon = "mappin.and.ellipse"
+        if objcContext == .forServices {
+            if resolvedMetadata == nil || resolvedMetadata!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                resolvedMetadata = "0.0"
+            }
+            if resolvedMetadataIcon == nil || resolvedMetadataIcon!.isEmpty {
+                resolvedMetadataIcon = "star.fill"
             }
         }
 
@@ -461,7 +476,7 @@ private final class PPUniversalCardStore: ObservableObject {
         model = PPUniversalCardModel(
             id: stableID,
             title: viewModel.title,
-            subtitle: subtitle?.isEmpty == false ? subtitle : nil,
+            subtitle: resolvedSubtitle?.isEmpty == false ? resolvedSubtitle : nil,
             imageURL: imageURL,
             videoURL: videoURL,
             placeholderSystemImage: "pawprint.fill",
@@ -486,7 +501,15 @@ private final class PPUniversalCardStore: ObservableObject {
             usesQuantityControl: usesQuantity,
             prefersContainedImage:
                 PPUniversalCellSwiftUIBridge.prefersContainedImage(for: viewModel),
-            preferredAspectRatio: CGFloat(viewModel.preferredAspectRatio)
+            preferredAspectRatio: {
+                if viewModel.imageSize.width > 0 && viewModel.imageSize.height > 0 {
+                    return viewModel.imageSize.height / viewModel.imageSize.width
+                } else if viewModel.preferredAspectRatio > 0 {
+                    return CGFloat(viewModel.preferredAspectRatio)
+                } else {
+                    return 0.82
+                }
+            }()
         )
 
         if stableID != previousID {
@@ -777,18 +800,20 @@ private final class PPUniversalCardStore: ObservableObject {
                 return .market
             }
             if PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel) {
-                return .pinterest
+                return .market
             }
         }
 
         switch layout {
         case .cellLayoutModePinterest:
-            return .pinterest
+            return dataViewPresentation ? .pinterest : .market
         case .cellLayoutModeFullWidth:
             return .fullWidth
         case .cellLayoutModeHorizontalRow:
             return .horizontalRow
-        case .cellLayoutModeMarket, .cellLayoutModeVertical:
+        case .cellLayoutModeVertical:
+            return dataViewPresentation ? .vertical : .market
+        case .cellLayoutModeMarket:
             return .market
         default:
             return .market
@@ -904,11 +929,11 @@ private struct PPUniversalCardRenderer: View {
             } else {
                 VStack(spacing: 0) {
                     media
-                        .frame(height: verticalMediaHeight(for: size))
-                    information
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    bottomAnchoredInformation
+                        .layoutPriority(1)
                         .padding(.horizontal, 9)
-                        .padding(.top, 7)
+                        .padding(.top, 8)
                         .padding(.bottom, 8)
                 }
                 .padding(4)
@@ -1081,37 +1106,10 @@ private struct PPUniversalCardRenderer: View {
 
     private var information: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(store.model.title)
-                .font(
-                    .custom(
-                        "Beiruti-Bold",
-                        size: store.layout.isHorizontal ? 17 : 15.5,
-                        relativeTo: .headline
-                    )
-                )
-                .foregroundStyle(store.palette.ink)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-
-            if let subtitle = store.model.subtitle,
-               !subtitle.isEmpty,
-               !usesCompressedAccessibilityLayout {
-                Text(subtitle)
-                    .font(
-                        .custom(
-                            "Beiruti-Medium",
-                            size: store.layout.isHorizontal ? 14 : 12,
-                            relativeTo: .subheadline
-                        )
-                    )
-                    .foregroundStyle(store.palette.secondaryInk)
-                    .lineLimit(store.layout.isHorizontal ? 2 : 1)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 2)
-            }
+            Spacer()
+                .frame(height: 6)
+            titleContent
+            subtitleContent
 
             if hasPrice {
                 priceRow
@@ -1120,9 +1118,9 @@ private struct PPUniversalCardRenderer: View {
 
             Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
-            if store.model.usesQuantityControl || store.context.isAdvertisement {
+            if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
                 if !store.isNearbyAdsSection {
-                    primaryAction
+                    bottomCTA
                 }
 
                 if let availability = store.model.availability,
@@ -1136,6 +1134,91 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var bottomAnchoredInformation: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            titleContent
+            subtitleContent
+
+            if hasPrice {
+                priceRow
+                    .padding(.top, store.model.subtitle == nil ? 5 : 3)
+            }
+
+            if showsBottomCTA {
+                bottomCTA
+                    .padding(.top, hasPrice ? 8 : 10)
+            }
+
+            if let availability = store.model.availability,
+               (!availability.text.isEmpty || availability.metaText?.isEmpty == false),
+               !usesCompressedAccessibilityLayout {
+                availabilityRow(availability)
+                    .padding(.top, showsBottomCTA ? 8 : 10)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .bottomLeading)
+    }
+
+    private var titleContent: some View {
+        Text(store.model.title)
+            .font(
+                .custom(
+                    "Beiruti-Bold",
+                    size: store.layout.isHorizontal ? 17 : 15.5,
+                    relativeTo: .headline
+                )
+            )
+            .foregroundStyle(store.palette.ink)
+            .lineLimit(2)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    @ViewBuilder
+    private var subtitleContent: some View {
+        if let subtitle = store.model.subtitle,
+           !subtitle.isEmpty,
+           !usesCompressedAccessibilityLayout {
+            if store.context.isAdvertisement || store.isSuggestionsAd {
+                let isPlaceholder = (subtitle == PPUniversalCardStore.localized("ad_no_location_placeholder", fallback: "Location not specified"))
+                HStack(spacing: 4) {
+                    Image(systemName: isPlaceholder ? "mappin.slash" : "mappin.and.ellipse")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.accent)
+
+                    Text("\(PPUniversalCardStore.localized("location", fallback: "Location")): \(subtitle)")
+                        .font(
+                            .custom(
+                                "Beiruti-Medium",
+                                size: store.layout.isHorizontal ? 13 : 12,
+                                relativeTo: .subheadline
+                            )
+                        )
+                        .foregroundColor(isPlaceholder ? Color(uiColor: .secondaryLabel) : store.palette.secondaryInk)
+                        .lineLimit(store.layout.isHorizontal ? 2 : 1)
+                        .multilineTextAlignment(.leading)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 2)
+            } else {
+                Text(subtitle)
+                    .font(
+                        .custom(
+                            "Beiruti-Medium",
+                            size: store.layout.isHorizontal ? 14 : 13,
+                            relativeTo: .subheadline
+                        )
+                    )
+                    .foregroundStyle(store.palette.secondaryInk)
+                    .lineLimit(store.layout.isHorizontal ? 2 : 1)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 2)
+            }
+        }
     }
 
     private var priceRow: some View {
@@ -1226,71 +1309,139 @@ private struct PPUniversalCardRenderer: View {
 
             detailsFooterGap
 
-            if store.isSuggestionsAd,
-               let location = store.viewModel?.location,
-               !location.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(location)
-                        .font(
-                            .custom(
-                                "Beiruti-Bold",
-                                size: 12.5,
-                                relativeTo: .callout
-                            )
-                        )
-                        .lineLimit(1)
-                }
-                .foregroundStyle(store.palette.secondaryInk)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 34)
-            } else {
-                Button {
-                    PPUniversalHaptics.light()
-                    store.handlePrimaryAction()
-                } label: {
-                    Group {
-                        if store.layout.isHorizontal {
-                            HStack(spacing: 5) {
-                                Text(primaryActionTitle)
-                                    .font(
-                                        .custom(
-                                            "Beiruti-Bold",
-                                            size: 12.5,
-                                            relativeTo: .callout
-                                        )
-                                    )
-                                    .lineLimit(1)
-
-                                detailsArrow
-                            }
-                            .padding(.horizontal, 10)
-                            .frame(minHeight: 34)
-                            .background(
-                                store.palette.primary.opacity(
-                                    colorScheme == .dark ? 0.16 : 0.075
-                                ),
-                                in: Capsule()
-                            )
-                        } else {
-                            detailsArrow
-                                .frame(width: 34, height: 34)
-                                .background(
-                                    store.palette.primary.opacity(
-                                        colorScheme == .dark ? 0.16 : 0.075
-                                    ),
-                                    in: Circle()
+            if store.isSuggestionsAd {
+                let location = store.viewModel?.location ?? ""
+                if !location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.and.ellipse")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(location)
+                            .font(
+                                .custom(
+                                    "Beiruti-Bold",
+                                    size: 12.5,
+                                    relativeTo: .callout
                                 )
-                        }
+                            )
+                            .lineLimit(1)
                     }
-                    .foregroundStyle(store.palette.primary)
+                    .foregroundStyle(store.palette.secondaryInk)
+                } else {
+                    HStack(spacing: 4) {
+                        Image(systemName: "mappin.slash")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text(PPUniversalCardStore.localized("ad_no_location_placeholder", fallback: "Location not specified"))
+                            .font(
+                                .custom(
+                                    "Beiruti-Bold",
+                                    size: 12.5,
+                                    relativeTo: .callout
+                                )
+                            )
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
-                .buttonStyle(PPUniversalScaleButtonStyle())
-                .accessibilityLabel(primaryActionTitle)
+            } else {
+                detailsAction
             }
         }
         .frame(minHeight: 34)
+    }
+
+    @ViewBuilder
+    private var bottomCTA: some View {
+        if usesPrimaryActionForBottomStack {
+            if !store.isNearbyAdsSection {
+                primaryAction
+            }
+        } else {
+            detailsAction
+        }
+    }
+
+    private var showsBottomCTA: Bool {
+        usesPrimaryActionForBottomStack
+            ? !store.isNearbyAdsSection
+            : true
+    }
+
+    private var usesPrimaryActionForBottomStack: Bool {
+        store.model.usesQuantityControl ||
+            store.context.isAdvertisement ||
+            store.isSuggestionsAd
+    }
+
+    private var detailsAction: some View {
+        Button {
+            PPUniversalHaptics.light()
+            store.handlePrimaryAction()
+        } label: {
+            Group {
+                if store.context.isServiceLike {
+                    HStack(spacing: 7) {
+                        Text(primaryActionTitle)
+                            .font(
+                                .custom(
+                                    "Beiruti-Bold",
+                                    size: 14,
+                                    relativeTo: .callout
+                                )
+                            )
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.76)
+                        
+                        detailsArrow
+                    }
+                    .foregroundStyle(store.palette.primary)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 42)
+                    .background(
+                        store.palette.primary.opacity(
+                            colorScheme == .dark ? 0.18 : 0.09
+                        ),
+                        in: actionShape
+                    )
+                    .overlay(
+                        actionShape.stroke(store.palette.primary.opacity(0.20), lineWidth: 0.75)
+                    )
+                } else if store.layout.isHorizontal {
+                    HStack(spacing: 5) {
+                        Text(primaryActionTitle)
+                            .font(
+                                .custom(
+                                    "Beiruti-Bold",
+                                    size: 12.5,
+                                    relativeTo: .callout
+                                )
+                            )
+                            .lineLimit(1)
+
+                        detailsArrow
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 34)
+                    .background(
+                        store.palette.primary.opacity(
+                            colorScheme == .dark ? 0.16 : 0.075
+                        ),
+                        in: Capsule()
+                    )
+                } else {
+                    detailsArrow
+                        .frame(width: 34, height: 34)
+                        .background(
+                            store.palette.primary.opacity(
+                                colorScheme == .dark ? 0.16 : 0.075
+                            ),
+                            in: Circle()
+                        )
+                }
+            }
+            .foregroundStyle(store.palette.primary)
+        }
+        .buttonStyle(PPUniversalScaleButtonStyle())
+        .accessibilityLabel(primaryActionTitle)
     }
 
     @ViewBuilder
@@ -1464,9 +1615,12 @@ private struct PPUniversalCardRenderer: View {
     private func availabilityRow(
         _ availability: PPUniversalAvailability
     ) -> some View {
-        HStack(spacing: 6) {
-            if let meta = availability.metaText,
-               !meta.isEmpty {
+        let hasMeta = availability.metaText?.isEmpty == false
+        let hasText = !availability.text.isEmpty
+        let bothActive = hasMeta && hasText
+
+        return HStack(spacing: 6) {
+            if let meta = availability.metaText, !meta.isEmpty {
                 PPUniversalPill(
                     text: meta,
                     systemImage: availability.metaSystemImage,
@@ -1474,7 +1628,8 @@ private struct PPUniversalCardRenderer: View {
                     background: metaForeground(availability).opacity(
                         colorScheme == .dark ? 0.16 : 0.10
                     ),
-                    border: metaForeground(availability).opacity(0.18)
+                    border: metaForeground(availability).opacity(0.18),
+                    fillWidth: bothActive
                 )
             }
 
@@ -1485,11 +1640,14 @@ private struct PPUniversalCardRenderer: View {
                     background: availabilityForeground(availability.tone).opacity(
                         colorScheme == .dark ? 0.16 : 0.10
                     ),
-                    border: availabilityForeground(availability.tone).opacity(0.18)
+                    border: availabilityForeground(availability.tone).opacity(0.18),
+                    fillWidth: bothActive
                 )
             }
 
-            Spacer(minLength: 0)
+            if !bothActive {
+                Spacer(minLength: 0)
+            }
         }
         .accessibilityElement(children: .combine)
     }
@@ -1601,6 +1759,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private func verticalMediaHeight(for size: CGSize) -> CGFloat {
+        if store.layout == .vertical {
+            return max(112, size.width - 8)
+        }
+
         let maximumFraction: CGFloat
         let preferredRatio: CGFloat
 
@@ -1638,7 +1800,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var shouldFillMediaImage: Bool {
-        store.layout == .market || store.context.isAdvertisement
+        true
     }
 
     private var hasPrice: Bool {
@@ -1735,9 +1897,7 @@ private struct PPUniversalCardRenderer: View {
             if isAdAction {
                 return "megaphone.fill"
             }
-            return store.context.isServiceLike
-                ? "sparkles"
-                : (store.isRightToLeft ? "arrow.up.left" : "arrow.up.right")
+            return store.isRightToLeft ? "arrow.up.left" : "arrow.up.right"
         }
         if store.isOutOfStock {
             return store.notifySucceeded
@@ -1792,13 +1952,13 @@ private struct PPUniversalCardRenderer: View {
     private var adActionBackground: Color {
         colorScheme == .dark
             ? Color(red: 0.02, green: 0.32, blue: 0.38)
-            : Color(red: 0.00, green: 0.43, blue: 0.52)
+            : Color(red: 0.816, green: 0.142, blue: 0.349).opacity(1.00)
     }
 
     private var adActionBorder: Color {
         colorScheme == .dark
             ? Color.white.opacity(0.16)
-            : Color(red: 0.00, green: 0.30, blue: 0.38).opacity(0.22)
+        : Color(red: 0.866, green: 0.336, blue: 0.38).opacity(0.0)
     }
 
     private func availabilityForeground(
@@ -1821,9 +1981,16 @@ private struct PPUniversalCardRenderer: View {
     private func metaForeground(
         _ availability: PPUniversalAvailability
     ) -> Color {
-        availability.metaSystemImage == "star.fill"
-            ? Color(uiColor: .systemYellow)
-            : store.palette.accent
+        if store.context.isAdvertisement || store.isSuggestionsAd {
+            return Color(red: 0.816, green: 0.142, blue: 0.349)
+        }
+        if availability.metaSystemImage == "star.fill" {
+            return Color(uiColor: .systemYellow)
+        } else if availability.metaSystemImage == "mappin.slash" {
+            return Color(uiColor: .secondaryLabel)
+        } else {
+            return store.palette.accent
+        }
     }
 
     private var usesCompressedAccessibilityLayout: Bool {
@@ -2060,6 +2227,7 @@ private struct PPUniversalPill: View {
     let foreground: Color
     let background: Color
     let border: Color
+    var fillWidth = false
 
     var body: some View {
         HStack(spacing: 4) {
@@ -2081,8 +2249,9 @@ private struct PPUniversalPill: View {
         .foregroundStyle(foreground)
         .padding(.horizontal, 9)
         .frame(minHeight: 26)
-        .background(background, in: Capsule())
-        .overlay(Capsule().stroke(border, lineWidth: 0.75))
+        .frame(maxWidth: fillWidth ? .infinity : nil)
+        .background(background, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).stroke(border, lineWidth: 0.75))
     }
 }
 
@@ -2125,21 +2294,23 @@ private struct PPUniversalSkeletonCard: View {
                 }
                 .padding(12)
             } else {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 0) {
                     skeletonMedia
+                        .clipShape(PPUniversalTopRoundedShape(radius: cardRadius))
                         .frame(maxWidth: .infinity)
                         .aspectRatio(catalog ? 1.28 : 1.1, contentMode: .fit)
                     if catalog {
                         catalogSkeletonBody
-                            .padding(.horizontal, 9)
-                            .padding(.bottom, 9)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 10)
+                            .padding(.top, 10)
                     } else {
                         skeletonBody
                             .padding(.horizontal, 10)
                             .padding(.bottom, 10)
+                            .padding(.top, 10)
                     }
                 }
-                .padding(4)
             }
         }
         .background(
@@ -2576,6 +2747,20 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
                 self?.refreshThemeAppearance()
                 self?.reconfigureIfNeeded()
             }
+        )
+    }
+}
+
+private struct PPUniversalTopRoundedShape: Shape {
+    let radius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        Path(
+            UIBezierPath(
+                roundedRect: rect,
+                byRoundingCorners: [.topLeft, .topRight],
+                cornerRadii: CGSize(width: radius, height: radius)
+            ).cgPath
         )
     }
 }

@@ -8,7 +8,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGFloat)collectionView:(UICollectionView *)collectionView
                    layout:(PPPinterestLayout *)collectionViewLayout
  heightForItemAtIndexPath:(NSIndexPath *)indexPath
-                withWidth:(CGFloat)width;
+               withWidth:(CGFloat)width;
 @end
 
 typedef NS_ENUM(NSInteger, PPManagerCellLayoutMode) {
@@ -23,8 +23,6 @@ typedef NS_ENUM(NSInteger, PPManagerCellLayoutMode) {
     PPCellLayoutModeAllKinds = 8,
     PPCellLayoutModeDataViewFullDetails = 9001,
 };
-
-@class PPPinterestLayout;
 
 @interface PPCollectionLayoutManager : NSObject <PPPinterestLayoutDelegate>
 @property (nonatomic, weak, nullable) id<PPPinterestManagerLayoutDelegate> delegate;

@@ -1,0 +1,23 @@
+// Add this file to the app target, rename it to `.swift`, and replace placeholder
+// properties only with the exact properties already present on PPUniversalCellViewModel.
+
+import PurePetsLayoutKit
+
+extension PPUniversalCellViewModel {
+    var ppLayoutDescriptor: PPLayoutItemDescriptor {
+        let ratio: CGFloat? = imageSize.width > 0 && imageSize.height > 0
+            ? imageSize.height / imageSize.width
+            : nil
+
+        return PPLayoutItemDescriptor(
+            id: /* existing stable identifier */ "",
+            imageAspectRatio: ratio,
+            preferredAspectRatio: preferredAspectRatio > 0 ? preferredAspectRatio : nil,
+            estimatedBodyHeight: /* derive from the existing card presentation */ 128,
+            minimumCardHeight: 130,
+            titleLineCount: title.count > 38 ? 2 : 1,
+            hasSubtitle: !subtitle.isEmpty || !location.isEmpty,
+            hasBadge: !subtitle.isEmpty
+        )
+    }
+}

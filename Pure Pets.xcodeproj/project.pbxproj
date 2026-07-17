@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 54;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -591,8 +591,6 @@
 		F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */; };
 		F2A260932D20C55A00081E59 /* deletealert.png in Resources */ = {isa = PBXBuildFile; fileRef = F2A260922D20C55A00081E59 /* deletealert.png */; };
 		F2A260992D21BFC600081E59 /* ZMJTipView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A260962D21BFC600081E59 /* ZMJTipView.m */; };
-		F2A2F1A62EAFCE3A00BD1261 /* PPCollectionLayoutManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1A52EAFCE3A00BD1261 /* PPCollectionLayoutManager.m */; };
-		F2A2F1AA2EB0107800BD1261 /* PPPinterestLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1A92EB0107800BD1261 /* PPPinterestLayout.m */; };
 		F2A2F1B02EB13C6000BD1261 /* PPAddressModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1AF2EB13C6000BD1261 /* PPAddressModel.m */; };
 		F2A2F1B42EB13CE500BD1261 /* AddressFormVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1B32EB13CD200BD1261 /* AddressFormVC.m */; };
 		F2A2F1BD2EB1797400BD1261 /* CitiesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A2F1BC2EB1796200BD1261 /* CitiesManager.m */; };
@@ -643,6 +641,7 @@
 		F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */; };
 		F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */; };
 		F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */; };
+		F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */; };
 		F2ADE54D2E26BECA004EE79B /* VetCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2ADE54C2E26BEB9004EE79B /* VetCollectionViewCell.m */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
@@ -652,6 +651,15 @@
 		F2AEC1572D6EBA6900B55427 /* LUNSegmentedControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */; };
 		F2AEC1582D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */; };
 		F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */; };
+		F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */; };
+		F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF3840300AB06200FBF82D /* PurePetsLayoutKit */; };
+		F2AF3849300AC36600FBF82D /* MatchedHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */; };
+		F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */; };
+		F2AF384B300AC36600FBF82D /* MatchedGeometryModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */; };
+		F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3846300AC36600FBF82D /* TransitionManager.swift */; };
+		F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3847300AC36600FBF82D /* TransitionView.swift */; };
+		F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */; };
+		F2AF3852300AC46E00FBF82D /* MatchedTransitions in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF3851300AC46E00FBF82D /* MatchedTransitions */; };
 		F2B02B172EF6CCD0001A7B19 /* PPCageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */; };
 		F2B02B1A2EF6CF4C001A7B19 /* PPBirdCardView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B192EF6CDB3001A7B19 /* PPBirdCardView.m */; };
 		F2B02B212EF86462001A7B19 /* PPTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B202EF86462001A7B19 /* PPTextField.m */; };
@@ -1973,10 +1981,8 @@
 		F2A260922D20C55A00081E59 /* deletealert.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deletealert.png; sourceTree = "<group>"; };
 		F2A260952D21BFC600081E59 /* ZMJTipView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ZMJTipView.h; sourceTree = "<group>"; };
 		F2A260962D21BFC600081E59 /* ZMJTipView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ZMJTipView.m; sourceTree = "<group>"; };
-		F2A2F1A52EAFCE3A00BD1261 /* PPCollectionLayoutManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCollectionLayoutManager.m; sourceTree = "<group>"; };
 		F2A2F1A72EAFCF4700BD1261 /* PPCollectionLayoutManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCollectionLayoutManager.h; sourceTree = "<group>"; };
 		F2A2F1A82EB0107800BD1261 /* PPPinterestLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPinterestLayout.h; sourceTree = "<group>"; };
-		F2A2F1A92EB0107800BD1261 /* PPPinterestLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPinterestLayout.m; sourceTree = "<group>"; };
 		F2A2F1AE2EB13C4200BD1261 /* PPAddressModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAddressModel.h; sourceTree = "<group>"; };
 		F2A2F1AF2EB13C6000BD1261 /* PPAddressModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAddressModel.m; sourceTree = "<group>"; };
 		F2A2F1B12EB13C9F00BD1261 /* AddressFormVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddressFormVC.h; sourceTree = "<group>"; };
@@ -2090,6 +2096,7 @@
 		F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorLayer.m; sourceTree = "<group>"; };
 		F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefresh.h; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
+		F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellViewModelAdapter.swift; sourceTree = "<group>"; };
 		F2ADE54B2E26BE88004EE79B /* VetCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VetCollectionViewCell.h; sourceTree = "<group>"; };
 		F2ADE54C2E26BEB9004EE79B /* VetCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetCollectionViewCell.m; sourceTree = "<group>"; };
 		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
@@ -2107,6 +2114,12 @@
 		F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LUNSegmentedControl.m; sourceTree = "<group>"; };
 		F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+LUNRemoveConstraints.h"; sourceTree = "<group>"; };
 		F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+LUNRemoveConstraints.m"; sourceTree = "<group>"; };
+		F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedContainerView.swift; sourceTree = "<group>"; };
+		F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedGeometryModifier.swift; sourceTree = "<group>"; };
+		F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedGeometryState.swift; sourceTree = "<group>"; };
+		F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedHostingController.swift; sourceTree = "<group>"; };
+		F2AF3846300AC36600FBF82D /* TransitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionManager.swift; sourceTree = "<group>"; };
+		F2AF3847300AC36600FBF82D /* TransitionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionView.swift; sourceTree = "<group>"; };
 		F2B02B142EF6CA3E001A7B19 /* PPCageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCageCell.h; sourceTree = "<group>"; };
 		F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCageCell.m; sourceTree = "<group>"; };
 		F2B02B182EF6CD67001A7B19 /* PPBirdCardView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdCardView.h; sourceTree = "<group>"; };
@@ -2477,8 +2490,10 @@
 				F2FFDA092FCDCFC00025B5A9 /* FirebaseAppCheck in Frameworks */,
 				F2FFDA112FCDCFC00025B5A9 /* FirebaseFirestore in Frameworks */,
 				F2FFDA132FCDCFC00025B5A9 /* FirebaseFunctions in Frameworks */,
+				F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */,
 				F251008B2F73C2D8008F6AFE /* FirebaseFunctions in Frameworks */,
+				F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */,
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
 				F25100932F73C2D8008F6AFE /* FirebasePerformance in Frameworks */,
 				F2FFDA1B2FCDCFC00025B5A9 /* FirebaseRemoteConfig in Frameworks */,
@@ -2490,6 +2505,7 @@
 				F25100872F73C2D8008F6AFE /* FirebaseCrashlytics in Frameworks */,
 				F25100832F73C2D8008F6AFE /* FirebaseAuth in Frameworks */,
 				E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */,
+				F2AF3852300AC46E00FBF82D /* MatchedTransitions in Frameworks */,
 				61093601FFE9E54316BA4680 /* Speech.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4007,6 +4023,7 @@
 				F207D0BE2F14CE1500BA6214 /* UnifiedBlurHash */,
 				F27A482A2EE07CF70044040E /* HXPHPickerBridge */,
 				F27A48282EE07CAA0044040E /* PPCoreBridge.swift */,
+				F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */,
 			);
 			path = Bridges;
 			sourceTree = "<group>";
@@ -4335,9 +4352,7 @@
 				F28A0A072EE9C77600EE5055 /* EllipsePageControl.m */,
 				F28A0A092EE9C96B00EE5055 /* EllipsePageControl.h */,
 				F2A2F1A82EB0107800BD1261 /* PPPinterestLayout.h */,
-				F2A2F1A92EB0107800BD1261 /* PPPinterestLayout.m */,
 				F2A2F1A72EAFCF4700BD1261 /* PPCollectionLayoutManager.h */,
-				F2A2F1A52EAFCE3A00BD1261 /* PPCollectionLayoutManager.m */,
 				F2F38FAC2EA68288004B148A /* PPUniversalCellHelper.h */,
 				F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */,
 				F21D1B5D2E9C727E00220F72 /* PPUniversalCell.h */,
@@ -4774,6 +4789,19 @@
 			path = LUNSegmentedControl;
 			sourceTree = "<group>";
 		};
+		F2AF3848300AC36600FBF82D /* MatchedTransitions */ = {
+			isa = PBXGroup;
+			children = (
+				F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */,
+				F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */,
+				F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */,
+				F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */,
+				F2AF3846300AC36600FBF82D /* TransitionManager.swift */,
+				F2AF3847300AC36600FBF82D /* TransitionView.swift */,
+			);
+			path = MatchedTransitions;
+			sourceTree = "<group>";
+		};
 		F2B02B152EF6CA45001A7B19 /* PPMainCells */ = {
 			isa = PBXGroup;
 			children = (
@@ -4806,6 +4834,7 @@
 		F2B1A62C2E6EA63F0019FC7C /* PP */ = {
 			isa = PBXGroup;
 			children = (
+				F2AF3848300AC36600FBF82D /* MatchedTransitions */,
 				F25CC3A03009BDA2007D24AB /* PPBackground */,
 				F2A7E6B92FF722F800BDC981 /* PPFormEngine */,
 				F281B47E2FCB6735009118F2 /* PPComponent */,
@@ -5501,6 +5530,8 @@
 			packageReferences = (
 				F20CB1402EF50E1500CDD5AD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
+				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -5704,7 +5735,6 @@
 				F2C223C82F061E58006DB76A /* PPHomeItem.m in Sources */,
 				F22CD3712C66F8710098B6E9 /* UITextField+QuickSecurityCode.m in Sources */,
 				F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */,
-				F2A2F1AA2EB0107800BD1261 /* PPPinterestLayout.m in Sources */,
 				F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */,
 				F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */,
 				F2E0E8712E7A16D400F0C084 /* UIViewController+PPNavBar.m in Sources */,
@@ -5759,6 +5789,7 @@
 				F2C2252D2F11BF7700569B36 /* CreateAdCoordinator.m in Sources */,
 				F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */,
 				F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */,
+				F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */,
 				F273147B2F3118A000FFA0B8 /* PPPaymentManager.m in Sources */,
 				F24F9BAE2EE65405002AAD27 /* PPAdsBrowser.m in Sources */,
 				F24C04D52D2E3E0400A9F61F /* FileModel.m in Sources */,
@@ -5990,6 +6021,12 @@
 				F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */,
 				F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */,
 				F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */,
+				F2AF3849300AC36600FBF82D /* MatchedHostingController.swift in Sources */,
+				F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */,
+				F2AF384B300AC36600FBF82D /* MatchedGeometryModifier.swift in Sources */,
+				F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */,
+				F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */,
+				F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
 				F2B09F962D1E0A2100FB3B26 /* GuideView.m in Sources */,
@@ -6365,7 +6402,6 @@
 				F2A7E6BC2FF722F800BDC981 /* PPFormEngine.m in Sources */,
 				F27FAEA32D2F363200EA6B56 /* UITableView+WebVideoCache.m in Sources */,
 				F27FAEA42D2F363200EA6B56 /* JPVideoPlayerSupportUtils.m in Sources */,
-				F2A2F1A62EAFCE3A00BD1261 /* PPCollectionLayoutManager.m in Sources */,
 				F27FAEA52D2F363200EA6B56 /* JPVideoPlayerDownloader.m in Sources */,
 				F27FAEA62D2F363200EA6B56 /* JPVideoPlayerCacheFile.m in Sources */,
 				F2B6F7A12E37AE9A00AC0DAE /* ChatThreadModel.m in Sources */,
@@ -6959,6 +6995,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MyFrames/PurePetsLayoutKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		F20CB1402EF50E1500CDD5AD /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -6974,6 +7017,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.11.0;
+			};
+		};
+		F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pbalduz/swiftui-hosting-transitions";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.1.0;
 			};
 		};
 		F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
@@ -7056,6 +7107,19 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PurePetsLayoutKit;
+		};
+		F2AF3840300AB06200FBF82D /* PurePetsLayoutKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PurePetsLayoutKit;
+		};
+		F2AF3851300AC46E00FBF82D /* MatchedTransitions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */;
+			productName = MatchedTransitions;
 		};
 		F2FFDA022FCDCFC00025B5A9 /* FirebaseAI */ = {
 			isa = XCSwiftPackageProductDependency;

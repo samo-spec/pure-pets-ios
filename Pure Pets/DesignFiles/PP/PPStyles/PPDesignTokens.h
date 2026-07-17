@@ -32,6 +32,7 @@
 #pragma mark - Corner Radii
 
 #define PPCornerSmall    12.0f
+#define PPCorner16   16.0f
 #define PPCornerMedium   18.0f
 #define PPCornerCard     22.0f
 #define PPCornerHero     32.0f

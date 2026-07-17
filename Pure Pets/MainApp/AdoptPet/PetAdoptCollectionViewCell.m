@@ -283,8 +283,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         [_hairlineView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor],
         [_hairlineView.heightAnchor constraintEqualToConstant:1.0],
 
-        [_contentWrapView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor constant:22.0],
-        [_contentWrapView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor constant:-22.0],
+        [_contentWrapView.topAnchor constraintEqualToAnchor:_cardSurfaceView.topAnchor constant:18.0],
+        [_contentWrapView.bottomAnchor constraintEqualToAnchor:_cardSurfaceView.bottomAnchor constant:-18.0],
         [_contentWrapView.trailingAnchor constraintEqualToAnchor:_cardSurfaceView.trailingAnchor constant:-22.0],
 
         [_visualStageView.centerYAnchor constraintEqualToAnchor:_cardSurfaceView.centerYAnchor],
@@ -302,7 +302,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         [_visualGlassView.centerXAnchor constraintEqualToAnchor:_visualStageView.centerXAnchor],
         [_visualGlassView.centerYAnchor constraintEqualToAnchor:_visualStageView.centerYAnchor],
         [_visualGlassView.widthAnchor constraintEqualToAnchor:_visualStageView.widthAnchor multiplier:0.90],
-        [_visualGlassView.heightAnchor constraintEqualToAnchor:_visualStageView.heightAnchor multiplier:0.78],
+        [_visualGlassView.heightAnchor constraintEqualToAnchor:_visualStageView.heightAnchor multiplier:0.84],
 
         [_seedImageView.centerXAnchor constraintEqualToAnchor:_visualGlassView.centerXAnchor],
         [_seedImageView.bottomAnchor constraintEqualToAnchor:_visualGlassView.bottomAnchor constant:-10.0],
@@ -334,7 +334,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
         [_ctaPillView.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_ctaPillView.bottomAnchor constraintEqualToAnchor:_contentWrapView.bottomAnchor],
-        [_ctaPillView.heightAnchor constraintEqualToConstant:42.0],
+        [_ctaPillView.heightAnchor constraintEqualToConstant:40.0],
         [_ctaPillView.widthAnchor constraintLessThanOrEqualToAnchor:_contentWrapView.widthAnchor],
         [_ctaPillView.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
 
@@ -375,7 +375,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
     self.cardSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
-    self.heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    self.heroBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
     self.heroBackgroundView.cornerGlowOpacityMultiplier = isDark ? 0.82 : 0.66;
     [self.heroBackgroundView reapplyPalette];
 
@@ -445,8 +445,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     CGFloat cornerRadius = 30.0;
     CGFloat width = CGRectGetWidth(self.bounds);
     BOOL compact = width > 0.0 && width < 370.0;
-    self.titleLabel.font = [GM boldFontWithSize:compact ? 21.0 : 24.0];
-    self.subtitleLabel.font = [GM MidFontWithSize:compact ? 13.0 : 14.0];
+    self.titleLabel.font = [GM boldFontWithSize:compact ? 20.0 : 22.0];
+    self.subtitleLabel.font = [GM MidFontWithSize:compact ? 12.5 : 13.0];
     CGFloat visualWidth = CGRectGetWidth(self.cardSurfaceView.bounds) * (compact ? 0.32 : 0.34);
     self.visualWidthConstraint.constant = MAX(compact ? 112.0 : 124.0, MIN(visualWidth, compact ? 132.0 : 150.0));
 
@@ -462,7 +462,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     self.cardSurfaceView.layer.cornerRadius = cornerRadius;
     self.visualGlassView.layer.cornerRadius = MIN(34.0, CGRectGetHeight(self.visualGlassView.bounds) * 0.24);
     self.badgePillView.layer.cornerRadius = CGRectGetHeight(self.badgePillView.bounds) * 0.5;
-    self.ctaPillView.layer.cornerRadius = CGRectGetHeight(self.ctaPillView.bounds) * 0.5;
+    self.ctaPillView.layer.cornerRadius = 14;
     self.visualOrbView.layer.cornerRadius = CGRectGetWidth(self.visualOrbView.bounds) * 0.5;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:cornerRadius].CGPath;
 }

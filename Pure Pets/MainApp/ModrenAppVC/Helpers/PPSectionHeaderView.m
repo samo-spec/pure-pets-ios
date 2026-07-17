@@ -271,7 +271,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.contentStackView.axis = UILayoutConstraintAxisVertical;
     self.contentStackView.alignment = UIStackViewAlignmentFill;
     self.contentStackView.distribution = UIStackViewDistributionFill;
-    self.contentStackView.spacing = -2.0;
+    self.contentStackView.spacing = -4.0;
     self.contentStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     [self.contentStackView setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];

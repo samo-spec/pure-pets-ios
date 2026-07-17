@@ -307,7 +307,7 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
 
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    glass.accentStyle = PPHeroGlassAccentStyleFullScreen;
     glass.cornerGlowOpacityMultiplier = 0.48;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
@@ -942,8 +942,8 @@ static void PPHomeInvokeVoidSelectorIfAvailable(id target, SEL selector)
     } else {
         accentColor = AppPrimaryClr ?: [UIColor colorNamed:@"AppPrimaryColor"] ?: UIColor.systemPinkColor;
         _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
-        _titleLabel.text = kLang(@"home_pet_profile_empty_title") ?: @"Create your pet profile";
-        _subtitleLabel.text = kLang(@"home_pet_profile_empty_subtitle") ?: @"Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
+        _titleLabel.text = kLang(@"home_pet_profile_empty_compact_title") ?: @"Create your pet profile";
+        _subtitleLabel.text = kLang(@"home_pet_profile_empty_compact_subtitle") ?: @"Keep care details, vaccines, and reminders together.";
         _metaPrimaryLabel.text = kLang(@"home_pet_profile_meta_vaccines") ?: @"Vaccines";
         _metaSecondaryLabel.text = kLang(@"home_pet_profile_meta_reminders") ?: @"Reminders";
         _ctaLabel.text = kLang(@"pet_profiles_add_first") ?: @"Add your first pet";
@@ -8286,8 +8286,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [collectionView dequeueReusableCellWithReuseIdentifier:@"PetAdoptCollectionViewCell"
                                                           forIndexPath:indexPath];
 
-            [cell configureWithTitle:kLang(@"Adopt a Pet")
-                            subtitle:kLang(@"Find your new best friend")
+            [cell configureWithTitle:kLang(@"home_adopt_title")
+                            subtitle:kLang(@"home_adopt_subtitle")
                            seedImage:[UIImage imageNamed:@"icn_cat"]];
 
             pp_stageCell(cell); return cell;

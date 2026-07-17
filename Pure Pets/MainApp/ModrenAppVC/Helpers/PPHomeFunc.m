@@ -329,15 +329,15 @@ static inline CGFloat PPHomePetProfileHeight(BOOL expanded, CGFloat width)
     }
 
     if (PPHomeWidthIsTablet(width)) {
-        return 276.0;
+        return 258.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 264.0;
+        return 248.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 246.0;
+        return 232.0;
     }
-    return 254.0;
+    return 240.0;
 }
 
 
@@ -367,15 +367,15 @@ static inline CGFloat PPHomeCareHeight(CGFloat width)
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 208.0;
+        return 178.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 198.0;
+        return 168.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 186.0;
+        return 168.0;
     }
-    return 186.0;
+    return 168.0;
 }
 
 static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
@@ -676,7 +676,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.contentInsets =
      NSDirectionalEdgeInsetsMake(PPHomeSpacingSection,
                                  PPHomeEdgeSpacing,
-                                 PPHomeSpacingSection,
+                                 PPHomeSpacingSection+8,
                                  PPHomeEdgeSpacing);
  
     
@@ -848,7 +848,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
          section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
          section.contentInsets = NSDirectionalEdgeInsetsMake(6.0,
                                                             PPHomeEdgeSpacing+3,
-                                                            PPHomeEdgeSpacing,
+                                                            PPHomeEdgeSpacing + 8,
                                                             PPHomeEdgeSpacing+3);
          return section;
      }
@@ -967,7 +967,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) -20,
+                                             PPHomeAccessoryCardHeight(availableWidth) +20,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);
@@ -981,7 +981,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
-                                             PPHomeAccessoryCardHeight(availableWidth) - 20.0,
+                                             PPHomeAccessoryCardHeight(availableWidth) +20.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeight,
                                              NO);

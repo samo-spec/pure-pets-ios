@@ -44,7 +44,9 @@ static CGFloat PPAdsBrowserPinterestAspectRatio(PPUniversalCellViewModel * _Null
                vm.preferredAspectRatio > 0.0) {
         ratio = vm.preferredAspectRatio;
     }
-    return MIN(MAX(ratio, 1.0), 2.0);
+    // Masonry media must remain expressive without allowing a single portrait
+    // asset to consume the entire column and desynchronize the card body.
+    return MIN(MAX(ratio, 0.72), 1.20);
 }
 
 static CGFloat PPAdsBrowserPinterestMeasuredTitleHeight(NSString *title,

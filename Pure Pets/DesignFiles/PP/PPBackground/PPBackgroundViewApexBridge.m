@@ -10,6 +10,19 @@
 #import "PPBackgroundView.h"
 #import <Pure_Pets-Swift.h>
 
+static BOOL PPHeroGlassIsDark(UITraitCollection *traitCollection)
+{
+    if (@available(iOS 13.0, *)) {
+        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
+{
+    return [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.78];
+}
+
 @interface PPBackgroundView ()
 @property (nonatomic, strong) PPHeroApexView *apexView;
 @end
@@ -24,6 +37,12 @@
 @synthesize glowDirection = _glowDirection;
 @synthesize PPHeroApexUseShimmer = _PPHeroApexUseShimmer;
 @synthesize PPHeroApexUseUnderFingerMotion = _PPHeroApexUseUnderFingerMotion;
+
+@synthesize overrideCornerRadius = _overrideCornerRadius;
+@synthesize overrideCornerRaduis = _overrideCornerRaduis;
+@synthesize overrideSolidColor = _overrideSolidColor;
+@synthesize overrideBorders = _overrideBorders;
+@synthesize overrideBorderColor = _overrideBorderColor;
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -57,6 +76,12 @@
     _PPHeroApexUseShimmer = NO;
     _PPHeroApexUseUnderFingerMotion = NO;
 
+    _overrideCornerRadius = 0.0;
+    _overrideCornerRaduis = 0.0;
+    _overrideSolidColor = nil;
+    _overrideBorders = NO;
+    _overrideBorderColor = nil;
+
     PPHeroApexView *apexView = [[PPHeroApexView alloc] initWithFrame:self.bounds];
     apexView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     apexView.accentStyle = _accentStyle;
@@ -73,11 +98,23 @@
     [super layoutSubviews];
     self.apexView.frame = self.bounds;
 
-    CGFloat resolvedCornerRadius = self.layer.cornerRadius;
+    CGFloat resolvedCornerRadius = self.overrideCornerRadius;
+    if (resolvedCornerRadius <= 0.0) {
+        resolvedCornerRadius = self.layer.cornerRadius;
+    }
     if (resolvedCornerRadius <= 0.5) {
         resolvedCornerRadius = self.superview.layer.cornerRadius;
     }
-    self.apexView.heroCornerRadius = resolvedCornerRadius > 0.5 ? resolvedCornerRadius : 30.0;
+    if (resolvedCornerRadius <= 0.5) {
+        resolvedCornerRadius = 30.0;
+    }
+
+    self.layer.cornerRadius = resolvedCornerRadius;
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.apexView.heroCornerRadius = resolvedCornerRadius;
 }
 
 - (void)setAccentColorOverride:(UIColor *)accentColorOverride
@@ -121,6 +158,8 @@
 
     _accentStyle = accentStyle;
     self.apexView.accentStyle = accentStyle;
+    [self reapplyPalette];
+    [self setNeedsLayout];
 }
 
 - (void)setCornerGlowOpacityMultiplier:(CGFloat)cornerGlowOpacityMultiplier
@@ -164,6 +203,52 @@
     self.apexView.PPHeroApexUseUnderFingerMotion = PPHeroApexUseUnderFingerMotion;
 }
 
+- (void)setOverrideCornerRadius:(CGFloat)overrideCornerRadius
+{
+    if (_overrideCornerRadius == overrideCornerRadius) {
+        return;
+    }
+    _overrideCornerRadius = overrideCornerRadius;
+    [self setNeedsLayout];
+}
+
+- (void)setOverrideCornerRaduis:(CGFloat)overrideCornerRaduis
+{
+    self.overrideCornerRadius = overrideCornerRaduis;
+}
+
+- (CGFloat)overrideCornerRaduis
+{
+    return self.overrideCornerRadius;
+}
+
+- (void)setOverrideSolidColor:(UIColor *)overrideSolidColor
+{
+    if (_overrideSolidColor == overrideSolidColor || [_overrideSolidColor isEqual:overrideSolidColor]) {
+        return;
+    }
+    _overrideSolidColor = overrideSolidColor;
+    [self reapplyPalette];
+}
+
+- (void)setOverrideBorders:(BOOL)overrideBorders
+{
+    if (_overrideBorders == overrideBorders) {
+        return;
+    }
+    _overrideBorders = overrideBorders;
+    [self reapplyPalette];
+}
+
+- (void)setOverrideBorderColor:(UIColor *)overrideBorderColor
+{
+    if (_overrideBorderColor == overrideBorderColor || [_overrideBorderColor isEqual:overrideBorderColor]) {
+        return;
+    }
+    _overrideBorderColor = overrideBorderColor;
+    [self reapplyPalette];
+}
+
 - (void)startAnimations
 {
     [self.apexView startAnimations];
@@ -176,7 +261,44 @@
 
 - (void)reapplyPalette
 {
-    [self.apexView reapplyPalette];
+    BOOL isSolid = (self.accentStyle == PPHeroGlassAccentStyleSolid);
+    self.apexView.hidden = isSolid;
+    self.clipsToBounds = isSolid;
+
+    if (isSolid) {
+        UIColor *bgColor = self.overrideSolidColor ?: (AppBackgroundClr ?: [UIColor systemBackgroundColor]);
+        self.backgroundColor = bgColor;
+        
+        BOOL darkMode = PPHeroGlassIsDark(self.traitCollection);
+        if (self.overrideBorders) {
+            if (self.overrideBorderColor) {
+                self.layer.borderWidth = 1.0;
+                [self pp_setBorderColor:self.overrideBorderColor];
+            } else {
+                self.layer.borderWidth = 0.0;
+                [self pp_setBorderColor:UIColor.clearColor];
+            }
+        } else {
+            self.layer.borderWidth = 1.0;
+            [self pp_setBorderColor:PPHeroGlassStrokeColor(darkMode)];
+        }
+        
+        self.layer.shadowOpacity = 0.0f;
+    } else {
+        self.backgroundColor = UIColor.clearColor;
+        self.layer.borderWidth = 0.0;
+        [self pp_setBorderColor:UIColor.clearColor];
+        
+        [self.apexView reapplyPalette];
+    }
+}
+
+#pragma mark - Trait Changes
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self reapplyPalette];
 }
 
 @end

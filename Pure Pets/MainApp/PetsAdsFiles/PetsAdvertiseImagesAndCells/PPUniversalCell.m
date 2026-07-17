@@ -461,7 +461,8 @@ static BOOL PPUniversalCellUsesAdsPinterestLayout(PPCellContext context,
 {
     BOOL isAdContext = [modelObject isKindOfClass:[PetAd class]] ||
                        context == PPCellForAds ||
-                       context == PPCellForHomeAds;
+                       context == PPCellForHomeAds ||
+                       context == PPCellForMarket;
     return isAdContext && layoutMode == PPCellLayoutModePinterest;
 }
 
@@ -1589,8 +1590,6 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.imageAspectConstraint.active = YES;
     self.fullWidthImageWidthConstraint = [self.imageContainer.widthAnchor constraintEqualToConstant:136.0];
     self.titleTopToBodyConstraint = [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.bodyContainer.topAnchor];
-    self.titleTopToBodyPullConstraint = [self.titleLabel.topAnchor constraintEqualToAnchor:self.bodyContainer.topAnchor];
-    self.titleTopToBodyPullConstraint.priority = UILayoutPriorityDefaultLow;
     self.priceTopToTitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0];
     self.priceTopToSubtitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:4.0];
     self.subtitleHeightConstraint = [self.subtitleLabel.heightAnchor constraintEqualToConstant:0.0];
@@ -1606,7 +1605,6 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceContainerTrailingToFavConstraint = [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyFavButton.leadingAnchor constant:-10.0];
     self.priceTopToTitleConstraint.active = YES;
     self.titleTopToBodyConstraint.active = YES;
-    self.titleTopToBodyPullConstraint.active = YES;
     self.subtitleHeightConstraint.active = YES;
     self.oldPriceCollapsedConstraint.active = YES;
     self.availabilityLeadingToBodyConstraint.active = YES;
@@ -1985,7 +1983,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                 resolvedLayout = PPCellLayoutModeMarket;
             }
         }
-    } else {
+    } else if (layout != PPCellLayoutModePinterest) {
         if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
             resolvedLayout = PPCellLayoutModeMarket;
         } else if ([vm.ModelObject isKindOfClass:[PetAd class]]) {
@@ -2699,12 +2697,6 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             MAX(PPUniversalHorizontalRowImageWidthMin, UIScreen.mainScreen.bounds.size.width * 0.34));
 
     self.imageAspectConstraint.active = NO;
-    if (!fullWidth && PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
-        self.imageAspectConstraint = [self.imageContainer.heightAnchor constraintEqualToAnchor:self.imageContainer.widthAnchor
-                                                                                    multiplier:[self pp_imageAspectRatioForCurrentContent]];
-        self.imageAspectConstraint.priority = UILayoutPriorityDefaultHigh;
-        self.imageAspectConstraint.active = YES;
-    }
 
     self.titleLabel.numberOfLines = expandedRow ? 2 : (adsPinterest ? 2 : 1);
     self.subtitleLabel.numberOfLines = expandedRow ? 2 : 1;

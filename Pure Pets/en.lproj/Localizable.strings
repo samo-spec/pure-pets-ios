@@ -2742,6 +2742,8 @@
 "home_pet_profile_open_editor_cta" = "Open pet editor";
 "home_pet_profile_empty_title" = "Create your pet profile";
 "home_pet_profile_empty_subtitle" = "Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
+"home_pet_profile_empty_compact_title" = "Build your pet profile";
+"home_pet_profile_empty_compact_subtitle" = "Keep care details, vaccines, and reminders together.";
 "home_pet_profile_meta_vaccines" = "Vaccines";
 "home_pet_profile_meta_reminders" = "Reminders";
 "home_pet_profile_open_hint" = "Opens the pet profile editor";
@@ -2750,6 +2752,8 @@
 "home_pet_profile_collapse" = "Collapse";
 "home_pet_profile_expand_hint" = "Shows pet profile details";
 "home_pet_profile_collapse_hint" = "Shows fewer pet profile details";
+"home_adopt_title" = "Meet your next companion";
+"home_adopt_subtitle" = "Pets waiting for a loving home";
 "alert_eyebrow_success" = "SUCCESS";
 "alert_eyebrow_error" = "ACTION REQUIRED";
 "alert_eyebrow_warning" = "PLEASE REVIEW";
@@ -3608,3 +3612,5 @@
 "media_preview_pause" = "Pause";
 "media_preview_mute" = "Mute";
 "media_preview_unmute" = "Unmute";
+
+"ad_no_location_placeholder" = "Location not specified";

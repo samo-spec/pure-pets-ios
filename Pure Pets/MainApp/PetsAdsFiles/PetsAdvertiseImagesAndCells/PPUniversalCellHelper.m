@@ -241,6 +241,11 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
                          dataViewPresenter:(BOOL)dataViewPresenter
                             showsSubtitle:(BOOL)showsSubtitle
 {
+    if (!dataViewPresenter &&
+        (context == PPCellForMarket || context == PPCellForHomeAds)) {
+        return @"";
+    }
+
     if (horizontalLayout) {
         NSString *descriptionText = @"";
         if ([viewModel.ModelObject isKindOfClass:PetAd.class]) {
@@ -256,6 +261,17 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
         return descriptionText.length > 0
             ? descriptionText
             : PPUniversalSwiftUISafeString(viewModel.subtitle);
+    }
+
+    if (dataViewPresenter &&
+        (context == PPCellForMarket || context == PPCellForContextAccessory)) {
+        if ([viewModel.ModelObject isKindOfClass:PetAccessory.class]) {
+            NSString *descriptionText = PPUniversalSwiftUISafeString(
+                ((PetAccessory *)viewModel.ModelObject).desc);
+            if (descriptionText.length > 0) {
+                return descriptionText;
+            }
+        }
     }
 
     if ([self isAdvertisementViewModel:viewModel]) {

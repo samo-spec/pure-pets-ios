@@ -5,9 +5,9 @@
 static const NSInteger PPModrenSegmrntedNoSelection = -1;
 static const CGFloat PPModrenSegmrntedOuterInset = 3.0;
 static const CGFloat PPModrenSegmrntedSegmentSpacing = 3.0;
-static const CGFloat PPModrenSegmrntedUnderlineHeight = 6.0;
-static const CGFloat PPModrenSegmrntedContainerCornerRadius = 20.0;
-static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 20.0;
+static const CGFloat PPModrenSegmrntedSelectionDotDiameter = 6.0;
+static const CGFloat PPModrenSegmrntedContainerCornerRadius = 16.0;
+static const CGFloat PPModrenSegmrntedSelectionCornerRadius = 16.0;
 static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.22;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
@@ -405,7 +405,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     self.selectionUnderlineView.userInteractionEnabled = NO;
     self.selectionUnderlineView.alpha = 0.0;
     self.selectionUnderlineView.backgroundColor = UIColor.clearColor;
-    self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
+    self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedSelectionDotDiameter * 0.5;
     self.selectionUnderlineView.layer.shadowOpacity = 0.14;
     self.selectionUnderlineView.layer.shadowRadius = 5.0;
     self.selectionUnderlineView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
@@ -416,6 +416,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     self.selectionUnderlineLayer.startPoint = CGPointMake(0.0, 0.5);
     self.selectionUnderlineLayer.endPoint = CGPointMake(1.0, 0.5);
     self.selectionUnderlineLayer.locations = @[@0.0, @0.48, @1.0];
+    self.selectionUnderlineLayer.masksToBounds = YES;
     [self.selectionUnderlineView.layer insertSublayer:self.selectionUnderlineLayer atIndex:0];
     [self addSubview:self.selectionUnderlineView];
 
@@ -459,7 +460,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
         self.selectionOutlineWidthConstraint,
 
         [self.selectionUnderlineView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-6.0],
-        [self.selectionUnderlineView.heightAnchor constraintEqualToConstant:PPModrenSegmrntedUnderlineHeight],
+        [self.selectionUnderlineView.heightAnchor constraintEqualToConstant:PPModrenSegmrntedSelectionDotDiameter],
         self.selectionUnderlineLeadingConstraint,
         self.selectionUnderlineWidthConstraint,
 
@@ -498,7 +499,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
                                      cornerRadius:controlRadius].CGPath;
 
     self.selectionOutlineView.layer.cornerRadius = selectionRadius;
-    self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
+    self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedSelectionDotDiameter * 0.5;
 
 
     self.selectionSurfaceLayer.frame = self.selectionOutlineView.bounds;
@@ -506,7 +507,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
 
 
     self.selectionUnderlineLayer.frame = self.selectionUnderlineView.bounds;
-    self.selectionUnderlineLayer.cornerRadius = 2.0;
+    self.selectionUnderlineLayer.cornerRadius = PPModrenSegmrntedSelectionDotDiameter * 0.5;
 
     self.selectionOutlineView.layer.shadowPath = CGRectIsEmpty(self.selectionOutlineView.bounds)
         ? nil
@@ -515,7 +516,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     self.selectionUnderlineView.layer.shadowPath = CGRectIsEmpty(self.selectionUnderlineView.bounds)
         ? nil
         : [UIBezierPath bezierPathWithRoundedRect:self.selectionUnderlineView.bounds
-                                     cornerRadius:PPModrenSegmrntedUnderlineHeight * 0.5].CGPath;
+                                     cornerRadius:PPModrenSegmrntedSelectionDotDiameter * 0.5].CGPath;
 
     [self pp_updateSelectionIndicatorMetrics];
 }
@@ -790,7 +791,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
         self.selectionOutlineView.alpha = alpha;
         self.selectionUnderlineView.alpha = alpha;
         self.selectionOutlineView.transform = hasSelection ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.94, 0.94);
-        self.selectionUnderlineView.transform = hasSelection ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.72, 1.0);
+        self.selectionUnderlineView.transform = hasSelection ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.72, 0.72);
         [self layoutIfNeeded];
     };
 
@@ -827,8 +828,7 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
     CGFloat outlineWidth = MAX(0.0, CGRectGetWidth(selectedFrame) - (outlineInset * 2.0));
     CGFloat outlineLeading = CGRectGetMinX(selectedFrame) + outlineInset;
 
-    CGFloat desiredUnderlineWidth = CGRectGetWidth(selectedFrame) * 0.34;
-    CGFloat underlineWidth = PPModrenSegmrntedUnderlineHeight;//MIN(MAX(30.0, desiredUnderlineWidth), 64.0);
+    CGFloat underlineWidth = PPModrenSegmrntedSelectionDotDiameter;
     CGFloat underlineLeading = CGRectGetMidX(selectedFrame) - (underlineWidth * 0.5);
 
     self.selectionOutlineLeadingConstraint.constant = outlineLeading;

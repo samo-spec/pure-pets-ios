@@ -99,14 +99,14 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     self.surfaceView.userInteractionEnabled = NO;
     self.surfaceView.backgroundColor = UIColor.clearColor;
     self.surfaceView.layer.masksToBounds = NO;
-    PPApplyContinuousCorners(self.surfaceView, PPCornerCard);
+    PPApplyContinuousCorners(self.surfaceView, PPCornerMedium);
     [self.tapButton addSubview:self.surfaceView];
 
     self.materialView = [[UIView alloc] init];
     self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.materialView.userInteractionEnabled = NO;
     self.materialView.clipsToBounds = YES;
-    PPApplyContinuousCorners(self.materialView, PPCornerCard);
+    PPApplyContinuousCorners(self.materialView, PPCornerMedium);
     [self.surfaceView addSubview:self.materialView];
 
     self.surfaceGradientLayer = [CAGradientLayer layer];
@@ -557,12 +557,12 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
     CGFloat inset = MAX(0.5, self.surfaceStrokeLayer.lineWidth * 0.5);
     CGRect strokeBounds = CGRectInset(bounds, inset, inset);
-    CGFloat strokeRadius = MAX(0.0, PPCornerCard - inset);
+    CGFloat strokeRadius = MAX(0.0, PPCornerMedium - inset);
     self.surfaceStrokeLayer.frame = bounds;
     self.surfaceStrokeLayer.path = [UIBezierPath bezierPathWithRoundedRect:strokeBounds
                                                              cornerRadius:strokeRadius].CGPath;
     self.surfaceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:bounds
-                                                                  cornerRadius:PPCornerCard].CGPath;
+                                                                  cornerRadius:PPCornerMedium].CGPath;
     [CATransaction commit];
 }
 
