@@ -524,6 +524,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     glass.cornerGlowOpacityMultiplier = 0.15;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.tintColor = AppPrimaryClr;
+    glass.accentStyle = PPHeroGlassAccentStyleSolid;
+    glass.overrideCornerRadius = 16;
+
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
 
@@ -1528,7 +1531,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     for (NSInteger i = 0; i < count; i++) {
         PPUniversalCellViewModel *vm =
-        [[PPUniversalCellViewModel alloc] initSkeleton];
+        [[PPUniversalCellViewModel alloc] initSkeletonForDataSection:self.viewModel.currentSection];
         [items addObject:vm];
     }
 

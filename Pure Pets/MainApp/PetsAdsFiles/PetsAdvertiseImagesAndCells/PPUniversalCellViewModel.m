@@ -461,6 +461,11 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
 
 - (instancetype)initSkeleton
 {
+    return [self initSkeletonForDataSection:PPDataSectionAds];
+}
+
+- (instancetype)initSkeletonForDataSection:(PPDataSection)section
+{
     self = [super init];
     if (!self) {
         return nil;
@@ -477,15 +482,47 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     _badgeText = @"";
     _stockStatusText = @"";
     _location = @"";
-    _modelContext = PPCellForAds;
-    _cellSection = CellSectionAds;
-    _ppSection = PPSectionAds;
     _ModelID = [NSUUID UUID].UUIDString;
     _modelType = @"Skeleton";
-    _preferredAspectRatio = 1.02;
-    _imageSize = CGSizeMake(1.0, 1.02);
     _itemQuantitiy = 0;
+    _isVideoMedia = NO;
+    _videoURL = @"";
+    _videoThumbnailURL = @"";
+    _mediaMetadata = nil;
+    _publiclyVisible = YES;
     _skeleton = YES;
+
+    switch (section) {
+        case PPDataSectionAccessories:
+            _modelContext = PPCellForMarket;
+            _cellSection = CellSectionAccessories;
+            _ppSection = PPSectionAccess;
+            _preferredAspectRatio = 0.78;
+            _imageSize = CGSizeMake(1.0, 0.78);
+            break;
+        case PPDataSectionFood:
+            _modelContext = PPCellForFood;
+            _cellSection = CellSectionFood;
+            _ppSection = PPSectionFood;
+            _preferredAspectRatio = 0.78;
+            _imageSize = CGSizeMake(1.0, 0.78);
+            break;
+        case PPDataSectionServices:
+            _modelContext = PPCellForServices;
+            _cellSection = CellSectionServices;
+            _ppSection = PPSectionServices;
+            _preferredAspectRatio = 0.72;
+            _imageSize = CGSizeMake(1.0, 0.72);
+            break;
+        case PPDataSectionAds:
+        default:
+            _modelContext = PPCellForAds;
+            _cellSection = CellSectionAds;
+            _ppSection = PPSectionAds;
+            _preferredAspectRatio = 0.86;
+            _imageSize = CGSizeMake(1.0, 0.86);
+            break;
+    }
 
     return self;
 }

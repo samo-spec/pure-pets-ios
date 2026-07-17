@@ -49,6 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithModel:(nullable id)model
                 ppDataSection:(PPDataSection)ppDataSection;
 - (instancetype)initSkeleton;
+- (instancetype)initSkeletonForDataSection:(PPDataSection)section;
 
 @end
 

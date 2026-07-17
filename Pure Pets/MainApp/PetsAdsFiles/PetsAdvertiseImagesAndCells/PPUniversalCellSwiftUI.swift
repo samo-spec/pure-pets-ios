@@ -29,6 +29,10 @@ public enum PPUniversalCardContext: Equatable {
     var isServiceLike: Bool {
         self == .services || self == .vets
     }
+
+    var isCatalogCommerce: Bool {
+        self == .market || self == .food || self == .accessory
+    }
 }
 
 public enum PPUniversalCardLayout: Equatable {
@@ -253,7 +257,17 @@ public struct PPUniversalCardView: View {
 
     public var body: some View {
         PPUniversalCardRenderer(store: store)
-            .frame(minHeight: store.layout.isHorizontal ? 184 : 340)
+            .frame(minHeight: minimumHeight)
+    }
+
+    private var minimumHeight: CGFloat {
+        if store.layout.isHorizontal {
+            return 184
+        }
+        if store.model.isSkeleton && store.context.isCatalogCommerce {
+            return 292
+        }
+        return 340
     }
 }
 
@@ -281,6 +295,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isSelected = false
     @Published var isRightToLeft: Bool
     @Published var isSuggestionsAd = false
+    @Published var isNearbyAdsSection = false
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -295,6 +310,8 @@ private final class PPUniversalCardStore: ObservableObject {
     var showsOwnerMenu = false
     var cardTap: (() -> Void)?
     var actions: PPUniversalCardActions
+
+    private static let nearbyAdsPPSectionRawValue = 5
 
     private var collapseTask: Task<Void, Never>?
     private var notifyItemID: String?
@@ -337,6 +354,7 @@ private final class PPUniversalCardStore: ObservableObject {
         let isSuggestions = PPUniversalCellSwiftUIBridge.isSuggestionsSection(for: viewModel, delegate: self.delegate)
         let isSuggestionsAd = isSuggestions && isAdLike
         self.isSuggestionsAd = isSuggestionsAd
+        self.isNearbyAdsSection = viewModel.ppSection.rawValue == Self.nearbyAdsPPSectionRawValue
 
         let resolvedLayout = Self.resolvedLayout(
             objcLayout,
@@ -383,18 +401,34 @@ private final class PPUniversalCardStore: ObservableObject {
                 context: objcContext
             )
         )
+
         let metadata = PPUniversalCellSwiftUIBridge.metadataText(for: viewModel)
         let metadataIcon =
             PPUniversalCellSwiftUIBridge.metadataSystemImage(for: viewModel)
         let reason = viewModel.isOwner && !viewModel.isPubliclyVisible && !hideTopBadge
             ? Self.localized("listing_hidden_badge", fallback: "Hidden")
             : nil
-        let availability = availabilityText?.isEmpty == false
+
+        var resolvedMetadata = metadata
+        var resolvedMetadataIcon = metadataIcon
+
+        if isSuggestionsAd {
+            let loc = viewModel.location
+            if !loc.isEmpty {
+                resolvedMetadata = loc
+                resolvedMetadataIcon = "mappin.and.ellipse"
+            }
+        }
+
+        let hasAvailabilityText = availabilityText?.isEmpty == false
+        let hasMetadata = resolvedMetadata?.isEmpty == false
+
+        let availability = (hasAvailabilityText || hasMetadata)
             ? PPUniversalAvailability(
-                text: availabilityText!,
+                text: availabilityText ?? "",
                 tone: tone,
-                metaText: metadata,
-                metaSystemImage: metadataIcon
+                metaText: resolvedMetadata,
+                metaSystemImage: resolvedMetadataIcon
             )
             : nil
 
@@ -486,6 +520,8 @@ private final class PPUniversalCardStore: ObservableObject {
             isSkeleton: true
         )
         resetTransientState(quantity: 0)
+        isNearbyAdsSection = false
+        isSuggestionsAd = false
         uiReferences.imageView?.image = nil
     }
 
@@ -828,6 +864,7 @@ private struct PPUniversalCardRenderer: View {
             if store.model.isSkeleton {
                 PPUniversalSkeletonCard(
                     horizontal: store.layout.isHorizontal,
+                    catalog: store.context.isCatalogCommerce,
                     cardRadius: cardRadius,
                     imageRadius: imageRadius
                 )
@@ -1083,14 +1120,16 @@ private struct PPUniversalCardRenderer: View {
 
             Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
-            if store.model.usesQuantityControl {
-                primaryAction
+            if store.model.usesQuantityControl || store.context.isAdvertisement {
+                if !store.isNearbyAdsSection {
+                    primaryAction
+                }
 
                 if let availability = store.model.availability,
-                   !availability.text.isEmpty,
+                   (!availability.text.isEmpty || availability.metaText?.isEmpty == false),
                    !usesCompressedAccessibilityLayout {
                     availabilityRow(availability)
-                        .padding(.top, 5)
+                        .padding(.top, 9)
                 }
             } else {
                 detailsFooter
@@ -1106,7 +1145,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Black",
-                            size: store.layout.isHorizontal ? 22 : 20,
+                            size: priceFontSize,
                             relativeTo: .title3
                         )
                     )
@@ -1129,7 +1168,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Black",
-                            size: store.layout.isHorizontal ? 22 : 20,
+                            size: priceFontSize,
                             relativeTo: .title3
                         )
                     )
@@ -1171,6 +1210,11 @@ private struct PPUniversalCardRenderer: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var priceFontSize: CGFloat {
+        let baseSize: CGFloat = store.layout.isHorizontal ? 22 : 20
+        return store.context.isAdvertisement ? (baseSize + 4) : baseSize
     }
 
     private var detailsFooter: some View {
@@ -1434,14 +1478,16 @@ private struct PPUniversalCardRenderer: View {
                 )
             }
 
-            PPUniversalPill(
-                text: availability.text,
-                foreground: availabilityForeground(availability.tone),
-                background: availabilityForeground(availability.tone).opacity(
-                    colorScheme == .dark ? 0.16 : 0.10
-                ),
-                border: availabilityForeground(availability.tone).opacity(0.18)
-            )
+            if !availability.text.isEmpty {
+                PPUniversalPill(
+                    text: availability.text,
+                    foreground: availabilityForeground(availability.tone),
+                    background: availabilityForeground(availability.tone).opacity(
+                        colorScheme == .dark ? 0.16 : 0.10
+                    ),
+                    border: availabilityForeground(availability.tone).opacity(0.18)
+                )
+            }
 
             Spacer(minLength: 0)
         }
@@ -1686,7 +1732,12 @@ private struct PPUniversalCardRenderer: View {
 
     private var primaryActionIcon: String {
         guard store.model.usesQuantityControl else {
-            return store.context.isServiceLike ? "sparkles" : "arrow.up.right"
+            if isAdAction {
+                return "megaphone.fill"
+            }
+            return store.context.isServiceLike
+                ? "sparkles"
+                : (store.isRightToLeft ? "arrow.up.left" : "arrow.up.right")
         }
         if store.isOutOfStock {
             return store.notifySucceeded
@@ -1697,6 +1748,9 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var primaryActionForeground: Color {
+        if isAdAction {
+            return .white
+        }
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&
             !store.isOutOfStock {
@@ -1709,6 +1763,9 @@ private struct PPUniversalCardRenderer: View {
         if store.isOutOfStock {
             return Color(uiColor: .secondaryLabel)
         }
+        if isAdAction {
+            return adActionBackground
+        }
         if store.model.usesQuantityControl && store.quantity > 0 {
             return store.palette.primary.opacity(
                 colorScheme == .dark ? 0.18 : 0.09
@@ -1718,10 +1775,30 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var primaryActionBorder: Color {
+        if isAdAction {
+            return adActionBorder
+        }
         if store.model.usesQuantityControl && store.quantity > 0 {
             return store.palette.primary.opacity(0.20)
         }
         return .clear
+    }
+
+    private var isAdAction: Bool {
+        (store.context.isAdvertisement || store.isSuggestionsAd) &&
+            !store.model.usesQuantityControl
+    }
+
+    private var adActionBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.02, green: 0.32, blue: 0.38)
+            : Color(red: 0.00, green: 0.43, blue: 0.52)
+    }
+
+    private var adActionBorder: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.16)
+            : Color(red: 0.00, green: 0.30, blue: 0.38).opacity(0.22)
     }
 
     private func availabilityForeground(
@@ -2031,6 +2108,7 @@ private struct PPUniversalScaleButtonStyle: ButtonStyle {
 @available(iOS 16.0, *)
 private struct PPUniversalSkeletonCard: View {
     let horizontal: Bool
+    let catalog: Bool
     let cardRadius: CGFloat
     let imageRadius: CGFloat
 
@@ -2050,10 +2128,16 @@ private struct PPUniversalSkeletonCard: View {
                 VStack(alignment: .leading, spacing: 10) {
                     skeletonMedia
                         .frame(maxWidth: .infinity)
-                        .aspectRatio(1.1, contentMode: .fit)
-                    skeletonBody
-                        .padding(.horizontal, 10)
-                        .padding(.bottom, 10)
+                        .aspectRatio(catalog ? 1.28 : 1.1, contentMode: .fit)
+                    if catalog {
+                        catalogSkeletonBody
+                            .padding(.horizontal, 9)
+                            .padding(.bottom, 9)
+                    } else {
+                        skeletonBody
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 10)
+                    }
                 }
                 .padding(4)
             }
@@ -2090,6 +2174,17 @@ private struct PPUniversalSkeletonCard: View {
             skeletonBar(width: 0.52, height: 22)
             skeletonBar(width: 1, height: 44)
             skeletonBar(width: 0.62, height: 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var catalogSkeletonBody: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            skeletonBar(width: 0.78, height: 14)
+            skeletonBar(width: 0.52, height: 11)
+            Spacer(minLength: 2)
+            skeletonBar(width: 0.48, height: 18)
+            skeletonBar(width: 1, height: 34)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

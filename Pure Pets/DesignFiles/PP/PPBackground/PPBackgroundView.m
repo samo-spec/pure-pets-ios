@@ -240,6 +240,8 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.clipsToBounds = NO;
     _accentStyle = PPHeroGlassAccentStyleBar;
     _cornerGlowOpacityMultiplier = 1.0;
+    _overrideBorders = NO;
+    _overrideCornerRadius = 0.0;
     [self pp_generateConstellationDefinition];
 
     // Card-level chrome: border, shadow, continuous corners
@@ -489,6 +491,13 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 {
     [super layoutSubviews];
  
+    // Dynamic corner radius (supporting overrides)
+    CGFloat currentRadius = (self.overrideCornerRadius > 0.0) ? self.overrideCornerRadius : (PPCornerHero - 6.0);
+    self.layer.cornerRadius = currentRadius;
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
     // Manual layout to bypass Auto Layout constraints solver latency and race conditions
     self.materialView.frame = self.bounds;
  
@@ -614,6 +623,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         return;
     }
     _accentStyle = accentStyle;
+    if (accentStyle == PPHeroGlassAccentStyleSolid) {
+        [self stopAnimations];
+    }
     [self pp_applyAccentStyle];
     [self reapplyPalette];
 }
@@ -638,6 +650,54 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     [self reapplyPalette];
 }
 
+
+
+- (void)setOverrideBorders:(BOOL)overrideBorders
+{
+    if (_overrideBorders == overrideBorders) {
+        return;
+    }
+    _overrideBorders = overrideBorders;
+    [self reapplyPalette];
+}
+
+- (void)setOverrideBorderColor:(UIColor *)overrideBorderColor
+{
+    if (_overrideBorderColor == overrideBorderColor || [_overrideBorderColor isEqual:overrideBorderColor]) {
+        return;
+    }
+    _overrideBorderColor = overrideBorderColor;
+    [self reapplyPalette];
+}
+
+- (void)setOverrideSolidColor:(UIColor *)overrideSolidColor
+{
+    if (_overrideSolidColor == overrideSolidColor || [_overrideSolidColor isEqual:overrideSolidColor]) {
+        return;
+    }
+    _overrideSolidColor = overrideSolidColor;
+    [self reapplyPalette];
+}
+
+- (void)setOverrideCornerRadius:(CGFloat)overrideCornerRadius
+{
+    if (_overrideCornerRadius == overrideCornerRadius) {
+        return;
+    }
+    _overrideCornerRadius = overrideCornerRadius;
+    [self setNeedsLayout];
+}
+
+- (void)setOverrideCornerRaduis:(CGFloat)overrideCornerRaduis
+{
+    self.overrideCornerRadius = overrideCornerRaduis;
+}
+
+- (CGFloat)overrideCornerRaduis
+{
+    return self.overrideCornerRadius;
+}
+
 - (void)pp_applyAccentStyle
 {
     BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
@@ -651,88 +711,125 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 {
     UIColor *brand = self.accentColorOverride ?: PPHeroGlassAccentColor();
     BOOL darkMode = PPHeroGlassIsDark(self.traitCollection);
+    BOOL isSolid = (self.accentStyle == PPHeroGlassAccentStyleSolid);
 
-    self.backgroundColor = UIColor.clearColor;
-    self.materialView.backgroundColor = UIColor.clearColor;
-    [self pp_setBorderColor:PPHeroGlassStrokeColor(darkMode)];
+    self.gradientLayer.hidden = isSolid;
+    self.depthLayer.hidden = isSolid;
+    self.constellationLayer.hidden = isSolid;
+    self.constellationTraceLayer.hidden = isSolid;
+    self.accentView.hidden = isSolid;
+    for (CAShapeLayer *layer in self.dotLayers) {
+        layer.hidden = isSolid;
+    }
+    for (CAShapeLayer *layer in self.dotHaloLayers) {
+        layer.hidden = isSolid;
+    }
+
+    if (self.overrideBorders) {
+        if (self.overrideBorderColor) {
+            self.layer.borderWidth = 1.0;
+            [self pp_setBorderColor:self.overrideBorderColor];
+        } else {
+            self.layer.borderWidth = 0.0;
+            [self pp_setBorderColor:UIColor.clearColor];
+        }
+    } else {
+        self.layer.borderWidth = 1.0;
+        [self pp_setBorderColor:PPHeroGlassStrokeColor(darkMode)];
+    }
+
     [self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    self.layer.shadowOpacity = 0.08f;
+    self.layer.shadowOpacity = isSolid ? 0.0f : 0.08f;
     self.layer.shadowRadius = 20.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 10.0);
 
-    UIColor *surfaceBase = PPHeroGlassSurfaceBaseColor(self.traitCollection);
-    UIColor *surfaceHighlight = PPHeroGlassSurfaceHighlightColor(surfaceBase, darkMode, self.traitCollection);
-    UIColor *backgroundAccent = PPHeroGlassBackgroundAccentColor(brand, surfaceBase, darkMode, self.traitCollection);
-    UIColor *surfaceTint = PPHeroGlassSurfaceTintColor(surfaceBase, backgroundAccent, darkMode, self.traitCollection);
-    UIColor *surfaceTail = PPHeroGlassSurfaceTailColor(surfaceTint, backgroundAccent, darkMode, self.traitCollection);
+    if (isSolid) {
+        UIColor *bgColor = self.overrideSolidColor ?: (AppBackgroundClr ?: [UIColor systemBackgroundColor]);
+        self.backgroundColor = bgColor;
+        self.materialView.backgroundColor = bgColor;
+    } else {
+        self.backgroundColor = UIColor.clearColor;
+        self.materialView.backgroundColor = UIColor.clearColor;
 
-    self.gradientLayer.opacity = darkMode ? 0.90 : 0.72;
-    self.gradientLayer.colors = @[
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, self.traitCollection).CGColor,
-        (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, self.traitCollection).CGColor
-    ];
-    self.gradientLayer.locations = @[@0.0, @0.56, @1.0];
-    self.gradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
-    self.gradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+        UIColor *surfaceBase = PPHeroGlassSurfaceBaseColor(self.traitCollection);
+        UIColor *surfaceHighlight = PPHeroGlassSurfaceHighlightColor(surfaceBase, darkMode, self.traitCollection);
+        UIColor *backgroundAccent = PPHeroGlassBackgroundAccentColor(brand, surfaceBase, darkMode, self.traitCollection);
+        UIColor *surfaceTint = PPHeroGlassSurfaceTintColor(surfaceBase, backgroundAccent, darkMode, self.traitCollection);
+        UIColor *surfaceTail = PPHeroGlassSurfaceTailColor(surfaceTint, backgroundAccent, darkMode, self.traitCollection);
 
-    self.depthLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    self.depthLayer.locations = @[@0.0, @1.0];
-    self.depthLayer.opacity = 1.0;
+        self.gradientLayer.opacity = darkMode ? 0.90 : 0.72;
+        self.gradientLayer.colors = @[
+            (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
+            (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, self.traitCollection).CGColor,
+            (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, self.traitCollection).CGColor
+        ];
+        self.gradientLayer.locations = @[@0.0, @0.56, @1.0];
+        self.gradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+        self.gradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
 
-    UIColor *dot = PPMarketplaceHeroCardResolvedColor(PPHeroGlassDotColor(brand,
-                                                                         surfaceBase,
-                                                                         darkMode,
-                                                                         self.traitCollection),
-                                                       self.traitCollection);
-    UIColor *dotHalo = PPMarketplaceHeroCardResolvedColor(PPHeroGlassDotHaloColor(brand,
-                                                                                 darkMode,
-                                                                                 self.traitCollection),
+        self.depthLayer.colors = @[
+            (__bridge id)[UIColor.clearColor CGColor],
+            (__bridge id)[UIColor.clearColor CGColor]
+        ];
+        self.depthLayer.locations = @[@0.0, @1.0];
+        self.depthLayer.opacity = 1.0;
+
+        UIColor *dot = PPMarketplaceHeroCardResolvedColor(PPHeroGlassDotColor(brand,
+                                                                             surfaceBase,
+                                                                             darkMode,
+                                                                             self.traitCollection),
                                                            self.traitCollection);
-    UIColor *line = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationLineColor(AppBackgroundClr,
-                                                                                         surfaceBase,
-                                                                                         darkMode,
-                                                                                         self.traitCollection),
-                                                        self.traitCollection);
-    UIColor *traceAccent = self.accentColorOverride ?: [AppPrimaryClrShiner colorWithAlphaComponent:(CGFloat)0.92];
-    UIColor *trace = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationTraceColor(traceAccent,
-                                                                                           darkMode,
-                                                                                           self.traitCollection),
-                                                         self.traitCollection);
-    for (CAShapeLayer *haloLayer in self.dotHaloLayers) {
-        haloLayer.fillColor = UIColor.clearColor.CGColor;
-        haloLayer.strokeColor = dotHalo.CGColor;
-        haloLayer.opacity = 0.0;
-    }
-    for (CAShapeLayer *dotLayer in self.dotLayers) {
-        dotLayer.fillColor = dot.CGColor;
-        dotLayer.strokeColor = dotHalo.CGColor;
-        dotLayer.shadowColor = dot.CGColor;
-        dotLayer.shadowOpacity = darkMode ? 0.26f : 0.16f;
-        dotLayer.shadowRadius = darkMode ? 2.2 : 1.6;
-        dotLayer.shadowOffset = CGSizeZero;
-    }
-    self.constellationLayer.strokeColor = line.CGColor;
-    self.constellationLayer.opacity = darkMode ? 0.84 : 0.80;
-    self.constellationTraceLayer.strokeColor = trace.CGColor;
-    self.constellationTraceLayer.opacity = 0.0;
+        UIColor *dotHalo = PPMarketplaceHeroCardResolvedColor(PPHeroGlassDotHaloColor(brand,
+                                                                                      darkMode,
+                                                                                      self.traitCollection),
+                                                               self.traitCollection);
+        UIColor *line = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationLineColor(AppBackgroundClr,
+                                                                                             surfaceBase,
+                                                                                             darkMode,
+                                                                                             self.traitCollection),
+                                                            self.traitCollection);
+        UIColor *traceAccent = self.accentColorOverride ?: [AppPrimaryClrShiner colorWithAlphaComponent:(CGFloat)0.92];
+        UIColor *trace = PPMarketplaceHeroCardResolvedColor(PPHeroGlassConstellationTraceColor(traceAccent,
+                                                                                               darkMode,
+                                                                                               self.traitCollection),
+                                                             self.traitCollection);
+        for (CAShapeLayer *haloLayer in self.dotHaloLayers) {
+            haloLayer.fillColor = UIColor.clearColor.CGColor;
+            haloLayer.strokeColor = dotHalo.CGColor;
+            haloLayer.opacity = 0.0;
+        }
+        for (CAShapeLayer *dotLayer in self.dotLayers) {
+            dotLayer.fillColor = dot.CGColor;
+            dotLayer.strokeColor = dotHalo.CGColor;
+            dotLayer.shadowColor = dot.CGColor;
+            dotLayer.shadowOpacity = darkMode ? 0.26f : 0.16f;
+            dotLayer.shadowRadius = darkMode ? 2.2 : 1.6;
+            dotLayer.shadowOffset = CGSizeZero;
+        }
+        self.constellationLayer.strokeColor = line.CGColor;
+        self.constellationLayer.opacity = darkMode ? 0.84 : 0.80;
+        self.constellationTraceLayer.strokeColor = trace.CGColor;
+        self.constellationTraceLayer.opacity = 0.0;
 
-    BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
-    CGFloat cornerGlowOpacity = MIN(MAX(self.cornerGlowOpacityMultiplier, 0.0), 1.0);
-    self.accentView.backgroundColor =
-        [brand colorWithAlphaComponent:cornerGlow ? ((darkMode ? 0.20 : 0.155) * cornerGlowOpacity) : 0.58];
-    self.accentView.layer.shadowColor = brand.CGColor;
-    self.accentView.layer.shadowOpacity = cornerGlow ? ((darkMode ? 0.24f : 0.17f) * cornerGlowOpacity) : 0.0f;
-    self.accentView.layer.shadowRadius = cornerGlow ? 30.0f : 0.0f;
+        BOOL cornerGlow = self.accentStyle == PPHeroGlassAccentStyleCornerGlow;
+        CGFloat cornerGlowOpacity = MIN(MAX(self.cornerGlowOpacityMultiplier, 0.0), 1.0);
+        self.accentView.backgroundColor =
+            [brand colorWithAlphaComponent:cornerGlow ? ((darkMode ? 0.20 : 0.155) * cornerGlowOpacity) : 0.58];
+        self.accentView.layer.shadowColor = brand.CGColor;
+        self.accentView.layer.shadowOpacity = cornerGlow ? ((darkMode ? 0.24f : 0.17f) * cornerGlowOpacity) : 0.0f;
+        self.accentView.layer.shadowRadius = cornerGlow ? 30.0f : 0.0f;
+    }
 }
 
 #pragma mark - Animation Lifecycle
 
 - (void)startAnimations
 {
+    if (self.accentStyle == PPHeroGlassAccentStyleSolid) {
+        [self stopAnimations];
+        return;
+    }
+    
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [self stopAnimations];
         return;

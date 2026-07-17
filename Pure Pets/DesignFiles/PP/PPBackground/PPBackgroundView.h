@@ -13,31 +13,26 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
     PPHeroGlassAccentStyleBar = 0,
     PPHeroGlassAccentStyleCornerGlow,
-    PPHeroGlassAccentStyleFullScreen
+    PPHeroGlassAccentStyleFullScreen,
+    PPHeroGlassAccentStyleSolid
 };
 
 /// A reusable background-only UIView that renders the premium hero glass surface
 /// used behind header content across the app.
-///
-/// Includes:
-/// - Adaptive glass, depth, and contrast-aware surface layers
-/// - A restrained top-right aurora beacon and ambient particle field
-/// - Optional logical-leading accent bar or physical top-right corner glow
-/// - Interruption-safe entrance, ambient, and touch-reactive motion
-/// - Reduce Motion, low-power, thermal, and offscreen lifecycle handling
-/// - Continuous corner radius and a restrained inner edge treatment
-///
-/// Does NOT contain any profile-specific content (avatar, name, labels, buttons).
-///
-/// Usage:
-/// @code
-///   PPBackgroundView *bg = [PPBackgroundView new];
-///   bg.translatesAutoresizingMaskIntoConstraints = NO;
-///   [myCard insertSubview:bg atIndex:0];
-///   // pin to all edges of myCard ...
-///   [bg startAnimations];
-/// @endcode
 @interface PPBackgroundView : UIView
+
+/// If YES, overrides the default borders.
+@property (nonatomic, assign) BOOL overrideBorders;
+
+/// Optional border color if overrideBorders is YES.
+@property (nonatomic, strong, nullable) UIColor *overrideBorderColor;
+
+/// Optional solid background color if accentStyle is PPHeroGlassAccentStyleSolid.
+@property (nonatomic, strong, nullable) UIColor *overrideSolidColor;
+
+/// Optional corner radius override.
+@property (nonatomic, assign) CGFloat overrideCornerRadius;
+@property (nonatomic, assign) CGFloat overrideCornerRaduis;
 
 /// Optional accent override for screens that need the hero glass surface to
 /// follow local state (for example, an order status color).
