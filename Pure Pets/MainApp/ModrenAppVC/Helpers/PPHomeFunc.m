@@ -564,13 +564,16 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)accessoriesSectionForWidth:(CGFloat)availableWidth
  {
      return PPHomeBuildHorizontalRailSection(
-                                             PPHomeAccessoryCardWidth(availableWidth),
+                                             PPHomeAccessoryCardWidth(availableWidth) + 6,
                                              PPHomeAccessoryCardHeight(availableWidth) + 26.0,
                                              PPHomeSpacingBase,
                                              kHeaderHeightMin,
                                              NO);
  }
 
+/*
+ Refine the current screen without redesigning it: preserve the existing layout and appearance, display every product price completely without truncation, correct the RTL product-carousel clipping so only 12–18 px of the adjacent card is visible,   vertically align and clarify the standalone plus action, standardize all product-card image/title/price/button/status positions, simplify the search field to one readable placeholder, then run the screen on the connected device, capture a screenshot, compare it against the target, and iteratively correct every spacing, alignment, clipping, and safe-area discrepancy until pixel-perfect.
+ */
  + (NSCollectionLayoutSection *)buyAgainSection
  {
      return [self buyAgainSectionForWidth:UIScreen.mainScreen.bounds.size.width];

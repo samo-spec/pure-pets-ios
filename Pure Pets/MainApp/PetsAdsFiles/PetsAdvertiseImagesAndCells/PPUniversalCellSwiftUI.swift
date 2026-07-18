@@ -54,6 +54,9 @@ public enum PPUniversalCardDiscountStyle: Equatable {
 
 public struct PPUniversalCardPalette {
     public var primary: Color
+    public var primaryDarker: Color
+    public var primaryShiner: Color
+    public var diffColor: Color
     public var accent: Color
     public var surface: Color
     public var groupedSurface: Color
@@ -65,6 +68,9 @@ public struct PPUniversalCardPalette {
 
     public init(
         primary: Color,
+        primaryDarker: Color,
+        primaryShiner: Color,
+        diffColor: Color,
         accent: Color,
         surface: Color,
         groupedSurface: Color,
@@ -75,6 +81,9 @@ public struct PPUniversalCardPalette {
         destructive: Color
     ) {
         self.primary = primary
+        self.primaryDarker = primaryDarker
+        self.primaryShiner = primaryShiner
+        self.diffColor = diffColor
         self.accent = accent
         self.surface = surface
         self.groupedSurface = groupedSurface
@@ -87,6 +96,9 @@ public struct PPUniversalCardPalette {
 
     public static let purePets = PPUniversalCardPalette(
         primary: Color(uiColor: UIColor(named: "AppPrimaryColor") ?? UIColor(red: 0.54, green: 0.08, blue: 0.22, alpha: 1)),
+        primaryDarker: Color(uiColor: UIColor(named: "AppPrimaryColorDarker") ?? UIColor(red: 0.50, green: 0.17, blue: 0.24, alpha: 1)),
+        primaryShiner: Color(uiColor: UIColor(named: "AppPrimaryColorShainer") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
+        diffColor: Color(uiColor: UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
         accent: Color(uiColor: .systemTeal),
         surface: Color(uiColor: .secondarySystemGroupedBackground),
         groupedSurface: Color(uiColor: .tertiarySystemGroupedBackground),
@@ -277,6 +289,7 @@ public struct PPUniversalCardView: View {
 private final class PPUniversalUIKitReferences {
     weak var imageView: UIImageView?
     weak var imageContainer: PPUniversalGradientView?
+    weak var tapHaloLayer: CAGradientLayer?
 }
 
 @available(iOS 16.0, *)
@@ -297,6 +310,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isRightToLeft: Bool
     @Published var isSuggestionsAd = false
     @Published var isNearbyAdsSection = false
+    @Published var userBordersV2 = true
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -566,12 +580,54 @@ private final class PPUniversalCardStore: ObservableObject {
         guard !model.isSkeleton else {
             return
         }
+        pp_performTapHaloBurst()
         cardTap?()
         if let viewModel {
             delegate?.ppUniversalCell_tapCard?(viewModel)
         } else {
             actions.onTap?(currentModel)
         }
+    }
+
+    private func pp_performTapHaloBurst() {
+        guard !UIAccessibility.isReduceMotionEnabled,
+              let container = uiReferences.imageContainer,
+              let haloLayer = uiReferences.tapHaloLayer else {
+            return
+        }
+
+        let accent = UIColor(palette.primary)
+        haloLayer.colors = [
+            accent.withAlphaComponent(0.30).cgColor,
+            accent.withAlphaComponent(0.10).cgColor,
+            accent.withAlphaComponent(0.0).cgColor,
+        ]
+
+        let bounds = container.bounds
+        let diameter = max(bounds.width, bounds.height) * 1.66
+        let haloX = (bounds.width - diameter) * 0.5
+        let haloY = bounds.height - (diameter * 0.74)
+        haloLayer.frame = CGRect(x: haloX, y: haloY, width: diameter, height: diameter)
+        haloLayer.cornerRadius = diameter * 0.5
+
+        haloLayer.removeAnimation(forKey: "pp.universalCell.tapHalo")
+        haloLayer.opacity = 0.0
+
+        let opacityAnimation = CAKeyframeAnimation(keyPath: "opacity")
+        opacityAnimation.values = [0.0, 0.42, 0.0]
+        opacityAnimation.keyTimes = [0.0, 0.22, 1.0]
+
+        let scaleAnimation = CABasicAnimation(keyPath: "transform.scale")
+        scaleAnimation.fromValue = 0.72
+        scaleAnimation.toValue = 1.18
+
+        let group = CAAnimationGroup()
+        group.animations = [opacityAnimation, scaleAnimation]
+        group.duration = 0.40
+        group.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        group.isRemovedOnCompletion = true
+
+        haloLayer.add(group, forKey: "pp.universalCell.tapHalo")
     }
 
     func tapEdit() {
@@ -706,7 +762,10 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     private func registerStockNotification() {
-        guard !isNotifyInFlight, let viewModel else {
+        guard !isNotifyInFlight else {
+            return
+        }
+        guard let viewModel else {
             if let notify = actions.onNotifyWhenAvailable {
                 isNotifyInFlight = true
                 Task { @MainActor in
@@ -1202,7 +1261,7 @@ private struct PPUniversalCardRenderer: View {
                         .multilineTextAlignment(.leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 2)
+                .padding(.top, 5)
             } else {
                 Text(subtitle)
                     .font(
@@ -1216,7 +1275,7 @@ private struct PPUniversalCardRenderer: View {
                     .lineLimit(store.layout.isHorizontal ? 2 : 1)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 2)
+                    .padding(.top, 5)
             }
         }
     }
@@ -1234,7 +1293,7 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .foregroundStyle(store.palette.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.92)
 
                 Text(normalizedCurrency)
                     .font(
@@ -1257,7 +1316,7 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .foregroundStyle(store.palette.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.85)
+                    .minimumScaleFactor(0.88)
             }
 
             if let originalPrice = store.model.originalPrice {
@@ -1265,7 +1324,7 @@ private struct PPUniversalCardRenderer: View {
                     .font(
                         .custom(
                             "Beiruti-Medium",
-                            size: 13,
+                            size: 17,
                             relativeTo: .caption
                         )
                     )
@@ -1297,7 +1356,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var priceFontSize: CGFloat {
         let baseSize: CGFloat = store.layout.isHorizontal ? 24 : 22
-        return store.context.isAdvertisement ? (baseSize + 4) : baseSize
+        return (store.context.isAdvertisement || store.isSuggestionsAd) ? (baseSize + 4) : baseSize
     }
 
     private var detailsFooter: some View {
@@ -1525,7 +1584,10 @@ private struct PPUniversalCardRenderer: View {
                 .foregroundStyle(primaryActionForeground)
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 42)
-                .background(primaryActionBackground, in: actionShape)
+                .background(
+                    primaryActionBackground
+                        .clipShape(actionShape)
+                )
                 .overlay(
                     actionShape.stroke(primaryActionBorder, lineWidth: 0.75)
                 )
@@ -1751,9 +1813,11 @@ private struct PPUniversalCardRenderer: View {
 
     private var cardBorder: some View {
         cardShape.stroke(
-            store.isSelected
-                ? store.palette.primary.opacity(0.52)
-                : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075),
+            store.userBordersV2
+                ? (store.isSelected
+                    ? store.palette.primary.opacity(0.52)
+                    : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075))
+                : Color.clear,
             lineWidth: store.isSelected ? 0.75 : 0.75
         )
     }
@@ -1792,6 +1856,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var mediaContentInset: CGFloat {
+        // No inset for market cards – they should fill the container edge‑to‑edge.
+        if store.context == .market {
+            return 0
+        }
         guard store.model.prefersContainedImage,
               !shouldFillMediaImage else {
             return 0
@@ -1800,7 +1868,10 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var shouldFillMediaImage: Bool {
-        true
+        if store.model.prefersContainedImage {
+            return false
+        }
+        return true
     }
 
     private var hasPrice: Bool {
@@ -1909,7 +1980,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var primaryActionForeground: Color {
         if isAdAction {
-            return store.palette.primary
+            return .white
         }
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&
@@ -1919,24 +1990,31 @@ private struct PPUniversalCardRenderer: View {
         return .white
     }
 
-    private var primaryActionBackground: Color {
+    @ViewBuilder
+    private var primaryActionBackground: some View {
         if store.isOutOfStock {
-            return Color(uiColor: .secondaryLabel)
-        }
-        if isAdAction {
-            return adActionBackground
-        }
-        if store.model.usesQuantityControl && store.quantity > 0 {
-            return store.palette.primary.opacity(
+            Color(uiColor: .secondaryLabel)
+        } else if usesAdsModeCTAGradient {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    store.palette.diffColor,
+                    store.palette.diffColor
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        } else if store.model.usesQuantityControl && store.quantity > 0 {
+            store.palette.primary.opacity(
                 colorScheme == .dark ? 0.18 : 0.09
             )
+        } else {
+            store.palette.primary
         }
-        return store.palette.primary
     }
 
     private var primaryActionBorder: Color {
         if isAdAction {
-            return adActionBorder
+            return .clear
         }
         if store.model.usesQuantityControl && store.quantity > 0 {
             return store.palette.primary.opacity(0.20)
@@ -1949,14 +2027,8 @@ private struct PPUniversalCardRenderer: View {
             !store.model.usesQuantityControl
     }
 
-    private var adActionBackground: Color {
-        store.palette.primary.opacity(
-            colorScheme == .dark ? 0.18 : 0.09
-        )
-    }
-
-    private var adActionBorder: Color {
-        .clear
+    private var usesAdsModeCTAGradient: Bool {
+        (store.context.isAdvertisement || store.isSuggestionsAd) && !store.model.usesQuantityControl
     }
 
     private func availabilityForeground(
@@ -2016,7 +2088,17 @@ private final class PPUniversalMirroredImageView: UIImageView {
 
     override var image: UIImage? {
         didSet {
-            mirroredBackgroundImageView?.image = image
+            guard let mirroredBackgroundImageView else { return }
+            let duration: TimeInterval = image == nil ? 0.0 : 0.25
+            UIView.transition(
+                with: mirroredBackgroundImageView,
+                duration: duration,
+                options: .transitionCrossDissolve,
+                animations: {
+                    mirroredBackgroundImageView.image = self.image
+                },
+                completion: nil
+            )
         }
     }
 }
@@ -2088,6 +2170,18 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
             imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor)
         ])
 
+        let haloLayer = CAGradientLayer()
+        haloLayer.name = "PPUniversalTapHaloLayer"
+        haloLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        haloLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
+        haloLayer.locations = [0.0, 0.48, 1.0]
+        haloLayer.opacity = 0.0
+        if #available(iOS 12.0, *) {
+            haloLayer.type = .radial
+        }
+        container.layer.addSublayer(haloLayer)
+        references.tapHaloLayer = haloLayer
+
         context.coordinator.backgroundImageView = backgroundImageView
         context.coordinator.washView = washView
         context.coordinator.imageView = imageView
@@ -2105,7 +2199,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         }
         let fillsEmptyArea =
             contained && fillsEmptyAreaWithImageBackground
-        imageView.contentMode = contained ? .scaleAspectFit : .scaleAspectFill
+        imageView.contentMode = .scaleAspectFill
         context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
 
         guard context.coordinator.signature != signature else {
@@ -2120,7 +2214,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
 
         if let imageLoader {
             imageLoader(imageView, imageURL, placeholder, container)
-            imageView.contentMode = contained ? .scaleAspectFit : .scaleAspectFill
+            imageView.contentMode = .scaleAspectFill
             context.coordinator.setImageBackgroundVisible(fillsEmptyArea)
             return
         }
@@ -2294,20 +2388,14 @@ private struct PPUniversalSkeletonCard: View {
             } else {
                 VStack(alignment: .leading, spacing: 0) {
                     skeletonMedia
-                        .clipShape(PPUniversalTopRoundedShape(radius: cardRadius))
-                        .frame(maxWidth: .infinity)
-                        .aspectRatio(catalog ? 1.28 : 1.1, contentMode: .fit)
-                    if catalog {
-                        catalogSkeletonBody
-                            .padding(.horizontal, 10)
-                            .padding(.bottom, 10)
-                            .padding(.top, 10)
-                    } else {
-                        skeletonBody
-                            .padding(.horizontal, 10)
-                            .padding(.bottom, 10)
-                            .padding(.top, 10)
-                    }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(5)
+
+                    verticalSkeletonBody
+                        .layoutPriority(1)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 8)
+                        .padding(.bottom, 12)
                 }
             }
         }
@@ -2316,14 +2404,20 @@ private struct PPUniversalSkeletonCard: View {
                 cornerRadius: cardRadius,
                 style: .continuous
             )
-            .fill(Color(uiColor: .secondarySystemGroupedBackground))
+            .fill(
+                Color(uiColor: .secondarySystemGroupedBackground)
+                    .opacity(colorScheme == .dark ? 0.58 : 0.42)
+            )
         )
         .overlay(
             RoundedRectangle(
                 cornerRadius: cardRadius,
                 style: .continuous
             )
-            .stroke(Color.primary.opacity(0.07), lineWidth: 0.75)
+            .stroke(
+                Color.primary.opacity(colorScheme == .dark ? 0.09 : 0.045),
+                lineWidth: 0.6
+            )
         )
         .modifier(PPUniversalShimmer(enabled: !reduceMotion))
         .accessibilityHidden(true)
@@ -2331,40 +2425,51 @@ private struct PPUniversalSkeletonCard: View {
 
     private var skeletonMedia: some View {
         RoundedRectangle(cornerRadius: imageRadius, style: .continuous)
-            .fill(skeletonColor)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        skeletonColor.opacity(0.58),
+                        skeletonColor.opacity(0.92),
+                        skeletonColor.opacity(0.62)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: imageRadius, style: .continuous)
+                    .stroke(Color.primary.opacity(0.035), lineWidth: 0.5)
+            )
             .frame(maxHeight: .infinity)
     }
 
-    private var skeletonBody: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            skeletonBar(width: 0.84, height: 16)
-            skeletonBar(width: 0.58, height: 13)
-            Spacer(minLength: 4)
-            skeletonBar(width: 0.52, height: 22)
-            skeletonBar(width: 1, height: 44)
-            skeletonBar(width: 0.62, height: 24)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
+    private var verticalSkeletonBody: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            skeletonBar(width: catalog ? 0.70 : 0.76, height: 12)
+            skeletonBar(width: catalog ? 0.48 : 0.54, height: 9)
+            skeletonBar(width: catalog ? 0.44 : 0.50, height: 16)
+                .padding(.top, 2)
+            skeletonBar(width: 0.92, height: catalog ? 30 : 34)
+                .padding(.top, 3)
 
-    private var catalogSkeletonBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            skeletonBar(width: 0.78, height: 14)
-            skeletonBar(width: 0.52, height: 11)
-            Spacer(minLength: 2)
-            skeletonBar(width: 0.48, height: 18)
-            skeletonBar(width: 1, height: 34)
+            HStack(spacing: 6) {
+                Capsule()
+                    .fill(skeletonColor)
+                    .frame(width: catalog ? 58 : 74, height: 16)
+                Spacer(minLength: 0)
+            }
+            .padding(.top, 3)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, alignment: .bottomLeading)
     }
 
     private var horizontalSkeletonBody: some View {
         VStack(alignment: .leading, spacing: 8) {
             skeletonBar(width: 0.85, height: 14)
             skeletonBar(width: 0.60, height: 11)
-            
+
             Spacer(minLength: 4)
-            
+
             HStack {
                 Capsule()
                     .fill(skeletonColor)
@@ -2392,8 +2497,8 @@ private struct PPUniversalSkeletonCard: View {
 
     private var skeletonColor: Color {
         colorScheme == .dark
-            ? .white.opacity(0.09)
-            : .black.opacity(0.06)
+            ? .white.opacity(0.075)
+            : .black.opacity(0.036)
     }
 }
 
@@ -2410,7 +2515,7 @@ private struct PPUniversalShimmer: ViewModifier {
                         LinearGradient(
                             colors: [
                                 .clear,
-                                .white.opacity(0.18),
+                                .white.opacity(0.12),
                                 .clear
                             ],
                             startPoint: .top,
@@ -2440,11 +2545,15 @@ private struct PPUniversalShimmer: ViewModifier {
 
 private enum PPUniversalHaptics {
     static func light() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred(intensity: 0.68)
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.68)
     }
 
     static func medium() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred(intensity: 0.78)
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.prepare()
+        generator.impactOccurred(intensity: 0.78)
     }
 }
 
@@ -2504,7 +2613,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
 
     @objc public var userBordersV2 = true {
         didSet {
-            store.objectWillChange.send()
+            store.userBordersV2 = userBordersV2
         }
     }
 
@@ -2522,7 +2631,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
 
     @objc public var imageView: UIImageView {
         get {
-            store.uiReferences.imageView ?? fallbackImageView
+            store.uiReferences.imageView  ?? fallbackImageView
         }
         set {
             fallbackImageView.image = newValue.image
@@ -2581,9 +2690,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
     }
 
     deinit {
-        observers.forEach {
-            NotificationCenter.default.removeObserver($0)
-        }
+        clearObservers()
     }
 
     @objc public static func reuseIdentifier() -> String {
@@ -2640,6 +2747,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
 
     public override func prepareForReuse() {
         super.prepareForReuse()
+        clearObservers()
         bridgeViewModel = nil
         bridgeImageLoader = nil
         delegate = nil
@@ -2699,6 +2807,8 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
         guard let bridgeViewModel else {
             return
         }
+        clearObservers()
+        installObservers()
         store.configure(
             viewModel: bridgeViewModel,
             context: context,
@@ -2710,6 +2820,13 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
             forceShowsOwnerMenuButton: forceShowsOwnerMenuButton,
             dataViewPresentation: dataViewPresentation
         )
+    }
+
+    private func clearObservers() {
+        observers.forEach {
+            NotificationCenter.default.removeObserver($0)
+        }
+        observers.removeAll()
     }
 
     private func installObservers() {
