@@ -5121,7 +5121,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     NSMutableArray<NSDictionary *> *sanitized =
         [NSMutableArray arrayWithCapacity:sectionsArray.count];
     NSMutableSet<NSNumber *> *seenIDs = [NSMutableSet set];
-    NSInteger maxKnownID = (NSInteger)PPHomeSectionMarketplaceHero;
+    NSInteger maxKnownID = (NSInteger)PPHomeSectionSuggestionAccessories;
 
     for (id raw in sectionsArray) {
         if (![raw isKindOfClass:NSDictionary.class]) {

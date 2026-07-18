@@ -1532,7 +1532,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
         targetBounds = self.collectionView.bounds;
     }
 
-    imageView.contentMode = UIViewContentModeScaleAspectFill;
+    imageView.contentMode = UIViewContentModeScaleAspectFit;
     imageView.clipsToBounds = YES;
     imageView.layer.masksToBounds = YES;
     imageView.layer.contentsGravity = kCAGravityResizeAspectFill;

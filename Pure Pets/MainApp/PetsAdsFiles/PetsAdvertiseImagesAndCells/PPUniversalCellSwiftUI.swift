@@ -1234,7 +1234,7 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .foregroundStyle(store.palette.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.85)
 
                 Text(normalizedCurrency)
                     .font(
@@ -1257,7 +1257,7 @@ private struct PPUniversalCardRenderer: View {
                     )
                     .foregroundStyle(store.palette.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+                    .minimumScaleFactor(0.85)
             }
 
             if let originalPrice = store.model.originalPrice {
@@ -1272,7 +1272,7 @@ private struct PPUniversalCardRenderer: View {
                     .foregroundStyle(store.palette.secondaryInk)
                     .strikethrough()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                    .minimumScaleFactor(0.85)
             }
 
             Spacer(minLength: 0)
@@ -1296,7 +1296,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var priceFontSize: CGFloat {
-        let baseSize: CGFloat = store.layout.isHorizontal ? 22 : 20
+        let baseSize: CGFloat = store.layout.isHorizontal ? 24 : 22
         return store.context.isAdvertisement ? (baseSize + 4) : baseSize
     }
 
@@ -1547,7 +1547,7 @@ private struct PPUniversalCardRenderer: View {
 
             Spacer(minLength: 0)
 
-            Text("\(store.quantity)")
+            Text(String(format: "%d", locale: Locale(identifier: "en"), store.quantity))
                 .font(
                     .custom(
                         "Beiruti-Black",
@@ -1745,7 +1745,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var cardBackground: some View {
         store.palette.surface.opacity(
-            reduceTransparency || colorScheme == .dark ? 1 : 0.98
+            reduceTransparency || colorScheme == .dark ? 0.98 : 0.96
         )
     }
 
@@ -1754,7 +1754,7 @@ private struct PPUniversalCardRenderer: View {
             store.isSelected
                 ? store.palette.primary.opacity(0.52)
                 : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075),
-            lineWidth: store.isSelected ? 1.25 : 0.75
+            lineWidth: store.isSelected ? 0.75 : 0.75
         )
     }
 
@@ -1909,7 +1909,7 @@ private struct PPUniversalCardRenderer: View {
 
     private var primaryActionForeground: Color {
         if isAdAction {
-            return .white
+            return store.palette.primary
         }
         if store.model.usesQuantityControl &&
             store.quantity > 0 &&
@@ -1950,15 +1950,13 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var adActionBackground: Color {
-        colorScheme == .dark
-            ? Color(red: 0.02, green: 0.32, blue: 0.38)
-            : Color(red: 0.816, green: 0.142, blue: 0.349).opacity(1.00)
+        store.palette.primary.opacity(
+            colorScheme == .dark ? 0.18 : 0.09
+        )
     }
 
     private var adActionBorder: Color {
-        colorScheme == .dark
-            ? Color.white.opacity(0.16)
-        : Color(red: 0.866, green: 0.336, blue: 0.38).opacity(0.0)
+        .clear
     }
 
     private func availabilityForeground(
