@@ -9,6 +9,7 @@
 #import "PPBackgroundView.h"
 #import "PPImageLoaderManager.h"
 #import "PPMarketplaceHeroCardStyle.h"
+#import "PPHomePresentationTokens.h"
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
@@ -188,11 +189,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
-    if (self.window) {
-        [self pp_startAmbientMotionIfNeeded];
-    } else {
-        [self pp_stopAmbientMotion];
-    }
+    [self pp_stopAmbientMotion];
 }
 
 - (void)layoutSubviews
@@ -260,9 +257,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.contentView.layer.shadowPath = nil;
     }
 
-    if (self.window) {
-        [self pp_startAmbientMotionIfNeeded];
-    }
+    [self pp_stopAmbientMotion];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -412,9 +407,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     
     self.heroGlassBackground.accentColorOverride = isAllContext ? nil : primaryAccent;
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.contentView.layer.shadowOpacity = darkMode ? 0.18f : 0.075f;
-    self.contentView.layer.shadowRadius = darkMode ? 24.0f : 18.0f;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 12.0 : 9.0);
+    self.contentView.layer.shadowOpacity = darkMode ? 0.08f : 0.05f;
+    self.contentView.layer.shadowRadius = darkMode ? 12.0f : 10.0f;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 6.0 : 5.0);
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
     self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor;
@@ -431,14 +426,12 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaView.layer.borderWidth = 0.0;
     self.ctaView.layer.borderColor = UIColor.clearColor.CGColor;
     self.ctaView.layer.shadowColor = primaryAccent.CGColor;
-    self.ctaView.layer.shadowOpacity = darkMode ? 0.18f : 0.13f;
-    self.ctaView.layer.shadowRadius = 9.0f;
-    self.ctaView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.ctaView.layer.shadowOpacity = 0.0f;
     self.ctaLabel.textColor = UIColor.whiteColor;
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.16 : 0.10].CGColor,
         (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.06 : 0.03].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
@@ -538,7 +531,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.backgroundColor = UIColor.clearColor;
     surface.clipsToBounds = YES;
-    surface.layer.cornerRadius = PPCornerHero - 6.0;
+    surface.layer.cornerRadius = PPHomeHeroCornerRadius;
     surface.isAccessibilityElement = NO;
     if (@available(iOS 13.0, *)) {
         surface.layer.cornerCurve = kCACornerCurveContinuous;
@@ -551,10 +544,11 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
-    glass.accentStyle = PPHeroGlassAccentStyleFullScreen;
-    glass.cornerGlowOpacityMultiplier = 0.48;
+    glass.accentStyle = PPHeroGlassAccentStyleBar;
+    glass.cornerGlowOpacityMultiplier = 0.16;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
+    glass.PPHeroApexUseUnderFingerMotion = NO;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 
@@ -941,8 +935,8 @@ static BOOL PPMarketHeroReduceMotion(void)
     if (hideVisual) {
         [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
         [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
-    } else if (self.window) {
-        [self pp_startAmbientMotionIfNeeded];
+    } else {
+        [self pp_stopAmbientMotion];
     }
 }
 

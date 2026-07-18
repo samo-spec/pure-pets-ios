@@ -18,6 +18,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#ifndef PPImageLoaderManagerComplation_DEFINED
+#define PPImageLoaderManagerComplation_DEFINED 1
+typedef void (^PPImageLoaderManagerComplation)(UIImage * _Nullable image,
+                                                NSString * _Nullable urlString);
+#endif
+
 typedef NS_ENUM(NSInteger, PPImageTransitionStyle) {
     PPImageTransitionStyleNone,
     PPImageTransitionStyleFade,
@@ -27,7 +33,7 @@ typedef NS_ENUM(NSInteger, PPImageTransitionStyle) {
 
 @interface PPImageLoaderManager : NSObject
 
-+ (instancetype)shared;
++ (instancetype)shared NS_SWIFT_NAME(shared());
 
 /// Main image loader (recommended)
 - (void)setImageOnImageView:(UIImageView *)imageView
@@ -45,10 +51,12 @@ typedef NS_ENUM(NSInteger, PPImageTransitionStyle) {
                         url:(nullable NSString *)urlString
                 placeholder:(nullable UIImage *)placeholder
            transitionStyle:(PPImageTransitionStyle)transitionStyle
-                 complation:(nullable PPImageLoaderManagerComplation)complation;
+                 complation:(nullable PPImageLoaderManagerComplation)complation
+    NS_SWIFT_NAME(setImage(on:url:placeholder:transitionStyle:completion:));
 
 /// Cancel loading safely (cell reuse)
-- (void)cancelImageLoadForImageView:(UIImageView *)imageView;
+- (void)cancelImageLoadForImageView:(UIImageView *)imageView
+    NS_SWIFT_NAME(cancelImageLoad(for:));
 
 /// Prefetch for feeds / galleries
 - (void)prefetchURLs:(NSArray<NSString *> *)urlStrings;

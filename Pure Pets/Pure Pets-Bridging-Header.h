@@ -13,3 +13,4 @@
 #import "PPUniversalCellFlags.h"
 #import "PPUniversalCellHelper.h"
 #import "FavoriteButton.h"
+#import "PPImageLoaderManager.h"

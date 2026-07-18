@@ -50,7 +50,6 @@ static os_log_t PPHomePerformanceLog(void) {
 }
 #import "PPRolePermission.h"
 #import "PPHomeHeroCell.h"
-#import "PPModerHomeCell.h"
 #import "PPModernHomeActionCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
@@ -74,6 +73,7 @@ static os_log_t PPHomePerformanceLog(void) {
 #import "PPHomeInsetLabel.h"
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
+#import "PPHomePresentationTokens.h"
 #import "PPHomePremiumSearchCell.h"
 #import "PPBackgroundView.h"
 #import "PPHomeMarketplaceHeroCell.h"
@@ -1737,6 +1737,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
 @property (nonatomic, copy) NSArray<NSString *> *homeSmartSearchPlaceholders;
 @property (nonatomic, assign) NSInteger homeSmartSearchPlaceholderIndex;
+@property (nonatomic, assign) CGFloat homeSmartSearchCollapseProgress;
+@property (nonatomic, assign) CGFloat homeSmartSearchOverscrollProgress;
 @property (nonatomic, strong, nullable) PPHomeLocationTitleView *homeLocationTitleView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeLocationTitleWidthConstraint;
 @property (nonatomic, assign) BOOL didRegisterTimeChangeObserver;
@@ -1796,6 +1798,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 - (void)pp_stopHomeSmartSearchTimer;
 - (void)pp_scheduleSmartSearchTimerWithInterval:(NSTimeInterval)interval;
 - (void)pp_advanceHomeSmartSearchPlaceholder;
+- (void)pp_updateHomeSmartSearchForScrollView:(UIScrollView *)scrollView
+                                      animated:(BOOL)animated;
 - (void)pp_stabilizeHomeCollectionLayoutIfNeeded;
 - (void)pp_refreshVisibleHomeCardsForSections:(NSArray<NSNumber *> *)sections;
 - (void)pp_refreshInitialHomeRevealDependentContent;
@@ -1995,12 +1999,12 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
             [host pp_refreshHomeCategorySelectionAnimated:NO];
             [host.collectionView layoutIfNeeded];
             UICollectionViewCell *visibleCell = [host.collectionView cellForItemAtIndexPath:indexPath];
-            if ([visibleCell isKindOfClass:PPModerHomeCell.class]) {
+            if ([visibleCell isKindOfClass:PPMainKindsCell.class]) {
                 [visibleCell setNeedsLayout];
                 [visibleCell.contentView setNeedsLayout];
                 [visibleCell.contentView layoutIfNeeded];
                 [visibleCell layoutIfNeeded];
-                [(PPModerHomeCell *)visibleCell playRestoredSelectionAnimation];
+                [(PPMainKindsCell *)visibleCell playRestoredSelectionAnimation];
             }
             host.didPositionInitialMainKindSelection = YES;
         };
@@ -7842,8 +7846,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier];
     [self.collectionView registerClass:PPCategoryCardCell.class forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
     [PPUniversalCell pp_registerInCollectionView:self.collectionView];
-    [self.collectionView registerClass:PPModerHomeCell.class
-            forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
+    [self.collectionView registerClass:PPMainKindsCell.class
+            forCellWithReuseIdentifier:PPMainKindsCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
@@ -8367,8 +8371,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
                 if (section == PPHomeSectionMainKinds) {
 
-                PPModerHomeCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier
+                PPMainKindsCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPMainKindsCell.reuseIdentifier
                                                           forIndexPath:indexPath];
                 if (@available(iOS 13.0, *)) {
                     cell.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
@@ -8407,10 +8411,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 restoredSelectionAppearance:restoredSelectionAppearance];
 
                 __weak typeof(strongSelf) weakStrongSelf = strongSelf;
-                cell.onSelect = ^(MainKindsModel *kind, BOOL isAll) {
+                cell.onSelect = ^(NSObject *rawKind, BOOL isAll) {
                     __strong typeof(weakStrongSelf) strongSelf = weakStrongSelf;
                     if (!strongSelf) return;
 
+                    MainKindsModel *kind =
+                        [rawKind isKindOfClass:MainKindsModel.class]
+                            ? (MainKindsModel *)rawKind
+                            : nil;
                     if (isAll) {
                         NSLog(@"[Home][MainKinds][Action] ALL selected → deep link");
                     } else {
@@ -9715,10 +9723,41 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 // MARK: - UICollectionViewDelegate
 
+- (void)pp_updateHomeSmartSearchForScrollView:(UIScrollView *)scrollView
+                                      animated:(BOOL)animated
+{
+    if (scrollView != self.collectionView || !self.homeSmartSearchView) {
+        return;
+    }
+
+    CGFloat effectiveOffset = scrollView.contentOffset.y + scrollView.adjustedContentInset.top;
+    CGFloat collapse = PPHomeClamp(effectiveOffset / PPHomeSearchCollapseDistance, 0.0, 1.0);
+    CGFloat overscroll = PPHomeClamp(-effectiveOffset / PPHomeSearchOverscrollDistance, 0.0, 1.0);
+
+    // Quantize to roughly one content point so 120 Hz scroll sampling does not
+    // invalidate the navigation title view for sub-point changes.
+    CGFloat step = PPHomeSearchCollapseDistance;
+    collapse = round(collapse * step) / step;
+    overscroll = round(overscroll * step) / step;
+    BOOL materiallyChanged =
+        fabs(self.homeSmartSearchCollapseProgress - collapse) >= (1.0 / step) ||
+        fabs(self.homeSmartSearchOverscrollProgress - overscroll) >= (1.0 / step);
+    if (!materiallyChanged && !animated) {
+        return;
+    }
+
+    self.homeSmartSearchCollapseProgress = collapse;
+    self.homeSmartSearchOverscrollProgress = overscroll;
+    [self.homeSmartSearchView setCollapseProgress:collapse
+                               overscrollProgress:overscroll
+                                         animated:animated];
+}
+
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (scrollView == self.collectionView) {
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
+        [self pp_updateHomeSmartSearchForScrollView:scrollView animated:NO];
     }
 }
 
@@ -9737,6 +9776,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
     if (!decelerate) {
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+        [self pp_updateHomeSmartSearchForScrollView:scrollView animated:YES];
     }
 }
 
@@ -9746,6 +9786,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
     [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    [self pp_updateHomeSmartSearchForScrollView:scrollView animated:YES];
 }
 
 - (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
@@ -9754,6 +9795,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
     [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+    [self pp_updateHomeSmartSearchForScrollView:scrollView animated:YES];
 }
 
 - (BOOL)collectionView:(UICollectionView *)collectionView
@@ -12253,6 +12295,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeSmartSearchView.frame = frame;
     self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
     self.homeSmartSearchView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    [self pp_updateHomeSmartSearchForScrollView:self.collectionView animated:NO];
     return self.homeSmartSearchView;
 }
 
@@ -13198,11 +13241,12 @@ presentingViewController:self
             self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
             self.ambientBackgroundView.userInteractionEnabled = NO;
             self.ambientBackgroundView.PPHeroApexUseShimmer = NO;
-            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
-            self.ambientBackgroundView.accentColorOverride = [[UIColor colorNamed:@"AppBageGlows"] colorWithAlphaComponent:0.92];
-            self.ambientBackgroundView.overrideCenterGlowColor = [AppPrimaryClrDarker colorWithAlphaComponent:0.08];
-
-            self.ambientBackgroundView.cornerGlowOpacityMultiplier = 0.36;
+            self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleSolid;
+            self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
+            self.ambientBackgroundView.overrideBorders = YES;
+            self.ambientBackgroundView.overrideBorderColor = UIColor.clearColor;
+            self.ambientBackgroundView.cornerGlowOpacityMultiplier = 0.0;
             [self.view insertSubview:self.ambientBackgroundView atIndex:0];
             [NSLayoutConstraint activateConstraints:@[
                 [self.ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -13286,6 +13330,9 @@ presentingViewController:self
 - (void)pp_updatePremiumBackgroundGlowAppearance
 {
     if (PPHomeUseHeroApex) {
+        self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleSolid;
+        self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
+        [self.ambientBackgroundView stopAnimations];
         [self.ambientBackgroundView reapplyPalette];
     } else {
         BOOL isDark = NO;
@@ -13433,11 +13480,12 @@ presentingViewController:self
 
 - (void)pp_updateCollectionViewDockBottomInset
 {
-    // The custom premiumTabDockView is only present on iOS 26+; its top sits
-    // 58 pt above the safe-area guide (button height 56 + 2 pt offset).
-    // UIScrollViewContentInsetAdjustmentAutomatic already adds the safe-area
-    // bottom, so we only need the extra clearance above that baseline.
-    CGFloat extra = PPIOS26() ? 66.0 : 0.0;
+    CGFloat extra = 0.0;
+    if ([self.tabBarController isKindOfClass:PPRootTabBarController.class]) {
+        extra =
+            [(PPRootTabBarController *)self.tabBarController
+                pp_currentBottomNavigationContentClearance];
+    }
     UIEdgeInsets inset = self.collectionView.contentInset;
     if (fabs(inset.bottom - extra) > 0.5) {
         inset.bottom = extra;

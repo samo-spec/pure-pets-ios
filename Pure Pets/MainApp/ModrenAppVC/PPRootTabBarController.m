@@ -2492,10 +2492,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     CGSize itemSize = CGSizeMake(itemWidth, tabBarSize.height);
     CGSize indicatorSize =
-        CGSizeMake(itemWidth,
-                   MIN(58.0, MAX(44.0, tabBarSize.height - 22.0)));
-    UIColor *fillColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(!self.useLegacyBar ? 0.12 : 0.10)];
-    UIColor *strokeColor = [(AppSecondaryTextClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
+        CGSizeMake(MIN(72.0, MAX(52.0, itemWidth - 12.0)),
+                   MIN(48.0, MAX(44.0, tabBarSize.height - 28.0)));
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIColor *fillColor = [accent colorWithAlphaComponent:0.08];
+    UIColor *strokeColor = [accent colorWithAlphaComponent:0.12];
     UIImage *indicatorImage =
         [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
                                             indicatorSize:indicatorSize
@@ -2546,7 +2547,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                                           (itemSize.height - indicatorSize.height) * 0.5,
                                           indicatorSize.width,
                                           indicatorSize.height);
-        CGFloat cornerRadius = MIN(indicatorSize.width, indicatorSize.height) * 0.5;
+        CGFloat cornerRadius = MIN(16.0, indicatorSize.height * 0.5);
         UIBezierPath *path =
             [UIBezierPath bezierPathWithRoundedRect:indicatorRect
                                       cornerRadius:cornerRadius];
@@ -2595,7 +2596,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundEffect = nil;
-    appearance.backgroundColor = UIColor.redColor;
+    appearance.backgroundColor = UIColor.clearColor;
     appearance.shadowColor = UIColor.clearColor;
     if (@available(iOS 26.0, *)) {
         appearance.stackedItemPositioning = UITabBarItemPositioningFill;
@@ -2687,7 +2688,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
     }
     [NSLayoutConstraint activateConstraints:dockConstraints];
-    dockView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.1];
+    dockView.backgroundColor = UIColor.clearColor;
     // Resolve the real dock width before assigning its initial selected item.
     // Otherwise UIKit can build and retain title labels using a transitional
     // launch-time width, intermittently producing Arabic ellipses.
@@ -2749,6 +2750,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 
     return 0.0;
+}
+
+- (CGFloat)pp_currentBottomNavigationContentClearance
+{
+    return [self pp_bottomNavigationContentClearance];
 }
 
 - (void)pp_handleCartFloatingBarCartUpdated:(NSNotification *)notification
@@ -3845,7 +3851,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     UIButton *showAddMenuButton = [UIButton buttonWithType:UIButtonTypeSystem];
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
-    showAddMenuButton.adjustsImageWhenHighlighted = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
     [UIImageSymbolConfiguration configurationWithPointSize:19
@@ -3877,9 +3882,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     showAddMenuButton.layer.cornerRadius = 28.0;
     PPApplyContinuousCorners(showAddMenuButton, 28.0);
     [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
-    showAddMenuButton.layer.shadowOpacity = 0.06;
-    showAddMenuButton.layer.shadowRadius = 16.0;
-    showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    showAddMenuButton.layer.shadowOpacity = 0.04;
+    showAddMenuButton.layer.shadowRadius = 8.0;
+    showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     showAddMenuButton.layer.masksToBounds = NO;
 
     [showAddMenuButton addTarget:self action:@selector(presentBottomSheet) forControlEvents:UIControlEventTouchUpInside];
@@ -3901,16 +3906,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:6.0],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-2.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
         ]];
-        // Symbol effect (iOS 26+ only)
-        __weak UIButton *weakButton = showAddMenuButton;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakButton.imageView addSymbolEffect:[[NSSymbolWiggleEffect wiggleForwardEffect] effectWithByLayer]
-                                         options:[NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
-        });
     } else {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],

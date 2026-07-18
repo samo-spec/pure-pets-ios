@@ -14,6 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL showSmartPillBackground;
 - (void)setQueryText:(NSString *)text animated:(BOOL)animated;
 - (void)configureWithTrendingQuery:(nullable NSString *)query;
+- (void)setCollapseProgress:(CGFloat)collapseProgress
+         overscrollProgress:(CGFloat)overscrollProgress
+                   animated:(BOOL)animated;
 @end
 
 

@@ -23,6 +23,7 @@
 #import "CitiesManager.h"
 #import "MainKindsModel.h"
 #import "SubKindModel.h"
+#import "PPHomePresentationTokens.h"
 @import FirebaseFunctions;
 
 static CGFloat const PPUniversalCardCornerRadius = 36.0;
@@ -37,6 +38,10 @@ static CGFloat const PPUniversalCompactTitleHeight = 22.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 32.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.84;
+static CGFloat const PPUniversalHomeOuterInset = 12.0;
+static CGFloat const PPUniversalHomeTitleHeight = 40.0;
+static CGFloat const PPUniversalHomePriceHeight = 30.0;
+static CGFloat const PPUniversalHomeControlSize = 44.0;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
 static CGFloat const PPUniversalCompactCardVerticalInset = 6.0;
 static CGFloat const PPUniversalCompactTitleToPriceSpacing = 8.0;
@@ -194,6 +199,14 @@ static UIFont *PPUniversalCellBlackFont(CGFloat size)
 {
     UIFont *font = [GM BlackFontWithSize:size + 4];
     return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBlack];
+}
+
+static UIFont *PPUniversalCellScaledFont(UIFont *font,
+                                         UIFontTextStyle textStyle,
+                                         CGFloat maximumPointSize)
+{
+    UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:textStyle];
+    return [metrics scaledFontForFont:font maximumPointSize:maximumPointSize];
 }
 
 static NSString *PPUniversalCellSafeString(NSString *value)
@@ -862,6 +875,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 @end
 
+@interface PPUniversalHomeFavoriteButton : FavoriteFloatingButton
+@property (nonatomic, assign) BOOL expandsHomeHitTarget;
+@end
+
+@implementation PPUniversalHomeFavoriteButton
+
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+    if (!self.expandsHomeHitTarget) {
+        return [super pointInside:point withEvent:event];
+    }
+
+    CGFloat horizontalExpansion = MAX(0.0, (44.0 - CGRectGetWidth(self.bounds)) * 0.5);
+    CGFloat verticalExpansion = MAX(0.0, (44.0 - CGRectGetHeight(self.bounds)) * 0.5);
+    CGRect hitBounds = CGRectInset(self.bounds, -horizontalExpansion, -verticalExpansion);
+    return CGRectContainsPoint(hitBounds, point);
+}
+
+@end
+
 @class PPUniversalCardView;
 
 @interface PPUniversalCell () <UIGestureRecognizerDelegate>
@@ -922,6 +955,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, strong) NSLayoutConstraint *availabilityHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *priceContainerTrailingToBodyConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *priceContainerTrailingToFavConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionHostHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *minusButtonLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *minusButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *minusButtonHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *plusButtonTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *plusButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *plusButtonHeightConstraint;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *compactLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *fullWidthLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *horizontalRowLayoutConstraints;
@@ -967,6 +1007,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (BOOL)pp_usesQuantityControl;
 - (BOOL)pp_usesHorizontalRowPresentation;
 - (void)pp_setAvailabilityLeadingAfterServiceMeta:(BOOL)afterServiceMeta;
+- (void)pp_applyHostScopedPresentationMetrics;
 
 @end
 
@@ -1350,7 +1391,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.categoryBadgeLabel.hidden = YES;
     [self.imageContainer addSubview:self.categoryBadgeLabel];
 
-    self.favoriteButton = [[FavoriteFloatingButton alloc] init];
+    self.favoriteButton = [[PPUniversalHomeFavoriteButton alloc] init];
     self.favoriteButton.hidesBackground = NO;
     self.favoriteButton.hidden = YES;
     self.favoriteButton.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
@@ -1377,6 +1418,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
     [self.titleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.bodyContainer addSubview:self.titleLabel];
@@ -1385,6 +1427,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtitleLabel.numberOfLines = 2;
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
     [self.subtitleLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.bodyContainer addSubview:self.subtitleLabel];
@@ -1400,17 +1443,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceLabel.adjustsFontSizeToFitWidth = YES;
     self.priceLabel.minimumScaleFactor = 0.88;
     self.priceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.priceLabel.adjustsFontForContentSizeCategory = YES;
     [self.priceLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.priceContainerView addSubview:self.priceLabel];
 
     self.oldPriceLabel = [[UILabel alloc] init];
     self.oldPriceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.oldPriceLabel.numberOfLines = 1;
+    self.oldPriceLabel.adjustsFontForContentSizeCategory = YES;
     self.oldPriceLabel.textAlignment = Language.isRTL ? NSTextAlignmentLeft :  NSTextAlignmentRight;
     [self.oldPriceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.priceContainerView addSubview:self.oldPriceLabel];
 
-    self.bodyFavButton = [[FavoriteFloatingButton alloc] init];
+    self.bodyFavButton = [[PPUniversalHomeFavoriteButton alloc] init];
     self.bodyFavButton.hidesBackground = NO;
     self.bodyFavButton.hidden = YES;
     [self pp_applyFavoriteButtonAppearance:self.bodyFavButton];
@@ -1477,6 +1522,21 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_buildConstraints
 {
+    self.actionHostHeightConstraint =
+        [self.actionHostView.heightAnchor constraintEqualToConstant:PPUniversalButtonHeight];
+    self.minusButtonLeadingConstraint =
+        [self.minusButton.leadingAnchor constraintEqualToAnchor:self.stepperView.leadingAnchor constant:2.0];
+    self.minusButtonWidthConstraint =
+        [self.minusButton.widthAnchor constraintEqualToConstant:30.0];
+    self.minusButtonHeightConstraint =
+        [self.minusButton.heightAnchor constraintEqualToConstant:30.0];
+    self.plusButtonTrailingConstraint =
+        [self.plusButton.trailingAnchor constraintEqualToAnchor:self.stepperView.trailingAnchor constant:-2.0];
+    self.plusButtonWidthConstraint =
+        [self.plusButton.widthAnchor constraintEqualToConstant:30.0];
+    self.plusButtonHeightConstraint =
+        [self.plusButton.heightAnchor constraintEqualToConstant:30.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4.0],
         [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:2.0],
@@ -1546,7 +1606,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.actionHostView.topAnchor constraintEqualToAnchor:self.priceContainerView.bottomAnchor constant:6.0],
         [self.actionHostView.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.actionHostView.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
-        [self.actionHostView.heightAnchor constraintEqualToConstant:PPUniversalButtonHeight],
+        self.actionHostHeightConstraint,
 
         [self.addButton.topAnchor constraintEqualToAnchor:self.actionHostView.topAnchor],
         [self.addButton.leadingAnchor constraintEqualToAnchor:self.actionHostView.leadingAnchor],
@@ -1558,15 +1618,15 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.stepperView.trailingAnchor constraintEqualToAnchor:self.actionHostView.trailingAnchor],
         [self.stepperView.bottomAnchor constraintEqualToAnchor:self.actionHostView.bottomAnchor],
 
-        [self.minusButton.leadingAnchor constraintEqualToAnchor:self.stepperView.leadingAnchor constant:2.0],
+        self.minusButtonLeadingConstraint,
         [self.minusButton.centerYAnchor constraintEqualToAnchor:self.stepperView.centerYAnchor],
-        [self.minusButton.widthAnchor constraintEqualToConstant:30.0],
-        [self.minusButton.heightAnchor constraintEqualToConstant:30.0],
+        self.minusButtonWidthConstraint,
+        self.minusButtonHeightConstraint,
 
-        [self.plusButton.trailingAnchor constraintEqualToAnchor:self.stepperView.trailingAnchor constant:-2.0],
+        self.plusButtonTrailingConstraint,
         [self.plusButton.centerYAnchor constraintEqualToAnchor:self.stepperView.centerYAnchor],
-        [self.plusButton.widthAnchor constraintEqualToConstant:30.0],
-        [self.plusButton.heightAnchor constraintEqualToConstant:30.0],
+        self.plusButtonWidthConstraint,
+        self.plusButtonHeightConstraint,
 
         [self.quantityLabel.centerXAnchor constraintEqualToAnchor:self.stepperView.centerXAnchor],
         [self.quantityLabel.centerYAnchor constraintEqualToAnchor:self.stepperView.centerYAnchor],
@@ -1795,8 +1855,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_removeLiquidBorderLayers];
 
     UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIColor *baseCardBorder = PPUniversalCellSoftCardBorderColor();
-    UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
+    BOOL homePresentation = [self pp_isHostedByHomeController];
+    UIColor *baseCardBorder = homePresentation
+        ? PPHomeSemanticHairlineColor()
+        : PPUniversalCellSoftCardBorderColor();
+    UIColor *baseImageBorder = homePresentation
+        ? PPHomeSemanticHairlineColor()
+        : PPUniversalCellSoftImageBorderColor();
     CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
     CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
 
@@ -1852,28 +1917,46 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    BOOL homePresentation = [self pp_isHostedByHomeController];
 
     self.cardView.backgroundColor = [self pp_isHostedByNovaProductMessageCell]
         ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.4]
-    : [AppForgroundColr colorWithAlphaComponent:0.74];//PPUniversalCellSoftSurfaceColor();
-    self.cardView.layer.cornerRadius = horizontalRow ? 30.0 : PPUniversalCardCornerRadius;
+        : (homePresentation
+            ? PPHomeSemanticCardSurfaceColor()
+            : [AppForgroundColr colorWithAlphaComponent:0.74]);
+    self.cardView.layer.cornerRadius = homePresentation
+        ? PPHomeCardCornerRadius
+        : (horizontalRow ? 30.0 : PPUniversalCardCornerRadius);
     self.cardAmbientGlowContainerView.layer.cornerRadius = self.cardView.layer.cornerRadius;
-    self.cardAmbientGlowContainerView.hidden = !horizontalRow;
-    self.cardAmbientGlowContainerView.alpha = horizontalRow ? 1.0 : 0.0;
+    self.cardAmbientGlowContainerView.hidden = homePresentation || !horizontalRow;
+    self.cardAmbientGlowContainerView.alpha = (!homePresentation && horizontalRow) ? 1.0 : 0.0;
     self.cardAmbientGlowView1.baseColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     [self.cardAmbientGlowView1 pp_updateGlowColors];
     [self.cardAmbientGlowView2 pp_updateGlowColors];
     self.cardView.layer.borderWidth = 0.0;
     [self.cardView pp_setBorderColor:UIColor.clearColor];
     [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
-    self.cardView.layer.shadowOpacity = horizontalRow ? (isDark ? 0.16 : 0.08) : PPUniversalCellOuterShadowOpacity(isDark, NO);
-    self.cardView.layer.shadowRadius = horizontalRow ? (isDark ? 18.0 : 22.0) : PPUniversalCellOuterShadowRadius(isDark, NO);
-    self.cardView.layer.shadowOffset = horizontalRow ? CGSizeMake(0.0, isDark ? 8.0 : 10.0) : PPUniversalCellOuterShadowOffset(isDark, NO);
+    self.cardView.layer.shadowOpacity = homePresentation
+        ? (isDark ? 0.10 : 0.06)
+        : (horizontalRow
+            ? (isDark ? 0.16 : 0.08)
+            : PPUniversalCellOuterShadowOpacity(isDark, NO));
+    self.cardView.layer.shadowRadius = homePresentation
+        ? (isDark ? 10.0 : 12.0)
+        : (horizontalRow
+            ? (isDark ? 18.0 : 22.0)
+            : PPUniversalCellOuterShadowRadius(isDark, NO));
+    self.cardView.layer.shadowOffset = homePresentation
+        ? CGSizeMake(0.0, isDark ? 4.0 : 5.0)
+        : (horizontalRow
+            ? CGSizeMake(0.0, isDark ? 8.0 : 10.0)
+            : PPUniversalCellOuterShadowOffset(isDark, NO));
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.imageContainer.layer.cornerRadius = horizontalRow ? 26.0 : PPUniversalImageCornerRadius;
+    self.imageContainer.layer.cornerRadius =
+        homePresentation ? 16.0 : (horizontalRow ? 26.0 : PPUniversalImageCornerRadius);
     [self pp_applyBorderAppearanceSelected:NO isDark:isDark];
     self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
 
@@ -1923,8 +2006,64 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_applySelectionAppearanceAnimated:NO];
 }
 
+- (void)pp_applyHostScopedPresentationMetrics
+{
+    BOOL homePresentation = [self pp_isHostedByHomeController];
+    CGFloat controlSize = homePresentation
+        ? PPUniversalHomeControlSize
+        : 30.0;
+
+    self.actionHostHeightConstraint.constant = homePresentation
+        ? PPHomeButtonHeight
+        : PPUniversalButtonHeight;
+    self.minusButtonLeadingConstraint.constant = homePresentation ? 0.0 : 2.0;
+    self.minusButtonWidthConstraint.constant = controlSize;
+    self.minusButtonHeightConstraint.constant = controlSize;
+    self.plusButtonTrailingConstraint.constant = homePresentation ? 0.0 : -2.0;
+    self.plusButtonWidthConstraint.constant = controlSize;
+    self.plusButtonHeightConstraint.constant = controlSize;
+    self.minusButton.layer.cornerRadius = homePresentation ? 22.0 : 15.0;
+    self.plusButton.layer.cornerRadius = homePresentation ? 22.0 : 15.0;
+
+    self.titleLabel.adjustsFontForContentSizeCategory = homePresentation;
+    self.subtitleLabel.adjustsFontForContentSizeCategory = homePresentation;
+    self.priceLabel.adjustsFontForContentSizeCategory = homePresentation;
+    self.oldPriceLabel.adjustsFontForContentSizeCategory = homePresentation;
+
+    CGFloat titleHeight = homePresentation
+        ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
+            ? 56.0
+            : PPUniversalHomeTitleHeight)
+        : PPUniversalCompactTitleHeight;
+    CGFloat priceHeight = homePresentation
+        ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
+            ? 38.0
+            : PPUniversalHomePriceHeight)
+        : PPUniversalCompactPriceHeight;
+    self.titleHeightConstraint.constant = titleHeight;
+    self.priceHeightConstraint.constant = priceHeight;
+
+    for (NSLayoutConstraint *constraint in self.compactLayoutConstraints) {
+        if (constraint.firstItem == self.bodyContainer &&
+            constraint.firstAttribute == NSLayoutAttributeTop &&
+            constraint.secondItem == self.imageContainer) {
+            constraint.constant = homePresentation
+                ? 4.0
+                : PPUniversalInnerSpacing / 2.0;
+        }
+    }
+
+    for (FavoriteFloatingButton *button in @[self.favoriteButton, self.bodyFavButton]) {
+        if ([button isKindOfClass:PPUniversalHomeFavoriteButton.class]) {
+            ((PPUniversalHomeFavoriteButton *)button).expandsHomeHitTarget = homePresentation;
+        }
+        [self pp_applyFavoriteButtonAppearance:button];
+    }
+}
+
 - (void)pp_refreshAppearanceForCurrentTraits
 {
+    [self pp_applyHostScopedPresentationMetrics];
     [self pp_applyBaseStyling];
     [self pp_applySemanticDirection];
     [self.imageContainer applyContextPaletteForContext:self.context];
@@ -1994,7 +2133,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.layoutMode = resolvedLayout;
     self.discountStyle = discountStyle;
     self.imageLoader = loader;
+    self.userBordersV2 = ![self pp_isHostedByHomeController];
 
+    [self pp_applyHostScopedPresentationMetrics];
     [self pp_applyBaseStyling];
     [self pp_applySemanticDirection];
     [self.imageContainer applyContextPaletteForContext:context];
@@ -2156,6 +2297,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (BOOL)pp_isHostedByHomeController
 {
+    if ([self.delegate isKindOfClass:NSClassFromString(@"PPHomeViewController")]) {
+        return YES;
+    }
+
     UIResponder *responder = self.nextResponder;
     while (responder) {
         if ([NSStringFromClass(responder.class) isEqualToString:@"PPHomeViewController"]) {
@@ -2198,6 +2343,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_configureTextsWithViewModel:(PPUniversalCellViewModel *)vm
 {
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
+    self.titleLabel.accessibilityLabel = PPUniversalCellSafeString(vm.title);
     BOOL isAdContext = [self pp_isAdContext];
     BOOL usesDataViewAdPresentation = [self pp_usesDataViewAdPresentation];
     BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
@@ -2219,7 +2365,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.titleLabel.text = @"";
     }
     self.titleLabel.hidden = shouldHideTitle;
-    self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : PPUniversalCompactTitleHeight;
+    BOOL homePresentation = [self pp_isHostedByHomeController];
+    CGFloat titleHeight = homePresentation
+        ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
+            ? 56.0
+            : PPUniversalHomeTitleHeight)
+        : PPUniversalCompactTitleHeight;
+    self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : titleHeight;
 
     BOOL allowsSubtitle = horizontalRow ? YES : (isAdContext ? usesDataViewAdPresentation : self.showsSubtitle);
     BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle ||
@@ -2233,7 +2385,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     BOOL isAdoptContext = (self.context == PPCellForAdopt);
     BOOL hasPrice = !isAdoptContext && (vm.priceText.length > 0 || vm.finalPrice != nil || vm.price != nil);
     self.priceContainerView.hidden = !hasPrice;
-    self.priceHeightConstraint.constant = hasPrice ? PPUniversalCompactPriceHeight : 0.0;
+    CGFloat priceHeight = homePresentation
+        ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
+            ? 38.0
+            : PPUniversalHomePriceHeight)
+        : PPUniversalCompactPriceHeight;
+    self.priceHeightConstraint.constant = hasPrice ? priceHeight : 0.0;
     self.priceLabel.attributedText = hasPrice ? [self pp_attributedPriceForViewModel:vm] : nil;
     self.priceLabel.text = hasPrice ? nil : @"";
     self.priceTopToTitleConstraint.active = shouldHideSubtitle;
@@ -2263,12 +2420,35 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     BOOL fullWidth = [self pp_isFullWidthLayout];
     CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 22.5 : 24.0;
-    self.titleLabel.font = horizontalRow ? PPUniversalCellBoldFont(15.0) : (fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0));
-    self.subtitleLabel.font = horizontalRow ? PPUniversalCellMediumFont(12.0) : (fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0));
-    self.priceLabel.font = horizontalRow ? PPUniversalCellBlackFont(20.0) : (fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize));
+    if (homePresentation) {
+        UIFont *titleFont = horizontalRow
+            ? PPUniversalCellBoldFont(15.0)
+            : (fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(14.5));
+        UIFont *subtitleFont = horizontalRow
+            ? PPUniversalCellMediumFont(12.0)
+            : PPUniversalCellMediumFont(12.5);
+        UIFont *priceFont = horizontalRow
+            ? PPUniversalCellBlackFont(20.0)
+            : (fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize));
+        self.titleLabel.font = PPUniversalCellScaledFont(titleFont, UIFontTextStyleHeadline, 21.0);
+        self.subtitleLabel.font = PPUniversalCellScaledFont(subtitleFont, UIFontTextStyleSubheadline, 18.0);
+        self.priceLabel.font = PPUniversalCellScaledFont(priceFont, UIFontTextStyleTitle3, 29.0);
+    } else {
+        self.titleLabel.font = horizontalRow
+            ? PPUniversalCellBoldFont(15.0)
+            : (fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0));
+        self.subtitleLabel.font = horizontalRow
+            ? PPUniversalCellMediumFont(12.0)
+            : (fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0));
+        self.priceLabel.font = horizontalRow
+            ? PPUniversalCellBlackFont(20.0)
+            : (fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize));
+    }
     if (hasPrice) {
         self.priceLabel.attributedText = [self pp_attributedPriceForViewModel:vm];
     }
+    self.priceLabel.accessibilityLabel = self.priceLabel.attributedText.string;
+    self.oldPriceLabel.accessibilityLabel = self.oldPriceLabel.attributedText.string;
     //self.priceLabel.backgroundColor = UIColor.redColor;
     //self.titleLabel.backgroundColor = UIColor.blueColor;
 }
@@ -2698,7 +2878,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     self.imageAspectConstraint.active = NO;
 
-    self.titleLabel.numberOfLines = expandedRow ? 2 : (adsPinterest ? 2 : 1);
+    BOOL homePresentation = [self pp_isHostedByHomeController];
+    self.titleLabel.numberOfLines = expandedRow || adsPinterest || homePresentation ? 2 : 1;
     self.subtitleLabel.numberOfLines = expandedRow ? 2 : 1;
     self.titleHeightConstraint.active = !expandedRow && !adsPinterest;
     self.priceHeightConstraint.active = !expandedRow;
@@ -2818,7 +2999,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         background = [brand colorWithAlphaComponent:0.88];
     }
 
-    CGFloat actionCornerRadius = PPUniversalButtonHeight / 2.0;
+    BOOL homePresentation = [self pp_isHostedByHomeController];
+    CGFloat actionCornerRadius = homePresentation
+        ? PPHomeControlCornerRadius
+        : PPUniversalButtonHeight / 2.0;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
@@ -2837,6 +3021,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             : NSDirectionalEdgeInsetsMake(9.0, 14.0, 9.0, 14.0);
         config.title = title;
         UIFont *font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
+        if (homePresentation) {
+            font = PPUniversalCellScaledFont(font, UIFontTextStyleSubheadline, 17.0);
+        }
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];
@@ -2851,7 +3038,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.addButton setImage:imageName.length > 0 ? [UIImage systemImageNamed:imageName] : nil forState:UIControlStateNormal];
         self.addButton.tintColor = foreground;
         self.addButton.backgroundColor = background;
-        self.addButton.titleLabel.font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
+        UIFont *font = PPUniversalCellBoldFont(horizontalRow ? 12.6 : 13.2);
+        self.addButton.titleLabel.font = homePresentation
+            ? PPUniversalCellScaledFont(font, UIFontTextStyleSubheadline, 17.0)
+            : font;
         self.addButton.contentEdgeInsets = horizontalRow
             ? UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0)
             : UIEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
@@ -3447,6 +3637,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                                      scale:UIImageSymbolScaleMedium];
     [button setPreferredSymbolConfiguration:symbolConfig forImageInState:UIControlStateNormal];
     [button setImage:[UIImage systemImageNamed:systemName] forState:UIControlStateNormal];
+    button.accessibilityLabel = [systemName isEqualToString:@"minus"]
+        ? PPUniversalCellLocalizedString(@"cart_swipe_remove", @"Remove")
+        : PPUniversalCellLocalizedString(@"addToCart", @"Add");
     return button;
 }
 
@@ -3674,12 +3867,19 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     BOOL showsSelection = [self pp_supportsSelectionAccent] && self.isSelected;
+    BOOL homePresentation = [self pp_isHostedByHomeController];
 
     void (^changes)(void) = ^{
         [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
-        self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, showsSelection);
-        self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, showsSelection);
-        self.cardView.layer.shadowOffset = PPUniversalCellOuterShadowOffset(isDark, showsSelection);
+        self.cardView.layer.shadowOpacity = homePresentation
+            ? (showsSelection ? (isDark ? 0.16 : 0.10) : (isDark ? 0.10 : 0.06))
+            : PPUniversalCellOuterShadowOpacity(isDark, showsSelection);
+        self.cardView.layer.shadowRadius = homePresentation
+            ? (showsSelection ? (isDark ? 14.0 : 16.0) : (isDark ? 10.0 : 12.0))
+            : PPUniversalCellOuterShadowRadius(isDark, showsSelection);
+        self.cardView.layer.shadowOffset = homePresentation
+            ? CGSizeMake(0.0, showsSelection ? (isDark ? 6.0 : 7.0) : (isDark ? 4.0 : 5.0))
+            : PPUniversalCellOuterShadowOffset(isDark, showsSelection);
 
         [self pp_applyBorderAppearanceSelected:showsSelection isDark:isDark];
         self.imageScrimView.backgroundColor = showsSelection
@@ -3704,8 +3904,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return;
     }
 
-    button.transform = CGAffineTransformMakeScale(PPUniversalFavoriteButtonVisualScale,
-                                                  PPUniversalFavoriteButtonVisualScale);
+    CGFloat visualScale = [self pp_isHostedByHomeController]
+        ? 1.0
+        : PPUniversalFavoriteButtonVisualScale;
+    button.transform = CGAffineTransformMakeScale(visualScale, visualScale);
 
     if (UserManager.sharedManager.isUserLoggedIn || button.isFavorite) {
         return;
@@ -4050,6 +4252,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     _delegate = delegate;
     [self pp_updateInnerPaddingIfNeeded];
+    [self pp_applyHostScopedPresentationMetrics];
 }
 
 - (void)pp_updateInnerPaddingIfNeeded
@@ -4057,7 +4260,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     BOOL isDataView = [self.delegate isKindOfClass:NSClassFromString(@"PPDataViewVC")];
     BOOL isSellerProfileVC = [self.delegate isKindOfClass:NSClassFromString(@"SellerProfileVC")];
     BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
-    CGFloat padding = horizontalRow ? 16.0 : (isDataView ? 20.0 : isSellerProfileVC ? 20 : 16.0);
+    BOOL isHome = [self.delegate isKindOfClass:NSClassFromString(@"PPHomeViewController")];
+    CGFloat padding = horizontalRow
+        ? 16.0
+        : (isHome
+            ? PPUniversalHomeOuterInset
+            : (isDataView ? 20.0 : isSellerProfileVC ? 20.0 : PPUniversalOuterInset));
     
     // Update compact constraints
     for (NSLayoutConstraint *c in self.compactLayoutConstraints) {

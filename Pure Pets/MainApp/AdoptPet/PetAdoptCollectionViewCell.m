@@ -8,6 +8,7 @@
 #import "PetAdoptCollectionViewCell.h"
 #import "AppClasses.h"
 #import "PPBackgroundView.h"
+#import "PPHomePresentationTokens.h"
 
 static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
@@ -31,6 +32,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 @property (nonatomic, strong) CAGradientLayer *hairlineGradientLayer;
 @property (nonatomic, strong) NSLayoutConstraint *visualWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *visualHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentLeadingToVisualConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentLeadingToSurfaceConstraint;
 @property (nonatomic, assign) BOOL didRequestAnimation;
 @property (nonatomic, assign) BOOL animationLoaded;
 @property (nonatomic, assign) BOOL didRunEntrance;
@@ -72,8 +75,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 - (void)didMoveToWindow {
     [super didMoveToWindow];
     if (self.window) {
-        [self.heroBackgroundView startAnimations];
-        [self pp_startLivingMotionIfNeeded];
+        [self.heroBackgroundView stopAnimations];
+        [self pp_stopLivingMotion];
         [self pp_playLottieIfPossible];
         [self pp_runEntranceIfNeeded];
     } else {
@@ -139,8 +142,9 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     _heroBackgroundView = [PPBackgroundView new];
     _heroBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     _heroBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    _heroBackgroundView.cornerGlowOpacityMultiplier = 0.72;
+    _heroBackgroundView.cornerGlowOpacityMultiplier = 0.16;
     _heroBackgroundView.PPHeroApexUseShimmer = NO;
+    _heroBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
     _heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
     _heroBackgroundView.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     [_cardSurfaceView insertSubview:_heroBackgroundView atIndex:0];
@@ -164,8 +168,8 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     [_cardSurfaceView addSubview:_visualStageView];
 
     _visualOrbView = [self pp_makeAtmosphereViewWithColor:[UIColor hx_colorWithHexStr:@"#FFFFFF"]
-                                                     alpha:0.76
-                                               shadowAlpha:0.12];
+                                                     alpha:0.48
+                                               shadowAlpha:0.0];
     [_visualStageView addSubview:_visualOrbView];
 
     _visualGlassView = [[UIView alloc] init];
@@ -292,8 +296,6 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         self.visualWidthConstraint,
         self.visualHeightConstraint,
 
-        [_contentWrapView.leadingAnchor constraintEqualToAnchor:_visualStageView.trailingAnchor constant:16.0],
-
         [_visualOrbView.centerXAnchor constraintEqualToAnchor:_visualStageView.centerXAnchor],
         [_visualOrbView.centerYAnchor constraintEqualToAnchor:_visualStageView.centerYAnchor constant:6.0],
         [_visualOrbView.widthAnchor constraintEqualToAnchor:_visualStageView.widthAnchor multiplier:0.92],
@@ -334,7 +336,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 
         [_ctaPillView.leadingAnchor constraintEqualToAnchor:_contentWrapView.leadingAnchor],
         [_ctaPillView.bottomAnchor constraintEqualToAnchor:_contentWrapView.bottomAnchor],
-        [_ctaPillView.heightAnchor constraintEqualToConstant:40.0],
+        [_ctaPillView.heightAnchor constraintEqualToConstant:PPHomeButtonHeight],
         [_ctaPillView.widthAnchor constraintLessThanOrEqualToAnchor:_contentWrapView.widthAnchor],
         [_ctaPillView.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
 
@@ -347,6 +349,12 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         [_ctaIconView.widthAnchor constraintEqualToConstant:15.0],
         [_ctaIconView.heightAnchor constraintEqualToConstant:15.0],
     ]];
+
+    self.contentLeadingToVisualConstraint =
+        [_contentWrapView.leadingAnchor constraintEqualToAnchor:_visualStageView.trailingAnchor constant:16.0];
+    self.contentLeadingToSurfaceConstraint =
+        [_contentWrapView.leadingAnchor constraintEqualToAnchor:_cardSurfaceView.leadingAnchor constant:22.0];
+    self.contentLeadingToVisualConstraint.active = YES;
 }
 
 #pragma mark - Styling
@@ -357,7 +365,7 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    CGFloat cornerRadius = 30.0;
+    CGFloat cornerRadius = PPHomeHeroCornerRadius;
     self.cardSurfaceView.layer.cornerRadius = cornerRadius;
     self.layer.cornerRadius = cornerRadius;
     if (@available(iOS 13.0, *)) {
@@ -369,14 +377,14 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
     }
 
     [self pp_setShadowColor:[UIColor colorWithRed:0.13 green:0.08 blue:0.10 alpha:1.0]];
-    self.layer.shadowOpacity = isDark ? 0.24 : 0.13;
-    self.layer.shadowRadius = isDark ? 22.0 : 26.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.layer.shadowOpacity = isDark ? 0.08 : 0.05;
+    self.layer.shadowRadius = isDark ? 12.0 : 10.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 5.0);
 
     self.cardSurfaceView.backgroundColor = UIColor.clearColor;
     self.heroBackgroundView.accentColorOverride = AppPrimaryClr ?: [UIColor hx_colorWithHexStr:@"#C22D5A"];
     self.heroBackgroundView.accentStyle = PPHeroGlassAccentStyleBar;
-    self.heroBackgroundView.cornerGlowOpacityMultiplier = isDark ? 0.82 : 0.66;
+    self.heroBackgroundView.cornerGlowOpacityMultiplier = 0.16;
     [self.heroBackgroundView reapplyPalette];
 
     UIColor *ink = isDark ? [UIColor colorWithWhite:0.96 alpha:1.0] : [UIColor hx_colorWithHexStr:@"#14181F"];
@@ -442,11 +450,28 @@ static NSString * const PPAdoptBreathingAnimationKey = @"pp_adopt_breathing";
 }
 
 - (void)pp_refreshGeometry {
-    CGFloat cornerRadius = 30.0;
+    CGFloat cornerRadius = PPHomeHeroCornerRadius;
     CGFloat width = CGRectGetWidth(self.bounds);
     BOOL compact = width > 0.0 && width < 370.0;
-    self.titleLabel.font = [GM boldFontWithSize:compact ? 20.0 : 22.0];
-    self.subtitleLabel.font = [GM MidFontWithSize:compact ? 12.5 : 13.0];
+    BOOL accessibilityCategory =
+        UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    UIFont *titleBase = [GM boldFontWithSize:compact ? 20.0 : 22.0] ?:
+        [UIFont systemFontOfSize:(compact ? 20.0 : 22.0) weight:UIFontWeightBold];
+    UIFont *subtitleBase = [GM MidFontWithSize:compact ? 12.5 : 13.0] ?:
+        [UIFont systemFontOfSize:(compact ? 12.5 : 13.0) weight:UIFontWeightMedium];
+    self.titleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle2]
+            scaledFontForFont:titleBase maximumPointSize:30.0];
+    self.subtitleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+            scaledFontForFont:subtitleBase maximumPointSize:20.0];
+    self.visualStageView.hidden = accessibilityCategory;
+    self.contentLeadingToVisualConstraint.active = NO;
+    self.contentLeadingToSurfaceConstraint.active = NO;
+    NSLayoutConstraint *activeLeadingConstraint = accessibilityCategory
+        ? self.contentLeadingToSurfaceConstraint
+        : self.contentLeadingToVisualConstraint;
+    activeLeadingConstraint.active = YES;
     CGFloat visualWidth = CGRectGetWidth(self.cardSurfaceView.bounds) * (compact ? 0.32 : 0.34);
     self.visualWidthConstraint.constant = MAX(compact ? 112.0 : 124.0, MIN(visualWidth, compact ? 132.0 : 150.0));
 
@@ -587,15 +612,8 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
         return;
     }
 
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.lottieHeaderView stop];
-        self.lottieHeaderView.animationProgress = 0.42;
-        return;
-    }
-
-    if (!self.lottieHeaderView.isAnimationPlaying) {
-        [self.lottieHeaderView play];
-    }
+    [self.lottieHeaderView stop];
+    self.lottieHeaderView.animationProgress = 0.42;
 }
 
 #pragma mark - Motion

@@ -5,6 +5,7 @@
 
 #import "PPHomeUltraPremuimPetCareCell.h"
 #import "AppClasses.h"
+#import "PPHomePresentationTokens.h"
 
  static NSString * const PPUltraCareGlowTopAnimationKey = @"pp.home.ultraCare.glow.top";
 static NSString * const PPUltraCareGlowBottomAnimationKey = @"pp.home.ultraCare.glow.bottom";
@@ -12,7 +13,7 @@ static NSString * const PPUltraCareOrbitAnimationKey = @"pp.home.ultraCare.orbit
 static NSString * const PPUltraCarePulseAnimationKey = @"pp.home.ultraCare.pulse";
 static NSString * const PPUltraCareFloatingCircleAnimationKeyPrefix = @"pp.home.ultraCare.floatingCircle";
 static BOOL const PPUltraCareGlowsFaded = YES;
-static CGFloat const PPUltraCareSurfaceCornerRadius = 26.0;
+static CGFloat const PPUltraCareSurfaceCornerRadius = 24.0;
 static CGFloat const PPUltraCareHeroPortalSize = 94.0;
 static CGFloat const PPUltraCareOrbitCarrierSize = 78.0;
 static CGFloat const PPUltraCareHeroInnerSize = 66.0;
@@ -253,15 +254,15 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.numberOfLines = 1;
-    _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.76;
+    _titleLabel.numberOfLines = 2;
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
     [_surfaceView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
                                                    forAxis:UILayoutConstraintAxisVertical];
     [_surfaceView addSubview:_subtitleLabel];
@@ -632,7 +633,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_surfaceView pp_setBorderColor:surfaceBorder];
 
     UIColor *bottomGlowColor = [UIColor colorNamed:@"NewBg"];
-    CGFloat ambientGlowPeakAlpha = dark ? 0.10 : 0.075;
+    CGFloat ambientGlowPeakAlpha = 0.0;
     [self pp_applyAmbientGlowColor:accent
                              view:_topAmbientGlowView
                     gradientLayer:_topAmbientGlowLayer
@@ -640,8 +641,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [self pp_applyAmbientGlowColor:bottomGlowColor
                              view:_bottomAmbientGlowView
                     gradientLayer:_bottomAmbientGlowLayer
-                        peakAlpha:dark ? 0.10 : 0.11];
+                        peakAlpha:0.0];
     [self pp_applyFloatingAmbientCirclePaletteWithAccent:accent dark:dark];
+    for (UIView *circleView in _floatingAmbientCircleViews) {
+        circleView.alpha = 0.0;
+    }
 
     UIColor *portalFill =
         PPUltraCareDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
@@ -688,12 +692,12 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         PPUltraCareResolvedColor(edgeColor, self.traitCollection).CGColor;
 
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.contentView.layer.shadowOpacity = dark ? 0.0 : 0.075;
-    self.contentView.layer.shadowRadius = 20.0;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.contentView.layer.shadowOpacity = dark ? 0.06 : 0.04;
+    self.contentView.layer.shadowRadius = 10.0;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 5.0);
 
     [self setNeedsLayout];
-    [self pp_startBackgroundMotionIfNeeded];
+    [self pp_stopAmbientMotion];
 }
 
 #pragma mark - Configuration
@@ -729,7 +733,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 
     [self pp_applyTheme];
     [self pp_configureCareAnimationNamed:animationName];
-    [self pp_startBackgroundMotionIfNeeded];
+    [self pp_stopAmbientMotion];
 }
 
 - (void)pp_configureCareAnimationNamed:(NSString *)animationName
@@ -901,7 +905,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
                                  (int64_t)((delay + 0.64) * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         if (self->_entranceToken == entranceToken && self.window) {
-            [self pp_startBackgroundMotionIfNeeded];
+            [self pp_stopAmbientMotion];
         }
     });
 }
@@ -1105,7 +1109,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 {
     [super didMoveToWindow];
     if (self.window) {
-        [self pp_startBackgroundMotionIfNeeded];
+        [self pp_stopAmbientMotion];
     } else {
         [self pp_stopBackgroundMotion];
     }
@@ -1144,7 +1148,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [self pp_applyStablePresentationState];
         [self pp_revealConfiguredCareAnimation];
     } else {
-        [self pp_startBackgroundMotionIfNeeded];
+        [self pp_stopAmbientMotion];
     }
 }
 
@@ -1159,34 +1163,11 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 - (void)pp_playLottieLoopWithDelay2s
 {
     _lottieLoopToken += 1;
-    NSInteger token = _lottieLoopToken;
-
     _lottieHeaderView.hidden = NO;
     _lottieHeaderView.alpha = 1;
-
     [_lottieHeaderView stop];
     _lottieHeaderView.loopAnimation = NO;
-    _lottieHeaderView.animationProgress = 0.0;
-
-    __weak typeof(self) weakSelf = self;
-    [_lottieHeaderView playWithCompletion:^(BOOL finished) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf->_lottieLoopToken != token) {
-                return;
-            }
-
-            NSTimeInterval delay = finished ? 2.0 : 0.5;
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                __strong typeof(weakSelf) innerSelf = weakSelf;
-                if (!innerSelf || innerSelf->_lottieLoopToken != token) {
-                    return;
-                }
-                [innerSelf pp_playLottieLoopWithDelay2s];
-            });
-        });
-    }];
+    _lottieHeaderView.animationProgress = 0.42;
 }
 
 - (NSString *)pp_lottieFirebasePathForCurrentTime

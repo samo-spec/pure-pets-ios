@@ -1,20 +1,17 @@
 #import "PPSectionHeaderView.h"
+#import "PPHomePresentationTokens.h"
 #import <QuartzCore/QuartzCore.h>
 
 static CGFloat PPSectionHeaderPixel(void) {
     return 1.0 / UIScreen.mainScreen.scale;
 }
 
-static const CGFloat PPSectionHeaderSurfaceRadius = 14.0;
-static const CGFloat PPSectionHeaderOuterVerticalInset = 0.0;
-static const CGFloat PPSectionHeaderContentLeading = 16.0;
-static const CGFloat PPSectionHeaderContentTrailing = 0.0;
-static const CGFloat PPSectionHeaderContentVerticalInset = 0.0;
-static const CGFloat PPSectionHeaderAccentWidth = 8.0;
-static const CGFloat PPSectionHeaderAccentHeight = 8.0;
-static const CGFloat PPSectionHeaderActionMinHeight = 36.0;
-static const CGFloat PPSectionHeaderActionMinWidth = 36.0;
-static const CGFloat PPSectionHeaderActionMaxWidth = 184.0;
+static const CGFloat PPSectionHeaderContentVerticalInset = 4.0;
+static const CGFloat PPSectionHeaderAccentWidth = 6.0;
+static const CGFloat PPSectionHeaderAccentHeight = 6.0;
+static const CGFloat PPSectionHeaderActionMinHeight = 44.0;
+static const CGFloat PPSectionHeaderActionMinWidth = 44.0;
+static const CGFloat PPSectionHeaderActionMaxWidth = 196.0;
 static NSString * const PPSectionHeaderLineSweepAnimationKey = @"pp.sectionHeader.line.sweep";
 static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHeader.line.breath";
 
@@ -99,13 +96,10 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.surfaceView.userInteractionEnabled = YES;
     self.surfaceView.clipsToBounds = NO;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.surfaceView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    self.surfaceView.layer.cornerRadius = PPHomeControlCornerRadius;
     self.surfaceView.layer.borderWidth = 0;//PPSectionHeaderPixel();
     //self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
-    self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = 0.05;
-    self.surfaceView.layer.shadowRadius = 16.0;
-    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.surfaceView.layer.shadowOpacity = 0.0;
     [self addSubview:self.surfaceView];
 
     self.materialWashView = [[UIView alloc] init];
@@ -113,7 +107,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.materialWashView.userInteractionEnabled = NO;
     self.materialWashView.clipsToBounds = YES;
     self.materialWashView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.materialWashView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    self.materialWashView.layer.cornerRadius = PPHomeControlCornerRadius;
     [self.surfaceView addSubview:self.materialWashView];
 
     self.topSheenView = [[UIView alloc] init];
@@ -127,7 +121,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.tapHighlightView.alpha = 0.0;
     self.tapHighlightView.clipsToBounds = YES;
     self.tapHighlightView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.tapHighlightView.layer.cornerRadius = PPSectionHeaderSurfaceRadius;
+    self.tapHighlightView.layer.cornerRadius = PPHomeControlCornerRadius;
     [self.surfaceView addSubview:self.tapHighlightView];
 
     self.accentRailView = [[UIView alloc] init];
@@ -163,7 +157,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
         [self.tapHighlightView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
         [self.tapHighlightView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
 
-        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:10.0],
+        [self.accentRailView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
         [self.accentRailView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         self.accentRailWidthConstraint,
         self.accentRailHeightConstraint,
@@ -177,7 +171,8 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.titleLabel.font = [self pp_titleFont];
     self.titleLabel.textColor = [self pp_titleColor];
     self.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.numberOfLines =
+        PPHomeUsesAccessibilityTextSize(self.traitCollection) ? 2 : 1;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.adjustsFontSizeToFitWidth = NO;
@@ -191,7 +186,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.subtitleLabel.font = [self pp_subtitleFont];
     self.subtitleLabel.textColor = [self pp_subtitleColor];
     self.subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.subtitleLabel.numberOfLines = 1;
+    self.subtitleLabel.numberOfLines = 2;
     self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
     self.subtitleLabel.hidden = YES;
@@ -210,7 +205,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.hidden = YES;
     self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.actionButton.layer.cornerRadius = 8.0;
+    self.actionButton.layer.cornerRadius = PPHomeControlCornerRadius;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     self.actionButton.clipsToBounds = YES;
     self.actionButton.titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -255,11 +250,11 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.textStackView.axis = UILayoutConstraintAxisHorizontal;
     self.textStackView.alignment = UIStackViewAlignmentCenter;
     self.textStackView.distribution = UIStackViewDistributionFill;
-    self.textStackView.spacing = 8.0;
+    self.textStackView.spacing = 10.0;
     self.textStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 11.0, *)) {
-        [self.textStackView setCustomSpacing:16.0 afterView:self.titleLabel];
-        [self.textStackView setCustomSpacing:16.0 afterView:self.lineView];
+        [self.textStackView setCustomSpacing:12.0 afterView:self.titleLabel];
+        [self.textStackView setCustomSpacing:12.0 afterView:self.lineView];
     }
 
 
@@ -271,12 +266,11 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.contentStackView.axis = UILayoutConstraintAxisVertical;
     self.contentStackView.alignment = UIStackViewAlignmentFill;
     self.contentStackView.distribution = UIStackViewDistributionFill;
-    self.contentStackView.spacing = -4.0;
+    self.contentStackView.spacing = 3.0;
     self.contentStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     [self.contentStackView setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
-    [self.subtitleLabel.heightAnchor constraintEqualToConstant:12].active = YES;
     [self.surfaceView addSubview:self.contentStackView];
 
     NSLayoutConstraint *contentTopConstraint =
@@ -287,7 +281,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     contentBottomConstraint.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.accentRailView.trailingAnchor constant:8.0],
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.accentRailView.trailingAnchor constant:10.0],
         [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-0.0],
         [self.contentStackView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         contentTopConstraint,
@@ -317,9 +311,9 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
-    background.strokeWidth = 0.08;//PPSectionHeaderPixel();
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.24 : 0.10];
-    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.14 : 0.095];
+    background.strokeWidth = PPSectionHeaderPixel();
+    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.20 : 0.10];
+    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.07];
     cfg.background = background;
 
     UIImageSymbolConfiguration *symbolConfig =
@@ -367,10 +361,10 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     self.materialWashView.backgroundColor = UIColor.clearColor;
     self.topSheenView.backgroundColor = UIColor.clearColor;
-    self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.16 : 0.01)];
+    self.tapHighlightView.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.14 : 0.06)];
 
-    self.accentRailView.backgroundColor = [accentColor colorWithAlphaComponent:0.28];
-    self.accentRailView.alpha = decorationActive ? 1.0 : 0.68;
+    self.accentRailView.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.76 : 0.56)];
+    self.accentRailView.alpha = decorationActive ? 1.0 : 0.82;
     self.lineView.backgroundColor = UIColor.clearColor;
     [self pp_updateLineMotionLayerAppearance];
     self.titleLabel.textColor = [self pp_titleColor];
@@ -378,14 +372,15 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = self.actionButtonUsesCirclePresentation ? PPSectionHeaderActionMinHeight * 0.5 : ((PPSectionHeaderActionMinHeight * 0.5) - 4);
-    background.strokeWidth = 0.0;//PPSectionHeaderPixel();
-    background.strokeColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.26 : 0.08) : (darkMode ? 0.24 : 0.28)];
-    background.backgroundColor = [accentColor colorWithAlphaComponent:self.actionButtonUsesCirclePresentation ? (darkMode ? 0.16 : 0.065) : (darkMode ? 0.22 : 0.025)];
+    background.cornerRadius = self.actionButtonUsesCirclePresentation
+        ? PPSectionHeaderActionMinHeight * 0.5
+        : PPHomeControlCornerRadius;
+    background.strokeWidth = PPSectionHeaderPixel();
+    background.strokeColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.22 : 0.10)];
+    background.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.14 : 0.07)];
     cfg.background = background;
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.baseForegroundColor = [accentColor colorWithAlphaComponent:0.82];
-    cfg.baseForegroundColor = [AppPrimaryClr colorWithAlphaComponent:0.22];
+    cfg.baseForegroundColor = accentColor;
     self.actionButton.configuration = cfg;
     self.actionButton.layer.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -398,7 +393,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
 - (UIColor *)pp_titleColor
 {
-    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    return UIColor.labelColor;
 }
 
 - (UIColor *)pp_subtitleColor
@@ -418,20 +413,23 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
 - (UIFont *)pp_titleFont
 {
-    UIFont *font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold];
-    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline] scaledFontForFont:font];
+    UIFont *font = [GM boldFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline];
+    return [metrics scaledFontForFont:font maximumPointSize:22.0];
 }
 
 - (UIFont *)pp_subtitleFont
 {
-    UIFont *font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:font];
+    UIFont *font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular];
+    UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline];
+    return [metrics scaledFontForFont:font maximumPointSize:19.0];
 }
 
 - (UIFont *)pp_actionFont
 {
-    UIFont *font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    return [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:font];
+    UIFont *font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+    UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1];
+    return [metrics scaledFontForFont:font maximumPointSize:17.0];
 }
 
 - (BOOL)pp_isDarkMode
@@ -659,6 +657,10 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+    self.titleLabel.numberOfLines =
+        PPHomeUsesAccessibilityTextSize(self.traitCollection) ? 2 : 1;
+    self.titleLabel.font = [self pp_titleFont];
+    self.subtitleLabel.font = [self pp_subtitleFont];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         [self pp_refreshAppearance];
     }
@@ -737,7 +739,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     BOOL hasSubtitle = subtitle.length > 0;
     self.subtitleLabel.text = hasSubtitle ? subtitle : nil;
     self.subtitleLabel.hidden = !hasSubtitle;
-    self.contentStackView.spacing = hasSubtitle ? 2.0 : 0.0;
+    self.contentStackView.spacing = hasSubtitle ? 3.0 : 0.0;
     
     if (ppHomeSection != PPHomeSectionMainKinds) {
         self.isExpanded = NO;
@@ -993,19 +995,9 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 - (void)pp_animatePressFeedback
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        [UIView animateWithDuration:0.12
-                              delay:0
-                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            self.tapHighlightView.alpha = 1.0;
-        } completion:^(BOOL finished) {
-            [UIView animateWithDuration:0.18
-                                  delay:0
-                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                             animations:^{
-                self.tapHighlightView.alpha = 0.0;
-            } completion:nil];
-        }];
+        self.tapHighlightView.alpha = 0.0;
+        self.surfaceView.transform = CGAffineTransformIdentity;
+        self.actionButton.transform = CGAffineTransformIdentity;
         return;
     }
 

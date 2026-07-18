@@ -197,7 +197,7 @@
 // =====================================================
 // Cells / Views
 // =====================================================
-#import "PPHomeCell.h"
+ 
 #import "PPHomeActionCell.h"
 #import "PPHomeServicesCell.h"
 #import "PPUniversalCell.h"
@@ -473,8 +473,11 @@ typedef void (^PPVoidHandler)( PPUniversalCellViewModel * _Nullable vmModel);
 
 
 
+#ifndef PPImageLoaderManagerComplation_DEFINED
+#define PPImageLoaderManagerComplation_DEFINED 1
 typedef void (^PPImageLoaderManagerComplation)(UIImage * _Nullable image,
-                                     NSString * _Nullable urlString);
+                                                NSString * _Nullable urlString);
+#endif
 
 
 

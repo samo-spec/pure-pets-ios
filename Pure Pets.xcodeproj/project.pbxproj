@@ -61,7 +61,6 @@
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
-		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
 		F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */; };
 		F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B02F14791300BA6214 /* SearchCacheManager.m */; };
 		F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */; };
@@ -761,7 +760,7 @@
 		F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
 		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
-		F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */; };
+		F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */; };
 		F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */; };
 		F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */; };
 		F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A8E32F970001009B6001 /* PPMediaPreviewView.swift */; };
@@ -979,8 +978,6 @@
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
-		F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCell.h; sourceTree = "<group>"; };
-		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
 		F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
 		F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
 		F207D0AF2F1478BF00BA6214 /* SearchCacheManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchCacheManager.h; sourceTree = "<group>"; };
@@ -2311,8 +2308,8 @@
 		F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessoryCollectionViewCell.h; sourceTree = "<group>"; };
 		F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessoryCollectionViewCell.m; sourceTree = "<group>"; };
 		F2D44D1F2F3D611200999337 /* map_dark_style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = map_dark_style.json; sourceTree = "<group>"; };
-		F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModerHomeCell.h; sourceTree = "<group>"; };
-		F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModerHomeCell.m; sourceTree = "<group>"; };
+		F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePresentationTokens.h; sourceTree = "<group>"; };
+		F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
 		F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModernHomeActionCell.h; sourceTree = "<group>"; };
 		F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernHomeActionCell.m; sourceTree = "<group>"; };
 		F2D5A8E02F970001009B6001 /* FullScreenImageViewerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FullScreenImageViewerController.h; sourceTree = "<group>"; };
@@ -2627,10 +2624,7 @@
 				F28DD5892F01939900FF2671 /* PPHomeServicesCell.m */,
 				F25E7FF02EFF2B680089F659 /* PPHomeModels.h */,
 				F25E7FF12EFF2B970089F659 /* PPHomeModels.m */,
-				F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */,
-				F202A06D2EFE20330048D4C2 /* PPHomeCell.m */,
-				F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */,
-				F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */,
+				F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */,
 				F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */,
 				F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */,
 				F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */,
@@ -3578,6 +3572,7 @@
 				F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */,
 				F2C223C42F061DD4006DB76A /* PPHomeFunc.h */,
 				F2C223C52F061DD4006DB76A /* PPHomeFunc.m */,
+				F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -6414,7 +6409,6 @@
 				F27FAEAB2D2F363200EA6B56 /* JPResourceLoadingRequestTask.m in Sources */,
 				F276E5CD2DE383D500926D56 /* ButtonsContainerView.m in Sources */,
 				F27FAEAC2D2F363200EA6B56 /* JPVideoPlayerCachePath.m in Sources */,
-				F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */,
 				F27FAEAD2D2F363200EA6B56 /* UITableViewCell+WebVideoCache.m in Sources */,
 				F27FAEAE2D2F363200EA6B56 /* JPVideoPlayerManager.m in Sources */,
 				F2AB48CA2C72D43D00D88603 /* KafkaCategories.m in Sources */,
@@ -6425,7 +6419,7 @@
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
 				F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */,
-				F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */,
+				F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */,
 				F2AB48952C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m in Sources */,
 				F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */,
 				F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */,

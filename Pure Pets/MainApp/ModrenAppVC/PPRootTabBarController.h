@@ -30,6 +30,7 @@ typedef void (^PPCartFloatingBarOpenHandler)(void);
 - (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated;
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
 - (nullable UIView *)pp_novaAmbientBottomNavigationAnchorView;
+- (CGFloat)pp_currentBottomNavigationContentClearance;
 - (void)pp_activateFloatingCartBarForSourceViewController:(UIViewController *)viewController
                                           openCartHandler:(PPCartFloatingBarOpenHandler)openCartHandler
                                                  animated:(BOOL)animated;
