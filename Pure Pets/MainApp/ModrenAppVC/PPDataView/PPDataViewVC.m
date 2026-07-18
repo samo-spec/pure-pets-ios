@@ -50,7 +50,7 @@ static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
 static const CGFloat kPPFilterContextBarHeight = 32.0;
 static const CGFloat kPPFilterContextBadgeHeight = 24.0;
 static const CGFloat kPPFilterCollapseHandleHeight = 26.0;
-static const CGFloat kPPFilterIslandToCollectionGap = 16.0;
+
 static const CGFloat kPPFilterIslandTopPadding = 3.0;
 static const CGFloat kPPFilterIslandRowSpacing = 4.0;
 static const CGFloat kPPFilterIslandExpandedRowSpacing = 4.0;
