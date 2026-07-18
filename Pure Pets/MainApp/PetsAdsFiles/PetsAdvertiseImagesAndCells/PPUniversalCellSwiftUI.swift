@@ -596,7 +596,7 @@ private final class PPUniversalCardStore: ObservableObject {
             return
         }
 
-        let accent = UIColor(palette.primary)
+        let accent = UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)
         haloLayer.colors = [
             accent.withAlphaComponent(0.30).cgColor,
             accent.withAlphaComponent(0.10).cgColor,
@@ -1452,17 +1452,11 @@ private struct PPUniversalCardRenderer: View {
                         
                         detailsArrow
                     }
-                    .foregroundStyle(store.palette.primary)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 42)
-                    .background(
-                        store.palette.primary.opacity(
-                            colorScheme == .dark ? 0.18 : 0.09
-                        ),
-                        in: actionShape
-                    )
+                    .background(adsModeCTAGradient, in: actionShape)
                     .overlay(
-                        actionShape.stroke(store.palette.primary.opacity(0.20), lineWidth: 0.75)
+                        actionShape.stroke(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.12), lineWidth: 0.75)
                     )
                 } else if store.layout.isHorizontal {
                     HStack(spacing: 5) {
@@ -1497,10 +1491,14 @@ private struct PPUniversalCardRenderer: View {
                         )
                 }
             }
-            .foregroundStyle(store.palette.primary)
+            .foregroundStyle(detailsActionForeground)
         }
         .buttonStyle(PPUniversalScaleButtonStyle())
         .accessibilityLabel(primaryActionTitle)
+    }
+
+    private var detailsActionForeground: Color {
+        store.context.isServiceLike ? .white : store.palette.primary
     }
 
     @ViewBuilder
@@ -1995,14 +1993,7 @@ private struct PPUniversalCardRenderer: View {
         if store.isOutOfStock {
             Color(uiColor: .secondaryLabel)
         } else if usesAdsModeCTAGradient {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    store.palette.diffColor,
-                    store.palette.diffColor
-                ]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            adsModeCTAGradient
         } else if store.model.usesQuantityControl && store.quantity > 0 {
             store.palette.primary.opacity(
                 colorScheme == .dark ? 0.18 : 0.09
@@ -2029,6 +2020,17 @@ private struct PPUniversalCardRenderer: View {
 
     private var usesAdsModeCTAGradient: Bool {
         (store.context.isAdvertisement || store.isSuggestionsAd) && !store.model.usesQuantityControl
+    }
+
+    private var adsModeCTAGradient: LinearGradient {
+        LinearGradient(
+            gradient: Gradient(colors: [
+                store.palette.primaryDarker,
+                store.palette.primaryShiner
+            ]),
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 
     private func availabilityForeground(

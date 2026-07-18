@@ -681,21 +681,22 @@ static inline CGFloat PPModrenSegmrntedPillRadiusForHeight(CGFloat height, CGFlo
    
   
     self.selectionOutlineView.layer.borderColor =
-        [accent colorWithAlphaComponent:dark ? 0.0 : 0.0].CGColor;
+        [accent colorWithAlphaComponent:dark ? 0.24 : 0.18].CGColor;
     self.selectionOutlineView.layer.shadowColor =
         (dark ? accent : UIColor.blackColor).CGColor;
-    self.selectionOutlineView.layer.shadowOpacity = dark ? 0.11 : 0.07;
+    self.selectionOutlineView.layer.shadowOpacity = dark ? 0.18 : 0.11;
     self.selectionSurfaceLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:dark ? 0.18 : 0.075].CGColor,
-        (id)[accent colorWithAlphaComponent:dark ? 0.09 : 0.034].CGColor,
-        (id)[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.018 : 0.20].CGColor
+        (id)[accent colorWithAlphaComponent:dark ? 0.34 : 0.18].CGColor,
+        (id)[accent colorWithAlphaComponent:dark ? 0.20 : 0.095].CGColor,
+        (id)[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.045 : 0.26].CGColor
     ];
 
     self.selectionUnderlineView.layer.shadowColor = accent.CGColor;
+    self.selectionUnderlineView.layer.shadowOpacity = dark ? 0.24 : 0.20;
     self.selectionUnderlineLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:0.42].CGColor,
+        (id)[accent colorWithAlphaComponent:0.62].CGColor,
         (id)[accent colorWithAlphaComponent:1.0].CGColor,
-        (id)[accent colorWithAlphaComponent:0.42].CGColor
+        (id)[accent colorWithAlphaComponent:0.62].CGColor
     ];
 }
 

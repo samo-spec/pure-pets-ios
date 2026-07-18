@@ -2211,11 +2211,11 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.70];
 
     self.filterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.filterContextBar.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.3] ;//badgeSurface;//surface;
+    self.filterContextBar.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ;//badgeSurface;//surface;
     CGFloat contextRadius = PPDataViewPillRadiusForHeight(kPPFilterContextBarHeight, 16.0);
     self.filterContextBar.layer.cornerRadius = contextRadius;
     self.filterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.filterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
+    self.filterContextBar.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.72].CGColor;
     self.filterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
     self.filterContextBar.layer.shadowOpacity = darkMode ? 0.10 : 0.07;
     self.filterContextBar.layer.shadowRadius = 10.0;
