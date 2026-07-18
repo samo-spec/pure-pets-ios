@@ -296,6 +296,19 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     }
     if ([self isAdvertisementViewModel:viewModel]) {
         NSString *identity = PPUniversalSwiftUISafeString(viewModel.subtitle);
+        if ([viewModel.ModelObject isKindOfClass:PetAd.class]) {
+            NSString *genderText = PPUniversalSwiftUISafeString(
+                ((PetAd *)viewModel.ModelObject).genderText);
+            if (genderText.length > 0 && identity.length > 0) {
+                NSMutableArray<NSString *> *details = [NSMutableArray array];
+                for (NSString *part in [identity componentsSeparatedByString:@" · "]) {
+                    if (![part isEqualToString:genderText]) {
+                        [details addObject:part];
+                    }
+                }
+                identity = [details componentsJoinedByString:@" · "];
+            }
+        }
         NSString *location = PPUniversalSwiftUISafeString(viewModel.location);
         if (horizontalLayout && identity.length > 0 && location.length > 0) {
             return [NSString stringWithFormat:@"%@ - %@", identity, location];
@@ -388,6 +401,28 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
     return [self metadataTextForViewModel:viewModel].length > 0
         ? @"scalemass.fill"
         : nil;
+}
+
++ (NSString *)advertisementGenderValueForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    if (![viewModel.ModelObject isKindOfClass:PetAd.class]) {
+        return nil;
+    }
+
+    PetAd *ad = (PetAd *)viewModel.ModelObject;
+    NSString *gender = [PPUniversalSwiftUISafeString(ad.gender).lowercaseString
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if ([gender isEqualToString:@"male"] ||
+        [gender isEqualToString:@"female"] ||
+        [gender isEqualToString:@"undefined"]) {
+        return gender;
+    }
+    if (gender.length > 0) {
+        return @"undefined";
+    }
+
+    // Preserve legacy ads that predate the canonical string field.
+    return ad.isFemale ? @"female" : @"male";
 }
 
 + (void)registerStockNotificationForViewModel:(PPUniversalCellViewModel *)viewModel

@@ -52,6 +52,12 @@ public enum PPUniversalCardDiscountStyle: Equatable {
     case inline
 }
 
+public enum PPUniversalCardGender: String, Equatable {
+    case male
+    case female
+    case undefined
+}
+
 public struct PPUniversalCardPalette {
     public var primary: Color
     public var primaryDarker: Color
@@ -152,6 +158,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var reasonText: String?
     public var discountText: String?
     public var availability: PPUniversalAvailability?
+    public var gender: PPUniversalCardGender?
     public var isFavorite: Bool
     public var isOwner: Bool
     public var isPubliclyVisible: Bool
@@ -177,6 +184,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         reasonText: String? = nil,
         discountText: String? = nil,
         availability: PPUniversalAvailability? = nil,
+        gender: PPUniversalCardGender? = nil,
         isFavorite: Bool = false,
         isOwner: Bool = false,
         isPubliclyVisible: Bool = true,
@@ -201,6 +209,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.reasonText = reasonText
         self.discountText = discountText
         self.availability = availability
+        self.gender = gender
         self.isFavorite = isFavorite
         self.isOwner = isOwner
         self.isPubliclyVisible = isPubliclyVisible
@@ -460,6 +469,12 @@ private final class PPUniversalCardStore: ObservableObject {
                 metaSystemImage: resolvedMetadataIcon
             )
             : nil
+        let gender = resolvedContext.isAdvertisement
+            ? Self.cardGender(
+                PPUniversalCellSwiftUIBridge
+                    .advertisementGenderValue(for: viewModel)
+            )
+            : nil
 
         self.viewModel = viewModel
         self.context = resolvedContext
@@ -506,6 +521,7 @@ private final class PPUniversalCardStore: ObservableObject {
             reasonText: reason,
             discountText: discountText,
             availability: availability,
+            gender: gender,
             isFavorite: false,
             isOwner: viewModel.isOwner,
             isPubliclyVisible: viewModel.isPubliclyVisible,
@@ -921,6 +937,15 @@ private final class PPUniversalCardStore: ObservableObject {
         }
     }
 
+    private static func cardGender(
+        _ value: String?
+    ) -> PPUniversalCardGender? {
+        guard let value else {
+            return nil
+        }
+        return PPUniversalCardGender(rawValue: value)
+    }
+
     static func localized(_ key: String, fallback: String) -> String {
         PPUniversalCellSwiftUIBridge.localizedString(
             forKey: key,
@@ -1182,10 +1207,8 @@ private struct PPUniversalCardRenderer: View {
                     bottomCTA
                 }
 
-                if let availability = store.model.availability,
-                   (!availability.text.isEmpty || availability.metaText?.isEmpty == false),
-                   !usesCompressedAccessibilityLayout {
-                    availabilityRow(availability)
+                if hasBottomBadges {
+                    bottomBadgesRow
                         .padding(.top, 9)
                 }
             } else {
@@ -1210,10 +1233,8 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, hasPrice ? 8 : 10)
             }
 
-            if let availability = store.model.availability,
-               (!availability.text.isEmpty || availability.metaText?.isEmpty == false),
-               !usesCompressedAccessibilityLayout {
-                availabilityRow(availability)
+            if hasBottomBadges {
+                bottomBadgesRow
                     .padding(.top, showsBottomCTA ? 8 : 10)
             }
         }
@@ -1672,15 +1693,35 @@ private struct PPUniversalCardRenderer: View {
         .opacity(enabled ? 1 : 0.32)
     }
 
-    private func availabilityRow(
-        _ availability: PPUniversalAvailability
-    ) -> some View {
-        let hasMeta = availability.metaText?.isEmpty == false
-        let hasText = !availability.text.isEmpty
-        let bothActive = hasMeta && hasText
+    private var hasBottomBadges: Bool {
+        let availability = store.model.availability
+        let hasAvailability =
+            availability?.text.isEmpty == false ||
+            availability?.metaText?.isEmpty == false
+        return store.model.gender != nil ||
+            (hasAvailability && !usesCompressedAccessibilityLayout)
+    }
+
+    private var bottomBadgesRow: some View {
+        let availability = store.model.availability
+        let hasMeta =
+            !usesCompressedAccessibilityLayout &&
+            availability?.metaText?.isEmpty == false
+        let hasText =
+            !usesCompressedAccessibilityLayout &&
+            availability?.text.isEmpty == false
+        let hasGender = store.model.gender != nil
+        let activeBadgeCount =
+            (hasMeta ? 1 : 0) +
+            (hasText ? 1 : 0) +
+            (hasGender ? 1 : 0)
+        let fillsAvailableWidth = hasText && (hasMeta || hasGender)
 
         return HStack(spacing: 6) {
-            if let meta = availability.metaText, !meta.isEmpty {
+            if hasMeta,
+               let meta = availability?.metaText,
+               !meta.isEmpty,
+               let availability {
                 PPUniversalPill(
                     text: meta,
                     systemImage: availability.metaSystemImage,
@@ -1689,11 +1730,11 @@ private struct PPUniversalCardRenderer: View {
                         colorScheme == .dark ? 0.16 : 0.10
                     ),
                     border: metaForeground(availability).opacity(0.18),
-                    fillWidth: bothActive
+                    fillWidth: hasText
                 )
             }
 
-            if !availability.text.isEmpty {
+            if hasText, let availability, !availability.text.isEmpty {
                 PPUniversalPill(
                     text: availability.text,
                     foreground: availabilityForeground(availability.tone),
@@ -1701,15 +1742,53 @@ private struct PPUniversalCardRenderer: View {
                         colorScheme == .dark ? 0.16 : 0.10
                     ),
                     border: availabilityForeground(availability.tone).opacity(0.18),
-                    fillWidth: bothActive
+                    fillWidth: fillsAvailableWidth
                 )
             }
 
-            if !bothActive {
+            if let gender = store.model.gender {
+                PPUniversalPill(
+                    text: genderTitle(gender),
+                    foreground: genderForeground(gender),
+                    background: genderForeground(gender).opacity(
+                        colorScheme == .dark ? 0.18 : 0.11
+                    ),
+                    border: genderForeground(gender).opacity(0.22)
+                )
+            }
+
+            if activeBadgeCount < 2 {
                 Spacer(minLength: 0)
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func genderTitle(_ gender: PPUniversalCardGender) -> String {
+        switch gender {
+        case .male:
+            return PPUniversalCardStore.localized("Male", fallback: "Male")
+        case .female:
+            return PPUniversalCardStore.localized("Female", fallback: "Female")
+        case .undefined:
+            return PPUniversalCardStore.localized(
+                "no_value",
+                fallback: "Undefined"
+            )
+        }
+    }
+
+    private func genderForeground(
+        _ gender: PPUniversalCardGender
+    ) -> Color {
+        switch gender {
+        case .male:
+            return Color(uiColor: .systemBlue)
+        case .female:
+            return Color(uiColor: .systemPink)
+        case .undefined:
+            return Color(uiColor: .secondaryLabel)
+        }
     }
 
     @ViewBuilder
@@ -2025,8 +2104,8 @@ private struct PPUniversalCardRenderer: View {
     private var adsModeCTAGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(colors: [
-                store.palette.primaryDarker,
-                store.palette.primaryShiner
+                store.palette.primary,
+                store.palette.primary
             ]),
             startPoint: .topLeading,
             endPoint: .bottomTrailing

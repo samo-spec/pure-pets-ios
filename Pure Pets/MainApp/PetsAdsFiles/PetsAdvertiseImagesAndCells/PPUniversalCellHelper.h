@@ -58,6 +58,7 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
                                                      context:(PPCellContext)context;
 + (nullable NSString *)metadataTextForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)metadataSystemImageForViewModel:(PPUniversalCellViewModel *)viewModel;
++ (nullable NSString *)advertisementGenderValueForViewModel:(PPUniversalCellViewModel *)viewModel;
 
 + (BOOL)isSuggestionsSectionForViewModel:(PPUniversalCellViewModel *)viewModel
                                 delegate:(nullable id)delegate;
