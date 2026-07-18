@@ -255,7 +255,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.textStackView.axis = UILayoutConstraintAxisHorizontal;
     self.textStackView.alignment = UIStackViewAlignmentCenter;
     self.textStackView.distribution = UIStackViewDistributionFill;
-    self.textStackView.spacing = 12.0;
+    self.textStackView.spacing = 8.0;
     self.textStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 11.0, *)) {
         [self.textStackView setCustomSpacing:16.0 afterView:self.titleLabel];

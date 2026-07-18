@@ -65,6 +65,7 @@ public struct PPUniversalCardPalette {
     public var diffColor: Color
     public var accent: Color
     public var surface: Color
+    public var cardColor: Color
     public var groupedSurface: Color
     public var ink: Color
     public var secondaryInk: Color
@@ -79,6 +80,7 @@ public struct PPUniversalCardPalette {
         diffColor: Color,
         accent: Color,
         surface: Color,
+        cardColor: Color,
         groupedSurface: Color,
         ink: Color,
         secondaryInk: Color,
@@ -92,6 +94,7 @@ public struct PPUniversalCardPalette {
         self.diffColor = diffColor
         self.accent = accent
         self.surface = surface
+        self.cardColor = cardColor
         self.groupedSurface = groupedSurface
         self.ink = ink
         self.secondaryInk = secondaryInk
@@ -107,6 +110,7 @@ public struct PPUniversalCardPalette {
         diffColor: Color(uiColor: UIColor(named: "diffColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
         accent: Color(uiColor: .systemTeal),
         surface: Color(uiColor: .secondarySystemGroupedBackground),
+        cardColor: Color(uiColor: UIColor(named: "cardColor") ?? UIColor(red: 0.96, green: 0.25, blue: 0.42, alpha: 1)),
         groupedSurface: Color(uiColor: .tertiarySystemGroupedBackground),
         ink: Color(uiColor: .label),
         secondaryInk: Color(uiColor: .secondaryLabel),
@@ -1139,7 +1143,7 @@ private struct PPUniversalCardRenderer: View {
                             systemImage: "eye.slash.fill",
                             foreground: .white,
                             background: .black.opacity(0.66),
-                            border: store.palette.warning.opacity(0.42)
+                            border: store.palette.diffColor.opacity(0.22)
                         )
                     }
                     Spacer(minLength: 0)
@@ -1883,8 +1887,8 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var cardBackground: some View {
-        store.palette.surface.opacity(
-            reduceTransparency || colorScheme == .dark ? 0.98 : 0.96
+        store.palette.cardColor.opacity(
+            reduceTransparency || colorScheme == .dark ? 0.98 : 1.0
         )
     }
 
@@ -1892,8 +1896,8 @@ private struct PPUniversalCardRenderer: View {
         cardShape.stroke(
             store.userBordersV2
                 ? (store.isSelected
-                    ? store.palette.primary.opacity(0.52)
-                    : Color.primary.opacity(colorScheme == .dark ? 0.16 : 0.075))
+                    ? store.palette.primary.opacity(0.12)
+                   : store.palette.diffColor.opacity(0.08))
                 : Color.clear,
             lineWidth: store.isSelected ? 0.75 : 0.75
         )

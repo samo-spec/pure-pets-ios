@@ -62,7 +62,7 @@ static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.68;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 164.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
-static const CGFloat kPPDataViewSectionsIslandCornerRadius = 18.0;
+static const CGFloat kPPDataViewSectionsIslandCornerRadius = 16.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 22.0;
 
@@ -527,10 +527,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
     glass.cornerGlowOpacityMultiplier = 0.02;
     //glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
-    glass.tintColor = [AppPrimaryClr colorWithAlphaComponent:0.2];
-    glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+    //glass.tintColor = [AppPrimaryClr colorWithAlphaComponent:0.2];
+    glass.accentStyle = PPHeroGlassAccentStyleSolid;
     glass.overrideCornerRadius = kPPDataViewSectionsIslandCornerRadius;
-    glass.accentColorOverride = [[UIColor colorNamed:@"NewBg"] colorWithAlphaComponent:0.4];
+    glass.overrideSolidColor = [AppSurfColor colorWithAlphaComponent:1.0];
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
 
@@ -2211,7 +2211,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.70];
 
     self.filterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.filterContextBar.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ;//badgeSurface;//surface;
+    self.filterContextBar.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.04] ;//badgeSurface;//surface;
     CGFloat contextRadius = PPDataViewPillRadiusForHeight(kPPFilterContextBarHeight, 16.0);
     self.filterContextBar.layer.cornerRadius = contextRadius;
     self.filterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;

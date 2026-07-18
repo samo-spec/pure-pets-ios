@@ -4,12 +4,26 @@
 
 static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
+    lightColor = lightColor ?: UIColor.whiteColor;
+    darkColor = darkColor ?: UIColor.blackColor;
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
         }];
     }
     return lightColor;
+}
+
+static inline UIColor *PPModerHomeColorWithAlpha(UIColor *color, CGFloat alpha, UIColor *fallback)
+{
+    UIColor *resolvedColor = color ?: fallback ?: UIColor.clearColor;
+    return [resolvedColor colorWithAlphaComponent:alpha] ?: UIColor.clearColor;
+}
+
+static inline id PPModerHomeCGColorWithAlpha(UIColor *color, CGFloat alpha, UIColor *fallback)
+{
+    UIColor *resolvedColor = PPModerHomeColorWithAlpha(color, alpha, fallback);
+    return (__bridge id)resolvedColor.CGColor;
 }
 
 static inline CGFloat PPModerHomePlateDimension(void)
@@ -395,12 +409,13 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 - (void)pp_updateAccentWashColors
 {
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
+    accent = accent ?: [self pp_accentColorForKind:nil isAll:YES];
     CGFloat leadingAlpha = self.isKindSelected ? 0.26 : 0.050;
     CGFloat middleAlpha = self.isKindSelected ? 0.105 : 0.012;
     self.accentWashLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:leadingAlpha].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:middleAlpha].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+        PPModerHomeCGColorWithAlpha(accent, leadingAlpha, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, middleAlpha, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, 0.0, UIColor.clearColor)
     ];
 }
 
@@ -415,9 +430,9 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 
     BOOL isAll = self.isAllOption;
     self.bottomGlowLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.28].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.13 : 0.19].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+        PPModerHomeCGColorWithAlpha(accent, isAll ? 0.18 : 0.28, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, isAll ? 0.13 : 0.19, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, 0.0, UIColor.clearColor)
     ];
     [self pp_applyMotionLayerPaletteWithAccent:accent];
 }
@@ -430,9 +445,9 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
     }
 
     self.tapHaloLayer.colors = @[
-        (__bridge id)[accent colorWithAlphaComponent:0.30].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.10].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+        PPModerHomeCGColorWithAlpha(accent, 0.30, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, 0.10, UIColor.clearColor),
+        PPModerHomeCGColorWithAlpha(accent, 0.0, UIColor.clearColor)
     ];
 }
 
@@ -440,6 +455,7 @@ static NSString * const PPModerHomeGlowCommitAnimationKey = @"pp.moderHome.glowC
 {
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
+    accent = accent ?: [self pp_accentColorForKind:nil isAll:YES];
     UIColor *regularStroke = [UIColor.whiteColor colorWithAlphaComponent:0.11];
     UIColor *selectedStroke = [accent colorWithAlphaComponent:self.isAllOption ? 0.58 : 0.48];
     BOOL borderlessRestoredSelection = selected && self.usesRestoredSelectionAppearance;

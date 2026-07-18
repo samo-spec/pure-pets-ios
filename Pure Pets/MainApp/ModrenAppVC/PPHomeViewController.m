@@ -13176,7 +13176,7 @@ presentingViewController:self
 
 - (void)pp_applyPremiumHomeBackgroundAppearance
 {
-    UIColor *backgroundColor = AppBackgroundClrLigter ?: AppBackgroundClr ?: UIColor.whiteColor;
+    UIColor *backgroundColor =   AppBackgroundClr;
     self.view.backgroundColor = backgroundColor;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     self.pp_premiumBackgroundCanvasView.backgroundColor = backgroundColor;
