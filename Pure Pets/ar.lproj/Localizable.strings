@@ -1367,6 +1367,8 @@
 "Category" = "الفئة";
 "data_nav_species" = "النوع";
 "data_nav_breed" = "السلالة";
+"data_nav_all_species" = "كل الأنواع";
+"data_nav_all_breed" = "كل السلالات";
 "Breed" = "السلالة";
 "Subcategory" = "الفئة الفرعية";
 "Price" = "السعر";
@@ -3493,6 +3495,7 @@
 "dataview_filters_expand_accessibility" = "إظهار الفلاتر";
 "dataview_filters_expand_active_count_format" = "إظهار الفلاتر · %ld";
 "dataview_filters_active_count_accessibility_format" = "%ld فلاتر مفعّلة";
+"dataview_smart_filter_additional_count_format" = "+%ld";
 
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "اختر الفئة الأساسية المناسبة للإعلان.";
@@ -3592,4 +3595,24 @@
 "media_preview_mute" = "كتم الصوت";
 "media_preview_unmute" = "تشغيل الصوت";
 
+/* Modern Segmented Control */
+"modern_segmented_accessibility_label" = "عنصر اختيار مقسم";
+"modern_segmented_selected" = "محدد";
+"modern_segmented_not_selected" = "غير محدد";
+"modern_segmented_no_selection" = "لا يوجد اختيار";
+"modern_segmented_select_hint" = "اضغط مرتين للاختيار.";
+"modern_segmented_loading_title" = "جارٍ تحميل الخيارات";
+"modern_segmented_empty_title" = "لا توجد خيارات";
+"modern_segmented_error_title" = "الخيارات غير متاحة";
+"modern_segmented_retry" = "إعادة المحاولة";
+
 "ad_no_location_placeholder" = "الموقع غير محدد";
+
+/* Saved for Later Feature */
+"saved_for_later" = "المحفوظات لاحقاً";
+"choose_items_to_move" = "اختر المنتجات لنقلها إلى السلة";
+"move_to_cart" = "انقل للسلة";
+"moved_to_cart_success" = "تم النقل للسلة";
+"moving_to_cart" = "جاري النقل...";
+"reported_successfully" = "تم الإبلاغ بنجاح";
+"report" = "إبلاغ";

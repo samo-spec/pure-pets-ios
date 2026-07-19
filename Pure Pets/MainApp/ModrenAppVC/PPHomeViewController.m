@@ -14,6 +14,7 @@
 #import "PPHomeActionCell.h"
 #import "PPHomeViewController.h"
 #import "PPRootTabBarController.h"
+#import "PPSaveForLaterManager.h"
 #import "PPSPinnerView.h"
 #import "PPSearchViewController.h"
 #import "PPDataViewInput.h"
@@ -2043,25 +2044,27 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         });
     }
 
-    if (navigate) {
-        __weak typeof(self) weakSelf = self;
-        dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf pp_refreshHomeCategorySelectionAnimated:changed];
-        });
-    } else {
+    void (^applySelectionAndRoute)(void) = ^{
         [self pp_refreshHomeCategorySelectionAnimated:changed];
-    }
 
-    if (!navigate) {
+        if (!navigate) {
+            return;
+        }
+        if (isAll) {
+            [self handleDeepLinkWithTarget:PPDeepLinkTargetAllCategories
+                                  mainKind:nil
+                                    source:PPInputSourceHomeMainKindsSection];
+        } else if (kind) {
+            [self handleMainKindSelection:kind];
+        }
+    };
+
+    if ([NSThread isMainThread]) {
+        applySelectionAndRoute();
         return;
     }
-    if (isAll) {
-        [self handleDeepLinkWithTarget:PPDeepLinkTargetAllCategories
-                              mainKind:nil
-                                source:PPInputSourceHomeMainKindsSection];
-    } else if (kind) {
-        [self handleMainKindSelection:kind];
-    }
+
+    dispatch_async(dispatch_get_main_queue(), applySelectionAndRoute);
 }
 
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames
@@ -9688,6 +9691,24 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.homeSmartSearchView setCollapseProgress:collapse
                                overscrollProgress:overscroll
                                          animated:animated];
+
+    if (self.homeCartButton) {
+        CGFloat scale = 1.0 - (collapse * 0.22); // scale down to 0.78
+        CGAffineTransform transform = CGAffineTransformMakeScale(scale, scale);
+        CGFloat alpha = 1.0 - (collapse * 0.25); // alpha down to 0.75
+        if (animated) {
+            [UIView animateWithDuration:0.22
+                                  delay:0.0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                self.homeCartButton.transform = transform;
+                self.homeCartButton.alpha = alpha;
+            } completion:nil];
+        } else {
+            self.homeCartButton.transform = transform;
+            self.homeCartButton.alpha = alpha;
+        }
+    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -13108,6 +13129,81 @@ presentingViewController:self
                                                showInAppMarket:nextVisible
                                                     completion:handleResult];
     }
+}
+
+- (NSString *)pp_chatOwnerIDForViewModel:(PPUniversalCellViewModel *)viewModel
+{
+    id model = viewModel.ModelObject;
+    if ([model isKindOfClass:NSClassFromString(@"PetAd")]) {
+        return [model valueForKey:@"ownerID"];
+    }
+    if ([model isKindOfClass:NSClassFromString(@"ServiceModel")]) {
+        return [model valueForKey:@"serviceOwnerID"];
+    }
+    if ([model respondsToSelector:@selector(ownerID)]) {
+        return [model performSelector:@selector(ownerID)];
+    }
+    if ([model respondsToSelector:@selector(userID)]) {
+        return [model performSelector:@selector(userID)];
+    }
+    return @"";
+}
+
+- (void)PPUniversalCell_tapChat:(PPUniversalCellViewModel *)universalModel
+{
+    if (!PPIsUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    NSString *ownerID = [self pp_chatOwnerIDForViewModel:universalModel];
+    if (ownerID.length == 0) {
+        [PPHUD showInfo:kLang(@"bb_dataview_full_details_contact_unavailable")];
+        return;
+    }
+
+    NSString *currentUID = UserManager.sharedManager.currentUser.ID ?: PPCurrentFIRAuthUser.uid ?: @"";
+    if ([ownerID isEqualToString:currentUID]) {
+        [PPHUD showInfo:kLang(@"bb_dataview_full_details_chat_self_unavailable")];
+        return;
+    }
+
+    [PPHUD showLoading:kLang(@"bb_dataview_full_details_opening_chat")];
+    __weak typeof(self) weakSelf = self;
+    [UsrMgr getOtherUserModelFromFirestoreWithUID:ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) { return; }
+            [PPHUD dismiss];
+
+            if (error || !user || user.ID.length == 0) {
+                [PPHUD showError:kLang(@"bb_dataview_full_details_contact_unavailable")];
+                return;
+            }
+
+            [ChManager.sharedManager createOrGetChatThreadWithUser:user
+                                                        completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable chatError) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (chatError || !thread) {
+                        [PPHUD showError:kLang(@"SomethingWentWrong") subtitle:chatError.localizedDescription ?: @""];
+                        return;
+                    }
+                    [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
+                });
+            }];
+        });
+    }];
+}
+
+- (void)PPUniversalCell_tapReport:(PPUniversalCellViewModel *)universalModel
+{
+    [PPHUD showSuccess:kLang(@"reported_successfully")];
+}
+
+- (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel
+{
+    [[PPSaveForLaterManager sharedManager] saveViewModelForLater:universalModel];
+    [PPHUD showSuccess:kLang(@"Saved")];
 }
 
 #pragma mark - Background

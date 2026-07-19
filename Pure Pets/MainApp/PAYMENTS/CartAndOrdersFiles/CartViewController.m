@@ -7,6 +7,8 @@
 #import "CartViewController.h"
 
 #import "CartManager.h"
+#import "PPSaveForLaterManager.h"
+#import "PPSavedForLaterBottomSheetVC.h"
 #import "PPCartCalculator.h"
 #import "PPOrderManager.h"
 #import "PPSPinnerView.h"
@@ -120,6 +122,9 @@ static UIColor *PPCartScreenBackgroundColor(void)
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
 @property (nonatomic, assign) CGFloat headerCollapseProgress;
+
+- (void)pp_updateSavedForLaterFooter;
+
 @end
 
 @implementation CartViewController
@@ -185,10 +190,15 @@ static UIColor *PPCartScreenBackgroundColor(void)
                                              selector:@selector(updateViewFromSync)
                                                  name:kCartUpdatedNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_updateSavedForLaterFooter)
+                                                 name:@"PPSaveForLaterUpdatedNotification"
+                                               object:nil];
     
     // Initial UI
     [self setupFormFooterFrom:@"LOAD"];
     [self updateTotalLabel];
+    [self pp_updateSavedForLaterFooter];
     [self pp_applyEmptyStateIfNeeded];
 }
 
@@ -391,6 +401,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
     [self updateTotalLabel];
     [self.summaryView layoutIfNeeded];
     [self pp_startBackgroundGlowMotionIfNeeded];
+    [self pp_updateSavedForLaterFooter];
     [self pp_applyBottomSurfaceAnimated:animated];
 }
 
@@ -1458,6 +1469,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
 
     [self.cartTableView reloadData];
     [self updateTotalLabel];
+    [self pp_updateSavedForLaterFooter];
 }
 
 - (void)pp_notifyCartBadgeAndCollections
@@ -1896,6 +1908,90 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     } completion:nil];
 }
 
+- (void)pp_updateSavedForLaterFooter
+{
+    NSArray *saved = [[PPSaveForLaterManager sharedManager] savedItems];
+    if (saved.count == 0) {
+        self.cartTableView.tableFooterView = nil;
+        return;
+    }
+    
+    UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.cartTableView.bounds.size.width, 72.0)];
+    footerView.backgroundColor = UIColor.clearColor;
+    
+    UIButton *pillButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    pillButton.translatesAutoresizingMaskIntoConstraints = NO;
+    pillButton.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
+    pillButton.layer.cornerRadius = 20.0;
+    pillButton.layer.borderWidth = 1.0;
+    pillButton.layer.borderColor = [GM.appPrimaryColor colorWithAlphaComponent:0.18].CGColor;
+    pillButton.clipsToBounds = YES;
+    
+    [pillButton addTarget:self action:@selector(pp_didTapSavedForLaterPill) forControlEvents:UIControlEventTouchUpInside];
+    
+    UIImage *bookmarkIcon = [[UIImage systemImageNamed:@"bookmark.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:bookmarkIcon];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = GM.appPrimaryColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [pillButton addSubview:iconView];
+    
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.textColor = GM.appPrimaryColor;
+    titleLabel.font = [UIFont fontWithName:@"Beiruti-Bold" size:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold];
+    NSString *countStr = [NSString stringWithFormat:@" (%lu)", (unsigned long)saved.count];
+    NSString *labelText = [NSString stringWithFormat:@"%@%@", kLang(@"saved_for_later"), countStr];
+    titleLabel.text = labelText;
+    [pillButton addSubview:titleLabel];
+    
+    [footerView addSubview:pillButton];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [pillButton.centerXAnchor constraintEqualToAnchor:footerView.centerXAnchor],
+        [pillButton.centerYAnchor constraintEqualToAnchor:footerView.centerYAnchor],
+        [pillButton.heightAnchor constraintEqualToConstant:40.0],
+        [pillButton.widthAnchor constraintEqualToConstant:220.0],
+        
+        [iconView.leadingAnchor constraintEqualToAnchor:pillButton.leadingAnchor constant:16.0],
+        [iconView.centerYAnchor constraintEqualToAnchor:pillButton.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:16.0],
+        [iconView.heightAnchor constraintEqualToConstant:16.0],
+        
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:8.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:pillButton.trailingAnchor constant:-16.0],
+        [titleLabel.centerYAnchor constraintEqualToAnchor:pillButton.centerYAnchor]
+    ]];
+    
+    self.cartTableView.tableFooterView = footerView;
+}
+
+- (void)pp_didTapSavedForLaterPill
+{
+    PPSavedForLaterBottomSheetVC *bottomSheet = [[PPSavedForLaterBottomSheetVC alloc] init];
+    __weak typeof(self) weakSelf = self;
+    bottomSheet.onDismiss = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [strongSelf pp_updateSavedForLaterFooter];
+            [strongSelf updateViewFromSync];
+        }
+    };
+    bottomSheet.onItemsMovedToCart = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [strongSelf pp_updateSavedForLaterFooter];
+            [strongSelf updateViewFromSync];
+            [strongSelf pp_notifyCartBadgeAndCollections];
+        }
+    };
+    [self presentViewController:bottomSheet animated:NO completion:nil];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 @end
 
 
@@ -2268,12 +2364,5 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         if (self.onCancel) self.onCancel();
     }];
 }
-
-
-// Remove notification observer on dealloc
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-}
-
 
 @end

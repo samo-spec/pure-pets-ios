@@ -60,6 +60,10 @@ typedef NS_ENUM(NSInteger, PPUniversalAvailabilityTone) {
 + (nullable NSString *)metadataSystemImageForViewModel:(PPUniversalCellViewModel *)viewModel;
 + (nullable NSString *)advertisementGenderValueForViewModel:(PPUniversalCellViewModel *)viewModel;
 
++ (void)fetchOwnerProfileForUID:(NSString *)uid
+                      viewModel:(PPUniversalCellViewModel *)viewModel
+                     completion:(void (^)(NSString * _Nullable name, NSString * _Nullable avatarURL, double rating))completion;
+
 + (BOOL)isSuggestionsSectionForViewModel:(PPUniversalCellViewModel *)viewModel
                                 delegate:(nullable id)delegate;
 

@@ -572,6 +572,7 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
                withSpeed:(float)animationSpeed
               completion:(void (^)(BOOL success))completion
 {
+    NSLog(@"Lottie --- >>>   fetch Lottie JSON: %@", fileName);
     [AppClasses fetchLottieJSONFromFirebasePath:[NSString stringWithFormat:@"LottieAnimations/%@.json", fileName]
                                      completion:^(NSDictionary * _Nonnull jsonDict, NSError * _Nonnull error) {
 
@@ -615,6 +616,7 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
     });
     //[cache removeAllObjects];
     // Use storage path as the cache key (works for .json and .lottie)
+    NSLog(@"🔄 Fetching Lottie JSON for storagePath: %@", storagePath);
     NSString *cacheKey = [NSString stringWithFormat:@"lottie_%@", storagePath];
 
     // Check cache
@@ -678,9 +680,11 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
         // === .LOTTIE SUPPORT ===
         // Requires SSZipArchive to unzip the dotlottie package
 #if __has_include(<SSZipArchive/SSZipArchive.h>)
+        NSLog(@"🚀 Starting extraction of .lottie package...");
         NSError *jsonErr = nil;
         NSDictionary *json = PPDotLottieJSONFromData(data, &jsonErr);
         if (!json) {
+            NSLog(@"❌ Failed to extract animation JSON from .lottie data: %@", jsonErr.localizedDescription);
             if (completion) completion(nil, jsonErr ?: [NSError errorWithDomain:@"LottieFetch" code:-8 userInfo:@{NSLocalizedDescriptionKey:@"Invalid animation JSON inside .lottie"}]);
             return;
         }
@@ -691,6 +695,7 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
         if (completion) completion(json, nil);
 #else
         // SSZipArchive not present → tell the caller
+        NSLog(@"❌ .lottie support requires SSZipArchive. Add `pod 'SSZipArchive'` or supply a .json file.");
         NSError *noZipErr = [NSError errorWithDomain:@"LottieFetch"
                                                 code:-9
                                             userInfo:@{NSLocalizedDescriptionKey:

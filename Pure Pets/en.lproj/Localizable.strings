@@ -1390,6 +1390,8 @@
 "Category" = "Category";
 "data_nav_species" = "Species";
 "data_nav_breed" = "Breed";
+"data_nav_all_species" = "All Species";
+"data_nav_all_breed" = "All Breed";
 "Breed" = "Breed";
 "Subcategory" = "Subcategory";
 "Price" = "Price";
@@ -3514,6 +3516,7 @@
 "dataview_filters_expand_accessibility" = "Show filters";
 "dataview_filters_expand_active_count_format" = "Show filters · %ld";
 "dataview_filters_active_count_accessibility_format" = "%ld active filters";
+"dataview_smart_filter_additional_count_format" = "+%ld";
 
 /* Premium Option Picker */
 "option_picker_species_subtitle" = "Choose the main category that fits this ad.";
@@ -3613,4 +3616,24 @@
 "media_preview_mute" = "Mute";
 "media_preview_unmute" = "Unmute";
 
+/* Modern Segmented Control */
+"modern_segmented_accessibility_label" = "Segmented control";
+"modern_segmented_selected" = "Selected";
+"modern_segmented_not_selected" = "Not selected";
+"modern_segmented_no_selection" = "No selection";
+"modern_segmented_select_hint" = "Double tap to select.";
+"modern_segmented_loading_title" = "Loading options";
+"modern_segmented_empty_title" = "No options";
+"modern_segmented_error_title" = "Options unavailable";
+"modern_segmented_retry" = "Retry";
+
 "ad_no_location_placeholder" = "Location not specified";
+
+/* Saved for Later Feature */
+"saved_for_later" = "Saved for later";
+"choose_items_to_move" = "Choose items to move to cart";
+"move_to_cart" = "Move to Cart";
+"moved_to_cart_success" = "Moved to cart successfully";
+"moving_to_cart" = "Moving to cart...";
+"reported_successfully" = "Reported successfully";
+"report" = "Report";

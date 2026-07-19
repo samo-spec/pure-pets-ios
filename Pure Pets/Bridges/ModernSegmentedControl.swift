@@ -2,11 +2,8 @@
 //  ModernSegmentedControl.swift
 //  PurePets
 //
-//  Production-grade SwiftUI segmented control — Apple Design Award caliber
-//  Pure SwiftUI replica of PPModrenSegmrnted (UIKit). Legacy ObjC untouched.
-//
-//  Design: gradient selection pill + dot underline, glass container,
-//  spring animation, haptics, RTL, Dynamic Type, accessibility.
+//  Premium SwiftUI segmented control hosted from Objective-C.
+//  Business contract mirrors PPModrenSegmrnted; this file owns presentation only.
 //
 
 import SwiftUI
@@ -18,6 +15,7 @@ public struct ModernSegmentedItem: Identifiable, Hashable {
     public var id: String {
         "\(title)_\(iconName ?? "")_\(selectedIconName ?? "")"
     }
+
     public let title: String
     public let iconName: String?
     public let selectedIconName: String?
@@ -29,17 +27,75 @@ public struct ModernSegmentedItem: Identifiable, Hashable {
     }
 }
 
+public enum ModernSegmentedControlState: Equatable {
+    case content
+    case loading
+    case empty
+    case error(String?)
+
+    fileprivate var animationKey: String {
+        switch self {
+        case .content:
+            return "content"
+        case .loading:
+            return "loading"
+        case .empty:
+            return "empty"
+        case .error(let message):
+            return "error_\(message ?? "")"
+        }
+    }
+}
+
 // MARK: - Segmented Control
 
+private enum ModernSegmentedStrings {
+    static func localized(_ key: String) -> String {
+        NSLocalizedString(key, comment: "")
+    }
+}
+
+private enum ModernSegmentedMetrics {
+    static let outerInset: CGFloat = 3
+    static let segmentSpacing: CGFloat = 3
+    static let horizontalTextPadding: CGFloat = 6
+    static let iconTextSpacing: CGFloat = 4
+    static let selectionDotDiameter: CGFloat = 6
+    static let selectionPillInset: CGFloat = 2
+    static let containerCornerRadius: CGFloat = 16
+    static let controlMinHeight: CGFloat = 44
+    static let stateIconSize: CGFloat = 13
+    static let focusRingOutset: CGFloat = 2
+}
+
 private struct SegmentButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
     let isSelected: Bool
     let alpha: CGFloat
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(alpha)
-            .scaleEffect(configuration.isPressed ? 0.975 : 1.0)
-            .animation(.easeOut(duration: 0.18), value: configuration.isPressed)
+            .opacity(effectiveAlpha(isPressed: configuration.isPressed))
+            .scaleEffect(pressScale(isPressed: configuration.isPressed))
+            .animation(
+                reduceMotion ? nil : .easeOut(duration: configuration.isPressed ? 0.08 : 0.16),
+                value: configuration.isPressed
+            )
+    }
+
+    private func effectiveAlpha(isPressed: Bool) -> CGFloat {
+        guard isEnabled else { return 0.34 }
+        if isPressed {
+            return isSelected ? 0.92 : min(alpha + 0.08, 0.86)
+        }
+        return alpha
+    }
+
+    private func pressScale(isPressed: Bool) -> CGFloat {
+        guard isPressed, !reduceMotion else { return 1 }
+        return isSelected ? 0.972 : 0.965
     }
 }
 
@@ -61,21 +117,16 @@ public struct ModernSegmentedControl: View {
     private let selectedFont: Font
     private let hidesContainerChrome: Bool
     private let hapticsEnabled: Bool
+    private let state: ModernSegmentedControlState
+    private let retryAction: (() -> Void)?
 
     // 3) State / Binding / Stored properties
     @Binding private var selectedIndex: Int
-    @State private var totalWidth: CGFloat = 0
-
-    // Constants matching PPModrenSegmrnted
-    private static let outerInset: CGFloat        = 3
-    private static let segmentSpacing: CGFloat     = 3
-    private static let selectionDotDiameter: CGFloat = 6
-    private static let selectionPillInset: CGFloat = 2
-    private static let containerCornerRadius: CGFloat = 16
-    private static let controlHeight: CGFloat      = 44
-    private static let animDuration: TimeInterval  = 0.22
-    private static let springDamping: CGFloat      = 0.78
-    private static let springVelocity: CGFloat     = 0.24
+    @Namespace private var selectionNamespace
+    @State private var isKeyboardFocused = false
+    @State private var keyboardFocusToken = 0
+    @ScaledMetric(relativeTo: .caption) private var iconSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption) private var stateTextSize: CGFloat = 12
 
     private struct SegmentItemWrapper: Identifiable {
         let index: Int
@@ -88,41 +139,52 @@ public struct ModernSegmentedControl: View {
         items.enumerated().map { SegmentItemWrapper(index: $0.offset, item: $0.element) }
     }
 
-    private var segmentWidth: CGFloat {
-        guard totalWidth > 0, !items.isEmpty else { return 0 }
-        let spacingTotal = Self.outerInset * 2 + Self.segmentSpacing * CGFloat(items.count - 1)
-        return max(0, (totalWidth - spacingTotal) / CGFloat(items.count))
+    private var isDark: Bool {
+        colorScheme == .dark
     }
 
-    private var isDark: Bool { colorScheme == .dark }
-
-    private var accentColor: Color { selectedSegmentColor }
-
-    private var isSelectionVisible: Bool {
-        selectedIndex >= 0 && selectedIndex < items.count && isEnabled
-    }
-
-    /// Visual index accounting for RTL (HStack flips visually, offset needs mirroring)
-    private var visualSelectedOffset: CGFloat {
-        guard selectedIndex >= 0, selectedIndex < items.count, segmentWidth > 0 else { return 0 }
-        let isRTL = layoutDirection == .rightToLeft
-        let visualIndex = isRTL
-            ? CGFloat(items.count - 1 - selectedIndex)
-            : CGFloat(selectedIndex)
-        return Self.outerInset + visualIndex * (segmentWidth + Self.segmentSpacing)
+    private var accentColor: Color {
+        selectedSegmentColor
     }
 
     private var effectiveCornerRadius: CGFloat {
-        max(Self.containerCornerRadius, Self.controlHeight * 0.5)
+        max(ModernSegmentedMetrics.containerCornerRadius, ModernSegmentedMetrics.controlMinHeight * 0.5)
     }
 
-    private var selectionAnimation: Animation {
-        guard !reduceMotion else { return .default }
-        return .spring(
-            response: Self.animDuration,
-            dampingFraction: Self.springDamping,
-            blendDuration: Self.springVelocity
-        )
+    private var selectionAnimation: Animation? {
+        reduceMotion
+            ? nil
+            : .spring(response: 0.24, dampingFraction: 0.86, blendDuration: 0.06)
+    }
+
+    private var stateTransitionAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.18)
+    }
+
+    private var effectiveState: ModernSegmentedControlState {
+        if state == .content && items.isEmpty {
+            return .empty
+        }
+        return state
+    }
+
+    private var showsSegments: Bool {
+        effectiveState == .content && !items.isEmpty
+    }
+
+    private var allowsSelection: Bool {
+        isEnabled && showsSegments
+    }
+
+    private var shouldShowIcons: Bool {
+        return false
+    }
+
+    private var rootAccessibilityValue: String {
+        guard selectedIndex >= 0, selectedIndex < items.count else {
+            return ModernSegmentedStrings.localized("modern_segmented_no_selection")
+        }
+        return items[selectedIndex].title
     }
 
     // 5) Init
@@ -136,15 +198,17 @@ public struct ModernSegmentedControl: View {
         normalFont: Font? = nil,
         selectedFont: Font? = nil,
         hidesContainerChrome: Bool = false,
-        hapticsEnabled: Bool = true
+        hapticsEnabled: Bool = true,
+        state: ModernSegmentedControlState = .content,
+        retryAction: (() -> Void)? = nil
     ) {
         self.items = items
         self._selectedIndex = selectedIndex
 
         let fallbackSurface = Color(uiColor: UIColor(named: "AppForegroundColor")
                                     ?? .secondarySystemBackground)
-        let fallbackAccent  = Color(uiColor: UIColor(named: "AppPrimaryColor")
-                                    ?? .systemBlue)
+        let fallbackAccent = Color(uiColor: UIColor(named: "AppPrimaryColor")
+                                   ?? .systemBlue)
         let fallbackPrimaryText = Color(uiColor: UIColor(named: "PrimaryTextColor")
                                         ?? .label)
 
@@ -152,10 +216,12 @@ public struct ModernSegmentedControl: View {
         self.selectedSegmentColor = selectedSegmentColor ?? fallbackAccent
         self.normalTextColor = normalTextColor ?? Color(uiColor: .secondaryLabel)
         self.selectedTextColor = selectedTextColor ?? fallbackPrimaryText
-        self.normalFont = normalFont ?? .system(size: 14, weight: .medium)
-        self.selectedFont = selectedFont ?? .system(size: 14, weight: .semibold)
+        self.normalFont = normalFont ?? .system(.caption, design: .rounded).weight(.medium)
+        self.selectedFont = selectedFont ?? .system(.caption, design: .rounded).weight(.semibold)
         self.hidesContainerChrome = hidesContainerChrome
         self.hapticsEnabled = hapticsEnabled
+        self.state = state
+        self.retryAction = retryAction
     }
 
     public init(
@@ -168,7 +234,9 @@ public struct ModernSegmentedControl: View {
         normalFont: Font? = nil,
         selectedFont: Font? = nil,
         hidesContainerChrome: Bool = false,
-        hapticsEnabled: Bool = true
+        hapticsEnabled: Bool = true,
+        state: ModernSegmentedControlState = .content,
+        retryAction: (() -> Void)? = nil
     ) {
         self.init(
             items: titles.map { ModernSegmentedItem(title: $0) },
@@ -180,53 +248,38 @@ public struct ModernSegmentedControl: View {
             normalFont: normalFont,
             selectedFont: selectedFont,
             hidesContainerChrome: hidesContainerChrome,
-            hapticsEnabled: hapticsEnabled
+            hapticsEnabled: hapticsEnabled,
+            state: state,
+            retryAction: retryAction
         )
     }
 
     // 6) Body
     public var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack {
             if !hidesContainerChrome {
                 containerView
             }
 
-            if isSelectionVisible {
-                selectionPillView
-                    .frame(
-                        width: segmentWidth - Self.selectionPillInset * 2,
-                        height: Self.controlHeight - Self.outerInset * 2 - Self.selectionPillInset * 2
-                    )
-                    .offset(x: visualSelectedOffset + Self.selectionPillInset,
-                            y: Self.outerInset + Self.selectionPillInset)
-                    .transition(.identity)
-                    .animation(selectionAnimation, value: selectedIndex)
+            Group {
+                if showsSegments {
+                    segmentsView
+                        .transition(.opacity)
+                } else {
+                    stateView(for: effectiveState)
+                        .transition(.opacity)
+                }
             }
-
-            segmentsView
-                .padding(.horizontal, Self.outerInset)
-                .frame(maxHeight: .infinity)
-
-            if isSelectionVisible {
-                selectionDotView
-                    .offset(
-                        x: visualSelectedOffset + segmentWidth / 2 - Self.selectionDotDiameter / 2,
-                        y: Self.controlHeight - 6 - Self.selectionDotDiameter
-                    )
-                    .transition(.identity)
-                    .animation(selectionAnimation, value: selectedIndex)
-            }
+            .animation(stateTransitionAnimation, value: effectiveState.animationKey)
         }
-        .frame(height: Self.controlHeight)
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onAppear { totalWidth = geo.size.width }
-                    .onChange(of: geo.size.width) { newValue in totalWidth = newValue }
-            }
-        )
+        .frame(minHeight: ModernSegmentedMetrics.controlMinHeight)
+        .contentShape(RoundedRectangle(cornerRadius: effectiveCornerRadius, style: .continuous))
+        .overlay(focusRingView)
+        .background(keyboardCommandBridge)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Segmented control")
+        .accessibilityLabel(ModernSegmentedStrings.localized("modern_segmented_accessibility_label"))
+        .accessibilityValue(rootAccessibilityValue)
+        .accessibilityAdjustableAction(handleAccessibilityAdjustment)
     }
 
     // 7) View Builders / Helpers
@@ -234,46 +287,41 @@ public struct ModernSegmentedControl: View {
     private var containerView: some View {
         let radius = effectiveCornerRadius
 
-        ZStack {
-            RoundedRectangle(cornerRadius: radius, style: .continuous)
-                .fill(containerBackgroundColor.opacity(isDark ? 0.28 : 0.14))
-                .overlay(
-                    RoundedRectangle(cornerRadius: radius, style: .continuous)
-                        .stroke(
-                            isDark ? Color.clear : containerBackgroundColor.opacity(0.58),
-                            lineWidth: 0.92
-                        )
-                )
-        }
-        .shadow(
-            color: Color.black.opacity(isDark ? 0.16 : 0.08),
-            radius: 14, x: 0, y: 8
-        )
+        RoundedRectangle(cornerRadius: radius, style: .continuous)
+            .fill(containerBackgroundColor.opacity(isDark ? 0.30 : 0.16))
+            .shadow(
+                color: Color.black.opacity(isDark ? 0.16 : 0.08),
+                radius: 14,
+                x: 0,
+                y: 8
+            )
     }
 
     private var selectionPillView: some View {
-        let radius = effectiveCornerRadius - Self.outerInset - Self.selectionPillInset
+        let radius = max(8, effectiveCornerRadius - ModernSegmentedMetrics.outerInset - ModernSegmentedMetrics.selectionPillInset)
         let accent = accentColor
 
         return RoundedRectangle(cornerRadius: radius, style: .continuous)
             .fill(
                 LinearGradient(
                     colors: [
-                        accent.opacity(isDark ? 0.34 : 0.18),
-                        accent.opacity(isDark ? 0.20 : 0.095),
-                        Color.white.opacity(isDark ? 0.045 : 0.26)
+                        accent.opacity(isDark ? 0.36 : 0.20),
+                        accent.opacity(isDark ? 0.21 : 0.10),
+                        Color.white.opacity(isDark ? 0.05 : 0.28)
                     ],
-                    startPoint: .init(x: 0.18, y: 0),
-                    endPoint: .init(x: 0.86, y: 1)
+                    startPoint: .init(x: 0.16, y: 0.00),
+                    endPoint: .init(x: 0.88, y: 1.00)
                 )
             )
             .overlay(
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(accent.opacity(isDark ? 0.24 : 0.18), lineWidth: 1.05)
+                    .stroke(accent.opacity(isDark ? 0.12 : 0.08), lineWidth: 1.05)
             )
             .shadow(
-                color: (isDark ? accent : Color.black).opacity(isDark ? 0.18 : 0.11),
-                radius: 12, x: 0, y: 4
+                color: (isDark ? accent : Color.black).opacity(isDark ? 0.18 : 0.10),
+                radius: 10,
+                x: 0,
+                y: 4
             )
     }
 
@@ -290,44 +338,212 @@ public struct ModernSegmentedControl: View {
                     endPoint: .trailing
                 )
             )
-            .frame(width: Self.selectionDotDiameter, height: Self.selectionDotDiameter)
+            .frame(
+                width: ModernSegmentedMetrics.selectionDotDiameter,
+                height: ModernSegmentedMetrics.selectionDotDiameter
+            )
             .shadow(
                 color: accentColor.opacity(isDark ? 0.24 : 0.20),
-                radius: 5, x: 0, y: 2
+                radius: 5,
+                x: 0,
+                y: 2
             )
     }
 
     private var segmentsView: some View {
-        HStack(spacing: Self.segmentSpacing) {
+        HStack(spacing: ModernSegmentedMetrics.segmentSpacing) {
             ForEach(wrappedItems) { wrapper in
-                segmentContent(for: wrapper.index)
-                    .frame(width: segmentWidth)
+                segmentButton(for: wrapper.index, item: wrapper.item)
             }
         }
-        .frame(maxHeight: .infinity)
+        .padding(ModernSegmentedMetrics.outerInset)
+        .animation(selectionAnimation, value: selectedIndex)
     }
 
-    private func segmentContent(for index: Int) -> some View {
+    private func segmentButton(for index: Int, item: ModernSegmentedItem) -> some View {
         let isSelected = index == selectedIndex
-        let alpha: CGFloat = {
-            guard isEnabled else { return 0.34 }
-            return isSelected ? 1.0 : 0.70
-        }()
+        let alpha = segmentAlpha(isSelected: isSelected)
 
         return Button(action: { selectSegment(at: index) }) {
-            Text(items[index].title)
-                .font(isSelected ? selectedFont : normalFont)
-                .foregroundStyle(textColor(for: index))
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
+            ZStack {
+                if isSelected && allowsSelection {
+                    selectionPillView
+                        .matchedGeometryEffect(id: "modern.segmented.selectionPill", in: selectionNamespace)
+                        .padding(ModernSegmentedMetrics.selectionPillInset)
+                        .transition(.opacity)
+
+                    selectionDotView
+                        .matchedGeometryEffect(id: "modern.segmented.selectionDot", in: selectionNamespace)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, 3)
+                        .transition(.opacity)
+                }
+
+                SegmentLabel(
+                    item: item,
+                    isSelected: isSelected,
+                    showsIcon: shouldShowIcons,
+                    iconSize: min(max(iconSize, 12), 17),
+                    textColor: textColor(for: index),
+                    normalFont: normalFont,
+                    selectedFont: selectedFont
+                )
+                .padding(.horizontal, ModernSegmentedMetrics.horizontalTextPadding)
+            }
+            .frame(maxWidth: .infinity, minHeight: ModernSegmentedMetrics.controlMinHeight - ModernSegmentedMetrics.outerInset * 2)
+            .contentShape(RoundedRectangle(cornerRadius: effectiveCornerRadius, style: .continuous))
         }
         .buttonStyle(SegmentButtonStyle(isSelected: isSelected, alpha: alpha))
-        .accessibilityLabel(items[index].title)
+        .disabled(!allowsSelection)
+        .accessibilityLabel(item.title)
+        .accessibilityHint(
+            isSelected
+                ? ""
+                : ModernSegmentedStrings.localized("modern_segmented_select_hint")
+        )
+        .accessibilityValue(
+            isSelected
+                ? ModernSegmentedStrings.localized("modern_segmented_selected")
+                : ModernSegmentedStrings.localized("modern_segmented_not_selected")
+        )
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityValue(isSelected ? "Selected" : "")
+        .accessibilityIdentifier("modern.segmented.segment.\(index)")
+    }
+
+    @ViewBuilder
+    private func stateView(for state: ModernSegmentedControlState) -> some View {
+        switch state {
+        case .content:
+            EmptyView()
+        case .loading:
+            loadingStateView
+        case .empty:
+            compactStateView(
+                iconName: "line.3.horizontal.decrease.circle",
+                title: ModernSegmentedStrings.localized("modern_segmented_empty_title"),
+                titleColor: normalTextColor,
+                retryAction: nil
+            )
+        case .error(let message):
+            compactStateView(
+                iconName: "exclamationmark.triangle.fill",
+                title: message?.isEmpty == false
+                    ? (message ?? "")
+                    : ModernSegmentedStrings.localized("modern_segmented_error_title"),
+                titleColor: Color(uiColor: .systemRed),
+                retryAction: retryAction
+            )
+        }
+    }
+
+    private var loadingStateView: some View {
+        HStack(spacing: ModernSegmentedMetrics.segmentSpacing) {
+            ForEach(0..<placeholderCount, id: \.self) { index in
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(placeholderGradient(index: index))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+            }
+        }
+        .padding(ModernSegmentedMetrics.outerInset)
+        .redacted(reason: .placeholder)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(ModernSegmentedStrings.localized("modern_segmented_loading_title"))
+    }
+
+    private func compactStateView(
+        iconName: String,
+        title: String,
+        titleColor: Color,
+        retryAction: (() -> Void)?
+    ) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: iconName)
+                .font(.system(size: ModernSegmentedMetrics.stateIconSize, weight: .semibold))
+                .foregroundStyle(titleColor.opacity(isEnabled ? 0.90 : 0.40))
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(.system(size: stateTextSize, weight: .semibold, design: .rounded))
+                .foregroundStyle(titleColor.opacity(isEnabled ? 0.88 : 0.40))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .allowsTightening(true)
+
+            if let retryAction = retryAction {
+                Button(action: retryAction) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 28, height: 28)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(accentColor.opacity(isEnabled ? 1 : 0.36))
+                .disabled(!isEnabled)
+                .accessibilityLabel(ModernSegmentedStrings.localized("modern_segmented_retry"))
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: ModernSegmentedMetrics.controlMinHeight)
+    }
+
+    private var focusRingView: some View {
+        RoundedRectangle(
+            cornerRadius: effectiveCornerRadius + ModernSegmentedMetrics.focusRingOutset,
+            style: .continuous
+        )
+        .stroke(
+            isKeyboardFocused && allowsSelection
+                ? accentColor.opacity(isDark ? 0.62 : 0.42)
+                : Color.clear,
+            lineWidth: 0
+        )
+        .padding(-ModernSegmentedMetrics.focusRingOutset)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: isKeyboardFocused)
+    }
+
+    private var keyboardCommandBridge: some View {
+        SegmentKeyboardCommandBridge(
+            isEnabled: allowsSelection,
+            focusToken: keyboardFocusToken,
+            onLeft: {
+                moveSelectionBy(layoutDirection == .rightToLeft ? 1 : -1)
+            },
+            onRight: {
+                moveSelectionBy(layoutDirection == .rightToLeft ? -1 : 1)
+            },
+            onFocusChange: { isFocused in
+                isKeyboardFocused = isFocused
+            }
+        )
+        .frame(width: 0, height: 0)
+        .accessibilityHidden(true)
+    }
+
+    private var placeholderCount: Int {
+        if items.isEmpty {
+            return 3
+        }
+        return max(2, min(items.count, 4))
+    }
+
+    private func placeholderGradient(index: Int) -> LinearGradient {
+        let baseOpacity = isDark ? 0.18 : 0.12
+        let liftOpacity = isDark ? 0.10 : 0.20
+        return LinearGradient(
+            colors: [
+                normalTextColor.opacity(baseOpacity),
+                Color.white.opacity(liftOpacity),
+                normalTextColor.opacity(baseOpacity * 0.72)
+            ],
+            startPoint: index.isMultiple(of: 2) ? .topLeading : .bottomLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private func segmentAlpha(isSelected: Bool) -> CGFloat {
+        guard isEnabled else { return 0.34 }
+        return isSelected ? 1.0 : 0.70
     }
 
     private func textColor(for index: Int) -> Color {
@@ -335,20 +551,216 @@ public struct ModernSegmentedControl: View {
         return index == selectedIndex ? selectedTextColor : normalTextColor
     }
 
-    // 8) Async functions / Methods
+    private func clampedSelectionIndex(_ index: Int) -> Int {
+        guard !items.isEmpty else { return -1 }
+        return max(0, min(index, items.count - 1))
+    }
+
+    // 8) Interaction Methods
     private func selectSegment(at index: Int) {
-        guard isEnabled, index != selectedIndex else { return }
-        if hapticsEnabled {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        guard allowsSelection else { return }
+        requestKeyboardFocus()
+        let resolvedIndex = clampedSelectionIndex(index)
+        guard resolvedIndex != selectedIndex else { return }
+
+        triggerSelectionFeedback()
+        withAnimation(selectionAnimation) {
+            selectedIndex = resolvedIndex
         }
-        selectedIndex = index
+    }
+
+    private func triggerSelectionFeedback() {
+        guard hapticsEnabled else { return }
+        let generator = UISelectionFeedbackGenerator()
+        generator.prepare()
+        generator.selectionChanged()
+    }
+
+    private func requestKeyboardFocus() {
+        keyboardFocusToken += 1
+    }
+
+    private func handleAccessibilityAdjustment(_ direction: AccessibilityAdjustmentDirection) {
+        guard allowsSelection else { return }
+
+        switch direction {
+        case .increment:
+            moveSelectionBy(1)
+        case .decrement:
+            moveSelectionBy(-1)
+        @unknown default:
+            break
+        }
+    }
+
+    private func moveSelectionBy(_ delta: Int) {
+        guard !items.isEmpty else { return }
+
+        let currentIndex = selectedIndex >= 0 ? clampedSelectionIndex(selectedIndex) : 0
+        let nextIndex = clampedSelectionIndex(currentIndex + delta)
+        selectSegment(at: nextIndex)
+    }
+}
+
+// MARK: - Keyboard Commands
+
+private struct SegmentKeyboardCommandBridge: UIViewRepresentable {
+    let isEnabled: Bool
+    let focusToken: Int
+    let onLeft: () -> Void
+    let onRight: () -> Void
+    let onFocusChange: (Bool) -> Void
+
+    func makeUIView(context: Context) -> SegmentKeyboardCommandView {
+        let view = SegmentKeyboardCommandView()
+        view.isAccessibilityElement = false
+        return view
+    }
+
+    func updateUIView(_ view: SegmentKeyboardCommandView, context: Context) {
+        view.isCommandEnabled = isEnabled
+        view.onLeft = onLeft
+        view.onRight = onRight
+        view.onFocusChange = onFocusChange
+
+        if !isEnabled {
+            _ = view.resignFirstResponder()
+            return
+        }
+
+        if view.focusToken != focusToken {
+            view.focusToken = focusToken
+            DispatchQueue.main.async { [weak view] in
+                _ = view?.becomeFirstResponder()
+            }
+        }
+    }
+}
+
+private final class SegmentKeyboardCommandView: UIView {
+    var isCommandEnabled = false {
+        didSet {
+            if !isCommandEnabled {
+                _ = resignFirstResponder()
+            }
+        }
+    }
+    var focusToken = 0
+    var onLeft: (() -> Void)?
+    var onRight: (() -> Void)?
+    var onFocusChange: ((Bool) -> Void)?
+
+    override var canBecomeFirstResponder: Bool {
+        isCommandEnabled
+    }
+
+    override var keyCommands: [UIKeyCommand]? {
+        guard isCommandEnabled else { return [] }
+        return [
+            UIKeyCommand(input: UIKeyCommand.inputLeftArrow, modifierFlags: [], action: #selector(handleLeftArrow)),
+            UIKeyCommand(input: UIKeyCommand.inputRightArrow, modifierFlags: [], action: #selector(handleRightArrow))
+        ]
+    }
+
+    override func becomeFirstResponder() -> Bool {
+        let didBecomeFirstResponder = super.becomeFirstResponder()
+        if didBecomeFirstResponder {
+            onFocusChange?(true)
+        }
+        return didBecomeFirstResponder
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let didResignFirstResponder = super.resignFirstResponder()
+        if didResignFirstResponder {
+            onFocusChange?(false)
+        }
+        return didResignFirstResponder
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            onFocusChange?(false)
+        }
+    }
+
+    @objc private func handleLeftArrow() {
+        onLeft?()
+    }
+
+    @objc private func handleRightArrow() {
+        onRight?()
+    }
+}
+
+// MARK: - Segment Label
+
+private struct SegmentLabel: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let item: ModernSegmentedItem
+    let isSelected: Bool
+    let showsIcon: Bool
+    let iconSize: CGFloat
+    let textColor: Color
+    let normalFont: Font
+    let selectedFont: Font
+
+    private var iconName: String? {
+        if isSelected, let selectedIconName = item.selectedIconName, !selectedIconName.isEmpty {
+            return selectedIconName
+        }
+        if let iconName = item.iconName, !iconName.isEmpty {
+            return iconName
+        }
+        return nil
+    }
+
+    var body: some View {
+        HStack(spacing: showsIcon ? ModernSegmentedMetrics.iconTextSpacing : 0) {
+            if showsIcon, let iconName = iconName {
+                SegmentIcon(name: iconName)
+                    .frame(width: iconSize, height: iconSize)
+                    .foregroundStyle(textColor)
+                    .scaleEffect(isSelected && !reduceMotion ? 1.04 : 1.0)
+                    .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                    .accessibilityHidden(true)
+            }
+
+            Text(item.title)
+                .font(isSelected ? selectedFont : normalFont)
+                .foregroundStyle(textColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .allowsTightening(true)
+                .truncationMode(.tail)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .ignore)
+        .animation(
+            reduceMotion ? nil : .easeOut(duration: 0.16),
+            value: isSelected
+        )
+    }
+}
+
+private struct SegmentIcon: View {
+    let name: String
+
+    var body: some View {
+        if let image = UIImage(systemName: name) ?? UIImage(named: name) {
+            Image(uiImage: image.withRenderingMode(.alwaysTemplate))
+                .resizable()
+                .scaledToFit()
+        }
     }
 }
 
 // MARK: - Preview
 
 @available(iOS 17.0, *)
-#Preview("2 segments – LTR") {
+#Preview("2 segments - LTR") {
     @Previewable @State var index = 0
     ModernSegmentedControl(
         items: [
@@ -364,7 +776,7 @@ public struct ModernSegmentedControl: View {
 }
 
 @available(iOS 17.0, *)
-#Preview("2 segments – RTL") {
+#Preview("2 segments - RTL") {
     @Previewable @State var index = 0
     ModernSegmentedControl(
         items: [
@@ -385,13 +797,12 @@ public struct ModernSegmentedControl: View {
     @Previewable @State var index = 0
     ModernSegmentedControl(
         items: [
-            ModernSegmentedItem(title: "Ads", iconName: "doc.text", selectedIconName: "doc.text.fill"),
-            ModernSegmentedItem(title: "Food", iconName: "fork.knife", selectedIconName: "fork.knife"),
+            ModernSegmentedItem(title: "Ads", iconName: "megaphone", selectedIconName: "megaphone.fill"),
+            ModernSegmentedItem(title: "Food", iconName: "cart", selectedIconName: "cart.fill"),
             ModernSegmentedItem(title: "Vet", iconName: "cross.case", selectedIconName: "cross.case.fill")
         ],
         selectedIndex: $index,
-        selectedSegmentColor: .pink,
-        selectedTextColor: .white
+        selectedSegmentColor: .pink
     )
     .padding(.horizontal, 16)
     .frame(height: 50)
@@ -404,6 +815,42 @@ public struct ModernSegmentedControl: View {
         titles: ["Option A", "Option B", "Option C"],
         selectedIndex: $index,
         hidesContainerChrome: true
+    )
+    .padding(.horizontal, 16)
+    .frame(height: 50)
+}
+
+@available(iOS 17.0, *)
+#Preview("Loading") {
+    @Previewable @State var index = 1
+    ModernSegmentedControl(
+        titles: ["One", "Two", "Three"],
+        selectedIndex: $index,
+        state: .loading
+    )
+    .padding(.horizontal, 16)
+    .frame(height: 50)
+}
+
+@available(iOS 17.0, *)
+#Preview("Empty") {
+    @Previewable @State var index = -1
+    ModernSegmentedControl(
+        titles: [],
+        selectedIndex: $index
+    )
+    .padding(.horizontal, 16)
+    .frame(height: 50)
+}
+
+@available(iOS 17.0, *)
+#Preview("Error") {
+    @Previewable @State var index = 1
+    ModernSegmentedControl(
+        titles: ["One", "Two", "Three"],
+        selectedIndex: $index,
+        state: .error(nil),
+        retryAction: {}
     )
     .padding(.horizontal, 16)
     .frame(height: 50)

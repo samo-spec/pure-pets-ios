@@ -59,7 +59,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
-static CGFloat const PPCartFloatingBarHeight = 66.0;
+static CGFloat const PPCartFloatingBarHeight = 56.0;
 static CGFloat const PPCartFloatingBarRestingBottomConstant = 16.0;
 static CGFloat const PPCartFloatingBarHiddenBottomConstant = 28.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
@@ -310,6 +310,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @property (nonatomic, strong) CAGradientLayer *borderGradientLayer;
 @property (nonatomic, strong) CAShapeLayer *borderMaskLayer;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *tapFeedbackGenerator;
+@property (nonatomic, assign, getter=isCollapsed) BOOL collapsed;
+@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *expandedConstraints;
+@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *collapsedConstraints;
+- (void)setCollapsed:(BOOL)collapsed animated:(BOOL)animated;
 @end
 
 @implementation PPCartFloatingBarView
@@ -442,7 +446,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.highlightGlowView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.highlightGlowView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:-28.0],
 
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
         [self.iconOrbView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.iconOrbView.widthAnchor constraintEqualToConstant:40.0],
         [self.iconOrbView.heightAnchor constraintEqualToConstant:40.0],
@@ -450,21 +453,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.iconImageView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
         [self.iconImageView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
 
-        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:10.0],
-        [self.countBadgeLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:15.0],
         [self.countBadgeLabel.heightAnchor constraintEqualToConstant:22.0],
         [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:22.0],
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
-        [self.titleLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:14.0],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
-
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
-        [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
-        [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor constant:-14.0],
-
-        [self.ctaContainerView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-14.0],
         [self.ctaContainerView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.ctaContainerView.heightAnchor constraintEqualToConstant:38.0],
         [self.ctaContainerView.widthAnchor constraintGreaterThanOrEqualToConstant:108.0],
@@ -477,6 +468,32 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.ctaChevronView.centerYAnchor constraintEqualToAnchor:self.ctaContainerView.centerYAnchor]
     ]];
 
+    self.expandedConstraints = @[
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0],
+        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:10.0],
+        [self.countBadgeLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:10.0],
+
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:9.0],
+        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
+
+        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.countBadgeLabel.trailingAnchor constant:10.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:3.0],
+        [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ctaContainerView.leadingAnchor constant:-12.0],
+        [self.subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor constant:-14.0],
+
+        [self.ctaContainerView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-14.0]
+    ];
+
+    self.collapsedConstraints = @[
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:10.0],
+        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:6.0],
+        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-10.0],
+        [self.countBadgeLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor]
+    ];
+
+    [NSLayoutConstraint activateConstraints:self.expandedConstraints];
+
     [self addTarget:self action:@selector(pp_touchDown) forControlEvents:UIControlEventTouchDown];
     [self addTarget:self action:@selector(pp_touchUp) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
 
@@ -487,6 +504,48 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_applyAppearance];
     [self pp_applyState:nil];
     return self;
+}
+
+- (void)setCollapsed:(BOOL)collapsed
+{
+    [self setCollapsed:collapsed animated:NO];
+}
+
+- (void)setCollapsed:(BOOL)collapsed animated:(BOOL)animated
+{
+    if (_collapsed == collapsed) {
+        return;
+    }
+    _collapsed = collapsed;
+
+    void (^changes)(void) = ^{
+        if (collapsed) {
+            [NSLayoutConstraint deactivateConstraints:self.expandedConstraints];
+            [NSLayoutConstraint activateConstraints:self.collapsedConstraints];
+            self.titleLabel.alpha = 0.0;
+            self.subtitleLabel.alpha = 0.0;
+            self.ctaContainerView.alpha = 0.0;
+        } else {
+            [NSLayoutConstraint deactivateConstraints:self.collapsedConstraints];
+            [NSLayoutConstraint activateConstraints:self.expandedConstraints];
+            self.titleLabel.alpha = 1.0;
+            self.subtitleLabel.alpha = 1.0;
+            self.ctaContainerView.alpha = 1.0;
+        }
+        [self layoutIfNeeded];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.35
+                              delay:0.0
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
 }
 
 - (void)layoutSubviews
@@ -549,10 +608,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.ctaLabel.textColor = brandColor;
     self.ctaChevronView.tintColor = brandColor;
 
+    UIColor *borderColor = [GM AppForegroundColor] ?: (dark ? [UIColor colorWithWhite:0.2 alpha:1.0] : [UIColor colorWithWhite:0.9 alpha:1.0]);
     self.borderGradientLayer.colors = @[
-        (__bridge id)[brandColor colorWithAlphaComponent:(dark ? 0.34 : 0.26)].CGColor,
-        (__bridge id)[secondaryBrandColor colorWithAlphaComponent:(dark ? 0.24 : 0.18)].CGColor,
-        (__bridge id)[UIColor colorWithWhite:1.0 alpha:(dark ? 0.16 : 0.52)].CGColor
+        (__bridge id)borderColor.CGColor,
+        (__bridge id)borderColor.CGColor
     ];
     self.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:(dark ? 0.52 : 0.16)].CGColor;
 }
@@ -646,6 +705,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 @property (nonatomic, strong, nullable) PPBottomFadeView *floatingBarFadeView;
 @property (nonatomic, strong, nullable) PPCartFloatingBarView *floatingBarView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *floatingBarBottomConstraint;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *floatingBarLeadingConstraint;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *floatingBarTrailingConstraint;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *floatingBarWidthConstraint;
+@property (nonatomic, assign) BOOL isCollapsed;
+@property (nonatomic, strong, nullable) NSTimer *collapseTimer;
 @property (nonatomic, assign) BOOL preparedForPremiumReveal;
 - (BOOL)isEligibleFloatingCartSourceViewController:(UIViewController *)viewController;
 - (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated;
@@ -653,6 +717,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (nullable UIViewController *)topVisibleViewControllerFrom:(nullable UIViewController *)viewController
                                          visitedControllers:(NSMutableSet<NSValue *> *)visitedControllers;
 - (CGFloat)expectedBottomClearanceForVisibleFloatingCart;
+- (void)collapseFloatingBarAnimated:(BOOL)animated;
+- (void)expandFloatingBarAnimated:(BOOL)animated;
+- (void)startCollapseTimer;
+- (void)invalidateCollapseTimer;
 @end
 
 @implementation PPCartFloatingBarCoordinator
@@ -696,6 +764,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
     self.activeSourceViewController = nil;
     self.openCartHandler = nil;
+    [self invalidateCollapseTimer];
     [self updateVisibilityAnimated:animated];
 }
 
@@ -764,6 +833,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)handleCartUpdatedAnimated:(BOOL)animated
 {
     [self updateVisibilityAnimated:animated];
+    if (self.state.isVisible) {
+        if (self.isCollapsed) {
+            [self expandFloatingBarAnimated:animated];
+        } else {
+            [self startCollapseTimer];
+        }
+    }
 }
 
 - (void)refreshForCurrentVisibleControllerAnimated:(BOOL)animated
@@ -785,6 +861,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)handleTap
 {
     [self.floatingBarView emitTapFeedback];
+    if (self.isCollapsed) {
+        [self expandFloatingBarAnimated:YES];
+        return;
+    }
     if (self.openCartHandler) {
         self.openCartHandler();
     }
@@ -985,6 +1065,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             [self refreshActiveSourceInsetsIfNeeded];
             [source setNeedsStatusBarAppearanceUpdate];
             [self hostViewDidLayoutSubviews];
+            
+            if (self.isCollapsed) {
+                [self expandFloatingBarAnimated:YES];
+            } else {
+                [self startCollapseTimer];
+            }
         }
         return;
     }
@@ -1006,6 +1092,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                                           CGAffineTransformMakeScale(0.97, 0.97));
         }
         self.floatingBarBottomConstraint.constant = PPCartFloatingBarHiddenBottomConstant;
+        
+        self.isCollapsed = NO;
+        self.floatingBarWidthConstraint.active = NO;
+        self.floatingBarLeadingConstraint.active = YES;
+        [self.floatingBarView setCollapsed:NO animated:NO];
+        
         [host.view layoutIfNeeded];
         [host pp_setPremiumBottomNavigationHidden:YES animated:animated];
         if (fadeView) {
@@ -1025,6 +1117,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             self.preparedForPremiumReveal = NO;
             [host pp_applyBottomNavigationClearanceToVisibleLists];
             [self refreshActiveSourceInsetsIfNeeded];
+            [self startCollapseTimer];
         };
         if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
             showChanges();
@@ -1043,6 +1136,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     PPCartFloatingBarView *barView = self.floatingBarView;
     PPBottomFadeView *fadeView = self.floatingBarFadeView;
+    [self invalidateCollapseTimer];
     void (^hideChanges)(void) = ^{
         fadeView.alpha = 0.0;
         self.floatingBarBottomConstraint.constant = PPCartFloatingBarHiddenBottomConstant;
@@ -1101,14 +1195,18 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.floatingBarView = barView;
     self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:PPCartFloatingBarHiddenBottomConstant];
 
+    self.floatingBarLeadingConstraint = [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0];
+    self.floatingBarTrailingConstraint = [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0];
+    self.floatingBarWidthConstraint = [barView.widthAnchor constraintEqualToConstant:92.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
         [fadeView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor],
         [fadeView.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor],
         [fadeView.heightAnchor constraintEqualToConstant:164.0],
 
-        [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0],
-        [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0],
+        self.floatingBarLeadingConstraint,
+        self.floatingBarTrailingConstraint,
         self.floatingBarBottomConstraint,
         [barView.heightAnchor constraintEqualToConstant:PPCartFloatingBarHeight]
     ]];
@@ -1138,6 +1236,93 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         (__bridge id)[baseColor colorWithAlphaComponent:0.38].CGColor
     ];
     gradientLayer.locations = @[@0.0, @0.58, @1.0];
+}
+
+- (void)collapseFloatingBarAnimated:(BOOL)animated
+{
+    if (self.isCollapsed || !self.floatingBarView || self.floatingBarView.hidden) {
+        return;
+    }
+    self.isCollapsed = YES;
+    [self.collapseTimer invalidate];
+    self.collapseTimer = nil;
+
+    void (^changes)(void) = ^{
+        self.floatingBarLeadingConstraint.active = NO;
+        self.floatingBarWidthConstraint.active = YES;
+        [self.floatingBarView setCollapsed:YES animated:NO];
+        [self.hostController.view layoutIfNeeded];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.35
+                              delay:0.0
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
+
+- (void)expandFloatingBarAnimated:(BOOL)animated
+{
+    if (!self.isCollapsed || !self.floatingBarView || self.floatingBarView.hidden) {
+        return;
+    }
+    self.isCollapsed = NO;
+
+    void (^changes)(void) = ^{
+        self.floatingBarWidthConstraint.active = NO;
+        self.floatingBarLeadingConstraint.active = YES;
+        [self.floatingBarView setCollapsed:NO animated:NO];
+        [self.hostController.view layoutIfNeeded];
+    };
+
+    void (^completion)(BOOL) = ^(BOOL finished) {
+        [self startCollapseTimer];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.35
+                              delay:0.0
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:changes
+                         completion:completion];
+    } else {
+        changes();
+        completion(YES);
+    }
+}
+
+- (void)startCollapseTimer
+{
+    [self.collapseTimer invalidate];
+    self.collapseTimer = [NSTimer scheduledTimerWithTimeInterval:6.0
+                                                         target:self
+                                                       selector:@selector(collapseTimerFired)
+                                                       userInfo:nil
+                                                        repeats:NO];
+}
+
+- (void)collapseTimerFired
+{
+    [self collapseFloatingBarAnimated:YES];
+}
+
+- (void)invalidateCollapseTimer
+{
+    [self.collapseTimer invalidate];
+    self.collapseTimer = nil;
+}
+
+- (void)dealloc
+{
+    [_collapseTimer invalidate];
 }
 
 @end

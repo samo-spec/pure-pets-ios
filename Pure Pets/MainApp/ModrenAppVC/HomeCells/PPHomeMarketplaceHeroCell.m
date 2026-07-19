@@ -10,10 +10,24 @@
 #import "PPImageLoaderManager.h"
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PPHomePresentationTokens.h"
+#import "AppClasses.h"
+
+#if __has_include(<Lottie/Lottie.h>)
+#import <Lottie/Lottie.h>
+#elif __has_include("Lottie.h")
+#import "Lottie.h"
+#elif __has_include(<lottie-ios_Oc/Lottie.h>)
+#import <lottie-ios_Oc/Lottie.h>
+#elif __has_include(<lottie_ios_Oc/Lottie.h>)
+#import <lottie_ios_Oc/Lottie.h>
+#endif
 
 static NSString * const PPHomeMarketplaceHeroFloatMotionKey = @"pp.home.marketplaceHero.float";
 static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketplaceHero.haloBreath";
 static NSString * const PPHomeMarketplaceHeroTapHaloAnimationKey = @"pp.marketplaceHero.tapHalo";
+static NSString * const PPHomeMarketplaceHeroPlateBreathKey = @"pp.home.marketplaceHero.plateBreath";
+static NSString * const PPHomeMarketplaceHeroPrimaryTileFloatKey = @"pp.home.marketplaceHero.primaryTileFloat";
+static NSString * const PPHomeMarketplaceHeroSecondaryTileFloatKey = @"pp.home.marketplaceHero.secondaryTileFloat";
 static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
 static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
 
@@ -100,6 +114,7 @@ static BOOL PPMarketHeroReduceMotion(void)
 @interface PPHomeMarketplaceHeroCell ()
 
 @property (nonatomic, strong) UIControl *surfaceControl;
+@property (nonatomic, strong) LOTAnimationView *storefrontLottieView;
 @property (nonatomic, strong) PPBackgroundView *heroGlassBackground;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIView *eyebrowPillView;
@@ -120,6 +135,8 @@ static BOOL PPMarketHeroReduceMotion(void)
 @property (nonatomic, strong) UIImageView *storefrontIconView;
 @property (nonatomic, strong) NSLayoutConstraint *storefrontIconWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *storefrontIconHeightConstraint;
+@property (nonatomic, assign) BOOL storefrontLottieLoading;
+@property (nonatomic, assign) NSInteger storefrontLottieRequestIdentifier;
 @property (nonatomic, strong) UIView *primaryProductTileView;
 @property (nonatomic, strong) UIImageView *primaryProductIconView;
 @property (nonatomic, strong) UIView *secondaryProductTileView;
@@ -163,6 +180,9 @@ static BOOL PPMarketHeroReduceMotion(void)
 - (void)prepareForReuse
 {
     [super prepareForReuse];
+    self.storefrontLottieRequestIdentifier += 1;
+    self.storefrontLottieLoading = NO;
+    [self.storefrontLottieView stop];
     [self pp_stopAmbientMotion];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.storefrontIconView];
     self.currentArtworkImageURL = nil;
@@ -188,7 +208,17 @@ static BOOL PPMarketHeroReduceMotion(void)
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
-    [self pp_stopAmbientMotion];
+    if (self.window) {
+        [self pp_startAmbientMotionIfNeeded];
+        if ([PPSafeString(self.currentContextIdentifier) isEqualToString:@"all"] &&
+            self.storefrontLottieView.sceneModel &&
+            !self.storefrontLottieView.hidden) {
+            [self.storefrontLottieView play];
+        }
+    } else {
+        [self pp_stopAmbientMotion];
+        [self.storefrontLottieView stop];
+    }
 }
 
 - (void)layoutSubviews
@@ -256,7 +286,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.contentView.layer.shadowPath = nil;
     }
 
-    [self pp_stopAmbientMotion];
+    [self pp_startAmbientMotionIfNeeded];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -303,12 +333,11 @@ static BOOL PPMarketHeroReduceMotion(void)
             self.subtitleLabel.text = kLang(@"home_marketplace_hero_all_subtitle") ?: kLang(@"home_marketplace_hero_subtitle") ?: @"";
             self.ctaLabel.text = kLang(@"home_marketplace_hero_all_cta") ?: kLang(@"home_marketplace_hero_cta") ?: @"";
             self.accessibilityLabel = kLang(@"home_marketplace_hero_all_accessibility_label") ?: kLang(@"home_marketplace_hero_accessibility_label") ?: @"";
-            self.storefrontIconView.image = [UIImage pp_symbolNamed:@"storefront.fill"
-                                                          pointSize:46.0
-                                                             weight:UIImageSymbolWeightSemibold
-                                                              scale:UIImageSymbolScaleLarge
-                                                            palette:@[PPMarketHeroLabelIconColor()]
-                                                       makeTemplate:YES];
+            self.storefrontIconView.image = [self pp_storefrontFallbackArtwork];
+            self.storefrontIconView.alpha = 1.0;
+            self.storefrontIconView.hidden = NO;
+            self.storefrontLottieView.hidden = (self.storefrontLottieView.sceneModel == nil);
+            [self pp_loadShopLottieAnimation];
             self.primaryProductIconView.image = [UIImage pp_symbolNamed:@"bag.fill"
                                                                pointSize:15.0
                                                                   weight:UIImageSymbolWeightBold
@@ -322,6 +351,12 @@ static BOOL PPMarketHeroReduceMotion(void)
                                                                    palette:@[self.contextAccentColor ?: PPMarketHeroAccentColor()]
                                                               makeTemplate:YES];
         } else {
+            self.storefrontLottieRequestIdentifier += 1;
+            self.storefrontLottieLoading = NO;
+            self.storefrontLottieView.hidden = YES;
+            [self.storefrontLottieView stop];
+            self.storefrontIconView.alpha = 1.0;
+            self.storefrontIconView.hidden = NO;
             NSString *eyebrowFormat = kLang(@"home_marketplace_hero_category_eyebrow_format") ?: @"";
             NSString *titleFormat = kLang(@"home_marketplace_hero_category_title_format") ?: @"";
             NSString *subtitleFormat = kLang(@"home_marketplace_hero_category_subtitle_format") ?: @"";
@@ -459,6 +494,83 @@ static BOOL PPMarketHeroReduceMotion(void)
                          icon:self.secondaryProductIconView
                        accent:PPMarketHeroColor(0x6EAFA2, 1.0)
                          dark:darkMode];
+}
+
+- (void)pp_loadShopLottieAnimation
+{
+    if (![PPSafeString(self.currentContextIdentifier) isEqualToString:@"all"]) {
+        return;
+    }
+
+    if (self.storefrontLottieView.sceneModel) {
+        [self pp_showStorefrontLottieIfReady];
+        return;
+    }
+
+    if (self.storefrontLottieLoading) {
+        return;
+    }
+
+    self.storefrontLottieLoading = YES;
+    NSInteger requestIdentifier = ++self.storefrontLottieRequestIdentifier;
+
+    __weak typeof(self) weakSelf = self;
+    [AppClasses setAnimationNamed:@"petstore"
+                           ToView:self.storefrontLottieView
+                        withSpeed:0.1
+                       completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (requestIdentifier != strongSelf.storefrontLottieRequestIdentifier) {
+                return;
+            }
+            strongSelf.storefrontLottieLoading = NO;
+            if (success) {
+                [strongSelf pp_showStorefrontLottieIfReady];
+            } else {
+                [strongSelf pp_showStorefrontFallbackArtwork];
+            }
+        });
+    }];
+}
+
+- (UIImage *)pp_storefrontFallbackArtwork
+{
+    return [UIImage pp_symbolNamed:@"storefront.fill"
+                         pointSize:46.0
+                            weight:UIImageSymbolWeightSemibold
+                             scale:UIImageSymbolScaleLarge
+                           palette:@[PPMarketHeroLabelIconColor()]
+                      makeTemplate:YES];
+}
+
+- (void)pp_showStorefrontLottieIfReady
+{
+    if (![PPSafeString(self.currentContextIdentifier) isEqualToString:@"all"] ||
+        !self.storefrontLottieView.sceneModel) {
+        return;
+    }
+
+    self.storefrontIconView.alpha = 1.0;
+    self.storefrontLottieView.alpha = 0.98;
+    self.storefrontLottieView.hidden = NO;
+    self.storefrontIconView.hidden = YES;
+    [self.storefrontLottieView play];
+}
+
+- (void)pp_showStorefrontFallbackArtwork
+{
+    if (![PPSafeString(self.currentContextIdentifier) isEqualToString:@"all"]) {
+        return;
+    }
+
+    [self.storefrontLottieView stop];
+    self.storefrontLottieView.hidden = YES;
+    self.storefrontLottieView.alpha = 0.98;
+    self.storefrontIconView.image = [self pp_storefrontFallbackArtwork];
+    self.storefrontIconView.alpha = 1.0;
+    self.storefrontIconView.hidden = NO;
 }
 
 - (void)pp_configureArtworkForMainKind:(MainKindsModel *)mainKind
@@ -788,15 +900,24 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     UIImageView *storefrontIcon =
         [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"storefront.fill"
-                                                         pointSize:46.0
-                                                            weight:UIImageSymbolWeightSemibold
-                                                             scale:UIImageSymbolScaleLarge
-                                                           palette:@[PPMarketHeroLabelIconColor()]
-                                                      makeTemplate:YES]];
+                                                          pointSize:46.0
+                                                             weight:UIImageSymbolWeightSemibold
+                                                              scale:UIImageSymbolScaleLarge
+                                                            palette:@[PPMarketHeroLabelIconColor()]
+                                                       makeTemplate:YES]];
     storefrontIcon.translatesAutoresizingMaskIntoConstraints = NO;
     storefrontIcon.contentMode = UIViewContentModeScaleAspectFit;
     [plate addSubview:storefrontIcon];
     self.storefrontIconView = storefrontIcon;
+
+    LOTAnimationView *storefrontLottie = [[LOTAnimationView alloc] init];
+    storefrontLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    storefrontLottie.contentMode = UIViewContentModeScaleAspectFit;
+    storefrontLottie.loopAnimation = YES;
+    storefrontLottie.backgroundColor = UIColor.clearColor;
+    storefrontLottie.hidden = YES;
+    [plate addSubview:storefrontLottie];
+    self.storefrontLottieView = storefrontLottie;
 
     self.primaryProductTileView = [self pp_makeProductTileWithSymbol:@"bag.fill"];
     self.primaryProductIconView = (UIImageView *)self.primaryProductTileView.subviews.firstObject;
@@ -825,6 +946,11 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.storefrontIconWidthConstraint,
         self.storefrontIconHeightConstraint,
 
+        [self.storefrontLottieView.centerXAnchor constraintEqualToAnchor:plate.centerXAnchor],
+        [self.storefrontLottieView.centerYAnchor constraintEqualToAnchor:plate.centerYAnchor],
+        [self.storefrontLottieView.widthAnchor constraintEqualToAnchor:storefrontIcon.widthAnchor multiplier:1.20],
+        [self.storefrontLottieView.heightAnchor constraintEqualToAnchor:storefrontIcon.heightAnchor multiplier:1.20],
+
         [self.primaryProductTileView.widthAnchor constraintEqualToConstant:44.0],
         [self.primaryProductTileView.heightAnchor constraintEqualToConstant:44.0],
         [self.primaryProductTileView.trailingAnchor constraintEqualToAnchor:visual.trailingAnchor constant:0.0],
@@ -835,6 +961,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         [self.secondaryProductTileView.leadingAnchor constraintEqualToAnchor:visual.leadingAnchor constant:0.0],
         [self.secondaryProductTileView.bottomAnchor constraintEqualToAnchor:visual.bottomAnchor constant:-14.0],
     ]];
+    
 }
 
 - (UIView *)pp_makeProductTileWithSymbol:(NSString *)symbolName
@@ -932,10 +1059,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.contentLeadingToVisualConstraint.active = !hideVisual;
     self.contentLeadingToSurfaceConstraint.active = hideVisual;
     if (hideVisual) {
-        [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
-        [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
-    } else {
         [self pp_stopAmbientMotion];
+    } else {
+        [self pp_startAmbientMotionIfNeeded];
     }
 }
 
@@ -1072,6 +1198,48 @@ static BOOL PPMarketHeroReduceMotion(void)
                             fromScale:0.97
                               toScale:1.045
                              duration:3.8];
+    [self pp_applyBreathingGlowToView:self.storefrontPlateView
+                                  key:PPHomeMarketplaceHeroPlateBreathKey
+                            fromAlpha:1.0
+                              toAlpha:1.0
+                            fromScale:0.992
+                              toScale:1.018
+                             duration:3.4];
+    [self pp_applyFloatingMotionToView:self.primaryProductTileView
+                                   key:PPHomeMarketplaceHeroPrimaryTileFloatKey
+                                 fromY:0.0
+                                   toY:-5.0
+                              duration:3.15
+                                 delay:0.18];
+    [self pp_applyFloatingMotionToView:self.secondaryProductTileView
+                                   key:PPHomeMarketplaceHeroSecondaryTileFloatKey
+                                 fromY:0.0
+                                   toY:4.0
+                              duration:3.55
+                                 delay:0.0];
+}
+
+- (void)pp_applyFloatingMotionToView:(UIView *)view
+                                  key:(NSString *)key
+                                fromY:(CGFloat)fromY
+                                  toY:(CGFloat)toY
+                             duration:(CFTimeInterval)duration
+                                delay:(CFTimeInterval)delay
+{
+    if (!view || key.length == 0 || [view.layer animationForKey:key]) {
+        return;
+    }
+
+    CABasicAnimation *floatAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    floatAnimation.fromValue = @(fromY);
+    floatAnimation.toValue = @(toY);
+    floatAnimation.duration = duration;
+    floatAnimation.beginTime = CACurrentMediaTime() + delay;
+    floatAnimation.autoreverses = YES;
+    floatAnimation.repeatCount = HUGE_VALF;
+    floatAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    floatAnimation.removedOnCompletion = YES;
+    [view.layer addAnimation:floatAnimation forKey:key];
 }
 
 - (void)pp_applyBreathingGlowToView:(UIView *)view
@@ -1109,8 +1277,12 @@ static BOOL PPMarketHeroReduceMotion(void)
     [self.visualContainerView.layer removeAnimationForKey:PPHomeMarketplaceHeroFloatMotionKey];
     [self.heroGlassBackground stopAnimations];
     [self.visualHaloView.layer removeAnimationForKey:PPHomeMarketplaceHeroHaloBreathKey];
+    [self.storefrontPlateView.layer removeAnimationForKey:PPHomeMarketplaceHeroPlateBreathKey];
+    [self.primaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroPrimaryTileFloatKey];
+    [self.secondaryProductTileView.layer removeAnimationForKey:PPHomeMarketplaceHeroSecondaryTileFloatKey];
     self.visualContainerView.transform = CGAffineTransformIdentity;
     self.visualHaloView.transform = CGAffineTransformIdentity;
+    self.storefrontPlateView.transform = CGAffineTransformIdentity;
     self.primaryProductTileView.transform = CGAffineTransformIdentity;
     self.secondaryProductTileView.transform = CGAffineTransformIdentity;
 }

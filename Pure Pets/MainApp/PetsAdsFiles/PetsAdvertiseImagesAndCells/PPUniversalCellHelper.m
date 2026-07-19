@@ -6,6 +6,7 @@
 #import "ServiceModel.h"
 #import "VetModel.h"
 #import "UserManager.h"
+#import "UserModel.h"
 #import "PPHUD.h"
 #import "PPFunc.h"
 @import FirebaseFunctions;
@@ -116,7 +117,10 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
 + (NSString *)localizedStringForKey:(NSString *)key fallback:(NSString *)fallback
 {
     NSString *value = [Language get:key alter:nil];
-    return value.length > 0 ? value : (fallback ?: @"");
+    if (value.length == 0 || [value isEqualToString:key]) {
+        return fallback ?: key;
+    }
+    return value;
 }
 
 + (BOOL)isRightToLeft
@@ -523,6 +527,55 @@ static NSString *PPUniversalSwiftUICompactNumber(NSNumber *number)
         }
     }
     return NO;
+}
+
++ (void)fetchOwnerProfileForUID:(NSString *)uid
+                      viewModel:(PPUniversalCellViewModel *)viewModel
+                     completion:(void (^)(NSString * _Nullable name, NSString * _Nullable avatarURL, double rating))completion
+{
+    if (uid.length == 0 || !completion) {
+        if (completion) {
+            completion(nil, nil, 0.0);
+        }
+        return;
+    }
+
+    [UsrMgr getOtherUserModelFromFirestoreWithUID:uid completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+        if (error || !user) {
+            completion(nil, nil, 0.0);
+            return;
+        }
+
+        NSString *name = user.userName;
+        NSString *avatarURL = [user userImageUrl].absoluteString;
+        
+        double rating = 0.0;
+        id modelObj = viewModel.ModelObject;
+        if ([modelObj isKindOfClass:NSClassFromString(@"ServiceModel")]) {
+            NSNumber *serviceRating = [modelObj valueForKey:@"ratingValue"];
+            if (serviceRating) {
+                rating = [serviceRating doubleValue];
+            }
+        }
+        if (rating == 0.0) {
+            @try {
+                NSNumber *userRating = [user valueForKey:@"providerRatingValue"];
+                if (userRating) {
+                    rating = [userRating doubleValue];
+                }
+            } @catch (__unused NSException *e) {}
+        }
+        if (rating == 0.0) {
+            @try {
+                NSNumber *userRating = [user valueForKey:@"rate"];
+                if (userRating) {
+                    rating = [userRating doubleValue];
+                }
+            } @catch (__unused NSException *e) {}
+        }
+
+        completion(name, avatarURL, rating);
+    }];
 }
 
 @end

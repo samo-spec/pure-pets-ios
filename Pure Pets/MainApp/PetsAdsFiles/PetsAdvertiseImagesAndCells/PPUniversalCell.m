@@ -1839,11 +1839,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.cardLiquidBorderLayer.colors = PPUniversalCellLiquidBorderColors(isDark, selected, NO);
-    self.cardLiquidBorderLayer.opacity = selected ? 1.0 : 0.92;
+    self.cardLiquidBorderLayer.opacity = isDark ? (selected ? 1.0 : 0.92) : 0.0;
     self.cardLiquidBorderMaskLayer.lineWidth = selected ? 1.18 : PPUniversalLiquidCardBorderWidth;
 
     self.imageLiquidBorderLayer.colors = PPUniversalCellLiquidBorderColors(isDark, selected, YES);
-    self.imageLiquidBorderLayer.opacity = selected ? 1.0 : 0.94;
+    self.imageLiquidBorderLayer.opacity = isDark ? (selected ? 1.0 : 0.94) : 0.0;
     self.imageLiquidBorderMaskLayer.lineWidth = selected ? 1.0 : PPUniversalLiquidImageBorderWidth;
     [CATransaction commit];
 
@@ -1865,15 +1865,15 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
     CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
 
-    self.cardView.layer.borderWidth = selected ? (isDark ? 1.0 : 1.04) : baseCardBorderWidth;
+    self.cardView.layer.borderWidth = isDark ? (selected ? 1.0 : baseCardBorderWidth) : 0.0;
     [self.cardView pp_setBorderColor:selected
-     ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.22]
-     : baseCardBorder];
+     ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.0]
+     : (isDark ? baseCardBorder : UIColor.clearColor)];
 
-    self.imageContainer.layer.borderWidth = selected ? (isDark ? 0.84 : 0.92) : baseImageBorderWidth;
+    self.imageContainer.layer.borderWidth = isDark ? (selected ? 0.84 : baseImageBorderWidth) : 0.0;
     [self.imageContainer pp_setBorderColor:selected
-     ? [accent colorWithAlphaComponent:isDark ? 0.28 : 0.20]
-     : baseImageBorder];
+     ? [accent colorWithAlphaComponent:isDark ? 0.28 : 0.0]
+     : (isDark ? baseImageBorder : UIColor.clearColor)];
 }
 
 - (void)pp_applyBorderAppearanceSelected:(BOOL)selected isDark:(BOOL)isDark
@@ -4174,6 +4174,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_handleVideoPlayTap
 {
     if (!PPReusableVideoMediaEnabled() || !self.vm.isVideoMedia || self.vm.videoURL.length == 0) {
+        return;
+    }
+
+    if ([self.delegate respondsToSelector:@selector(PPUniversalCell_tapVideo:)]) {
+        [self.delegate PPUniversalCell_tapVideo:self.vm];
         return;
     }
 

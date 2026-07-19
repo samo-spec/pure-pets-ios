@@ -325,6 +325,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isNearbyAdsSection = false
     @Published var userBordersV2 = true
     @Published var isHomePresentation = false
+    @Published var showsOwnerRow = false
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -799,6 +800,32 @@ private final class PPUniversalCardStore: ObservableObject {
         isVideoPlaying = true
     }
 
+    func tapVideo() {
+        guard !model.isSkeleton, model.videoURL != nil else {
+            return
+        }
+
+        if let viewModel, delegateResponds(to: "PPUniversalCell_tapVideo:") {
+            stopMediaPlayback()
+            delegate?.ppUniversalCell_tapVideo?(viewModel)
+            return
+        }
+
+        if let viewModel, delegateResponds(to: "PPUniversalCell_tapCard:") {
+            stopMediaPlayback()
+            delegate?.ppUniversalCell_tapCard?(viewModel)
+            return
+        }
+
+        if actions.onTap != nil {
+            stopMediaPlayback()
+            actions.onTap?(currentModel)
+            return
+        }
+
+        toggleVideo()
+    }
+
     func stopMediaPlayback() {
         player?.pause()
         player?.replaceCurrentItem(with: nil)
@@ -812,6 +839,13 @@ private final class PPUniversalCardStore: ObservableObject {
 
     var canIncreaseQuantity: Bool {
         model.stock.map { quantity < $0 } ?? true
+    }
+
+    private func delegateResponds(to selectorName: String) -> Bool {
+        guard let object = delegate as? NSObjectProtocol else {
+            return false
+        }
+        return object.responds(to: NSSelectorFromString(selectorName))
     }
 
     var currentModel: PPUniversalCardModel {
@@ -1015,14 +1049,18 @@ private struct PPUniversalHomeCardGridMetrics {
 @available(iOS 16.0, *)
 private struct PPUniversalCardRenderer: View {
     @ObservedObject var store: PPUniversalCardStore
+    @State private var ownerName: String? = nil
+    @State private var ownerAvatarURL: String? = nil
+    @State private var ownerRating: Double = 0.0
+    @State private var hasFetchedOwner = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    private let cardRadius: CGFloat = 16
-    private let imageRadius: CGFloat = 13
+    private let cardRadius: CGFloat = 23
+    private let imageRadius: CGFloat = 20
 
     var body: some View {
         Group {
@@ -1034,8 +1072,22 @@ private struct PPUniversalCardRenderer: View {
                     imageRadius: imageRadius
                 )
             } else {
-                GeometryReader { proxy in
-                    cardLayout(size: proxy.size)
+                VStack(spacing: 8) {
+                    if store.showsOwnerRow {
+                        ownerDetailsRow
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(Color(uiColor: .secondarySystemGroupedBackground))
+                                    .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
+                            )
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+
+                    GeometryReader { proxy in
+                        cardLayout(size: proxy.size)
+                    }
                 }
             }
         }
@@ -1047,6 +1099,9 @@ private struct PPUniversalCardRenderer: View {
         )
         .onDisappear {
             store.collapseStepper(animated: false)
+        }
+        .onAppear {
+            fetchOwnerIfNeeded()
         }
     }
 
@@ -1167,7 +1222,7 @@ private struct PPUniversalCardRenderer: View {
         .clipShape(imageShape)
         .overlay(
             imageShape.stroke(
-                Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.07),
+                colorScheme == .dark ? store.palette.diffColor.opacity(0.12) : Color.clear,
                 lineWidth: 0.75
             )
         )
@@ -1229,13 +1284,7 @@ private struct PPUniversalCardRenderer: View {
             if store.model.videoURL != nil && !store.isVideoPlaying {
                 Button {
                     PPUniversalHaptics.medium()
-                    withAnimation(
-                        reduceMotion
-                            ? .easeOut(duration: 0.12)
-                            : .spring(response: 0.3, dampingFraction: 0.84)
-                    ) {
-                        store.toggleVideo()
-                    }
+                    store.tapVideo()
                 } label: {
                     Image(systemName: "play.fill")
                         .font(.system(size: 17, weight: .bold))
@@ -1245,14 +1294,17 @@ private struct PPUniversalCardRenderer: View {
                         .overlay(
                             Circle().stroke(.white.opacity(0.28), lineWidth: 0.75)
                         )
+                        .contentShape(Circle())
                 }
-                .buttonStyle(PPUniversalScaleButtonStyle())
+                .buttonStyle(.plain)
+                .accessibilityElement(children: .ignore)
                 .accessibilityLabel(
                     PPUniversalCardStore.localized(
                         "play_video",
                         fallback: "Play video"
                     )
                 )
+                .accessibilityAddTraits(.isButton)
             }
         }
     }
@@ -2097,13 +2149,108 @@ private struct PPUniversalCardRenderer: View {
 
     private var cardBorder: some View {
         cardShape.stroke(
-            store.userBordersV2
+            colorScheme == .dark && store.userBordersV2
                 ? (store.isSelected
                     ? store.palette.primary.opacity(0.12)
                    : store.palette.diffColor.opacity(0.08))
                 : Color.clear,
             lineWidth: store.isSelected ? 0.75 : 0.75
         )
+    }
+
+    private var ownerID: String? {
+        guard let modelObject = store.viewModel?.modelObject else { return nil }
+        if let petAd = modelObject as? PetAd {
+            return petAd.ownerID
+        }
+        if let accessory = modelObject as? PetAccessory {
+            return accessory.ownerID
+        }
+        if let nsObject = modelObject as? NSObject {
+            if nsObject.responds(to: NSSelectorFromString("ownerID")) {
+                return nsObject.value(forKey: "ownerID") as? String
+            }
+            if nsObject.responds(to: NSSelectorFromString("serviceOwnerID")) {
+                return nsObject.value(forKey: "serviceOwnerID") as? String
+            }
+            if nsObject.responds(to: NSSelectorFromString("userID")) {
+                return nsObject.value(forKey: "userID") as? String
+            }
+        }
+        return nil
+    }
+
+    private func fetchOwnerIfNeeded() {
+        guard !hasFetchedOwner, let uid = ownerID, let vm = store.viewModel else { return }
+        hasFetchedOwner = true
+        PPUniversalCellSwiftUIBridge.fetchOwnerProfile(forUID: uid, viewModel: vm) { name, avatarURL, rating in
+            DispatchQueue.main.async {
+                self.ownerName = name
+                self.ownerAvatarURL = avatarURL
+                self.ownerRating = rating
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var ownerDetailsRow: some View {
+        if let name = ownerName {
+            HStack(spacing: 8) {
+                if let avatarString = ownerAvatarURL,
+                   let url = URL(string: avatarString) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                        default:
+                            Image(systemName: "person.crop.circle.fill")
+                                .resizable()
+                                .foregroundStyle(.gray.opacity(0.3))
+                        }
+                    }
+                    .frame(width: 24, height: 24)
+                    .clipShape(Circle())
+                } else {
+                    Image(systemName: "person.crop.circle.fill")
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(.gray.opacity(0.3))
+                }
+
+                Text(name)
+                    .font(.custom("Beiruti-Medium", size: 13))
+                    .foregroundStyle(Color(uiColor: .label))
+                    .lineLimit(1)
+
+                if ownerRating > 0.0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "star.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(Color.yellow)
+                        Text(String(format: "%.1f", ownerRating))
+                            .font(.custom("Beiruti-Medium", size: 12))
+                            .foregroundStyle(Color(uiColor: .secondaryLabel))
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    PPUniversalHaptics.light()
+                    store.delegate?.ppUniversalCell_tapChat?(store.viewModel!)
+                } label: {
+                    Image(systemName: "message.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(store.palette.primary)
+                        .frame(width: 24, height: 24)
+                        .background(store.palette.primary.opacity(0.12), in: Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 4)
+        }
     }
 
     private func verticalMediaHeight(for size: CGSize) -> CGFloat {
@@ -2919,6 +3066,8 @@ private enum PPUniversalCardContextActionKind {
     case share
     case addToCart
     case visibility
+    case report
+    case saveForLater
 }
 
 @available(iOS 16.0, *)
@@ -3278,6 +3427,29 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
             )
         }
 
+        items.append(
+            PPUniversalCardContextAction(
+                kind: .saveForLater,
+                title: PPUniversalCardStore.localized(
+                    "saved_for_later",
+                    fallback: "Save for later"
+                ),
+                systemImage: "bookmark"
+            )
+        )
+
+        items.append(
+            PPUniversalCardContextAction(
+                kind: .report,
+                title: PPUniversalCardStore.localized(
+                    "report",
+                    fallback: "Report"
+                ),
+                systemImage: "flag",
+                attributes: .destructive
+            )
+        )
+
         return items
     }
 
@@ -3301,6 +3473,14 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
             store.handlePrimaryAction()
         case .visibility:
             store.tapVisibility()
+        case .report:
+            if let vm = bridgeViewModel {
+                delegate?.ppUniversalCell_tapReport?(vm)
+            }
+        case .saveForLater:
+            if let vm = bridgeViewModel {
+                delegate?.ppUniversalCell_tapSave?(forLater: vm)
+            }
         }
     }
 
@@ -3325,6 +3505,8 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
             return nil
         }
 
+        store.showsOwnerRow = true
+
         return UIContextMenuConfiguration(
             identifier: bridgeViewModel?.modelID as NSString?,
             previewProvider: nil
@@ -3333,13 +3515,23 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
                 return nil
             }
             let menuActions = actions.map { item in
-                UIAction(
+                let action = UIAction(
                     title: item.title,
                     image: UIImage(systemName: item.systemImage),
                     attributes: item.attributes
                 ) { [weak self] _ in
                     self?.performContextAction(item.kind)
                 }
+                if #available(iOS 16.0, *) {
+                    if let customFont = UIFont(name: "Beiruti-Medium", size: 16.0) {
+                        let attrString = NSAttributedString(
+                             string: item.title,
+                             attributes: [.font: customFont]
+                        )
+                        action.setValue(attrString, forKey: "attributedTitle")
+                    }
+                }
+                return action
             }
             return UIMenu(title: "", options: .displayInline, children: menuActions)
         }
@@ -3380,6 +3572,9 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
     ) {
         animator?.addAnimations { [weak self] in
             self?.contentView.transform = .identity
+        }
+        animator?.addCompletion { [weak self] in
+            self?.store.showsOwnerRow = false
         }
     }
 

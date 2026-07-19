@@ -26,6 +26,9 @@
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> pricingListener;
 
+- (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion
+                                 postNotification:(BOOL)postNotification;
+
 @end
 @implementation CartManager
 
@@ -406,7 +409,7 @@ presentingViewController:(UIViewController *)presentingViewController
 
                 BOOL didAdd = [self addItem:item];
                 PPCartCompleteAdd(completion, didAdd, NO);
-            }];
+            } postNotification:NO];
         } cancelBlock:^{
             PPCartCompleteAdd(completion, NO, YES);
         }];
@@ -484,12 +487,24 @@ presentingViewController:(UIViewController *)presentingViewController
 
 - (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion
 {
+    [self clearCartAndSyncToFirestoreWithCompletion:completion postNotification:YES];
+}
+
+- (void)clearCartAndSyncToFirestoreWithCompletion:(void (^ _Nullable)(BOOL success))completion
+                                 postNotification:(BOOL)postNotification
+{
     NSArray<CartItem *> *items = [self.cartItems copy];
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
 
     if (items.count == 0 || userID.length == 0) {
-        [self clearCart];
+        if (postNotification) {
+            [self clearCart];
+        } else {
+            [self.cartItems removeAllObjects];
+            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }
         if (completion) { completion(YES); }
         return;
     }
@@ -499,7 +514,13 @@ presentingViewController:(UIViewController *)presentingViewController
         if (item.itemID.length > 0) { [itemsToClear addObject:item]; }
     }
     if (itemsToClear.count == 0) {
-        [self clearCart];
+        if (postNotification) {
+            [self clearCart];
+        } else {
+            [self.cartItems removeAllObjects];
+            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }
         if (completion) { completion(YES); }
         return;
     }
@@ -526,7 +547,9 @@ presentingViewController:(UIViewController *)presentingViewController
         [weakSelf.cartItems removeAllObjects];
         [[NSUserDefaults standardUserDefaults] removeObjectForKey:kSavedCartKey];
         [[NSUserDefaults standardUserDefaults] synchronize];
-        [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        if (postNotification) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:kCartUpdatedNotification object:nil];
+        }
         if (completion) { completion(YES); }
     }];
 }

@@ -16,12 +16,15 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 // Legacy (kept)
 - (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel;
+- (void)PPUniversalCell_tapVideo:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapFavorite:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapEdit:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapDelete:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_changeQuantity:(PPUniversalCellViewModel *)universalModel quantity:(NSInteger)quantity;
-
+- (void)PPUniversalCell_tapChat:(PPUniversalCellViewModel *)universalModel;
+- (void)PPUniversalCell_tapReport:(PPUniversalCellViewModel *)universalModel;
+- (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel;
 
 @end
 

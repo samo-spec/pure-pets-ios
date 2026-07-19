@@ -317,17 +317,7 @@ public final class NovaAmbientAssistantCoordinator: NSObject {
     }
 
     private func isEligibleForAppearance() -> Bool {
-        guard sessionAppearanceCount < maxAppearancesPerSession else { return false }
-        guard !isUserTyping, !isSuppressedForCriticalFlow else { return false }
-        guard Date().timeIntervalSince(screenAppearedAt) >= minimumDwellBeforeShow else { return false }
-        guard !isCriticalScreen(screen) else { return false }
-        guard Date().timeIntervalSince1970 >= defaults.double(forKey: DefaultsKey.snoozedUntil) else { return false }
-
-        if Date().timeIntervalSince(lastAppearanceAt) < minimumGapBetweenAppearances {
-            return false
-        }
-
-        return visiblePresenter() != nil
+        return false
     }
 
     private func passiveContext() -> Context {

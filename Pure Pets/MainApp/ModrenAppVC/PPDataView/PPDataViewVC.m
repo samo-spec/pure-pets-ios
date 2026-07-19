@@ -14,6 +14,7 @@
 #import "PPAnalytics.h"
 #import "CartManager.h"
 #import "UIViewController+PPBottomSurface.h"
+#import "PPSaveForLaterManager.h"
 #import "CartViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPModrenSegmrnted.h"
@@ -21,6 +22,7 @@
 #import "ChManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PPSearchViewController.h"
+#import "FullScreenImageViewerController.h"
 #import "PPHUD.h"
 #import "UIView+Badge.h"
 #import "PPBackgroundView.h"
@@ -48,8 +50,8 @@ static const CGFloat kPPProviderFilterChipHeight = 44.0;
 static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
 static const CGFloat kPPFilterContextBarHeight = 44.0;
-static const CGFloat kPPFilterContextBadgeHeight = 28.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 44.0;
+static const CGFloat kPPFilterContextBadgeHeight = 34.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 40.0;
 
 static const CGFloat kPPFilterIslandTopPadding = 5.0;
 static const CGFloat kPPFilterIslandRowSpacing = 6.0;
@@ -63,9 +65,9 @@ static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.68;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 164.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
-static const CGFloat kPPDataViewSectionsIslandCornerRadius = 22.0;
+static const CGFloat kPPDataViewSectionsIslandCornerRadius = 18.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 18.0;
-static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 22.0;
+static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 16.0;
 static const CGFloat kPPDataViewHeaderCollapseDistance = 176.0;
 static const CGFloat kPPDataViewHeaderCollapsedYOffset = -24.0;
 static const CGFloat kPPDataViewHeaderCollapsedScaleX = 0.984;
@@ -366,7 +368,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.liquidBorderLayer.endPoint = CGPointMake(1.0, 0.5);
     self.liquidBorderMaskLayer = [CAShapeLayer layer];
     self.liquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
-    self.liquidBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.liquidBorderMaskLayer.strokeColor = AppSecondaryTextClr.CGColor;
     self.liquidBorderMaskLayer.lineCap = kCALineCapRound;
     self.liquidBorderMaskLayer.lineJoin = kCALineJoinRound;
     self.liquidBorderLayer.mask = self.liquidBorderMaskLayer;
@@ -377,7 +379,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.liquidShineLayer.endPoint = CGPointMake(1.0, 0.5);
     self.liquidShineMaskLayer = [CAShapeLayer layer];
     self.liquidShineMaskLayer.fillColor = UIColor.clearColor.CGColor;
-    self.liquidShineMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+    self.liquidShineMaskLayer.strokeColor = AppSecondaryTextClr.CGColor;
     self.liquidShineMaskLayer.lineCap = kCALineCapRound;
     self.liquidShineMaskLayer.lineJoin = kCALineJoinRound;
     self.liquidShineLayer.mask = self.liquidShineMaskLayer;
@@ -447,7 +449,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     UIColor *surfaceMid = [surface colorWithAlphaComponent:isDark ? 0.76 : 0.82];
     UIColor *surfaceBottom = [AppBackgroundClrLigter colorWithAlphaComponent:isDark ? 0.18 : 0.12];
     UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
-                                                 [UIColor colorWithWhite:1.0 alpha:0.54]);
+                                                 [UIColor colorWithWhite:1.0 alpha:0.34]);
     UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.58],
                                                 [UIColor colorWithWhite:1.0 alpha:0.34]);
     UIColor *borderAccent = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.74],
@@ -475,7 +477,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(borderLead, self.traitCollection)
         ];
         self.liquidBorderLayer.locations = @[@0.0, @0.34, @0.68, @1.0];
-        CGFloat baseBorderOpacity = isDark ? 0.92 : 0.90;
+        CGFloat baseBorderOpacity = isDark ? 0.92 : 0.0;
         self.liquidBorderLayer.opacity = baseBorderOpacity * (1.0 - (0.24 * dockedProgress));
 
         self.liquidShineLayer.colors = @[
@@ -693,9 +695,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             : (1.0 - (collapseProgress * 0.035));
         
         [self.heroBackgroundView reapplyPalette];
-        self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        self.layer.borderWidth = darkMode ? (1.0 / UIScreen.mainScreen.scale) : 0.0;
         self.layer.borderColor = PPDataViewResolvedColor(
-            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (0.24 + collapseProgress * 0.08) : (0.62 + collapseProgress * 0.10)],
+            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (0.24 + collapseProgress * 0.08) : 0.0],
             self.traitCollection
         ).CGColor;
         self.layer.shadowColor = UIColor.blackColor.CGColor;
@@ -1164,6 +1166,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) UIView *filterContextBadgeView;
 @property (nonatomic, strong) UIImageView *filterContextIconView;
 @property (nonatomic, strong) UILabel *filterContextLabel;
+@property (nonatomic, strong) UILabel *filterContextSecondaryLabel;
+@property (nonatomic, strong) UIStackView *filterContextTextStack;
+@property (nonatomic, strong) UIView *dockedSmartFilterPillView;
+@property (nonatomic, strong) UIView *dockedSmartFilterContentView;
+@property (nonatomic, strong) UIImageView *dockedSmartFilterIconView;
+@property (nonatomic, strong) UILabel *dockedSmartFilterPrimaryLabel;
+@property (nonatomic, strong) UILabel *dockedSmartFilterSecondaryLabel;
+@property (nonatomic, strong) UIButton *dockedSmartFilterExpandButton;
 @property (nonatomic, strong) UIView *filterChipContainer;
 @property (nonatomic, strong) UIStackView *filterChipStackView;
 @property (nonatomic, strong) UIButton *providerFilterChipButton;
@@ -1249,6 +1259,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, assign) CGFloat premiumHeaderCollapseProgress;
 @property (nonatomic, assign) CGFloat premiumHeaderDockProgress;
 @property (nonatomic, assign) BOOL premiumHeaderIsDocked;
+@property (nonatomic, assign) CGFloat smartFilterPillProgress;
+@property (nonatomic, assign) BOOL didEmitSmartFilterDockHaptic;
 @property (nonatomic, assign) BOOL isUpdatingCollectionInsetForHeaderMotion;
 @property (nonatomic, strong) UIImageView *navDockedIslandSnapshotView;
 @property (nonatomic, strong) NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *ownedPrefetchURLsByToken;
@@ -1265,6 +1277,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)saveCurrentSectionScrollOffset;
 - (void)restoreScrollOffsetForCurrentSection;
 - (CGFloat)preferredTopContentOffsetY;
+- (CGPoint)pp_topContentOffsetForCurrentLayout;
+- (void)pp_scrollCollectionViewToTopForDockUndock;
 - (void)pp_handleCartUpdated:(NSNotification *)note;
 - (NSInteger)currentCartItemCount;
 - (void)updateCartBadge;
@@ -1283,6 +1297,23 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)updateFilterCollapseButtonForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
 - (void)updateFilterContextBarForSection:(PPDataSection)section;
+- (void)pp_setupDockedSmartFilterPillIfNeeded;
+- (void)pp_updateSmartFilterPillForSection:(PPDataSection)section animated:(BOOL)animated;
+- (void)pp_applySmartFilterPillAppearance;
+- (void)pp_applySmartFilterDockProgress:(CGFloat)progress animated:(BOOL)animated;
+- (void)pp_expandDockedSmartFilterPill:(id)sender;
+- (void)pp_emitSmartFilterDockHapticIfNeeded;
+- (NSString *)pp_smartFilterPrimaryTitleForSection:(PPDataSection)section;
+- (NSString *)pp_smartFilterSecondaryTitleForSection:(PPDataSection)section;
+- (NSString *)pp_smartFilterLeadingIconNameForSection:(PPDataSection)section;
+- (NSString *)pp_smartFilterAccessibilitySummaryForSection:(PPDataSection)section;
+- (NSString *)pp_filterContextIslandTitleForSection:(PPDataSection)section;
+- (NSString *)pp_currentMainKindContextTitle;
+- (NSString *)pp_currentSubKindContextTitle;
+- (NSString *)pp_bestSelectedProviderTitleForSection:(PPDataSection)section;
+- (PPFilterGroup *)pp_activeFilterGroupForSection:(PPDataSection)section filterID:(NSString *)filterID;
+- (PPFilterGroup *)pp_strongestActiveFilterGroupForSection:(PPDataSection)section;
+- (NSString *)pp_displayTitleForFilterGroup:(PPFilterGroup *)group;
 - (void)updateProviderFilterChipForSection:(PPDataSection)section expanded:(BOOL)expanded animated:(BOOL)animated;
 - (void)providerFilterChipTapped:(UIButton *)sender;
 - (NSString *)filterContextTitleForSection:(PPDataSection)section;
@@ -1324,7 +1355,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_collapseFilterIslandForUserScrollIfNeededAnimated:(BOOL)animated;
 - (void)pp_collapseFilterIslandForFullDetailsIfNeededAnimated:(BOOL)animated;
 - (void)pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:(BOOL)animated;
+- (void)pp_rememberCurrentSectionTopScrollOffset;
+- (void)pp_pinFilterChangeReloadToExpandedIslandTop;
 - (void)toggleFilterBadgesCollapsed:(id)sender;
+- (BOOL)pp_presentVideoViewerForUniversalModel:(PPUniversalCellViewModel *)universalModel;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (BOOL)pp_presentedItemsContainOnlySkeletons;
 - (void)pp_clearSkeletonPresentationForEmptyStateIfNeeded;
@@ -1374,13 +1408,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (NSString *)pp_centerCapsuleNavigationTitle;
 - (void)pp_applyExperimentalCenterCapsuleAppearance;
 - (void)pp_syncExperimentalCenterCapsuleState;
+- (NSString *)pp_allMainKindsSelectorTitle;
+- (NSString *)pp_allSubKindsSelectorTitle;
 - (NSString *)pp_mainKindsSelectorCaption;
 - (NSString *)pp_subKindsSelectorCaption;
 - (BOOL)pp_mainKindsSelectorIsActive;
 - (BOOL)pp_subKindsSelectorIsActive;
 - (void)pp_applyPremiumSelectorButton:(UIButton *)button
-                          primaryText:(NSString *)primaryText
-                              caption:(NSString *)caption
+                            titleText:(NSString *)titleText
                            emphasized:(BOOL)emphasized;
 - (void)pp_updateMainKindsButtonTitleAnimated:(BOOL)animated;
 - (NSString *)pp_currentMainKindsDisplayTitle;
@@ -1962,40 +1997,32 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 }
 
 - (void)pp_applyPremiumSelectorButton:(UIButton *)button
-                          primaryText:(NSString *)primaryText
-                              caption:(NSString *)caption
+                            titleText:(NSString *)titleText
                            emphasized:(BOOL)emphasized
 {
     if (!button) {
         return;
     }
 
-    NSString *resolvedPrimary = primaryText.length > 0 ? primaryText : (kLang(@"All") ?: @"All");
-    NSString *resolvedCaption = caption.length > 0 ? caption : @"";
+    NSString *resolvedTitle = titleText.length > 0 ? titleText : (kLang(@"All") ?: @"All");
     UIColor *accent = PPDataViewAccentColor();
     UIColor *primaryColor = PPDataViewChromeTextColor();
-    UIColor *captionColor = emphasized
+    UIColor *chevronColor = emphasized
         ? [accent colorWithAlphaComponent:0.82]
-        : PPDataViewChromeSecondaryTextColor();
-    UIColor *chevronColor = emphasized ? captionColor : [PPDataViewChromeSecondaryTextColor() colorWithAlphaComponent:0.82];
+        : [PPDataViewChromeSecondaryTextColor() colorWithAlphaComponent:0.82];
     BOOL shouldShowChevron = (button != self.subKindsButton) || !self.isSubKindsChevronHidden;
 
     NSMutableParagraphStyle *centeredStyle = [[NSMutableParagraphStyle alloc] init];
     centeredStyle.alignment = NSTextAlignmentCenter;
     centeredStyle.lineBreakMode = NSLineBreakByTruncatingTail;
-
-    centeredStyle.lineSpacing = -0.6;
     centeredStyle.paragraphSpacing = 0;
-    centeredStyle.lineHeightMultiple = 0.96;
+    centeredStyle.lineHeightMultiple = 1.0;
 
-    UIFont *baseTitleFont = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-    UIFont *baseCaptionFont = [GM MidFontWithSize:9.2] ?: [UIFont systemFontOfSize:9.2 weight:UIFontWeightMedium];
+    UIFont *baseTitleFont = [GM boldFontWithSize:13.8] ?: [UIFont systemFontOfSize:13.8 weight:UIFontWeightSemibold];
     UIFont *titleFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseTitleFont
                                                                                          maximumPointSize:16.4];
-    UIFont *captionFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2] scaledFontForFont:baseCaptionFont
-                                                                                         maximumPointSize:10.8];
 
-    NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:resolvedPrimary
+    NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:resolvedTitle
                                                                               attributes:@{
         NSFontAttributeName : titleFont,
         NSForegroundColorAttributeName : primaryColor,
@@ -2013,16 +2040,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     configuration.background.cornerRadius = selectorRadius;
 
     configuration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
-
-    configuration.contentInsets = NSDirectionalEdgeInsetsMake(3.0, 8.0, 3.0, 8.0);
-
-    configuration.attributedSubtitle =
-    [[NSAttributedString alloc] initWithString:resolvedCaption
-                                    attributes:@{
-        NSFontAttributeName : captionFont,
-        NSForegroundColorAttributeName : captionColor,
-        NSParagraphStyleAttributeName : centeredStyle
-    }];
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0);
+    configuration.subtitle = nil;
+    configuration.attributedSubtitle = nil;
     configuration.attributedTitle = title;
     configuration.titleLineBreakMode = NSLineBreakByTruncatingTail;
     configuration.subtitleLineBreakMode = NSLineBreakByTruncatingTail;
@@ -2063,13 +2083,23 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
     button.clipsToBounds = NO;
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    button.titleLabel.numberOfLines = 2;
+    button.titleLabel.numberOfLines = 1;
     button.titleLabel.adjustsFontSizeToFitWidth = YES;
-    button.titleLabel.minimumScaleFactor = 0.86;
+    button.titleLabel.minimumScaleFactor = 0.82;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     button.titleLabel.adjustsFontForContentSizeCategory = YES;
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
     button.accessibilityTraits = emphasized ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected) : UIAccessibilityTraitButton;
+}
+
+- (NSString *)pp_allMainKindsSelectorTitle
+{
+    return kLang(@"data_nav_all_species") ?: @"All Species";
+}
+
+- (NSString *)pp_allSubKindsSelectorTitle
+{
+    return kLang(@"data_nav_all_breed") ?: @"All Breed";
 }
 
 - (NSString *)pp_mainKindsSelectorCaption
@@ -2095,8 +2125,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_applyPremiumMainKindsButtonSurface
 {
     [self pp_applyPremiumSelectorButton:self.KindsButton
-                            primaryText:[self pp_currentMainKindsDisplayTitle]
-                                caption:[self pp_mainKindsSelectorCaption]
+                              titleText:[self pp_currentMainKindsDisplayTitle]
                              emphasized:[self pp_mainKindsSelectorIsActive]];
 }
 
@@ -2107,8 +2136,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     [self pp_applyPremiumSelectorButton:self.subKindsButton
-                            primaryText:self.lastSubKindsTitle ?: [self pp_currentSubKindsDisplayTitle]
-                                caption:[self pp_subKindsSelectorCaption]
+                              titleText:self.lastSubKindsTitle ?: [self pp_currentSubKindsDisplayTitle]
                              emphasized:[self pp_subKindsSelectorIsActive]];
 }
 
@@ -2412,12 +2440,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     // The island is absorbed behind the navigation title. The title remains
     // the stable, readable owner before, during, and after the handoff.
-    self.KindsButton.alpha = 1.0;
-    self.subKindsButton.alpha = 1.0;
-    self.centerCapsuleButton.alpha = 1.0;
-    self.navSeparatorLine.alpha = 1.0;
     self.navContainerView.alpha = 1.0;
     CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:progress];
+    if (snapshotProgress <= 0.001) {
+        self.KindsButton.alpha = 1.0;
+        self.subKindsButton.alpha = 1.0;
+        self.centerCapsuleButton.alpha = 1.0;
+        self.navSeparatorLine.alpha = 1.0;
+    }
     self.sectionsFiltersContainer.layer.zPosition =
         snapshotProgress > 0.001 ? 0.0 : (progress > 0.01 ? 6.0 : 0.0);
     [self pp_promoteNavigationTitleContainerForDockProgress:progress
@@ -2455,13 +2485,18 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         }
 
         self.navContainerView.layer.zPosition = 40.0;
+        self.dockedSmartFilterPillView.layer.zPosition = 42.0;
         self.navDockedIslandSnapshotView.layer.zPosition = 0.0;
     } else {
         self.navContainerView.layer.zPosition = 0.0;
+        self.dockedSmartFilterPillView.layer.zPosition = 0.0;
         titleSuperview.layer.zPosition = 0.0;
     }
 
-    if (self.navDockedIslandSnapshotView) {
+    if (self.smartFilterPillProgress > 0.001 && self.dockedSmartFilterPillView) {
+        [self.navContainerView bringSubviewToFront:self.dockedSmartFilterPillView];
+        [self.navContainerView bringSubviewToFront:self.cartButton];
+    } else if (self.navDockedIslandSnapshotView) {
         [self.navContainerView bringSubviewToFront:self.KindsButton];
         [self.navContainerView bringSubviewToFront:self.navSeparatorLine];
         [self.navContainerView bringSubviewToFront:self.subKindsButton];
@@ -2657,8 +2692,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     if (fabs(self.premiumHeaderCollapseProgress - clampedProgress) < 0.002) {
         CGFloat dockProgress = [self pp_headerDockProgressForCollapseProgress:clampedProgress];
         CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:dockProgress];
-        [self pp_updateDockedIslandSnapshotFrame];
         [self.navContainerView pp_applyDockedForegroundProgress:snapshotProgress animated:animated];
+        [self pp_applySmartFilterDockProgress:snapshotProgress animated:animated];
         [self pp_applyNavigationTitleDockProgress:dockProgress];
         return;
     }
@@ -2670,16 +2705,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     CGFloat previousDockProgress = self.premiumHeaderDockProgress;
     CGFloat dockProgress = [self pp_headerDockProgressForCollapseProgress:clampedProgress];
     CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:dockProgress];
-    BOOL shouldInstallSnapshot = snapshotProgress > 0.001;
     BOOL didReachDock = !self.premiumHeaderIsDocked &&
         dockProgress >= kPPDataViewHeaderDockedProgressThreshold;
     BOOL didLeaveDock = self.premiumHeaderIsDocked &&
         dockProgress <= kPPDataViewHeaderUndockedProgressThreshold;
 
-    if (shouldInstallSnapshot) {
-        [self pp_installDockedIslandSnapshotIfNeeded];
-        [self pp_updateDockedIslandSnapshotFrame];
-    } else {
+    if (snapshotProgress <= 0.001) {
         [self pp_removeDockedIslandSnapshotAnimated:animated];
     }
 
@@ -2697,7 +2728,6 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         ? CGAffineTransformIdentity
         : CGAffineTransformMakeTranslation(0.0, -10.0 * dockProgress);
     CGFloat islandPresentationAlpha = MAX(0.0, 1.0 - snapshotProgress);
-    CGFloat snapshotHandoffAlpha = sin(M_PI * snapshotProgress);
 
     void (^updates)(void) = ^{
         if (self.sectionsFiltersContainer) {
@@ -2709,19 +2739,11 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             self.sectionsFiltersContainer.accessibilityElementsHidden = snapshotProgress >= 0.94;
             [self.sectionsFiltersContainer pp_applyScrollCollapseProgress:clampedProgress animated:NO];
         }
-        if (self.navDockedIslandSnapshotView) {
-            [self pp_updateDockedIslandSnapshotFrame];
-            self.navDockedIslandSnapshotView.alpha = snapshotHandoffAlpha;
-            self.navDockedIslandSnapshotView.transform =
-                reduceMotion
-                ? CGAffineTransformIdentity
-                : CGAffineTransformMakeScale(0.986 + (0.014 * snapshotProgress),
-                                              0.982 + (0.018 * snapshotProgress));
-        }
         self.filterContextBar.alpha = contextAlpha;
         self.filterContextBar.transform = contextTransform;
         self.navContainerView.transform = titleTransform;
         [self.navContainerView pp_applyDockedForegroundProgress:snapshotProgress animated:canAnimate];
+        [self pp_applySmartFilterDockProgress:snapshotProgress animated:NO];
         [self pp_applyNavigationTitleDockProgress:dockProgress];
         self.navSearchActionsButton.transform = searchTransform;
         [self pp_updatePremiumChromeShadowPaths];
@@ -2729,6 +2751,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     void (^completion)(BOOL) = ^(__unused BOOL finished) {
         if (didReachDock) {
+            [self pp_emitSmartFilterDockHapticIfNeeded];
             [self pp_runNavigationTitleDockHaloAnimation];
         }
         [self pp_applyNavigationTitleDockProgress:dockProgress];
@@ -2752,6 +2775,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.premiumHeaderIsDocked = YES;
     } else if (didLeaveDock) {
         self.premiumHeaderIsDocked = NO;
+        self.didEmitSmartFilterDockHaptic = NO;
     }
 }
 
@@ -2806,6 +2830,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.filterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
+    self.filterContextBar.isAccessibilityElement = YES;
     self.filterContextBadgeView.backgroundColor = AppClearClr;//badgeSurface
     self.filterContextBadgeView.layer.cornerRadius = kPPFilterContextBadgeHeight * 0.5;
     self.filterContextBadgeView.layer.borderWidth = 0.0 / UIScreen.mainScreen.scale;
@@ -2819,12 +2844,19 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.filterContextIconView.tintColor = accent;
     self.filterContextLabel.textColor = PPDataViewChromeTextColor();
     self.filterContextLabel.font =
-        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.2] ?: [UIFont systemFontOfSize:12.2 weight:UIFontWeightSemibold])
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.6] ?: [UIFont systemFontOfSize:12.6 weight:UIFontWeightSemibold])
                                                                                    maximumPointSize:14.0];
     self.filterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.filterContextSecondaryLabel.textColor = PPDataViewChromeSecondaryTextColor();
+    self.filterContextSecondaryLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2] scaledFontForFont:([GM MidFontWithSize:10.2] ?: [UIFont systemFontOfSize:10.2 weight:UIFontWeightMedium])
+                                                                                   maximumPointSize:11.8];
+    self.filterContextSecondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.filterContextTextStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.filterCollapseButton.tintColor = useIslandAccent
         ? accent
         : PPDataViewAccentColor();
+    [self pp_applySmartFilterPillAppearance];
 
     if (self.providerFilterChipButton) {
         BOOL dark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
@@ -2920,9 +2952,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.providerFilterChipAvatarView.clipsToBounds = YES;
         self.providerFilterChipTrailingIconView.backgroundColor =
             PPDataViewBlendColor(chipSurface, accent, dark ? 0.24 : 0.14, self.traitCollection);
-        self.providerFilterChipTrailingIconView.tintColor = selectedProviderID.length > 0
-            ? [UIColor colorWithRed:0.31 green:0.86 blue:0.57 alpha:1.0]
-            : accent;
+        self.providerFilterChipTrailingIconView.tintColor = AppPrimaryClr ?: accent;
         self.providerFilterChipTrailingIconView.layer.cornerRadius = kPPProviderFilterChipTrailingIconDiameter * 0.5;
         self.providerFilterChipTrailingIconView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.providerFilterChipTrailingIconView.layer.borderColor =
@@ -2974,6 +3004,14 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.filterContextBar.layer.cornerRadius = radius;
         self.filterContextBar.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.filterContextBar.bounds
+                                       cornerRadius:radius].CGPath;
+    }
+
+    if (self.dockedSmartFilterPillView && !CGRectIsEmpty(self.dockedSmartFilterPillView.bounds)) {
+        CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(self.dockedSmartFilterPillView.bounds), 18.0);
+        self.dockedSmartFilterPillView.layer.cornerRadius = radius;
+        self.dockedSmartFilterPillView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.dockedSmartFilterPillView.bounds
                                        cornerRadius:radius].CGPath;
     }
 
@@ -3927,16 +3965,75 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [cv layoutIfNeeded];
+        [cv setContentOffset:[self pp_topContentOffsetForCurrentLayout] animated:animated];
+    });
+}
 
-        if ([self pp_isFullDetailsLayoutMode]) {
-            CGPoint leadingOffset = CGPointMake(-cv.adjustedContentInset.left,
-                                                -cv.adjustedContentInset.top);
-            [cv setContentOffset:leadingOffset animated:animated];
+- (CGPoint)pp_topContentOffsetForCurrentLayout
+{
+    UICollectionView *cv = self.collectionView;
+    if (!cv) {
+        return CGPointZero;
+    }
+
+    if ([self pp_isFullDetailsLayoutMode]) {
+        CGFloat x = -cv.adjustedContentInset.left;
+        if (Language.isRTL) {
+            CGFloat maxX = cv.contentSize.width - CGRectGetWidth(cv.bounds) + cv.adjustedContentInset.right;
+            if (maxX > x) {
+                x = maxX;
+            }
+        }
+        return CGPointMake(x, -cv.adjustedContentInset.top);
+    }
+
+    return CGPointMake(0.0, [self preferredTopContentOffsetY]);
+}
+
+- (void)pp_scrollCollectionViewToTopForDockUndock
+{
+    UICollectionView *cv = self.collectionView;
+    if (!cv) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [cv layoutIfNeeded];
+        CGPoint targetOffset = [self pp_topContentOffsetForCurrentLayout];
+        CGFloat verticalDistance = fabs(cv.contentOffset.y - targetOffset.y);
+        CGFloat horizontalDistance = fabs(cv.contentOffset.x - targetOffset.x);
+        if (verticalDistance < 0.5 && horizontalDistance < 0.5) {
+            [self pp_updatePremiumHeaderCollapseForScrollView:cv animated:YES];
             return;
         }
 
-        CGPoint topOffset = CGPointMake(0, [self preferredTopContentOffsetY]);
-        [cv setContentOffset:topOffset animated:animated];
+        void (^finishScroll)(void) = ^{
+            if (![self pp_isFullDetailsLayoutMode]) {
+                [self pp_updateCollectionContentInsetPreservingTopAnchor];
+            }
+            [self pp_updatePremiumHeaderCollapseForScrollView:cv animated:YES];
+            [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
+        };
+
+        [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            [cv setContentOffset:targetOffset animated:NO];
+            finishScroll();
+            return;
+        }
+
+        NSTimeInterval duration = MIN(0.18, MAX(0.10, verticalDistance / 4200.0));
+        [UIView animateWithDuration:duration
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            [cv setContentOffset:targetOffset animated:NO];
+            [self pp_updatePremiumHeaderCollapseForScrollView:cv animated:NO];
+        } completion:^(__unused BOOL finished) {
+            finishScroll();
+        }];
     });
 }
 
@@ -4050,6 +4147,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
                 CGPointMake(0, [weakSelf preferredTopContentOffsetY]);
                 [weakSelf.collectionView setContentOffset:topOffset animated:NO];
             });
+        } else if (shouldScrollToTop) {
+            [weakSelf pp_pinFilterChangeReloadToExpandedIslandTop];
         } else {
             [weakSelf restoreScrollOffsetForCurrentSection];
         }
@@ -4405,6 +4504,40 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [NSValue valueWithCGPoint:normalizedOffset];
 }
 
+- (void)pp_rememberCurrentSectionTopScrollOffset
+{
+    if (!self.viewModel) {
+        return;
+    }
+    self.scrollOffsetsBySection[@(self.viewModel.currentSection)] =
+    [NSValue valueWithCGPoint:CGPointZero];
+}
+
+- (void)pp_pinFilterChangeReloadToExpandedIslandTop
+{
+    if (!self.collectionView || [self pp_isFullDetailsLayoutMode]) {
+        return;
+    }
+
+    [self pp_rememberCurrentSectionTopScrollOffset];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.collectionView || [self pp_isFullDetailsLayoutMode]) {
+            return;
+        }
+        [self updateCollectionContentInset];
+        [self.collectionView layoutIfNeeded];
+        CGPoint targetOffset = CGPointMake(0.0, [self preferredTopContentOffsetY]);
+        if (fabs(self.collectionView.contentOffset.y - targetOffset.y) >= 0.5 ||
+            fabs(self.collectionView.contentOffset.x - targetOffset.x) >= 0.5) {
+            self.isUpdatingCollectionInsetForHeaderMotion = YES;
+            [self.collectionView setContentOffset:targetOffset animated:NO];
+            self.isUpdatingCollectionInsetForHeaderMotion = NO;
+        }
+        self.lastContentOffsetY = targetOffset.y;
+        [self pp_updatePremiumHeaderCollapseForScrollView:self.collectionView animated:NO];
+    });
+}
+
 - (void)restoreScrollOffsetForCurrentSection
 {
     if (!self.collectionView) { return; }
@@ -4742,6 +4875,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         PPDataViewVC *strongSelf = weakSelf;
         if (!strongSelf) return;
         strongSelf.filterStates[@(strongSelf.viewModel.currentSection)] = applied;
+        [strongSelf pp_rememberCurrentSectionTopScrollOffset];
         strongSelf.pendingFilterScrollToTop = YES;
         [strongSelf.viewModel applyFilterState:applied];
         [strongSelf syncFilterChipsForCurrentSection];
@@ -5165,6 +5299,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         chip.accessibilityTraits = group.isActive
             ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected)
             : UIAccessibilityTraitButton;
+    }
+    if (section == self.viewModel.currentSection) {
+        [self updateFilterContextBarForSection:section];
     }
 }
 
@@ -5628,13 +5765,36 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
-    NSString *title = [self filterContextTitleForSection:section];
-    self.filterContextLabel.text = title;
+    NSString *contextTitle = [self pp_filterContextIslandTitleForSection:section];
+    self.filterContextLabel.text = contextTitle;
+    self.filterContextSecondaryLabel.text = @"";
+    self.filterContextSecondaryLabel.hidden = YES;
+    NSString *iconName = [self pp_smartFilterLeadingIconNameForSection:section];
+    UIImageSymbolConfiguration *contextIconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:12.6
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    self.filterContextIconView.image =
+        [PPDataViewFilterIconImage(iconName, contextIconConfig, nil)
+         imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     self.filterContextBarHeightConstraint.constant = kPPFilterContextBarHeight;
     self.filterContextBar.hidden = NO;
     self.filterContextBar.alpha = 1.0;
-    self.filterContextBar.accessibilityLabel = title;
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
+    if (contextTitle.length > 0) {
+        [accessibilityParts addObject:contextTitle];
+    }
+    NSInteger activeCount = [self pp_activeFilterCountForSection:section];
+    NSString *activeCountAccessibilityFormat = kLang(@"dataview_filters_active_count_accessibility_format");
+    if (activeCount > 0 && activeCountAccessibilityFormat.length > 0) {
+        [accessibilityParts addObject:[NSString stringWithFormat:activeCountAccessibilityFormat, (long)activeCount]];
+    }
+    self.filterContextBar.accessibilityLabel = [accessibilityParts componentsJoinedByString:@", "];
+    self.filterContextBar.accessibilityHint = kLang(self.filterBadgesCollapsed
+                                                    ? @"dataview_filters_expand_accessibility"
+                                                    : @"dataview_filters_collapse_accessibility");
     [self pp_applyFilterContextBarAppearance];
+    [self pp_updateSmartFilterPillForSection:section animated:NO];
 }
 
 - (void)updateProviderFilterChipForSection:(PPDataSection)section
@@ -5777,8 +5937,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             } else {
                 [self setSelectedProviderID:optionProviderID forSection:section];
             }
+            [self pp_rememberCurrentSectionTopScrollOffset];
             [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
             [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:YES];
+            [self pp_pinFilterChangeReloadToExpandedIslandTop];
             [self updateEmptyState];
         });
     }];
@@ -5829,6 +5991,413 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     NSString *localized = kLang(key);
     return localized.length > 0 ? localized : @"All provider products";
+}
+
+- (NSString *)pp_currentMainKindContextTitle
+{
+    NSString *title = PPDataViewTrimmedString([self pp_currentMainKindsDisplayTitle]);
+    NSString *allSpecies = PPDataViewTrimmedString([self pp_allMainKindsSelectorTitle]);
+    NSString *all = PPDataViewTrimmedString(kLang(@"All"));
+    if (title.length == 0 ||
+        [title isEqualToString:allSpecies] ||
+        (all.length > 0 && [title isEqualToString:all])) {
+        return @"";
+    }
+    return title;
+}
+
+- (NSString *)pp_currentSubKindContextTitle
+{
+    NSString *title = PPDataViewTrimmedString([self pp_currentSubKindsDisplayTitle]);
+    NSString *allBreed = PPDataViewTrimmedString([self pp_allSubKindsSelectorTitle]);
+    NSString *all = PPDataViewTrimmedString(kLang(@"All"));
+    if (title.length == 0 ||
+        [title isEqualToString:allBreed] ||
+        (all.length > 0 && [title isEqualToString:all])) {
+        return @"";
+    }
+    return title;
+}
+
+- (NSString *)pp_smartFilterPrimaryTitleForSection:(PPDataSection)section
+{
+    NSString *sectionTitle = PPDataViewTrimmedString([self titleForSection:section]);
+    NSString *kindTitle = [self pp_currentMainKindContextTitle];
+    NSString *baseTitle = @"";
+    if (sectionTitle.length == 0) {
+        baseTitle = kindTitle.length > 0 ? kindTitle : [self filterContextTitleForSection:section];
+    } else if (kindTitle.length == 0) {
+        baseTitle = sectionTitle;
+    } else if ([sectionTitle localizedCaseInsensitiveContainsString:kindTitle] ||
+               [kindTitle localizedCaseInsensitiveContainsString:sectionTitle]) {
+        baseTitle = sectionTitle;
+    } else {
+        baseTitle = Language.isRTL
+            ? [NSString stringWithFormat:@"%@ %@", sectionTitle, kindTitle]
+            : [NSString stringWithFormat:@"%@ %@", kindTitle, sectionTitle];
+    }
+
+    NSString *subKindTitle = [self pp_currentSubKindContextTitle];
+    if (subKindTitle.length == 0 ||
+        [baseTitle localizedCaseInsensitiveContainsString:subKindTitle]) {
+        return baseTitle;
+    }
+    if (baseTitle.length == 0) {
+        return subKindTitle;
+    }
+    return [NSString stringWithFormat:@"%@ . %@", baseTitle, subKindTitle];
+}
+
+- (NSString *)pp_bestSelectedProviderTitleForSection:(PPDataSection)section
+{
+    NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+    if (![self pp_sectionSupportsProviderFilter:section] || selectedProviderID.length == 0) {
+        return @"";
+    }
+
+    NSArray<OptionModel *> *options =
+        [self providerOptionsForSection:section sourceItems:self.viewModel.items ?: @[]];
+    for (OptionModel *option in options) {
+        if ([PPDataViewTrimmedString(option.optID) isEqualToString:selectedProviderID]) {
+            NSString *title = PPDataViewTrimmedString(option.title);
+            if (title.length > 0 && ![self pp_providerTitleIsGeneric:title providerID:selectedProviderID]) {
+                return title;
+            }
+        }
+    }
+
+    NSString *realTitle = [self pp_realProviderTitleForID:selectedProviderID
+                                               sourceItems:self.viewModel.items ?: @[]];
+    if (realTitle.length > 0) {
+        return realTitle;
+    }
+
+    NSString *fallbackFormat = kLang(@"dataview_provider_fallback_name_format");
+    return fallbackFormat.length > 0
+        ? [NSString stringWithFormat:fallbackFormat, [self pp_shortProviderIdentifier:selectedProviderID]]
+        : [self pp_shortProviderIdentifier:selectedProviderID];
+}
+
+- (PPFilterGroup *)pp_activeFilterGroupForSection:(PPDataSection)section filterID:(NSString *)filterID
+{
+    if (filterID.length == 0) {
+        return nil;
+    }
+    PPFilterGroup *group = [[self pp_filterStateForSection:section] groupForID:filterID];
+    return group.isActive ? group : nil;
+}
+
+- (PPFilterGroup *)pp_strongestActiveFilterGroupForSection:(PPDataSection)section
+{
+    NSArray<NSString *> *priority = @[
+        PPFilterIDAccessoryCategory,
+        PPFilterIDServiceType,
+        PPFilterIDPrice,
+        PPFilterIDHasOffer,
+        PPFilterIDAvailability,
+        PPFilterIDCondition,
+        PPFilterIDGender,
+        PPFilterIDSort
+    ];
+    for (NSString *filterID in priority) {
+        PPFilterGroup *group = [self pp_activeFilterGroupForSection:section filterID:filterID];
+        if (group) {
+            return group;
+        }
+    }
+    for (PPFilterGroup *group in [self pp_filterStateForSection:section].groups) {
+        if (group.isActive) {
+            return group;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_displayTitleForFilterGroup:(PPFilterGroup *)group
+{
+    NSString *selectedTitle = PPDataViewTrimmedString(group.selectedTitle);
+    NSString *groupTitle = PPDataViewTrimmedString(group.title);
+    if (selectedTitle.length == 0 || [selectedTitle isEqualToString:groupTitle]) {
+        return @"";
+    }
+    return selectedTitle;
+}
+
+- (NSString *)pp_smartFilterSecondaryTitleForSection:(PPDataSection)section
+{
+    NSInteger activeCount = [self pp_activeFilterCountForSection:section];
+    NSString *candidate = [self pp_bestSelectedProviderTitleForSection:section];
+    if (candidate.length == 0) {
+        candidate = [self pp_displayTitleForFilterGroup:[self pp_strongestActiveFilterGroupForSection:section]];
+    }
+    if (candidate.length == 0) {
+        candidate = [self filterContextTitleForSection:section];
+    }
+    if (candidate.length == 0) {
+        return @"";
+    }
+
+    if (activeCount > 1) {
+        NSString *additionalFormat = kLang(@"dataview_smart_filter_additional_count_format");
+        NSString *additionalText = additionalFormat.length > 0
+            ? [NSString stringWithFormat:additionalFormat, (long)(activeCount - 1)]
+            : [NSString stringWithFormat:@"+%ld", (long)(activeCount - 1)];
+        return [NSString stringWithFormat:@"%@ · %@", candidate, additionalText];
+    }
+    return candidate;
+}
+
+- (NSString *)pp_smartFilterLeadingIconNameForSection:(PPDataSection)section
+{
+    if ([self pp_sectionSupportsProviderFilter:section] &&
+        [self selectedProviderIDForSection:section].length > 0) {
+        return @"storefront.fill";
+    }
+
+    PPFilterGroup *group = [self pp_strongestActiveFilterGroupForSection:section];
+    if ([group.filterID isEqualToString:PPFilterIDAccessoryCategory]) {
+        return @"square.grid.2x2.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDPrice]) {
+        return @"tag.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDHasOffer]) {
+        return @"flame.fill";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDAvailability]) {
+        return @"calendar.badge.clock";
+    }
+    if ([group.filterID isEqualToString:PPFilterIDGender]) {
+        return @"person.2.fill";
+    }
+    NSString *chipIcon = PPDataViewTrimmedString(group.chipIconName);
+    if (chipIcon.length > 0) {
+        return chipIcon;
+    }
+    return [self selectedIconForSection:section];
+}
+
+- (NSString *)pp_smartFilterAccessibilitySummaryForSection:(PPDataSection)section
+{
+    NSString *primary = [self pp_smartFilterPrimaryTitleForSection:section];
+    NSString *secondary = [self pp_smartFilterSecondaryTitleForSection:section];
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    if (primary.length > 0) {
+        [parts addObject:primary];
+    }
+    if (secondary.length > 0 && ![secondary isEqualToString:primary]) {
+        [parts addObject:secondary];
+    }
+    NSInteger activeCount = [self pp_activeFilterCountForSection:section];
+    NSString *activeCountAccessibilityFormat = kLang(@"dataview_filters_active_count_accessibility_format");
+    if (activeCount > 0 && activeCountAccessibilityFormat.length > 0) {
+        [parts addObject:[NSString stringWithFormat:activeCountAccessibilityFormat, (long)activeCount]];
+    }
+    return [parts componentsJoinedByString:@", "];
+}
+
+- (NSString *)pp_filterContextIslandTitleForSection:(PPDataSection)section
+{
+    NSString *secondary = PPDataViewTrimmedString([self pp_smartFilterSecondaryTitleForSection:section]);
+    if (secondary.length > 0) {
+        return secondary;
+    }
+
+    NSString *fallback = PPDataViewTrimmedString([self filterContextTitleForSection:section]);
+    if (fallback.length > 0) {
+        return fallback;
+    }
+
+    return PPDataViewTrimmedString([self titleForSection:section]);
+}
+
+- (void)pp_updateSmartFilterPillForSection:(PPDataSection)section animated:(BOOL)animated
+{
+    if (!self.dockedSmartFilterPillView || !self.dockedSmartFilterPrimaryLabel) {
+        return;
+    }
+
+    NSString *primary = [self pp_smartFilterPrimaryTitleForSection:section];
+    NSString *secondary = [self pp_smartFilterSecondaryTitleForSection:section];
+    NSString *iconName = [self pp_smartFilterLeadingIconNameForSection:section];
+    NSString *accessibilitySummary = [self pp_smartFilterAccessibilitySummaryForSection:section];
+
+    void (^updates)(void) = ^{
+        self.dockedSmartFilterPrimaryLabel.text = primary;
+        self.dockedSmartFilterSecondaryLabel.text = secondary;
+        self.dockedSmartFilterSecondaryLabel.hidden = (secondary.length == 0);
+        UIImageSymbolConfiguration *iconConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                            weight:UIImageSymbolWeightBold
+                                                             scale:UIImageSymbolScaleSmall];
+        self.dockedSmartFilterIconView.image =
+            [PPDataViewFilterIconImage(iconName, iconConfig, nil)
+             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        self.dockedSmartFilterPillView.accessibilityLabel = accessibilitySummary.length > 0
+            ? accessibilitySummary
+            : primary;
+        self.dockedSmartFilterPillView.accessibilityHint = kLang(@"dataview_filters_expand_accessibility");
+        self.dockedSmartFilterExpandButton.accessibilityLabel = kLang(@"dataview_filters_expand_accessibility");
+        self.dockedSmartFilterExpandButton.accessibilityValue = secondary.length > 0 ? secondary : primary;
+    };
+
+    BOOL changed =
+        ![self.dockedSmartFilterPrimaryLabel.text isEqualToString:primary] ||
+        ![self.dockedSmartFilterSecondaryLabel.text isEqualToString:secondary];
+    if (animated && changed && self.view.window != nil && [self pp_allowsPremiumMotion]) {
+        [UIView transitionWithView:self.dockedSmartFilterPillView
+                          duration:0.18
+                           options:UIViewAnimationOptionTransitionCrossDissolve |
+                                   UIViewAnimationOptionBeginFromCurrentState |
+                                   UIViewAnimationOptionAllowUserInteraction
+                        animations:updates
+                        completion:nil];
+    } else {
+        updates();
+    }
+}
+
+- (void)pp_applySmartFilterPillAppearance
+{
+    if (!self.dockedSmartFilterPillView) {
+        return;
+    }
+
+    BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+    UIColor *accent = [self pp_controlIslandContentAccentColor] ?: PPDataViewAccentColor();
+    UIColor *baseSurface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
+                                                 [UIColor colorWithWhite:1.0 alpha:0.105]);
+    UIColor *surface = PPDataViewBlendColor(baseSurface,
+                                           accent,
+                                           darkMode ? 0.22 : 0.075,
+                                           self.traitCollection);
+    UIColor *stroke = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
+                                            [UIColor colorWithWhite:1.0 alpha:0.16]);
+    CGFloat radius = PPDataViewPillRadiusForHeight(44.0, 18.0);
+
+    self.dockedSmartFilterPillView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.dockedSmartFilterContentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.dockedSmartFilterPillView.backgroundColor = surface;
+    self.dockedSmartFilterPillView.layer.cornerRadius = radius;
+    self.dockedSmartFilterPillView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.dockedSmartFilterPillView.layer.borderColor =
+        PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
+    self.dockedSmartFilterPillView.layer.shadowColor = [accent colorWithAlphaComponent:0.28].CGColor;
+    self.dockedSmartFilterPillView.layer.shadowOpacity = darkMode ? 0.10 : 0.055;
+    self.dockedSmartFilterPillView.layer.shadowRadius = 10.0;
+    self.dockedSmartFilterPillView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    if (@available(iOS 13.0, *)) {
+        self.dockedSmartFilterPillView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.dockedSmartFilterIconView.tintColor = accent;
+    self.dockedSmartFilterPrimaryLabel.textColor = PPDataViewChromeTextColor();
+    self.dockedSmartFilterPrimaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.dockedSmartFilterPrimaryLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.8] ?: [UIFont systemFontOfSize:12.8 weight:UIFontWeightSemibold])
+                                                                                   maximumPointSize:14.2];
+    self.dockedSmartFilterSecondaryLabel.textColor = PPDataViewChromeSecondaryTextColor();
+    self.dockedSmartFilterSecondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.dockedSmartFilterSecondaryLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2] scaledFontForFont:([GM MidFontWithSize:10.4] ?: [UIFont systemFontOfSize:10.4 weight:UIFontWeightMedium])
+                                                                                   maximumPointSize:12.0];
+    self.dockedSmartFilterExpandButton.tintColor = accent;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = self.dockedSmartFilterExpandButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        configuration.baseForegroundColor = accent;
+        configuration.background.backgroundColor = UIColor.clearColor;
+        self.dockedSmartFilterExpandButton.configuration = configuration;
+    } else {
+        [self.dockedSmartFilterExpandButton setTintColor:accent];
+    }
+}
+
+- (void)pp_applySmartFilterDockProgress:(CGFloat)progress animated:(BOOL)animated
+{
+    if (!self.dockedSmartFilterPillView) {
+        return;
+    }
+
+    CGFloat clampedProgress = PPDataViewClamp01(progress);
+    self.smartFilterPillProgress = clampedProgress;
+    [self pp_updateSmartFilterPillForSection:self.viewModel.currentSection animated:NO];
+
+    BOOL shouldShowPill = clampedProgress > 0.001;
+    if (shouldShowPill) {
+        self.dockedSmartFilterPillView.hidden = NO;
+    }
+
+    CGFloat titleAlpha = MAX(0.0, 1.0 - (clampedProgress * 1.85));
+    CGFloat pillAlpha = PPDataViewSmoothstep((clampedProgress - 0.14) / 0.86);
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    CGAffineTransform pillTransform = reduceMotion
+        ? CGAffineTransformIdentity
+        : CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, (1.0 - clampedProgress) * 3.0),
+                                 0.982 + (0.018 * clampedProgress),
+                                 0.965 + (0.035 * clampedProgress));
+
+    void (^updates)(void) = ^{
+        self.KindsButton.alpha = titleAlpha;
+        self.subKindsButton.alpha = titleAlpha;
+        self.centerCapsuleButton.alpha = titleAlpha;
+        self.navSeparatorLine.alpha = titleAlpha;
+        self.dockedSmartFilterPillView.alpha = pillAlpha;
+        self.dockedSmartFilterPillView.transform = pillTransform;
+        self.dockedSmartFilterPillView.userInteractionEnabled = clampedProgress >= 0.70;
+        self.dockedSmartFilterPillView.accessibilityElementsHidden = clampedProgress < 0.70;
+        self.KindsButton.userInteractionEnabled = titleAlpha > 0.45 && !self.KindsButton.hidden;
+        self.subKindsButton.userInteractionEnabled = titleAlpha > 0.45 && !self.subKindsButton.hidden;
+        self.centerCapsuleButton.userInteractionEnabled = titleAlpha > 0.45 && !self.centerCapsuleButton.hidden;
+        [self.navContainerView bringSubviewToFront:self.dockedSmartFilterPillView];
+        [self.navContainerView bringSubviewToFront:self.cartButton];
+        [self pp_updatePremiumChromeShadowPaths];
+    };
+
+    if (animated && self.view.window != nil && !reduceMotion) {
+        [UIView animateWithDuration:0.26
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.18
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionCurveEaseOut
+                         animations:updates
+                         completion:^(__unused BOOL finished) {
+            self.dockedSmartFilterPillView.hidden = !shouldShowPill;
+        }];
+    } else {
+        updates();
+        self.dockedSmartFilterPillView.hidden = !shouldShowPill;
+    }
+}
+
+- (void)pp_expandDockedSmartFilterPill:(id)sender
+{
+    (void)sender;
+    if (!self.collectionView) {
+        return;
+    }
+
+    [PPFunc triggerLightHaptic];
+    [self pp_scrollCollectionViewToTopForDockUndock];
+    UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, self.sectionsFiltersContainer);
+}
+
+- (void)pp_emitSmartFilterDockHapticIfNeeded
+{
+    if (self.didEmitSmartFilterDockHaptic || !self.view.window) {
+        return;
+    }
+    self.didEmitSmartFilterDockHaptic = YES;
+    if (@available(iOS 13.0, *)) {
+        UIImpactFeedbackGenerator *generator =
+            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+        [generator impactOccurredWithIntensity:0.58];
+    } else {
+        UIImpactFeedbackGenerator *generator =
+            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [generator impactOccurred];
+    }
 }
 
 - (BOOL)pp_sectionSupportsProviderFilter:(PPDataSection)section
@@ -6023,11 +6592,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.providerFilterChipTrailingIconView.image =
         [[UIImage systemImageNamed:symbolName withConfiguration:iconConfig]
          imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    if (selectedProviderID.length > 0) {
-        self.providerFilterChipTrailingIconView.tintColor = [UIColor colorWithRed:0.31 green:0.86 blue:0.57 alpha:1.0];
-    } else {
-        self.providerFilterChipTrailingIconView.tintColor = [self pp_controlIslandAccentColor];
-    }
+    self.providerFilterChipTrailingIconView.tintColor = AppPrimaryClr ?: [self pp_controlIslandAccentColor];
     [self pp_updateProviderChipAvatarForProviderID:selectedProviderID
                                              title:title
                                        sourceItems:self.viewModel.items ?: @[]];
@@ -6930,8 +7495,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     os_signpost_interval_begin(log, applyFilterSignpostID, "filter.apply", "filterID=%{public}@", group.filterID ?: @"");
 
     [PPFunc triggerLightHaptic];
+    [self pp_rememberCurrentSectionTopScrollOffset];
     self.pendingFilterScrollToTop = YES;
     [self.viewModel applyFilterState:state];
+    [self refreshFilterChipTitles];
 
     os_signpost_interval_end(log, applyFilterSignpostID, "filter.apply");
 }
@@ -7026,25 +7593,25 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (NSString *)pp_currentMainKindsDisplayTitle
 {
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
-        return self.input.title.length > 0 ? self.input.title : (kLang(@"All") ?: @"All");
+        return [self pp_allMainKindsSelectorTitle];
     }
 
     NSString *title = self.input.mainKind.KindName;
     if (title.length == 0) {
         title = self.input.mainKind.KindNameEn;
     }
-    return title.length > 0 ? title : (kLang(@"All") ?: @"All");
+    return title.length > 0 ? title : [self pp_allMainKindsSelectorTitle];
 }
 
 - (NSString *)pp_currentSubKindsDisplayTitle
 {
     if (self.viewModel.currentSubKindID == 0) {
-        return kLang(@"All") ?: @"All";
+        return [self pp_allSubKindsSelectorTitle];
     }
 
     SubKindModel *subKind = [self.input.mainKind subKindForID:self.viewModel.currentSubKindID];
     NSString *title = subKind.SubKindName;
-    return title.length > 0 ? title : (kLang(@"All") ?: @"All");
+    return title.length > 0 ? title : [self pp_allSubKindsSelectorTitle];
 }
 
 // Updates the main kinds button title in the navigation bar
@@ -7065,6 +7632,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.KindsButton invalidateIntrinsicContentSize];
         [self pp_syncExperimentalCenterCapsuleState];
         [self reloadNavigationCenterViewLayout];
+        [self pp_updateSmartFilterPillForSection:self.viewModel.currentSection animated:animated];
     };
 
     if (animated && [self pp_allowsPremiumMotion]) {
@@ -7129,6 +7697,165 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }];
 }
 // Modified to add a second navigation button: sectionsButton
+- (void)pp_setupDockedSmartFilterPillIfNeeded
+{
+    if (self.dockedSmartFilterPillView || !self.navContainerView || !self.cartButton) {
+        return;
+    }
+
+    UIControl *pill = [[UIControl alloc] init];
+    pill.translatesAutoresizingMaskIntoConstraints = NO;
+    pill.alpha = 0.0;
+    pill.hidden = YES;
+    pill.userInteractionEnabled = NO;
+    pill.clipsToBounds = NO;
+    pill.accessibilityIdentifier = @"pp.data.filters.smartDockedPill";
+    pill.isAccessibilityElement = YES;
+    pill.accessibilityTraits = UIAccessibilityTraitButton;
+    pill.layer.actions = @{
+        @"position"      : [NSNull null],
+        @"bounds"        : [NSNull null],
+        @"transform"     : [NSNull null],
+        @"opacity"       : [NSNull null],
+        @"shadowPath"    : [NSNull null],
+        @"shadowOpacity" : [NSNull null],
+        @"shadowRadius"  : [NSNull null],
+        @"shadowOffset"  : [NSNull null]
+    };
+    if (@available(iOS 13.0, *)) {
+        pill.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.navContainerView addSubview:pill];
+    self.dockedSmartFilterPillView = pill;
+    [pill addTarget:self
+             action:@selector(pp_expandDockedSmartFilterPill:)
+   forControlEvents:UIControlEventTouchUpInside];
+
+    UIView *contentView = [[UIView alloc] init];
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    contentView.userInteractionEnabled = NO;
+    contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.dockedSmartFilterContentView = contentView;
+    [pill addSubview:contentView];
+
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    UIImageView *iconView =
+    [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"line.3.horizontal.decrease.circle.fill"
+                                                withConfiguration:iconConfig]
+                                  imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.isAccessibilityElement = NO;
+    self.dockedSmartFilterIconView = iconView;
+    [contentView addSubview:iconView];
+
+    UILabel *primaryLabel = [[UILabel alloc] init];
+    primaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    primaryLabel.adjustsFontForContentSizeCategory = YES;
+    primaryLabel.adjustsFontSizeToFitWidth = YES;
+    primaryLabel.minimumScaleFactor = 0.82;
+    primaryLabel.numberOfLines = 1;
+    primaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    primaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.dockedSmartFilterPrimaryLabel = primaryLabel;
+
+    UILabel *secondaryLabel = [[UILabel alloc] init];
+    secondaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryLabel.adjustsFontForContentSizeCategory = YES;
+    secondaryLabel.adjustsFontSizeToFitWidth = YES;
+    secondaryLabel.minimumScaleFactor = 0.80;
+    secondaryLabel.numberOfLines = 1;
+    secondaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    secondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.dockedSmartFilterSecondaryLabel = secondaryLabel;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        primaryLabel,
+        secondaryLabel
+    ]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.alignment = UIStackViewAlignmentFill;
+    textStack.distribution = UIStackViewDistributionFill;
+    textStack.spacing = 0.0;
+    textStack.userInteractionEnabled = NO;
+    textStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [contentView addSubview:textStack];
+
+    UIButton *expandButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    expandButton.translatesAutoresizingMaskIntoConstraints = NO;
+    expandButton.adjustsImageWhenHighlighted = NO;
+    expandButton.accessibilityIdentifier = @"pp.data.filters.smartDockedPill.expand";
+    expandButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [expandButton addTarget:self
+                     action:@selector(pp_expandDockedSmartFilterPill:)
+           forControlEvents:UIControlEventTouchUpInside];
+    UIImageSymbolConfiguration *expandConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleSmall];
+    UIImage *expandImage =
+    [[UIImage systemImageNamed:@"chevron.down.circle.fill" withConfiguration:expandConfig]
+     imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [expandButton setImage:expandImage forState:UIControlStateNormal];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+        configuration.image = expandImage;
+        configuration.background.backgroundColor = UIColor.clearColor;
+        expandButton.configuration = configuration;
+    }
+    self.dockedSmartFilterExpandButton = expandButton;
+    [pill addSubview:expandButton];
+
+    NSLayoutConstraint *contentLeadingConstraint =
+        [contentView.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:9.0];
+    NSLayoutConstraint *contentTrailingConstraint =
+        [contentView.trailingAnchor constraintEqualToAnchor:expandButton.leadingAnchor constant:-5.0];
+    NSLayoutConstraint *textStackSpacingConstraint =
+        [textStack.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:6.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [pill.leadingAnchor constraintEqualToAnchor:self.navContainerView.leadingAnchor constant:1.0],
+        [pill.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor constant:-1.0],
+        [pill.topAnchor constraintEqualToAnchor:self.navContainerView.topAnchor constant:1.0],
+        [pill.bottomAnchor constraintEqualToAnchor:self.navContainerView.bottomAnchor constant:-1.0],
+
+        [expandButton.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-6.0],
+        [expandButton.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
+        [expandButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0],
+        [expandButton.heightAnchor constraintGreaterThanOrEqualToConstant:44.0],
+
+        contentLeadingConstraint,
+        contentTrailingConstraint,
+        [contentView.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
+        [contentView.topAnchor constraintGreaterThanOrEqualToAnchor:pill.topAnchor constant:4.0],
+        [contentView.bottomAnchor constraintLessThanOrEqualToAnchor:pill.bottomAnchor constant:-4.0],
+
+        [iconView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+
+        textStackSpacingConstraint,
+        [textStack.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
+        [textStack.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [textStack.topAnchor constraintGreaterThanOrEqualToAnchor:contentView.topAnchor],
+        [textStack.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor]
+    ]];
+
+    [expandButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [expandButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [primaryLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [secondaryLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+    [self pp_updateSmartFilterPillForSection:self.viewModel.currentSection animated:NO];
+    [self pp_applySmartFilterPillAppearance];
+}
+
 -(void)setupKindsView
 {
     _navContainerView = [PPDataViewNavigationMaterialView new];
@@ -7273,6 +8000,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.navContainerView addSubview:self.subKindsButton];
     [self.navContainerView addSubview:self.centerCapsuleButton];
     [self.navContainerView addSubview:self.cartButton];
+    [self pp_setupDockedSmartFilterPillIfNeeded];
+    [self.navContainerView bringSubviewToFront:self.cartButton];
 
     // Legacy center action retained hidden; search now lives in the right navbar slot.
  
@@ -7327,7 +8056,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // AllCategories mode: show the section header title & hide chevron until user picks a kind
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
         [self updateNavMainKindTitle];
-        [self updateSubKindsButtonTitle:kLang(@"All") ?: @"All"];
+        [self updateSubKindsButtonTitle:[self pp_allSubKindsSelectorTitle]];
         [self pp_setSubKindsChevronHidden:YES];
     }
 
@@ -7399,7 +8128,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     CGFloat rightWidth = [self pp_widthForBarButtonItem:self.navigationItem.rightBarButtonItem fallback:40.0];
     UIEdgeInsets layoutMargins = navigationBar.layoutMargins;
     CGFloat sideMargins = layoutMargins.left + layoutMargins.right;
-    CGFloat breathingRoom = 20.0;
+    CGFloat breathingRoom = 12.0;
 
     CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
     if (availableWidth <= 0.0) {
@@ -7410,7 +8139,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (resolvedWidth < 218.0) {
         return MAX(176.0, resolvedWidth);
     }
-    return MIN(resolvedWidth, 292.0);
+    return MIN(resolvedWidth, 316.0);
 }
 
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback
@@ -7511,8 +8240,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     void (^applyButtonTitleChange)(void) = ^{
         [self pp_applyPremiumSelectorButton:self.subKindsButton
-                                primaryText:title
-                                    caption:[self pp_subKindsSelectorCaption]
+                                  titleText:title
                                  emphasized:[self pp_subKindsSelectorIsActive]];
         self.subKindsButton.accessibilityLabel =
         [NSString stringWithFormat:@"%@, %@", [self pp_subKindsSelectorCaption], title];
@@ -7526,6 +8254,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                 [self reloadNavigationCenterViewLayout];
             }];
         }
+        [self pp_updateSmartFilterPillForSection:self.viewModel.currentSection animated:animated];
     };
 
     if (animated) {
@@ -7605,6 +8334,37 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 }
 
 #pragma mark - PPUniversalCellDelegate
+
+- (BOOL)pp_presentVideoViewerForUniversalModel:(PPUniversalCellViewModel *)universalModel
+{
+    if (!PPReusableVideoMediaEnabled() ||
+        !universalModel.isVideoMedia ||
+        universalModel.videoURL.length == 0) {
+        return NO;
+    }
+
+    NSString *videoURLString = PPDataViewTrimmedString(universalModel.videoURL);
+    NSURL *videoURL = videoURLString.length > 0 ? [NSURL URLWithString:videoURLString] : nil;
+    if (!videoURL) {
+        [PPHUD showError:kLang(@"video_processing_failed_message")];
+        return YES;
+    }
+
+    PPPremiumVideoPlayerViewController *playerVC =
+        [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+    UIViewController *presenter = AppMgr.topViewController ?: self;
+    [presenter presentViewController:playerVC
+                             animated:!UIAccessibilityIsReduceMotionEnabled()
+                           completion:nil];
+    return YES;
+}
+
+- (void)PPUniversalCell_tapVideo:(PPUniversalCellViewModel *)universalModel
+{
+    if (![self pp_presentVideoViewerForUniversalModel:universalModel]) {
+        [self PPUniversalCell_tapCard:universalModel];
+    }
+}
 
 - (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel
 {
@@ -7743,7 +8503,7 @@ presentingViewController:self
     self.collectionView.directionalLockEnabled = fullDetails;
     self.collectionView.pagingEnabled = NO;
     self.collectionView.showsHorizontalScrollIndicator = NO;
-    self.collectionView.showsVerticalScrollIndicator = !fullDetails;
+    self.collectionView.showsVerticalScrollIndicator = NO;
     self.collectionView.decelerationRate = fullDetails
         ? UIScrollViewDecelerationRateFast
         : UIScrollViewDecelerationRateNormal;
@@ -8288,15 +9048,15 @@ presentingViewController:self
 
     [NSLayoutConstraint activateConstraints:@[
         [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
-        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? 18.0 : 16.0],
-        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -18.0 :  -16.0],
+        [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? 20.0 : 16.0],
+        [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -20.0 :  -16.0],
         [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:kPPFilterIslandTopPadding],
         [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:6.0],
         [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-6.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
 
-    UIView *filterContextBar = [[UIView alloc] init];
+    UIControl *filterContextBar = [[UIControl alloc] init];
     filterContextBar.translatesAutoresizingMaskIntoConstraints = NO;
     filterContextBar.backgroundColor = UIColor.clearColor;
     filterContextBar.clipsToBounds = NO;
@@ -8306,9 +9066,9 @@ presentingViewController:self
     self.filterContextBar = filterContextBar;
     [controlIsland addSubview:filterContextBar];
 
-    // Add tap gesture to filter context bar to trigger expand/collapse
-    UITapGestureRecognizer *contextBarTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleFilterBadgesCollapsed:)];
-    [filterContextBar addGestureRecognizer:contextBarTap];
+    [filterContextBar addTarget:self
+                         action:@selector(toggleFilterBadgesCollapsed:)
+               forControlEvents:UIControlEventTouchUpInside];
 
     UIView *filterBadgeView = [[UIView alloc] init];
     filterBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -8335,11 +9095,40 @@ presentingViewController:self
     contextLabel.translatesAutoresizingMaskIntoConstraints = NO;
     contextLabel.font = [GM boldFontWithSize:11.8] ?: [UIFont systemFontOfSize:11.8 weight:UIFontWeightSemibold];
     contextLabel.adjustsFontForContentSizeCategory = YES;
+    contextLabel.adjustsFontSizeToFitWidth = YES;
+    contextLabel.minimumScaleFactor = 0.82;
     contextLabel.numberOfLines = 1;
     contextLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    contextLabel.text = [self filterContextTitleForSection:self.viewModel.currentSection];
+    contextLabel.text = [self pp_filterContextIslandTitleForSection:self.viewModel.currentSection];
     self.filterContextLabel = contextLabel;
-    [filterBadgeView addSubview:contextLabel];
+
+    UILabel *contextSecondaryLabel = [[UILabel alloc] init];
+    contextSecondaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    contextSecondaryLabel.font = [GM MidFontWithSize:10.2] ?: [UIFont systemFontOfSize:10.2 weight:UIFontWeightMedium];
+    contextSecondaryLabel.adjustsFontForContentSizeCategory = YES;
+    contextSecondaryLabel.adjustsFontSizeToFitWidth = YES;
+    contextSecondaryLabel.minimumScaleFactor = 0.80;
+    contextSecondaryLabel.numberOfLines = 1;
+    contextSecondaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    contextSecondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    contextSecondaryLabel.text = @"";
+    contextSecondaryLabel.hidden = YES;
+    contextSecondaryLabel.accessibilityElementsHidden = YES;
+    self.filterContextSecondaryLabel = contextSecondaryLabel;
+
+    UIStackView *contextTextStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        contextLabel,
+        contextSecondaryLabel
+    ]];
+    contextTextStack.translatesAutoresizingMaskIntoConstraints = NO;
+    contextTextStack.axis = UILayoutConstraintAxisVertical;
+    contextTextStack.alignment = UIStackViewAlignmentFill;
+    contextTextStack.distribution = UIStackViewDistributionFill;
+    contextTextStack.spacing = 0.0;
+    contextTextStack.userInteractionEnabled = NO;
+    contextTextStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.filterContextTextStack = contextTextStack;
+    [filterBadgeView addSubview:contextTextStack];
     
     UIView *filterContainer = [[UIView alloc] init];
     filterContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -8580,9 +9369,11 @@ presentingViewController:self
         [contextIconView.widthAnchor constraintEqualToConstant:13.0],
         [contextIconView.heightAnchor constraintEqualToConstant:13.0],
 
-        [contextLabel.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:5.0],
-        [contextLabel.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-10.0],
-        [contextLabel.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
+        [contextTextStack.leadingAnchor constraintEqualToAnchor:contextIconView.trailingAnchor constant:7.0],
+        [contextTextStack.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-10.0],
+        [contextTextStack.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
+        [contextTextStack.topAnchor constraintGreaterThanOrEqualToAnchor:filterBadgeView.topAnchor constant:3.0],
+        [contextTextStack.bottomAnchor constraintLessThanOrEqualToAnchor:filterBadgeView.bottomAnchor constant:-3.0],
 
         [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:10.0],
         [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-10.0],
@@ -8764,7 +9555,7 @@ presentingViewController:self
     // ─────────────────────────────────────────────
 
     UIAction *allAction =
-    [UIAction actionWithTitle:kLang(@"All")
+    [UIAction actionWithTitle:[self pp_allSubKindsSelectorTitle]
                         image:[UIImage systemImageNamed:@"circle.grid.3x3.fill"]
                    identifier:nil
                       handler:^(__kindof UIAction * _Nonnull act) {
@@ -8817,7 +9608,7 @@ presentingViewController:self
     UIColor *allColor = AppSecondaryTextClr;
 
     NSAttributedString *allAttrTitle =
-    [[NSAttributedString alloc] initWithString:kLang(@"all")
+    [[NSAttributedString alloc] initWithString:[self pp_allSubKindsSelectorTitle]
                                     attributes:@{
         NSFontAttributeName : allFont,
         NSForegroundColorAttributeName : allColor
@@ -8931,6 +9722,63 @@ presentingViewController:self
                                                showInAppMarket:nextVisible
                                                     completion:handleResult];
     }
+}
+
+- (void)PPUniversalCell_tapChat:(PPUniversalCellViewModel *)universalModel
+{
+    if (!PPIsUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    NSString *ownerID = [self pp_chatOwnerIDForFullDetailsViewModel:universalModel];
+    if (ownerID.length == 0) {
+        [PPHUD showInfo:kLang(@"bb_dataview_full_details_contact_unavailable")];
+        return;
+    }
+
+    NSString *currentUID = UserManager.sharedManager.currentUser.ID ?: PPCurrentFIRAuthUser.uid ?: @"";
+    if ([ownerID isEqualToString:currentUID]) {
+        [PPHUD showInfo:kLang(@"bb_dataview_full_details_chat_self_unavailable")];
+        return;
+    }
+
+    [PPHUD showLoading:kLang(@"bb_dataview_full_details_opening_chat")];
+    __weak typeof(self) weakSelf = self;
+    [UsrMgr getOtherUserModelFromFirestoreWithUID:ownerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) { return; }
+            [PPHUD dismiss];
+
+            if (error || !user || user.ID.length == 0) {
+                [PPHUD showError:kLang(@"bb_dataview_full_details_contact_unavailable")];
+                return;
+            }
+
+            [ChManager.sharedManager createOrGetChatThreadWithUser:user
+                                                        completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable chatError) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (chatError || !thread) {
+                        [PPHUD showError:kLang(@"SomethingWentWrong") subtitle:chatError.localizedDescription ?: @""];
+                        return;
+                    }
+                    [PPOverlayCoordinator pp_openChatThread:thread fromVC:self];
+                });
+            }];
+        });
+    }];
+}
+
+- (void)PPUniversalCell_tapReport:(PPUniversalCellViewModel *)universalModel
+{
+    [PPHUD showSuccess:kLang(@"reported_successfully")];
+}
+
+- (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel
+{
+    [[PPSaveForLaterManager sharedManager] saveViewModelForLater:universalModel];
+    [PPHUD showSuccess:kLang(@"Saved")];
 }
 
 #pragma mark - BBDataViewFullDetailsCellDelegate

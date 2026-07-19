@@ -204,9 +204,9 @@ private extension Font {
         let size = uiFont.pointSize
         let name = fd.postscriptName
         if fd.symbolicTraits.contains(.traitBold) {
-            self = .custom(name, size: size).bold()
+            self = .custom(name, size: size, relativeTo: .caption).bold()
         } else {
-            self = .custom(name, size: size)
+            self = .custom(name, size: size, relativeTo: .caption)
         }
     }
 }
