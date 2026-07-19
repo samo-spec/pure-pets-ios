@@ -456,7 +456,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     void (^updates)(void) = ^{
         self.blurView.hidden = NO;
         CGFloat baseBlurAlpha = isDark ? 0.54 : 0.72;
-        self.blurView.alpha = baseBlurAlpha * (1.0 - (0.72 * dockedProgress));
+        self.blurView.alpha = baseBlurAlpha * (1.0 - (0.90 * dockedProgress));
         self.backgroundColor = [foregroundSurface colorWithAlphaComponent:dockedProgress];
 
         self.surfaceGradientLayer.colors = @[
@@ -466,7 +466,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.48, @1.0];
         CGFloat baseSurfaceOpacity = isDark ? 0.76 : 0.68;
-        self.surfaceGradientLayer.opacity = baseSurfaceOpacity * (1.0 - (0.76 * dockedProgress));
+        self.surfaceGradientLayer.opacity = baseSurfaceOpacity * (1.0 - (0.90 * dockedProgress));
 
         self.liquidBorderLayer.colors = @[
             PPDataViewResolvedLayerColor(borderLead, self.traitCollection),
@@ -507,8 +507,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     }
 
     [CATransaction begin];
-    [CATransaction setAnimationDuration:1.65];
-    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    [CATransaction setAnimationDuration:0.34];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithControlPoints:0.18 :0.84 :0.24 :1.0]];
     updates();
     [CATransaction commit];
 }
@@ -2231,6 +2231,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.navContainerView.layer.borderWidth = 0.0;
     self.navContainerView.isAccessibilityElement = NO;
     [self.navContainerView pp_applyPremiumMaterialAnimated:NO];
+    [self.navContainerView pp_applyDockedForegroundProgress:[self pp_dockedIslandSnapshotProgressForDockProgress:self.premiumHeaderDockProgress]
+                                                   animated:NO];
 
     [self pp_applyPremiumMainKindsButtonSurface];
     [self pp_applyPremiumSubKindsButtonSurface];
@@ -2654,7 +2656,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     CGFloat clampedProgress = MIN(MAX(progress, 0.0), 1.0);
     if (fabs(self.premiumHeaderCollapseProgress - clampedProgress) < 0.002) {
         CGFloat dockProgress = [self pp_headerDockProgressForCollapseProgress:clampedProgress];
+        CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:dockProgress];
         [self pp_updateDockedIslandSnapshotFrame];
+        [self.navContainerView pp_applyDockedForegroundProgress:snapshotProgress animated:animated];
         [self pp_applyNavigationTitleDockProgress:dockProgress];
         return;
     }
@@ -2717,6 +2721,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.filterContextBar.alpha = contextAlpha;
         self.filterContextBar.transform = contextTransform;
         self.navContainerView.transform = titleTransform;
+        [self.navContainerView pp_applyDockedForegroundProgress:snapshotProgress animated:canAnimate];
         [self pp_applyNavigationTitleDockProgress:dockProgress];
         self.navSearchActionsButton.transform = searchTransform;
         [self pp_updatePremiumChromeShadowPaths];
