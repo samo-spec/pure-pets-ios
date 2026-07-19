@@ -104,7 +104,7 @@ static NSString * const PPRouteToSearchAccessoriesNotificationKey = @"PPRouteToS
 static NSString * const PPHomeSectionDividerKind = @"PPHomeSectionDividerKind";
 static BOOL const PPUSE_LEGACY_BAR = NO;
 static NSString * const kPPReusableVideoMediaFeatureFlagKey = @"PPReusableVideoMediaEnabled";
-
+ 
 static inline BOOL PPReusableVideoMediaDefaultEnabled(void) {
 #ifdef PP_REUSABLE_VIDEO_MEDIA_ENABLED
     return PP_REUSABLE_VIDEO_MEDIA_ENABLED;
@@ -285,7 +285,7 @@ typedef NS_ENUM(NSInteger, PPCategoryItemKind) {
  [snapshot appendSectionsWithIdentifiers:@[
      @(PPHomeSectionHero),
      @(PPHomeSectionCurrentOrders),
-     @(PPHomeSectionServices),
+
      @(PPHomeSectionCarousel),
      @(PPHomeSectionMainKinds),
      @(PPHomeSectionSuggestions),
@@ -300,7 +300,6 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionHero = 0,
     PPHomeSectionQuickActions = 1,
     PPHomeSectionCurrentOrders = 2,
-    PPHomeSectionServices = 3,
     PPHomeSectionCarousel = 4,
     PPHomeSectionMainKinds = 5,
     PPHomeSectionSuggestions = 6,

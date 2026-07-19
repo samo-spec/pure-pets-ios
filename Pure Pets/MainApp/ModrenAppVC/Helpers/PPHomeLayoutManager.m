@@ -60,7 +60,6 @@
                 @(PPHomeSectionNearbyServices),
                 @(PPHomeSectionAdopt),
                 @(PPHomeSectionBuyAgain),
-                @(PPHomeSectionServices),
             ];
             if (sectionIndex >= 0 && sectionIndex < renderOrder.count) {
                 sectionType = (PPHomeSection)renderOrder[sectionIndex].integerValue;
@@ -102,9 +101,6 @@
 
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];
-
-            case PPHomeSectionServices:
-                return [PPHomeFunc servicesSection];
 
             case PPHomeSectionCurrentOrders:
                 return [PPHomeFunc currentOrdersSectionExpanded:self.isCurrentOrdersExpanded

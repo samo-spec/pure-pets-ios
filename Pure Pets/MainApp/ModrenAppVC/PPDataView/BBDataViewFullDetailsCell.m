@@ -1836,7 +1836,7 @@ static NSDictionary *BBFullDetailsNormalizedMediaDictionary(NSDictionary *media)
         border = [brand colorWithAlphaComponent:0.14];
     } else {
         title = BBFullDetailsLocalized(@"addToCart");
-        imageName = @"plus.cart.fill";
+        imageName = @"cart.plus.fill";
     }
 
     UIFont *font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCallout]

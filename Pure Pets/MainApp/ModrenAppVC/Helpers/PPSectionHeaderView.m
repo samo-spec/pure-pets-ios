@@ -9,7 +9,8 @@ static CGFloat PPSectionHeaderPixel(void) {
 static const CGFloat PPSectionHeaderContentVerticalInset = 4.0;
 static const CGFloat PPSectionHeaderAccentWidth = 6.0;
 static const CGFloat PPSectionHeaderAccentHeight = 6.0;
-static const CGFloat PPSectionHeaderActionMinHeight = 44.0;
+static const CGFloat PPSectionHeaderActionHeight = 36.0;
+static const CGFloat PPSectionHeaderActionTouchHeight = 44.0;
 static const CGFloat PPSectionHeaderActionMinWidth = 44.0;
 static const CGFloat PPSectionHeaderActionMaxWidth = 196.0;
 static NSString * const PPSectionHeaderLineSweepAnimationKey = @"pp.sectionHeader.line.sweep";
@@ -217,10 +218,9 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
                           action:@selector(pp_actionTapped)
                 forControlEvents:UIControlEventTouchUpInside];
 
-    NSLayoutConstraint *actionHeight = [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionMinHeight];
-    actionHeight.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *actionHeight = [self.actionButton.heightAnchor constraintEqualToConstant:PPSectionHeaderActionHeight];
     self.actionButtonCircleWidthConstraint =
-        [self.actionButton.widthAnchor constraintEqualToConstant:PPSectionHeaderActionMinHeight];
+        [self.actionButton.widthAnchor constraintEqualToConstant:PPSectionHeaderActionHeight];
     self.actionButtonCircleWidthConstraint.active = NO;
     [NSLayoutConstraint activateConstraints:@[
         actionHeight,
@@ -252,6 +252,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     self.textStackView.distribution = UIStackViewDistributionFill;
     self.textStackView.spacing = 10.0;
     self.textStackView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.textStackView.heightAnchor constraintGreaterThanOrEqualToConstant:PPSectionHeaderActionTouchHeight].active = YES;
     if (@available(iOS 11.0, *)) {
         [self.textStackView setCustomSpacing:12.0 afterView:self.titleLabel];
         [self.textStackView setCustomSpacing:12.0 afterView:self.lineView];
@@ -304,13 +305,13 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 {
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 14.0, 5.0, 14.0);
     cfg.imagePadding = 6.0;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.baseForegroundColor = [self pp_accentColor];
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     background.strokeWidth = PPSectionHeaderPixel();
     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.20 : 0.10];
     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.07];
@@ -336,11 +337,11 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.imagePadding = subtitleVisible ? 0.0 : 6.0;
     cfg.contentInsets = subtitleVisible
-        ? NSDirectionalEdgeInsetsMake(8.0, 8.0, 8.0, 8.0)
-        : NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
+        ? NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0)
+        : NSDirectionalEdgeInsetsMake(5.0, 14.0, 5.0, 14.0);
 
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     background.strokeWidth = 0.0;
     cfg.background = background;
     return cfg;
@@ -372,9 +373,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = self.actionButtonUsesCirclePresentation
-        ? PPSectionHeaderActionMinHeight * 0.5
-        : PPHomeControlCornerRadius;
+    background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     background.strokeWidth = PPSectionHeaderPixel();
     background.strokeColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.22 : 0.10)];
     background.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.14 : 0.07)];
@@ -382,7 +381,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
     cfg.baseForegroundColor = accentColor;
     self.actionButton.configuration = cfg;
-    self.actionButton.layer.cornerRadius = PPSectionHeaderActionMinHeight * 0.5;
+    self.actionButton.layer.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
 }
 
@@ -890,8 +889,8 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     BOOL hasTitleText = (cfg.title.length > 0 || cfg.attributedTitle.string.length > 0);
     if (!hasTitleText && image) {
         cfg.contentInsets = subtitleVisible
-            ? NSDirectionalEdgeInsetsMake(8.0, 8.0, 8.0, 8.0)
-            : NSDirectionalEdgeInsetsMake(8.0, 10.0, 8.0, 10.0);
+            ? NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0)
+            : NSDirectionalEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
     }
 
     return cfg;

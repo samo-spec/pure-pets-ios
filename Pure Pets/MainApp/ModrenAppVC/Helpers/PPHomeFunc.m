@@ -972,43 +972,47 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  }
 
 
- // MARK: - Services Section (3 items per row, modern grid)
+ // MARK: - Services Section
  + (NSCollectionLayoutSection *)servicesSection
  {
-     // Item (1 of 3)
+     CGFloat availableWidth = PPHomeResolvedWidth(UIScreen.mainScreen.bounds.size.width);
+     CGFloat itemWidth;
+     if (PPHomeWidthIsTablet(availableWidth)) {
+         itemWidth = 184.0;
+     } else if (PPHomeWidthIsWidePhone(availableWidth)) {
+         itemWidth = 168.0;
+     } else if (PPHomeWidthIsCompactPhone(availableWidth)) {
+         itemWidth = 150.0;
+     } else {
+         itemWidth = 158.0;
+     }
+     CGFloat itemHeight = PPHomeUsesAccessibilityText() ? 96.0 : 72.0;
+
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
-      [NSCollectionLayoutDimension fractionalWidthDimension:(1.0 / 3.0)]
+      [NSCollectionLayoutDimension absoluteDimension:itemWidth]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:58]];
+      [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-
-     item.contentInsets =
-     NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
-
-     // Group (single row, 3 items)
      NSCollectionLayoutSize *groupSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
-      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+      [NSCollectionLayoutDimension absoluteDimension:itemWidth]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:58]];
+      [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
-                                                   subitems:@[item, item, item]];
+                                                   subitems:@[item]];
 
-     // Section
      NSCollectionLayoutSection *section =
      [NSCollectionLayoutSection sectionWithGroup:group];
 
-     section.interGroupSpacing = PPHomeSpacingBase;
-     section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPHomeSpacingSection,
-                                        PPHomeEdgeSpacing,
-                                 PPHomeSpacingSection,
-                                        PPHomeEdgeSpacing);
+     section.orthogonalScrollingBehavior =
+         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
+     section.interGroupSpacing = PPHomeInteritemSpacing;
+     section.contentInsets = PPHomeHorizontalRailSectionInsets();
 
      return section;
  }

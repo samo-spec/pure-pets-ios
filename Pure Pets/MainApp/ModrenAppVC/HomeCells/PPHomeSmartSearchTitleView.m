@@ -9,6 +9,7 @@
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePresentationTokens.h"
 #import <QuartzCore/QuartzCore.h>
+#import <math.h>
 
 static UISemanticContentAttribute PPSSB_CurrentSemantic(void)
 {
@@ -20,10 +21,25 @@ static NSTextAlignment PPSSB_CurrentTextAlignment(void)
     return [Language alignmentForCurrentLanguage];
 }
 
-static CGFloat const PPSSBChromeCornerRadius = 22.0;
+static CGFloat const PPSSBExpandedChromeHeight = 48.0;
+static CGFloat const PPSSBCollapsedChromeHeight = 40.0;
+static CGFloat const PPSSBChromeCornerRadius = 24.0;
+static CGFloat const PPSSBExpandedChipSide = 34.0;
+static CGFloat const PPSSBCollapsedChipSide = 28.0;
+static CGFloat const PPSSBExpandedSearchSide = 30.0;
+static CGFloat const PPSSBCollapsedSearchSide = 26.0;
+static CGFloat const PPSSBExpandedHorizontalInset = 7.0;
+static CGFloat const PPSSBCollapsedHorizontalInset = 6.0;
+static CGFloat const PPSSBExpandedTextGap = 10.0;
+static CGFloat const PPSSBCollapsedTextGap = 8.0;
 static CGFloat const PPSSBCompactWidthThreshold = 280.0;
 static NSString * const PPSSBLeadingFireLottiePrimaryPath = @"LottieAnimations/Fire.json";
 static NSString * const PPSSBLeadingFireLottieRootPath = @"Fire.json";
+
+static CGFloat PPSSBInterpolate(CGFloat start, CGFloat end, CGFloat progress)
+{
+    return start + ((end - start) * PPHomeClamp(progress, 0.0, 1.0));
+}
 
 static UIFont *PPSSBScaledFont(UIFont *font,
                                UIFontTextStyle textStyle,
@@ -38,6 +54,7 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     UIButton *_glassChromeButton;
     UIVisualEffectView *_chromeBlurView;
     UIView *_chromeTintOverlay;
+    UIView *_chromeSeparatorView;
     UIView *_leadingChipView;
     UIImageView *_leadingIconView;
 #if __has_include(<Lottie/Lottie.h>) || __has_include("Lottie.h") || __has_include(<lottie-ios_Oc/Lottie.h>) || __has_include(<lottie_ios_Oc/Lottie.h>)
@@ -66,6 +83,10 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     NSLayoutConstraint *_leadingChipHeightConstraint;
     NSLayoutConstraint *_trailingOrbWidthConstraint;
     NSLayoutConstraint *_trailingOrbHeightConstraint;
+    NSLayoutConstraint *_leadingChipLeadingConstraint;
+    NSLayoutConstraint *_textLeadingConstraint;
+    NSLayoutConstraint *_textTrailingConstraint;
+    NSLayoutConstraint *_trailingOrbTrailingConstraint;
 }
 
 @synthesize placeholderLabel = _placeholderLabel;
@@ -78,16 +99,19 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 - (void)pp_configureSystemGlassChromeIfNeeded
 {
     if (!_glassChromeButton) {
-        //return;
+        return;
     }
 
     if (@available(iOS 26.0, *)) {
+        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        UIColor *surfaceColor = PPHomeSemanticCardSurfaceColor() ?: UIColor.secondarySystemBackgroundColor;
+        CGFloat surfaceAlpha = (isDark ? 0.28 : 0.42) + (0.10 * _collapseProgress);
         UIButtonConfiguration *configuration =
             [UIButtonConfiguration glassButtonConfiguration];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         configuration.baseForegroundColor = UIColor.clearColor;
-        configuration.baseBackgroundColor = UIColor.clearColor;
+        configuration.baseBackgroundColor = [surfaceColor colorWithAlphaComponent:surfaceAlpha];
 
         UIBackgroundConfiguration *background =
             configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
@@ -101,7 +125,7 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 
 - (CGSize)intrinsicContentSize
 {
-    return CGSizeMake(UIViewNoIntrinsicMetric, 46.0);
+    return CGSizeMake(UIViewNoIntrinsicMetric, PPSSBExpandedChromeHeight);
 }
 
 - (CGSize)sizeThatFits:(CGSize)size
@@ -110,13 +134,13 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     if (width <= 0.0 && isfinite(size.width) && size.width > 0.0) {
         width = size.width;
     }
-    return CGSizeMake(MAX(width, 1.0), 46.0);
+    return CGSizeMake(MAX(width, 1.0), PPSSBExpandedChromeHeight);
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
-        ? CGRectMake(0.0, 0.0, 240.0, 46.0)
+        ? CGRectMake(0.0, 0.0, 240.0, PPSSBExpandedChromeHeight)
         : frame;
     self = [super initWithFrame:initialFrame];
     if (!self) {
@@ -125,7 +149,8 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = PPSSB_CurrentSemantic();
-    self.accessibilityTraits = UIAccessibilityTraitButton;
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton | UIAccessibilityTraitSearchField;
     self.accessibilityLabel =
         kLang(@"home_nav_search_accessibility") ?:
         (kLang(@"home_search_hint") ?: @"Open smart search");
@@ -135,10 +160,10 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     _collapseProgress = 0.0;
     _overscrollProgress = 0.0;
 
-    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:0.7]];
+    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
     self.layer.shadowOpacity = 0.0f;
-    self.layer.shadowRadius = 0.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
+    self.layer.shadowRadius = 12.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
 
     UIView *chromeView = nil;
     if (@available(iOS 26.0, *)) {
@@ -161,7 +186,7 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     }
     [self addSubview:chromeView];
     _chromeView = chromeView;
-    _chromeHeightConstraint = [chromeView.heightAnchor constraintEqualToConstant:46.0];
+    _chromeHeightConstraint = [chromeView.heightAnchor constraintEqualToConstant:PPSSBExpandedChromeHeight];
 
     if (![self pp_usesSystemGlassChrome]) {
         // Legacy frosted fallback for pre-iOS 26 runtimes.
@@ -192,6 +217,20 @@ static UIFont *PPSSBScaledFont(UIFont *font,
             [chromeTint.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
         ]];
     }
+
+    UIView *separatorView = [[UIView alloc] init];
+    separatorView.translatesAutoresizingMaskIntoConstraints = NO;
+    separatorView.userInteractionEnabled = NO;
+    separatorView.alpha = 0.0;
+    [chromeView addSubview:separatorView];
+    _chromeSeparatorView = separatorView;
+    CGFloat hairlineHeight = 1.0 / UIScreen.mainScreen.scale;
+    [NSLayoutConstraint activateConstraints:@[
+        [separatorView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:16.0],
+        [separatorView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-16.0],
+        [separatorView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+        [separatorView.heightAnchor constraintEqualToConstant:hairlineHeight],
+    ]];
 
     UIView *leadingChipView = [UIView new];
     leadingChipView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -323,10 +362,22 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     [trailingOrbView addSubview:chevronView];
     _chevronView = chevronView;
 
-    _leadingChipWidthConstraint = [leadingChipView.widthAnchor constraintEqualToConstant:32.0];
-    _leadingChipHeightConstraint = [leadingChipView.heightAnchor constraintEqualToConstant:32.0];
-    _trailingOrbWidthConstraint = [trailingOrbView.widthAnchor constraintEqualToConstant:26.0];
-    _trailingOrbHeightConstraint = [trailingOrbView.heightAnchor constraintEqualToConstant:26.0];
+    _leadingChipWidthConstraint = [leadingChipView.widthAnchor constraintEqualToConstant:PPSSBExpandedChipSide];
+    _leadingChipHeightConstraint = [leadingChipView.heightAnchor constraintEqualToConstant:PPSSBExpandedChipSide];
+    _trailingOrbWidthConstraint = [trailingOrbView.widthAnchor constraintEqualToConstant:PPSSBExpandedSearchSide];
+    _trailingOrbHeightConstraint = [trailingOrbView.heightAnchor constraintEqualToConstant:PPSSBExpandedSearchSide];
+    _leadingChipLeadingConstraint =
+        [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor
+                                                      constant:PPSSBExpandedHorizontalInset];
+    _textLeadingConstraint =
+        [textStackView.leadingAnchor constraintEqualToAnchor:leadingChipView.trailingAnchor
+                                                    constant:PPSSBExpandedTextGap];
+    _textTrailingConstraint =
+        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor
+                                                     constant:-PPSSBExpandedTextGap];
+    _trailingOrbTrailingConstraint =
+        [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor
+                                                       constant:-PPSSBExpandedHorizontalInset];
 
     [NSLayoutConstraint activateConstraints:@[
         [chromeView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
@@ -334,7 +385,7 @@ static UIFont *PPSSBScaledFont(UIFont *font,
         [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         _chromeHeightConstraint,
 
-        [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
+        _leadingChipLeadingConstraint,
         [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
         _leadingChipWidthConstraint,
         _leadingChipHeightConstraint,
@@ -347,13 +398,13 @@ static UIFont *PPSSBScaledFont(UIFont *font,
         [signalDotView.widthAnchor constraintEqualToConstant:5.5],
         [signalDotView.heightAnchor constraintEqualToConstant:5.5],
 
-        [textStackView.leadingAnchor constraintEqualToAnchor:leadingChipView.trailingAnchor constant:10.0],
+        _textLeadingConstraint,
         [textStackView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
         [textStackView.topAnchor constraintGreaterThanOrEqualToAnchor:chromeView.topAnchor constant:6.5],
         [textStackView.bottomAnchor constraintLessThanOrEqualToAnchor:chromeView.bottomAnchor constant:-6.5],
-        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor constant:-10.0],
+        _textTrailingConstraint,
 
-        [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-7.0],
+        _trailingOrbTrailingConstraint,
         [trailingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
         _trailingOrbWidthConstraint,
         _trailingOrbHeightConstraint,
@@ -395,13 +446,18 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    self.semanticContentAttribute = PPSSB_CurrentSemantic();
+    _signalLabel.textAlignment = PPSSB_CurrentTextAlignment();
+    _placeholderLabel.textAlignment = PPSSB_CurrentTextAlignment();
+
     CGFloat width = CGRectGetWidth(self.bounds);
     BOOL compact = width < PPSSBCompactWidthThreshold;
     BOOL accessibilityText =
         UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
     _signalRowView.hidden = accessibilityText;
-    _signalRowView.alpha = (compact ? 0.92 : 1.0) * (1.0 - _collapseProgress);
-    _textStackView.spacing = (compact ? 0.0 : 0.5) * (1.0 - _collapseProgress);
+    CGFloat secondaryVisibility = accessibilityText ? 0.0 : pow(1.0 - _collapseProgress, 1.35);
+    _signalRowView.alpha = (compact ? 0.90 : 1.0) * secondaryVisibility;
+    _textStackView.spacing = (compact ? 0.0 : 1.0) * secondaryVisibility;
     UIFont *signalFont = compact
         ? ([GM MidFontWithSize:8.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold])
         : ([GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:9.0 weight:UIFontWeightSemibold]);
@@ -415,16 +471,19 @@ static UIFont *PPSSBScaledFont(UIFont *font,
         CGFloat chromeHeight = CGRectGetHeight(_chromeView.bounds);
         CGFloat expandedRadius = chromeHeight > 0.0 ? chromeHeight * 0.5 : PPSSBChromeCornerRadius;
         _chromeView.layer.cornerRadius =
-            expandedRadius + ((PPHomeControlCornerRadius - expandedRadius) * _collapseProgress);
+            expandedRadius + (((PPSSBCollapsedChromeHeight * 0.5) - expandedRadius) * _collapseProgress);
         [self pp_configureSystemGlassChromeIfNeeded];
     } else {
         _chromeView.layer.cornerRadius =
             PPSSBChromeCornerRadius +
-            ((PPHomeControlCornerRadius - PPSSBChromeCornerRadius) * _collapseProgress);
+            (((PPSSBCollapsedChromeHeight * 0.5) - PPSSBChromeCornerRadius) * _collapseProgress);
     }
-    _leadingChipView.layer.cornerRadius = 16.0 - (3.0 * _collapseProgress);
-    _trailingOrbView.layer.cornerRadius = 13.0;
+    _leadingChipView.layer.cornerRadius =
+        MAX(12.0, MIN(_leadingChipHeightConstraint.constant, _leadingChipWidthConstraint.constant) * 0.5);
+    _trailingOrbView.layer.cornerRadius =
+        MAX(11.0, MIN(_trailingOrbHeightConstraint.constant, _trailingOrbWidthConstraint.constant) * 0.5);
     _signalDotView.layer.cornerRadius = 2.75;
+    [self pp_updateChromeShadowPath];
 }
 
 - (void)didMoveToWindow
@@ -515,17 +574,36 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     _overscrollProgress = overscroll;
 
     void (^updates)(void) = ^{
-        self->_chromeHeightConstraint.constant = 46.0 - (6.0 * collapse);
-        self->_leadingChipWidthConstraint.constant = 32.0 - (4.0 * collapse);
-        self->_leadingChipHeightConstraint.constant = 32.0 - (4.0 * collapse);
-        self->_trailingOrbWidthConstraint.constant = 26.0 - (2.0 * collapse);
-        self->_trailingOrbHeightConstraint.constant = 26.0 - (2.0 * collapse);
-        self->_signalRowView.alpha = (1.0 - collapse) *
-            (CGRectGetWidth(self.bounds) < PPSSBCompactWidthThreshold ? 0.92 : 1.0);
+        CGFloat chromeHeight = PPSSBInterpolate(PPSSBExpandedChromeHeight,
+                                                PPSSBCollapsedChromeHeight,
+                                                collapse);
+        CGFloat chipSide = PPSSBInterpolate(PPSSBExpandedChipSide,
+                                            PPSSBCollapsedChipSide,
+                                            collapse);
+        CGFloat searchSide = PPSSBInterpolate(PPSSBExpandedSearchSide,
+                                              PPSSBCollapsedSearchSide,
+                                              collapse);
+        self->_chromeHeightConstraint.constant = chromeHeight;
+        self->_leadingChipWidthConstraint.constant = chipSide;
+        self->_leadingChipHeightConstraint.constant = chipSide;
+        self->_trailingOrbWidthConstraint.constant = searchSide;
+        self->_trailingOrbHeightConstraint.constant = searchSide;
+        self->_leadingChipLeadingConstraint.constant =
+            PPSSBInterpolate(PPSSBExpandedHorizontalInset, PPSSBCollapsedHorizontalInset, collapse);
+        self->_trailingOrbTrailingConstraint.constant =
+            -PPSSBInterpolate(PPSSBExpandedHorizontalInset, PPSSBCollapsedHorizontalInset, collapse);
+        CGFloat textGap = PPSSBInterpolate(PPSSBExpandedTextGap, PPSSBCollapsedTextGap, collapse);
+        self->_textLeadingConstraint.constant = textGap;
+        self->_textTrailingConstraint.constant = -textGap;
+
+        BOOL compact = CGRectGetWidth(self.bounds) < PPSSBCompactWidthThreshold;
+        CGFloat secondaryVisibility = pow(1.0 - collapse, 1.35);
+        self->_signalRowView.alpha = secondaryVisibility * (compact ? 0.90 : 1.0);
         self->_signalRowView.transform =
-            CGAffineTransformMakeScale(1.0 - (0.04 * collapse), 1.0 - (0.04 * collapse));
-        self->_textStackView.transform = CGAffineTransformMakeTranslation(0.0, -3.5 * collapse);
-        self->_leadingChipView.alpha = 1.0 - (0.10 * collapse);
+            CGAffineTransformMakeTranslation(0.0, -2.0 * collapse);
+        self->_textStackView.transform = CGAffineTransformMakeTranslation(0.0, -3.0 * collapse);
+        self->_leadingChipView.alpha = 1.0 - (0.06 * collapse);
+        self->_trailingOrbView.alpha = 0.94 + (0.06 * collapse);
         [self pp_applyPalette];
         [self pp_updateInteractiveStateAnimated:NO];
         [self setNeedsLayout];
@@ -567,12 +645,41 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     [super setHighlighted:highlighted];
     [self pp_updateInteractiveStateAnimated:YES];
 }
+
+- (void)pp_updateChromeShadowPath
+{
+    if (!_chromeView || CGRectIsEmpty(_chromeView.frame)) {
+        self.layer.shadowPath = nil;
+        return;
+    }
+
+    CGFloat radius = MAX(0.0, _chromeView.layer.cornerRadius);
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:_chromeView.frame
+                                                    cornerRadius:radius];
+    self.layer.shadowPath = path.CGPath;
+}
+
+- (void)pp_applyShadowForPressedState:(BOOL)isPressed
+{
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *shadowColor = isDark
+        ? [UIColor blackColor]
+        : [UIColor colorWithWhite:0.08 alpha:1.0];
+    [self pp_setShadowColor:shadowColor];
+
+    CGFloat restingOpacity = (isDark ? 0.18 : 0.07) + (0.05 * _collapseProgress);
+    self.layer.shadowOpacity = isPressed ? (isDark ? 0.10f : 0.045f) : (float)restingOpacity;
+    self.layer.shadowRadius = PPSSBInterpolate(12.0, 16.0, _collapseProgress);
+    self.layer.shadowOffset = CGSizeMake(0.0, PPSSBInterpolate(4.0, 7.0, _collapseProgress));
+    [self pp_updateChromeShadowPath];
+}
+
 - (void)pp_applyPalette
 {
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *accentColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
-    UIColor *surfaceColor = AppForgroundColr ?: [UIColor secondarySystemBackgroundColor];
-    UIColor *liquidBorderColor = AppForgroundColr ?: surfaceColor;
+    UIColor *surfaceColor = PPHomeSemanticCardSurfaceColor() ?: (AppForgroundColr ?: [UIColor secondarySystemBackgroundColor]);
+    UIColor *separatorColor = PPHomeSemanticHairlineColor() ?: UIColor.separatorColor;
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
     BOOL reduceTransparency = UIAccessibilityIsReduceTransparencyEnabled();
@@ -588,23 +695,24 @@ static UIFont *PPSSBScaledFont(UIFont *font,
         _chromeBlurView.alpha = reduceTransparency ? 0.0 : 1.0;
 
         UIBlurEffectStyle blurStyle = isDark
-            ? UIBlurEffectStyleSystemThinMaterialDark
-            : UIBlurEffectStyleSystemThinMaterialLight;
+            ? UIBlurEffectStyleSystemMaterialDark
+            : UIBlurEffectStyleSystemMaterialLight;
         _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
 
         CGFloat tintAlpha = reduceTransparency
             ? 1.0
-            : ((isDark ? 0.28 : 0.14) + (0.14 * _collapseProgress));
+            : ((isDark ? 0.36 : 0.50) + (0.14 * _collapseProgress));
         _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
-        _chromeView.layer.borderWidth = isDark ? 0.78f : 0.92f;
-        [_chromeView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58]];
+        _chromeView.layer.borderWidth = isDark ? 0.72f : 0.64f;
+        [_chromeView pp_setBorderColor:[separatorColor colorWithAlphaComponent:isDark ? 0.38 : 0.30]];
     }
 
+    UIColor *chipColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
     _leadingChipView.backgroundColor =
-    [AppForgroundColr colorWithAlphaComponent:isDark ? 0.24 : 0.12];
+        [chipColor colorWithAlphaComponent:(isDark ? 0.15 : 0.10) + (0.03 * _collapseProgress)];
     _leadingChipView.layer.borderWidth = 0.0f;
-    [_leadingChipView pp_setBorderColor:[AppBackgroundClr colorWithAlphaComponent:isDark ? 0.22 : 1.0]];
-    _leadingIconView.tintColor = AppForgroundColr;
+    [_leadingChipView pp_setBorderColor:UIColor.clearColor];
+    _leadingIconView.tintColor = accentColor;
 
     _signalDotView.backgroundColor = AppSecondaryTextClr ?: accentColor;
     _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.58];
@@ -612,9 +720,13 @@ static UIFont *PPSSBScaledFont(UIFont *font,
     _placeholderLabel.textColor = _currentCycleColor
         ?: [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
 
-    _trailingOrbView.backgroundColor = UIColor.clearColor;
+    _trailingOrbView.backgroundColor =
+        [textColor colorWithAlphaComponent:(isDark ? 0.055 : 0.035) + (0.025 * _collapseProgress)];
     _trailingOrbView.layer.borderWidth = 0.0f;
-    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
+    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.82 : 0.60];
+    _chromeSeparatorView.backgroundColor =
+        [separatorColor colorWithAlphaComponent:isDark ? 0.56 : 0.42];
+    _chromeSeparatorView.alpha = 0.04 + (0.32 * _collapseProgress);
 
 }
 
@@ -630,10 +742,8 @@ static UIFont *PPSSBScaledFont(UIFont *font,
         CGFloat leadingScale = (1.0 - (0.08 * self->_collapseProgress)) * (isPressed ? 0.96 : 1.0);
         self->_leadingChipView.transform = CGAffineTransformMakeScale(leadingScale, leadingScale);
         self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
-        self.layer.shadowOpacity = 0.0f;
-        self.layer.shadowRadius = 0.0f;
-        self.layer.shadowPath = nil;
         self->_chromeView.alpha = isPressed ? 0.96 : 1.0;
+        [self pp_applyShadowForPressedState:isPressed];
     };
 
     if (!animated) {
@@ -667,8 +777,15 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
-    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+    BOOL colorChanged =
+        [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection];
+    BOOL contentSizeChanged =
+        previousTraitCollection &&
+        ![self.traitCollection.preferredContentSizeCategory
+            isEqualToString:previousTraitCollection.preferredContentSizeCategory];
+    if (colorChanged || contentSizeChanged) {
         [self pp_applyPalette];
+        [self setNeedsLayout];
     }
 }
 

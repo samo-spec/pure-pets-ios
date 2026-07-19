@@ -324,6 +324,7 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var isSuggestionsAd = false
     @Published var isNearbyAdsSection = false
     @Published var userBordersV2 = true
+    @Published var isHomePresentation = false
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -378,6 +379,7 @@ private final class PPUniversalCardStore: ObservableObject {
         dataViewPresentation: Bool
     ) {
         let previousID = model.id
+        updatePresentationHost(delegate)
         let isAdLike = PPUniversalCellSwiftUIBridge.isAdvertisementViewModel(viewModel)
         let isSuggestions = PPUniversalCellSwiftUIBridge.isSuggestionsSection(for: viewModel, delegate: self.delegate)
         let isSuggestionsAd = isSuggestions && isAdLike
@@ -579,7 +581,19 @@ private final class PPUniversalCardStore: ObservableObject {
         resetTransientState(quantity: 0)
         isNearbyAdsSection = false
         isSuggestionsAd = false
+        isHomePresentation = false
         uiReferences.imageView?.image = nil
+    }
+
+    func updatePresentationHost(_ delegate: PPUniversalCellDelegate?) {
+        self.delegate = delegate
+        guard let delegate,
+              let object = delegate as? NSObject,
+              let homeClass = NSClassFromString("PPHomeViewController") else {
+            isHomePresentation = false
+            return
+        }
+        isHomePresentation = object.isKind(of: homeClass)
     }
 
     func refreshCartQuantity() {
@@ -606,6 +620,31 @@ private final class PPUniversalCardStore: ObservableObject {
             delegate?.ppUniversalCell_tapCard?(viewModel)
         } else {
             actions.onTap?(currentModel)
+        }
+    }
+
+    func tapShare() {
+        guard !model.isSkeleton else {
+            return
+        }
+        if let viewModel {
+            delegate?.ppUniversalCell_tapShare?(viewModel)
+        } else {
+            actions.onShare?(currentModel)
+        }
+    }
+
+    func tapFavorite() {
+        guard !model.isSkeleton else {
+            return
+        }
+        if let viewModel {
+            delegate?.ppUniversalCell_tapFavorite?(viewModel)
+        } else {
+            var next = model
+            next.isFavorite.toggle()
+            model = next
+            actions.onFavorite?(next, next.isFavorite)
         }
     }
 
@@ -961,6 +1000,19 @@ private final class PPUniversalCardStore: ObservableObject {
 // MARK: - Card Renderer
 
 @available(iOS 16.0, *)
+private struct PPUniversalHomeCardGridMetrics {
+    let mediaHeight: CGFloat
+    let titleHeight: CGFloat
+    let subtitleHeight: CGFloat
+    let priceHeight: CGFloat
+    let actionHeight: CGFloat
+    let metadataHeight: CGFloat
+    let titleToPriceSpacing: CGFloat
+    let priceToActionSpacing: CGFloat
+    let actionToMetadataSpacing: CGFloat
+}
+
+@available(iOS 16.0, *)
 private struct PPUniversalCardRenderer: View {
     @ObservedObject var store: PPUniversalCardStore
 
@@ -1015,14 +1067,27 @@ private struct PPUniversalCardRenderer: View {
                 }
                 .padding(9)
             } else {
+                let metrics = homeGridMetrics(for: size)
                 VStack(spacing: 0) {
                     media
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    bottomAnchoredInformation
-                        .layoutPriority(1)
-                        .padding(.horizontal, 9)
-                        .padding(.top, 8)
-                        .padding(.bottom, 8)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: store.isHomePresentation ? metrics.mediaHeight : nil,
+                            maxHeight: store.isHomePresentation ? metrics.mediaHeight : .infinity
+                        )
+                    if store.isHomePresentation {
+                        homeVerticalInformationGrid(metrics: metrics)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .padding(.horizontal, 11)
+                            .padding(.top, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
+                            .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
+                    } else {
+                        bottomAnchoredInformation
+                            .layoutPriority(1)
+                            .padding(.horizontal, 9)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
+                    }
                 }
                 .padding(4)
             }
@@ -1245,6 +1310,136 @@ private struct PPUniversalCardRenderer: View {
         .frame(maxWidth: .infinity, alignment: .bottomLeading)
     }
 
+    @ViewBuilder
+    private func homeVerticalInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics
+    ) -> some View {
+        switch store.context {
+        case .market, .food, .accessory:
+            commerceInformationGrid(metrics: metrics)
+        case .adopt:
+            adoptionInformationGrid(metrics: metrics)
+        case .services, .vets:
+            serviceInformationGrid(metrics: metrics)
+        case .ads, .homeAds:
+            adoptionListingInformationGrid(metrics: metrics)
+        }
+    }
+
+    private func commerceInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics
+    ) -> some View {
+        stableHomeInformationGrid(
+            metrics: metrics,
+            reservesPriceRow: true
+        )
+    }
+
+    private func adoptionInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics
+    ) -> some View {
+        stableHomeInformationGrid(
+            metrics: metrics,
+            reservesPriceRow: false
+        )
+    }
+
+    private func adoptionListingInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics
+    ) -> some View {
+        stableHomeInformationGrid(
+            metrics: metrics,
+            reservesPriceRow: true
+        )
+    }
+
+    private func serviceInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics
+    ) -> some View {
+        stableHomeInformationGrid(
+            metrics: metrics,
+            reservesPriceRow: true
+        )
+    }
+
+    private func stableHomeInformationGrid(
+        metrics: PPUniversalHomeCardGridMetrics,
+        reservesPriceRow: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            titleContent
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: metrics.titleHeight,
+                    maxHeight: metrics.titleHeight,
+                    alignment: .leading
+                )
+
+            if metrics.subtitleHeight > 0 {
+                subtitleContent
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: metrics.subtitleHeight,
+                        maxHeight: metrics.subtitleHeight,
+                        alignment: .topLeading
+                    )
+            }
+
+            Color.clear
+                .frame(height: metrics.titleToPriceSpacing)
+
+            Group {
+                if reservesPriceRow && hasPrice {
+                    priceRow
+                } else {
+                    Color.clear
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: reservesPriceRow ? metrics.priceHeight : 0,
+                maxHeight: reservesPriceRow ? metrics.priceHeight : 0,
+                alignment: .topLeading
+            )
+
+            Color.clear
+                .frame(height: metrics.priceToActionSpacing)
+
+            Group {
+                if showsBottomCTA {
+                    bottomCTA
+                } else {
+                    Color.clear
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: metrics.actionHeight,
+                maxHeight: metrics.actionHeight
+            )
+
+            Color.clear
+                .frame(height: metrics.actionToMetadataSpacing)
+
+            Group {
+                if hasBottomBadges {
+                    bottomBadgesRow
+                } else {
+                    Color.clear
+                        .accessibilityHidden(true)
+                }
+            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: metrics.metadataHeight,
+                maxHeight: metrics.metadataHeight,
+                alignment: .center
+            )
+        }
+    }
+
     private var titleContent: some View {
         Text(store.model.title)
             .font(
@@ -1255,9 +1450,11 @@ private struct PPUniversalCardRenderer: View {
                 )
             )
             .foregroundStyle(store.palette.ink)
-            .lineLimit(2)
+            .lineLimit(1)
             .multilineTextAlignment(.leading)
+            .minimumScaleFactor(0.86)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityLabel(store.model.title)
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -1462,7 +1659,7 @@ private struct PPUniversalCardRenderer: View {
             store.handlePrimaryAction()
         } label: {
             Group {
-                if store.context.isServiceLike {
+                if store.context.isServiceLike || store.context == .adopt {
                     HStack(spacing: 7) {
                         Text(primaryActionTitle)
                             .font(
@@ -1478,7 +1675,7 @@ private struct PPUniversalCardRenderer: View {
                         detailsArrow
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 42)
+                    .frame(minHeight: standardActionHeight)
                     .background(adsModeCTAGradient, in: actionShape)
                     .overlay(
                         actionShape.stroke(Color.white.opacity(colorScheme == .dark ? 0.16 : 0.12), lineWidth: 0.75)
@@ -1606,7 +1803,7 @@ private struct PPUniversalCardRenderer: View {
                 }
                 .foregroundStyle(primaryActionForeground)
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 42)
+                .frame(minHeight: standardActionHeight)
                 .background(
                     primaryActionBackground
                         .clipShape(actionShape)
@@ -1803,7 +2000,10 @@ private struct PPUniversalCardRenderer: View {
                 collection: store.favoriteCollection,
                 isRightToLeft: store.isRightToLeft
             )
-            .frame(width: 40, height: 40)
+            .frame(
+                width: store.isHomePresentation ? 44 : 40,
+                height: store.isHomePresentation ? 44 : 40
+            )
         } else {
             Button {
                 var next = store.model
@@ -1822,7 +2022,10 @@ private struct PPUniversalCardRenderer: View {
                         ? store.palette.destructive
                         : store.palette.ink
                 )
-                .frame(width: 40, height: 40)
+                .frame(
+                    width: store.isHomePresentation ? 44 : 40,
+                    height: store.isHomePresentation ? 44 : 40
+                )
                 .background(.ultraThinMaterial, in: Circle())
             }
             .buttonStyle(PPUniversalScaleButtonStyle())
@@ -1934,6 +2137,64 @@ private struct PPUniversalCardRenderer: View {
         let preferred = max(112, (size.width - 8) * preferredRatio)
         let maximum = max(112, size.height * maximumFraction)
         return min(preferred, maximum)
+    }
+
+    private func homeGridMetrics(
+        for size: CGSize
+    ) -> PPUniversalHomeCardGridMetrics {
+        let accessibility = dynamicTypeSize.isAccessibilitySize
+        let hasSubtitle =
+            store.model.subtitle?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            ).isEmpty == false
+        let reservesPriceRow: Bool
+        switch store.context {
+        case .adopt:
+            reservesPriceRow = false
+        default:
+            reservesPriceRow = true
+        }
+
+        let titleHeight: CGFloat = accessibility ? 34 : 24
+        let subtitleHeight: CGFloat = hasSubtitle
+            ? (accessibility ? 44 : 28)
+            : 0
+        let priceHeight: CGFloat = reservesPriceRow
+            ? (accessibility ? 40 : 30)
+            : 0
+        let actionHeight: CGFloat = accessibility ? 52 : 44
+        let metadataHeight: CGFloat = accessibility ? 36 : 28
+        let titleToPriceSpacing: CGFloat = accessibility ? 6 : 4
+        let priceToActionSpacing: CGFloat = accessibility ? 10 : 8
+        let actionToMetadataSpacing: CGFloat = accessibility ? 10 : 8
+        let informationVerticalInset: CGFloat = accessibility ? 24 : 20
+        let reservedInformationHeight =
+            titleHeight +
+            subtitleHeight +
+            priceHeight +
+            actionHeight +
+            metadataHeight +
+            titleToPriceSpacing +
+            priceToActionSpacing +
+            actionToMetadataSpacing +
+            informationVerticalInset
+        let availableMediaHeight = max(
+            accessibility ? 132 : 126,
+            size.height - 8 - reservedInformationHeight
+        )
+        let maximumMediaHeight = max(126, size.width - 8)
+
+        return PPUniversalHomeCardGridMetrics(
+            mediaHeight: min(availableMediaHeight, maximumMediaHeight),
+            titleHeight: titleHeight,
+            subtitleHeight: subtitleHeight,
+            priceHeight: priceHeight,
+            actionHeight: actionHeight,
+            metadataHeight: metadataHeight,
+            titleToPriceSpacing: titleToPriceSpacing,
+            priceToActionSpacing: priceToActionSpacing,
+            actionToMetadataSpacing: actionToMetadataSpacing
+        )
     }
 
     private var mediaContentInset: CGFloat {
@@ -2149,7 +2410,14 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var usesCompressedAccessibilityLayout: Bool {
-        dynamicTypeSize >= .accessibility2
+        !store.isHomePresentation && dynamicTypeSize >= .accessibility2
+    }
+
+    private var standardActionHeight: CGFloat {
+        guard store.isHomePresentation else {
+            return 42
+        }
+        return dynamicTypeSize.isAccessibilitySize ? 52 : 44
     }
 
     private var cardShape: RoundedRectangle {
@@ -2645,8 +2913,25 @@ private enum PPUniversalHaptics {
 // MARK: - UICollectionView Bridge
 
 @available(iOS 16.0, *)
+private enum PPUniversalCardContextActionKind {
+    case viewDetails
+    case favorite
+    case share
+    case addToCart
+    case visibility
+}
+
+@available(iOS 16.0, *)
+private struct PPUniversalCardContextAction {
+    let kind: PPUniversalCardContextActionKind
+    let title: String
+    let systemImage: String
+    var attributes: UIMenuElement.Attributes = []
+}
+
+@available(iOS 16.0, *)
 @objc(PPUniversalCardHostingCell)
-public final class PPUniversalCardHostingCell: UICollectionViewCell {
+public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMenuInteractionDelegate {
     @objc public static let bridgeReuseIdentifier = "PPUniversalCell"
 
     private let store: PPUniversalCardStore
@@ -2654,11 +2939,12 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
     private var bridgeImageLoader: PPImageLoader?
     private let fallbackImageView = UIImageView()
     private let fallbackImageContainer = PPUniversalGradientView()
+    private var contextMenuInteraction: UIContextMenuInteraction?
     private var observers: [NSObjectProtocol] = []
 
     @objc public weak var delegate: PPUniversalCellDelegate? {
         didSet {
-            store.delegate = delegate
+            store.updatePresentationHost(delegate)
         }
     }
 
@@ -2765,6 +3051,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
         backgroundConfiguration = background
 
         installObservers()
+        installFocusPreviewInteraction()
     }
 
     @available(*, unavailable)
@@ -2848,6 +3135,9 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
         dataViewPresentation = false
         transform = .identity
         alpha = 1
+        contentView.transform = .identity
+        accessibilityCustomActions = nil
+        contentView.accessibilityCustomActions = nil
         store.resetForReuse()
     }
 
@@ -2904,6 +3194,205 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell {
             showsSubtitle: showsSubtitle,
             forceShowsOwnerMenuButton: forceShowsOwnerMenuButton,
             dataViewPresentation: dataViewPresentation
+        )
+        updateAccessibilityContextActions()
+    }
+
+    private func installFocusPreviewInteraction() {
+        let interaction = UIContextMenuInteraction(delegate: self)
+        addInteraction(interaction)
+        contextMenuInteraction = interaction
+    }
+
+    private func contextActions() -> [PPUniversalCardContextAction] {
+        guard bridgeViewModel != nil, !store.model.isSkeleton else {
+            return []
+        }
+
+        var items: [PPUniversalCardContextAction] = [
+            PPUniversalCardContextAction(
+                kind: .viewDetails,
+                title: PPUniversalCardStore.localized(
+                    "Details",
+                    fallback: "Details"
+                ),
+                systemImage: "arrow.up.right.square"
+            )
+        ]
+
+        if store.showsFavorite && delegateResponds(to: "PPUniversalCell_tapFavorite:") {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .favorite,
+                    title: PPUniversalCardStore.localized(
+                        "showfav",
+                        fallback: "Favorite"
+                    ),
+                    systemImage: "heart"
+                )
+            )
+        }
+
+        if delegateResponds(to: "PPUniversalCell_tapShare:") {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .share,
+                    title: PPUniversalCardStore.localized(
+                        "Share",
+                        fallback: "Share"
+                    ),
+                    systemImage: "square.and.arrow.up"
+                )
+            )
+        }
+
+        if store.model.usesQuantityControl &&
+            !store.isOutOfStock &&
+            delegateResponds(to: "PPUniversalCell_changeQuantity:quantity:") {
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .addToCart,
+                    title: PPUniversalCardStore.localized(
+                        "addToCart",
+                        fallback: "Add to Cart"
+                    ),
+                    systemImage: "cart.badge.plus"
+                )
+            )
+        }
+
+        if store.model.isOwner &&
+            delegateResponds(to: "PPUniversalCell_tapVisibilityToggle:") {
+            let hidesListing = store.model.isPubliclyVisible
+            items.append(
+                PPUniversalCardContextAction(
+                    kind: .visibility,
+                    title: PPUniversalCardStore.localized(
+                        hidesListing
+                            ? "listing_hide_action"
+                            : "listing_show_action",
+                        fallback: hidesListing ? "Hide" : "Show"
+                    ),
+                    systemImage: hidesListing ? "eye.slash" : "eye"
+                )
+            )
+        }
+
+        return items
+    }
+
+    private func delegateResponds(to selectorName: String) -> Bool {
+        guard let object = delegate as? NSObjectProtocol else {
+            return false
+        }
+        return object.responds(to: NSSelectorFromString(selectorName))
+    }
+
+    private func performContextAction(_ kind: PPUniversalCardContextActionKind) {
+        PPUniversalHaptics.light()
+        switch kind {
+        case .viewDetails:
+            store.tapCard()
+        case .favorite:
+            store.tapFavorite()
+        case .share:
+            store.tapShare()
+        case .addToCart:
+            store.handlePrimaryAction()
+        case .visibility:
+            store.tapVisibility()
+        }
+    }
+
+    private func updateAccessibilityContextActions() {
+        let actions = contextActions()
+        let customActions = actions.map { action in
+            UIAccessibilityCustomAction(name: action.title) { [weak self] _ in
+                self?.performContextAction(action.kind)
+                return true
+            }
+        }
+        accessibilityCustomActions = customActions
+        contentView.accessibilityCustomActions = customActions
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        let actions = contextActions()
+        guard !actions.isEmpty else {
+            return nil
+        }
+
+        return UIContextMenuConfiguration(
+            identifier: bridgeViewModel?.modelID as NSString?,
+            previewProvider: nil
+        ) { [weak self] _ in
+            guard let self else {
+                return nil
+            }
+            let menuActions = actions.map { item in
+                UIAction(
+                    title: item.title,
+                    image: UIImage(systemName: item.systemImage),
+                    attributes: item.attributes
+                ) { [weak self] _ in
+                    self?.performContextAction(item.kind)
+                }
+            }
+            return UIMenu(title: "", options: .displayInline, children: menuActions)
+        }
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        previewForHighlightingMenuWithConfiguration configuration: UIContextMenuConfiguration
+    ) -> UITargetedPreview? {
+        contextMenuTargetedPreview()
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        previewForDismissingMenuWithConfiguration configuration: UIContextMenuConfiguration
+    ) -> UITargetedPreview? {
+        contextMenuTargetedPreview()
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willDisplayMenuFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+    ) {
+        PPUniversalHaptics.medium()
+        guard !UIAccessibility.isReduceMotionEnabled else {
+            return
+        }
+        animator?.addAnimations { [weak self] in
+            self?.contentView.transform = CGAffineTransform(scaleX: 1.018, y: 1.018)
+        }
+    }
+
+    public func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        willEndFor configuration: UIContextMenuConfiguration,
+        animator: UIContextMenuInteractionAnimating?
+    ) {
+        animator?.addAnimations { [weak self] in
+            self?.contentView.transform = .identity
+        }
+    }
+
+    private func contextMenuTargetedPreview() -> UITargetedPreview {
+        let parameters = UIPreviewParameters()
+        parameters.backgroundColor = .clear
+        parameters.visiblePath = UIBezierPath(
+            roundedRect: contentView.bounds,
+            cornerRadius: 18
+        )
+        return UITargetedPreview(
+            view: contentView,
+            parameters: parameters
         )
     }
 

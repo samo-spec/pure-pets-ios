@@ -16,7 +16,6 @@ static NSString * const PPHomeMarketplaceHeroHaloBreathKey = @"pp.home.marketpla
 static NSString * const PPHomeMarketplaceHeroTapHaloAnimationKey = @"pp.marketplaceHero.tapHalo";
 static CGFloat const PPHomeMarketplaceHeroAllArtworkSide = 52.0;
 static CGFloat const PPHomeMarketplaceHeroCategoryArtworkSide = 66.0;
-static CGFloat const PPHomeMarketplaceHeroCTACornerRadius = 14.0;
 
 static UIColor *PPMarketHeroColor(uint32_t hex, CGFloat alpha)
 {
@@ -204,7 +203,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     BOOL ctaBoundsValid = !CGRectIsEmpty(ctaBounds) &&
                           isfinite((double)CGRectGetWidth(ctaBounds)) &&
                           isfinite((double)CGRectGetHeight(ctaBounds));
-    CGFloat ctaRadius = Language.isRTL ? PPHomeMarketplaceHeroCTACornerRadius : (PPHomeMarketplaceHeroCTACornerRadius - 2.0);
+    CGFloat ctaRadius = PPHomeControlCornerRadius;
     self.ctaGradientLayer.frame = ctaBoundsValid ? ctaBounds : CGRectZero;
     self.ctaGradientLayer.cornerRadius = ctaRadius;
     if (ctaBoundsValid) {
@@ -407,9 +406,9 @@ static BOOL PPMarketHeroReduceMotion(void)
     
     self.heroGlassBackground.accentColorOverride = isAllContext ? nil : primaryAccent;
     self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.contentView.layer.shadowOpacity = darkMode ? 0.08f : 0.05f;
-    self.contentView.layer.shadowRadius = darkMode ? 12.0f : 10.0f;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, darkMode ? 6.0 : 5.0);
+    self.contentView.layer.shadowOpacity = darkMode ? 0.06f : 0.035f;
+    self.contentView.layer.shadowRadius = darkMode ? 10.0f : 8.0f;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
     self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor;
@@ -431,8 +430,8 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.ctaIconView.tintColor = UIColor.whiteColor;
 
     self.visualHaloGradientLayer.colors = @[
-        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.16 : 0.10].CGColor,
-        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.06 : 0.03].CGColor,
+        (id)[primaryAccent colorWithAlphaComponent:darkMode ? 0.10 : 0.06].CGColor,
+        (id)[surfaceBase colorWithAlphaComponent:darkMode ? 0.04 : 0.02].CGColor,
         (id)[UIColor.clearColor CGColor]
     ];
     self.visualHaloGradientLayer.locations = @[@0.0, @0.45, @1.0];
@@ -545,7 +544,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleBar;
-    glass.cornerGlowOpacityMultiplier = 0.16;
+    glass.cornerGlowOpacityMultiplier = 0.08;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
     glass.PPHeroApexUseUnderFingerMotion = NO;
@@ -578,21 +577,21 @@ static BOOL PPMarketHeroReduceMotion(void)
         [glass.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor],
         [glass.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor],
 
-        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:PPSpaceMD],
-        [self.contentStackView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-PPSpaceLG],
-        [self.contentStackView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor constant:-3.0],
-        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:surface.bottomAnchor constant:-PPSpaceLG],
+        [self.contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:surface.topAnchor constant:20.0],
+        [self.contentStackView.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-20.0],
+        [self.contentStackView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
+        [self.contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:surface.bottomAnchor constant:-20.0],
 
-        [self.visualContainerView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceMD],
+        [self.visualContainerView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:20.0],
         [self.visualContainerView.centerYAnchor constraintEqualToAnchor:surface.centerYAnchor],
     ]];
 
     self.visualWidthConstraint = [self.visualContainerView.widthAnchor constraintEqualToConstant:124.0];
     self.visualHeightConstraint = [self.visualContainerView.heightAnchor constraintEqualToConstant:146.0];
     self.contentLeadingToVisualConstraint =
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.visualContainerView.trailingAnchor constant:PPSpaceMD];
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.visualContainerView.trailingAnchor constant:18.0];
     self.contentLeadingToSurfaceConstraint =
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:PPSpaceLG];
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:20.0];
     self.contentLeadingToVisualConstraint.active = YES;
     self.visualWidthConstraint.active = YES;
     self.visualHeightConstraint.active = YES;
@@ -653,7 +652,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     UIView *cta = [[UIView alloc] init];
     cta.translatesAutoresizingMaskIntoConstraints = NO;
     cta.userInteractionEnabled = NO;
-    CGFloat ctaRadius = Language.isRTL ? PPHomeMarketplaceHeroCTACornerRadius : (PPHomeMarketplaceHeroCTACornerRadius - 2.0);
+    CGFloat ctaRadius = PPHomeControlCornerRadius;
     cta.layer.cornerRadius = ctaRadius;
     cta.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
@@ -716,7 +715,7 @@ static BOOL PPMarketHeroReduceMotion(void)
         [titleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [subtitleLabel.widthAnchor constraintEqualToAnchor:stack.widthAnchor],
         [cta.widthAnchor constraintLessThanOrEqualToAnchor:stack.widthAnchor],
-        [cta.widthAnchor constraintGreaterThanOrEqualToConstant:(Language.isRTL ? 136.0 : 156.0)],
+        [cta.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
 
         [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
         [eyebrowIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],

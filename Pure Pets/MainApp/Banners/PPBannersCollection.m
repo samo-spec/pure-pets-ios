@@ -14,8 +14,6 @@
 
 #import "PPBannersCollection.h"
 #import "PPBannerCell.h"
-@class PPBannerCell;
-
 
 static NSString * const kReuseBannerCell = @"PPBannerCell";
 
@@ -183,7 +181,10 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
     _collectionView.dataSource = self;
     //_collectionView.backgroundColor = GM.AppForegroundColor;
     // In HomeViewController.m (where you create the collection view)
-    [self.collectionView registerClass:[PPBannerCell class] forCellWithReuseIdentifier:kReuseBannerCell];
+    Class bannerCellClass = NSClassFromString(@"PPBannerCell");
+    if (bannerCellClass) {
+        [self.collectionView registerClass:bannerCellClass forCellWithReuseIdentifier:kReuseBannerCell];
+    }
     _collectionView.layer.cornerRadius = PPNewCorner;
     _collectionView.layer.masksToBounds = YES;
 
@@ -305,11 +306,13 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)cv cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPBannerCell *cell = [cv dequeueReusableCellWithReuseIdentifier:kReuseBannerCell forIndexPath:indexPath];
+    id<BannerTapsCellDelegate> cell = [cv dequeueReusableCellWithReuseIdentifier:kReuseBannerCell forIndexPath:indexPath];
     id banner = self.banners[indexPath.item];
-    [cell configureWithModel:(PPBannerViewModel *)banner];
+    if ([cell respondsToSelector:@selector(configureWithModel:)]) {
+       // [cell configureWithModel:(PPBannerViewModel *)banner];
+    }
     
-    cell.delegate = self;
+  //  cell.delegate = self;
     
     
     return cell;

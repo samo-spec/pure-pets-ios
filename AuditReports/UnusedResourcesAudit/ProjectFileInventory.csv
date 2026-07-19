@@ -1,0 +1,1660 @@
+Relative Path,File Type,File Size,In Xcode Project,Target Membership,Build Phase,Static Ref Count,Dynamic Risk,Classification,Confidence
+AuditReports/UnusedResourcesAudit/AuditMethodology.md,resource,1416,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+AuditReports/UnusedResourcesAudit/ProjectFileInventory.csv,other,192068,No,,,0,No,,
+AuditReports/UnusedResourcesAudit/UnusedResourcesAudit.csv,other,283077,No,,,0,No,,
+AuditReports/UnusedResourcesAudit/UnusedResourcesAudit.json,resource,556713,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+AuditReports/UnusedResourcesAudit/UnusedResourcesAudit.md,resource,35959,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+AuditReports/UnusedResourcesAudit/audit_unused_resources.py,script,49818,No,,,0,No,REPOSITORY HYGIENE,Medium
+CLAUDE.md,resource,7487,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/AUDIT.md,resource,1536,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/PurePetsLayoutKit/CHANGELOG.md,resource,424,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/PurePetsLayoutKit/Compatibility/PPCollectionLayoutManager.h,source,1689,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+MyFrames/PurePetsLayoutKit/Compatibility/PPPinterestLayout.h,source,1515,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+MyFrames/PurePetsLayoutKit/Examples/PurePetsMarketplaceLayoutExample.swift,source,1857,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/INTEGRATION_PROMPT.md,resource,4542,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/PurePetsLayoutKit/Integration/PPUniversalCellViewModelAdapter.swift.template,other,950,No,,,0,No,REPOSITORY HYGIENE,High
+MyFrames/PurePetsLayoutKit/MIGRATION.md,resource,3794,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/PurePetsLayoutKit/Package.swift,source,591,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/README.md,resource,2201,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPAdaptiveCollectionViewLayout.swift,source,6203,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPAsyncMediaSurface.swift,source,2386,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPCollectionLayoutManager.swift,source,14079,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPCollectionState.swift,source,243,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPCollectionStateView.swift,source,2684,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPHeightCacheManager.swift,source,3428,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPImageAspectRegistry.swift,source,1073,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPInteractionModifiers.swift,source,971,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPLayoutConfiguration.swift,source,1816,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPLayoutContainer.swift,source,7071,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPLayoutGeometryEngine.swift,source,5137,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPLayoutItemDescriptor.swift,source,3017,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPLayoutMode.swift,source,613,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPMasonryPartitioner.swift,source,1333,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPPinterestLayout.swift,source,8689,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPPremiumCardSurface.swift,source,2020,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Sources/PurePetsLayoutKit/PPPremiumNavigationLink.swift,source,680,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/Tests/PurePetsLayoutKitTests/PPLayoutGeometryEngineTests.swift,source,2245,No,,,0,No,,
+MyFrames/PurePetsLayoutKit/VALIDATION.md,resource,1070,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/QIBPayment.framework/Headers/QIBPayment-Swift.h,source,10160,No,,,0,No,,
+MyFrames/QIBPayment.framework/Info.plist,resource,757,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+MyFrames/QIBPayment.framework/Main.storyboardc/Info.plist,resource,163,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+MyFrames/QIBPayment.framework/Main.storyboardc/QPWebViewController.nib,other,1032,No,,,0,No,,
+MyFrames/QIBPayment.framework/Main.storyboardc/kmC-cM-8s5-view-HZm-az-A4h.nib,other,5070,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/Project/arm64-apple-ios.swiftsourceinfo,other,14028,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/arm64-apple-ios.abi.json,resource,206438,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/arm64-apple-ios.private.swiftinterface,other,1419,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/arm64-apple-ios.swiftdoc,other,396,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/arm64-apple-ios.swiftinterface,other,1419,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/QIBPayment.swiftmodule/arm64-apple-ios.swiftmodule,other,64636,No,,,0,No,,
+MyFrames/QIBPayment.framework/Modules/module.modulemap,resource,78,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+MyFrames/QIBPayment.framework/QIBPayment,other,350256,No,,,0,No,,
+MyFrames/lame.framework/Headers/lame.h,source,48851,No,,,0,No,,
+MyFrames/lame.framework/lame,other,2213328,No,,,0,No,,
+Podfile,other,3023,No,,,0,No,,
+Podfile.lock,other,3578,No,,,0,No,,
+Pure Pets.xcodeproj/project.pbxproj,other,638501,No,,,0,No,,
+Pure Pets.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved,other,4578,No,,,0,No,,
+Pure Pets.xcodeproj/xcshareddata/xcschemes/Pure Pets.xcscheme,other,6056,No,,,0,No,,
+Pure Pets.xcworkspace/contents.xcworkspacedata,other,227,No,,,0,No,,
+Pure Pets.xcworkspace/firebase-debug.log,other,789215,No,,,0,No,,
+Pure Pets.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist,resource,238,No,,,0,No,,
+Pure Pets.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings,other,181,No,,,0,No,,
+Pure Pets.xcworkspace/xcshareddata/swiftpm/Package.resolved,other,4875,No,,,0,No,,
+Pure Pets/AppDelegate.h,source,1759,Yes,,,97,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/AppDelegate.m,source,51385,Yes,Pure Pets,Sources,45,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/AppManager.h,source,3882,Yes,,,138,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/AppManager.m,source,63030,Yes,Pure Pets,Sources,79,Yes,,
+Pure Pets/BirdsCards/ArchiveManagerVC.h,source,677,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/ArchiveManagerVC.m,source,26626,Yes,Pure Pets,Sources,5,Yes,,
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/ABCellMailStyleMenuView.xib,resource,5578,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/ABCellMenuView.h,source,890,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/ABCellMenuView.m,source,4788,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/ABMenuTableViewCell.h,source,3127,Yes,,,402,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/ABMenuTableViewCell.m,source,20201,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/UITableView+VisibleMenuCell.h,source,303,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/UITableView+VisibleMenuCell.m,source,595,Yes,Pure Pets,Sources,564,No,,
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/UIView+XIB.h,source,268,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ABMenuTableViewCell/UIView+XIB.m,source,813,Yes,Pure Pets,Sources,4550,Yes,,
+Pure Pets/BirdsCards/Cells/CabelCollectionViewCell.h,source,2794,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/CabelCollectionViewCell.m,source,11231,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/CollectionViewCell.h,source,4165,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/CollectionViewCell.m,source,22706,Yes,Pure Pets,Sources,243,No,,
+Pure Pets/BirdsCards/Cells/CustomCollectionViewCell.h,source,277,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/CustomCollectionViewCell.m,source,4733,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/DetailsTableViewCell.h,source,985,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/DetailsTableViewCell.m,source,9082,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/BirdsCards/Cells/ImageCell.h,source,182,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ImageCell.m,source,1892,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/BirdsCards/Cells/JPCell.h,source,580,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/JPCell.m,source,805,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/JPCell.xib,resource,3691,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/BirdsCards/Cells/KBSwipeCell.h,source,596,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/KBSwipeCell.m,source,13289,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/MainCollectionViewCell.h,source,401,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/MainCollectionViewCell.m,source,179,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/ProdectionCells/PPBirdSummaryCollectionCell.h,source,5085,Yes,,,272,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/ProdectionCells/PPBirdSummaryCollectionCell.m,source,33311,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/BirdsCards/Cells/StepperCell.h,source,437,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/StepperCell.m,source,2269,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/BirdsCards/Cells/StoriesReusableView.h,source,209,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/StoriesReusableView.m,source,264,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/VideoCollectionViewCell.h,source,317,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/VideoCollectionViewCell.m,source,2089,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/archiveCell.h,source,1142,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/archiveCell.m,source,2290,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/eggDatesCell.h,source,535,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/eggDatesCell.m,source,3017,Yes,Pure Pets,Sources,12,No,,
+Pure Pets/BirdsCards/Cells/selectChildCell.h,source,1903,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/selectChildCell.m,source,12360,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/BirdsCards/Cells/selectTableViewCell.h,source,614,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/selectTableViewCell.m,source,6026,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/BirdsCards/Cells/trashChildCell.h,source,1380,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/trashChildCell.m,source,2997,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/Cells/uploadedCollectionViewCell.h,source,466,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Cells/uploadedCollectionViewCell.m,source,798,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/CoubleFiles/FirstEggVC.h,source,1703,Yes,,,154,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/CoubleFiles/FirstEggVC.m,source,44699,Yes,Pure Pets,Sources,95,Yes,,
+Pure Pets/BirdsCards/CoubleFiles/NewCageVC.h,source,1689,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/CoubleFiles/NewCageVC.m,source,40241,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/BirdsCards/CoubleFiles/PickerSheetViewController.h,source,1171,Yes,,,316,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/CoubleFiles/PickerSheetViewController.m,source,10258,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/BirdsCards/CoubleFiles/selectChildViewController.h,source,961,Yes,,,339,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/CoubleFiles/selectChildViewController.m,source,47084,Yes,Pure Pets,Sources,9,Yes,,
+Pure Pets/BirdsCards/DoneStepViewController.h,source,1534,No,,,0,No,,
+Pure Pets/BirdsCards/DoneStepViewController.m,source,8589,No,,,0,No,,
+Pure Pets/BirdsCards/FullScreenVideoViewController.h,source,190,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/FullScreenVideoViewController.m,source,8533,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/FullscreenImageViewController.h,source,292,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/FullscreenImageViewController.m,source,6419,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/BirdsCards/Helpers/selectArchiveVC.h,source,1358,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Helpers/selectArchiveVC.m,source,45307,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/BirdsCards/Helpers/selectUserVC.h,source,698,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/Helpers/selectUserVC.m,source,16685,Yes,Pure Pets,Sources,33,Yes,,
+Pure Pets/BirdsCards/MainControllerFiles/MainController.h,source,2113,Yes,,,43,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/MainControllerFiles/MainController.m,source,136238,Yes,Pure Pets,Sources,17,Yes,,
+Pure Pets/BirdsCards/MainControllerFiles/MainControllerHelper.h,source,6198,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/MainControllerFiles/MainControllerHelper.m,source,46512,Yes,Pure Pets,Sources,17,Yes,,
+Pure Pets/BirdsCards/MainControllerFiles/MainController_Func.h,source,287,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/MainControllerFiles/MainController_Func.m,source,592,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/BirdsCards/NewCardForm.h,source,1000,Yes,,,12,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/NewCardForm.m,source,174668,Yes,Pure Pets,Sources,12,Yes,,
+Pure Pets/BirdsCards/PPMainCells/PPBirdCardView.h,source,1718,Yes,,,261,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/PPMainCells/PPBirdCardView.m,source,10348,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/BirdsCards/PPMainCells/PPCageCell.h,source,935,Yes,,,342,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/PPMainCells/PPCageCell.m,source,25855,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/BirdsCards/PPMainCells/PPChildCell.h,source,1055,Yes,,,84,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/PPMainCells/PPChildCell.m,source,10657,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/BirdsCards/PPMainCells/SalesCell.h,source,1547,Yes,,,319,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/PPMainCells/SalesCell.m,source,12791,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/BirdsCards/PPMainCells/TrashCollectionViewCell.h,source,698,Yes,,,41,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/PPMainCells/TrashCollectionViewCell.m,source,7866,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/BirdsCards/SalesVCViewController.h,source,598,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/SalesVCViewController.m,source,19066,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/BirdsCards/buyerDataVC.h,source,662,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/buyerDataVC.m,source,53240,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/BirdsCards/selectTableViewController.h,source,852,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/selectTableViewController.m,source,7728,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/BirdsCards/viewDataVC.h,source,959,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/BirdsCards/viewDataVC.m,source,46901,Yes,Pure Pets,Sources,14,Yes,,
+Pure Pets/Bridges/HXPHPickerBridge/PPEditorBridge.swift,source,12719,Yes,Pure Pets,Sources,4,Yes,,
+Pure Pets/Bridges/HXPHPickerBridge/PPPhotoBrowserBridge.swift,source,4519,Yes,Pure Pets,Sources,4,Yes,,
+Pure Pets/Bridges/HXPHPickerBridge/PPPickerBridge.swift,source,17781,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/Bridges/PPCoreBridge.swift,source,1219,Yes,Pure Pets,Sources,4,Yes,,
+Pure Pets/Bridges/PPUniversalCellViewModelAdapter.swift,source,1117,No,,,0,No,,
+Pure Pets/Bridges/UnifiedBlurHash/Math.swift,source,985,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/Bridges/UnifiedBlurHash/PPBlurHashBridge.swift,source,3301,Yes,Pure Pets,Sources,22,Yes,,
+Pure Pets/Bridges/UnifiedBlurHash/PPBlurHashGenerator.swift,source,2092,Yes,Pure Pets,Sources,8,Yes,,
+Pure Pets/Bridges/UnifiedBlurHash/Resources/sunflower.jpg,resource,49712,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/Bridges/UnifiedBlurHash/SwiftUI.Image+BlurHash.swift,source,1868,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/Bridges/UnifiedBlurHash/UnifiedBlurHash.swift,source,2234,Yes,Pure Pets,Sources,3926,No,,
+Pure Pets/Bridges/UnifiedBlurHash/UnifiedImage+Decode.swift,source,5629,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/Bridges/UnifiedBlurHash/UnifiedImage+Encode.swift,source,6629,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/Bridges/UnifiedBlurHash/UnifiedImage+Scale.swift,source,2536,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/Bridges/UnifiedBlurHash/UnifiedImage.swift,source,1105,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DataClasses/BasicDataClassess/CountryCodeModel.h,source,548,Yes,,,123,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/CountryCodeModel.m,source,2624,Yes,Pure Pets,Sources,123,No,,
+Pure Pets/DataClasses/BasicDataClassess/ItemModel.h,source,415,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/ItemModel.m,source,297,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DataClasses/BasicDataClassess/MainKindsArrayManager.h,source,1885,Yes,,,261,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/MainKindsArrayManager.m,source,30721,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DataClasses/BasicDataClassess/MainKindsModel.h,source,3064,Yes,,,257,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/MainKindsModel.m,source,18179,Yes,Pure Pets,Sources,257,No,,
+Pure Pets/DataClasses/BasicDataClassess/MainKindsModel.m.bak.20260412-013337,other,12466,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/DataClasses/BasicDataClassess/SubKindModel.h,source,1837,Yes,,,115,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/SubKindModel.m,source,11611,Yes,Pure Pets,Sources,115,No,,
+Pure Pets/DataClasses/BasicDataClassess/subKindItemsModel.h,source,711,Yes,,,46,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/subKindItemsModel.m,source,1620,Yes,Pure Pets,Sources,46,No,,
+Pure Pets/DataClasses/BasicDataClassess/subSubKindModel.h,source,882,Yes,,,20,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BasicDataClassess/subSubKindModel.m,source,2592,Yes,Pure Pets,Sources,20,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchiveDetailsModel.h,source,858,Yes,,,39,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchiveDetailsModel.m,source,3048,Yes,Pure Pets,Sources,39,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchiveModel.h,source,4861,Yes,,,234,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchiveModel.m,source,2555,Yes,Pure Pets,Sources,65,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchivesManager.h,source,3489,Yes,,,118,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ArchivesManager.m,source,20147,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/BuyerModel.h,source,2219,Yes,,,125,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/BuyerModel.m,source,13068,Yes,Pure Pets,Sources,51,Yes,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/CageModel.h,source,3894,Yes,,,382,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/CageModel.m,source,3971,Yes,Pure Pets,Sources,76,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/CardModel.h,source,5083,Yes,,,254,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/CardModel.m,source,31157,Yes,Pure Pets,Sources,8788,Yes,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ChildModel.h,source,1867,Yes,,,77,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ChildModel.m,source,3920,Yes,Pure Pets,Sources,77,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ChildsDataManager.h,source,2211,Yes,,,95,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ChildsDataManager.m,source,6098,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/FileModel.h,source,705,Yes,,,28,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/FileModel.m,source,1191,Yes,Pure Pets,Sources,28,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ImageModel.h,source,679,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ImageModel.m,source,3300,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/PPReminderNotificationManager.h,source,1086,Yes,,,34,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/PPReminderNotificationManager.m,source,7236,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DataClasses/BirdsCardsDataClassess/ReminderManager.h,source,260,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/BirdsCardsDataClassess/ReminderManager.m,source,3120,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DataClasses/ClassesHeader.h,source,360,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/HelperClassess/BarcodeGenerator.h,source,312,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/HelperClassess/BarcodeGenerator.m,source,2260,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DataClasses/HelperClassess/FileUploadManager.h,source,425,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/HelperClassess/FileUploadManager.m,source,9749,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DataClasses/HelperClassess/PPAuditLogger.h,source,349,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/HelperClassess/PPAuditLogger.m,source,1179,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DataClasses/HelperClassess/PPSoundEffectPlayer.h,source,505,No,,,0,No,,
+Pure Pets/DataClasses/HelperClassess/PPSoundEffectPlayer.m,source,5273,No,,,0,No,,
+Pure Pets/DataClasses/HelperClassess/Watermark.h,source,405,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/HelperClassess/Watermark.m,source,1267,Yes,Pure Pets,Sources,2433,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSArray+YYAdd.h,source,5560,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSArray+YYAdd.m,source,4576,Yes,Pure Pets,Sources,4487,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSBundle+YYAdd.h,source,3590,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSBundle+YYAdd.m,source,2879,Yes,Pure Pets,Sources,144,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSData+YYAdd.h,source,6997,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSData+YYAdd.m,source,21782,Yes,Pure Pets,Sources,479,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSDate+YYAdd.h,source,6917,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSDate+YYAdd.m,source,6515,Yes,Pure Pets,Sources,776,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSDictionary+YYAdd.h,source,6450,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSDictionary+YYAdd.m,source,12602,Yes,Pure Pets,Sources,2576,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSKeyedUnarchiver+YYAdd.h,source,1305,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSKeyedUnarchiver+YYAdd.m,source,1110,Yes,Pure Pets,Sources,27,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSNotificationCenter+YYAdd.h,source,3483,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSNotificationCenter+YYAdd.m,source,2651,Yes,Pure Pets,Sources,348,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSNumber+YYAdd.h,source,762,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSNumber+YYAdd.m,source,1711,Yes,Pure Pets,Sources,766,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAdd.h,source,11776,Yes,,,4963,Yes,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAdd.m,source,14225,Yes,Pure Pets,Sources,579,Yes,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAddForARC.h,source,648,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAddForARC.m,source,846,Yes,Pure Pets,Sources,575,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAddForKVO.h,source,1592,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSObject+YYAddForKVO.m,source,3347,Yes,Pure Pets,Sources,575,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSString+YYAdd.h,source,12582,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSString+YYAdd.m,source,15474,Yes,Pure Pets,Sources,14482,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSThread+YYAdd.h,source,705,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSThread+YYAdd.m,source,3992,Yes,Pure Pets,Sources,59,No,,
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSTimer+YYAdd.h,source,2584,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Foundation/NSTimer+YYAdd.m,source,1129,Yes,Pure Pets,Sources,82,No,,
+Pure Pets/DataClasses/YYKit/Base/Quartz/CALayer+YYAdd.h,source,3473,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Quartz/CALayer+YYAdd.m,source,8270,Yes,Pure Pets,Sources,156,No,,
+Pure Pets/DataClasses/YYKit/Base/Quartz/YYCGUtilities.h,source,11245,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/Quartz/YYCGUtilities.m,source,10761,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIApplication+YYAdd.h,source,2602,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIApplication+YYAdd.m,source,7517,Yes,Pure Pets,Sources,247,Yes,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIBarButtonItem+YYAdd.h,source,791,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIBarButtonItem+YYAdd.m,source,1425,Yes,Pure Pets,Sources,231,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIBezierPath+YYAdd.h,source,960,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIBezierPath+YYAdd.m,source,2370,Yes,Pure Pets,Sources,383,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIColor+YYAdd.h,source,11894,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIColor+YYAdd.m,source,14442,Yes,Pure Pets,Sources,8150,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIControl+YYAdd.h,source,2592,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIControl+YYAdd.m,source,3911,Yes,Pure Pets,Sources,72,Yes,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIDevice+YYAdd.h,source,6105,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIDevice+YYAdd.m,source,18065,Yes,Pure Pets,Sources,69,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIFont+YYAdd.h,source,4350,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIFont+YYAdd.m,source,9163,Yes,Pure Pets,Sources,1052,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIGestureRecognizer+YYAdd.h,source,1215,Yes,,,1043,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIGestureRecognizer+YYAdd.m,source,2013,Yes,Pure Pets,Sources,70,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIImage+YYAdd.h,source,12346,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIImage+YYAdd.m,source,31050,Yes,Pure Pets,Sources,2469,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIScreen+YYAdd.h,source,1525,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIScreen+YYAdd.m,source,6360,Yes,Pure Pets,Sources,284,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIScrollView+YYAdd.h,source,1191,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIScrollView+YYAdd.m,source,1489,Yes,Pure Pets,Sources,302,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UITableView+YYAdd.h,source,7879,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UITableView+YYAdd.m,source,3213,Yes,Pure Pets,Sources,564,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UITextField+YYAdd.h,source,635,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UITextField+YYAdd.m,source,1043,Yes,Pure Pets,Sources,221,No,,
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIView+YYAdd.h,source,4280,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Base/UIKit/UIView+YYAdd.m,source,7838,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DataClasses/YYKit/Base/YYKitMacro.h,source,10216,Yes,,,1152,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Cache/YYCache.h,source,7129,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Cache/YYCache.m,source,4353,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DataClasses/YYKit/Cache/YYDiskCache.h,source,14890,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Cache/YYDiskCache.m,source,12634,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/DataClasses/YYKit/Cache/YYKVStorage.h,source,11286,Yes,,,2235,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Cache/YYKVStorage.m,source,38142,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DataClasses/YYKit/Cache/YYMemoryCache.h,source,7047,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Cache/YYMemoryCache.m,source,15239,Yes,Pure Pets,Sources,55,No,,
+Pure Pets/DataClasses/YYKit/Image/Categories/CALayer+YYWebImage.h,source,4085,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/Categories/CALayer+YYWebImage.m,source,7414,Yes,Pure Pets,Sources,156,No,,
+Pure Pets/DataClasses/YYKit/Image/Categories/MKAnnotationView+YYWebImage.h,source,4044,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/Categories/MKAnnotationView+YYWebImage.m,source,7443,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DataClasses/YYKit/Image/Categories/UIButton+YYWebImage.h,source,9198,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/Categories/UIButton+YYWebImage.m,source,17840,Yes,Pure Pets,Sources,1458,No,,
+Pure Pets/DataClasses/YYKit/Image/Categories/UIImageView+YYWebImage.h,source,7829,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/Categories/UIImageView+YYWebImage.m,source,15223,Yes,Pure Pets,Sources,895,No,,
+Pure Pets/DataClasses/YYKit/Image/Categories/_YYWebImageSetter.h,source,1680,Yes,,,292,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/Categories/_YYWebImageSetter.m,source,3268,Yes,Pure Pets,Sources,39,No,,
+Pure Pets/DataClasses/YYKit/Image/YYAnimatedImageView.h,source,4372,Yes,,,2240,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYAnimatedImageView.m,source,20909,Yes,Pure Pets,Sources,22,No,,
+Pure Pets/DataClasses/YYKit/Image/YYFrameImage.h,source,3802,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYFrameImage.m,source,4231,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DataClasses/YYKit/Image/YYImage.h,source,2535,Yes,,,3613,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYImage.m,source,6337,Yes,Pure Pets,Sources,109,No,,
+Pure Pets/DataClasses/YYKit/Image/YYImageCache.h,source,8520,Yes,,,24,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYImageCache.m,source,8939,Yes,Pure Pets,Sources,17,No,,
+Pure Pets/DataClasses/YYKit/Image/YYImageCoder.h,source,18488,Yes,,,2199,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYImageCoder.m,source,113971,Yes,Pure Pets,Sources,8486,No,,
+Pure Pets/DataClasses/YYKit/Image/YYSpriteSheetImage.h,source,3446,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYSpriteSheetImage.m,source,2549,Yes,Pure Pets,Sources,42,No,,
+Pure Pets/DataClasses/YYKit/Image/YYWebImageManager.h,source,9723,Yes,,,83,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYWebImageManager.m,source,3779,Yes,Pure Pets,Sources,63,No,,
+Pure Pets/DataClasses/YYKit/Image/YYWebImageOperation.h,source,4070,Yes,,,2201,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Image/YYWebImageOperation.m,source,31334,Yes,Pure Pets,Sources,20,Yes,,
+Pure Pets/DataClasses/YYKit/Model/NSObject+YYModel.h,source,13407,Yes,,,17595,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Model/NSObject+YYModel.m,source,84610,Yes,Pure Pets,Sources,15403,Yes,,
+Pure Pets/DataClasses/YYKit/Model/YYClassInfo.h,source,8129,Yes,,,12952,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Model/YYClassInfo.m,source,12824,Yes,Pure Pets,Sources,14,Yes,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextContainerView.h,source,1806,Yes,,,272,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextContainerView.m,source,4645,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextDebugOption.h,source,3265,Yes,,,76,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextDebugOption.m,source,4244,Yes,Pure Pets,Sources,1456,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextEffectWindow.h,source,1612,Yes,,,52,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextEffectWindow.m,source,18800,Yes,Pure Pets,Sources,28,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextInput.h,source,2899,Yes,,,245,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextInput.m,source,4245,Yes,Pure Pets,Sources,1727,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextKeyboardManager.h,source,3124,Yes,,,3825,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextKeyboardManager.m,source,18223,Yes,Pure Pets,Sources,18,Yes,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextLayout.h,source,22009,Yes,,,8890,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextLayout.m,source,152136,Yes,Pure Pets,Sources,2933,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextLine.h,source,3233,Yes,,,74,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextLine.m,source,5528,Yes,Pure Pets,Sources,71,No,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextMagnifier.h,source,2021,Yes,,,41,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextMagnifier.m,source,12676,Yes,Pure Pets,Sources,100,Yes,,
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextSelectionView.h,source,2511,Yes,,,85,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/Component/YYTextSelectionView.m,source,11231,Yes,Pure Pets,Sources,25,Yes,,
+Pure Pets/DataClasses/YYKit/Text/String/NSAttributedString+YYText.h,source,58049,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/NSAttributedString+YYText.m,source,46595,Yes,Pure Pets,Sources,400,No,,
+Pure Pets/DataClasses/YYKit/Text/String/NSParagraphStyle+YYText.h,source,863,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/NSParagraphStyle+YYText.m,source,9446,Yes,Pure Pets,Sources,81,No,,
+Pure Pets/DataClasses/YYKit/Text/String/UIPasteboard+YYText.h,source,1377,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/UIPasteboard+YYText.m,source,5392,Yes,Pure Pets,Sources,16,No,,
+Pure Pets/DataClasses/YYKit/Text/String/YYTextArchiver.h,source,918,Yes,,,3781,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextArchiver.m,source,7096,Yes,Pure Pets,Sources,2865,No,,
+Pure Pets/DataClasses/YYKit/Text/String/YYTextAttribute.h,source,15366,Yes,,,133,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextAttribute.m,source,17610,Yes,Pure Pets,Sources,10101,No,,
+Pure Pets/DataClasses/YYKit/Text/String/YYTextParser.h,source,3123,Yes,,,3614,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextParser.m,source,20613,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DataClasses/YYKit/Text/String/YYTextRubyAnnotation.h,source,2376,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextRubyAnnotation.m,source,3377,Yes,Pure Pets,Sources,1437,No,,
+Pure Pets/DataClasses/YYKit/Text/String/YYTextRunDelegate.h,source,1585,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextRunDelegate.m,source,2204,Yes,Pure Pets,Sources,1437,No,,
+Pure Pets/DataClasses/YYKit/Text/String/YYTextUtilities.h,source,7467,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/String/YYTextUtilities.m,source,3583,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DataClasses/YYKit/Text/YYLabel.h,source,14700,Yes,,,11675,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/YYLabel.m,source,47812,Yes,Pure Pets,Sources,20,No,,
+Pure Pets/DataClasses/YYKit/Text/YYTextView.h,source,17224,Yes,,,7897,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Text/YYTextView.m,source,154707,Yes,Pure Pets,Sources,218,Yes,,
+Pure Pets/DataClasses/YYKit/Utility/YYAsyncLayer.h,source,2404,Yes,,,2197,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYAsyncLayer.m,source,8064,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYDispatchQueuePool.h,source,1431,Yes,,,3591,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYDispatchQueuePool.m,source,9336,Yes,Pure Pets,Sources,12,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYFileHash.h,source,4634,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYFileHash.m,source,9606,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYGestureRecognizer.h,source,1246,Yes,,,3926,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYGestureRecognizer.m,source,1794,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYKeychain.h,source,12928,Yes,,,7483,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYKeychain.m,source,19646,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYReachability.h,source,2508,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYReachability.m,source,6483,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYSentinel.h,source,675,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYSentinel.m,source,493,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYThreadSafeArray.h,source,899,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYThreadSafeArray.m,source,13168,Yes,Pure Pets,Sources,2190,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYThreadSafeDictionary.h,source,939,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYThreadSafeDictionary.m,source,7687,Yes,Pure Pets,Sources,2190,No,,
+Pure Pets/DataClasses/YYKit/Utility/YYTimer.h,source,1370,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYTimer.m,source,3028,Yes,Pure Pets,Sources,2,Yes,,
+Pure Pets/DataClasses/YYKit/Utility/YYTransaction.h,source,1125,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYTransaction.m,source,2463,Yes,Pure Pets,Sources,5,Yes,,
+Pure Pets/DataClasses/YYKit/Utility/YYWeakProxy.h,source,1285,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DataClasses/YYKit/Utility/YYWeakProxy.m,source,1642,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/DataClasses/YYKit/YYKit.h,source,5074,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/EmptyDataManager.h,source,502,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/EmptyDataManager.m,source,8213,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/button_background_icloud_highlight.png,resource,1291,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/button_background_icloud_highlight@2x.png,resource,368,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/button_background_icloud_normal.png,resource,1351,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/button_background_icloud_normal@2x.png,resource,487,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/placeholder_vesper.png,resource,2528,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/DZNEmptyDataSet/placeholder_vesper@2x.png,resource,1109,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/ISO8601DateFormatter.h,source,2927,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/ISO8601DateFormatter.m,source,23679,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/Helpers/MinimalTimeAgo/NSDate+MinimalTimeAgo.h,source,223,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/MinimalTimeAgo/NSDate+MinimalTimeAgo.m,source,1540,Yes,Pure Pets,Sources,776,No,,
+Pure Pets/DesignFiles/Helpers/MinimalTimeAgo/RelativeDateDescriptor/RelativeDateDescriptor-Prefix.pch,other,152,No,,,0,No,,
+Pure Pets/DesignFiles/Helpers/MinimalTimeAgo/RelativeDateDescriptor/RelativeDateDescriptor.h,source,3666,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/MinimalTimeAgo/RelativeDateDescriptor/RelativeDateDescriptor.m,source,10788,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/Helpers/NSString+Ex.h,source,1300,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/NSString+Ex.m,source,7136,Yes,Pure Pets,Sources,14482,No,,
+Pure Pets/DesignFiles/Helpers/PPCollection.h,source,1111,Yes,,,218,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/PPCollection.m,source,7970,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/Helpers/PPPermissionHelper.h,source,1455,Yes,,,31,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/PPPermissionHelper.m,source,13686,Yes,Pure Pets,Sources,31,No,,
+Pure Pets/DesignFiles/Helpers/PPVerifiedBadgeHelper.h,source,727,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/PPVerifiedBadgeHelper.m,source,1273,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DesignFiles/Helpers/PastyPresent/UIActivityIndicator.h,source,1792,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/PastyPresent/UIActivityIndicator.m,source,4924,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/Helpers/PastyPresent/UIViewController+PVCMotal.h,source,625,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/PastyPresent/UIViewController+PVCMotal.m,source,9761,Yes,Pure Pets,Sources,785,No,,
+Pure Pets/DesignFiles/Helpers/RNFrostedSidebar.h,source,3121,Yes,,,115,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/RNFrostedSidebar.m,source,35916,Yes,Pure Pets,Sources,6983,Yes,,
+Pure Pets/DesignFiles/Helpers/RoundedCorners.h,source,335,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/RoundedCorners.m,source,2048,Yes,Pure Pets,Sources,1458,No,,
+Pure Pets/DesignFiles/Helpers/RoundedImageViewWithShadow.h,source,457,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/RoundedImageViewWithShadow.m,source,3303,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DesignFiles/Helpers/UIScreen.h,source,300,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/UIScreen.m,source,364,Yes,Pure Pets,Sources,284,No,,
+Pure Pets/DesignFiles/Helpers/UISearchBar+FMAdd.h,source,429,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/UISearchBar+FMAdd.m,source,1606,Yes,Pure Pets,Sources,50,No,,
+Pure Pets/DesignFiles/Helpers/UIView+DCAnimationKit.h,source,8271,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/UIView+DCAnimationKit.m,source,16742,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/Helpers/UserContactView.h,source,1566,Yes,,,308,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/UserContactView.m,source,46449,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/DesignFiles/Helpers/UserContactView.m.bak.20260411194808,other,22172,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/DesignFiles/Helpers/notifRecied/ACSimulatorRemoteNotificationsService.h,source,1511,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/notifRecied/ACSimulatorRemoteNotificationsService.m,source,2689,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/Helpers/notifRecied/SimulatorRemoteNotifications-Prefix.pch,other,149,No,,,0,No,,
+Pure Pets/DesignFiles/Helpers/notifRecied/UIApplication+SimulatorRemoteNotifications.h,source,1157,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/Helpers/notifRecied/UIApplication+SimulatorRemoteNotifications.m,source,5126,Yes,Pure Pets,Sources,249,No,,
+Pure Pets/DesignFiles/MostUsed/Language/Language.h,source,796,Yes,,,1131,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/Language/Language.m,source,9593,Yes,Pure Pets,Sources,1131,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/CustomButtonCell.h,source,227,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/CustomButtonCell.m,source,3954,Yes,Pure Pets,Sources,2,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/DeliverySwitchCell.h,source,304,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/DeliverySwitchCell.m,source,2360,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/HXPhotosFormCell.h,source,574,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/HXPhotosFormCell.m,source,3510,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/PhoneNumberCell.h,source,1435,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/PhoneNumberCell.m,source,1833,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/StepperFormCell.h,source,191,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/StepperFormCell.m,source,3390,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormBaseCell.h,source,1656,Yes,,,439,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormBaseCell.m,source,3948,Yes,Pure Pets,Sources,66,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormButtonCell.h,source,1297,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormButtonCell.m,source,6668,Yes,Pure Pets,Sources,41,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormCheckCell.h,source,1294,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormCheckCell.m,source,2587,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormCustomCell.h,source,1298,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormCustomCell.m,source,13748,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormDateCell.h,source,2078,Yes,,,17,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormDateCell.m,source,14021,Yes,Pure Pets,Sources,1902,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormDatePickerCell.h,source,1416,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormDatePickerCell.m,source,3201,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormDescriptorCell.h,source,1859,Yes,,,491,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormImageCell.h,source,1296,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormImageCell.m,source,7375,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormImageSelectorCell.h,source,1526,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormImageSelectorCell.m,source,12934,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormInlineRowDescriptorCell.h,source,1373,Yes,,,34,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormInlineSelectorCell.h,source,1312,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormInlineSelectorCell.m,source,7012,Yes,Pure Pets,Sources,5658,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormLeftRightSelectorCell.h,source,1427,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormLeftRightSelectorCell.m,source,22778,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormPickerCell.h,source,1396,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormPickerCell.m,source,5649,Yes,Pure Pets,Sources,3773,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSegmentedCell.h,source,1426,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSegmentedCell.m,source,8345,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSelectorCell.h,source,1301,Yes,,,17,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSelectorCell.m,source,21694,Yes,Pure Pets,Sources,9480,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSliderCell.h,source,1288,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSliderCell.m,source,3568,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormStepCounterCell.h,source,1307,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormStepCounterCell.m,source,4693,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSwitchCell.h,source,1349,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormSwitchCell.m,source,2446,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormTextFieldCell.h,source,1682,Yes,,,26,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormTextFieldCell.m,source,17308,Yes,Pure Pets,Sources,26,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormTextViewCell.h,source,1799,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell/XLFormTextViewCell.m,source,9016,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormOptionsObject.h,source,1635,Yes,,,19,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormOptionsObject.m,source,3225,Yes,Pure Pets,Sources,19,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormOptionsViewController.h,source,1677,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormOptionsViewController.m,source,11946,Yes,Pure Pets,Sources,1894,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormRowDescriptorViewController.h,source,1544,Yes,,,50,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormViewController.h,source,7022,Yes,,,1170,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Controllers/XLFormViewController.m,source,96634,Yes,Pure Pets,Sources,104,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormDescriptor.h,source,4644,Yes,,,100,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormDescriptor.m,source,23036,Yes,Pure Pets,Sources,22,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormDescriptorDelegate.h,source,2268,Yes,,,94,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormRowDescriptor.h,source,11096,Yes,,,598,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormRowDescriptor.m,source,28037,Yes,Pure Pets,Sources,336,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormSectionDescriptor.h,source,3358,Yes,,,100,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Descriptors/XLFormSectionDescriptor.m,source,14545,Yes,Pure Pets,Sources,78,Yes,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSArray+XLFormAdditions.h,source,1309,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSArray+XLFormAdditions.m,source,1599,Yes,Pure Pets,Sources,3054,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSExpression+XLFormAdditions.h,source,1319,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSExpression+XLFormAdditions.m,source,1912,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSObject+XLFormAdditions.h,source,1314,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSObject+XLFormAdditions.m,source,2281,Yes,Pure Pets,Sources,575,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSPredicate+XLFormAdditions.h,source,1314,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSPredicate+XLFormAdditions.m,source,1971,Yes,Pure Pets,Sources,222,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSString+XLFormAdditions.h,source,1402,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/NSString+XLFormAdditions.m,source,2876,Yes,Pure Pets,Sources,14482,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/UIView+XLFormAdditions.h,source,1483,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/UIView+XLFormAdditions.m,source,2542,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRightDetailCell.h,source,1281,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRightDetailCell.m,source,1501,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRightImageButton.h,source,1276,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRightImageButton.m,source,1566,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRowNavigationAccessoryView.h,source,1476,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormRowNavigationAccessoryView.m,source,3935,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormTextView.h,source,1408,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Helpers/Views/XLFormTextView.m,source,3272,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormRegexValidator.h,source,1600,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormRegexValidator.m,source,2523,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormValidationStatus.h,source,1826,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormValidationStatus.m,source,2118,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormValidator.h,source,1399,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormValidator.m,source,1964,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/Validation/XLFormValidatorProtocol.h,source,1415,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/XLForm.h,source,7169,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/MostUsed/XLForm/XL/XLForm.m,source,4151,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/add_img@2x.png,resource,149,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/add_img@3x.png,resource,166,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/compose_picture_add@2x.png,resource,1854,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/forwardarrow@2x.png,resource,1559,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/forwardarrowAr@2x.png,resource,2117,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/MostUsed/XLForm/XLForm.bundle/xlcheck@2x.png,resource,778,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PP/MatchedTransitions/MatchedContainerView.swift,source,231,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/PP/MatchedTransitions/MatchedGeometryModifier.swift,source,1637,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/MatchedTransitions/MatchedGeometryState.swift,source,1471,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DesignFiles/PP/MatchedTransitions/MatchedHostingController.swift,source,817,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/MatchedTransitions/TransitionManager.swift,source,4583,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/PP/MatchedTransitions/TransitionView.swift,source,704,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/PP/PPBackground/PPBackgroundView.h,source,2862,Yes,,,36,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPBackground/PPBackgroundView.m,source,42537,Yes,,,36,No,PROBABLE UNUSED CANDIDATE,Medium
+Pure Pets/DesignFiles/PP/PPBackground/PPBackgroundViewApexBridge.m,source,8800,Yes,Pure Pets,Sources,36,No,,
+Pure Pets/DesignFiles/PP/PPBackground/PPHeroApex.swift,source,160776,Yes,Pure Pets,Sources,13,Yes,,
+Pure Pets/DesignFiles/PP/PPBackground/PPHeroApexMotion.swift,source,6831,Yes,Pure Pets,Sources,102,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.h,source,412,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m,source,1967,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPLeftRight/XLFormRowFullWidthTextFieldCell.h,source,2982,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPLeftRight/XLFormRowFullWidthTextFieldCell.m,source,27156,Yes,Pure Pets,Sources,315,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.h,source,3023,Yes,,,17,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m,source,14313,Yes,Pure Pets,Sources,259,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.h,source,1568,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m,source,35756,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.h,source,1654,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m,source,11067,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.h,source,857,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m,source,4383,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPS.h,source,5961,Yes,,,66,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPS.m,source,51453,Yes,Pure Pets,Sources,26,Yes,,
+Pure Pets/DesignFiles/PP/PPComponent/PPSearchFilterView.h,source,882,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPSearchFilterView.m,source,13181,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.h,source,798,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m,source,3249,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.h,source,272,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m,source,668,Yes,Pure Pets,Sources,77,No,,
+Pure Pets/DesignFiles/PP/PPFormEngine/PPFormEngine.h,source,8887,Yes,,,256,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPFormEngine/PPFormEngine.m,source,41612,Yes,Pure Pets,Sources,133,No,,
+Pure Pets/DesignFiles/PP/PPFormEngine/PPFormEngineUsageExample.m,source,3663,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPFormEngine/README.md,resource,4565,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/ImageViewerController.h,source,534,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/ImageViewerController.m,source,11075,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/PPImageCollection.h,source,6015,Yes,,,126,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/PPImageCollection.m,source,163061,Yes,Pure Pets,Sources,50,Yes,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/PPImageManager.h,source,2085,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/PPImageManager.m,source,17895,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QB.h,source,1310,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QB.m,source,11225,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAlbumCell.h,source,1309,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAlbumCell.m,source,8101,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAlbumsViewController.h,source,361,Yes,,,16,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAlbumsViewController.m,source,22965,Yes,Pure Pets,Sources,34,Yes,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAssetCell.h,source,628,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAssetCell.m,source,2046,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAssetsViewController.h,source,458,Yes,,,21,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBAssetsViewController.m,source,33791,Yes,Pure Pets,Sources,356,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBCheckmarkView.h,source,344,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBCheckmarkView.m,source,2675,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBImagePicker.h,source,578,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBImagePicker.storyboard,resource,22390,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBImagePickerController.h,source,1819,Yes,,,30,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBImagePickerController.m,source,4577,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBSlomoIconView.h,source,302,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBSlomoIconView.m,source,782,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBVideoIconView.h,source,301,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBVideoIconView.m,source,1195,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBVideoIndicatorView.h,source,478,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPImagePicker+Viewer/QBVideoIndicatorView.m,source,692,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.h,source,1371,Yes,,,117,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m,source,64220,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.h,source,5036,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m,source,145398,Yes,Pure Pets,Sources,104,Yes,,
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomBarManager.h,source,410,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomBarManager.m,source,3459,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomSurfaceCoordinator.h,source,937,Yes,,,25,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/PPBottomSurfaceCoordinator.m,source,21296,Yes,Pure Pets,Sources,25,Yes,,
+Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.h,source,763,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m,source,5815,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.h,source,2320,Yes,,,71,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m,source,26099,Yes,Pure Pets,Sources,4429,Yes,,
+Pure Pets/DesignFiles/PP/PPNAV/PPPremuimChekoutView.swift,source,53035,Yes,Pure Pets,Sources,4,Yes,,
+Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.h,source,2295,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m,source,9154,Yes,Pure Pets,Sources,4629,No,,
+Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPBottomSurface.h,source,273,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPBottomSurface.m,source,367,Yes,Pure Pets,Sources,785,No,,
+Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.h,source,12733,Yes,,,420,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m,source,122660,Yes,Pure Pets,Sources,3495,Yes,,
+Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m.bak.20260412-013337,other,117718,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPOptionCell.h,source,1529,No,,,8,No,,
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPOptionCell.m,source,22624,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectAddressVC.h,source,1593,No,,,314,No,,
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectAddressVC.m,source,45961,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectOptionViewController.h,source,3509,No,,,117,No,,
+Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectOptionViewController.m,source,65375,Yes,Pure Pets,Sources,65,Yes,,
+Pure Pets/DesignFiles/PP/PPStyles/HJCarouselViewLayout.h,source,780,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/HJCarouselViewLayout.m,source,6765,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.h,source,1416,No,,,0,No,,
+Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m,source,4298,No,,,12700,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPAlertHelper.h,source,6199,Yes,,,170,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPAlertHelper.m,source,56909,Yes,Pure Pets,Sources,170,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPColorUtils.h,source,4929,Yes,,,19,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPColorUtils.m,source,28542,Yes,Pure Pets,Sources,12719,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPDesignTokens.h,source,6670,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles/PPFunc+Haptics.h,source,416,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles/PPFunc+Haptics.m,source,2594,Yes,Pure Pets,Sources,169,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles/PPFunc.h,source,24787,Yes,,,1425,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles/PPFunc.m,source,235579,Yes,Pure Pets,Sources,20258,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPGradientView.h,source,2980,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPGradientView.m,source,16494,Yes,Pure Pets,Sources,9100,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPHUD.h,source,2656,Yes,,,366,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPHUD.m,source,21174,Yes,Pure Pets,Sources,677,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PPTextField.h,source,261,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPTextField.m,source,3904,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PP/PPStyles/PPThemeRefresh.h,source,2090,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/PPThemeRefresh.m,source,5715,Yes,Pure Pets,Sources,6120,No,,
+Pure Pets/DesignFiles/PP/PPStyles/PurePets-DesignSystem.swift,source,37172,Yes,Pure Pets,Sources,111,No,,
+Pure Pets/DesignFiles/PP/PPStyles/Styling.h,source,7710,Yes,,,507,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/PPStyles/Styling.m,source,50803,Yes,Pure Pets,Sources,4686,No,,
+Pure Pets/DesignFiles/PP/ScaledCenterCarousel/ScaledCenterCarousel.h,source,549,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/ScaledCenterCarousel/YTScaledCenterCarouselLayout.h,source,719,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/ScaledCenterCarousel/YTScaledCenterCarouselLayout.m,source,5933,Yes,Pure Pets,Sources,3062,No,,
+Pure Pets/DesignFiles/PP/ScaledCenterCarousel/YTScaledCenterCarouselPaginator.h,source,994,Yes,,,23,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/ScaledCenterCarousel/YTScaledCenterCarouselPaginator.m,source,7089,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/DesignFiles/PP/Vet Location/PPMapPreviewCell.h,source,491,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/Vet Location/PPMapPreviewCell.m,source,3128,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/PP/Vet Location/PPVetCell.h,source,850,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/Vet Location/PPVetCell.m,source,6423,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/PP/Vet Location/PPVetLocator.h,source,228,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/Vet Location/PPVetLocator.m,source,23410,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/PP/ZYCircleProgressView/ZYCircleProgressView.h,source,644,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/ZYCircleProgressView/ZYCircleProgressView.m,source,3015,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/PP/ZYCircleProgressView/ZYCircleProgressViewConfig.h,source,850,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PP/ZYCircleProgressView/ZYCircleProgressViewConfig.m,source,737,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/ImagePicker.h,source,785,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/ImagePicker.m,source,7963,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/GuideView.h,source,175,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/GuideView.m,source,4398,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/MYIntroductionPanel.h,source,1697,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/MYIntroductionPanel.m,source,2843,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/MYIntroductionView.h,source,4355,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/MYIntroductionView.m,source,32542,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/WelcomeView.h,source,179,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/Introduction/WelcomeView.m,source,3223,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPGCDExtensions.h,source,1290,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPGCDExtensions.m,source,1801,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPMethodInjecting.h,source,1026,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPMethodInjecting.m,source,9697,Yes,Pure Pets,Sources,4476,Yes,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPResourceLoadingRequestTask.h,source,5941,Yes,,,115,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPResourceLoadingRequestTask.m,source,15093,Yes,Pure Pets,Sources,7255,Yes,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_blur@2x.png,resource,7489,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_blur@3x.png,resource,15262,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_landscape@2x.png,resource,540,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_landscape@3x.png,resource,902,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_pause@2x.png,resource,509,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_pause@3x.png,resource,654,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_play@2x.png,resource,3138,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_play@3x.png,resource,5521,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_portrait@2x.png,resource,1052,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_portrait@3x.png,resource,1504,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_progress_handler_hightlight@2x.png,resource,1173,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_progress_handler_hightlight@3x.png,resource,2161,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_progress_handler_normal@2x.png,resource,671,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.bundle/jp_videoplayer_progress_handler_normal@3x.png,resource,1050,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.h,source,6062,Yes,,,140,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayer.m,source,22817,Yes,Pure Pets,Sources,70,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCache.h,source,6868,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCache.m,source,20829,Yes,Pure Pets,Sources,28,Yes,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCacheFile.h,source,5493,Yes,,,42,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCacheFile.m,source,13909,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCachePath.h,source,2910,Yes,,,33,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCachePath.m,source,5305,Yes,Pure Pets,Sources,66,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCellProtocol.h,source,1164,Yes,,,40,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCellProtocol.m,source,1307,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCompat.h,source,5747,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerCompat.m,source,2290,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerControlViews.h,source,4475,Yes,,,28,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerControlViews.m,source,45791,Yes,Pure Pets,Sources,28,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerDownloader.h,source,3939,Yes,,,36,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerDownloader.m,source,14969,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerKit.h,source,648,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerManager.h,source,10083,Yes,,,84,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerManager.m,source,29138,Yes,Pure Pets,Sources,41,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerProtocol.h,source,5660,Yes,,,152,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerResourceLoader.h,source,1885,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerResourceLoader.m,source,12244,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerScrollViewProtocol.h,source,6845,Yes,,,40,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerScrollViewProtocol.m,source,3730,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerSupportUtils.h,source,6748,Yes,,,22,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/JPVideoPlayerSupportUtils.m,source,27860,Yes,Pure Pets,Sources,1483,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UICollectionView+WebVideoCache.h,source,471,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UICollectionView+WebVideoCache.m,source,442,Yes,Pure Pets,Sources,294,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UICollectionViewCell+WebVideoCache.h,source,463,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UICollectionViewCell+WebVideoCache.m,source,474,Yes,Pure Pets,Sources,185,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UITableView+WebVideoCache.h,source,466,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UITableView+WebVideoCache.m,source,430,Yes,Pure Pets,Sources,564,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UITableViewCell+WebVideoCache.h,source,505,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UITableViewCell+WebVideoCache.m,source,438,Yes,Pure Pets,Sources,313,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UIView+WebVideoCache.h,source,16547,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/JPVideoPlayer/UIView+WebVideoCache.m,source,33994,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/PAAImageView.h,source,1120,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/PAAImageView.m,source,10054,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/TQImageViewer/FullScreenImageViewerController.h,source,1424,Yes,,,19,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/TQImageViewer/FullScreenImageViewerController.m,source,7148,Yes,Pure Pets,Sources,19,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/TQImageViewer/PPMediaPreviewView.swift,source,21452,Yes,Pure Pets,Sources,949,Yes,,
+Pure Pets/DesignFiles/PhotosAnControllers/TQImageViewer/TQImageViewer.h,source,11553,Yes,,,317,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/TQImageViewer/TQImageViewer.m,source,72647,Yes,Pure Pets,Sources,3927,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/UIView+Badge.h,source,3782,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/UIView+Badge.m,source,6639,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/UIViewController+PopUpView.h,source,527,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/UIViewController+PopUpView.m,source,2700,Yes,Pure Pets,Sources,785,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/VVSpringCollectionViewFlowLayout/CollectionViewAnimation.h,source,714,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/VVSpringCollectionViewFlowLayout/CollectionViewAnimation.m,source,2089,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/PhotosAnControllers/ZXQRScanViewController.h,source,733,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/PhotosAnControllers/ZXQRScanViewController.m,source,11763,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/PhotosAnControllers/ZXQRScanViewController.xib,resource,10159,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Assets/AAicon_check@2x.png,resource,1367,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Assets/AAicon_check@3x.png,resource,2068,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectController.h,source,421,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectModel.h,source,292,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectModel.m,source,160,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectTableViewCell.h,source,430,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectTableViewCell.m,source,2701,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectViewController.h,source,2304,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAMultiSelectViewController.m,source,12858,Yes,Pure Pets,Sources,1,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAPopupDefines.h,source,2531,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAPopupView.h,source,6517,Yes,,,36,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AAMultiSelectController/Classes/AAPopupView.m,source,49802,Yes,Pure Pets,Sources,4846,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/AKPickerView/AKPickerView.h,source,2178,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/AKPickerView/AKPickerView.m,source,23298,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/ButtonsContainerView.h,source,477,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ButtonsContainerView.m,source,2770,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/CCActivityHUD.h,source,4758,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/CCActivityHUD.m,source,41523,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/Size.h,source,2455,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/UIImage+animatedGIF.h,source,1854,Yes,,,77,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/UIImage+animatedGIF.m,source,4528,Yes,Pure Pets,Sources,2433,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/cross.png,resource,3820,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/CCActivityHUD/tick.png,resource,3820,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/CircularLoadingButton/BKCircularLoadingButton.h,source,880,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/CircularLoadingButton/BKCircularLoadingButton.m,source,4705,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/CircularLoadingButton/CircularIndicatorView.h,source,353,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/CircularLoadingButton/CircularIndicatorView.m,source,3732,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/UIView+Shadow.h,source,418,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/UIView+Shadow.m,source,3627,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/YIInnerShadowLayer.h,source,917,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/YIInnerShadowLayer.m,source,3138,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/YIInnerShadowView.h,source,898,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ClassesYIInnerShadow/YIInnerShadowView.m,source,2704,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/alert-round.png,resource,1052037,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/checkmark-round.png,resource,2367,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/close-round.png,resource,2177,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/deletealert.png,resource,7206,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/heart.png,resource,2322,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Assets/star.png,resource,2195,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Classes/FCAlertView.h,source,7456,Yes,,,37,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FCAlertView/FCAlertView/Classes/FCAlertView.m,source,84915,Yes,Pure Pets,Sources,13,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FFLoadingView/FFLoadingView.h,source,883,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FFLoadingView/FFLoadingView.m,source,9433,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Assets/blank_button@2x.png,resource,2385,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Assets/blank_button@3x.png,resource,3199,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Low
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/FOREmptyAssistantConfiger.h,source,3078,Yes,,,26,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/FOREmptyAssistantConfiger.m,source,5030,Yes,Pure Pets,Sources,26,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/FORScrollViewEmptyAssistant.h,source,669,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/FORScrollViewEmptyAssistant.m,source,2144,Yes,Pure Pets,Sources,1160,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/UIScrollView+EmptyDataSet.h,source,10925,Yes,,,16209,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FORScrollViewEmptyAssistant/Classes/UIScrollView+EmptyDataSet.m,source,38542,Yes,Pure Pets,Sources,8656,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FTPopOverMenu.h,source,8998,Yes,,,60,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FTPopOverMenu.m,source,44274,Yes,Pure Pets,Sources,60,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/FavoriteButton.h,source,1235,Yes,,,31,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/FavoriteButton.m,source,20570,Yes,Pure Pets,Sources,31,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/GSIndeterminateProgress/GSIndeterminateProgressView.h,source,691,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/GSIndeterminateProgress/GSIndeterminateProgressView.m,source,2518,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUD.m,source,41638,Yes,Pure Pets,Sources,84,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDAnimation.m,source,771,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDErrorIndicatorView.m,source,1483,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDFadeAnimation.m,source,1310,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDFadeZoomAnimation.m,source,3144,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDImageIndicatorView.m,source,1038,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDIndeterminateIndicatorView.m,source,1843,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDIndicatorView.m,source,2460,Yes,Pure Pets,Sources,14,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDPieIndicatorView.m,source,4588,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDRingIndicatorView.m,source,5656,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDShadow.m,source,740,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/JGProgressHUDSuccessIndicatorView.m,source,1455,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUD-Defines.h,source,2395,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUD.h,source,13695,Yes,,,1927,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDAnimation.h,source,1328,Yes,,,1358,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDErrorIndicatorView.h,source,582,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDFadeAnimation.h,source,747,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDFadeZoomAnimation.h,source,1026,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDImageIndicatorView.h,source,773,Yes,,,1311,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDIndeterminateIndicatorView.h,source,680,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDIndicatorView.h,source,2408,Yes,,,1321,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDPieIndicatorView.h,source,1056,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDRingIndicatorView.h,source,1310,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDShadow.h,source,1101,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/JGProgressHUDSuccessIndicatorView.h,source,590,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/JGProgressHUD/include/module.modulemap,resource,67,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Category/KafkaCategories.h,source,2225,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Category/KafkaCategories.m,source,5823,Yes,Pure Pets,Sources,5583,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Configuration/UIScrollView+KafkaConfiguration.h,source,1753,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Configuration/UIScrollView+KafkaConfiguration.m,source,7778,Yes,Pure Pets,Sources,604,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaFootRefreshControl.h,source,299,Yes,,,16,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaFootRefreshControl.m,source,5974,Yes,Pure Pets,Sources,16,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaHeadRefreshControl.h,source,293,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaHeadRefreshControl.m,source,5932,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaRefreshControl.h,source,4994,Yes,,,47,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaRefreshControl.m,source,10445,Yes,Pure Pets,Sources,23,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/KafkaRefreshProtocol.h,source,1484,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/UIScrollView+KafkaRefreshControl.h,source,760,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Core/UIScrollView+KafkaRefreshControl.m,source,2027,Yes,Pure Pets,Sources,302,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Default/KafkaRefreshDefaults.h,source,1160,Yes,,,20,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Default/KafkaRefreshDefaults.m,source,999,Yes,Pure Pets,Sources,20,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/KafkaRefresh.h,source,996,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Resource/Image.bundle/arrow48.png,resource,560,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/Style/KafkaRefreshStyle.h,source,727,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaArrowFooter.h,source,604,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaArrowFooter.m,source,3684,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaNativeFooter.h,source,255,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaNativeFooter.m,source,1631,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaReplicatorFooter.h,source,483,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaReplicatorFooter.m,source,2158,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaRingIndicatorFooter.h,source,451,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/FootKit/KafkaRingIndicatorFooter.m,source,2263,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaArrowHeader.h,source,604,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaArrowHeader.m,source,3566,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaNativeHeader.h,source,558,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaNativeHeader.m,source,1712,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaReplicatorHeader.h,source,483,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaReplicatorHeader.m,source,2139,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaRingIndicatorHeader.h,source,451,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/HeadKit/KafkaRingIndicatorHeader.m,source,2257,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/LayerKit/KafkaAnimatableProtocol.h,source,355,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/LayerKit/KafkaArcLayer.h,source,452,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/LayerKit/KafkaArcLayer.m,source,2996,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/LayerKit/KafkaReplicatorLayer.h,source,887,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/KafkaRefresh/UIKit/LayerKit/KafkaReplicatorLayer.m,source,12782,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/LSLDatePickerDialog/LSLDatePickerDialog.h,source,3991,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/LSLDatePickerDialog/LSLDatePickerDialog.m,source,13841,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/LUNGradientView.h,source,277,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/LUNGradientView.m,source,280,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/LUNSegmentedControl.h,source,11233,Yes,,,36,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/LUNSegmentedControl.m,source,52329,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/UIView+LUNRemoveConstraints.h,source,597,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/LUNSegmentedControl/UIView+LUNRemoveConstraints.m,source,792,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/ODRefreshControl/ODRefreshControl.h,source,1579,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ODRefreshControl/ODRefreshControl.m,source,20260,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/NSBundle+PGDatePicker.h,source,508,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/NSBundle+PGDatePicker.m,source,1812,Yes,Pure Pets,Sources,144,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/NSDate+PGCategory.h,source,1042,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/NSDate+PGCategory.m,source,5301,Yes,Pure Pets,Sources,776,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickManager.h,source,1349,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickManager.m,source,11067,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickManagerHeaderView.h,source,998,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickManagerHeaderView.m,source,8486,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Common.h,source,392,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Common.m,source,2053,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Date.h,source,373,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Date.m,source,3195,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateAndTime.h,source,417,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateAndTime.m,source,5180,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHour.h,source,399,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHour.m,source,4154,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHourMinute.h,source,432,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHourMinute.m,source,5115,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHourMinuteSecond.h,source,462,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+DateHourMinuteSecond.m,source,5922,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Logic.h,source,3636,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Logic.m,source,41582,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MinuteAndSecond.h,source,437,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MinuteAndSecond.m,source,2652,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDay.h,source,401,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDay.m,source,2187,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHour.h,source,421,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHour.m,source,3196,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHourMinute.h,source,451,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHourMinute.m,source,4154,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHourMinuteSecond.h,source,481,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+MonthDayHourMinuteSecond.m,source,5148,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Time.h,source,382,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Time.m,source,2556,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+TimeAndSecond.h,source,427,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+TimeAndSecond.m,source,3527,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Year.h,source,315,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+Year.m,source,961,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+YearAndMonth.h,source,413,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker+YearAndMonth.m,source,2180,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker.bundle/en.lproj/Localizable.strings,resource,493,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker.bundle/zh-Hans.lproj/Localizable.strings,resource,517,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker.bundle/zh-Hant.lproj/Localizable.strings,resource,519,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker.h,source,3773,Yes,,,72,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePicker.m,source,52023,Yes,Pure Pets,Sources,64,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickerHeader.h,source,2708,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickerView.h,source,301,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGDatePickerView.m,source,1542,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGEnumeration.h,source,1350,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerColumnCell.h,source,308,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerColumnCell.m,source,1308,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerColumnView.h,source,1779,Yes,,,26,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerColumnView.m,source,15876,Yes,Pure Pets,Sources,18,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerTableView.h,source,198,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerTableView.m,source,600,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerView.h,source,5575,Yes,,,29,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/PGPickerView.m,source,20972,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/UIColor+PGHex.h,source,218,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PGDatePicker/UIColor+PGHex.m,source,2404,Yes,Pure Pets,Sources,8150,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PKYStepper/PKYStepper.h,source,1879,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PKYStepper/PKYStepper.m,source,5138,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PPInsetLabel.h,source,581,Yes,,,67,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PPInsetLabel.m,source,1804,Yes,Pure Pets,Sources,1888,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/NSBundle+PYSearchExtension.h,source,611,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/NSBundle+PYSearchExtension.m,source,2617,Yes,Pure Pets,Sources,144,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/ar.lproj/Localizable.strings,resource,432,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/back@2x.png,resource,517,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/back@3x.png,resource,773,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/cell-content-line-vertical@2x.png,resource,1267,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/cell-content-line-vertical@3x.png,resource,1298,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/cell-content-line@2x.png,resource,1308,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/cell-content-line@3x.png,resource,1025,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/clearImage@2x.png,resource,534,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/clearImage@3x.png,resource,554,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/close@2x.png,resource,348,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/close@3x.png,resource,466,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/empty@2x.png,resource,625,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/empty@3x.png,resource,935,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/en.lproj/Localizable.strings,resource,387,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/es.lproj/Localizable.strings,resource,417,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/fr.lproj/Localizable.strings,resource,440,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/search@2x.png,resource,716,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/search@3x.png,resource,2554,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/search_history@2x.png,resource,663,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/search_history@3x.png,resource,946,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/zh-Hans.lproj/Localizable.strings,resource,622,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.bundle/zh-Hant.lproj/Localizable.strings,resource,370,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearch.h,source,251,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchConst.h,source,1937,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchConst.m,source,750,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchSuggestionViewController.h,source,1211,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchSuggestionViewController.m,source,6235,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchViewController.h,source,14475,Yes,,,3798,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/PYSearchViewController.m,source,58788,Yes,Pure Pets,Sources,12,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/UIColor+PYSearchExtension.h,source,718,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/UIColor+PYSearchExtension.m,source,1652,Yes,Pure Pets,Sources,8150,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/UIView+PYSearchExtension.h,source,569,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PYSearch/UIView+PYSearchExtension.m,source,1683,Yes,Pure Pets,Sources,4550,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PopupPickerView.h,source,660,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PopupPickerView.m,source,8381,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/DesignFiles/UIFieldsAndPicker/PressButton.h,source,355,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PressButton.m,source,1351,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/PulsingHalo/PulsingHalo.h,source,604,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PulsingHalo/PulsingHaloLayer.h,source,1889,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/PulsingHalo/PulsingHaloLayer.m,source,6644,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/LICENSE,other,1064,No,,,0,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/QuickSecurityCode/QuickSecurityCode.h,source,2927,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/QuickSecurityCode/QuickSecurityCode.m,source,13144,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/QuickSecurityCode/UITextField+QuickSecurityCode.h,source,526,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/QuickSecurityCode/UITextField+QuickSecurityCode.m,source,1473,Yes,Pure Pets,Sources,221,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/QuickSecurityCode/README.md,resource,3556,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/DesignFiles/UIFieldsAndPicker/SKSplashView/SKSplashIcon.h,source,1023,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/SKSplashView/SKSplashIcon.m,source,5638,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/SKSplashView/SKSplashView.h,source,1410,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/SKSplashView/SKSplashView.m,source,5500,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTAnimationButton/CALayer+TTSpringAnimation.h,source,613,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTAnimationButton/CALayer+TTSpringAnimation.m,source,2477,Yes,Pure Pets,Sources,156,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTAnimationButton/TTAnimationButton.h,source,825,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTAnimationButton/TTAnimationButton.m,source,12093,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTGSnackbar/PrivacyInfo.xcprivacy,resource,571,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTGSnackbar/TTGSnackbar.h,source,286,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/TTGSnackbar/TTGSnackbar.swift,source,49215,Yes,Pure Pets,Sources,141,Yes,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/UIButton+PressAnimation.h,source,177,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/UIButton+PressAnimation.m,source,1230,Yes,Pure Pets,Sources,1458,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/UIButton.h,source,373,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/UIButton.m,source,2071,Yes,Pure Pets,Sources,1458,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/UISearchBar+FMAdd.h,source,429,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/UISearchBar+FMAdd.m,source,1606,Yes,Pure Pets,Sources,50,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/Utils.h,source,868,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/Utils.m,source,3452,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/DesignFiles/UIFieldsAndPicker/ZMJTipViewClasses/ZMJTipView.h,source,6217,Yes,,,52,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/DesignFiles/UIFieldsAndPicker/ZMJTipViewClasses/ZMJTipView.m,source,26636,Yes,Pure Pets,Sources,4598,Yes,,
+Pure Pets/EnumValues.h,source,15226,Yes,,,461,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/AppDataListenerManager.h,source,1568,Yes,,,215,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/AppDataListenerManager.m,source,24828,Yes,Pure Pets,Sources,593,Yes,,
+Pure Pets/FireData/CagesManager.h,source,4609,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/CagesManager.m,source,14465,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/FireData/PPSalesPDFGenerator.h,source,642,Yes,,,308,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/PPSalesPDFGenerator.m,source,13390,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/FireData/TrashManager.h,source,301,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/TrashManager.m,source,6370,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/FireData/TrashModel.h,source,1984,Yes,,,29,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/FireData/TrashModel.m,source,8715,Yes,Pure Pets,Sources,29,No,,
+Pure Pets/GM.h,source,10418,Yes,,,2187,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/GM.m,source,110178,Yes,Pure Pets,Sources,1925,No,,
+Pure Pets/GoogleService-Info.plist,resource,1242,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Info.plist,resource,3345,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/AccessViewerVC.h,source,1513,Yes,,,545,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/AccessViewerVC.m,source,161966,Yes,Pure Pets,Sources,16,Yes,,
+Pure Pets/MainApp/Accessories/AccessFiles/AccessoryCollectionViewCell.h,source,334,Yes,,,525,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/AccessoryCollectionViewCell.m,source,12098,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/Accessories/AccessFiles/AddNewAccessory.h,source,867,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/AddNewAccessory.m,source,84958,Yes,Pure Pets,Sources,5,Yes,,
+Pure Pets/MainApp/Accessories/AccessFiles/PPMarketplaceHeroCardStyle.h,source,11146,No,,,0,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/PPPremiumImageSelectorRail.h,source,2316,No,,,0,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/PPProviderCompanyCell.h,source,12129,Yes,,,32,Yes,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/PPProviderCompanyCell.m,source,42496,Yes,Pure Pets,Sources,32,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/PPProviderCompanyPremiumCardCell.h,source,2247,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/PPProviderCompanyPremiumCardCell.m,source,71958,Yes,Pure Pets,Sources,11,Yes,,
+Pure Pets/MainApp/Accessories/AccessFiles/PetAccessory.h,source,3877,Yes,,,525,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/PetAccessory.m,source,25186,Yes,Pure Pets,Sources,525,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/PetAccessoryManager.h,source,8055,Yes,,,46,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/PetAccessoryManager.m,source,116411,Yes,Pure Pets,Sources,46,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/ProviderCompaniesListVC.h,source,426,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/ProviderCompaniesListVC.m,source,95389,Yes,Pure Pets,Sources,32,Yes,,
+Pure Pets/MainApp/Accessories/AccessFiles/ProviderStorefrontProductsVC.h,source,509,Yes,,,827,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/ProviderStorefrontProductsVC.m,source,1763,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/Accessories/AccessFiles/SellerProfileVC.h,source,772,Yes,,,833,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Accessories/AccessFiles/SellerProfileVC.m,source,143769,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/MainApp/AdoptPet/AddAdoptPetViewController.h,source,387,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AddAdoptPetViewController.m,source,69253,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/AdoptPet/AdoptPetCell.h,source,1695,Yes,,,108,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AdoptPetCell.m,source,24282,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/AdoptPet/AdoptPetDetailsViewController.h,source,348,Yes,,,97,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AdoptPetDetailsViewController.m,source,52727,Yes,Pure Pets,Sources,37,Yes,,
+Pure Pets/MainApp/AdoptPet/AdoptPetManager.h,source,2055,Yes,,,108,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AdoptPetManager.m,source,14700,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/MainApp/AdoptPet/AdoptPetModel.h,source,1361,Yes,,,90,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AdoptPetModel.m,source,3111,Yes,Pure Pets,Sources,90,No,,
+Pure Pets/MainApp/AdoptPet/AdoptPetsViewController.h,source,154,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/AdoptPetsViewController.m,source,59376,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/AdoptPet/PetAdoptCollectionViewCell.h,source,1248,Yes,,,82,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/PetAdoptCollectionViewCell.m,source,33147,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/AdoptPet/TitleSubtitleCell.h,source,296,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdoptPet/TitleSubtitleCell.m,source,2108,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/AdsViewer Files/PPInfoPillsView.h,source,510,Yes,,,25,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdsViewer Files/PPInfoPillsView.m,source,5742,Yes,Pure Pets,Sources,25,No,,
+Pure Pets/MainApp/AdsViewer Files/PPPetsTitleView.h,source,1558,Yes,,,26,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdsViewer Files/PPPetsTitleView.m,source,21476,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/AdsViewer Files/PPSimilarAdsView.h,source,692,Yes,,,285,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdsViewer Files/PPSimilarAdsView.m,source,10125,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/AdsViewer Files/ViewerVC.h,source,1129,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/AdsViewer Files/ViewerVC.m,source,130224,Yes,Pure Pets,Sources,11,No,,
+Pure Pets/MainApp/Banners/Banners.h,source,291,Yes,,,77,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/MainBannerModel.h,source,1309,Yes,,,25,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/MainBannerModel.m,source,3233,Yes,Pure Pets,Sources,25,No,,
+Pure Pets/MainApp/Banners/PPBannerCell.h,source,707,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannerCell.m,source,6258,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/Banners/PPBannerCollectionCell.h,source,1200,Yes,,,71,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannerCollectionCell.m,source,83757,Yes,Pure Pets,Sources,33,Yes,,
+Pure Pets/MainApp/Banners/PPBannerCollectionCell.m.bak.20260412-013337,other,64176,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/Banners/PPBannerView.h,source,1307,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannerView.m,source,59347,Yes,Pure Pets,Sources,2100,No,,
+Pure Pets/MainApp/Banners/PPBannerViewModel.h,source,9567,Yes,,,102,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannerViewModel.m,source,34901,Yes,Pure Pets,Sources,13568,No,,
+Pure Pets/MainApp/Banners/PPBannersCollection.h,source,1559,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannersCollection.m,source,12636,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/MainApp/Banners/PPBannersManager.h,source,4346,Yes,,,42,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Banners/PPBannersManager.m,source,32864,Yes,Pure Pets,Sources,17,No,,
+Pure Pets/MainApp/GEMENI/AttachmentButton.swift,source,3635,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/GEMENI/ChatBarView.swift,source,47399,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/GEMENI/GeminiChatViewController.h,source,218,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/GeminiChatViewController.m,source,14523,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/GEMENI/NovaAmbientAssistantCoordinator.swift,source,15723,Yes,Pure Pets,Sources,42,Yes,,
+Pure Pets/MainApp/GEMENI/NovaAmbientAssistantView.swift,source,36150,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/MainApp/GEMENI/NovaConfirmationCell.h,source,711,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/NovaConfirmationCell.m,source,12453,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/GEMENI/PPAgentClient.h,source,2000,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPAgentClient.m,source,25307,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/GEMENI/PPAgentMessage.h,source,883,Yes,,,24,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPAgentMessage.m,source,657,Yes,Pure Pets,Sources,24,No,,
+Pure Pets/MainApp/GEMENI/PPAgentResponseParser.h,source,741,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPAgentResponseParser.m,source,17393,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/GEMENI/PPNovaAmbientAssistantChatBridge.h,source,544,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaAmbientAssistantChatBridge.m,source,4922,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/GEMENI/PPNovaChatViewController.h,source,259,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaChatViewController.m,source,469724,Yes,Pure Pets,Sources,45,Yes,,
+Pure Pets/MainApp/GEMENI/PPNovaFloatingInputBarView.h,source,1410,No,,,24,No,,
+Pure Pets/MainApp/GEMENI/PPNovaFloatingInputBarView.m,source,37934,No,,,10,No,,
+Pure Pets/MainApp/GEMENI/PPNovaGenkitService.h,source,526,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaGenkitService.m,source,5825,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/GEMENI/PPNovaLocalChatMemory.h,source,2069,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaLocalChatMemory.m,source,15967,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/MainApp/GEMENI/PPNovaMessageBubbleCell.h,source,911,No,,,22,No,,
+Pure Pets/MainApp/GEMENI/PPNovaMessageBubbleCell.m,source,92691,No,,,9,No,,
+Pure Pets/MainApp/GEMENI/PPNovaOutputPresentationChecklist.md,resource,1515,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/MainApp/GEMENI/PPNovaProductMessageCell.h,source,692,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaProductMessageCell.m,source,20121,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/MainApp/GEMENI/PPNovaReviewMessageCell.h,source,335,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/GEMENI/PPNovaReviewMessageCell.m,source,1766,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/GEMENI/PPNovaStreamingService.swift,source,8596,Yes,Pure Pets,Sources,1770,Yes,,
+Pure Pets/MainApp/GEMENI/PPNovaSwiftUIChatBarViewController.swift,source,5167,Yes,Pure Pets,Sources,404,Yes,,
+Pure Pets/MainApp/GEMENI/PPStickerKit.swift,source,25034,Yes,Pure Pets,Sources,6,Yes,,
+Pure Pets/MainApp/GEMENI/PPVoiceMessageHelper.swift,source,26892,Yes,Pure Pets,Sources,8,Yes,,
+Pure Pets/MainApp/Helpers/AppClasses.h,source,3172,Yes,,,145,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/AppClasses.m,source,35199,Yes,Pure Pets,Sources,63,No,,
+Pure Pets/MainApp/Helpers/CompanyLocationVC.h,source,220,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/CompanyLocationVC.m,source,66993,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/Helpers/DeepLinkRouter.h,source,226,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/DeepLinkRouter.m,source,2360,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/Helpers/DonePopupView.h,source,587,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/DonePopupView.m,source,7502,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/Helpers/EmptyStateView.h,source,1379,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/EmptyStateView.m,source,8709,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/Helpers/FloatingQuantityButton.h,source,833,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/FloatingQuantityButton.m,source,10565,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/Helpers/LocationPickerViewController.h,source,2182,Yes,,,16,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/LocationPickerViewController.m,source,63128,Yes,Pure Pets,Sources,8,Yes,,
+Pure Pets/MainApp/Helpers/OptionsView/BottomOptionsViewController.h,source,1693,Yes,,,74,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/OptionsView/BottomOptionsViewController.m,source,17318,Yes,Pure Pets,Sources,32,Yes,,
+Pure Pets/MainApp/Helpers/OptionsView/OptionModel.h,source,2647,Yes,,,73,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/OptionsView/OptionModel.m,source,13376,Yes,Pure Pets,Sources,4573,No,,
+Pure Pets/MainApp/Helpers/OptionsView/OptionTableViewCell.h,source,394,Yes,,,76,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/OptionsView/OptionTableViewCell.m,source,6320,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/Helpers/PPEmptyStateHelper.h,source,1424,Yes,,,39,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/PPEmptyStateHelper.m,source,7638,Yes,Pure Pets,Sources,30,No,,
+Pure Pets/MainApp/Helpers/PPFirebaseSessionBridge.h,source,1694,Yes,,,43,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/PPFirebaseSessionBridge.m,source,23508,Yes,Pure Pets,Sources,43,No,,
+Pure Pets/MainApp/Helpers/PPFirestoreErrorNotifier.h,source,2636,Yes,Pure Pets,Sources,26,No,,
+Pure Pets/MainApp/Helpers/PPFirestoreErrorNotifier.m,source,9227,Yes,Pure Pets,Sources,26,No,,
+Pure Pets/MainApp/Helpers/PPHomeLocationSheetViewController.h,source,1279,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/PPHomeLocationSheetViewController.m,source,33209,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/Helpers/PPImageUploadValidator.h,source,2947,Yes,Pure Pets,Sources,85,No,,
+Pure Pets/MainApp/Helpers/PPImageUploadValidator.m,source,4176,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/Helpers/PPLog.h,source,382,No,,,0,No,,
+Pure Pets/MainApp/Helpers/PPNetworkRetryHelper.h,source,1790,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/Helpers/PPNetworkRetryHelper.m,source,2685,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/Helpers/PPOfflineBannerView.h,source,1213,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/Helpers/PPOfflineBannerView.m,source,15286,Yes,Pure Pets,Sources,5750,No,,
+Pure Pets/MainApp/Helpers/SegmentedControlHelper.h,source,949,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Helpers/SegmentedControlHelper.m,source,3669,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeCartNavButton.h,source,280,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeCartNavButton.m,source,10485,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeFunc.h,source,3244,Yes,,,25,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeFunc.m,source,42436,Yes,Pure Pets,Sources,25,Yes,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeHelper.h,source,3044,Yes,,,53,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeHelper.m,source,24069,Yes,Pure Pets,Sources,15,Yes,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeItem.h,source,1562,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeItem.m,source,1034,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeLayoutManager.h,source,1212,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeLayoutManager.m,source,6280,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeLocationTitleView.h,source,489,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeLocationTitleView.m,source,26601,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomePresentationTokens.h,source,2894,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeSectionBackgroundView.h,source,175,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeSectionBackgroundView.m,source,986,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeSectionDividerView.h,source,170,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPHomeSectionDividerView.m,source,955,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPImageLoaderManager.h,source,3316,Yes,,,115,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPImageLoaderManager.m,source,10585,Yes,Pure Pets,Sources,99,No,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPNotificationsHubViewController.h,source,197,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPNotificationsHubViewController.m,source,85900,Yes,Pure Pets,Sources,34,Yes,,
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPSectionHeaderView.h,source,1433,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Helpers/PPSectionHeaderView.m,source,46517,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPAdsNearByCarouselCell.h,source,485,Yes,,,280,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPAdsNearByCarouselCell.m,source,13044,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPCategoryCardCell.h,source,512,Yes,,,218,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPCategoryCardCell.m,source,11730,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeActionCell.h,source,609,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeActionCell.m,source,25769,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeBannerContainerCell.h,source,236,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeBannerContainerCell.m,source,1319,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeHeroCell.h,source,1383,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeHeroCell.m,source,102509,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeInsetLabel.h,source,191,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeInsetLabel.m,source,1258,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeMarketplaceHeroCell.h,source,486,Yes,,,218,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeMarketplaceHeroCell.m,source,53070,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeModels.h,source,1540,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeModels.m,source,4230,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeOrderStatusCell.h,source,1330,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeOrderStatusCell.m,source,14801,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeOrderStatusSwiftUI.swift,source,37363,Yes,Pure Pets,Sources,2,Yes,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomePremiumCareCell.h,source,584,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomePremiumCareCell.m,source,48068,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomePremiumSearchCell.h,source,551,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomePremiumSearchCell.m,source,43072,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeProviderCategoryPillCell.h,source,1727,Yes,,,20,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeProviderCategoryPillCell.m,source,22003,Yes,Pure Pets,Sources,20,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeProviderUnifiedCategoryCardCell.h,source,776,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeProviderUnifiedCategoryCardCell.m,source,33702,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeServiceItem.h,source,974,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeServiceItem.m,source,1065,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeServicesCell.h,source,664,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeServicesCell.m,source,23858,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeSmartSearchTitleView.h,source,660,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeSmartSearchTitleView.m,source,33750,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeUltraPremuimPetCareCell.h,source,661,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeUltraPremuimPetCareCell.m,source,54729,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeUltraPremuimProviderCategoryPillCell.h,source,503,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPHomeUltraPremuimProviderCategoryPillCell.m,source,29145,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPMainKindsCell.swift,source,30428,Yes,Pure Pets,Sources,861,Yes,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPModernHomeActionCell.h,source,487,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PPModernHomeActionCell.m,source,27903,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PetAdoptView.h,source,1883,Yes,,,82,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/PetAdoptView.m,source,13515,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoriesManager.h,source,1885,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoriesManager.m,source,21690,Yes,Pure Pets,Sources,11,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoriesViewController.h,source,774,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoriesViewController.m,source,20598,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStory.h,source,1129,Yes,,,117,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStory.m,source,810,Yes,Pure Pets,Sources,87,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoryCollectionViewCell.h,source,1037,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoryCollectionViewCell.m,source,23102,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoryCollectionViewCell.m.bak.20260411194808,other,17958,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoryPlayerViewController.h,source,407,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/HomeCells/Stories/PPStoryPlayerViewController.m,source,81140,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/ModrenAppVC/NewAppVC.h,source,240,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/NewAppVC.m,source,4512,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselCollectionCell.h,source,272,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselCollectionCell.m,source,3654,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselContainerCell.h,source,332,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselContainerCell.m,source,1983,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselItem.h,source,736,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselItem.m,source,664,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselView.h,source,362,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPCarsoul/PPCarouselView.m,source,13158,Yes,Pure Pets,Sources,3,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/BBDataViewFullDetailsCell.h,source,2041,Yes,,,310,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/BBDataViewFullDetailsCell.m,source,110159,Yes,Pure Pets,Sources,12,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/BBDataViewFullDetailsLayout.h,source,185,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/BBDataViewFullDetailsLayout.m,source,8389,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewInput.h,source,1219,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewInput.m,source,1916,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewVC.h,source,254,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewVC.m,source,359799,Yes,Pure Pets,Sources,9,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewVM.h,source,1843,Yes,,,501,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPDataViewVM.m,source,42887,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPFilterModels.h,source,4794,Yes,,,338,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPFilterModels.m,source,16759,Yes,Pure Pets,Sources,58,No,,
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPFilterSheetVC.h,source,863,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPDataView/PPFilterSheetVC.m,source,68171,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/ModrenAppVC/PPHomeViewController.h,source,900,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPHomeViewController.m,source,558903,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/PPHomeViewController.m.bak.20260412-013337,other,303391,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/ModrenAppVC/PPHomeViewController.m.bak.badgeimg-20260411233700,other,302845,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/ModrenAppVC/PPIntroViewController.h,source,662,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPIntroViewController.m,source,46413,Yes,Pure Pets,Sources,86,No,,
+Pure Pets/MainApp/ModrenAppVC/PPOverlayCoordinator.h,source,1238,Yes,,,35,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPOverlayCoordinator.m,source,12521,Yes,Pure Pets,Sources,35,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PPProviderSubscriptionManagementVC.h,source,250,No,,,0,No,,
+Pure Pets/MainApp/ModrenAppVC/PPProviderSubscriptionManagementVC.m,source,6521,No,,,0,No,,
+Pure Pets/MainApp/ModrenAppVC/PPRootTabBarController.h,source,1450,Yes,,,173,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PPRootTabBarController.m,source,187903,Yes,Pure Pets,Sources,134,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareMedicineCell.h,source,515,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareMedicineCell.m,source,11783,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareVetCell.h,source,499,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareVetCell.m,source,34284,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareVetViewrVC.h,source,614,Yes,,,102,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareVetViewrVC.m,source,49079,Yes,Pure Pets,Sources,6,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareViewController.h,source,727,Yes,,,219,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareViewController.m,source,120838,Yes,Pure Pets,Sources,31,Yes,,
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareViewerVC.h,source,641,Yes,,,41,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/PetCare/PPPetCareViewerVC.m,source,74740,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/ModrenAppVC/PetCare/PetCareHelpers.h,source,3802,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/ArabicNormalizer.h,source,313,Yes,,,26,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/ArabicNormalizer.m,source,1249,Yes,Pure Pets,Sources,26,No,,
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/PPSearchHelper.h,source,2930,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/PPSearchHelper.m,source,18367,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/SearchCacheManager.h,source,656,Yes,,,957,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/Helpers/SearchCacheManager.m,source,3946,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/ModrenAppVC/Search/PPImageSearchService.h,source,816,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/PPImageSearchService.m,source,7655,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/ModrenAppVC/Search/PPSearchViewController.h,source,432,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/PPSearchViewController.m,source,182658,Yes,Pure Pets,Sources,92,Yes,,
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/BBNavigationBar.h,source,402,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/BBNavigationBar.m,source,2410,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/PPFloatingSearchAccessoryView.h,source,278,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/PPFloatingSearchAccessoryView.m,source,3328,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/PPSPinnerView.h,source,1314,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/Search/SearchUI/PPSPinnerView.m,source,8904,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/ModrenAppVC/SmartSuggest/PPBrowseHistoryManager.h,source,647,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/ModrenAppVC/SmartSuggest/PPBrowseHistoryManager.m,source,3286,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/NewChats/ChCells/BubbleLayer.h,source,1958,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/BubbleLayer.m,source,7095,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/NewChats/ChCells/ChCell.h,source,761,Yes,,,128,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChCell.m,source,50878,Yes,Pure Pets,Sources,7,Yes,,
+Pure Pets/MainApp/NewChats/ChCells/ChCell.m.bak.20260411194808,other,30936,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/NewChats/ChCells/ChatAudioMessageCell.h,source,1819,Yes,,,23,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChatAudioMessageCell.m,source,28969,Yes,Pure Pets,Sources,23,No,,
+Pure Pets/MainApp/NewChats/ChCells/ChatImageMessageCell.h,source,1739,Yes,,,44,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChatImageMessageCell.m,source,36264,Yes,Pure Pets,Sources,21,No,,
+Pure Pets/MainApp/NewChats/ChCells/ChatMessageCell.h,source,1498,Yes,,,38,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChatMessageCell.m,source,5553,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/MainApp/NewChats/ChCells/ChatStickerMessageCell.h,source,477,Yes,,,223,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChatStickerMessageCell.m,source,5897,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/NewChats/ChCells/ChatVideoMessageCell.h,source,1301,Yes,,,19,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/ChatVideoMessageCell.m,source,27356,Yes,Pure Pets,Sources,19,No,,
+Pure Pets/MainApp/NewChats/ChCells/PPAudioPlaybackController.h,source,1203,Yes,,,24,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChCells/PPAudioPlaybackController.m,source,2877,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/NewChats/ChManager.h,source,7653,Yes,,,290,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChManager.m,source,137518,Yes,Pure Pets,Sources,77,No,,
+Pure Pets/MainApp/NewChats/ChMessagingController.h,source,5790,Yes,,,40,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChMessagingController.m,source,274861,Yes,Pure Pets,Sources,40,No,,
+Pure Pets/MainApp/NewChats/ChatBubbleView.h,source,1838,Yes,,,18,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChatBubbleView.m,source,30121,Yes,Pure Pets,Sources,18,No,,
+Pure Pets/MainApp/NewChats/ChatMessageModel.h,source,3632,Yes,,,213,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChatMessageModel.m,source,18834,Yes,Pure Pets,Sources,14613,No,,
+Pure Pets/MainApp/NewChats/ChatThreadModel.h,source,2081,Yes,,,420,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/ChatThreadModel.m,source,13033,Yes,Pure Pets,Sources,14521,No,,
+Pure Pets/MainApp/NewChats/UserChatsViewController.h,source,750,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/UserChatsViewController.m,source,39464,Yes,Pure Pets,Sources,41,Yes,,
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Image.h,source,193,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Image.m,source,226,Yes,Pure Pets,Sources,40,No,,
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Record.h,source,780,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Record.m,source,353,Yes,Pure Pets,Sources,40,No,,
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Video.h,source,193,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+Video.m,source,226,Yes,Pure Pets,Sources,40,No,,
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+helper.h,source,909,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/ChMessagingController+helper.m,source,6403,Yes,Pure Pets,Sources,40,Yes,,
+Pure Pets/MainApp/NewChats/helpers/PPChatHeaderView.h,source,287,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/PPChatHeaderView.m,source,15340,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/NewChats/helpers/PPChatHeaderView.m.bak.20260411194808,other,14338,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/NewChats/helpers/PPChatsFunc.h,source,4653,Yes,,,4073,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/PPChatsFunc.m,source,48349,Yes,Pure Pets,Sources,120,Yes,,
+Pure Pets/MainApp/NewChats/helpers/PPFullscreenVideoController.h,source,256,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/PPFullscreenVideoController.m,source,1292,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/NewChats/helpers/PPMediaPreviewController.h,source,504,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/PPMediaPreviewController.m,source,8224,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChNotificationRouter.h,source,425,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChNotificationRouter.m,source,8516,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChTypingController.h,source,785,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChTypingController.m,source,5187,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChatPresenceManager.h,source,573,Yes,,,22,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/ChatPresenceManager.m,source,4513,Yes,Pure Pets,Sources,22,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPChatFeedbackManager.h,source,505,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPChatFeedbackManager.m,source,6739,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPChatInputBarView.h,source,2184,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPChatInputBarView.m,source,58008,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPInAppChatNotificationPresenter.h,source,568,Yes,,,336,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPInAppChatNotificationPresenter.m,source,27663,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPRecordingBarView.h,source,1553,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPRecordingBarView.m,source,36598,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPRecordingLockPillView.h,source,519,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPRecordingLockPillView.m,source,6167,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPVoicePreviewBubbleView.h,source,361,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/PPVoicePreviewBubbleView.m,source,3190,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPPlaybackWaveformView.h,source,622,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPPlaybackWaveformView.m,source,14022,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPRecordingWaveformView.h,source,317,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPRecordingWaveformView.m,source,1140,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPWaveformView.h,source,897,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/PPWaveformView.m,source,15195,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/WaveformGenerator.h,source,394,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/SubHelpers/WAVE/WaveformGenerator.m,source,4120,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/NewChats/helpers/TypingIndicatorView.h,source,466,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/NewChats/helpers/TypingIndicatorView.m,source,6378,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/CartItem.h,source,1884,Yes,,,642,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/CartItem.m,source,4475,Yes,Pure Pets,Sources,117,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/CartViewController.h,source,1731,Yes,,,21,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/CartViewController.m,source,101057,Yes,Pure Pets,Sources,153,Yes,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderCell.h,source,635,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderCell.m,source,24165,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderDetailsViewController.h,source,806,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderDetailsViewController.m,source,228351,Yes,Pure Pets,Sources,793,Yes,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderHistoryViewController.h,source,189,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderHistoryViewController.m,source,84208,Yes,Pure Pets,Sources,10,Yes,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderItemCell.h,source,442,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderItemCell.m,source,10069,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderModel.h,source,624,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderModel.m,source,1305,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderSupportFunc.h,source,3568,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPCartTableCell.h,source,1177,Yes,,,121,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPCartTableCell.m,source,38220,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderProgressTimelineRowView.h,source,962,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderProgressTimelineRowView.m,source,15498,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderProgressTimelineView.h,source,611,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderProgressTimelineView.m,source,6839,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderStatusAppearance.h,source,16086,No,,,0,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderStatusStepperView.h,source,364,Yes,,,1,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderStatusStepperView.m,source,19647,Yes,Pure Pets,Sources,1,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportComposerViewController.h,source,2488,Yes,,,215,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportComposerViewController.m,source,59474,Yes,Pure Pets,Sources,198,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportRequestDetailsViewController.h,source,478,Yes,,,234,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportRequestDetailsViewController.m,source,42496,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportRequestListViewController.h,source,484,Yes,,,230,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderSupportRequestListViewController.m,source,36784,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderTimelineViewController.h,source,460,Yes,,,227,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PPOrderTimelineViewController.m,source,5125,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PurchasedItemsViewController.h,source,137,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/PurchasedItemsViewController.m,source,31075,Yes,Pure Pets,Sources,33,Yes,,
+Pure Pets/MainApp/PAYMENTS/Checkout/PPCheckoutCoordinator.h,source,1692,Yes,,,336,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Checkout/PPCheckoutCoordinator.m,source,57398,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Cart/CartManager.h,source,2233,Yes,,,896,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Manager/Cart/CartManager.m,source,33340,Yes,Pure Pets,Sources,111,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Cart/PPCartCalculator.h,source,1821,No,,,147,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Cart/PPCartCalculator.m,source,3893,No,,,30,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Order/PPOrderManager.h,source,10957,Yes,,,368,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Manager/Order/PPOrderManager.m,source,107640,Yes,Pure Pets,Sources,87,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Payment/PPCommerceFeedbackManager.h,source,689,Yes,,,89,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Manager/Payment/PPCommerceFeedbackManager.m,source,5494,Yes,Pure Pets,Sources,89,No,,
+Pure Pets/MainApp/PAYMENTS/Manager/Payment/PPPaymentManager.h,source,853,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Manager/Payment/PPPaymentManager.m,source,73883,Yes,Pure Pets,Sources,857,Yes,,
+Pure Pets/MainApp/PAYMENTS/Models/Orders/PPFulfillmentOrder.h,source,621,Yes,,,12,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Models/Orders/PPFulfillmentOrder.m,source,1266,Yes,Pure Pets,Sources,12,No,,
+Pure Pets/MainApp/PAYMENTS/Models/Orders/PPOrder.h,source,4563,Yes,Pure Pets,Sources,172,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/Models/Orders/PPOrder.m,source,24974,Yes,Pure Pets,Sources,172,No,,
+Pure Pets/MainApp/PAYMENTS/ORDER_CHECKOUT_AUDIT_README.md,resource,11825,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPAddressPickerView.h,source,939,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPAddressPickerView.m,source,19609,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentBasicsSettingsViewController.h,source,174,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentBasicsSettingsViewController.m,source,111,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentFormViewController.h,source,1218,Yes,,,54,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentFormViewController.m,source,39877,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentFormViewController.m.xlform-backup,other,59519,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentMethodCell.h,source,1736,Yes,,,104,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPPaymentMethodCell.m,source,26499,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPSelectPaymentVC+Helper.h,source,1940,Yes,,,94,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPSelectPaymentVC+Helper.m,source,32371,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPSelectPaymentVC.h,source,326,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PPSelectPaymentVC.m,source,122306,Yes,Pure Pets,Sources,6,Yes,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PaymentMethod.h,source,1070,Yes,,,40,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/PaymentMethod.m,source,3329,Yes,Pure Pets,Sources,40,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/UserPaymentInstrument.h,source,1245,Yes,,,63,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/UserPaymentInstrument.m,source,4762,Yes,Pure Pets,Sources,44,No,,
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/UserPaymentInstrumentManager.h,source,1760,Yes,,,52,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PAYMENTS/PPPaymentsFiles/UserPaymentInstrumentManager.m,source,10692,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPAdsBrowser.h,source,4206,Yes,,,31,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPAdsBrowser.m,source,55071,Yes,Pure Pets,Sources,1,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPCenteredSelectorCell.h,source,327,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPCenteredSelectorCell.m,source,1652,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPCenteredSelectorView.h,source,1689,Yes,,,222,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPCenteredSelectorView.m,source,13947,Yes,Pure Pets,Sources,2,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/CreateAdCoordinator.h,source,606,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/CreateAdCoordinator.m,source,8758,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PetsAdsFiles/New Ad/AddNewAd.h,source,2128,Yes,,,491,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/New Ad/AddNewAd.m,source,179429,Yes,Pure Pets,Sources,12,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/New Ad/PPAdSharingHelper.h,source,392,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/New Ad/PPAdSharingHelper.m,source,7407,Yes,Pure Pets,Sources,28,No,,
+Pure Pets/MainApp/PetsAdsFiles/New Ad/PPAdSubmitCoordinator.h,source,712,Yes,,,307,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/New Ad/PPAdSubmitCoordinator.m,source,8220,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PetsAdsFiles/PetAd.h,source,5378,Yes,,,307,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetAd.m,source,37527,Yes,Pure Pets,Sources,8407,No,,
+Pure Pets/MainApp/PetsAdsFiles/PetAdManager.h,source,5702,Yes,,,67,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetAdManager.m,source,86329,Yes,Pure Pets,Sources,67,No,,
+Pure Pets/MainApp/PetsAdsFiles/PetImageItem.h,source,1415,Yes,,,105,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetImageItem.m,source,5455,Yes,Pure Pets,Sources,3705,No,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/EllipsePageControl.h,source,979,Yes,Pure Pets,Sources,8,No,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/EllipsePageControl.m,source,8304,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPCollectionLayoutManager.h,source,1717,Yes,,,17,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPPinterestLayout.h,source,1515,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCell+SwiftUIAdapter.h,source,1167,Yes,,,1180,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCell+SwiftUIAdapter.m,source,1608,Yes,Pure Pets,Sources,53,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCell.h,source,3168,Yes,,,386,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCell.m,source,185096,Yes,Pure Pets,Sources,60,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellFlags.h,source,74,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellFlags.m,source,338,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellHelper.h,source,3358,Yes,,,306,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellHelper.m,source,19118,Yes,Pure Pets,Sources,26,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellSwiftUI.swift,source,105752,Yes,Pure Pets,Sources,8,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellViewModel.h,source,2610,Yes,,,280,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PPUniversalCellViewModel.m,source,22935,Yes,Pure Pets,Sources,280,Yes,,
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PetImageGalleryView.h,source,1646,Yes,,,119,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsAdsFiles/PetsAdvertiseImagesAndCells/PetImageGalleryView.m,source,93185,Yes,Pure Pets,Sources,14,Yes,,
+Pure Pets/MainApp/PetsServices/AddPetServiceOfferViewController.h,source,392,Yes,,,122,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/AddPetServiceOfferViewController.m,source,35032,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/PetsServices/CategoryModel.h,source,320,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/CategoryModel.m,source,527,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/PetsServices/MyServicesViewController.h,source,234,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/MyServicesViewController.m,source,11721,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/MainApp/PetsServices/ServiceCollectionViewCell.h,source,1331,Yes,,,156,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/ServiceCollectionViewCell.m,source,13330,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/PetsServices/ServiceModel.h,source,3692,Yes,,,122,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/ServiceModel.m,source,14247,Yes,Pure Pets,Sources,122,No,,
+Pure Pets/MainApp/PetsServices/ServiceViewerViewController.h,source,266,Yes,,,125,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/ServiceViewerViewController.m,source,141372,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/PetsServices/ServicesManager.h,source,2167,Yes,,,137,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/PetsServices/ServicesManager.m,source,14390,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/MainApp/Search Controllers/AppSearchHelper.h,source,305,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Search Controllers/AppSearchHelper.m,source,11450,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/MainApp/Search Controllers/AppSearchResultsVC.h,source,442,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Search Controllers/AppSearchResultsVC.m,source,7889,Yes,Pure Pets,Sources,34,Yes,,
+Pure Pets/MainApp/Search Controllers/SearchManager.h,source,646,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Search Controllers/SearchManager.m,source,9123,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MainApp/Search Controllers/SearchResultCell.h,source,268,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Search Controllers/SearchResultCell.m,source,8732,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/Search Controllers/SearchResultItem.h,source,1022,Yes,,,336,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/Search Controllers/SearchResultItem.m,source,641,Yes,Pure Pets,Sources,29,No,,
+Pure Pets/MainApp/UserFiles/Adressess/AddressFormVC.h,source,989,Yes,,,54,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/AddressFormVC.m,source,129174,Yes,Pure Pets,Sources,177,Yes,,
+Pure Pets/MainApp/UserFiles/Adressess/CitiesManager.h,source,1466,Yes,,,90,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/CitiesManager.m,source,16482,Yes,Pure Pets,Sources,90,No,,
+Pure Pets/MainApp/UserFiles/Adressess/CityModel.h,source,773,Yes,,,195,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/CityModel.m,source,993,Yes,Pure Pets,Sources,74,No,,
+Pure Pets/MainApp/UserFiles/Adressess/CountryModel.h,source,812,Yes,,,168,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/CountryModel.m,source,4935,Yes,Pure Pets,Sources,94,No,,
+Pure Pets/MainApp/UserFiles/Adressess/PPAddressModel.h,source,1536,Yes,,,233,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/PPAddressModel.m,source,9091,Yes,Pure Pets,Sources,159,No,,
+Pure Pets/MainApp/UserFiles/Adressess/PPAddressesManager.h,source,1872,Yes,,,14,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/PPAddressesManager.m,source,20425,Yes,Pure Pets,Sources,14,No,,
+Pure Pets/MainApp/UserFiles/Adressess/PPDefaultLocationView.h,source,1680,Yes,,,159,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/PPDefaultLocationView.m,source,10643,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/UserFiles/Adressess/StateModel.h,source,340,Yes,,,27,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/Adressess/StateModel.m,source,264,Yes,Pure Pets,Sources,27,No,,
+Pure Pets/MainApp/UserFiles/LeaveFeedbackViewController.h,source,277,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/LeaveFeedbackViewController.m,source,21064,Yes,Pure Pets,Sources,35,Yes,,
+Pure Pets/MainApp/UserFiles/MyItemsViewController.h,source,744,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/MyItemsViewControllerr.m,source,73697,Yes,Pure Pets,Sources,10,Yes,,
+Pure Pets/MainApp/UserFiles/PPUserMenuViewController.h,source,185,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PPUserMenuViewController.m,source,78421,Yes,Pure Pets,Sources,67,Yes,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfile.h,source,1463,Yes,,,55,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfile.m,source,4599,Yes,Pure Pets,Sources,55,No,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfileEditorViewController.h,source,277,Yes,,,49,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfileEditorViewController.m,source,52792,Yes,Pure Pets,Sources,322,Yes,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfilesUIStyle.h,source,17079,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfilesViewController.h,source,187,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetProfilesViewController.m,source,101192,Yes,Pure Pets,Sources,97,Yes,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetReminder.h,source,1080,Yes,,,28,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetReminder.m,source,2779,Yes,Pure Pets,Sources,28,No,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetRemindersViewController.h,source,214,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPPetRemindersViewController.m,source,52506,Yes,Pure Pets,Sources,98,Yes,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPReminderEditorViewController.h,source,285,Yes,,,32,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPReminderEditorViewController.m,source,65661,Yes,Pure Pets,Sources,4,Yes,,
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPVaccinationEditorSheet.h,source,1038,Yes,,,12,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/PetsProfiles/PPVaccinationEditorSheet.m,source,21582,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/UserFiles/ProfileVC.h,source,508,Yes,,,17,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/ProfileVC.m,source,116872,Yes,Pure Pets,Sources,398,Yes,,
+Pure Pets/MainApp/UserFiles/SettingVC.h,source,547,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SettingVC.m,source,117045,Yes,Pure Pets,Sources,137,Yes,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPAuthScaffoldView.h,source,842,No,,,41,No,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPAuthScaffoldView.m,source,11322,No,,,41,No,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPAuthStepIndicatorView.h,source,486,No,,,7,No,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPAuthStepIndicatorView.m,source,23020,No,,,7,No,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPCompleteProfileVC.h,source,970,Yes,,,425,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/PPCompleteProfileVC.m,source,107172,Yes,Pure Pets,Sources,322,Yes,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPUserSigningController.h,source,2454,Yes,,,305,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/PPUserSigningController.m,source,111773,Yes,Pure Pets,Sources,6,Yes,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPUserSigningManager.h,source,2441,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/PPUserSigningManager.m,source,11290,Yes,Pure Pets,Sources,10,Yes,,
+Pure Pets/MainApp/UserFiles/SignIn Files/PPVerificationCodeViewController.h,source,1053,Yes,,,8,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/PPVerificationCodeViewController.m,source,51908,Yes,Pure Pets,Sources,8,Yes,,
+Pure Pets/MainApp/UserFiles/SignIn Files/XLFormPhoneCodeCell.h,source,435,Yes,,,123,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/XLFormPhoneCodeCell.m,source,6004,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/UserFiles/SignIn Files/XLFormPhoneCodeItem.h,source,527,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/SignIn Files/XLFormPhoneCodeItem.m,source,646,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/InstallationManager.h,source,1106,Yes,,,4,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/InstallationManager.m,source,3290,Yes,Pure Pets,Sources,4,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPAnalytics.h,source,4236,Yes,,,980,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPAnalytics.m,source,14935,Yes,Pure Pets,Sources,31,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPModernAvatarRenderer.h,source,620,Yes,,,59,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPModernAvatarRenderer.m,source,5740,Yes,Pure Pets,Sources,59,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPPetProfileManager.h,source,2624,Yes,,,255,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPPetProfileManager.m,source,11945,Yes,Pure Pets,Sources,12,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPRolePermission.h,source,5735,Yes,,,11,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPRolePermission.m,source,5947,Yes,Pure Pets,Sources,11,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPUserModelCache.h,source,753,Yes,,,304,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPUserModelCache.m,source,3315,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPUserPermissionsManager.h,source,2234,Yes,,,605,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/PPUserPermissionsManager.m,source,18979,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileActionCell.h,source,358,Yes,,,5,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileActionCell.m,source,3517,Yes,Pure Pets,Sources,5,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileAddressCell.h,source,445,Yes,,,3,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileAddressCell.m,source,5480,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileBaseCell.h,source,141,Yes,,,13,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileBaseCell.m,source,563,Yes,Pure Pets,Sources,13,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfilePhoneCell.h,source,714,Yes,,,10,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfilePhoneCell.m,source,6380,Yes,Pure Pets,Sources,10,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileSelectorCell.h,source,524,Yes,,,7,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileSelectorCell.m,source,4809,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileTextFieldCell.h,source,881,Yes,,,15,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileTextFieldCell.m,source,5261,Yes,Pure Pets,Sources,15,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileTextViewCell.h,source,743,Yes,,,16,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/ProfileCells/PPProfileTextViewCell.m,source,5702,Yes,Pure Pets,Sources,16,No,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/UserManager.h,source,20639,Yes,,,1340,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/UserManager.m,source,169338,Yes,Pure Pets,Sources,4816,Yes,,
+Pure Pets/MainApp/UserFiles/UsesHelpers/UserModel.h,source,10302,Yes,Pure Pets,Sources,1097,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/UserFiles/UsesHelpers/UserModel.m,source,51227,Yes,Pure Pets,Sources,18299,No,,
+Pure Pets/MainApp/VeterinarianFiles/AddVetViewController.h,source,393,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/VeterinarianFiles/AddVetViewController.m,source,9823,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/VeterinarianFiles/VetCollectionViewCell.h,source,979,Yes,,,96,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/VeterinarianFiles/VetCollectionViewCell.m,source,14850,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure Pets/MainApp/VeterinarianFiles/VetManager.h,source,2278,Yes,,,151,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/VeterinarianFiles/VetManager.m,source,18315,Yes,Pure Pets,Sources,55,No,,
+Pure Pets/MainApp/VeterinarianFiles/VetModel.h,source,1747,Yes,,,96,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/VeterinarianFiles/VetModel.m,source,6769,Yes,Pure Pets,Sources,96,No,,
+Pure Pets/MainApp/VeterinarianFiles/VetViewerViewController.h,source,231,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MainApp/VeterinarianFiles/VetViewerViewController.m,source,10325,Yes,Pure Pets,Sources,0,Yes,MANUAL REVIEW REQUIRED,Low
+Pure Pets/MianData_Files/ArchCell.h,source,1064,Yes,,,9,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/ArchCell.m,source,1976,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MianData_Files/ArchCell.xib,resource,11263,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/MianData_Files/BuyerCell.h,source,1753,Yes,,,16,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/BuyerCell.m,source,11246,Yes,Pure Pets,Sources,7,No,,
+Pure Pets/MianData_Files/BuyerCell.xib,resource,11917,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/MianData_Files/CardsCell.h,source,4194,Yes,,,6,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/CardsCell.m,source,13682,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/MianData_Files/CardsCell.xib,resource,26137,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/MianData_Files/LBHamburgerButton.h,source,5030,Yes,,,1886,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/LBHamburgerButton.m,source,12253,Yes,Pure Pets,Sources,540,No,,
+Pure Pets/MianData_Files/Main.storyboard,resource,311638,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/NullSafe.m,source,2324,Yes,Pure Pets,Sources,155,No,,
+Pure Pets/MianData_Files/SplashViewController.h,source,313,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/SplashViewController.m,source,44593,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/MianData_Files/SplashViewController.m.bak.20260412-013337,other,46585,No,,,0,No,REPOSITORY HYGIENE,High
+Pure Pets/MianData_Files/ar.lproj/Main.storyboard,resource,262713,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/en.lproj/LaunchScreen.storyboard,resource,5716,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/MianData_Files/importantFiles.h,source,352,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/MianData_Files/main.m,source,611,Yes,Pure Pets,Sources,0,Yes,PROTECTED OR REQUIRED,Protected
+Pure Pets/NovaVoiceKit/NovaAudioSessionController.swift,source,5131,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/NovaVoiceKit/NovaSpeechSpeaker.swift,source,4462,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/NovaVoiceKit/NovaSpeechTextSanitizer.swift,source,3126,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/NovaVoiceKit/NovaSpeechTranscriber.swift,source,11177,Yes,Pure Pets,Sources,6,No,,
+Pure Pets/NovaVoiceKit/NovaVoiceConfiguration.swift,source,5041,Yes,Pure Pets,Sources,9,No,,
+Pure Pets/NovaVoiceKit/NovaVoiceMessageSending.swift,source,790,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/NovaVoiceKit/NovaVoiceModels.swift,source,3125,Yes,Pure Pets,Sources,160,No,,
+Pure Pets/NovaVoiceKit/NovaVoiceObjCBridge.swift,source,7809,Yes,Pure Pets,Sources,12,Yes,,
+Pure Pets/NovaVoiceKit/NovaVoicePermissionManager.swift,source,3493,Yes,Pure Pets,Sources,3,No,,
+Pure Pets/NovaVoiceKit/NovaVoiceService.swift,source,15110,Yes,Pure Pets,Sources,2,No,,
+Pure Pets/PrefixHeader.pch,other,25502,No,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/PrivacyInfo.xcprivacy,resource,11290,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Pure Pets-Bridging-Header.h,source,450,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Pure Pets.entitlements,resource,525,Yes,,,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Resources/Beiruti-Black.ttf,resource,289804,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Resources/Beiruti-Bold.ttf,resource,290620,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Resources/Beiruti-Medium.ttf,resource,290856,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Resources/Beiruti-Regular.ttf,resource,290996,Yes,Pure Pets,Resources,0,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/Resources/NoResult.json,resource,23636,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/NovaLoader.json,resource,5684,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/Resources/NovaTyping.json,resource,6439,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/Profile.lottie,resource,1396,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/SearchingLottile.lottie,resource,2203,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/cities.json,resource,31611,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/map_dark_style.json,resource,2881,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/payment_checkout.json,resource,8931,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+Pure Pets/Resources/thinking.json,resource,30842,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/Resources/water-bubble.mp3,other,17180,No,,,0,No,,
+Pure Pets/SceneDelegate.h,source,262,Yes,,,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/SceneDelegate.m,source,19499,Yes,Pure Pets,Sources,2,No,PROTECTED OR REQUIRED,Protected
+Pure Pets/ar.lproj/Localizable.strings,resource,214695,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure Pets/en.lproj/Localizable.strings,resource,171621,No,,,0,No,CONFIRMED PROJECT ISSUE,Certain
+Pure PetsTests/PPHeroApexMotionTests.swift,source,5481,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure PetsTests/Pure_PetsTests.m,source,14413,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure PetsUITests/Pure_PetsUITests.m,source,1360,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+Pure PetsUITests/Pure_PetsUITestsLaunchTests.m,source,883,Yes,Pure Pets,Sources,0,No,HIGH-CONFIDENCE UNUSED CANDIDATE,High
+README.md,resource,23855,Yes,Pure Pets,Resources,0,No,MANUAL REVIEW REQUIRED,Medium
+tmp_order.m,source,17108,No,,,0,No,REPOSITORY HYGIENE,High
+tmp_order_prev.m,source,26795,No,,,0,No,REPOSITORY HYGIENE,High

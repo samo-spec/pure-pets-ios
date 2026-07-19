@@ -10,7 +10,7 @@
 
 #import <Foundation/Foundation.h>
 #import "EnumValues.h"
-
+#import "PPBannerCell.h"
 NS_ASSUME_NONNULL_BEGIN
 
 @class MainBannerModel;

@@ -11,6 +11,7 @@
 #import "PPCommerceFeedbackManager.h"
 #import "PPSelectOptionViewController.h"
 #import "PPModrenSegmrnted.h"
+#import <Pure_Pets-Swift.h>
 
 // =============================================================================
 #pragma mark - Design Tokens
@@ -454,7 +455,7 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 
 @interface PPCardSegmentedCell : PPCardBaseCell
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
-@property (nonatomic, strong) PPModrenSegmrnted *segmentedControl;
+@property (nonatomic, strong) ModernSegmentedControlBridge *segmentedControl;
 @property (nonatomic, copy) void(^onSegmentChanged)(NSInteger selectedIndex);
 @end
 
@@ -471,7 +472,7 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 
         PPModrenSegmrntedItem *femaleItem = [PPModrenSegmrntedItem itemWithTitle:kLang(@"Female") iconName:nil selectedIconName:nil];
         PPModrenSegmrntedItem *maleItem   = [PPModrenSegmrntedItem itemWithTitle:kLang(@"Male") iconName:nil selectedIconName:nil];
-        _segmentedControl = [[PPModrenSegmrnted alloc] initWithItems:@[femaleItem, maleItem]];
+        _segmentedControl = [[ModernSegmentedControlBridge alloc] initWithItems:@[femaleItem, maleItem]];
         _segmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
         _segmentedControl.selectedIndex = -1;
         _segmentedControl.selectedSegmentColor = PPCardFormAccentColor();
@@ -511,7 +512,7 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
     [self applyDisabledState:field.disabled];
 }
 
-- (void)segmentDidChange:(PPModrenSegmrnted *)sender {
+- (void)segmentDidChange:(ModernSegmentedControlBridge *)sender {
     if (self.onSegmentChanged) self.onSegmentChanged(sender.selectedIndex);
 }
 @end

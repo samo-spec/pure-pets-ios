@@ -16,7 +16,6 @@
 		2200BD82DC522779223BB5E1 /* NovaVoiceMessageSending.swift in Sources */ = {isa = PBXBuildFile; fileRef = A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */; };
 		2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 2262AF902E74B74B005C8EF0 /* PPBottomBar.m */; };
 		22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = 22E169D72E75E75A00F50C9E /* PPFunc.m */; };
-		32EB72B8657EBD39543086FC /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3C32792C5C5015883E126EAA /* PPSectionHeader.m */; };
 		369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */; };
 		3C68E56F8DF2FD0A6F7DA7B6 /* NovaSpeechTextSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF1A5BA75503B9FED068EB1C /* NovaSpeechTextSanitizer.swift */; };
 		47A8516E7B8BCD81E2831B9C /* NovaVoiceObjCBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3915418EB158E49A87FF88ED /* NovaVoiceObjCBridge.swift */; };
@@ -58,19 +57,15 @@
 		BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */; };
 		BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA170DFB35D11ED0D638DF8B /* AttachmentButton.swift */; };
 		C49CBD02DB4839198C274D89 /* NovaVoiceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF492649A384599998A4008D /* NovaVoiceModels.swift */; };
-		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
-		F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */; };
 		F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B02F14791300BA6214 /* SearchCacheManager.m */; };
 		F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */; };
-		F207D0BF2F14CE1500BA6214 /* sunflower.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F207D0B52F14CE1500BA6214 /* sunflower.jpg */; };
 		F207D0C02F14CE1500BA6214 /* Math.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B72F14CE1500BA6214 /* Math.swift */; };
 		F207D0C12F14CE1500BA6214 /* UnifiedImage+Encode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0BC2F14CE1500BA6214 /* UnifiedImage+Encode.swift */; };
 		F207D0C22F14CE1500BA6214 /* UnifiedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0BA2F14CE1500BA6214 /* UnifiedImage.swift */; };
 		F207D0C32F14CE1500BA6214 /* UnifiedBlurHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B92F14CE1500BA6214 /* UnifiedBlurHash.swift */; };
 		F207D0C42F14CE1500BA6214 /* UnifiedImage+Decode.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0BB2F14CE1500BA6214 /* UnifiedImage+Decode.swift */; };
-		F207D0C52F14CE1500BA6214 /* SwiftUI.Image+BlurHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B82F14CE1500BA6214 /* SwiftUI.Image+BlurHash.swift */; };
 		F207D0C62F14CE1500BA6214 /* UnifiedImage+Scale.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0BD2F14CE1500BA6214 /* UnifiedImage+Scale.swift */; };
 		F207D0CA2F14D82F00BA6214 /* PPBlurHashGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F207D0C92F14D82F00BA6214 /* PPBlurHashGenerator.swift */; };
 		F207FA502E1881D5006A3150 /* LocationPickerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F207FA4F2E1881D5006A3150 /* LocationPickerViewController.m */; };
@@ -134,11 +129,9 @@
 		F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31A12D177602001D1D57 /* PGPickerTableView.m */; };
 		F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31852D177602001D1D57 /* PGDatePicker+MonthDay.m */; };
 		F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */; };
-		F21066CF3009E652002F6A68 /* PPUniversalCellFlags.m in Sources */ = {isa = PBXBuildFile; fileRef = F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */; };
 		F213021F2F0C6573006E71AB /* PPSearchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F213021E2F0C655F006E71AB /* PPSearchViewController.m */; };
 		F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302212F0C6629006E71AB /* BBNavigationBar.m */; };
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
-		F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */; };
 		F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */; };
 		F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */; };
 		F217707A2EEBA63E0078C590 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F21770792EEBA63E0078C590 /* PPMenuHelper.m */; };
@@ -155,7 +148,6 @@
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
 		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
-		F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
 		F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22840FE2C5591C200D77937 /* MainCollectionViewCell.m */; };
@@ -257,6 +249,12 @@
 		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
 		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
+		F233B43B300C4F4600D55489 /* PPHomeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B43A300C4F4600D55489 /* PPHomeItem.m */; };
+		F233B43E300C516200D55489 /* PPUniversalCellFlags.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B43D300C516200D55489 /* PPUniversalCellFlags.m */; };
+		F233B441300C542000D55489 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B440300C542000D55489 /* PPHomeActionCell.m */; };
+		F233B444300C557F00D55489 /* PPBannerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B443300C557F00D55489 /* PPBannerCell.m */; };
+		F233B446300C72D900D55489 /* ModernSegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B445300C72D900D55489 /* ModernSegmentedControl.swift */; };
+		F233B449300C7F2200D55489 /* ModernSegmentedControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */; };
 		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
@@ -267,13 +265,11 @@
 		F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */; };
 		F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F240BD432D74D237004DDA6A /* BarcodeGenerator.m */; };
 		F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C44D2E25354600CC9BE9 /* ServicesManager.m */; };
-		F241C44F2E25355400CC9BE9 /* AddPetServiceOfferViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C44B2E25351800CC9BE9 /* AddPetServiceOfferViewController.m */; };
 		F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4512E254D3900CC9BE9 /* ServiceModel.m */; };
 		F241C4542E255B7100CC9BE9 /* ServiceCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4532E255B7100CC9BE9 /* ServiceCollectionViewCell.m */; };
 		F241C4582E255C6B00CC9BE9 /* CategoryModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4572E255C6B00CC9BE9 /* CategoryModel.m */; };
 		F241C45B2E257A2B00CC9BE9 /* MyServicesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C45A2E257A2B00CC9BE9 /* MyServicesViewController.m */; };
 		F241C4622E26A05E00CC9BE9 /* VetModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4612E26A05E00CC9BE9 /* VetModel.m */; };
-		F241C4652E26A10E00CC9BE9 /* AddVetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4642E26A10E00CC9BE9 /* AddVetViewController.m */; };
 		F241C4682E26A94500CC9BE9 /* VetManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4672E26A94500CC9BE9 /* VetManager.m */; };
 		F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2449C3F2D0DBACA00DB6BBC /* AppManager.m */; };
 		F2449C432D0DD4FD00DB6BBC /* MainKindsModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2449C422D0DD4FD00DB6BBC /* MainKindsModel.m */; };
@@ -281,7 +277,6 @@
 		F2449C492D0E0ED000DB6BBC /* subSubKindModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2449C482D0E0ED000DB6BBC /* subSubKindModel.m */; };
 		F2449C4C2D0F169B00DB6BBC /* subKindItemsModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2449C4B2D0F169B00DB6BBC /* subKindItemsModel.m */; };
 		F247543A2D102F25005C22EA /* CardModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F24754392D102F25005C22EA /* CardModel.m */; };
-		F247D3142E4FA34600F0476A /* TitleSubtitleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F247D3132E4FA33600F0476A /* TitleSubtitleCell.m */; };
 		F24C02732D2AD59100A9F61F /* GM.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C02722D2AD59100A9F61F /* GM.m */; };
 		F24C035E2D2C2D6E00A9F61F /* PYSearch.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F24C03522D2C2D6E00A9F61F /* PYSearch.bundle */; };
 		F24C035F2D2C2D6E00A9F61F /* PYSearchConst.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C03542D2C2D6E00A9F61F /* PYSearchConst.m */; };
@@ -318,7 +313,6 @@
 		F25100952F73C2D8008F6AFE /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F25100942F73C2D8008F6AFE /* FirebaseRemoteConfig */; };
 		F25100972F73C2D8008F6AFE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F25100962F73C2D8008F6AFE /* FirebaseStorage */; };
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
-		F253FA662F07182800323CB4 /* PetAdoptView.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA652F07182800323CB4 /* PetAdoptView.m */; };
 		F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */; };
 		F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */; };
 		F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F256E4E32FE0C70C004E1E2E /* PPUserMenuViewController.m */; };
@@ -336,7 +330,6 @@
 		F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C62F82773300700694 /* PPFirestoreErrorNotifier.m */; };
 		F25D68D02F829B4900700694 /* PPHomeCartNavButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */; };
 		F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */; };
-		F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */; };
 		F25DF8A72D60A79F0051EAFF /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */; };
 		F25E7FF22EFF2B970089F659 /* PPHomeModels.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E7FF12EFF2B970089F659 /* PPHomeModels.m */; };
 		F25E7FF72EFF84A90089F659 /* PPHomeHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */; };
@@ -361,13 +354,11 @@
 		F26BA3762E7FDE0600A6E85E /* PPVetCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26BA3732E7FDE0600A6E85E /* PPVetCell.m */; };
 		F26BA3772E7FDE0600A6E85E /* PPMapPreviewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26BA3712E7FDE0600A6E85E /* PPMapPreviewCell.m */; };
 		F26BA3782E7FDE0600A6E85E /* PPVetLocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F26BA3752E7FDE0600A6E85E /* PPVetLocator.m */; };
-		F26E3B002E35B37C007BB3FF /* GeminiChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */; };
 		F26EDCE52F26DBA300AE10ED /* PPRecordingBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F26EDCE42F26DB9200AE10ED /* PPRecordingBarView.m */; };
 		F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */ = {isa = PBXBuildFile; fileRef = F26EDCEA2F26E9C900AE10ED /* PPWaveformView.m */; };
 		F26EDCEE2F2702FF00AE10ED /* PPChatInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F26EDCED2F2702EF00AE10ED /* PPChatInputBarView.m */; };
 		F26F5DB22E4AC1F6002551AF /* SearchResultCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26F5DB12E4AC1E4002551AF /* SearchResultCell.m */; };
 		F26F6DE12F290EC90013EFB3 /* PPRecordingLockPillView.m in Sources */ = {isa = PBXBuildFile; fileRef = F26F6DE02F290EB90013EFB3 /* PPRecordingLockPillView.m */; };
-		F27006902F256133005E38CF /* PPMediaPreviewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F270068F2F256122005E38CF /* PPMediaPreviewController.m */; };
 		F27006952F2596AF005E38CF /* ChatPresenceManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F27006942F2596AF005E38CF /* ChatPresenceManager.m */; };
 		F2710B162C4DB8CA0051B86A /* viewDataVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2710B152C4DB8CA0051B86A /* viewDataVC.m */; };
 		F27146692CCE6B5300F7F3BA /* NSArray+XLFormAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F27146502CCE6B5300F7F3BA /* NSArray+XLFormAdditions.m */; };
@@ -453,7 +444,6 @@
 		F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A50C32EEDF799006CBE9D /* TrashCollectionViewCell.m */; };
 		F27B81892C605DDE002C0A47 /* CabelCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27B81882C605DDE002C0A47 /* CabelCollectionViewCell.m */; };
 		F27CA86B2C65933800E92897 /* TTGSnackbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27CA8682C65933800E92897 /* TTGSnackbar.swift */; };
-		F27D65DC2E1FAE1D0081943A /* DonePopupView.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D65DB2E1FAE1D0081943A /* DonePopupView.m */; };
 		F27D66282E1FD8B10081943A /* OptionModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D66272E1FD8B10081943A /* OptionModel.m */; };
 		F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D662A2E1FD8C80081943A /* BottomOptionsViewController.m */; };
 		F27F45F92C701DE300876484 /* FFLoadingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F27F45F72C701DE300876484 /* FFLoadingView.m */; };
@@ -489,10 +479,8 @@
 		F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4792FCB6735009118F2 /* PPSearchFilterView.m */; };
 		F281B4832FCB6735009118F2 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4772FCB6735009118F2 /* PPS.m */; };
 		F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */; };
-		F281B4852FCB6735009118F2 /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47B2FCB6735009118F2 /* PPSectionHeader.m */; };
 		F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */; };
 		F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46F2FCB6735009118F2 /* PPMenuHelper.m */; };
-		F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4732FCB6735009118F2 /* PPProductCard.m */; };
 		F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */; };
 		F282C1122F0D7BF9001C110A /* PPSPinnerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1112F0D7B5A001C110A /* PPSPinnerView.m */; };
 		F282C1172F0EC788001C110A /* PPBrowseHistoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1162F0EC788001C110A /* PPBrowseHistoryManager.m */; };
@@ -507,7 +495,6 @@
 		F286BA902F21611D0069CD5C /* ChTypingController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA8F2F21610C0069CD5C /* ChTypingController.m */; };
 		F286BA932F21B31A0069CD5C /* ChCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA922F21B2F60069CD5C /* ChCell.m */; };
 		F286BA962F21B6470069CD5C /* ChMessagingController+Image.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA952F21B6470069CD5C /* ChMessagingController+Image.m */; };
-		F28A09F42EE72DCD00EE5055 /* PPCenteredSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09F32EE72DCD00EE5055 /* PPCenteredSelectorCell.m */; };
 		F28A09F72EE72DEC00EE5055 /* PPCenteredSelectorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09F62EE72DD800EE5055 /* PPCenteredSelectorView.m */; };
 		F28A09FE2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09FC2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m */; };
 		F28A09FF2EE772E900EE5055 /* YTScaledCenterCarouselLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F28A09FA2EE772E900EE5055 /* YTScaledCenterCarouselLayout.m */; };
@@ -533,11 +520,8 @@
 		F28CBB682D30298C002993F0 /* JPCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F28CBB672D30298C002993F0 /* JPCell.xib */; };
 		F28CBB6C2D3077F0002993F0 /* SettingVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CBB6B2D3077F0002993F0 /* SettingVC.m */; };
 		F28D58402E1958F00055DAED /* OrderItemCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28D583F2E1958F00055DAED /* OrderItemCell.m */; };
-		F28DD58A2F0193A700FF2671 /* PPHomeServicesCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5892F01939900FF2671 /* PPHomeServicesCell.m */; };
 		F28DD58D2F0195B900FF2671 /* PPHomeServiceItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */; };
 		F28DD5902F04323500FF2671 /* HJCarouselViewLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD58F2F04323500FF2671 /* HJCarouselViewLayout.m */; };
-		F28DD5932F04340900FF2671 /* PPAdsNearByCarouselCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5922F04335700FF2671 /* PPAdsNearByCarouselCell.m */; };
-		F28DD5962F04691700FF2671 /* PPHomeBannerContainerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5952F04690700FF2671 /* PPHomeBannerContainerCell.m */; };
 		F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */; };
 		F28DD5A62F04CC6500FF2671 /* PPDataViewInput.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A52F04CC6500FF2671 /* PPDataViewInput.m */; };
 		F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F28DD5A82F04D82300FF2671 /* PPDataViewVC.m */; };
@@ -556,7 +540,6 @@
 		F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D592E4ABAF2003A7005 /* SearchManager.m */; };
 		F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D5C2E4ABB2E003A7005 /* AppSearchResultsVC.m */; };
 		F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D5F2E4ABB4E003A7005 /* AppSearchHelper.m */; };
-		F29952592F2C3C8E00F50031 /* PPRecordingWaveformView.m in Sources */ = {isa = PBXBuildFile; fileRef = F29952582F2C3C8E00F50031 /* PPRecordingWaveformView.m */; };
 		F299525C2F2C3CA100F50031 /* PPPlaybackWaveformView.m in Sources */ = {isa = PBXBuildFile; fileRef = F299525B2F2C3CA100F50031 /* PPPlaybackWaveformView.m */; };
 		F29952602F2C3E6100F50031 /* WaveformGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F299525F2F2C3E6100F50031 /* WaveformGenerator.m */; };
 		F29952662F2DB8D300F50031 /* ZYCircleProgressViewConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = F29952642F2DB8D300F50031 /* ZYCircleProgressViewConfig.m */; };
@@ -598,12 +581,10 @@
 		F2A302F92EBA3EC8005E45F0 /* PaymentMethod.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */; };
 		F2A302FC2EBA41BB005E45F0 /* UserPaymentInstrumentManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */; };
 		F2A7E6BA2FF722F800BDC981 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = F2A7E6B82FF722F800BDC981 /* README.md */; };
-		F2A7E6BB2FF722F800BDC981 /* PPFormEngineUsageExample.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A7E6B72FF722F800BDC981 /* PPFormEngineUsageExample.m */; };
 		F2A7E6BC2FF722F800BDC981 /* PPFormEngine.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A7E6B62FF722F800BDC981 /* PPFormEngine.m */; };
 		F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACB2F88781B00930857 /* PPNavigationController.m */; };
 		F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC72F88781B00930857 /* PPBottomBarManager.m */; };
 		F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */; };
-		F2A903422F9E7AF00097485B /* PPPetCareMedicineCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */; };
 		F2A903452F9E7B680097485B /* PPPetCareVetCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A903442F9E7B680097485B /* PPPetCareVetCell.m */; };
 		F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */; };
 		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
@@ -641,7 +622,6 @@
 		F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */; };
 		F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */; };
 		F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */; };
-		F2ADE54D2E26BECA004EE79B /* VetCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2ADE54C2E26BEB9004EE79B /* VetCollectionViewCell.m */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
@@ -652,9 +632,7 @@
 		F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */; };
 		F2AF383E300AAFD800FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */; };
 		F2AF3841300AB06200FBF82D /* PurePetsLayoutKit in Frameworks */ = {isa = PBXBuildFile; productRef = F2AF3840300AB06200FBF82D /* PurePetsLayoutKit */; };
-		F2AF3849300AC36600FBF82D /* MatchedHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */; };
 		F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */; };
-		F2AF384B300AC36600FBF82D /* MatchedGeometryModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */; };
 		F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3846300AC36600FBF82D /* TransitionManager.swift */; };
 		F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3847300AC36600FBF82D /* TransitionView.swift */; };
 		F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */; };
@@ -709,13 +687,9 @@
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
 		F2C1A1112F00111100C1A111 /* StateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1A1132F00111100C1A113 /* StateModel.m */; };
-		F2C1AA032F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1AA022F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m */; };
 		F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223C52F061DD4006DB76A /* PPHomeFunc.m */; };
-		F2C223C82F061E58006DB76A /* PPHomeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223C72F061E58006DB76A /* PPHomeItem.m */; };
 		F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */; };
 		F2C223CE2F062925006DB76A /* PPHomeSectionBackgroundView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */; };
-		F2C2252D2F11BF7700569B36 /* CreateAdCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C2252B2F11BF5300569B36 /* CreateAdCoordinator.m */; };
-		F2C391542DE7076500AE432C /* SegmentedControlHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C391532DE7076500AE432C /* SegmentedControlHelper.m */; };
 		F2C5F76E2CA00D3300D7897A /* AAMultiSelectViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */; };
 		F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F76B2CA00D3300D7897A /* AAPopupView.m */; };
 		F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7662CA00D3300D7897A /* AAMultiSelectTableViewCell.m */; };
@@ -746,7 +720,6 @@
 		F2CEC1032CB4682300E3B181 /* UIImage+animatedGIF.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CEC0FE2CB4682300E3B181 /* UIImage+animatedGIF.m */; };
 		F2CFC2002F2FF669007D6E98 /* BubbleLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CFC1FF2F2FF669007D6E98 /* BubbleLayer.m */; };
 		F2D0939E2F2675C200D4EE49 /* PPChatFeedbackManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0939D2F2675C200D4EE49 /* PPChatFeedbackManager.m */; };
-		F2D093A22F26BB6600D4EE49 /* PPVoicePreviewBubbleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D093A12F26BB6500D4EE49 /* PPVoicePreviewBubbleView.m */; };
 		F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */; };
 		F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5DC2C4BE1B80023CE53 /* SceneDelegate.m */; };
 		F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E42C4BE1BB0023CE53 /* Assets.xcassets */; };
@@ -757,7 +730,6 @@
 		F2D0C6122C4BEB610023CE53 /* CollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C6102C4BEB610023CE53 /* CollectionViewCell.m */; };
 		F2D100962C7B131B00F5EAE7 /* NewCageVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D100952C7B131B00F5EAE7 /* NewCageVC.m */; };
 		F2D2BC682EB7182B000A13D1 /* PPSelectPaymentVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */; };
-		F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
 		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
 		F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */; };
@@ -788,9 +760,7 @@
 		F2E33F6B3006C51A005E31C6 /* PPOrderProgressTimelineRowView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F593006C200005E31C6 /* PPOrderProgressTimelineRowView.m */; };
 		F2E33F6C3006C521005E31C6 /* PPOrderStatusStepperView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F573006C1C9005E31C6 /* PPOrderStatusStepperView.m */; };
 		F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */; };
-		F2E571E12EB5D9FC00F1DBDD /* PPDefaultLocationView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E571E02EB5D9EB00F1DBDD /* PPDefaultLocationView.m */; };
 		F2E78D612F18134800C5AE68 /* PPPetsTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */; };
-		F2E78D662F18757D00C5AE68 /* PPAdSubmitCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D652F18756E00C5AE68 /* PPAdSubmitCoordinator.m */; };
 		F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D682F187DA300C5AE68 /* PPAdSharingHelper.m */; };
 		F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E7C8102D7D5584002383C2 /* ArchivesManager.m */; };
 		F2E8B7CE2E5381CF00B88C38 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E8B7CD2E5381CF00B88C38 /* Utils.m */; };
@@ -824,7 +794,6 @@
 		F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F750CA2E7C605E00BACFA8 /* PPS.m */; };
 		F2F750CE2E7C82EA00BACFA8 /* PPGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */; };
 		F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807BC2E8BEBE90034FF2D /* MainBannerModel.m */; };
-		F2F807C92E8BEBE90034FF2D /* PPBannerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807BE2E8BEBE90034FF2D /* PPBannerCell.m */; };
 		F2F807CA2E8BEBE90034FF2D /* PPBannerViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C62E8BEBE90034FF2D /* PPBannerViewModel.m */; };
 		F2F807CB2E8BEBE90034FF2D /* PPBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C42E8BEBE90034FF2D /* PPBannerView.m */; };
 		F2F807CC2E8BEBE90034FF2D /* PPBannersCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C02E8BEBE90034FF2D /* PPBannersCollection.m */; };
@@ -916,7 +885,6 @@
 		38C7E48EFD674EB395BE62DA /* PPAgentClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentClient.h; sourceTree = "<group>"; };
 		3915418EB158E49A87FF88ED /* NovaVoiceObjCBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceObjCBridge.swift; sourceTree = "<group>"; };
 		3A2C289EF0CE4CDCA2D23C9C /* PPNovaAmbientAssistantChatBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaAmbientAssistantChatBridge.h; sourceTree = "<group>"; };
-		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
 		4174F62F151845EAA444EED6 /* NovaAmbientAssistantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantView.swift; sourceTree = "<group>"; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
@@ -934,7 +902,6 @@
 		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserPermissionsManager.m; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
-		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		94376A6F0A77F44A1BD9FA1C /* PurePets-DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "PurePets-DesignSystem.swift"; sourceTree = "<group>"; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
 		9FE65F0A7481B0C8FFB5169D /* NovaVoiceConfiguration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceConfiguration.swift; sourceTree = "<group>"; };
@@ -978,15 +945,11 @@
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		ED6AB57927044E2EA3825AE9 /* PPNovaAmbientAssistantChatBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaAmbientAssistantChatBridge.m; sourceTree = "<group>"; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
-		F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
-		F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
 		F207D0AF2F1478BF00BA6214 /* SearchCacheManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchCacheManager.h; sourceTree = "<group>"; };
 		F207D0B02F14791300BA6214 /* SearchCacheManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchCacheManager.m; sourceTree = "<group>"; };
 		F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageLoaderManager.h; sourceTree = "<group>"; };
 		F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageLoaderManager.m; sourceTree = "<group>"; };
-		F207D0B52F14CE1500BA6214 /* sunflower.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = sunflower.jpg; sourceTree = "<group>"; };
 		F207D0B72F14CE1500BA6214 /* Math.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Math.swift; sourceTree = "<group>"; };
-		F207D0B82F14CE1500BA6214 /* SwiftUI.Image+BlurHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SwiftUI.Image+BlurHash.swift"; sourceTree = "<group>"; };
 		F207D0B92F14CE1500BA6214 /* UnifiedBlurHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedBlurHash.swift; sourceTree = "<group>"; };
 		F207D0BA2F14CE1500BA6214 /* UnifiedImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnifiedImage.swift; sourceTree = "<group>"; };
 		F207D0BB2F14CE1500BA6214 /* UnifiedImage+Decode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UnifiedImage+Decode.swift"; sourceTree = "<group>"; };
@@ -1108,15 +1071,11 @@
 		F20F31A52D177602001D1D57 /* UIColor+PGHex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+PGHex.m"; sourceTree = "<group>"; };
 		F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PPUniversalCell+SwiftUIAdapter.h"; sourceTree = "<group>"; };
 		F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPUniversalCell+SwiftUIAdapter.m"; sourceTree = "<group>"; };
-		F21066CC3009E652002F6A68 /* PPUniversalCellFlags.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellFlags.h; sourceTree = "<group>"; };
-		F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellFlags.m; sourceTree = "<group>"; };
 		F213021D2F0C6556006E71AB /* PPSearchViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchViewController.h; sourceTree = "<group>"; };
 		F213021E2F0C655F006E71AB /* PPSearchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchViewController.m; sourceTree = "<group>"; };
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
 		F21302212F0C6629006E71AB /* BBNavigationBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBNavigationBar.m; sourceTree = "<group>"; };
 		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavBarTitleView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
-		F21302262F0C8FDB006E71AB /* PPFloatingSearchAccessoryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFloatingSearchAccessoryView.h; sourceTree = "<group>"; };
-		F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFloatingSearchAccessoryView.m; sourceTree = "<group>"; };
 		F2137EC12FECAE410021FFD5 /* PPHomeProviderCategoryPillCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeProviderCategoryPillCell.h; sourceTree = "<group>"; };
 		F2137EC22FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeProviderCategoryPillCell.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
@@ -1148,8 +1107,6 @@
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
 		F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchasedItemsViewController.h; sourceTree = "<group>"; };
 		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
-		F2201FF62E12C893005DBD9F /* FloatingQuantityButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingQuantityButton.h; sourceTree = "<group>"; };
-		F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingQuantityButton.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
 		F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessViewerVC.m; sourceTree = "<group>"; };
 		F22819622CD36D2D005E57FF /* XLFormImageSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormImageSelectorCell.h; sourceTree = "<group>"; };
@@ -1349,6 +1306,16 @@
 		F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaFloatingInputBarView.h; sourceTree = "<group>"; };
 		F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaFloatingInputBarView.m; sourceTree = "<group>"; };
 		F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GoogleMapsCore.xcframework; path = Pods/GoogleMaps/Maps/Frameworks/GoogleMapsCore.xcframework; sourceTree = "<group>"; };
+		F233B439300C4F4600D55489 /* PPHomeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeItem.h; sourceTree = "<group>"; };
+		F233B43A300C4F4600D55489 /* PPHomeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeItem.m; sourceTree = "<group>"; };
+		F233B43C300C516200D55489 /* PPUniversalCellFlags.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellFlags.h; sourceTree = "<group>"; };
+		F233B43D300C516200D55489 /* PPUniversalCellFlags.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellFlags.m; sourceTree = "<group>"; };
+		F233B43F300C542000D55489 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
+		F233B440300C542000D55489 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
+		F233B442300C557F00D55489 /* PPBannerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCell.h; sourceTree = "<group>"; };
+		F233B443300C557F00D55489 /* PPBannerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCell.m; sourceTree = "<group>"; };
+		F233B445300C72D900D55489 /* ModernSegmentedControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernSegmentedControl.swift; sourceTree = "<group>"; };
+		F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernSegmentedControlBridge.swift; sourceTree = "<group>"; };
 		F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeOrderStatusCell.h; sourceTree = "<group>"; };
 		F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeOrderStatusCell.m; sourceTree = "<group>"; };
 		F23686EC2C7624DE001E620C /* TQImageViewer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TQImageViewer.h; sourceTree = "<group>"; };
@@ -1367,8 +1334,6 @@
 		F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFilterModels.m; sourceTree = "<group>"; };
 		F240BD422D74D237004DDA6A /* BarcodeGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BarcodeGenerator.h; sourceTree = "<group>"; };
 		F240BD432D74D237004DDA6A /* BarcodeGenerator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BarcodeGenerator.m; sourceTree = "<group>"; };
-		F241C44A2E25350400CC9BE9 /* AddPetServiceOfferViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddPetServiceOfferViewController.h; sourceTree = "<group>"; };
-		F241C44B2E25351800CC9BE9 /* AddPetServiceOfferViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddPetServiceOfferViewController.m; sourceTree = "<group>"; };
 		F241C44C2E25353D00CC9BE9 /* ServicesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServicesManager.h; sourceTree = "<group>"; };
 		F241C44D2E25354600CC9BE9 /* ServicesManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServicesManager.m; sourceTree = "<group>"; };
 		F241C4502E254D2D00CC9BE9 /* ServiceModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceModel.h; sourceTree = "<group>"; };
@@ -1381,8 +1346,6 @@
 		F241C45A2E257A2B00CC9BE9 /* MyServicesViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyServicesViewController.m; sourceTree = "<group>"; };
 		F241C4602E26A05400CC9BE9 /* VetModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VetModel.h; sourceTree = "<group>"; };
 		F241C4612E26A05E00CC9BE9 /* VetModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetModel.m; sourceTree = "<group>"; };
-		F241C4632E26A0FF00CC9BE9 /* AddVetViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddVetViewController.h; sourceTree = "<group>"; };
-		F241C4642E26A10E00CC9BE9 /* AddVetViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddVetViewController.m; sourceTree = "<group>"; };
 		F241C4662E26A93D00CC9BE9 /* VetManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VetManager.h; sourceTree = "<group>"; };
 		F241C4672E26A94500CC9BE9 /* VetManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetManager.m; sourceTree = "<group>"; };
 		F2449C3E2D0DBACA00DB6BBC /* AppManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppManager.h; sourceTree = "<group>"; };
@@ -1397,8 +1360,6 @@
 		F2449C4B2D0F169B00DB6BBC /* subKindItemsModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = subKindItemsModel.m; sourceTree = "<group>"; };
 		F24754382D102F25005C22EA /* CardModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CardModel.h; sourceTree = "<group>"; };
 		F24754392D102F25005C22EA /* CardModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CardModel.m; sourceTree = "<group>"; };
-		F247D3122E4FA33000F0476A /* TitleSubtitleCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TitleSubtitleCell.h; sourceTree = "<group>"; };
-		F247D3132E4FA33600F0476A /* TitleSubtitleCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = TitleSubtitleCell.m; sourceTree = "<group>"; };
 		F24C02712D2AD59100A9F61F /* GM.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GM.h; sourceTree = "<group>"; };
 		F24C02722D2AD59100A9F61F /* GM.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GM.m; sourceTree = "<group>"; };
 		F24C034F2D2C2D6E00A9F61F /* NSBundle+PYSearchExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+PYSearchExtension.h"; sourceTree = "<group>"; };
@@ -1445,8 +1406,6 @@
 		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavigationController.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
 		F25373D52E32E3B400CD93E7 /* LeaveFeedbackViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LeaveFeedbackViewController.h; sourceTree = "<group>"; };
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
-		F253FA642F07182800323CB4 /* PetAdoptView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetAdoptView.h; sourceTree = "<group>"; };
-		F253FA652F07182800323CB4 /* PetAdoptView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAdoptView.m; sourceTree = "<group>"; };
 		F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeLayoutManager.h; sourceTree = "<group>"; };
 		F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLayoutManager.m; sourceTree = "<group>"; };
 		F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCategoryCardCell.h; sourceTree = "<group>"; };
@@ -1477,8 +1436,6 @@
 		F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCartNavButton.m; sourceTree = "<group>"; };
 		F25DC3072EDDE92800C48787 /* XLFormPhoneCodeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormPhoneCodeItem.h; sourceTree = "<group>"; };
 		F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormPhoneCodeItem.m; sourceTree = "<group>"; };
-		F25DC30A2EDDE93A00C48787 /* XLFormPhoneCodeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormPhoneCodeCell.h; sourceTree = "<group>"; };
-		F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormPhoneCodeCell.m; sourceTree = "<group>"; };
 		F25DF8A52D60A79F0051EAFF /* NSString+Ex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+Ex.h"; sourceTree = "<group>"; };
 		F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+Ex.m"; sourceTree = "<group>"; };
 		F25E7FF02EFF2B680089F659 /* PPHomeModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeModels.h; sourceTree = "<group>"; };
@@ -1525,8 +1482,6 @@
 		F26BA3732E7FDE0600A6E85E /* PPVetCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVetCell.m; sourceTree = "<group>"; };
 		F26BA3742E7FDE0600A6E85E /* PPVetLocator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVetLocator.h; sourceTree = "<group>"; };
 		F26BA3752E7FDE0600A6E85E /* PPVetLocator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVetLocator.m; sourceTree = "<group>"; };
-		F26E3AFE2E35B34E007BB3FF /* GeminiChatViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeminiChatViewController.h; sourceTree = "<group>"; };
-		F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = GeminiChatViewController.m; sourceTree = "<group>"; };
 		F26EDCE32F26DB3D00AE10ED /* PPRecordingBarView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRecordingBarView.h; sourceTree = "<group>"; };
 		F26EDCE42F26DB9200AE10ED /* PPRecordingBarView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRecordingBarView.m; sourceTree = "<group>"; };
 		F26EDCE92F26E9B300AE10ED /* PPWaveformView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPWaveformView.h; sourceTree = "<group>"; };
@@ -1537,8 +1492,6 @@
 		F26F5DB12E4AC1E4002551AF /* SearchResultCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchResultCell.m; sourceTree = "<group>"; };
 		F26F6DDF2F290EB20013EFB3 /* PPRecordingLockPillView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRecordingLockPillView.h; sourceTree = "<group>"; };
 		F26F6DE02F290EB90013EFB3 /* PPRecordingLockPillView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRecordingLockPillView.m; sourceTree = "<group>"; };
-		F270068E2F256109005E38CF /* PPMediaPreviewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMediaPreviewController.h; sourceTree = "<group>"; };
-		F270068F2F256122005E38CF /* PPMediaPreviewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPMediaPreviewController.m; sourceTree = "<group>"; };
 		F27006912F259549005E38CF /* ChatPresenceManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatPresenceManager.h; sourceTree = "<group>"; };
 		F27006942F2596AF005E38CF /* ChatPresenceManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChatPresenceManager.m; sourceTree = "<group>"; };
 		F2710B142C4DB8CA0051B86A /* viewDataVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = viewDataVC.h; sourceTree = "<group>"; };
@@ -1709,8 +1662,6 @@
 		F27CA8662C65933800E92897 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F27CA8672C65933800E92897 /* TTGSnackbar.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TTGSnackbar.h; sourceTree = "<group>"; };
 		F27CA8682C65933800E92897 /* TTGSnackbar.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TTGSnackbar.swift; sourceTree = "<group>"; };
-		F27D65DA2E1FAE130081943A /* DonePopupView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DonePopupView.h; sourceTree = "<group>"; };
-		F27D65DB2E1FAE1D0081943A /* DonePopupView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DonePopupView.m; sourceTree = "<group>"; };
 		F27D66262E1FD8A60081943A /* OptionModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OptionModel.h; sourceTree = "<group>"; };
 		F27D66272E1FD8B10081943A /* OptionModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OptionModel.m; sourceTree = "<group>"; };
 		F27D66292E1FD8BB0081943A /* BottomOptionsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BottomOptionsViewController.h; sourceTree = "<group>"; };
@@ -1777,16 +1728,12 @@
 		F281B46F2FCB6735009118F2 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPMenuHelper.m; sourceTree = "<group>"; };
 		F281B4702FCB6735009118F2 /* PPModrenSegmrnted.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModrenSegmrnted.h; sourceTree = "<group>"; };
 		F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModrenSegmrnted.m; sourceTree = "<group>"; };
-		F281B4722FCB6735009118F2 /* PPProductCard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProductCard.h; sourceTree = "<group>"; };
-		F281B4732FCB6735009118F2 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProductCard.m; sourceTree = "<group>"; };
 		F281B4742FCB6735009118F2 /* PPRatingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRatingView.h; sourceTree = "<group>"; };
 		F281B4752FCB6735009118F2 /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRatingView.m; sourceTree = "<group>"; };
 		F281B4762FCB6735009118F2 /* PPS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPS.h; sourceTree = "<group>"; };
 		F281B4772FCB6735009118F2 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPS.m; sourceTree = "<group>"; };
 		F281B4782FCB6735009118F2 /* PPSearchFilterView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchFilterView.h; sourceTree = "<group>"; };
 		F281B4792FCB6735009118F2 /* PPSearchFilterView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchFilterView.m; sourceTree = "<group>"; };
-		F281B47A2FCB6735009118F2 /* PPSectionHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSectionHeader.h; sourceTree = "<group>"; };
-		F281B47B2FCB6735009118F2 /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeader.m; sourceTree = "<group>"; };
 		F281B47C2FCB6735009118F2 /* UITabBarItem+PPFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPFactory.h"; sourceTree = "<group>"; };
 		F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPFactory.m"; sourceTree = "<group>"; };
 		F281B4892FCBBFD1009118F2 /* PPIntroViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPIntroViewController.h; sourceTree = "<group>"; };
@@ -1817,8 +1764,6 @@
 		F286BA922F21B2F60069CD5C /* ChCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChCell.m; sourceTree = "<group>"; };
 		F286BA942F21B6470069CD5C /* ChMessagingController+Image.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Image.h"; sourceTree = "<group>"; };
 		F286BA952F21B6470069CD5C /* ChMessagingController+Image.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Image.m"; sourceTree = "<group>"; };
-		F28A09F22EE72DC600EE5055 /* PPCenteredSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCenteredSelectorCell.h; sourceTree = "<group>"; };
-		F28A09F32EE72DCD00EE5055 /* PPCenteredSelectorCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCenteredSelectorCell.m; sourceTree = "<group>"; };
 		F28A09F52EE72DD400EE5055 /* PPCenteredSelectorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCenteredSelectorView.h; sourceTree = "<group>"; };
 		F28A09F62EE72DD800EE5055 /* PPCenteredSelectorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCenteredSelectorView.m; sourceTree = "<group>"; };
 		F28A09F82EE772E900EE5055 /* ScaledCenterCarousel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ScaledCenterCarousel.h; sourceTree = "<group>"; };
@@ -1867,16 +1812,10 @@
 		F28CBB6B2D3077F0002993F0 /* SettingVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SettingVC.m; sourceTree = "<group>"; };
 		F28D583E2E1958F00055DAED /* OrderCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderCell.h; sourceTree = "<group>"; };
 		F28D583F2E1958F00055DAED /* OrderItemCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderItemCell.m; sourceTree = "<group>"; };
-		F28DD5882F01939100FF2671 /* PPHomeServicesCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeServicesCell.h; sourceTree = "<group>"; };
-		F28DD5892F01939900FF2671 /* PPHomeServicesCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeServicesCell.m; sourceTree = "<group>"; };
 		F28DD58B2F0195AA00FF2671 /* PPHomeServiceItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeServiceItem.h; sourceTree = "<group>"; };
 		F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeServiceItem.m; sourceTree = "<group>"; };
 		F28DD58E2F04323500FF2671 /* HJCarouselViewLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HJCarouselViewLayout.h; sourceTree = "<group>"; };
 		F28DD58F2F04323500FF2671 /* HJCarouselViewLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HJCarouselViewLayout.m; sourceTree = "<group>"; };
-		F28DD5912F04331E00FF2671 /* PPAdsNearByCarouselCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAdsNearByCarouselCell.h; sourceTree = "<group>"; };
-		F28DD5922F04335700FF2671 /* PPAdsNearByCarouselCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAdsNearByCarouselCell.m; sourceTree = "<group>"; };
-		F28DD5942F0468FE00FF2671 /* PPHomeBannerContainerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeBannerContainerCell.h; sourceTree = "<group>"; };
-		F28DD5952F04690700FF2671 /* PPHomeBannerContainerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeBannerContainerCell.m; sourceTree = "<group>"; };
 		F28DD5A02F049BFE00FF2671 /* PPDataViewVM.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewVM.h; sourceTree = "<group>"; };
 		F28DD5A12F049C0E00FF2671 /* PPDataViewVM.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDataViewVM.m; sourceTree = "<group>"; };
 		F28DD5A42F04CC5D00FF2671 /* PPDataViewInput.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDataViewInput.h; sourceTree = "<group>"; };
@@ -1911,8 +1850,6 @@
 		F2977D5C2E4ABB2E003A7005 /* AppSearchResultsVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppSearchResultsVC.m; sourceTree = "<group>"; };
 		F2977D5E2E4ABB44003A7005 /* AppSearchHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppSearchHelper.h; sourceTree = "<group>"; };
 		F2977D5F2E4ABB4E003A7005 /* AppSearchHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppSearchHelper.m; sourceTree = "<group>"; };
-		F29952572F2C3C8800F50031 /* PPRecordingWaveformView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRecordingWaveformView.h; sourceTree = "<group>"; };
-		F29952582F2C3C8E00F50031 /* PPRecordingWaveformView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRecordingWaveformView.m; sourceTree = "<group>"; };
 		F299525A2F2C3C9600F50031 /* PPPlaybackWaveformView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPlaybackWaveformView.h; sourceTree = "<group>"; };
 		F299525B2F2C3CA100F50031 /* PPPlaybackWaveformView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPlaybackWaveformView.m; sourceTree = "<group>"; };
 		F299525E2F2C3E5500F50031 /* WaveformGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WaveformGenerator.h; sourceTree = "<group>"; };
@@ -1996,7 +1933,6 @@
 		F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPaymentInstrumentManager.m; sourceTree = "<group>"; };
 		F2A7E6B52FF722F800BDC981 /* PPFormEngine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFormEngine.h; sourceTree = "<group>"; };
 		F2A7E6B62FF722F800BDC981 /* PPFormEngine.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFormEngine.m; sourceTree = "<group>"; };
-		F2A7E6B72FF722F800BDC981 /* PPFormEngineUsageExample.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFormEngineUsageExample.m; sourceTree = "<group>"; };
 		F2A7E6B82FF722F800BDC981 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		F2A83AC22F88781B00930857 /* BBCheckoutSummaryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBCheckoutSummaryView.h; sourceTree = "<group>"; };
 		F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBCheckoutSummaryView.m; sourceTree = "<group>"; };
@@ -2012,8 +1948,6 @@
 		F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPAdditions.m"; sourceTree = "<group>"; };
 		F2A83ACE2F88781B00930857 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPNavBar.h"; sourceTree = "<group>"; };
 		F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPNavBar.m"; sourceTree = "<group>"; };
-		F2A903402F9E7AEF0097485B /* PPPetCareMedicineCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareMedicineCell.h; sourceTree = "<group>"; };
-		F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareMedicineCell.m; sourceTree = "<group>"; };
 		F2A903432F9E7B4E0097485B /* PPPetCareVetCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareVetCell.h; sourceTree = "<group>"; };
 		F2A903442F9E7B680097485B /* PPPetCareVetCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareVetCell.m; sourceTree = "<group>"; };
 		F2A903462F9E84120097485B /* PetCareHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetCareHelpers.h; sourceTree = "<group>"; };
@@ -2094,8 +2028,6 @@
 		F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefresh.h; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
 		F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellViewModelAdapter.swift; sourceTree = "<group>"; };
-		F2ADE54B2E26BE88004EE79B /* VetCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VetCollectionViewCell.h; sourceTree = "<group>"; };
-		F2ADE54C2E26BEB9004EE79B /* VetCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VetCollectionViewCell.m; sourceTree = "<group>"; };
 		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
 		F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CALayer+TTSpringAnimation.m"; sourceTree = "<group>"; };
 		F2AE2DA82CFD485E00D09E90 /* TTAnimationButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TTAnimationButton.h; sourceTree = "<group>"; };
@@ -2112,9 +2044,7 @@
 		F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+LUNRemoveConstraints.h"; sourceTree = "<group>"; };
 		F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+LUNRemoveConstraints.m"; sourceTree = "<group>"; };
 		F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedContainerView.swift; sourceTree = "<group>"; };
-		F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedGeometryModifier.swift; sourceTree = "<group>"; };
 		F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedGeometryState.swift; sourceTree = "<group>"; };
-		F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchedHostingController.swift; sourceTree = "<group>"; };
 		F2AF3846300AC36600FBF82D /* TransitionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionManager.swift; sourceTree = "<group>"; };
 		F2AF3847300AC36600FBF82D /* TransitionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransitionView.swift; sourceTree = "<group>"; };
 		F2B02B142EF6CA3E001A7B19 /* PPCageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCageCell.h; sourceTree = "<group>"; };
@@ -2214,22 +2144,14 @@
 		F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ImagePicker.m; sourceTree = "<group>"; };
 		F2C1A1122F00111100C1A112 /* StateModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StateModel.h; sourceTree = "<group>"; };
 		F2C1A1132F00111100C1A113 /* StateModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StateModel.m; sourceTree = "<group>"; };
-		F2C1AA012F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPaymentBasicsSettingsViewController.h; sourceTree = "<group>"; };
-		F2C1AA022F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPaymentBasicsSettingsViewController.m; sourceTree = "<group>"; };
 		F2C223C22F061B75006DB76A /* EnumValues.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EnumValues.h; sourceTree = "<group>"; };
 		F2C223C42F061DD4006DB76A /* PPHomeFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeFunc.h; sourceTree = "<group>"; };
 		F2C223C52F061DD4006DB76A /* PPHomeFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeFunc.m; sourceTree = "<group>"; };
-		F2C223C72F061E58006DB76A /* PPHomeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeItem.m; sourceTree = "<group>"; };
-		F2C223C92F061E8B006DB76A /* PPHomeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeItem.h; sourceTree = "<group>"; };
 		F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellViewModel.h; sourceTree = "<group>"; };
 		F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellViewModel.m; sourceTree = "<group>"; };
 		F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSectionBackgroundView.m; sourceTree = "<group>"; };
 		F2C223CF2F06298B006DB76A /* PPHomeSectionBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSectionBackgroundView.h; sourceTree = "<group>"; };
-		F2C2252B2F11BF5300569B36 /* CreateAdCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CreateAdCoordinator.m; sourceTree = "<group>"; };
-		F2C2252C2F11BF7000569B36 /* CreateAdCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CreateAdCoordinator.h; sourceTree = "<group>"; };
 		F2C2FE082D44535E00BB8828 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
-		F2C391522DE7074400AE432C /* SegmentedControlHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SegmentedControlHelper.h; sourceTree = "<group>"; };
-		F2C391532DE7076500AE432C /* SegmentedControlHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SegmentedControlHelper.m; sourceTree = "<group>"; };
 		F2C5F75E2CA00D3300D7897A /* AAicon_check@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@2x.png"; sourceTree = "<group>"; };
 		F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@3x.png"; sourceTree = "<group>"; };
 		F2C5F7622CA00D3300D7897A /* AAMultiSelectController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AAMultiSelectController.h; sourceTree = "<group>"; };
@@ -2284,8 +2206,6 @@
 		F2CFC1FF2F2FF669007D6E98 /* BubbleLayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BubbleLayer.m; sourceTree = "<group>"; };
 		F2D0939C2F2675AE00D4EE49 /* PPChatFeedbackManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatFeedbackManager.h; sourceTree = "<group>"; };
 		F2D0939D2F2675C200D4EE49 /* PPChatFeedbackManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatFeedbackManager.m; sourceTree = "<group>"; };
-		F2D093A02F26BB5A00D4EE49 /* PPVoicePreviewBubbleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVoicePreviewBubbleView.h; sourceTree = "<group>"; };
-		F2D093A12F26BB6500D4EE49 /* PPVoicePreviewBubbleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVoicePreviewBubbleView.m; sourceTree = "<group>"; };
 		F2D0C5D52C4BE1B80023CE53 /* Pure Pets.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Pure Pets.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F2D0C5D82C4BE1B80023CE53 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -2305,8 +2225,6 @@
 		F2D100952C7B131B00F5EAE7 /* NewCageVC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NewCageVC.m; sourceTree = "<group>"; };
 		F2D2BC662EB71802000A13D1 /* PPSelectPaymentVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSelectPaymentVC.h; sourceTree = "<group>"; };
 		F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSelectPaymentVC.m; sourceTree = "<group>"; };
-		F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessoryCollectionViewCell.h; sourceTree = "<group>"; };
-		F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessoryCollectionViewCell.m; sourceTree = "<group>"; };
 		F2D44D1F2F3D611200999337 /* map_dark_style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = map_dark_style.json; sourceTree = "<group>"; };
 		F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePresentationTokens.h; sourceTree = "<group>"; };
 		F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
@@ -2363,12 +2281,8 @@
 		F2E33F673006C4D6005E31C6 /* PPOrderSupportRequestListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderSupportRequestListViewController.m; sourceTree = "<group>"; };
 		F2E33F693006C4FF005E31C6 /* PPOrderTimelineViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOrderTimelineViewController.m; sourceTree = "<group>"; };
 		F2E33F6D3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellSwiftUI.swift; sourceTree = "<group>"; };
-		F2E571DF2EB5D9E300F1DBDD /* PPDefaultLocationView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDefaultLocationView.h; sourceTree = "<group>"; };
-		F2E571E02EB5D9EB00F1DBDD /* PPDefaultLocationView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDefaultLocationView.m; sourceTree = "<group>"; };
 		F2E78D5F2F1812E100C5AE68 /* PPPetsTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetsTitleView.h; sourceTree = "<group>"; };
 		F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetsTitleView.m; sourceTree = "<group>"; };
-		F2E78D632F18749200C5AE68 /* PPAdSubmitCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAdSubmitCoordinator.h; sourceTree = "<group>"; };
-		F2E78D652F18756E00C5AE68 /* PPAdSubmitCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAdSubmitCoordinator.m; sourceTree = "<group>"; };
 		F2E78D672F187DA300C5AE68 /* PPAdSharingHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAdSharingHelper.h; sourceTree = "<group>"; };
 		F2E78D682F187DA300C5AE68 /* PPAdSharingHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAdSharingHelper.m; sourceTree = "<group>"; };
 		F2E7C8102D7D5584002383C2 /* ArchivesManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchivesManager.m; sourceTree = "<group>"; };
@@ -2428,8 +2342,6 @@
 		F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPGradientView.m; sourceTree = "<group>"; };
 		F2F807BB2E8BEBE90034FF2D /* MainBannerModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainBannerModel.h; sourceTree = "<group>"; };
 		F2F807BC2E8BEBE90034FF2D /* MainBannerModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainBannerModel.m; sourceTree = "<group>"; };
-		F2F807BD2E8BEBE90034FF2D /* PPBannerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCell.h; sourceTree = "<group>"; };
-		F2F807BE2E8BEBE90034FF2D /* PPBannerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCell.m; sourceTree = "<group>"; };
 		F2F807BF2E8BEBE90034FF2D /* PPBannersCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannersCollection.h; sourceTree = "<group>"; };
 		F2F807C02E8BEBE90034FF2D /* PPBannersCollection.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannersCollection.m; sourceTree = "<group>"; };
 		F2F807C12E8BEBE90034FF2D /* PPBannersManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannersManager.h; sourceTree = "<group>"; };
@@ -2540,8 +2452,6 @@
 				F2A903442F9E7B680097485B /* PPPetCareVetCell.m */,
 				40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */,
 				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
-				F2A903402F9E7AEF0097485B /* PPPetCareMedicineCell.h */,
-				F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */,
 				F2A903492F9E84F30097485B /* PPPetCareViewerVC.h */,
 				F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */,
 				F2A9034B2F9E84F50097485B /* PPPetCareVetViewrVC.h */,
@@ -2614,33 +2524,17 @@
 				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
 				F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */,
 				F253FA6C2F082F1900323CB4 /* PPCategoryCardCell.m */,
-				F28DD5942F0468FE00FF2671 /* PPHomeBannerContainerCell.h */,
-				F28DD5952F04690700FF2671 /* PPHomeBannerContainerCell.m */,
-				F28DD5912F04331E00FF2671 /* PPAdsNearByCarouselCell.h */,
-				F28DD5922F04335700FF2671 /* PPAdsNearByCarouselCell.m */,
 				F28DD58B2F0195AA00FF2671 /* PPHomeServiceItem.h */,
 				F28DD58C2F0195B900FF2671 /* PPHomeServiceItem.m */,
-				F28DD5882F01939100FF2671 /* PPHomeServicesCell.h */,
-				F28DD5892F01939900FF2671 /* PPHomeServicesCell.m */,
 				F25E7FF02EFF2B680089F659 /* PPHomeModels.h */,
 				F25E7FF12EFF2B970089F659 /* PPHomeModels.m */,
 				F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */,
-				F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */,
-				F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */,
 				F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */,
 				F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */,
-				F253FA642F07182800323CB4 /* PetAdoptView.h */,
-				F253FA652F07182800323CB4 /* PetAdoptView.m */,
+				F233B43F300C542000D55489 /* PPHomeActionCell.h */,
+				F233B440300C542000D55489 /* PPHomeActionCell.m */,
 			);
 			path = HomeCells;
-			sourceTree = "<group>";
-		};
-		F207D0B62F14CE1500BA6214 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				F207D0B52F14CE1500BA6214 /* sunflower.jpg */,
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 		F207D0BE2F14CE1500BA6214 /* UnifiedBlurHash */ = {
@@ -2648,9 +2542,7 @@
 			children = (
 				F29972082F16BF570014F7A1 /* PPBlurHashBridge.swift */,
 				F207D0C92F14D82F00BA6214 /* PPBlurHashGenerator.swift */,
-				F207D0B62F14CE1500BA6214 /* Resources */,
 				F207D0B72F14CE1500BA6214 /* Math.swift */,
-				F207D0B82F14CE1500BA6214 /* SwiftUI.Image+BlurHash.swift */,
 				F207D0B92F14CE1500BA6214 /* UnifiedBlurHash.swift */,
 				F207D0BA2F14CE1500BA6214 /* UnifiedImage.swift */,
 				F207D0BB2F14CE1500BA6214 /* UnifiedImage+Decode.swift */,
@@ -3366,6 +3258,13 @@
 			path = FCAlertView;
 			sourceTree = "<group>";
 		};
+		F233B447300C7E6700D55489 /* Helpers */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Helpers;
+			sourceTree = "<group>";
+		};
 		F23466AE2C4D68D700630FA6 /* BirdsCards */ = {
 			isa = PBXGroup;
 			children = (
@@ -3419,8 +3318,6 @@
 				F241C4512E254D3900CC9BE9 /* ServiceModel.m */,
 				F241C44C2E25353D00CC9BE9 /* ServicesManager.h */,
 				F241C44D2E25354600CC9BE9 /* ServicesManager.m */,
-				F241C44A2E25350400CC9BE9 /* AddPetServiceOfferViewController.h */,
-				F241C44B2E25351800CC9BE9 /* AddPetServiceOfferViewController.m */,
 				F241C4592E257A2B00CC9BE9 /* MyServicesViewController.h */,
 				F241C45A2E257A2B00CC9BE9 /* MyServicesViewController.m */,
 			);
@@ -3432,12 +3329,8 @@
 			children = (
 				F272E5AD2E2B95DA00ECC7A5 /* VetViewerViewController.m */,
 				F272E5AC2E2B95CA00ECC7A5 /* VetViewerViewController.h */,
-				F2ADE54C2E26BEB9004EE79B /* VetCollectionViewCell.m */,
-				F2ADE54B2E26BE88004EE79B /* VetCollectionViewCell.h */,
 				F241C4672E26A94500CC9BE9 /* VetManager.m */,
 				F241C4662E26A93D00CC9BE9 /* VetManager.h */,
-				F241C4642E26A10E00CC9BE9 /* AddVetViewController.m */,
-				F241C4632E26A0FF00CC9BE9 /* AddVetViewController.h */,
 				F241C4612E26A05E00CC9BE9 /* VetModel.m */,
 				F241C4602E26A05400CC9BE9 /* VetModel.h */,
 			);
@@ -3480,8 +3373,6 @@
 				F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */,
 				F2844F012EB7BA1500D9A49C /* PPPaymentFormViewController.h */,
 				F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */,
-				F2C1AA012F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.h */,
-				F2C1AA022F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m */,
 				F2844EFE2EB76DCA00D9A49C /* PPSelectPaymentVC+Helper.h */,
 				F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */,
 				F2D2BC662EB71802000A13D1 /* PPSelectPaymentVC.h */,
@@ -3506,8 +3397,6 @@
 			children = (
 				F28A09F52EE72DD400EE5055 /* PPCenteredSelectorView.h */,
 				F28A09F62EE72DD800EE5055 /* PPCenteredSelectorView.m */,
-				F28A09F22EE72DC600EE5055 /* PPCenteredSelectorCell.h */,
-				F28A09F32EE72DCD00EE5055 /* PPCenteredSelectorCell.m */,
 				F24F9BAC2EE653EA002AAD27 /* PPAdsBrowser.h */,
 				F24F9BAD2EE653F2002AAD27 /* PPAdsBrowser.m */,
 			);
@@ -3550,6 +3439,8 @@
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				F233B439300C4F4600D55489 /* PPHomeItem.h */,
+				F233B43A300C4F4600D55489 /* PPHomeItem.m */,
 				F20956772F8567B6007C4ABA /* PPNotificationsHubViewController.h */,
 				F20956782F8567C2007C4ABA /* PPNotificationsHubViewController.m */,
 				F25D68CE2F829B2800700694 /* PPHomeCartNavButton.h */,
@@ -3562,8 +3453,6 @@
 				F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */,
 				F2C223CF2F06298B006DB76A /* PPHomeSectionBackgroundView.h */,
 				F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */,
-				F2C223C92F061E8B006DB76A /* PPHomeItem.h */,
-				F2C223C72F061E58006DB76A /* PPHomeItem.m */,
 				F25E80152F00A45C0089F659 /* PPHomeSectionDividerView.h */,
 				F25E80132F00A44D0089F659 /* PPHomeSectionDividerView.m */,
 				F25E80112F00600C0089F659 /* PPSectionHeaderView.h */,
@@ -3660,8 +3549,6 @@
 				F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */,
 				F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */,
 				F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */,
-				F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */,
-				F26E3AFE2E35B34E007BB3FF /* GeminiChatViewController.h */,
 				38C7E48EFD674EB395BE62DA /* PPAgentClient.h */,
 				54CF9E88F5084302B07E92AD /* PPAgentClient.m */,
 				4F54411260FD45AF8B522280 /* PPAgentMessage.h */,
@@ -3957,8 +3844,6 @@
 			children = (
 				F282C1102F0D7B53001C110A /* PPSPinnerView.h */,
 				F282C1112F0D7B5A001C110A /* PPSPinnerView.m */,
-				F21302262F0C8FDB006E71AB /* PPFloatingSearchAccessoryView.h */,
-				F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */,
 				F21302202F0C6619006E71AB /* BBNavigationBar.h */,
 				F21302212F0C6629006E71AB /* BBNavigationBar.m */,
 			);
@@ -4015,6 +3900,8 @@
 		F27A48272EE07C930044040E /* Bridges */ = {
 			isa = PBXGroup;
 			children = (
+				F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */,
+				F233B445300C72D900D55489 /* ModernSegmentedControl.swift */,
 				F207D0BE2F14CE1500BA6214 /* UnifiedBlurHash */,
 				F27A482A2EE07CF70044040E /* HXPHPickerBridge */,
 				F27A48282EE07CAA0044040E /* PPCoreBridge.swift */,
@@ -4134,16 +4021,12 @@
 				F281B46F2FCB6735009118F2 /* PPMenuHelper.m */,
 				F281B4702FCB6735009118F2 /* PPModrenSegmrnted.h */,
 				F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */,
-				F281B4722FCB6735009118F2 /* PPProductCard.h */,
-				F281B4732FCB6735009118F2 /* PPProductCard.m */,
 				F281B4742FCB6735009118F2 /* PPRatingView.h */,
 				F281B4752FCB6735009118F2 /* PPRatingView.m */,
 				F281B4762FCB6735009118F2 /* PPS.h */,
 				F281B4772FCB6735009118F2 /* PPS.m */,
 				F281B4782FCB6735009118F2 /* PPSearchFilterView.h */,
 				F281B4792FCB6735009118F2 /* PPSearchFilterView.m */,
-				F281B47A2FCB6735009118F2 /* PPSectionHeader.h */,
-				F281B47B2FCB6735009118F2 /* PPSectionHeader.m */,
 				F281B47C2FCB6735009118F2 /* UITabBarItem+PPFactory.h */,
 				F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */,
 			);
@@ -4172,8 +4055,6 @@
 				F2FF90122FFD100100C0D111 /* ProviderStorefrontProductsVC.m */,
 				F290F54D2FD9E943008EADEE /* SellerProfileVC.h */,
 				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
-				F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */,
-				F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */,
 				F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */,
 				F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */,
 				F2E1345D2DDC6F40006770E5 /* AddNewAccessory.h */,
@@ -4242,8 +4123,6 @@
 		F28CB3792E4C56C0009DD547 /* AdoptPet */ = {
 			isa = PBXGroup;
 			children = (
-				F247D3122E4FA33000F0476A /* TitleSubtitleCell.h */,
-				F247D3132E4FA33600F0476A /* TitleSubtitleCell.m */,
 				F28CB3912E4C68B2009DD547 /* AdoptPetDetailsViewController.h */,
 				F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */,
 				F28CB38E2E4C6885009DD547 /* AdoptPetsViewController.h */,
@@ -4274,6 +4153,7 @@
 		F28DD5992F049B7900FF2671 /* PPDataView */ = {
 			isa = PBXGroup;
 			children = (
+				F233B447300C7E6700D55489 /* Helpers */,
 				F23DDE642F8AC9AC0020D4F4 /* PPFilterModels.h */,
 				F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */,
 				F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */,
@@ -4296,8 +4176,6 @@
 			isa = PBXGroup;
 			children = (
 				F2D0939F2F2675CD00D4EE49 /* SubHelpers */,
-				F270068E2F256109005E38CF /* PPMediaPreviewController.h */,
-				F270068F2F256122005E38CF /* PPMediaPreviewController.m */,
 				F286BA882F207A330069CD5C /* PPFullscreenVideoController.h */,
 				F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */,
 				F2A0BBCA2F203AD2003715F0 /* TypingIndicatorView.h */,
@@ -4339,9 +4217,9 @@
 			isa = PBXGroup;
 			children = (
 				F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */,
+				F233B43C300C516200D55489 /* PPUniversalCellFlags.h */,
+				F233B43D300C516200D55489 /* PPUniversalCellFlags.m */,
 				F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */,
-				F21066CC3009E652002F6A68 /* PPUniversalCellFlags.h */,
-				F21066CD3009E652002F6A68 /* PPUniversalCellFlags.m */,
 				F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */,
 				F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */,
 				F28A0A072EE9C77600EE5055 /* EllipsePageControl.m */,
@@ -4366,8 +4244,6 @@
 				F299525F2F2C3E6100F50031 /* WaveformGenerator.m */,
 				F299525A2F2C3C9600F50031 /* PPPlaybackWaveformView.h */,
 				F299525B2F2C3CA100F50031 /* PPPlaybackWaveformView.m */,
-				F29952572F2C3C8800F50031 /* PPRecordingWaveformView.h */,
-				F29952582F2C3C8E00F50031 /* PPRecordingWaveformView.m */,
 				F26EDCE92F26E9B300AE10ED /* PPWaveformView.h */,
 				F26EDCEA2F26E9C900AE10ED /* PPWaveformView.m */,
 			);
@@ -4477,8 +4353,6 @@
 			children = (
 				F20ACAB12EFAF781009B4FA2 /* CityModel.h */,
 				F20ACAB22EFAF793009B4FA2 /* CityModel.m */,
-				F2E571DF2EB5D9E300F1DBDD /* PPDefaultLocationView.h */,
-				F2E571E02EB5D9EB00F1DBDD /* PPDefaultLocationView.m */,
 				F20DFEDD2EB2CB6100318A8F /* PPAddressesManager.h */,
 				F20DFEDE2EB2CB6D00318A8F /* PPAddressesManager.m */,
 				F2A2F1BB2EB1794900BD1261 /* CitiesManager.h */,
@@ -4500,7 +4374,6 @@
 			children = (
 				F2A7E6B52FF722F800BDC981 /* PPFormEngine.h */,
 				F2A7E6B62FF722F800BDC981 /* PPFormEngine.m */,
-				F2A7E6B72FF722F800BDC981 /* PPFormEngineUsageExample.m */,
 				F2A7E6B82FF722F800BDC981 /* README.md */,
 			);
 			path = PPFormEngine;
@@ -4726,10 +4599,8 @@
 				F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */,
 				F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */,
 				F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */,
-				3C32792C5C5015883E126EAA /* PPSectionHeader.m */,
 				5567B37190496A6732104BBC /* PPRatingView.m */,
 				EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */,
-				88157B791FE37AB03DA1B1F5 /* PPProductCard.m */,
 				F56AEC9C060B7F98E8DD47E0 /* Speech.framework */,
 			);
 			name = "Recovered References";
@@ -4788,9 +4659,7 @@
 			isa = PBXGroup;
 			children = (
 				F2AF3842300AC36600FBF82D /* MatchedContainerView.swift */,
-				F2AF3843300AC36600FBF82D /* MatchedGeometryModifier.swift */,
 				F2AF3844300AC36600FBF82D /* MatchedGeometryState.swift */,
-				F2AF3845300AC36600FBF82D /* MatchedHostingController.swift */,
 				F2AF3846300AC36600FBF82D /* TransitionManager.swift */,
 				F2AF3847300AC36600FBF82D /* TransitionView.swift */,
 			);
@@ -4929,18 +4798,12 @@
 				F2C158332E2100C700EFDC91 /* EmptyStateView.h */,
 				F2C158342E2100D100EFDC91 /* EmptyStateView.m */,
 				F27D66252E1FD8990081943A /* OptionsView */,
-				F27D65DB2E1FAE1D0081943A /* DonePopupView.m */,
-				F27D65DA2E1FAE130081943A /* DonePopupView.h */,
 				F207FA4E2E1881CC006A3150 /* LocationPickerViewController.h */,
 				F207FA4F2E1881D5006A3150 /* LocationPickerViewController.m */,
 				F276E5D12DE38FF400926D56 /* AppClasses.h */,
 				F276E5D22DE38FF400926D56 /* AppClasses.m */,
 				F2B790702DE5BD2200F8B03F /* DeepLinkRouter.h */,
 				F2B790712DE5BD6000F8B03F /* DeepLinkRouter.m */,
-				F2C391522DE7074400AE432C /* SegmentedControlHelper.h */,
-				F2C391532DE7076500AE432C /* SegmentedControlHelper.m */,
-				F2201FF62E12C893005DBD9F /* FloatingQuantityButton.h */,
-				F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */,
 				F2390C1D2E23F18A0017D4E1 /* CompanyLocationVC.h */,
 				F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */,
 				CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */,
@@ -4994,8 +4857,6 @@
 				F2E78D622F18746B00C5AE68 /* New Ad */,
 				F299720C2F170CCE0014F7A1 /* PetImageItem.h */,
 				F299720A2F170CBB0014F7A1 /* PetImageItem.m */,
-				F2C2252C2F11BF7000569B36 /* CreateAdCoordinator.h */,
-				F2C2252B2F11BF5300569B36 /* CreateAdCoordinator.m */,
 				F24F9BA92EE653CC002AAD27 /* AdsBrowser */,
 				F29949812ED37AF1003C6A52 /* PetsAdvertiseImagesAndCells */,
 				F2CDB0AE2DCCB4520009E210 /* PetAdManager.h */,
@@ -5040,8 +4901,6 @@
 				F26EDCED2F2702EF00AE10ED /* PPChatInputBarView.m */,
 				F26EDCE32F26DB3D00AE10ED /* PPRecordingBarView.h */,
 				F26EDCE42F26DB9200AE10ED /* PPRecordingBarView.m */,
-				F2D093A02F26BB5A00D4EE49 /* PPVoicePreviewBubbleView.h */,
-				F2D093A12F26BB6500D4EE49 /* PPVoicePreviewBubbleView.m */,
 				F2D0939C2F2675AE00D4EE49 /* PPChatFeedbackManager.h */,
 				F2D0939D2F2675C200D4EE49 /* PPChatFeedbackManager.m */,
 				F27006912F259549005E38CF /* ChatPresenceManager.h */,
@@ -5187,8 +5046,6 @@
 		F2D6396E2ECB4E1000FEBCBB /* SignIn Files */ = {
 			isa = PBXGroup;
 			children = (
-				F25DC30A2EDDE93A00C48787 /* XLFormPhoneCodeCell.h */,
-				F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */,
 				F25DC3072EDDE92800C48787 /* XLFormPhoneCodeItem.h */,
 				F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */,
 				F23AUTH05FC4000000000001 /* PPAuthScaffoldView.h */,
@@ -5291,8 +5148,6 @@
 		F2E78D622F18746B00C5AE68 /* New Ad */ = {
 			isa = PBXGroup;
 			children = (
-				F2E78D632F18749200C5AE68 /* PPAdSubmitCoordinator.h */,
-				F2E78D652F18756E00C5AE68 /* PPAdSubmitCoordinator.m */,
 				F2BA97542DCE7C65007DE482 /* AddNewAd.h */,
 				F2BA97552DCE7C65007DE482 /* AddNewAd.m */,
 				F2E78D672F187DA300C5AE68 /* PPAdSharingHelper.h */,
@@ -5395,8 +5250,6 @@
 				F2F807D02E8BEE5D0034FF2D /* PPBannerCollectionCell.m */,
 				F2F807BB2E8BEBE90034FF2D /* MainBannerModel.h */,
 				F2F807BC2E8BEBE90034FF2D /* MainBannerModel.m */,
-				F2F807BD2E8BEBE90034FF2D /* PPBannerCell.h */,
-				F2F807BE2E8BEBE90034FF2D /* PPBannerCell.m */,
 				F2F807BF2E8BEBE90034FF2D /* PPBannersCollection.h */,
 				F2F807C02E8BEBE90034FF2D /* PPBannersCollection.m */,
 				F2F807C12E8BEBE90034FF2D /* PPBannersManager.h */,
@@ -5406,6 +5259,8 @@
 				F2F807C52E8BEBE90034FF2D /* PPBannerViewModel.h */,
 				F2F807C62E8BEBE90034FF2D /* PPBannerViewModel.m */,
 				F2F807CE2E8BECA10034FF2D /* Banners.h */,
+				F233B442300C557F00D55489 /* PPBannerCell.h */,
+				F233B443300C557F00D55489 /* PPBannerCell.m */,
 			);
 			path = Banners;
 			sourceTree = "<group>";
@@ -5576,7 +5431,6 @@
 				F20F31A72D177602001D1D57 /* PGDatePicker.bundle in Resources */,
 				F2A7E6BA2FF722F800BDC981 /* README.md in Resources */,
 				F20D112B2D376E4D00F8F0A5 /* ColorsAssets.xcassets in Resources */,
-				F207D0BF2F14CE1500BA6214 /* sunflower.jpg in Resources */,
 				F2EC65642D32432B004A58BD /* Localizable.strings in Resources */,
 				F2CDB0A92DCCB0AA0009E210 /* AppAssets.xcassets in Resources */,
 				F24C035E2D2C2D6E00A9F61F /* PYSearch.bundle in Resources */,
@@ -5727,7 +5581,6 @@
 				F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */,
 				F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */,
 				F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */,
-				F2C223C82F061E58006DB76A /* PPHomeItem.m in Sources */,
 				F22CD3712C66F8710098B6E9 /* UITextField+QuickSecurityCode.m in Sources */,
 				F2E33F6E3006FAFE005E31C6 /* PPUniversalCellSwiftUI.swift in Sources */,
 				F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */,
@@ -5772,7 +5625,6 @@
 				F2B641B72F4A7F860092C2BF /* PPSelectAddressVC.m in Sources */,
 				F27A48332EE0CB1E0044040E /* PPImageCollection.m in Sources */,
 				F207D0CA2F14D82F00BA6214 /* PPBlurHashGenerator.swift in Sources */,
-				F28DD58A2F0193A700FF2671 /* PPHomeServicesCell.m in Sources */,
 				F28A0A0A2EE9C96B00EE5055 /* EllipsePageControl.h in Sources */,
 				F273146E2F31169000FFA0B8 /* PPOrder.m in Sources */,
 				F2FFDB002FCDCFD00025B5A9 /* PPFulfillmentOrder.m in Sources */,
@@ -5781,7 +5633,6 @@
 				F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */,
 				F2B641BE2F4A95E60092C2BF /* PPStoriesManager.m in Sources */,
 				F2B641BB2F4A95690092C2BF /* PPStory.m in Sources */,
-				F2C2252D2F11BF7700569B36 /* CreateAdCoordinator.m in Sources */,
 				F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */,
 				F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */,
 				F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */,
@@ -5811,7 +5662,6 @@
 				F271467A2CCE6B5300F7F3BA /* XLFormRowNavigationAccessoryView.m in Sources */,
 				F27714AA2ED775A700B1D062 /* QBAssetsViewController.m in Sources */,
 				F27714AB2ED775A700B1D062 /* QBVideoIndicatorView.m in Sources */,
-				F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */,
 				F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */,
 				F27714AC2ED775A700B1D062 /* QBAssetCell.m in Sources */,
 				F27714AD2ED775A700B1D062 /* QBSlomoIconView.m in Sources */,
@@ -5820,9 +5670,9 @@
 				F27714B02ED775A700B1D062 /* QBImagePickerController.m in Sources */,
 				F27714B12ED775A700B1D062 /* QBCheckmarkView.m in Sources */,
 				F27714B22ED775A700B1D062 /* QBVideoIconView.m in Sources */,
+				F233B43B300C4F4600D55489 /* PPHomeItem.m in Sources */,
 				F2E144592EAB3E3E0076C04A /* CollectionViewAnimation.m in Sources */,
 				F271467B2CCE6B5300F7F3BA /* XLFormSegmentedCell.m in Sources */,
-				F27006902F256133005E38CF /* PPMediaPreviewController.m in Sources */,
 				F271467C2CCE6B5300F7F3BA /* XLFormOptionsObject.m in Sources */,
 				F271467D2CCE6B5300F7F3BA /* XLFormLeftRightSelectorCell.m in Sources */,
 				F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */,
@@ -5841,7 +5691,6 @@
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F2B6F7AA2E37CE3E00AC0DAE /* ChatBubbleView.m in Sources */,
 				F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */,
-				F247D3142E4FA34600F0476A /* TitleSubtitleCell.m in Sources */,
 				F27146822CCE6B5300F7F3BA /* XLFormSliderCell.m in Sources */,
 				F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */,
 				F27146832CCE6B5300F7F3BA /* XLFormInlineSelectorCell.m in Sources */,
@@ -5854,7 +5703,6 @@
 				F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */,
 				F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */,
 				A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */,
-				F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
 				F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */,
 				F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */,
@@ -5883,7 +5731,6 @@
 				F299FDDC2C61C37A00C63506 /* BKCircularLoadingButton.m in Sources */,
 				F2A2F1BE2EB1797C00BD1261 /* CountryModel.m in Sources */,
 				F2BA433B2CC9BAAE00943394 /* UIViewController+PopUpView.m in Sources */,
-				F241C4652E26A10E00CC9BE9 /* AddVetViewController.m in Sources */,
 				F2CE352D2C6D7CE6005A78CD /* PulsingHaloLayer.m in Sources */,
 				F2AB48D02C72D43D00D88603 /* KafkaRefreshDefaults.m in Sources */,
 				F25B38802E173DDB0066D504 /* OrderModel.m in Sources */,
@@ -5900,7 +5747,6 @@
 				F2AB48CC2C72D43D00D88603 /* KafkaFootRefreshControl.m in Sources */,
 				F2AB48CE2C72D43D00D88603 /* KafkaRefreshControl.m in Sources */,
 				F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */,
-				F2F807C92E8BEBE90034FF2D /* PPBannerCell.m in Sources */,
 				F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */,
 				A11D00012FFD100000000001 /* PPBottomSurfaceCoordinator.m in Sources */,
 				A11D00042FFD100000000004 /* UIViewController+PPBottomSurface.m in Sources */,
@@ -5929,11 +5775,9 @@
 				F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */,
 				F2A1DD642D031328009F0B62 /* UIView+Shadow.m in Sources */,
 				F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */,
-				F2ADE54D2E26BECA004EE79B /* VetCollectionViewCell.m in Sources */,
 				F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */,
 				F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */,
 				F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */,
-				F21066CF3009E652002F6A68 /* PPUniversalCellFlags.m in Sources */,
 				F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */,
 				F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */,
 				F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */,
@@ -5953,7 +5797,6 @@
 				F207D0C22F14CE1500BA6214 /* UnifiedImage.swift in Sources */,
 				F207D0C32F14CE1500BA6214 /* UnifiedBlurHash.swift in Sources */,
 				F207D0C42F14CE1500BA6214 /* UnifiedImage+Decode.swift in Sources */,
-				F207D0C52F14CE1500BA6214 /* SwiftUI.Image+BlurHash.swift in Sources */,
 				F207D0C62F14CE1500BA6214 /* UnifiedImage+Scale.swift in Sources */,
 				F24C03612D2C2D6E00A9F61F /* NSBundle+PYSearchExtension.m in Sources */,
 				F24C03622D2C2D6E00A9F61F /* PYSearchViewController.m in Sources */,
@@ -5973,7 +5816,6 @@
 				F2B09F9D2D1E22D300FB3B26 /* MYIntroductionPanel.m in Sources */,
 				F20956732F85677D007C4ABA /* PPPetProfile.m in Sources */,
 				F20F31AE2D177602001D1D57 /* UIColor+PGHex.m in Sources */,
-				F28DD5962F04691700FF2671 /* PPHomeBannerContainerCell.m in Sources */,
 				F20F31AF2D177602001D1D57 /* PGDatePicker+DateAndTime.m in Sources */,
 				F2736E972E8265D800902E1C /* Styling.m in Sources */,
 				AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */,
@@ -6000,7 +5842,6 @@
 				F20F31B82D177602001D1D57 /* PGPickerColumnCell.m in Sources */,
 				F20F31B92D177602001D1D57 /* PGDatePicker+MonthDayHourMinuteSecond.m in Sources */,
 				F20F31BA2D177602001D1D57 /* PGDatePicker+YearAndMonth.m in Sources */,
-				F26E3B002E35B37C007BB3FF /* GeminiChatViewController.m in Sources */,
 				F2B1A6432E70344B0019FC7C /* PPColorUtils.m in Sources */,
 				F20F31BB2D177602001D1D57 /* PGDatePicker+Year.m in Sources */,
 				F20F31BC2D177602001D1D57 /* PGDatePickManagerHeaderView.m in Sources */,
@@ -6016,23 +5857,21 @@
 				F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */,
 				F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */,
 				F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */,
-				F2AF3849300AC36600FBF82D /* MatchedHostingController.swift in Sources */,
 				F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */,
-				F2AF384B300AC36600FBF82D /* MatchedGeometryModifier.swift in Sources */,
 				F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */,
 				F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */,
+				F233B43E300C516200D55489 /* PPUniversalCellFlags.m in Sources */,
 				F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
 				F2B09F962D1E0A2100FB3B26 /* GuideView.m in Sources */,
 				F278185B2F7B5D3200BCE07F /* PickerSheetViewController.m in Sources */,
-				F253FA662F07182800323CB4 /* PetAdoptView.m in Sources */,
+				F233B446300C72D900D55489 /* ModernSegmentedControl.swift in Sources */,
 				F24C02732D2AD59100A9F61F /* GM.m in Sources */,
 				F2B09F972D1E0A2100FB3B26 /* WelcomeView.m in Sources */,
 				F2A1DD602D03058F009F0B62 /* YIInnerShadowView.m in Sources */,
 				F28CB38A2E4C685C009DD547 /* AddAdoptPetViewController.m in Sources */,
 				F2A1DD612D03058F009F0B62 /* YIInnerShadowLayer.m in Sources */,
-				F27D65DC2E1FAE1D0081943A /* DonePopupView.m in Sources */,
 				F20F316C2D177515001D1D57 /* UIView+Badge.m in Sources */,
 				F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */,
 				F25B38842E1740620066D504 /* OrderCell.m in Sources */,
@@ -6065,16 +5904,13 @@
 				F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */,
 				F281B4832FCB6735009118F2 /* PPS.m in Sources */,
 				F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */,
-				F281B4852FCB6735009118F2 /* PPSectionHeader.m in Sources */,
 				F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */,
 				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
-				F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */,
 				F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */,
 				F2137EC32FECAE5A0021FFD5 /* PPHomeProviderCategoryPillCell.m in Sources */,
 				A11CE2302FEB200000000003 /* PPHomeUltraPremuimProviderCategoryPillCell.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
-				F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */,
 				F25E800F2F004C180089F659 /* PPCarouselContainerCell.m in Sources */,
 				F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */,
 				F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */,
@@ -6084,7 +5920,6 @@
 				F2F69D302EA944DA003ADA14 /* PetAd.m in Sources */,
 				F27A48302EE0C23B0044040E /* PPPickerBridge.swift in Sources */,
 				F286536A2D7E6B8E006EDEDE /* UIActivityIndicator.m in Sources */,
-				F2D093A22F26BB6600D4EE49 /* PPVoicePreviewBubbleView.m in Sources */,
 				F28CB3742E4BE7A9009DD547 /* PPEmptyStateHelper.m in Sources */,
 				F27D66282E1FD8B10081943A /* OptionModel.m in Sources */,
 				F27FAE5C2D2F2BD000EA6B56 /* ImageCell.m in Sources */,
@@ -6101,9 +5936,7 @@
 				F28A0A082EE9C77600EE5055 /* EllipsePageControl.m in Sources */,
 				F2EB74302E48EABF00A31008 /* UIButton.m in Sources */,
 				F2844F032EB7BA2000D9A49C /* PPPaymentFormViewController.m in Sources */,
-				F2C1AA032F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m in Sources */,
 				F28A09F72EE72DEC00EE5055 /* PPCenteredSelectorView.m in Sources */,
-				F29952592F2C3C8E00F50031 /* PPRecordingWaveformView.m in Sources */,
 				F26024862EB60BA5006534B4 /* PPCartTableCell.m in Sources */,
 				F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */,
 				F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */,
@@ -6140,7 +5973,6 @@
 				F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */,
 				F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */,
 				F20E9D6C2CF3193B00B810EB /* EmptyDataManager.m in Sources */,
-				F28DD5932F04340900FF2671 /* PPAdsNearByCarouselCell.m in Sources */,
 				F28CB3812E4C671C009DD547 /* AdoptPetModel.m in Sources */,
 				F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */,
 				F27818602F7B5E1700BCE07F /* FullScreenVideoViewController.m in Sources */,
@@ -6154,6 +5986,7 @@
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
+				F233B441300C542000D55489 /* PPHomeActionCell.m in Sources */,
 				BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */,
 				6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */,
 				9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */,
@@ -6165,6 +5998,7 @@
 				F2C223CE2F062925006DB76A /* PPHomeSectionBackgroundView.m in Sources */,
 				F22C07902EF66C2F00C00EAC /* UIGestureRecognizer+YYAdd.m in Sources */,
 				F22C07912EF66C2F00C00EAC /* YYTransaction.m in Sources */,
+				F233B449300C7F2200D55489 /* ModernSegmentedControlBridge.swift in Sources */,
 				F22C07922EF66C2F00C00EAC /* UIControl+YYAdd.m in Sources */,
 				F22C07932EF66C2F00C00EAC /* NSTimer+YYAdd.m in Sources */,
 				F22C07942EF66C2F00C00EAC /* UIDevice+YYAdd.m in Sources */,
@@ -6263,14 +6097,12 @@
 				F299FDDD2C61C37B00C63506 /* CircularIndicatorView.m in Sources */,
 				F24F36382D87C8050094C6F2 /* buyerDataVC.m in Sources */,
 				F26F6DE12F290EC90013EFB3 /* PPRecordingLockPillView.m in Sources */,
-				F2E78D662F18757D00C5AE68 /* PPAdSubmitCoordinator.m in Sources */,
 				F27146902CCE6C4C00F7F3BA /* NewCardForm.m in Sources */,
 				F276E5C72DE314E400926D56 /* PetImageGalleryView.m in Sources */,
 				F25DF8A72D60A79F0051EAFF /* NSString+Ex.m in Sources */,
 				F21843B12E8BB13300D8BF46 /* ImageViewerController.m in Sources */,
 				F28A0A142EEA497300EE5055 /* TrashModel.m in Sources */,
 				F260D3392C7C6F6C0098C8F0 /* selectChildViewController.m in Sources */,
-				F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */,
 				F2D0C6122C4BEB610023CE53 /* CollectionViewCell.m in Sources */,
 				22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */,
 				F279075C2C9AC7F300F2F07B /* trashChildCell.m in Sources */,
@@ -6287,7 +6119,6 @@
 				F2BA434A2CCA489D00943394 /* ABMenuTableViewCell.m in Sources */,
 				F2BA434B2CCA489D00943394 /* ABCellMenuView.m in Sources */,
 				F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */,
-				F21302282F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m in Sources */,
 				F20F31012D13F986001D1D57 /* ArchiveModel.m in Sources */,
 				F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */,
 				F24F9BA82EE5D6E4002AAD27 /* MainControllerHelper.m in Sources */,
@@ -6308,10 +6139,8 @@
 				F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */,
 				F299720B2F170CBB0014F7A1 /* PetImageItem.m in Sources */,
 				F2AB48D32C72D43D00D88603 /* KafkaNativeFooter.m in Sources */,
-				F241C44F2E25355400CC9BE9 /* AddPetServiceOfferViewController.m in Sources */,
 				F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */,
 				F2E0E8742E7A3A3E00F0C084 /* UserModel.m in Sources */,
-				F2E571E12EB5D9FC00F1DBDD /* PPDefaultLocationView.m in Sources */,
 				F28CB3932E4C68D7009DD547 /* AdoptPetDetailsViewController.m in Sources */,
 				F2F807D12E8BEE5D0034FF2D /* PPBannerCollectionCell.m in Sources */,
 				F276E5CA2DE3363E00926D56 /* FavoriteButton.m in Sources */,
@@ -6333,7 +6162,6 @@
 				F2D100962C7B131B00F5EAE7 /* NewCageVC.m in Sources */,
 				F2A302FC2EBA41BB005E45F0 /* UserPaymentInstrumentManager.m in Sources */,
 				F27F45F92C701DE300876484 /* FFLoadingView.m in Sources */,
-				F2C391542DE7076500AE432C /* SegmentedControlHelper.m in Sources */,
 				F2F750CE2E7C82EA00BACFA8 /* PPGradientView.m in Sources */,
 				F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */,
 				F2AB488E2C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m in Sources */,
@@ -6356,11 +6184,9 @@
 				F21E09352E452D8F00690BC5 /* ISO8601DateFormatter.m in Sources */,
 				F20ACAB02EFAF419009B4FA2 /* SalesCell.m in Sources */,
 				F2AB48972C72CF3C00D88603 /* JGProgressHUDSuccessIndicatorView.m in Sources */,
-				F28A09F42EE72DCD00EE5055 /* PPCenteredSelectorCell.m in Sources */,
 				F2D0C5EB2C4BE1BB0023CE53 /* main.m in Sources */,
 				F28CB3962E4C9749009DD547 /* OptionTableViewCell.m in Sources */,
 				F27FAE592D2F2B7700EA6B56 /* VideoCollectionViewCell.m in Sources */,
-				F2A903422F9E7AF00097485B /* PPPetCareMedicineCell.m in Sources */,
 				F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */,
 				F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */,
 				F2A2F1BD2EB1797400BD1261 /* CitiesManager.m in Sources */,
@@ -6393,7 +6219,6 @@
 				F27FAEA12D2F363200EA6B56 /* JPVideoPlayerCellProtocol.m in Sources */,
 				F27FAEA22D2F363200EA6B56 /* UICollectionView+WebVideoCache.m in Sources */,
 				F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */,
-				F2A7E6BB2FF722F800BDC981 /* PPFormEngineUsageExample.m in Sources */,
 				F2A7E6BC2FF722F800BDC981 /* PPFormEngine.m in Sources */,
 				F27FAEA32D2F363200EA6B56 /* UITableView+WebVideoCache.m in Sources */,
 				F27FAEA42D2F363200EA6B56 /* JPVideoPlayerSupportUtils.m in Sources */,
@@ -6433,6 +6258,7 @@
 				F21A622C2D0AF04100A28792 /* LSLDatePickerDialog.m in Sources */,
 				F20ACAB32EFAF793009B4FA2 /* CityModel.m in Sources */,
 				F24F36412D87E9750094C6F2 /* CustomButtonCell.m in Sources */,
+				F233B444300C557F00D55489 /* PPBannerCell.m in Sources */,
 				F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */,
 				F2EB80672E863B68005E9ABD /* RNFrostedSidebar.m in Sources */,
 				F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */,
@@ -6441,10 +6267,8 @@
 				F260D32C2C7B36EF0098C8F0 /* FOREmptyAssistantConfiger.m in Sources */,
 				F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */,
 				59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */,
-				32EB72B8657EBD39543086FC /* PPSectionHeader.m in Sources */,
 				A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */,
 				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
-				E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */,
 				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
 				7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */,
 				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,

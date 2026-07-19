@@ -41,20 +41,21 @@
 #define PPDataViewLog(...)
 #endif
 
-static const CGFloat kPPSectionsTabBarHeight = 46.0;
+static const CGFloat kPPSectionsTabBarHeight = 48.0;
 static const CGFloat kPPAccessoryFilterHeight = 44.0;
 static const CGFloat kPPDropdownFilterChipHeight = 40.0;
-static const CGFloat kPPProviderFilterChipHeight = 42.0;
+static const CGFloat kPPProviderFilterChipHeight = 44.0;
 static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
-static const CGFloat kPPFilterContextBarHeight = 32.0;
-static const CGFloat kPPFilterContextBadgeHeight = 24.0;
-static const CGFloat kPPFilterCollapseHandleHeight = 26.0;
+static const CGFloat kPPFilterContextBarHeight = 44.0;
+static const CGFloat kPPFilterContextBadgeHeight = 28.0;
+static const CGFloat kPPFilterCollapseHandleHeight = 44.0;
 
-static const CGFloat kPPFilterIslandTopPadding = 3.0;
-static const CGFloat kPPFilterIslandRowSpacing = 4.0;
-static const CGFloat kPPFilterIslandExpandedRowSpacing = 4.0;
-static const CGFloat kPPFilterIslandBottomPadding = 12.0;
+static const CGFloat kPPFilterIslandTopPadding = 5.0;
+static const CGFloat kPPFilterIslandRowSpacing = 6.0;
+static const CGFloat kPPFilterIslandExpandedRowSpacing = 6.0;
+static const CGFloat kPPFilterIslandBottomPadding = 10.0;
+static const BOOL kPPDataViewPauseLegacyFilterIslandScrollCollapse = YES;
 static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
 static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
 static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
@@ -62,9 +63,24 @@ static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.68;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 164.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
-static const CGFloat kPPDataViewSectionsIslandCornerRadius = 16.0;
+static const CGFloat kPPDataViewSectionsIslandCornerRadius = 22.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 22.0;
+static const CGFloat kPPDataViewHeaderCollapseDistance = 176.0;
+static const CGFloat kPPDataViewHeaderCollapsedYOffset = -24.0;
+static const CGFloat kPPDataViewHeaderCollapsedScaleX = 0.984;
+static const CGFloat kPPDataViewHeaderCollapsedScaleY = 0.875;
+static const CGFloat kPPDataViewCollectionChromeFallbackTopInset = 84.0;
+static const CGFloat kPPDataViewCollectionChromeBreathingGap = 16.0;
+static const CGFloat kPPDataViewHeaderDockStartProgress = 0.08;
+static const CGFloat kPPDataViewHeaderDockTargetHorizontalInset = 5.0;
+static const CGFloat kPPDataViewHeaderDockTargetVerticalInset = 3.0;
+static const CGFloat kPPDataViewHeaderDockMinimumScale = 0.30;
+static const CGFloat kPPDataViewHeaderDockMaximumScale = 0.72;
+static const CGFloat kPPDataViewHeaderDockSnapshotStartProgress = 0.72;
+static const CGFloat kPPDataViewHeaderDockedProgressThreshold = 0.985;
+static const CGFloat kPPDataViewHeaderUndockedProgressThreshold = 0.72;
+static const CGFloat kPPDataViewHeaderTitleUndockScaleDip = 0.026;
 
 static NSString * const PPDataViewProviderIdentityTitleKey = @"title";
 static NSString * const PPDataViewProviderIdentityPhotoURLKey = @"photoURL";
@@ -109,6 +125,20 @@ static CGFloat PPDataViewPillRadiusForHeight(CGFloat height, CGFloat fallback)
         return fallback;
     }
     return floor(height * 0.5);
+}
+
+static CGFloat PPDataViewClamp01(CGFloat value)
+{
+    if (!isfinite((double)value)) {
+        return 0.0;
+    }
+    return MIN(MAX(value, 0.0), 1.0);
+}
+
+static CGFloat PPDataViewSmoothstep(CGFloat value)
+{
+    CGFloat t = PPDataViewClamp01(value);
+    return t * t * (3.0 - (2.0 * t));
 }
 
 static NSArray<NSNumber *> *PPDataViewSectionPresentationOrder(void)
@@ -276,6 +306,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
 @interface PPDataViewNavigationMaterialView : UIView
 - (void)pp_applyPremiumMaterialAnimated:(BOOL)animated;
+- (void)pp_applyDockedForegroundProgress:(CGFloat)progress animated:(BOOL)animated;
 @end
 
 @interface PPDataViewNavigationMaterialView ()
@@ -285,6 +316,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) CAShapeLayer *liquidBorderMaskLayer;
 @property (nonatomic, strong) CAGradientLayer *liquidShineLayer;
 @property (nonatomic, strong) CAShapeLayer *liquidShineMaskLayer;
+@property (nonatomic, assign) CGFloat dockedForegroundProgress;
 @end
 
 @implementation PPDataViewNavigationMaterialView
@@ -405,25 +437,27 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_applyPremiumMaterialAnimated:(BOOL)animated
 {
     BOOL isDark = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
+    CGFloat dockedProgress = PPDataViewSmoothstep(self.dockedForegroundProgress);
 
     UIColor *foregroundSurface = PPDataViewAppForegroundSurfaceColor();
     UIColor *surface = PPDataViewChromeSurfaceColor();
-    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.78],
-                                                    [UIColor colorWithWhite:1.0 alpha:0.16]);
-    UIColor *surfaceTop = [foregroundSurface colorWithAlphaComponent:isDark ? 0.30 : 0.72];
-    UIColor *surfaceMid = [surface colorWithAlphaComponent:isDark ? 0.86 : 0.96];
-    UIColor *surfaceBottom = [AppBackgroundClrLigter colorWithAlphaComponent:isDark ? 0.22 : 0.20];
-    UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.96],
-                                                 [UIColor colorWithWhite:1.0 alpha:0.70]);
-    UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
-                                                [UIColor colorWithWhite:1.0 alpha:0.54]);
-    UIColor *borderAccent = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.64]);
+    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.18]);
+    UIColor *surfaceTop = [foregroundSurface colorWithAlphaComponent:isDark ? 0.24 : 0.58];
+    UIColor *surfaceMid = [surface colorWithAlphaComponent:isDark ? 0.76 : 0.82];
+    UIColor *surfaceBottom = [AppBackgroundClrLigter colorWithAlphaComponent:isDark ? 0.18 : 0.12];
+    UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+                                                 [UIColor colorWithWhite:1.0 alpha:0.54]);
+    UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.58],
+                                                [UIColor colorWithWhite:1.0 alpha:0.34]);
+    UIColor *borderAccent = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.74],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.42]);
 
     void (^updates)(void) = ^{
-        self.blurView.hidden = YES;
-        self.blurView.alpha = 0.0;
-        self.backgroundColor = [surface colorWithAlphaComponent:isDark ? 0.82 : 0.94];
+        self.blurView.hidden = NO;
+        CGFloat baseBlurAlpha = isDark ? 0.54 : 0.72;
+        self.blurView.alpha = baseBlurAlpha * (1.0 - (0.72 * dockedProgress));
+        self.backgroundColor = [foregroundSurface colorWithAlphaComponent:dockedProgress];
 
         self.surfaceGradientLayer.colors = @[
             PPDataViewResolvedLayerColor(surfaceTop, self.traitCollection),
@@ -431,7 +465,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(surfaceBottom, self.traitCollection)
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.48, @1.0];
-        self.surfaceGradientLayer.opacity = isDark ? 0.82 : 0.78;
+        CGFloat baseSurfaceOpacity = isDark ? 0.76 : 0.68;
+        self.surfaceGradientLayer.opacity = baseSurfaceOpacity * (1.0 - (0.76 * dockedProgress));
 
         self.liquidBorderLayer.colors = @[
             PPDataViewResolvedLayerColor(borderLead, self.traitCollection),
@@ -440,7 +475,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(borderLead, self.traitCollection)
         ];
         self.liquidBorderLayer.locations = @[@0.0, @0.34, @0.68, @1.0];
-        self.liquidBorderLayer.opacity = isDark ? 0.92 : 0.90;
+        CGFloat baseBorderOpacity = isDark ? 0.92 : 0.90;
+        self.liquidBorderLayer.opacity = baseBorderOpacity * (1.0 - (0.24 * dockedProgress));
 
         self.liquidShineLayer.colors = @[
             PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection),
@@ -448,16 +484,18 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor([UIColor clearColor], self.traitCollection)
         ];
         self.liquidShineLayer.locations = @[@0.08, @0.18, @0.30];
-        self.liquidShineLayer.opacity = isDark ? 0.34 : 0.38;
+        CGFloat baseShineOpacity = isDark ? 0.34 : 0.38;
+        self.liquidShineLayer.opacity = baseShineOpacity * (1.0 - (0.58 * dockedProgress));
 
         UIColor *shadowColor = PPDataViewChromeShadowColor();
         if (@available(iOS 13.0, *)) {
             shadowColor = [shadowColor resolvedColorWithTraitCollection:self.traitCollection];
         }
         self.layer.shadowColor = shadowColor.CGColor;
-        self.layer.shadowOpacity = isDark ? 0.20 : 0.125;
-        self.layer.shadowRadius = isDark ? 20.0 : 18.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, isDark ? 9.0 : 8.0);
+        self.layer.shadowOpacity = (isDark ? 0.16 : 0.075) + (dockedProgress * (isDark ? 0.025 : 0.018));
+        self.layer.shadowRadius = (isDark ? 18.0 : 14.0) + (dockedProgress * 3.0);
+        self.layer.shadowOffset = CGSizeMake(0.0,
+                                             (isDark ? 8.0 : 6.0) + (dockedProgress * 1.5));
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -473,6 +511,17 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
     updates();
     [CATransaction commit];
+}
+
+- (void)pp_applyDockedForegroundProgress:(CGFloat)progress animated:(BOOL)animated
+{
+    CGFloat clampedProgress = PPDataViewClamp01(progress);
+    if (fabs(self.dockedForegroundProgress - clampedProgress) < 0.005) {
+        return;
+    }
+
+    self.dockedForegroundProgress = clampedProgress;
+    [self pp_applyPremiumMaterialAnimated:animated];
 }
 
 - (void)pp_updateLiquidMotion
@@ -498,6 +547,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, assign) BOOL useAccentColor;
 - (void)pp_applyActiveFilterCount:(NSInteger)count animated:(BOOL)animated;
 - (void)pp_applyAccentColor:(UIColor *)accentColor animated:(BOOL)animated;
+- (void)pp_applyScrollCollapseProgress:(CGFloat)progress animated:(BOOL)animated;
 - (UIColor *)pp_contentAccentColorForTraitCollection:(UITraitCollection *)traitCollection;
 @end
 
@@ -505,6 +555,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) PPBackgroundView *heroBackgroundView;
 @property (nonatomic, strong, nullable) UIColor *baseAccentColorOverride;
 @property (nonatomic, assign) NSInteger activeFilterCount;
+@property (nonatomic, assign) CGFloat scrollCollapseProgress;
 @end
 
 @implementation PPDataViewControlIslandView
@@ -525,12 +576,15 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.02;
+    glass.cornerGlowOpacityMultiplier = 0.018;
     //glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     //glass.tintColor = [AppPrimaryClr colorWithAlphaComponent:0.2];
     glass.accentStyle = PPHeroGlassAccentStyleSolid;
     glass.overrideCornerRadius = kPPDataViewSectionsIslandCornerRadius;
-    glass.overrideSolidColor = [AppSurfColor colorWithAlphaComponent:1.0];
+    UIColor *solidSurface =
+        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.90],
+                               [UIColor colorWithWhite:0.12 alpha:0.88]);
+    glass.overrideSolidColor = solidSurface;
     [self insertSubview:glass atIndex:0];
     self.heroBackgroundView = glass;
 
@@ -603,7 +657,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     [CATransaction begin];
     [CATransaction setAnimationDuration:0.22];
-    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
     updates();
     [CATransaction commit];
 }
@@ -625,21 +679,30 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
     UIColor *accent = [self pp_contentAccentColorForTraitCollection:self.traitCollection];
     UIColor *resolvedAccent = selected ? accent : self.baseAccentColorOverride;
+    CGFloat collapseProgress = MIN(MAX(self.scrollCollapseProgress, 0.0), 1.0);
+    UIColor *solidSurface =
+        PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:(selected ? 0.94 : 0.90)],
+                               [UIColor colorWithWhite:(selected ? 0.145 : 0.12) alpha:0.88]);
 
     void (^updates)(void) = ^{
         self.heroBackgroundView.overrideCenterGlowColor = resolvedAccent;
         self.heroBackgroundView.overrideBottomGlowColor = resolvedAccent;
+        self.heroBackgroundView.overrideSolidColor = solidSurface;
+        self.heroBackgroundView.alpha = darkMode
+            ? 1.0
+            : (1.0 - (collapseProgress * 0.035));
         
         [self.heroBackgroundView reapplyPalette];
         self.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
         self.layer.borderColor = PPDataViewResolvedColor(
-            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.26 : 0.66],
+            [UIColor.whiteColor colorWithAlphaComponent:darkMode ? (0.24 + collapseProgress * 0.08) : (0.62 + collapseProgress * 0.10)],
             self.traitCollection
         ).CGColor;
         self.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.layer.shadowOpacity = darkMode ? (selected ? 0.14 : 0.095) : (selected ? 0.075 : 0.045);
-        self.layer.shadowRadius = selected ? 16.0 : 12.0;
-        self.layer.shadowOffset = CGSizeMake(0.0, selected ? 8.0 : 6.0);
+        CGFloat baseShadowOpacity = darkMode ? (selected ? 0.13 : 0.085) : (selected ? 0.065 : 0.038);
+        self.layer.shadowOpacity = baseShadowOpacity + (collapseProgress * (darkMode ? 0.035 : 0.030));
+        self.layer.shadowRadius = (selected ? 16.0 : 12.0) + (collapseProgress * 4.0);
+        self.layer.shadowOffset = CGSizeMake(0.0, (selected ? 8.0 : 6.0) + (collapseProgress * 2.0));
     };
 
     if (!animated || self.window == nil || UIAccessibilityIsReduceMotionEnabled()) {
@@ -652,9 +715,20 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     [CATransaction begin];
     [CATransaction setAnimationDuration:0.22];
-    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+    [CATransaction setAnimationTimingFunction:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut]];
     updates();
     [CATransaction commit];
+}
+
+- (void)pp_applyScrollCollapseProgress:(CGFloat)progress animated:(BOOL)animated
+{
+    CGFloat clampedProgress = MIN(MAX(progress, 0.0), 1.0);
+    if (fabs(self.scrollCollapseProgress - clampedProgress) < 0.005) {
+        return;
+    }
+
+    self.scrollCollapseProgress = clampedProgress;
+    [self pp_applyActiveFilterCount:self.activeFilterCount animated:animated];
 }
 
 @end
@@ -1109,7 +1183,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *scrollOffsetsBySection;
 @property (nonatomic, strong) id imageLoader;
 
-@property (nonatomic, strong) PPModrenSegmrnted *sectionsSegmentedControl;
+@property (nonatomic, strong) ModernSegmentedControlBridge *sectionsSegmentedControl;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
@@ -1172,6 +1246,11 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, assign) PPDataViewMotionReason pendingCellEntranceMotionReason;
 @property (nonatomic, assign) NSInteger pendingCellEntranceDirection;
 @property (nonatomic, assign) BOOL didRunSectionsSegmentedEntrance;
+@property (nonatomic, assign) CGFloat premiumHeaderCollapseProgress;
+@property (nonatomic, assign) CGFloat premiumHeaderDockProgress;
+@property (nonatomic, assign) BOOL premiumHeaderIsDocked;
+@property (nonatomic, assign) BOOL isUpdatingCollectionInsetForHeaderMotion;
+@property (nonatomic, strong) UIImageView *navDockedIslandSnapshotView;
 @property (nonatomic, strong) NSMapTable<SDWebImagePrefetchToken *, NSSet<NSString *> *> *ownedPrefetchURLsByToken;
 @property (nonatomic, assign) BOOL didEmitFirstVisibleContentSignpost;
 @property (nonatomic, assign) BOOL pendingFilterScrollToTop;
@@ -1236,6 +1315,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (NSString *)pp_realProviderTitleForID:(NSString *)providerID sourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems;
 - (BOOL)pp_providerTitleIsGeneric:(NSString *)title providerID:(NSString *)providerID;
 - (void)pp_presentProviderFilterSheetForSection:(PPDataSection)section options:(NSArray<OptionModel *> *)options selectedOption:(OptionModel *)selectedOption;
+- (CGFloat)pp_currentCollectionChromeBottomY;
+- (CGFloat)pp_targetCollectionTopInsetFollowingChrome;
 - (CGFloat)pp_currentCollectionLayoutTopInset;
 - (BOOL)pp_shouldPinCollectionTopForChromeOffset:(CGPoint)currentOffset
                               previousTopOffsetY:(CGFloat)previousTopOffsetY;
@@ -1254,12 +1335,16 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (NSInteger)pp_activeFilterCountForSection:(PPDataSection)section;
 - (PPFilterState *)pp_freshFilterStateForSection:(PPDataSection)section;
 - (NSArray<PPAccessoryCategoryModel *> *)pp_accessoryFilterCategoriesForCurrentContext;
-- (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
+- (void)sectionsSegmentedControlChanged:(ModernSegmentedControlBridge *)sender;
 - (void)onCartTapped;
 - (void)pp_openSearchController;
 - (void)pp_applyTemporaryHiddenCartButtonState;
 - (void)pp_refreshSearchActionsMenu;
 - (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode;
+- (void)pp_applyLayoutModeInternal:(PPManagerCellLayoutMode)mode saveToDefaults:(BOOL)saveToDefaults;
+- (void)pp_applyLayoutModeInternal:(PPManagerCellLayoutMode)mode
+                     saveToDefaults:(BOOL)saveToDefaults
+                            animated:(BOOL)animated;
 - (PPManagerCellLayoutMode)pp_sanitizedDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
 - (BOOL)pp_isDataViewLayoutMode:(PPManagerCellLayoutMode)mode;
 - (BOOL)pp_isFullDetailsLayoutMode;
@@ -1301,6 +1386,24 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (NSString *)pp_currentMainKindsDisplayTitle;
 - (NSString *)pp_currentSubKindsDisplayTitle;
 - (void)pp_applyPremiumSectionsSegmentedAppearance;
+- (CGFloat)pp_headerCollapseProgressForScrollView:(UIScrollView *)scrollView;
+- (CGFloat)pp_headerDockProgressForCollapseProgress:(CGFloat)progress;
+- (CGRect)pp_navigationTitleDockRectInView;
+- (CGAffineTransform)pp_controlIslandDockTransformForProgress:(CGFloat)dockProgress
+                                                 reduceMotion:(BOOL)reduceMotion;
+- (void)pp_applyNavigationTitleDockProgress:(CGFloat)dockProgress;
+- (void)pp_promoteNavigationTitleContainerForDockProgress:(CGFloat)dockProgress
+                                         snapshotProgress:(CGFloat)snapshotProgress;
+- (CGFloat)pp_dockedIslandSnapshotProgressForDockProgress:(CGFloat)dockProgress;
+- (CGAffineTransform)pp_navigationTitleTransformForDockProgress:(CGFloat)dockProgress
+                                           previousDockProgress:(CGFloat)previousDockProgress
+                                                   reduceMotion:(BOOL)reduceMotion;
+- (void)pp_installDockedIslandSnapshotIfNeeded;
+- (void)pp_removeDockedIslandSnapshotAnimated:(BOOL)animated;
+- (void)pp_updateDockedIslandSnapshotFrame;
+- (void)pp_runNavigationTitleDockHaloAnimation;
+- (void)pp_updatePremiumHeaderCollapseForScrollView:(UIScrollView *)scrollView animated:(BOOL)animated;
+- (void)pp_applyPremiumHeaderCollapseProgress:(CGFloat)progress animated:(BOOL)animated;
 - (void)pp_updatePremiumChromeShadowPaths;
 - (void)pp_applyPremiumDataViewBackgroundAppearance;
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
@@ -1597,6 +1700,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
     self.pendingCellEntranceDirection = 0;
     self.didRunSectionsSegmentedEntrance = NO;
+    self.premiumHeaderCollapseProgress = 0.0;
 
     [self emptyStateInit];
     [self setupSectionsTabBar];
@@ -1842,9 +1946,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
                                                     weight:UIImageSymbolWeightSemibold
                                                      scale:UIImageSymbolScaleMedium];
     UIButtonConfiguration *configuration = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
-    configuration.image = [UIImage imageNamed:@"optimization"];
+    configuration.image = [[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:symbolConfiguration]
+                           imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     configuration.imagePadding = 0.0;
-    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 7.0, 2.0, 7.0);
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
     configuration.baseForegroundColor = PPDataViewChromeTextColor();
     button.configuration = configuration;
     button.tintColor = PPDataViewChromeTextColor();
@@ -1879,13 +1984,20 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     centeredStyle.alignment = NSTextAlignmentCenter;
     centeredStyle.lineBreakMode = NSLineBreakByTruncatingTail;
 
-    centeredStyle.lineSpacing = -1.5;
+    centeredStyle.lineSpacing = -0.6;
     centeredStyle.paragraphSpacing = 0;
-    centeredStyle.lineHeightMultiple = 0.78;
+    centeredStyle.lineHeightMultiple = 0.96;
+
+    UIFont *baseTitleFont = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    UIFont *baseCaptionFont = [GM MidFontWithSize:9.2] ?: [UIFont systemFontOfSize:9.2 weight:UIFontWeightMedium];
+    UIFont *titleFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline] scaledFontForFont:baseTitleFont
+                                                                                         maximumPointSize:16.4];
+    UIFont *captionFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2] scaledFontForFont:baseCaptionFont
+                                                                                         maximumPointSize:10.8];
 
     NSMutableAttributedString *title = [[NSMutableAttributedString alloc] initWithString:resolvedPrimary
                                                                               attributes:@{
-        NSFontAttributeName : [GM boldFontWithSize:14.2],
+        NSFontAttributeName : titleFont,
         NSForegroundColorAttributeName : primaryColor,
         NSParagraphStyleAttributeName : centeredStyle
     }];
@@ -1902,13 +2014,12 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     configuration.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
 
-    configuration.contentInsets = NSDirectionalEdgeInsetsMake(2.0, 6.0, 2.0, 6.0);
-    // Tighten spacing between Species/Breed caption and selected value (reduces the gap significantly)
+    configuration.contentInsets = NSDirectionalEdgeInsetsMake(3.0, 8.0, 3.0, 8.0);
 
     configuration.attributedSubtitle =
     [[NSAttributedString alloc] initWithString:resolvedCaption
                                     attributes:@{
-        NSFontAttributeName : [GM MidFontWithSize:8.3],
+        NSFontAttributeName : captionFont,
         NSForegroundColorAttributeName : captionColor,
         NSParagraphStyleAttributeName : centeredStyle
     }];
@@ -1951,9 +2062,10 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
     button.clipsToBounds = NO;
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.titleLabel.numberOfLines = 2;
     button.titleLabel.adjustsFontSizeToFitWidth = YES;
-    button.titleLabel.minimumScaleFactor = 0.82;
+    button.titleLabel.minimumScaleFactor = 0.86;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     button.titleLabel.adjustsFontForContentSizeCategory = YES;
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
@@ -2175,6 +2287,469 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     [self pp_applyFilterContextBarAppearance];
 }
 
+- (CGFloat)pp_headerCollapseProgressForScrollView:(UIScrollView *)scrollView
+{
+    if (!scrollView || [self pp_isFullDetailsLayoutMode]) {
+        return 0.0;
+    }
+
+    CGFloat topOrigin = -scrollView.adjustedContentInset.top;
+    CGFloat travel = MAX(0.0, scrollView.contentOffset.y - topOrigin);
+    if (travel <= 0.0) {
+        return 0.0;
+    }
+    return MIN(1.0, travel / kPPDataViewHeaderCollapseDistance);
+}
+
+- (CGFloat)pp_headerDockProgressForCollapseProgress:(CGFloat)progress
+{
+    CGFloat normalized =
+        (PPDataViewClamp01(progress) - kPPDataViewHeaderDockStartProgress) /
+        MAX(0.01, 1.0 - kPPDataViewHeaderDockStartProgress);
+    return PPDataViewSmoothstep(normalized);
+}
+
+- (CGRect)pp_navigationTitleDockRectInView
+{
+    if (!self.navContainerView ||
+        !self.view ||
+        !self.navContainerView.window ||
+        !self.view.window ||
+        self.navContainerView.window != self.view.window ||
+        CGRectIsEmpty(self.navContainerView.bounds)) {
+        return CGRectNull;
+    }
+
+    [self.view layoutIfNeeded];
+    [self.navigationController.navigationBar layoutIfNeeded];
+    [self.navContainerView layoutIfNeeded];
+
+    CGRect targetRect = [self.navContainerView convertRect:self.navContainerView.bounds
+                                                    toView:self.view];
+    if (CGRectIsNull(targetRect) ||
+        CGRectIsEmpty(targetRect) ||
+        CGRectGetWidth(targetRect) <= 1.0 ||
+        CGRectGetHeight(targetRect) <= 1.0) {
+        return CGRectNull;
+    }
+
+    return CGRectInset(targetRect,
+                       kPPDataViewHeaderDockTargetHorizontalInset,
+                       kPPDataViewHeaderDockTargetVerticalInset);
+}
+
+- (CGAffineTransform)pp_controlIslandDockTransformForProgress:(CGFloat)dockProgress
+                                                 reduceMotion:(BOOL)reduceMotion
+{
+    CGFloat progress = PPDataViewClamp01(dockProgress);
+    if (progress <= 0.001) {
+        return CGAffineTransformIdentity;
+    }
+
+    // Under Reduce Motion: translate toward the dock target without scale.
+    // The island still reaches the nav bar, but the morph is suppressed.
+    if (reduceMotion) {
+        if (!self.sectionsFiltersContainer ||
+            CGRectIsEmpty(self.sectionsFiltersContainer.bounds)) {
+            return CGAffineTransformIdentity;
+        }
+        CGRect targetRect = [self pp_navigationTitleDockRectInView];
+        if (CGRectIsNull(targetRect) || CGRectIsEmpty(targetRect)) {
+            return CGAffineTransformMakeTranslation(0.0,
+                kPPDataViewHeaderCollapsedYOffset * progress);
+        }
+        CGPoint islandCenter = self.sectionsFiltersContainer.center;
+        CGPoint targetCenter = CGPointMake(CGRectGetMidX(targetRect),
+                                           CGRectGetMidY(targetRect));
+        return CGAffineTransformMakeTranslation(
+            (targetCenter.x - islandCenter.x) * progress,
+            (targetCenter.y - islandCenter.y) * progress);
+    }
+
+    if (!self.sectionsFiltersContainer ||
+        CGRectIsEmpty(self.sectionsFiltersContainer.bounds)) {
+        return CGAffineTransformIdentity;
+    }
+
+    CGRect targetRect = [self pp_navigationTitleDockRectInView];
+    CGSize islandSize = self.sectionsFiltersContainer.bounds.size;
+    if (CGRectIsNull(targetRect) ||
+        CGRectIsEmpty(targetRect) ||
+        islandSize.width <= 1.0 ||
+        islandSize.height <= 1.0) {
+        CGFloat fallbackScaleX =
+            1.0 - ((1.0 - kPPDataViewHeaderCollapsedScaleX) * progress);
+        CGFloat fallbackScaleY =
+            1.0 - ((1.0 - kPPDataViewHeaderCollapsedScaleY) * progress);
+        CGFloat fallbackYOffset = kPPDataViewHeaderCollapsedYOffset * progress;
+        return CGAffineTransformScale(CGAffineTransformMakeTranslation(0.0, fallbackYOffset),
+                                      fallbackScaleX,
+                                      fallbackScaleY);
+    }
+
+    CGFloat targetScale =
+        MIN(CGRectGetWidth(targetRect) / islandSize.width,
+            CGRectGetHeight(targetRect) / islandSize.height);
+    targetScale = MIN(kPPDataViewHeaderDockMaximumScale,
+                      MAX(kPPDataViewHeaderDockMinimumScale, targetScale));
+    CGFloat scale = 1.0 + ((targetScale - 1.0) * progress);
+
+    CGPoint islandCenter = self.sectionsFiltersContainer.center;
+    CGPoint targetCenter = CGPointMake(CGRectGetMidX(targetRect), CGRectGetMidY(targetRect));
+    CGFloat translateX = (targetCenter.x - islandCenter.x) * progress;
+    CGFloat translateY = (targetCenter.y - islandCenter.y) * progress;
+
+    return CGAffineTransformScale(CGAffineTransformMakeTranslation(translateX, translateY),
+                                  scale,
+                                  scale);
+}
+
+- (void)pp_applyNavigationTitleDockProgress:(CGFloat)dockProgress
+{
+    CGFloat progress = PPDataViewClamp01(dockProgress);
+
+    // The island is absorbed behind the navigation title. The title remains
+    // the stable, readable owner before, during, and after the handoff.
+    self.KindsButton.alpha = 1.0;
+    self.subKindsButton.alpha = 1.0;
+    self.centerCapsuleButton.alpha = 1.0;
+    self.navSeparatorLine.alpha = 1.0;
+    self.navContainerView.alpha = 1.0;
+    CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:progress];
+    self.sectionsFiltersContainer.layer.zPosition =
+        snapshotProgress > 0.001 ? 0.0 : (progress > 0.01 ? 6.0 : 0.0);
+    [self pp_promoteNavigationTitleContainerForDockProgress:progress
+                                           snapshotProgress:snapshotProgress];
+}
+
+- (void)pp_promoteNavigationTitleContainerForDockProgress:(CGFloat)dockProgress
+                                         snapshotProgress:(CGFloat)snapshotProgress
+{
+    if (!self.navContainerView) {
+        return;
+    }
+
+    BOOL shouldPromote = dockProgress >= kPPDataViewHeaderDockSnapshotStartProgress ||
+        snapshotProgress > 0.001;
+    UIView *titleSuperview = self.navContainerView.superview;
+    self.navContainerView.hidden = NO;
+    self.navContainerView.alpha = 1.0;
+    self.navContainerView.userInteractionEnabled = YES;
+
+    if (self.navigationItem.titleView != self.navContainerView) {
+        self.navigationItem.titleView = self.navContainerView;
+    }
+
+    if (shouldPromote) {
+        if (titleSuperview) {
+            titleSuperview.hidden = NO;
+            titleSuperview.alpha = 1.0;
+            [titleSuperview bringSubviewToFront:self.navContainerView];
+            UIView *navigationBarContentView = titleSuperview.superview;
+            if (navigationBarContentView) {
+                [navigationBarContentView bringSubviewToFront:titleSuperview];
+            }
+            titleSuperview.layer.zPosition = 30.0;
+        }
+
+        self.navContainerView.layer.zPosition = 40.0;
+        self.navDockedIslandSnapshotView.layer.zPosition = 0.0;
+    } else {
+        self.navContainerView.layer.zPosition = 0.0;
+        titleSuperview.layer.zPosition = 0.0;
+    }
+
+    if (self.navDockedIslandSnapshotView) {
+        [self.navContainerView bringSubviewToFront:self.KindsButton];
+        [self.navContainerView bringSubviewToFront:self.navSeparatorLine];
+        [self.navContainerView bringSubviewToFront:self.subKindsButton];
+        [self.navContainerView bringSubviewToFront:self.centerCapsuleButton];
+        [self.navContainerView bringSubviewToFront:self.cartButton];
+    }
+}
+
+- (CGFloat)pp_dockedIslandSnapshotProgressForDockProgress:(CGFloat)dockProgress
+{
+    CGFloat normalized =
+        (PPDataViewClamp01(dockProgress) - kPPDataViewHeaderDockSnapshotStartProgress) /
+        MAX(0.01, 1.0 - kPPDataViewHeaderDockSnapshotStartProgress);
+    return PPDataViewSmoothstep(normalized);
+}
+
+- (CGAffineTransform)pp_navigationTitleTransformForDockProgress:(CGFloat)dockProgress
+                                           previousDockProgress:(CGFloat)previousDockProgress
+                                                   reduceMotion:(BOOL)reduceMotion
+{
+    if (reduceMotion) {
+        return CGAffineTransformIdentity;
+    }
+
+    CGFloat progress = PPDataViewClamp01(dockProgress);
+    BOOL isUndocking = progress < previousDockProgress - 0.002;
+    if (!isUndocking || previousDockProgress < kPPDataViewHeaderUndockedProgressThreshold) {
+        return CGAffineTransformIdentity;
+    }
+
+    CGFloat releaseArc = sin(M_PI * progress);
+    CGFloat scale = 1.0 - (kPPDataViewHeaderTitleUndockScaleDip * MAX(0.0, releaseArc));
+    return CGAffineTransformMakeScale(scale, scale);
+}
+
+- (void)pp_updateDockedIslandSnapshotFrame
+{
+    if (!self.navDockedIslandSnapshotView || !self.navContainerView) {
+        return;
+    }
+
+    CGRect frame = CGRectInset(self.navContainerView.bounds,
+                               kPPDataViewHeaderDockTargetHorizontalInset,
+                               kPPDataViewHeaderDockTargetVerticalInset);
+    self.navDockedIslandSnapshotView.frame = frame;
+    CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(frame),
+                                                   kPPDataViewNavigationChromeCornerRadius);
+    self.navDockedIslandSnapshotView.layer.cornerRadius = radius;
+    if (@available(iOS 13.0, *)) {
+        self.navDockedIslandSnapshotView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
+
+- (void)pp_installDockedIslandSnapshotIfNeeded
+{
+    if (!self.navContainerView ||
+        !self.sectionsFiltersContainer ||
+        CGRectIsEmpty(self.navContainerView.bounds) ||
+        CGRectIsEmpty(self.sectionsFiltersContainer.bounds)) {
+        return;
+    }
+
+    [self pp_updateDockedIslandSnapshotFrame];
+    if (self.navDockedIslandSnapshotView) {
+        return;
+    }
+
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+    format.opaque = NO;
+    UIGraphicsImageRenderer *renderer =
+        [[UIGraphicsImageRenderer alloc] initWithSize:self.sectionsFiltersContainer.bounds.size
+                                               format:format];
+    UIImage *snapshotImage =
+        [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+        (void)rendererContext;
+        [self.sectionsFiltersContainer drawViewHierarchyInRect:self.sectionsFiltersContainer.bounds
+                                            afterScreenUpdates:NO];
+    }];
+
+    UIImageView *snapshotView = [[UIImageView alloc] initWithImage:snapshotImage];
+    snapshotView.userInteractionEnabled = NO;
+    snapshotView.clipsToBounds = YES;
+    snapshotView.contentMode = UIViewContentModeScaleAspectFit;
+    snapshotView.alpha = 0.0;
+    snapshotView.accessibilityElementsHidden = YES;
+    self.navDockedIslandSnapshotView = snapshotView;
+    NSUInteger insertionIndex = MIN((NSUInteger)1, self.navContainerView.subviews.count);
+    [self.navContainerView insertSubview:snapshotView atIndex:insertionIndex];
+    [self.navContainerView bringSubviewToFront:self.KindsButton];
+    [self.navContainerView bringSubviewToFront:self.navSeparatorLine];
+    [self.navContainerView bringSubviewToFront:self.subKindsButton];
+    [self.navContainerView bringSubviewToFront:self.centerCapsuleButton];
+    [self.navContainerView bringSubviewToFront:self.cartButton];
+    [self pp_updateDockedIslandSnapshotFrame];
+}
+
+- (void)pp_removeDockedIslandSnapshotAnimated:(BOOL)animated
+{
+    UIImageView *snapshotView = self.navDockedIslandSnapshotView;
+    if (!snapshotView) {
+        return;
+    }
+
+    self.navDockedIslandSnapshotView = nil;
+    void (^removeBlock)(void) = ^{
+        [snapshotView removeFromSuperview];
+    };
+
+    if (!animated || !snapshotView.window || UIAccessibilityIsReduceMotionEnabled()) {
+        removeBlock();
+        return;
+    }
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        snapshotView.alpha = 0.0;
+        snapshotView.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    } completion:^(__unused BOOL finished) {
+        removeBlock();
+    }];
+}
+
+- (void)pp_runNavigationTitleDockHaloAnimation
+{
+    if (!self.navContainerView ||
+        !self.navContainerView.window ||
+        CGRectIsEmpty(self.navContainerView.bounds) ||
+        UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    UIColor *accent = [self pp_controlIslandContentAccentColor] ?: PPDataViewAccentColor();
+    CGFloat radius = PPDataViewPillRadiusForHeight(CGRectGetHeight(self.navContainerView.bounds),
+                                                   kPPDataViewNavigationChromeCornerRadius);
+
+    for (NSInteger index = 0; index < 2; index++) {
+        CAShapeLayer *haloLayer = [CAShapeLayer layer];
+        CGFloat haloOutset = index == 0 ? 7.0 : 12.0;
+        haloLayer.frame = CGRectInset(self.navContainerView.bounds, -haloOutset, -haloOutset);
+        CGRect haloBounds = haloLayer.bounds;
+        haloLayer.path =
+            [UIBezierPath bezierPathWithRoundedRect:CGRectInset(haloBounds, 1.0, 1.0)
+                                       cornerRadius:radius + haloOutset].CGPath;
+        haloLayer.fillColor = UIColor.clearColor.CGColor;
+        haloLayer.strokeColor = [accent colorWithAlphaComponent:(index == 0 ? 0.30 : 0.18)].CGColor;
+        haloLayer.lineWidth = index == 0 ? 1.20 : 0.85;
+        haloLayer.opacity = 0.0;
+        haloLayer.transform = CATransform3DMakeScale(0.94, 0.94, 1.0);
+        [self.navContainerView.layer addSublayer:haloLayer];
+
+        CAKeyframeAnimation *opacityAnimation = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+        opacityAnimation.values = @[@0.0, @(index == 0 ? 0.34 : 0.20), @0.08, @0.0];
+        opacityAnimation.keyTimes = @[@0.0, @0.18, @0.58, @1.0];
+
+        CAKeyframeAnimation *scaleAnimation = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+        scaleAnimation.values = @[@0.96, @1.035, @(index == 0 ? 1.22 : 1.30)];
+        scaleAnimation.keyTimes = @[@0.0, @0.28, @1.0];
+
+        CAAnimationGroup *group = [CAAnimationGroup animation];
+        group.animations = @[opacityAnimation, scaleAnimation];
+        group.duration = index == 0 ? 0.28 : 0.30;
+        group.beginTime = CACurrentMediaTime() + (index == 0 ? 0.0 : 0.035);
+        group.timingFunction =
+            [CAMediaTimingFunction functionWithControlPoints:0.18 :0.82 :0.24 :1.0];
+        group.removedOnCompletion = YES;
+        [haloLayer addAnimation:group forKey:@"pp.dataview.titleDockHalo"];
+
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                     (int64_t)((group.duration + (index == 0 ? 0.02 : 0.05)) * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            [haloLayer removeFromSuperlayer];
+        });
+    }
+}
+
+- (void)pp_updatePremiumHeaderCollapseForScrollView:(UIScrollView *)scrollView animated:(BOOL)animated
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+
+    [self pp_applyPremiumHeaderCollapseProgress:[self pp_headerCollapseProgressForScrollView:scrollView]
+                                       animated:animated];
+}
+
+- (void)pp_applyPremiumHeaderCollapseProgress:(CGFloat)progress animated:(BOOL)animated
+{
+    CGFloat clampedProgress = MIN(MAX(progress, 0.0), 1.0);
+    if (fabs(self.premiumHeaderCollapseProgress - clampedProgress) < 0.002) {
+        CGFloat dockProgress = [self pp_headerDockProgressForCollapseProgress:clampedProgress];
+        [self pp_updateDockedIslandSnapshotFrame];
+        [self pp_applyNavigationTitleDockProgress:dockProgress];
+        return;
+    }
+
+    self.premiumHeaderCollapseProgress = clampedProgress;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    BOOL canAnimate = animated && self.view.window != nil && !reduceMotion;
+
+    CGFloat previousDockProgress = self.premiumHeaderDockProgress;
+    CGFloat dockProgress = [self pp_headerDockProgressForCollapseProgress:clampedProgress];
+    CGFloat snapshotProgress = [self pp_dockedIslandSnapshotProgressForDockProgress:dockProgress];
+    BOOL shouldInstallSnapshot = snapshotProgress > 0.001;
+    BOOL didReachDock = !self.premiumHeaderIsDocked &&
+        dockProgress >= kPPDataViewHeaderDockedProgressThreshold;
+    BOOL didLeaveDock = self.premiumHeaderIsDocked &&
+        dockProgress <= kPPDataViewHeaderUndockedProgressThreshold;
+
+    if (shouldInstallSnapshot) {
+        [self pp_installDockedIslandSnapshotIfNeeded];
+        [self pp_updateDockedIslandSnapshotFrame];
+    } else {
+        [self pp_removeDockedIslandSnapshotAnimated:animated];
+    }
+
+    CGAffineTransform islandTransform =
+        [self pp_controlIslandDockTransformForProgress:dockProgress
+                                          reduceMotion:reduceMotion];
+    CGAffineTransform titleTransform =
+        [self pp_navigationTitleTransformForDockProgress:dockProgress
+                                    previousDockProgress:previousDockProgress
+                                            reduceMotion:reduceMotion];
+    CGFloat searchScale = reduceMotion ? 1.0 : (1.0 - (0.020 * clampedProgress));
+    CGAffineTransform searchTransform = CGAffineTransformMakeScale(searchScale, searchScale);
+    CGFloat contextAlpha = MAX(0.0, 1.0 - (1.35 * dockProgress));
+    CGAffineTransform contextTransform = reduceMotion
+        ? CGAffineTransformIdentity
+        : CGAffineTransformMakeTranslation(0.0, -10.0 * dockProgress);
+    CGFloat islandPresentationAlpha = MAX(0.0, 1.0 - snapshotProgress);
+    CGFloat snapshotHandoffAlpha = sin(M_PI * snapshotProgress);
+
+    void (^updates)(void) = ^{
+        if (self.sectionsFiltersContainer) {
+            if (self.didRunSectionsSegmentedEntrance || self.sectionsFiltersContainer.alpha > 0.5) {
+                self.sectionsFiltersContainer.transform = islandTransform;
+                self.sectionsFiltersContainer.alpha = islandPresentationAlpha;
+            }
+            self.sectionsFiltersContainer.userInteractionEnabled = snapshotProgress < 0.94;
+            self.sectionsFiltersContainer.accessibilityElementsHidden = snapshotProgress >= 0.94;
+            [self.sectionsFiltersContainer pp_applyScrollCollapseProgress:clampedProgress animated:NO];
+        }
+        if (self.navDockedIslandSnapshotView) {
+            [self pp_updateDockedIslandSnapshotFrame];
+            self.navDockedIslandSnapshotView.alpha = snapshotHandoffAlpha;
+            self.navDockedIslandSnapshotView.transform =
+                reduceMotion
+                ? CGAffineTransformIdentity
+                : CGAffineTransformMakeScale(0.986 + (0.014 * snapshotProgress),
+                                              0.982 + (0.018 * snapshotProgress));
+        }
+        self.filterContextBar.alpha = contextAlpha;
+        self.filterContextBar.transform = contextTransform;
+        self.navContainerView.transform = titleTransform;
+        [self pp_applyNavigationTitleDockProgress:dockProgress];
+        self.navSearchActionsButton.transform = searchTransform;
+        [self pp_updatePremiumChromeShadowPaths];
+    };
+
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        if (didReachDock) {
+            [self pp_runNavigationTitleDockHaloAnimation];
+        }
+        [self pp_applyNavigationTitleDockProgress:dockProgress];
+    };
+
+    if (canAnimate) {
+        [UIView animateWithDuration:0.28
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionCurveEaseOut
+                         animations:updates
+                         completion:completion];
+    } else {
+        updates();
+        completion(YES);
+    }
+
+    self.premiumHeaderDockProgress = dockProgress;
+    if (didReachDock) {
+        self.premiumHeaderIsDocked = YES;
+    } else if (didLeaveDock) {
+        self.premiumHeaderIsDocked = NO;
+    }
+}
+
 - (BOOL)pp_controlIslandUsesAccentColor
 {
     return self.sectionsFiltersContainer.useAccentColor;
@@ -2202,24 +2777,25 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     BOOL darkMode = PPDataViewCurrentAppAppearanceIsDark(self.traitCollection);
     UIColor *accent = [self pp_controlIslandContentAccentColor];
     BOOL useIslandAccent = [self pp_controlIslandUsesAccentColor];
-    UIColor *surface = PPDataViewDynamicColor([AppPrimaryClrShiner colorWithAlphaComponent:0.03],
-                                             [UIColor colorWithRed:0.150 green:0.090 blue:0.116 alpha:0.84]);
+    UIColor *surface = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
+                                             [UIColor colorWithWhite:1.0 alpha:0.075]);
     UIColor *badgeSurface = PPDataViewBlendColor(surface,
                                                 accent,
-                                                darkMode ? 0.20 : 0.04,
+                                                darkMode ? 0.18 : 0.055,
                                                 self.traitCollection);
-    UIColor *stroke = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.70];
+    UIColor *stroke = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.62],
+                                             [UIColor colorWithWhite:1.0 alpha:0.14]);
 
     self.filterContextBar.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.filterContextBar.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.04] ;//badgeSurface;//surface;
+    self.filterContextBar.backgroundColor = badgeSurface;
     CGFloat contextRadius = PPDataViewPillRadiusForHeight(kPPFilterContextBarHeight, 16.0);
     self.filterContextBar.layer.cornerRadius = contextRadius;
     self.filterContextBar.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    self.filterContextBar.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.72].CGColor;
+    self.filterContextBar.layer.borderColor = PPDataViewResolvedColor(stroke, self.traitCollection).CGColor;
     self.filterContextBar.layer.shadowColor = [accent colorWithAlphaComponent:0.24].CGColor;
-    self.filterContextBar.layer.shadowOpacity = darkMode ? 0.10 : 0.07;
-    self.filterContextBar.layer.shadowRadius = 10.0;
-    self.filterContextBar.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    self.filterContextBar.layer.shadowOpacity = darkMode ? 0.075 : 0.045;
+    self.filterContextBar.layer.shadowRadius = 9.0;
+    self.filterContextBar.layer.shadowOffset = CGSizeMake(0.0, 3.0);
 
     if (@available(iOS 13.0, *)) {
         self.filterContextBar.layer.cornerCurve = kCACornerCurveContinuous;
@@ -2237,6 +2813,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     self.filterContextIconView.tintColor = accent;
     self.filterContextLabel.textColor = PPDataViewChromeTextColor();
+    self.filterContextLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:12.2] ?: [UIFont systemFontOfSize:12.2 weight:UIFontWeightSemibold])
+                                                                                   maximumPointSize:14.0];
     self.filterContextLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.filterCollapseButton.tintColor = useIslandAccent
         ? accent
@@ -2568,6 +3147,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.sectionsFiltersContainer.alpha = 1.0;
     self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
     self.sectionsSegmentedControl.userInteractionEnabled = YES;
+    [self pp_updatePremiumHeaderCollapseForScrollView:self.collectionView animated:NO];
 }
 
 - (void)pp_runSectionsSegmentedEntranceIfNeeded
@@ -2605,6 +3185,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
         self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
     } completion:^(__unused BOOL finished) {
         self.sectionsSegmentedControl.userInteractionEnabled = YES;
+        [self pp_updatePremiumHeaderCollapseForScrollView:self.collectionView animated:NO];
     }];
 }
 
@@ -3008,11 +3589,23 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
     self.layoutManager = [PPCollectionLayoutManager new];
 
     
-    PPManagerCellLayoutMode savedMode =
-    (PPManagerCellLayoutMode)[[NSUserDefaults standardUserDefaults]
-                              integerForKey:kPPLayoutModeKey];
+    BOOL userChangedLayout = [[NSUserDefaults standardUserDefaults] boolForKey:@"PPLayoutModeChangedByUser"];
+    PPManagerCellLayoutMode resolvedMode;
+    if (userChangedLayout) {
+        PPManagerCellLayoutMode savedMode =
+        (PPManagerCellLayoutMode)[[NSUserDefaults standardUserDefaults]
+                                  integerForKey:kPPLayoutModeKey];
+        resolvedMode = [self pp_sanitizedDataViewLayoutMode:savedMode];
+    } else {
+        PPDataSection currentSec = self.viewModel ? self.viewModel.currentSection : PPDataSectionAds;
+        if (currentSec == PPDataSectionAds) {
+            resolvedMode = PPCellLayoutModePinterest;
+        } else {
+            resolvedMode = PPCellLayoutModeVertical;
+        }
+    }
 
-    self.layoutManager.currentLayoutMode = [self pp_sanitizedDataViewLayoutMode:savedMode];
+    self.layoutManager.currentLayoutMode = resolvedMode;
     
     UICollectionViewLayout *layout =
     [self pp_collectionLayoutForDataViewMode:self.layoutManager.currentLayoutMode];
@@ -3047,8 +3640,8 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     [NSLayoutConstraint activateConstraints:@[
         self.collectionViewTopAnchorConstraint =
-            [self.collectionView.topAnchor constraintEqualToAnchor:self.sectionsFiltersContainer.bottomAnchor
-                                                         constant:-70.0],
+        [self.collectionView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
+                                                         constant:-0],
         [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -3311,6 +3904,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         }
         self.DidFinishLayout = YES;
     }
+    [self pp_updatePremiumHeaderCollapseForScrollView:self.collectionView animated:NO];
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -3501,6 +4095,69 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 #pragma mark - Collection Content Inset Fix
 
 /* Top Inset Code */
+- (CGFloat)pp_currentCollectionChromeBottomY
+{
+    UIView *island = self.sectionsFiltersContainer;
+    if (!self.view ||
+        !island ||
+        !island.superview ||
+        island.hidden ||
+        CGRectIsEmpty(island.bounds)) {
+        return NAN;
+    }
+
+    // Keep scroll geometry stable while the island animates. Mutating the top
+    // inset from presentation-layer transforms cancels UIKit deceleration at
+    // the dock boundary and forces the user to begin a second scroll gesture.
+    CALayer *islandLayer = island.layer;
+    CGPoint anchorPoint = islandLayer.anchorPoint;
+    CGSize islandSize = island.bounds.size;
+    CGRect untransformedFrame = CGRectMake(
+        island.center.x - (islandSize.width * anchorPoint.x),
+        island.center.y - (islandSize.height * anchorPoint.y),
+        islandSize.width,
+        islandSize.height
+    );
+    CGRect chromeFrame = [island.superview convertRect:untransformedFrame toView:self.view];
+    CGFloat resolvedBottomY = CGRectGetMaxY(chromeFrame);
+    if (CGRectIsEmpty(chromeFrame) || !isfinite((double)resolvedBottomY)) {
+        return NAN;
+    }
+
+    CGFloat displayScale = MAX(UIScreen.mainScreen.scale, 1.0);
+    return ceil(resolvedBottomY * displayScale) / displayScale;
+}
+
+- (CGFloat)pp_targetCollectionTopInsetFollowingChrome
+{
+    if (!self.collectionView || [self pp_isFullDetailsLayoutMode]) {
+        return 0.0;
+    }
+
+    CGFloat chromeBottomY = [self pp_currentCollectionChromeBottomY];
+    if (!isfinite((double)chromeBottomY)) {
+        return kPPDataViewCollectionChromeFallbackTopInset;
+    }
+
+    CGFloat layoutTopInset = [self pp_currentCollectionLayoutTopInset];
+    CGFloat automaticTopAdjustment =
+        MAX(0.0, self.collectionView.adjustedContentInset.top - self.collectionView.contentInset.top);
+    CGRect collectionFrame = self.collectionView.superview
+        ? [self.collectionView.superview convertRect:self.collectionView.frame toView:self.view]
+        : self.collectionView.frame;
+    CGFloat collectionTopY = CGRectGetMinY(collectionFrame);
+    CGFloat desiredContentTopY = chromeBottomY + kPPDataViewCollectionChromeBreathingGap;
+    CGFloat targetTopInset =
+        desiredContentTopY - collectionTopY - automaticTopAdjustment - layoutTopInset;
+
+    if (!isfinite((double)targetTopInset)) {
+        return kPPDataViewCollectionChromeFallbackTopInset;
+    }
+
+    CGFloat displayScale = MAX(UIScreen.mainScreen.scale, 1.0);
+    return MAX(0.0, ceil(targetTopInset * displayScale) / displayScale);
+}
+
 // Ensures collectionView has proper bottom inset for tab bar & safe area, and always bounces vertically.
 - (void)updateCollectionContentInset
 {
@@ -3511,17 +4168,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     [self.view layoutIfNeeded];
 
     BOOL fullDetails = [self pp_isFullDetailsLayoutMode];
-    CGFloat layoutTopInset = fullDetails ? 0.0 : [self pp_currentCollectionLayoutTopInset];
-    CGFloat automaticTopAdjustment =
-        MAX(0.0, self.collectionView.adjustedContentInset.top - self.collectionView.contentInset.top);
-    CGRect collectionFrame = self.collectionView.superview
-        ? [self.collectionView.superview convertRect:self.collectionView.frame toView:self.view]
-        : self.collectionView.frame;
-    CGFloat collectionTopY = CGRectGetMinY(collectionFrame);
     CGFloat targetTopInset = 0.0;
 
     if (!fullDetails) {
-        targetTopInset = 70.0;
+        targetTopInset = [self pp_targetCollectionTopInsetFollowingChrome];
     }
 
     CGFloat targetBottomInset = 16.0;
@@ -3573,10 +4223,27 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         targetBottomInset = bottomInset + (fullDetails ? 0.0 : 16.0);
     }
     UIEdgeInsets currentInset = self.collectionView.contentInset;
+    CGFloat previousAdjustedTop = self.collectionView.adjustedContentInset.top;
+    CGPoint previousOffset = self.collectionView.contentOffset;
     CGFloat topDelta = currentInset.top - targetTopInset;
     if (topDelta < 0) { topDelta = -topDelta; }
     CGFloat bottomDelta = currentInset.bottom - targetBottomInset;
     if (bottomDelta < 0) { bottomDelta = -bottomDelta; }
+
+    // Never rewrite the scroll geometry while UIKit owns an active gesture or
+    // deceleration transaction. A programmatic contentOffset compensation in
+    // this phase cancels momentum and leaves the list parked at the dock seam.
+    BOOL shouldDeferTopInset =
+        !fullDetails &&
+        topDelta >= 0.5 &&
+        (self.collectionView.isTracking ||
+         self.collectionView.isDragging ||
+         self.collectionView.isDecelerating);
+    if (shouldDeferTopInset) {
+        targetTopInset = currentInset.top;
+        topDelta = 0.0;
+    }
+
     if (topDelta < 0.5 && bottomDelta < 0.5) {
         return;
     }
@@ -3587,6 +4254,34 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.collectionView.contentInset = inset;
     self.collectionView.scrollIndicatorInsets = inset;
+
+    if (!fullDetails && topDelta >= 0.5) {
+        BOOL shouldPinRestingTop =
+            !self.collectionView.isDragging &&
+            !self.collectionView.isDecelerating &&
+            previousOffset.y <= 1.0;
+        if (shouldPinRestingTop) {
+            CGPoint targetOffset =
+                CGPointMake(previousOffset.x, -self.collectionView.adjustedContentInset.top);
+            if (fabs(targetOffset.y - self.collectionView.contentOffset.y) >= 0.5) {
+                self.isUpdatingCollectionInsetForHeaderMotion = YES;
+                [self.collectionView setContentOffset:targetOffset animated:NO];
+                self.isUpdatingCollectionInsetForHeaderMotion = NO;
+            }
+        } else {
+            CGFloat adjustedTopDelta =
+                self.collectionView.adjustedContentInset.top - previousAdjustedTop;
+            if (fabs(adjustedTopDelta) >= 0.5) {
+                CGPoint correctedOffset =
+                    CGPointMake(previousOffset.x, previousOffset.y - adjustedTopDelta);
+                if (fabs(correctedOffset.y - self.collectionView.contentOffset.y) >= 0.5) {
+                    self.isUpdatingCollectionInsetForHeaderMotion = YES;
+                    [self.collectionView setContentOffset:correctedOffset animated:NO];
+                    self.isUpdatingCollectionInsetForHeaderMotion = NO;
+                }
+            }
+        }
+    }
 
     if (fullDetails &&
         [self.collectionView.collectionViewLayout isKindOfClass:BBDataViewFullDetailsLayout.class]) {
@@ -3603,6 +4298,22 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     }
     if ([layout isKindOfClass:PPPinterestLayout.class]) {
         return MAX(0.0, ((PPPinterestLayout *)layout).sectionInset.top);
+    }
+
+    // PurePetsLayoutKit's adaptive layout keeps sectionInset internal to
+    // Swift. Its first item frame is the reliable cross-language source for
+    // the same top padding exposed directly by the Pinterest layout.
+    if (self.collectionView.numberOfSections > 0 &&
+        [self.collectionView numberOfItemsInSection:0] > 0) {
+        UICollectionViewLayoutAttributes *firstAttributes =
+            [layout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:0 inSection:0]];
+        if (firstAttributes) {
+            CGFloat firstItemMinY = CGRectGetMinY(firstAttributes.frame);
+            if (!isfinite((double)firstItemMinY)) {
+                return 0.0;
+            }
+            return MAX(0.0, firstItemMinY);
+        }
     }
     return 0.0;
 }
@@ -3663,6 +4374,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         self.sectionsFiltersContainer.alpha = 1.0;
         self.sectionsFiltersContainer.transform = CGAffineTransformIdentity;
         [self.view bringSubviewToFront:self.sectionsFiltersContainer];
+        [self pp_updatePremiumHeaderCollapseForScrollView:self.collectionView animated:NO];
     }
 
     if (self.collectionView.isDragging || self.collectionView.isDecelerating) {
@@ -3682,11 +4394,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if ([self pp_isFullDetailsLayoutMode]) { return; }
     CGPoint currentOffset = self.collectionView.contentOffset;
     CGFloat preferredTopY = [self preferredTopContentOffsetY];
-    if (currentOffset.y < preferredTopY) {
-        currentOffset.y = preferredTopY;
-    }
+    CGPoint normalizedOffset = CGPointMake(currentOffset.x,
+                                            MAX(0.0, currentOffset.y - preferredTopY));
     self.scrollOffsetsBySection[@(self.viewModel.currentSection)] =
-    [NSValue valueWithCGPoint:currentOffset];
+    [NSValue valueWithCGPoint:normalizedOffset];
 }
 
 - (void)restoreScrollOffsetForCurrentSection
@@ -3699,14 +4410,15 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSValue *savedOffset =
-    self.scrollOffsetsBySection[@(self.viewModel.currentSection)];
-    CGPoint targetOffset = CGPointMake(0, [self preferredTopContentOffsetY]);
-    if (savedOffset) {
-        targetOffset = savedOffset.CGPointValue;
-    }
+    NSNumber *sectionKey = @(self.viewModel.currentSection);
+    NSValue *savedOffset = self.scrollOffsetsBySection[sectionKey];
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (![sectionKey isEqualToNumber:@(self.viewModel.currentSection)]) {
+            return;
+        }
+
+        [self updateCollectionContentInset];
         [self.collectionView layoutIfNeeded];
 
         CGFloat minY = -self.collectionView.adjustedContentInset.top;
@@ -3718,6 +4430,12 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         }
 
         CGFloat preferredTopY = [self preferredTopContentOffsetY];
+        CGPoint targetOffset = CGPointMake(0.0, preferredTopY);
+        if (savedOffset) {
+            CGPoint normalizedOffset = savedOffset.CGPointValue;
+            targetOffset = CGPointMake(normalizedOffset.x,
+                                       preferredTopY + MAX(0.0, normalizedOffset.y));
+        }
         CGFloat clampedY = targetOffset.y;
         if (clampedY < preferredTopY) { clampedY = preferredTopY; }
         if (clampedY < minY) { clampedY = minY; }
@@ -3726,8 +4444,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         self.isRestoringScrollOffset = YES;
         [self.collectionView setContentOffset:clampedOffset animated:NO];
         self.isRestoringScrollOffset = NO;
-        self.scrollOffsetsBySection[@(self.viewModel.currentSection)] =
-        [NSValue valueWithCGPoint:clampedOffset];
+        CGPoint normalizedOffset = CGPointMake(clampedOffset.x,
+                                                MAX(0.0, clampedY - preferredTopY));
+        self.scrollOffsetsBySection[sectionKey] = [NSValue valueWithCGPoint:normalizedOffset];
         self.lastContentOffsetY = clampedY;
     });
 }
@@ -3743,6 +4462,8 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     if (scrollView != self.collectionView) { return; }
+    if (self.isUpdatingCollectionInsetForHeaderMotion) { return; }
+    [self pp_updatePremiumHeaderCollapseForScrollView:scrollView animated:NO];
     [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidScroll];
     if (self.isRestoringScrollOffset) { return; }
     if (self.layoutManager.items.count == 0) { return; }
@@ -3784,6 +4505,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         } else {
             [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }
+        [self pp_updatePremiumHeaderCollapseForScrollView:scrollView animated:YES];
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -3796,6 +4518,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         } else {
             [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }
+        [self pp_updatePremiumHeaderCollapseForScrollView:scrollView animated:YES];
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -3806,6 +4529,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         if (![self pp_isFullDetailsLayoutMode]) {
             [self pp_updateCollectionContentInsetPreservingTopAnchor];
         }
+        [self pp_updatePremiumHeaderCollapseForScrollView:scrollView animated:YES];
         [[NovaAmbientAssistantCoordinator sharedCoordinator] userDidStopScrolling];
     }
 }
@@ -4683,6 +5407,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self persistSectionSelection:section];
     [self updateCartButtonVisibilityForSection:section animated:NO];
     [self.viewModel setFilterState:[self pp_filterStateForSection:section] forSection:section];
+
+    BOOL userChangedLayout = [[NSUserDefaults standardUserDefaults] boolForKey:@"PPLayoutModeChangedByUser"];
+    if (!userChangedLayout) {
+        PPManagerCellLayoutMode defaultMode = (section == PPDataSectionAds) ? PPCellLayoutModePinterest : PPCellLayoutModeVertical;
+        if (self.layoutManager.currentLayoutMode != defaultMode) {
+            [self pp_applyLayoutModeInternal:defaultMode
+                               saveToDefaults:NO
+                                      animated:NO];
+        }
+    }
+
     [self.viewModel switchToSection:section];
     [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:userInitiated];
 
@@ -6017,7 +6752,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     UIImageSymbolConfiguration *symbolConfig =
-        [UIImageSymbolConfiguration configurationWithPointSize:10.0
+        [UIImageSymbolConfiguration configurationWithPointSize:11.5
                                                         weight:UIImageSymbolWeightBold
                                                          scale:UIImageSymbolScaleSmall];
     UIImage *chevron = [[UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolConfig]
@@ -6026,7 +6761,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.filterCollapseButton.configuration;
-        UIFont *btnFont = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+        UIFont *btnFont =
+            [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:11.8] ?: [UIFont systemFontOfSize:11.8 weight:UIFontWeightBold])
+                                                                           maximumPointSize:13.2];
         UIColor *titleColor = [self pp_controlIslandUsesAccentColor]
             ? [self pp_controlIslandContentAccentColor]
             : PPDataViewAccentColor();
@@ -6036,7 +6773,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }];
         self.filterCollapseButton.configuration = config;
     } else {
-        UIFont *btnFont = [GM boldFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightBold];
+        UIFont *btnFont =
+            [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1] scaledFontForFont:([GM boldFontWithSize:11.8] ?: [UIFont systemFontOfSize:11.8 weight:UIFontWeightBold])
+                                                                           maximumPointSize:13.2];
         UIColor *titleColor = [self pp_controlIslandUsesAccentColor]
             ? [self pp_controlIslandContentAccentColor]
             : PPDataViewAccentColor();
@@ -6099,6 +6838,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)pp_collapseFilterIslandForUserScrollIfNeededAnimated:(BOOL)animated
 {
+    if (kPPDataViewPauseLegacyFilterIslandScrollCollapse) {
+        return;
+    }
+
     if (self.isRestoringScrollOffset || [self pp_isFullDetailsLayoutMode]) {
         return;
     }
@@ -7215,12 +7958,29 @@ presentingViewController:self
 
 - (void)pp_applyLayoutModeFromActionsMenu:(PPManagerCellLayoutMode)mode
 {
+    [self pp_applyLayoutModeInternal:mode saveToDefaults:YES];
+}
+
+- (void)pp_applyLayoutModeInternal:(PPManagerCellLayoutMode)mode saveToDefaults:(BOOL)saveToDefaults
+{
+    [self pp_applyLayoutModeInternal:mode
+                       saveToDefaults:saveToDefaults
+                              animated:YES];
+}
+
+- (void)pp_applyLayoutModeInternal:(PPManagerCellLayoutMode)mode
+                     saveToDefaults:(BOOL)saveToDefaults
+                            animated:(BOOL)animated
+{
     mode = [self pp_sanitizedDataViewLayoutMode:mode];
     if (![self pp_isDataViewLayoutMode:mode]) {
         return;
     }
 
-    [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kPPLayoutModeKey];
+    if (saveToDefaults) {
+        [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"PPLayoutModeChangedByUser"];
+        [[NSUserDefaults standardUserDefaults] setInteger:mode forKey:kPPLayoutModeKey];
+    }
 
     if (!self.layoutManager || !self.collectionView) {
         [self pp_refreshSearchActionsMenu];
@@ -7228,9 +7988,11 @@ presentingViewController:self
     }
 
     if (self.layoutManager.currentLayoutMode == mode) {
-        [PPFunc triggerLightHaptic];
+        if (saveToDefaults) {
+            [PPFunc triggerLightHaptic];
+        }
         if (mode == PPCellLayoutModeDataViewFullDetails) {
-            [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:YES];
+            [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:animated];
         }
         [self pp_refreshSearchActionsMenu];
         return;
@@ -7247,9 +8009,15 @@ presentingViewController:self
         : (forcesTopOnLayoutSwitch
            ? [NSIndexPath indexPathForItem:0 inSection:0]
            : [self pp_centerAnchorIndexPathForLayoutSwitch]);
+    BOOL shouldAnimate = animated &&
+        self.view.window != nil &&
+        !UIAccessibilityIsReduceMotionEnabled();
+    BOOL isAutomaticSectionLayoutSwap = !saveToDefaults && !animated;
 
     PPDataViewLog(@"PPManagerCellLayoutMode selected %ld", (long)mode);
-    [PPFunc triggerLightHaptic];
+    if (saveToDefaults) {
+        [PPFunc triggerLightHaptic];
+    }
     self.layoutManager.items = self.presentedItems;
     [self pp_applyCollectionBehaviorForLayoutMode:mode];
 
@@ -7257,27 +8025,35 @@ presentingViewController:self
         self.layoutManager.currentLayoutMode = mode;
         [self pp_collapseFilterIslandForFullDetailsIfNeededAnimated:NO];
         UICollectionViewLayout *layout = [self pp_collectionLayoutForDataViewMode:mode];
-        [self.collectionView setCollectionViewLayout:layout animated:!UIAccessibilityIsReduceMotionEnabled()];
+        [self.collectionView setCollectionViewLayout:layout animated:shouldAnimate];
     } else {
         [self.layoutManager applyLayoutMode:mode
                            toCollectionView:self.collectionView
-                                   animated:!leavingFullDetails && !UIAccessibilityIsReduceMotionEnabled()];
+                                   animated:shouldAnimate && !leavingFullDetails];
         if (leavingFullDetails) {
             [self pp_restoreFilterIslandAfterLeavingFullDetailsIfNeededAnimated:NO];
-        } else {
+        } else if (!isAutomaticSectionLayoutSwap) {
             [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
         }
     }
 
     [self pp_installPinterestHeightGuardIfNeeded];
     [self.collectionView.collectionViewLayout invalidateLayout];
+    if (isAutomaticSectionLayoutSwap) {
+        [self updateCollectionContentInset];
+        [self.collectionView layoutIfNeeded];
+        [self pp_refreshVisibleUniversalCellsAppearance];
+        [self pp_refreshSearchActionsMenu];
+        return;
+    }
+
     [self applySnapshotAnimated:NO];
     [self.collectionView reloadData];
     [self updateCollectionContentInset];
     [self.collectionView layoutIfNeeded];
     [self pp_scrollToAnchorIndexPath:anchorIndexPath
                          fullDetails:enteringFullDetails
-                            animated:!UIAccessibilityIsReduceMotionEnabled()];
+                            animated:shouldAnimate];
     if (!enteringFullDetails) {
         [self pp_refreshVisibleUniversalCellsAppearance];
     }
@@ -7302,16 +8078,16 @@ presentingViewController:self
     cartNavBtn.accessibilityLabel = kLang(@"Cart");
     [self pp_applyPremiumNavIconButtonAppearance:cartNavBtn emphasized:YES];
     cartNavBtn.clipsToBounds = NO;
-    [cartNavBtn.widthAnchor constraintEqualToConstant:42.0].active = YES;
-    [cartNavBtn.heightAnchor constraintEqualToConstant:42.0].active = YES;
+    [cartNavBtn.widthAnchor constraintEqualToConstant:44.0].active = YES;
+    [cartNavBtn.heightAnchor constraintEqualToConstant:44.0].active = YES;
     self.navCartButton = cartNavBtn;
     [self pp_applyTemporaryHiddenCartButtonState];
 
     UIButton *searchNavBtn = [UIButton buttonWithType:UIButtonTypeCustom];
     searchNavBtn.translatesAutoresizingMaskIntoConstraints = NO;
     searchNavBtn.clipsToBounds = NO;
-    [searchNavBtn.widthAnchor constraintEqualToConstant:42.0].active = YES;
-    [searchNavBtn.heightAnchor constraintEqualToConstant:42.0].active = YES;
+    [searchNavBtn.widthAnchor constraintEqualToConstant:44.0].active = YES;
+    [searchNavBtn.heightAnchor constraintEqualToConstant:44.0].active = YES;
     self.navSearchActionsButton = searchNavBtn;
     [self pp_refreshSearchActionsMenu];
 
@@ -7402,15 +8178,25 @@ presentingViewController:self
                  options:UIMenuOptionsDisplayInline
                 children:@[searchPPAction, filterPPAction]];
 
+    UIMenuOptions layoutMenuOptions = UIMenuOptionsDisplayInline;
+    if (@available(iOS 16.0, *)) {
+        layoutMenuOptions |= UIMenuOptionsDisplayAsPalette;
+    }
+    UIMenu *layoutMenu =
+    [UIMenu menuWithTitle:@""
+                   image:nil
+              identifier:nil
+                 options:layoutMenuOptions
+                children:@[layoutHorizontalRowPPAction,
+                           layoutPintrestPPAction,
+                           layoutLargePPAction,
+                           layoutFullDetailsPPAction]];
+
     return [UIMenu menuWithTitle:(kLang(@"PPDataViewActionsTitle") ?: @"")
                            image:nil
                       identifier:nil
-                        options:0
-                        children:@[layoutHorizontalRowPPAction,
-                                   layoutPintrestPPAction,
-                                   layoutLargePPAction,
-                                   layoutFullDetailsPPAction,
-                                   utilityMenu]];
+                         options:0
+                        children:@[utilityMenu, layoutMenu]];
 }
 
 - (PPDataSection)sectionFromDeepLinkTarget:(PPDeepLinkTarget)target
@@ -7454,7 +8240,7 @@ presentingViewController:self
                                         iconName:[self iconForSection:section]
                                 selectedIconName:[self selectedIconForSection:section]]];
     }
-    PPModrenSegmrnted *sectionsControl = [[PPModrenSegmrnted alloc] initWithItems:sectionItems];
+    ModernSegmentedControlBridge *sectionsControl = [[ModernSegmentedControlBridge alloc] initWithItems:sectionItems];
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
     [sectionsControl setSelectedIndex:[self pp_segmentIndexForSection:PPDataSectionAds] animated:NO];
@@ -7467,6 +8253,17 @@ presentingViewController:self
     PPDataViewControlIslandView *controlIsland = [[PPDataViewControlIslandView alloc] init];
     controlIsland.translatesAutoresizingMaskIntoConstraints = NO;
     controlIsland.accessibilityIdentifier = @"pp.data.sectionsFiltersIsland";
+    controlIsland.layer.actions = @{
+        @"position"      : [NSNull null],
+        @"bounds"        : [NSNull null],
+        @"transform"     : [NSNull null],
+        @"opacity"       : [NSNull null],
+        @"zPosition"     : [NSNull null],
+        @"shadowPath"    : [NSNull null],
+        @"shadowOpacity" : [NSNull null],
+        @"shadowRadius"  : [NSNull null],
+        @"shadowOffset"  : [NSNull null]
+    };
     self.sectionsFiltersContainer = controlIsland;
 
     if (self.input.accentColor) {
@@ -7485,12 +8282,12 @@ presentingViewController:self
     self.sectionsTabBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPIOS26() ? 8.0 : 12.0],
+        [controlIsland.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
         [controlIsland.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPIOS26() ? 18.0 : 16.0],
         [controlIsland.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:PPIOS26() ? -18.0 :  -16.0],
         [sectionsControl.topAnchor constraintEqualToAnchor:controlIsland.topAnchor constant:kPPFilterIslandTopPadding],
-        [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:4.0],
-        [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-4.0]
+        [sectionsControl.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:6.0],
+        [sectionsControl.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-6.0]
     ]];
     [self pp_prepareSectionsSegmentedEntranceInitialState];
 
@@ -7712,14 +8509,14 @@ presentingViewController:self
     
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(3.0, 14.0, 3.0, 14.0);
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
         configuration.imagePadding = 5.0;
 
         configuration.imagePlacement = NSDirectionalRectEdgeTrailing; // RTL-safe chevron placement
         configuration.baseForegroundColor = PPDataViewAccentColor();
         collapseButton.configuration = configuration;
     } else {
-        collapseButton.contentEdgeInsets = UIEdgeInsetsMake(3.0, 14.0, 3.0, 14.0);
+        collapseButton.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
         collapseButton.imageEdgeInsets = UIEdgeInsetsMake(0.0, 5.0, 0.0, -5.0);
     }
     
@@ -7743,11 +8540,11 @@ presentingViewController:self
     self.filterContextBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [filterContextBar.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
-        [filterContextBar.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
+        [filterContextBar.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:10.0],
+        [filterContextBar.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-10.0],
 
-        [providerFilterChip.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
-        [providerFilterChip.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
+        [providerFilterChip.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:10.0],
+        [providerFilterChip.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-10.0],
 
         [filterContextBar.topAnchor constraintEqualToAnchor:filterContainer.bottomAnchor constant:kPPFilterIslandRowSpacing],
         [controlIsland.bottomAnchor constraintEqualToAnchor:filterContextBar.bottomAnchor constant:kPPFilterIslandBottomPadding],
@@ -7768,12 +8565,12 @@ presentingViewController:self
         [providerTextStack.topAnchor constraintGreaterThanOrEqualToAnchor:providerFilterChip.topAnchor constant:3.0],
         [providerTextStack.bottomAnchor constraintLessThanOrEqualToAnchor:providerFilterChip.bottomAnchor constant:-3.0],
 
-        [filterBadgeView.leadingAnchor constraintEqualToAnchor:filterContextBar.leadingAnchor constant:7.0],
+        [filterBadgeView.leadingAnchor constraintEqualToAnchor:filterContextBar.leadingAnchor constant:8.0],
         [filterBadgeView.centerYAnchor constraintEqualToAnchor:filterContextBar.centerYAnchor],
         [filterBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:collapseButton.leadingAnchor constant:-6.0],
         [filterBadgeView.heightAnchor constraintEqualToConstant:kPPFilterContextBadgeHeight],
 
-        [contextIconView.leadingAnchor constraintEqualToAnchor:filterBadgeView.leadingAnchor constant:9.0],
+        [contextIconView.leadingAnchor constraintEqualToAnchor:filterBadgeView.leadingAnchor constant:10.0],
         [contextIconView.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
         [contextIconView.widthAnchor constraintEqualToConstant:13.0],
         [contextIconView.heightAnchor constraintEqualToConstant:13.0],
@@ -7782,10 +8579,11 @@ presentingViewController:self
         [contextLabel.trailingAnchor constraintEqualToAnchor:filterBadgeView.trailingAnchor constant:-10.0],
         [contextLabel.centerYAnchor constraintEqualToAnchor:filterBadgeView.centerYAnchor],
 
-        [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:12.0],
-        [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-12.0],
-        [collapseButton.trailingAnchor constraintEqualToAnchor:filterContextBar.trailingAnchor constant:-7.0],
+        [filterContainer.leadingAnchor constraintEqualToAnchor:controlIsland.leadingAnchor constant:10.0],
+        [filterContainer.trailingAnchor constraintEqualToAnchor:controlIsland.trailingAnchor constant:-10.0],
+        [collapseButton.trailingAnchor constraintEqualToAnchor:filterContextBar.trailingAnchor constant:-2.0],
         [collapseButton.centerYAnchor constraintEqualToAnchor:filterContextBar.centerYAnchor],
+        [collapseButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0],
         [collapseButton.heightAnchor constraintEqualToConstant:kPPFilterCollapseHandleHeight]
     ]];
     [collapseButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -7823,7 +8621,7 @@ presentingViewController:self
     [self pp_syncProviderFilterChipLayoutForCurrentSectionAnimated:NO];
 }
 
-- (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender
+- (void)sectionsSegmentedControlChanged:(ModernSegmentedControlBridge *)sender
 {
     NSInteger selectedIndex = sender.selectedIndex;
     if (selectedIndex < 0 || selectedIndex >= sender.numberOfSegments) {

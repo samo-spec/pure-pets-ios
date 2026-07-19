@@ -7,6 +7,7 @@
 
 
 #import "PPHomeServicesCell.h"
+#import "PPHomePresentationTokens.h"
 
 static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blue, CGFloat alpha) {
     return [UIColor colorWithRed:red / 255.0
@@ -63,24 +64,24 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _cardView.adjustsImageWhenHighlighted = NO;
     _cardView.clipsToBounds = NO;
     _cardView.layer.masksToBounds = NO;
-    _cardView.layer.cornerRadius = PPCornerMedium + 0;
+    _cardView.layer.cornerRadius = PPHomeCardCornerRadius;
     _cardView.layer.cornerCurve = kCACornerCurveContinuous;
     [_cardView pp_setShadowColor:UIColor.blackColor];
-    _cardView.layer.shadowOpacity = 0.06;
-    _cardView.layer.shadowRadius = 12.0;
+    _cardView.layer.shadowOpacity = 0.04;
+    _cardView.layer.shadowRadius = 8.0;
     
     UIButtonConfiguration *config = _cardView.configuration;
-    config.background.cornerRadius = PPCornerMedium + 0;
+    config.background.cornerRadius = PPHomeCardCornerRadius;
     _cardView .configuration = config;
     
     
-    _cardView.layer.shadowOffset = CGSizeMake(0, 8.0);
+    _cardView.layer.shadowOffset = CGSizeMake(0, 3.0);
     [self.contentView addSubview:_cardView];
 
     _surfaceView = [[UIView alloc] init];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     _surfaceView.userInteractionEnabled = NO;
-    _surfaceView.layer.cornerRadius = PPCornerMedium + 0;
+    _surfaceView.layer.cornerRadius = PPHomeCardCornerRadius;
     _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     _surfaceView.layer.masksToBounds = YES;
     [_cardView addSubview:_surfaceView];
@@ -93,7 +94,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _accentGlowView = [[UIView alloc] init];
     _accentGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     _accentGlowView.userInteractionEnabled = NO;
-    _accentGlowView.alpha = 0.26;
+    _accentGlowView.alpha = 0.12;
     _accentGlowView.layer.cornerRadius = 56.0;
     [_surfaceView addSubview:_accentGlowView];
 
@@ -101,7 +102,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _watermarkView.translatesAutoresizingMaskIntoConstraints = NO;
     _watermarkView.userInteractionEnabled = NO;
     _watermarkView.contentMode = UIViewContentModeScaleAspectFit;
-    _watermarkView.alpha = 0.08;
+    _watermarkView.alpha = 0.06;
     [_surfaceView addSubview:_watermarkView];
 
     _iconChipView = [[UIView alloc] init];
@@ -121,6 +122,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _eyebrowLabel = [[UILabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _eyebrowLabel.font = [GM MidFontWithSize:PPFontCaption1];
+    _eyebrowLabel.adjustsFontForContentSizeCategory = YES;
     _eyebrowLabel.text = [kLang(@"services") uppercaseString];
     _eyebrowLabel.hidden = NO;
     [_surfaceView addSubview:_eyebrowLabel];
@@ -128,7 +130,8 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _titleLabel.font = [GM boldFontWithSize:PPFontHeadline +2];
-    _titleLabel.numberOfLines = 1;
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
+    _titleLabel.numberOfLines = 2;
     _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [_surfaceView addSubview:_titleLabel];
 
@@ -185,16 +188,16 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     self.compactConstraints = @[
         [_iconChipView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
         [_iconChipView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
-        [_iconChipView.widthAnchor constraintEqualToConstant:32.0],
-        [_iconChipView.heightAnchor constraintEqualToConstant:32.0],
+        [_iconChipView.widthAnchor constraintEqualToConstant:44.0],
+        [_iconChipView.heightAnchor constraintEqualToConstant:44.0],
 
         [_chevronPillView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
-        [_chevronPillView.widthAnchor constraintEqualToConstant:28.0],
-        [_chevronPillView.heightAnchor constraintEqualToConstant:28.0],
+        [_chevronPillView.widthAnchor constraintEqualToConstant:32.0],
+        [_chevronPillView.heightAnchor constraintEqualToConstant:32.0],
         
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconChipView.trailingAnchor constant:10.0],
         [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
-        [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronPillView.leadingAnchor constant:-10.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_chevronPillView.leadingAnchor constant:-10.0],
 
         
     ];
@@ -263,9 +266,18 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     self.iconChipView.layer.cornerRadius = compact ? PPCornerSmall + 4 : PPCornerMedium;
     self.chevronPillView.layer.cornerRadius = compact ? 15.0 : 17.0;
 
-    self.titleLabel.font = compact ? [GM boldFontWithSize:PPFontHeadline] : [GM boldFontWithSize:PPFontTitle2];
-    self.titleLabel.numberOfLines = compact ? 1 : 2;
-    self.titleLabel.lineBreakMode = compact ? NSLineBreakByTruncatingTail : NSLineBreakByWordWrapping;
+    UIFont *baseTitleFont = compact
+        ? [GM boldFontWithSize:PPFontHeadline]
+        : [GM boldFontWithSize:PPFontTitle2];
+    if (@available(iOS 11.0, *)) {
+        self.titleLabel.font =
+            [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+                scaledFontForFont:baseTitleFont maximumPointSize:compact ? 22.0 : 28.0];
+    } else {
+        self.titleLabel.font = baseTitleFont;
+    }
+    self.titleLabel.numberOfLines = 2;
+    self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
     [self applyAppearanceForCurrentService];
 }
@@ -383,7 +395,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     [_cardView setNeedsLayout];
     self.surfaceView.layer.cornerRadius = _cardView.layer.cornerRadius;
     
-    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.16];
+    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.10 : 0.08];
     self.iconChipView.backgroundColor = darkMode
     ? [UIColor.whiteColor colorWithAlphaComponent:0.08]
     : [UIColor.whiteColor colorWithAlphaComponent:0.62];
@@ -407,6 +419,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
                                               alwaysTemplate:YES];
 
     self.iconView.image = iconImage;
+    self.iconView.hidden = NO;
     self.iconView.tintColor = darkMode ? UIColor.whiteColor : accentColor;
     
   
@@ -427,6 +440,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     self.iconView.tintColor = darkMode ? UIColor.whiteColor : accentColor;
     self.cardView.accessibilityLabel = service.title;
     self.cardView.accessibilityHint = kLang(@"Open") ?: @"Open";
+    self.cardView.accessibilityTraits = UIAccessibilityTraitButton;
 }
 
 #pragma mark - Configuration

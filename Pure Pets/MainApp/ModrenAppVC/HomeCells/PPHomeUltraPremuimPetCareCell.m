@@ -48,6 +48,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
                        peakAlpha:(CGFloat)peakAlpha;
 - (void)pp_applyFloatingAmbientCirclePaletteWithAccent:(UIColor *)accent
                                                   dark:(BOOL)dark;
+- (void)pp_updateAdaptiveLayout;
 @end
 
 @implementation PPHomeUltraPremuimPetCareCell {
@@ -78,6 +79,9 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     UIView *_ctaView;
     UILabel *_ctaLabel;
     UIImageView *_ctaArrowView;
+    NSLayoutConstraint *_contentLeadingToPortalConstraint;
+    NSLayoutConstraint *_contentLeadingToSurfaceConstraint;
+    NSLayoutConstraint *_ctaHeightConstraint;
 
     NSString *_currentAnimationName;
     NSInteger _animationLoadToken;
@@ -160,6 +164,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     NSMutableArray<UIView *> *floatingAmbientCircleViews = [NSMutableArray arrayWithCapacity:5];
     for (NSUInteger idx = 0; idx < 5; idx++) {
         UIView *circleView = [self pp_makeFloatingAmbientCircleView];
+        circleView.hidden = YES;
         [_surfaceView addSubview:circleView];
         [floatingAmbientCircleViews addObject:circleView];
     }
@@ -271,7 +276,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaView.userInteractionEnabled = NO;
     _ctaView.layer.borderWidth = 0.1;
-    PPApplyContinuousCorners(_ctaView, 16.0);
+    PPApplyContinuousCorners(_ctaView, PPHomeControlCornerRadius);
     [_surfaceView addSubview:_ctaView];
 
     _ctaLabel = [[UILabel alloc] init];
@@ -291,6 +296,16 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     UIView *circle2 = _floatingAmbientCircleViews[2];
     UIView *circle3 = _floatingAmbientCircleViews[3];
     UIView *circle4 = _floatingAmbientCircleViews[4];
+
+    _contentLeadingToPortalConstraint =
+        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroPortalView.trailingAnchor
+                                                    constant:18.0];
+    _contentLeadingToSurfaceConstraint =
+        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor
+                                                    constant:20.0];
+    _ctaHeightConstraint =
+        [_ctaView.heightAnchor constraintEqualToConstant:PPHomeButtonHeight];
+
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -332,12 +347,12 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [circle4.centerXAnchor constraintEqualToAnchor:_surfaceView.centerXAnchor constant:24.0],
         [circle4.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:82.0],
 
-        [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:22.0],
+        [_topAccentLineView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
         [_topAccentLineView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
         [_topAccentLineView.widthAnchor constraintEqualToConstant:54.0],
         [_topAccentLineView.heightAnchor constraintEqualToConstant:4.0],
 
-        [_heroPortalView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:18.0],
+        [_heroPortalView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
         [_heroPortalView.centerYAnchor constraintEqualToAnchor:_surfaceView.centerYAnchor constant:1.0],
         [_heroPortalView.widthAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
         [_heroPortalView.heightAnchor constraintEqualToConstant:PPUltraCareHeroPortalSize],
@@ -367,14 +382,14 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_lottieHeaderView.widthAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
         [_lottieHeaderView.heightAnchor constraintEqualToConstant:PPUltraCareAnimationSize],
 
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroPortalView.trailingAnchor constant:16.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
+        _contentLeadingToPortalConstraint,
+        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:20.0],
         [_eyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:24.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
+        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
 
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
         [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:5.0],
@@ -382,8 +397,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_ctaView.topAnchor constant:-PPSpaceXS],
 
         [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-14.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:34.0],
+        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-16.0],
+        _ctaHeightConstraint,
         [_ctaView.widthAnchor constraintLessThanOrEqualToAnchor:_titleLabel.widthAnchor],
         [_ctaView.widthAnchor constraintGreaterThanOrEqualToConstant:128.0],
 
@@ -396,6 +411,8 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
         [_ctaArrowView.widthAnchor constraintEqualToConstant:13.0],
         [_ctaArrowView.heightAnchor constraintEqualToConstant:13.0],
     ]];
+
+    [self pp_updateAdaptiveLayout];
 }
 
 - (UIView *)pp_makeAmbientGlowView
@@ -403,6 +420,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     UIView *view = [[UIView alloc] init];
     view.translatesAutoresizingMaskIntoConstraints = NO;
     view.userInteractionEnabled = NO;
+    view.hidden = YES;
     view.layer.shadowOffset = CGSizeZero;
     view.layer.shadowRadius = 42.0;
     view.layer.shadowOpacity = 0.16;
@@ -499,6 +517,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 {
     [super layoutSubviews];
 
+    [self pp_updateAdaptiveLayout];
     _surfaceGradientLayer.frame = _surfaceView.bounds;
     _surfaceGradientLayer.cornerRadius = PPUltraCareSurfaceCornerRadius;
 
@@ -556,6 +575,20 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     [_surfaceView bringSubviewToFront:_subtitleLabel];
     [_surfaceView bringSubviewToFront:_ctaView];
     [_surfaceView bringSubviewToFront:_lottieHeaderView];
+}
+
+- (void)pp_updateAdaptiveLayout
+{
+    BOOL accessibilityCategory =
+        UIContentSizeCategoryIsAccessibilityCategory(self.traitCollection.preferredContentSizeCategory);
+    BOOL usesFullWidthContent = _contentLeadingToSurfaceConstraint.active;
+    if (usesFullWidthContent != accessibilityCategory) {
+        _contentLeadingToPortalConstraint.active = !accessibilityCategory;
+        _contentLeadingToSurfaceConstraint.active = accessibilityCategory;
+    }
+    _heroPortalView.hidden = accessibilityCategory;
+    _lottieHeaderView.hidden = accessibilityCategory || !_animationReady;
+    _ctaHeightConstraint.constant = accessibilityCategory ? 52.0 : PPHomeButtonHeight;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -667,7 +700,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
     _orbitNodeView.backgroundColor = accent;
     _orbitNodeView.layer.shadowColor =
         PPUltraCareResolvedColor(accent, self.traitCollection).CGColor;
-    _orbitNodeView.layer.shadowOpacity = dark ? 0.34 : 0.24;
+    _orbitNodeView.layer.shadowOpacity = dark ? 0.18 : 0.12;
     _orbitNodeView.layer.shadowRadius = 5.0;
     _orbitNodeView.layer.shadowOffset = CGSizeZero;
     _fallbackIconView.tintColor = accent;
@@ -1155,6 +1188,7 @@ static UIColor *PPUltraCareResolvedColor(UIColor *color, UITraitCollection *trai
 - (void)pp_contentSizeCategoryDidChange:(__unused NSNotification *)notification
 {
     [self pp_applyTypography];
+    [self pp_updateAdaptiveLayout];
     [self setNeedsLayout];
 }
 

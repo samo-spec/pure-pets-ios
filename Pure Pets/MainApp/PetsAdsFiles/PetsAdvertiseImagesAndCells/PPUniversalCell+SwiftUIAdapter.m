@@ -18,10 +18,10 @@
 + (Class)pp_cellClass
 {
     if (@available(iOS 16.0, *)) {
-        if (BBUniversalCellUseSwiftUI) {
+   
             Class swiftCell = [self pp_swiftUICellClass];
             if (swiftCell) return swiftCell;
-        }
+        
     }
     return self;
 }

@@ -39,7 +39,7 @@ static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 32.0;
 static CGFloat const PPUniversalFavoriteButtonVisualScale = 0.84;
 static CGFloat const PPUniversalHomeOuterInset = 12.0;
-static CGFloat const PPUniversalHomeTitleHeight = 40.0;
+static CGFloat const PPUniversalHomeTitleHeight = 24.0;
 static CGFloat const PPUniversalHomePriceHeight = 30.0;
 static CGFloat const PPUniversalHomeControlSize = 44.0;
 static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
@@ -2032,7 +2032,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     CGFloat titleHeight = homePresentation
         ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
-            ? 56.0
+            ? 34.0
             : PPUniversalHomeTitleHeight)
         : PPUniversalCompactTitleHeight;
     CGFloat priceHeight = homePresentation
@@ -2342,11 +2342,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_configureTextsWithViewModel:(PPUniversalCellViewModel *)vm
 {
-    self.titleLabel.text = PPUniversalCellSafeString(vm.title);
-    self.titleLabel.accessibilityLabel = PPUniversalCellSafeString(vm.title);
+    BOOL homePresentation = [self pp_isHostedByHomeController];
     BOOL isAdContext = [self pp_isAdContext];
     BOOL usesDataViewAdPresentation = [self pp_usesDataViewAdPresentation];
     BOOL horizontalRow = [self pp_usesHorizontalRowPresentation];
+    NSString *rawTitle = PPUniversalCellTrimmedString(vm.title);
+    self.titleLabel.text = rawTitle;
+    self.titleLabel.accessibilityLabel = rawTitle;
     if (horizontalRow) {
         self.subtitleLabel.text = [self pp_horizontalRowDescriptionSubtitleTextForViewModel:vm];
     } else if (isAdContext) {
@@ -2365,10 +2367,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.titleLabel.text = @"";
     }
     self.titleLabel.hidden = shouldHideTitle;
-    BOOL homePresentation = [self pp_isHostedByHomeController];
     CGFloat titleHeight = homePresentation
         ? (PPHomeUsesAccessibilityTextSize(self.traitCollection)
-            ? 56.0
+            ? 34.0
             : PPUniversalHomeTitleHeight)
         : PPUniversalCompactTitleHeight;
     self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : titleHeight;
@@ -2879,7 +2880,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.imageAspectConstraint.active = NO;
 
     BOOL homePresentation = [self pp_isHostedByHomeController];
-    self.titleLabel.numberOfLines = expandedRow || adsPinterest || homePresentation ? 2 : 1;
+    self.titleLabel.numberOfLines = expandedRow || adsPinterest ? 2 : 1;
     self.subtitleLabel.numberOfLines = expandedRow ? 2 : 1;
     self.titleHeightConstraint.active = !expandedRow && !adsPinterest;
     self.priceHeightConstraint.active = !expandedRow;
@@ -2988,7 +2989,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             border = [brand colorWithAlphaComponent:0.14];
         } else {
             title = PPUniversalCellLocalizedString(@"addToCart", @"Add to cart");
-            imageName = @"plus.cart.fill";
+            imageName = @"cart.plus.fill";
         }
     } else {
         title = PPUniversalCellLocalizedString(@"Details", @"Details");

@@ -13,6 +13,9 @@
 
 #import <Foundation/Foundation.h>
 
+
+@import FirebaseFirestore;
+
 @class UserPaymentInstrument;
 NS_ASSUME_NONNULL_BEGIN
 

@@ -10,6 +10,8 @@
 #import "PPBannerViewModel.h"
 #import "PPCategoryCardCell.h"
 #import "PPHomeFunc.h"
+#import "PPHomeItem.h"
+#import "PPHomeActionCell.h"
 #import "PPHomeViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPSPinnerView.h"
@@ -39,7 +41,7 @@
 #import "PurchasedItemsViewController.h"
 #import "PPOrder.h"
 #import <os/signpost.h>
-
+#import "PPUniversalCellFlags.h"
 static os_log_t PPHomePerformanceLog(void) {
     static os_log_t log;
     static dispatch_once_t onceToken;
@@ -2453,7 +2455,6 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionAdopt),
         @(PPHomeSectionBuyAgain),
-        @(PPHomeSectionServices),
     ];
 }
 
@@ -2478,7 +2479,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 @"PPHomeSectionHero" : @(PPHomeSectionHero),
                 @"PPHomeSectionQuickActions" : @(PPHomeSectionQuickActions),
                 @"PPHomeSectionCurrentOrders" : @(PPHomeSectionCurrentOrders),
-                @"PPHomeSectionServices" : @(PPHomeSectionServices),
                 @"PPHomeSectionCarousel" : @(PPHomeSectionCarousel),
                 @"PPHomeSectionMainKinds" : @(PPHomeSectionMainKinds),
                 @"PPHomeSectionSuggestions" : @(PPHomeSectionSuggestions),
@@ -2508,8 +2508,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (BOOL)pp_isHomeSectionVisibleInConfig:(PPHomeSection)section {
     if (self.homeConfigSections.count == 0) {
         switch (section) {
-            case PPHomeSectionServices:
-                return [self pp_defaultVisibilityForHomeSection:section];
             case PPHomeSectionPremiumCare:
                 return self.homePremiumCareVisible;
             default:
@@ -2641,8 +2639,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
 - (BOOL)pp_defaultVisibilityForHomeSection:(PPHomeSection)section {
     switch (section) {
-        case PPHomeSectionServices:
-            return NO;
         default:
             return YES;
     }
@@ -2697,7 +2693,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheBackgroundGlowsFadedKey : @(glowsFaded),
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit),
         PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar),
-        @"BBUniversalCellUseSwiftUI" : @(BBUniversalCellUseSwiftUI)
+        @"BBUniversalCellUseSwiftUI" : @(YES)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
     [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
@@ -2953,15 +2949,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         [quickActions addObject:item];
     }
     safeAppend(quickActions, @(PPHomeSectionQuickActions));
-
-    // ✅ Services
-    NSMutableArray *servicesItems = [NSMutableArray array];
-    for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
-        PPHomeItem *item = [PPHomeItem new];
-        item.payload = service;
-        [servicesItems addObject:item];
-    }
-    safeAppend(servicesItems, @(PPHomeSectionServices));
 
     // ✅ Current Orders
     NSArray *currentOrderItems = [self pp_homeCurrentOrderItems];
@@ -3419,11 +3406,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 [self reloadSection:PPHomeSectionQuickActions];
                 snapshot = self.dataSource.snapshot;
             }
-            if ([self pp_isSectionPresent:PPHomeSectionServices inSnapshot:snapshot]) {
-                [self reloadSection:PPHomeSectionServices];
-                snapshot = self.dataSource.snapshot;
-            }
-
             NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
             NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray arrayWithCapacity:visibleIndexPaths.count];
             for (NSIndexPath *indexPath in visibleIndexPaths) {
@@ -4017,14 +3999,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             for (PPHomeQuickActionModel *qa in [self pp_homeQuickActions]) {
                 PPHomeItem *item = [PPHomeItem new];
                 item.payload = qa;
-                [items addObject:item];
-            }
-            break;
-
-        case PPHomeSectionServices:
-            for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
-                PPHomeItem *item = [PPHomeItem new];
-                item.payload = service;
                 [items addObject:item];
             }
             break;
@@ -7850,8 +7824,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPMainKindsCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
-    [self.collectionView registerClass:PPHomePetProfileCardCell.class
+     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
     if (PPULTRA_CARE_IS_ACTIVATED) {
         [self.collectionView registerClass:PPHomeUltraPremuimPetCareCell.class
@@ -7871,8 +7844,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
-    [self.collectionView registerClass:PPHomeServicesCell.class forCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier];
-    [self.collectionView registerClass:PPBannerCollectionCell.class forCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier];
+     [self.collectionView registerClass:PPBannerCollectionCell.class forCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier];
     [self.collectionView registerClass:PetAdoptCollectionViewCell.class forCellWithReuseIdentifier:@"PetAdoptCollectionViewCell"];
 
     [self.collectionView registerClass:PPSectionHeaderView.class
@@ -8249,41 +8221,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return cell;
         }
         */
-
-        if (section == PPHomeSectionServices) {
-            PPHomeServicesCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier
-                                                                                 forIndexPath:indexPath];
-
-            if (item.payload == [NSNull null]) {
-                [cell configureSkeleton];
-                pp_stageCell(cell); return cell;
-            }
-
-            PPHomeServiceItem *service = (PPHomeServiceItem *)item.payload;
-            [cell configureWithService:service];
-
-            __weak typeof(cell) weakCell = cell;
-             cell.onTap = ^{
-                __strong typeof(weakCell) cell = weakCell;
-                NSIndexPath *path = [collectionView indexPathForCell:cell];
-
-                if (path) {
-                    NSLog(@"onTap");
-                    [strongSelf collectionView:collectionView
-                        didSelectItemAtIndexPath:path];
-                }
-            };
-            cell.onTapMenu = ^(PPHomeServiceItem *_Nonnull service, MainKindsModel *_Nonnull mainKindModel) {
-                NSLog(@"onTapMenu %ld", mainKindModel.ID);
-                PPDeepLinkTarget targt = service.type == PPHomeServiceTypeGrooming ? PPDeepLinkTargetGrooming : service.type == PPHomeServiceTypeTraining ? PPDeepLinkTargetTraning : PPDeepLinkTargetFood;
-                [weakSelf handleDeepLinkWithTarget:targt
-                                          mainKind:mainKindModel
-                                            source:PPInputSourceHomeServicesSection];
-            };
-
-            pp_stageCell(cell); return cell;
-        }
-
 
             if (section == PPHomeSectionAdopt) {
             PetAdoptCollectionViewCell *cell =
@@ -9843,22 +9780,6 @@ shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
         case PPHomeSectionQuickActions:
             return;
 
-        case PPHomeSectionServices: {
-            [self pp_emitSelectionHaptic];
-            NSLog(@"[Home][Tap][Services] tapped service=%@",
-                  item.payload);
-            PPHomeServiceItem *service =
-                (PPHomeServiceItem *)item.payload;
-
-            if (![service isKindOfClass:PPHomeServiceItem.class]) {
-                return;
-            }
-
-            [self handleServiceSelection:service
-                           fromIndexPath:indexPath];
-            break;
-        }
-
         case PPHomeSectionMainKinds: {
             [self pp_emitSelectionHaptic];
             if (![item.payload isKindOfClass:MainKindsModel.class]) {
@@ -10090,38 +10011,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     return self.selectedCategory &&
            kind.ID == self.selectedCategory.ID;
-}
-- (void)handleServiceSelection:(PPHomeServiceItem *)service
-                 fromIndexPath:(NSIndexPath *)indexPath {
-    switch (service.type) {
-        case PPHomeServiceTypeMainService:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetServices
-                                  mainKind:nil
-                                    source:PPInputSourceHomeServicesSection];
-            break;
-
-        case PPHomeServiceTypeVet:
-            [self openNearestVet];
-            break;
-
-        case PPHomeServiceTypeGrooming:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetGrooming
-                                  mainKind:nil
-                                    source:PPInputSourceHomeServicesSection];
-            break;
-
-        case PPHomeServiceTypeTraining:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetTraning
-                                  mainKind:nil
-                                    source:PPInputSourceHomeServicesSection];
-            break;
-
-        case PPHomeServiceTypeFood:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetFood
-                                  mainKind:nil
-                                    source:PPInputSourceHomeServicesSection];
-            break;
-    }
 }
 
 - (CGFloat)currentYOffsetForSection:(PPHomeSection)section {
@@ -11787,7 +11676,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
     [NSLayoutConstraint deactivateConstraints:sizeConstraints];
 
-    CGFloat cartButtonSide = 40.0;
+    CGFloat cartButtonSide = 44.0;
     self.homeCartButton.translatesAutoresizingMaskIntoConstraints = YES;
     self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
@@ -11798,15 +11687,18 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (@available(iOS 26.0, *)) {
         UIButtonConfiguration *configuration = [UIButtonConfiguration plainButtonConfiguration];
         configuration.image = [[UIImage systemImageNamed:@"cart"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 7.0, 7.0, 7.0);
         configuration.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
+        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        UIColor *surfaceColor = PPHomeSemanticCardSurfaceColor() ?: (AppForgroundColr ?: UIColor.secondarySystemBackgroundColor);
+        UIColor *strokeColor = PPHomeSemanticHairlineColor() ?: UIColor.separatorColor;
         UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
         background.backgroundInsets = NSDirectionalEdgeInsetsZero;
-        background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ?: [UIColor colorWithWhite:1.0 alpha:0.72];
-        background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.16];
-        background.strokeWidth = 0.7;
+        background.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.36 : 0.74];
+        background.strokeColor = [strokeColor colorWithAlphaComponent:isDark ? 0.42 : 0.30];
+        background.strokeWidth = 0.65;
         background.cornerRadius = cartButtonSide * 0.5;
         configuration.background = background;
         self.homeCartButton.configuration = configuration;
@@ -12033,12 +11925,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.homeCartButton.configuration;
         if (config) {
+            BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+            UIColor *surfaceColor = PPHomeSemanticCardSurfaceColor() ?: (AppForgroundColr ?: UIColor.secondarySystemBackgroundColor);
+            UIColor *strokeColor = PPHomeSemanticHairlineColor() ?: UIColor.separatorColor;
             if (count <= 0) {
-                config.background.backgroundColor = UIColor.clearColor;
-                config.background.strokeColor = UIColor.clearColor;
+                config.background.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.30 : 0.68];
+                config.background.strokeColor = [strokeColor colorWithAlphaComponent:isDark ? 0.34 : 0.24];
             } else {
-                config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.42] ?: [UIColor colorWithWhite:1.0 alpha:0.72];
-                config.background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.16];
+                config.background.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.38 : 0.76];
+                config.background.strokeColor = [strokeColor colorWithAlphaComponent:isDark ? 0.42 : 0.30];
             }
             self.homeCartButton.configuration = config;
         }
@@ -12067,7 +11962,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [strongBadgeHost removeBadge];
         [strongBadgeHost addBadgeWithContent:badgeText
                                   badgeColor:badgeColor
-                                     offset:CGPointMake(-10, 10)
+                                     offset:CGPointMake(-9, 9)
                                 badgeRadius:9.5];
     };
 

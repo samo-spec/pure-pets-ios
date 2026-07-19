@@ -59,7 +59,7 @@ static inline CGFloat PPHomeProductCardHeightForContainer(CGFloat width)
     if (PPHomeUsesAccessibilityText()) {
         return width >= 700.0 ? 424.0 : 416.0;
     }
-    return width >= 700.0 ? 360.0 : 344.0;
+    return width >= 700.0 ? 338.0 : 324.0;
 }
 
 static inline CGFloat PPHomeSectionHeaderHeight(BOOL includesSubtitle)
