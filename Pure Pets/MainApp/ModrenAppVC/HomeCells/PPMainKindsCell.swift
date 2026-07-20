@@ -405,7 +405,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.surfaceView.layer.borderColor = (
                 self.usesRestoredSelectionAppearance && selected
                     ? UIColor.clear
-                    : (selected ? accent.withAlphaComponent(0.42) : PPMainKindsCellPalette.border)
+                    : (selected ? accent.withAlphaComponent(0.22) : PPMainKindsCellPalette.border)
             ).resolvedColor(with: self.traitCollection).cgColor
             self.surfaceView.layer.borderWidth = self.usesRestoredSelectionAppearance && selected
                 ? 0
@@ -430,7 +430,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
             self.imagePlateView.layer.borderWidth = selected
                 ? 0
-                : PPMainKindsCellMetrics.regularBorderWidth
+            : 0.25
             self.titleLabel.textColor = selected ? accent : PPMainKindsCellPalette.primaryText
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
             self.selectionIndicatorView.backgroundColor = accent

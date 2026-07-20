@@ -72,15 +72,12 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.clipsToBounds = NO;
 
     _accentStyle = PPHeroGlassAccentStyleBar;
-    self.apexView.overrideCenterGlowColor = nil;
-    self.apexView.overrideBottomGlowColor = nil;
-    self.apexView.overrideTopGlowColor = nil;
-    self.apexView.overrideSurfureColor = nil;
-    self.apexView.overrideSurfaceColor = nil;
     _cornerGlowOpacityMultiplier = 1.0;
     _glowDirection = 0; // Default: systemDirection
-    _PPHeroApexUseShimmer = NO;
-    _PPHeroApexUseUnderFingerMotion = NO;
+    // Apex defaults: optical sweep and passive under-finger response are on.
+    // Both remain externally switchable through the existing Objective-C API.
+    _PPHeroApexUseShimmer = YES;
+    _PPHeroApexUseUnderFingerMotion = YES;
 
     _overrideCornerRadius = 0.0;
     _overrideCornerRaduis = 0.0;

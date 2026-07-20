@@ -147,46 +147,65 @@ struct PPHeroApexMotionStateMachine {
 }
 
 enum PPHeroApexMotionTokens {
-    static let entranceDuration: TimeInterval = 0.46
-    static let overlayEntranceDuration: TimeInterval = 0.30
-    static let overlayEntranceDelay: TimeInterval = 0.05
-    static let accentTransitionDuration: CFTimeInterval = 0.22
-    static let paletteTransitionDuration: CFTimeInterval = 0.42
-    static let interactionSettleDuration: TimeInterval = 0.30
-    static let fieldDriftCycleDuration: CFTimeInterval = 31
-    static let signatureSweepCycleDuration: CFTimeInterval = 4.8
+    // Entrance is deliberately slower than a control highlight but faster than
+    // a navigation transition. It should register as material resolving into
+    // focus, never as a card flying onto the screen.
+    static let entranceDuration: TimeInterval = 0.62
+    static let overlayEntranceDuration: TimeInterval = 0.42
+    static let overlayEntranceDelay: TimeInterval = 0.07
 
-    static let entranceScale: CGFloat = 1.022
-    static let entranceTranslationY: CGFloat = 4
-    static let horizontalParallax: CGFloat = 2.6
-    static let verticalParallax: CGFloat = 1.9
-    static let maximumTouchTranslationX: CGFloat = 4.0
-    static let maximumTouchTranslationY: CGFloat = 3.0
-    static let maximumTouchRotation: CGFloat = 0.018
-    static let reactiveLightTravelRatio: CGFloat = 0.20
-    static let touchDepthScale: CGFloat = 0.996
-    static let touchLightScale: CGFloat = 1.018
-    static let touchLensBaseScale: CGFloat = 0.985
-    static let touchLensVelocityBloom: CGFloat = 0.035
-    static let touchLensActiveAlpha: CGFloat = 0.48
-    static let touchVelocityForMaximumBloom: CGFloat = 1_600
+    // Optical state changes use one family of curves, so accent, palette and
+    // interaction updates feel authored by the same motion system.
+    static let accentTransitionDuration: CFTimeInterval = 0.28
+    static let paletteTransitionDuration: CFTimeInterval = 0.54
+    static let interactionSettleDuration: TimeInterval = 0.44
+    static let tapPulseDuration: CFTimeInterval = 0.58
+    static let contactWaveDuration: CFTimeInterval = 0.72
+
+    // Ambient cycles are intentionally long. The hero should feel alive when
+    // revisited, not visibly loop while the user is reading it.
+    static let fieldDriftCycleDuration: CFTimeInterval = 43
+    static let reactiveLightCycleDuration: CFTimeInterval = 13.6
+    static let signatureSweepCycleDuration: CFTimeInterval = 9.4
+
+    static let entranceScale: CGFloat = 1.014
+    static let entranceTranslationY: CGFloat = 7
+    static let horizontalParallax: CGFloat = 2.15
+    static let verticalParallax: CGFloat = 1.55
+
+    // Direct manipulation remains intentionally microscopic. These values are
+    // large enough to be felt at 120 Hz without bending copy or controls.
+    static let maximumTouchTranslationX: CGFloat = 3.6
+    static let maximumTouchTranslationY: CGFloat = 2.7
+    static let maximumTouchRotation: CGFloat = 0.012
+    static let reactiveLightTravelRatio: CGFloat = 0.34
+    static let touchDepthScale: CGFloat = 0.994
+    static let touchLightScale: CGFloat = 1.014
+    static let touchLensBaseScale: CGFloat = 0.972
+    static let touchLensVelocityBloom: CGFloat = 0.055
+    static let touchLensActiveAlpha: CGFloat = 0.52
+    static let touchVelocityForMaximumBloom: CGFloat = 1_850
+    static let touchSmoothingResponse: CGFloat = 0.31
+
+    static let tapMaximumDuration: TimeInterval = 0.34
+    static let tapMaximumTravel: CGFloat = 14
 
     static var entranceTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(
-            controlPoint1: CGPoint(x: 0.22, y: 1),
-            controlPoint2: CGPoint(x: 0.36, y: 1)
+            controlPoint1: CGPoint(x: 0.16, y: 0.86),
+            controlPoint2: CGPoint(x: 0.24, y: 1)
         )
     }
 
     static var overlayTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(
-            controlPoint1: CGPoint(x: 0.23, y: 1),
-            controlPoint2: CGPoint(x: 0.32, y: 1)
+            controlPoint1: CGPoint(x: 0.20, y: 0.82),
+            controlPoint2: CGPoint(x: 0.28, y: 1)
         )
     }
 
     static var ambientTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.45, 0, 0.55, 1)
+        CAMediaTimingFunction(controlPoints: 0.37, 0, 0.63, 1)
     }
 
     static var accentTimingFunction: CAMediaTimingFunction {
@@ -198,7 +217,6 @@ enum PPHeroApexMotionTokens {
     }
 
     static var signatureSweepTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.20, 0.78, 0.28, 1)
+        CAMediaTimingFunction(controlPoints: 0.18, 0.74, 0.24, 1)
     }
-
 }

@@ -306,6 +306,7 @@ NS_ASSUME_NONNULL_BEGIN
     UISheetPresentationControllerDetent *fullDent = UISheetPresentationControllerDetent.mediumDetent;
 
     UISheetPresentationControllerDetent *customMedium80 = UISheetPresentationControllerDetent.mediumDetent;
+    UISheetPresentationControllerDetent *customMedium95 = UISheetPresentationControllerDetent.largeDetent;
     UISheetPresentationControllerDetent *customMedium300 = UISheetPresentationControllerDetent.mediumDetent;
     UISheetPresentationControllerDetent *adsViewDent = UISheetPresentationControllerDetent.mediumDetent;
     UISheetPresentationControllerDetent *customMedium350 = UISheetPresentationControllerDetent.mediumDetent;
@@ -327,6 +328,10 @@ NS_ASSUME_NONNULL_BEGIN
         
         customMedium80 = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"customMedium80"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
             return height * 0.85; // your custom medium height
+        }];
+
+        customMedium95 = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"customMedium95"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+            return context.maximumDetentValue * 0.95;
         }];
         
         adsViewDent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"adsViewDent"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
@@ -374,6 +379,11 @@ NS_ASSUME_NONNULL_BEGIN
                 case PPSheetDetentStyle80:
                     sheet.detents = @[customMedium80];
                     sheet.largestUndimmedDetentIdentifier = UISheetPresentationControllerDetentIdentifierMedium;
+                    break;
+
+                case PPSheetDetentStyle95:
+                    sheet.detents = @[customMedium95];
+                    sheet.largestUndimmedDetentIdentifier = nil;
                     break;
                     
                 case PPSheetDetentStyle300:

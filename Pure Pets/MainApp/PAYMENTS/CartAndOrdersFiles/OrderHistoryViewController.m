@@ -545,8 +545,34 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     // Complete hero-card background. Keep all legacy blur/gradient/orb material out
     // of this surface so PPBackgroundView is the single background source.
     PPBackgroundView *glass = [PPBackgroundView new];
+    glass.accentStyle =  PPHeroGlassAccentStyleFullScreen;
+    glass.PPHeroApexUseUnderFingerMotion = NO;
+    
+    glass.overrideSurfaceColor = bageColor;
+
+    // Small brand influence
+    glass.accentColorOverride =
+        [UIColor colorNamed:@"AppPrimaryColor"];
+    
+    
+    glass.overrideTopGlowColor =
+        [UIColor colorNamed:@"AppPrimaryColorShainer"];
+
+    glass.overrideCenterGlowColor =
+        [UIColor colorNamed:@"AppPrimaryColor"];
+
+    glass.overrideBottomGlowColor =
+        [UIColor colorNamed:@"AppPrimaryColor"];
+    
     [self.heroSurfaceView insertSubview:glass atIndex:0];
+    
     self.heroGlassBackground = glass;
+    
+    self.heroGlassBackground.overrideSurfaceColor = nil;
+    self.heroGlassBackground.accentColorOverride = nil;
+    self.heroGlassBackground.overrideTopGlowColor = nil;
+    self.heroGlassBackground.overrideCenterGlowColor = nil;
+    self.heroGlassBackground.overrideBottomGlowColor = nil;
 
     // Search Toggle Button (replaces trail icon)
     self.searchToggleButton = [UIButton buttonWithType:UIButtonTypeCustom];

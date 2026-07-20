@@ -61,7 +61,6 @@ public final class PPSavedForLaterSheetContentController: UIViewController {
             },
             onRemove: { [weak self] item in
                 guard let self else { return }
-                self.store.beginPending(item: item, operation: .remove)
                 self.delegate?.savedForLaterSheetContentController(self, didRequestRemove: item)
             }
         )
@@ -77,7 +76,7 @@ public final class PPSavedForLaterSheetContentController: UIViewController {
             controller.view.topAnchor.constraint(equalTo: view.topAnchor),
             controller.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             controller.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            controller.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            controller.view.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 0),
         ])
         controller.didMove(toParent: self)
         hostingController = controller
@@ -101,6 +100,11 @@ public final class PPSavedForLaterSheetContentController: UIViewController {
     @objc(showStatusMessage:success:)
     public func showStatusMessage(_ message: String, success: Bool) {
         store.showStatus(message, kind: success ? .success : .error)
+    }
+
+    @objc(markMoveSucceededForItemID:)
+    public func markMoveSucceeded(for itemID: String) {
+        store.markCompleted(itemID: itemID, operation: .move)
     }
 
     @objc(showErrorMessage:)
@@ -133,11 +137,14 @@ private final class PPSavedForLaterSheetStore: ObservableObject {
     @Published private(set) var presentation: PPSavedForLaterPresentation = .loading
     @Published private(set) var pendingItemID: String?
     @Published private(set) var pendingOperation: PPSavedForLaterPendingOperation?
+    @Published private(set) var completedItemID: String?
+    @Published private(set) var completedOperation: PPSavedForLaterPendingOperation?
     @Published private(set) var hasEntered = false
     @Published private(set) var statusMessage: String?
     @Published private(set) var statusKind: PPSavedForLaterStatusKind = .success
 
     private var statusToken = UUID()
+    private var completionToken = UUID()
 
     var countText: String {
         String(
@@ -184,11 +191,55 @@ private final class PPSavedForLaterSheetStore: ObservableObject {
     func beginPending(item: CartItem, operation: PPSavedForLaterPendingOperation) {
         pendingItemID = item.ppSavedStableID
         pendingOperation = operation
+        clearCompleted()
     }
 
     func setPendingItemID(_ itemID: String?, operation: PPSavedForLaterPendingOperation?) {
-        pendingItemID = itemID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanItemID = itemID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        pendingItemID = cleanItemID?.isEmpty == false ? cleanItemID : nil
         pendingOperation = operation
+        if pendingItemID != nil {
+            clearCompleted()
+        }
+    }
+
+    func markCompleted(itemID: String, operation: PPSavedForLaterPendingOperation) {
+        let cleanItemID = itemID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanItemID.isEmpty else { return }
+
+        let apply = {
+            self.completedItemID = cleanItemID
+            self.completedOperation = operation
+        }
+
+        if UIAccessibility.isReduceMotionEnabled {
+            apply()
+        } else {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                apply()
+            }
+        }
+
+        let token = UUID()
+        completionToken = token
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.05) { [weak self] in
+            guard let self, self.completionToken == token else { return }
+            self.clearCompleted()
+        }
+    }
+
+    func clearCompleted() {
+        let apply = {
+            self.completedItemID = nil
+            self.completedOperation = nil
+        }
+        if UIAccessibility.isReduceMotionEnabled {
+            apply()
+        } else {
+            withAnimation(.easeOut(duration: 0.16)) {
+                apply()
+            }
+        }
     }
 
     func showStatus(_ message: String, kind: PPSavedForLaterStatusKind) {
@@ -375,6 +426,8 @@ private struct PPSavedForLaterSheetRootView: View {
                     PPSavedForLaterItemRow(
                         item: item,
                         isPending: store.pendingItemID == item.ppSavedStableID,
+                        isLockedByOtherItem: store.pendingItemID != nil && store.pendingItemID != item.ppSavedStableID,
+                        isCompletingMove: store.completedItemID == item.ppSavedStableID && store.completedOperation == .move,
                         pendingOperation: store.pendingOperation,
                         onMoveToCart: onMoveToCart,
                         onRemove: onRemove
@@ -429,15 +482,26 @@ private struct PPSavedForLaterSheetRootView: View {
 private struct PPSavedForLaterItemRow: View {
     let item: CartItem
     let isPending: Bool
+    let isLockedByOtherItem: Bool
+    let isCompletingMove: Bool
     let pendingOperation: PPSavedForLaterPendingOperation?
     let onMoveToCart: (CartItem) -> Void
     let onRemove: (CartItem) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var usesAccessibleLayout: Bool {
         dynamicTypeSize.isAccessibilitySize
+    }
+
+    private var isMoving: Bool {
+        isPending && pendingOperation == .move
+    }
+
+    private var isDeleting: Bool {
+        isPending && pendingOperation == .remove
     }
 
     var body: some View {
@@ -455,24 +519,38 @@ private struct PPSavedForLaterItemRow: View {
         .background(cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(cardBorder)
+        .overlay(alignment: .topTrailing) {
+            completionBadge
+                .padding(10)
+        }
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.20 : 0.055), radius: 18, y: 8)
+        .scaleEffect(reduceMotion ? 1 : (isCompletingMove ? 0.985 : 1), anchor: .center)
+        .opacity(isLockedByOtherItem ? 0.62 : 1)
+        .animation(.spring(response: 0.34, dampingFraction: 0.84), value: isCompletingMove)
+        .animation(.easeOut(duration: 0.16), value: isLockedByOtherItem)
         .accessibilityElement(children: .contain)
     }
 
     private var productImage: some View {
-        PPSavedForLaterRemoteImage(urlString: item.ppImageURL)
-            .frame(width: usesAccessibleLayout ? 86 : 78, height: usesAccessibleLayout ? 86 : 78)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color(uiColor: .separator).opacity(0.20), lineWidth: 0.75)
+        ZStack {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemFill).opacity(colorScheme == .dark ? 0.55 : 0.72))
+
+            PPSavedForLaterRemoteImage(urlString: item.ppImageURL)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: usesAccessibleLayout ? 86 : 78, height: usesAccessibleLayout ? 86 : 78)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.20), lineWidth: 0.75)
+        )
+        .accessibilityLabel(
+            String(
+                format: ppLocalized("saved_for_later_image_accessibility", fallback: "Image for %@"),
+                item.ppDisplayName
             )
-            .accessibilityLabel(
-                String(
-                    format: ppLocalized("saved_for_later_image_accessibility", fallback: "Image for %@"),
-                    item.ppDisplayName
-                )
-            )
+        )
     }
 
     private var titleAndPrice: some View {
@@ -525,9 +603,18 @@ private struct PPSavedForLaterItemRow: View {
     }
 
     private var actionBar: some View {
-        HStack(spacing: 10) {
-            moveButton
-            removeButton
+        Group {
+            if usesAccessibleLayout {
+                VStack(spacing: 8) {
+                    moveButton
+                    removeButton
+                }
+            } else {
+                HStack(spacing: 10) {
+                    moveButton
+                    removeButton
+                }
+            }
         }
         .padding(5)
         .background(actionBarBackground)
@@ -537,71 +624,25 @@ private struct PPSavedForLaterItemRow: View {
     }
 
     private var moveButton: some View {
-        Button {
-            guard !isPending else { return }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onMoveToCart(item)
-        } label: {
-            HStack(spacing: 7) {
-                if isPending && pendingOperation == .move {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.white)
-                        .scaleEffect(0.74)
-                } else {
-                    Image(systemName: "cart.badge.plus")
-                        .font(.system(size: 13, weight: .bold))
-                }
-
-                Text(isPending && pendingOperation == .move
-                     ? ppLocalized("moving_to_cart", fallback: "Moving...")
-                     : ppLocalized("move_to_cart", fallback: "Move to Cart"))
-                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
+        PPSavedForLaterMoveToCartButton(
+            isLoading: isMoving,
+            isCompleted: isCompletingMove,
+            isDisabled: isDeleting || isLockedByOtherItem,
+            action: {
+                onMoveToCart(item)
             }
-            .foregroundStyle(.white)
-            .frame(maxWidth: .infinity, minHeight: 48)
-            .padding(.horizontal, 14)
-            .background(moveButtonBackground)
-            .overlay(moveButtonBorder)
-            .contentShape(Capsule())
-        }
-        .buttonStyle(PPSavedForLaterPressButtonStyle())
-        .disabled(isPending)
-        .opacity(isPending && pendingOperation != .move ? 0.48 : 1)
-        .accessibilityLabel(ppLocalized("move_to_cart", fallback: "Move to Cart"))
-        .accessibilityHint(ppLocalized("saved_for_later_move_hint", fallback: "Moves this item back to your cart"))
+        )
     }
 
     private var removeButton: some View {
-        Button {
-            guard !isPending else { return }
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-            onRemove(item)
-        } label: {
-            HStack(spacing: 7) {
-                if isPending && pendingOperation == .remove {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(Color.ppError)
-                        .scaleEffect(0.72)
-                } else {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .bold))
-                }
+        PPSavedForLaterDeleteButton(
+            isLoading: isDeleting,
+            isDisabled: isMoving || isCompletingMove || isLockedByOtherItem,
+            usesAccessibleLayout: usesAccessibleLayout,
+            action: {
+                onRemove(item)
             }
-            .foregroundStyle(Color.ppError)
-            .frame(width: 48, height: 48)
-            .background(removeButtonBackground)
-            .overlay(removeButtonBorder)
-            .contentShape(Circle())
-        }
-        .buttonStyle(PPSavedForLaterPressButtonStyle())
-        .disabled(isPending)
-        .opacity(isPending && pendingOperation != .remove ? 0.48 : 1)
-        .accessibilityLabel(ppLocalized("saved_for_later_remove_action", fallback: "Remove"))
-        .accessibilityHint(ppLocalized("saved_for_later_remove_hint", fallback: "Removes this item from saved for later"))
+        )
     }
 
     private var actionBarBackground: some View {
@@ -612,31 +653,6 @@ private struct PPSavedForLaterItemRow: View {
     private var actionBarBorder: some View {
         RoundedRectangle(cornerRadius: 19, style: .continuous)
             .stroke(Color(uiColor: .separator).opacity(colorScheme == .dark ? 0.20 : 0.14), lineWidth: 0.75)
-    }
-
-    private var moveButtonBackground: some View {
-        Capsule()
-            .fill(Color.ppPrimary)
-    }
-
-    private var moveButtonBorder: some View {
-        Capsule()
-            .stroke(Color.white.opacity(0.24), lineWidth: 0.75)
-    }
-
-    private var removeButtonBackground: some View {
-        Circle()
-            .fill(Color.ppError.opacity(colorScheme == .dark ? 0.18 : 0.10))
-            .overlay(
-                Circle()
-                    .fill(Color.white.opacity(colorScheme == .dark ? 0.03 : 0.18))
-                    .padding(1)
-            )
-    }
-
-    private var removeButtonBorder: some View {
-        Circle()
-            .stroke(Color.ppError.opacity(colorScheme == .dark ? 0.28 : 0.20), lineWidth: 0.75)
     }
 
     private var cardBackground: some View {
@@ -651,6 +667,167 @@ private struct PPSavedForLaterItemRow: View {
                     .opacity(colorScheme == .dark ? 0.30 : 0.18),
                 lineWidth: 0.75
             )
+    }
+
+    @ViewBuilder
+    private var completionBadge: some View {
+        if isCompletingMove {
+            Label(ppLocalized("saved_for_later_moved_action", fallback: "Moved"), systemImage: "checkmark")
+                .font(.custom("Beiruti-Bold", size: 12, relativeTo: .caption))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.ppSuccess, in: Capsule())
+                .shadow(color: Color.ppSuccess.opacity(colorScheme == .dark ? 0.20 : 0.24), radius: 12, y: 5)
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+private struct PPSavedForLaterMoveToCartButton: View {
+    let isLoading: Bool
+    let isCompleted: Bool
+    let isDisabled: Bool
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Button {
+            guard !isLoading, !isCompleted, !isDisabled else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: 8) {
+                icon
+
+                Text(title)
+                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+            }
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .padding(.horizontal, 14)
+            .background(background)
+            .overlay(border)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PPSavedForLaterTransactionButtonStyle())
+        .disabled(isLoading || isCompleted || isDisabled)
+        .opacity(isDisabled && !isLoading && !isCompleted ? 0.54 : 1)
+        .accessibilityLabel(ppLocalized("move_to_cart", fallback: "Move to Cart"))
+        .accessibilityHint(ppLocalized("saved_for_later_move_hint", fallback: "Moves this item back to your cart"))
+    }
+
+    @ViewBuilder
+    private var icon: some View {
+        if isLoading {
+            ProgressView()
+                .progressViewStyle(.circular)
+                .tint(.white)
+                .scaleEffect(0.74)
+        } else if isCompleted {
+            Image(systemName: "checkmark")
+                .font(.system(size: 13, weight: .heavy))
+                .scaleEffect(reduceMotion ? 1 : 1.08)
+                .transition(.opacity.combined(with: .scale(scale: 0.82)))
+        } else {
+            Image(systemName: "cart.badge.plus")
+                .font(.system(size: 13, weight: .bold))
+        }
+    }
+
+    private var title: String {
+        if isLoading {
+            return ppLocalized("moving_to_cart", fallback: "Moving...")
+        }
+        if isCompleted {
+            return ppLocalized("saved_for_later_moved_action", fallback: "Moved")
+        }
+        return ppLocalized("move_to_cart", fallback: "Move to Cart")
+    }
+
+    private var background: some View {
+        Capsule()
+            .fill(isCompleted ? Color.ppSuccess : Color.ppPrimary)
+            .shadow(
+                color: (isCompleted ? Color.ppSuccess : Color.ppPrimary).opacity(colorScheme == .dark ? 0.20 : 0.26),
+                radius: isLoading || isCompleted ? 12 : 16,
+                y: 7
+            )
+    }
+
+    private var border: some View {
+        Capsule()
+            .stroke(Color.white.opacity(isCompleted ? 0.30 : 0.24), lineWidth: 0.75)
+    }
+}
+
+private struct PPSavedForLaterDeleteButton: View {
+    let isLoading: Bool
+    let isDisabled: Bool
+    let usesAccessibleLayout: Bool
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button {
+            guard !isLoading, !isDisabled else { return }
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: 7) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(Color.ppError)
+                        .scaleEffect(0.72)
+                } else {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .bold))
+                }
+
+                Text(isLoading
+                     ? ppLocalized("saved_for_later_deleting", fallback: "Deleting...")
+                     : ppLocalized("saved_for_later_delete_action", fallback: "Delete"))
+                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
+            .foregroundStyle(Color.ppError)
+            .frame(minWidth: usesAccessibleLayout ? 0 : 110,
+                   maxWidth: usesAccessibleLayout ? .infinity : nil,
+                   minHeight: 50)
+            .padding(.horizontal, 14)
+            .background(background)
+            .overlay(border)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PPSavedForLaterTransactionButtonStyle())
+        .disabled(isLoading || isDisabled)
+        .opacity(isDisabled && !isLoading ? 0.54 : 1)
+        .accessibilityLabel(ppLocalized("saved_for_later_delete_action", fallback: "Delete"))
+        .accessibilityHint(ppLocalized("saved_for_later_remove_hint", fallback: "Removes this item from saved for later"))
+    }
+
+    private var background: some View {
+        Capsule()
+            .fill(Color.ppError.opacity(colorScheme == .dark ? 0.18 : 0.10))
+            .overlay(
+                Capsule()
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.03 : 0.18))
+                    .padding(1)
+            )
+    }
+
+    private var border: some View {
+        Capsule()
+            .stroke(Color.ppError.opacity(colorScheme == .dark ? 0.30 : 0.22), lineWidth: 0.75)
     }
 }
 
@@ -793,6 +970,27 @@ private struct PPSavedForLaterErrorView: View {
 
 private final class PPSavedForLaterImageView: UIImageView {
     var representedURLString = ""
+    var isShowingPlaceholder = true {
+        didSet {
+            pp_applyProductContentMode()
+        }
+    }
+
+    override var image: UIImage? {
+        didSet {
+            pp_applyProductContentMode()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        pp_applyProductContentMode()
+    }
+
+    func pp_applyProductContentMode() {
+        contentMode = isShowingPlaceholder ? .scaleAspectFit : .scaleAspectFill
+        layer.contentsGravity = isShowingPlaceholder ? .resizeAspect : .resizeAspectFill
+    }
 }
 
 private struct PPSavedForLaterRemoteImage: UIViewRepresentable {
@@ -801,42 +999,50 @@ private struct PPSavedForLaterRemoteImage: UIViewRepresentable {
     func makeUIView(context: Context) -> PPSavedForLaterImageView {
         let imageView = PPSavedForLaterImageView()
         imageView.clipsToBounds = true
-        imageView.contentMode = .scaleAspectFill
-        imageView.backgroundColor = .secondarySystemFill
+        imageView.isShowingPlaceholder = true
+        imageView.backgroundColor = .clear
         imageView.tintColor = UIColor(named: "AppPrimaryColor") ?? .systemBlue
         imageView.isAccessibilityElement = false
         return imageView
     }
 
     func updateUIView(_ imageView: PPSavedForLaterImageView, context: Context) {
+        imageView.pp_applyProductContentMode()
+
         let trimmedURLString = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard imageView.representedURLString != trimmedURLString else { return }
 
         PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
         imageView.representedURLString = trimmedURLString
-        imageView.contentMode = .scaleAspectFill
 
         let placeholder = UIImage(named: "placeholder")
             ?? UIImage(systemName: "bag.fill")?.withRenderingMode(.alwaysTemplate)
+        imageView.isShowingPlaceholder = true
         imageView.image = placeholder
 
         guard !trimmedURLString.isEmpty else {
-            imageView.contentMode = .scaleAspectFit
+            imageView.pp_applyProductContentMode()
             return
         }
 
+        let expectedURLString = trimmedURLString
         PPImageLoaderManager.shared().setImage(
             on: imageView,
             url: trimmedURLString,
             placeholder: placeholder,
             transitionStyle: .crossDissolve,
-            completion: nil
+            completion: { [weak imageView] image, _ in
+                guard let imageView, imageView.representedURLString == expectedURLString else { return }
+                imageView.isShowingPlaceholder = image == nil
+                imageView.pp_applyProductContentMode()
+            }
         )
     }
 
     static func dismantleUIView(_ imageView: PPSavedForLaterImageView, coordinator: Void) {
         PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
         imageView.representedURLString = ""
+        imageView.isShowingPlaceholder = true
     }
 }
 
@@ -863,6 +1069,20 @@ private struct PPSavedForLaterPressButtonStyle: ButtonStyle {
             .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.965 : 1))
             .opacity(configuration.isPressed ? 0.88 : 1)
             .animation(.spring(response: 0.18, dampingFraction: 0.82), value: configuration.isPressed)
+    }
+}
+
+private struct PPSavedForLaterTransactionButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(reduceMotion ? 1 : (configuration.isPressed ? 0.955 : 1))
+            .opacity(configuration.isPressed ? 0.90 : 1)
+            .animation(
+                .spring(response: 0.24, dampingFraction: 0.72, blendDuration: 0.02),
+                value: configuration.isPressed
+            )
     }
 }
 

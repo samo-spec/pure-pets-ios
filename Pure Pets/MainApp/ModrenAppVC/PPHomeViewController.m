@@ -105,6 +105,7 @@ static NSString * const PPHomeConfigCacheUseLegacyBarKey = @"PPUSE_LEGACY_BAR";
 static NSString * const PPHomeLastSelectedMainKindIDKey = @"PPHome.lastSelectedMainKindID.v1";
 static NSInteger const PPHomeAllMainKindID = -1;
 static BOOL const PPHomeTemporarilyHideLeadingProfileItem = YES;
+static BOOL const PPHomeAlwaysShowCartButton = YES;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
@@ -1596,6 +1597,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                         isAll:(BOOL)isAll
                       persist:(BOOL)persist
                      navigate:(BOOL)navigate;
+- (nullable UIColor *)pp_ambientCenterGlowColorForHomeMainKind:(nullable MainKindsModel *)mainKind;
+- (void)pp_applySelectedMainKindAmbientCenterGlowColor;
 - (void)pp_refreshHomeCategorySelectionAnimated:(BOOL)animated;
 - (void)pp_positionInitialSelectedMainKindIfNeededAnimated:(BOOL)animated;
 - (NSInteger)pp_indexOfSelectedMainKindInRail;
@@ -1928,6 +1931,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     if (self.initialSelectedMainKindID == PPHomeAllMainKindID) {
         self.selectedCategory = nil;
         self.usesRestoredMainKindSelectionAppearance = YES;
+        [self pp_applySelectedMainKindAmbientCenterGlowColor];
         return;
     }
     if (self.initialSelectedMainKindID > 0) {
@@ -1935,6 +1939,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         if (navigationKind) {
             self.selectedCategory = navigationKind;
             self.usesRestoredMainKindSelectionAppearance = NO;
+            [self pp_applySelectedMainKindAmbientCenterGlowColor];
             return;
         }
     }
@@ -1942,6 +1947,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     MainKindsModel *savedCategory = [self pp_resolvedSavedHomeCategory];
     self.selectedCategory = savedCategory;
     self.usesRestoredMainKindSelectionAppearance = YES;
+    [self pp_applySelectedMainKindAmbientCenterGlowColor];
 }
 
 - (void)pp_saveSelectedHomeCategory:(MainKindsModel *)kind
@@ -1981,6 +1987,43 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
     }
     [self pp_refreshVisibleMarketplaceHeroAnimated:animated];
+}
+
+- (UIColor *)pp_ambientCenterGlowColorForHomeMainKind:(MainKindsModel *)mainKind
+{
+    if (![mainKind isKindOfClass:MainKindsModel.class] || mainKind.ID <= 0) {
+        return nil;
+    }
+
+    UIColor *kindColor = [mainKind kindColor];
+    if (![kindColor isKindOfClass:UIColor.class]) {
+        return nil;
+    }
+
+    return [kindColor colorWithAlphaComponent:1.0];
+}
+
+- (void)pp_applySelectedMainKindAmbientCenterGlowColor
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_applySelectedMainKindAmbientCenterGlowColor];
+        });
+        return;
+    }
+
+    if (!PPHomeUseHeroApex || !self.ambientBackgroundView) {
+        return;
+    }
+
+    UIColor *centerGlowColor = [self pp_ambientCenterGlowColorForHomeMainKind:self.selectedCategory];
+    UIColor *currentGlowColor = self.ambientBackgroundView.overrideCenterGlowColor;
+    if ((!currentGlowColor && !centerGlowColor) ||
+        (currentGlowColor && centerGlowColor && [currentGlowColor isEqual:centerGlowColor])) {
+        return;
+    }
+
+    self.ambientBackgroundView.overrideCenterGlowColor = centerGlowColor;
 }
 
 - (NSInteger)pp_indexOfSelectedMainKindInRail
@@ -2047,15 +2090,15 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
             return;
         }
 
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
         [self.collectionView layoutIfNeeded];
         BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
-        UICollectionViewScrollPosition leadingPosition = Language.isRTL
-            ? UICollectionViewScrollPositionRight
-            : UICollectionViewScrollPositionLeft;
+        UICollectionViewScrollPosition targetPosition = UICollectionViewScrollPositionCenteredHorizontally;
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:currentSelectedIndex
                                                      inSection:currentSectionIndex];
         [self.collectionView scrollToItemAtIndexPath:indexPath
-                                    atScrollPosition:leadingPosition
+                                    atScrollPosition:targetPosition
                                             animated:shouldAnimate];
         void (^applyRestoredSelectionLayout)(PPHomeViewController *) = ^(PPHomeViewController *host) {
             [host.collectionView.collectionViewLayout invalidateLayout];
@@ -2100,6 +2143,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
     self.selectedCategory = nextCategory;
     self.usesRestoredMainKindSelectionAppearance = NO;
+    [self pp_applySelectedMainKindAmbientCenterGlowColor];
     if (persist) {
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
             [self pp_saveSelectedHomeCategory:kind isAll:isAll];
@@ -5396,8 +5440,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         BOOL expectsSearchTitle =
             [resolvedTitleViewMode isEqualToString:@"search"];
         BOOL showingSearchTitle =
-            strongSelf.homeSmartSearchView &&
-            strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
+            strongSelf.homeSmartSearchAndCartContainer &&
+            strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchAndCartContainer;
         BOOL showingLocationTitle =
             strongSelf.homeLocationTitleView &&
             strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
@@ -11651,18 +11695,42 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_detachHomeSmartSearchTitleViewIfNeeded
 {
-    if (!self.homeSmartSearchView) {
+    if (!self.homeSmartSearchView && !self.homeSmartSearchAndCartContainer) {
         return;
     }
 
     [self pp_stopHomeSmartSearchTimer];
 
-    if (self.navigationItem.titleView == self.homeSmartSearchView) {
+    if (self.navigationItem.titleView == self.homeSmartSearchAndCartContainer ||
+        self.navigationItem.titleView == self.homeSmartSearchView) {
         self.navigationItem.titleView = nil;
     }
 
+    NSMutableArray<NSLayoutConstraint *> *constraintsToDeactivate = [NSMutableArray array];
+    for (NSLayoutConstraint *constraint in self.homeSmartSearchAndCartContainer.constraints.copy) {
+        if (constraint.firstItem == self.homeSmartSearchView ||
+            constraint.secondItem == self.homeSmartSearchView ||
+            constraint.firstItem == self.homeCartButton ||
+            constraint.secondItem == self.homeCartButton) {
+            [constraintsToDeactivate addObject:constraint];
+        }
+    }
+    [NSLayoutConstraint deactivateConstraints:constraintsToDeactivate];
+    self.homeSmartSearchTrailingToContainerConstraint = nil;
+    self.homeSmartSearchTrailingToCartConstraint = nil;
+    self.homeCartButtonWidthConstraint = nil;
+    self.homeCartButtonHeightConstraint = nil;
+    self.homeCartButtonPresencePrepared = NO;
+    self.homeCartButtonSlotVisible = NO;
+
     if (self.homeSmartSearchView.superview) {
         [self.homeSmartSearchView removeFromSuperview];
+    }
+    if (self.homeCartButton.superview == self.homeSmartSearchAndCartContainer) {
+        [self.homeCartButton removeFromSuperview];
+    }
+    if (self.homeSmartSearchAndCartContainer.superview) {
+        [self.homeSmartSearchAndCartContainer removeFromSuperview];
     }
 }
 
@@ -12122,6 +12190,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (BOOL)pp_shouldShowHomeCartButton
 {
+    if (PPHomeAlwaysShowCartButton) {
+        return YES;
+    }
+
     NSInteger cartCount = MAX([CartManager.sharedManager totalItemsCount], 0);
     NSInteger savedCount = [self pp_currentSavedForLaterItemCount];
     return cartCount > 0 || savedCount > 0;
@@ -12136,8 +12208,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    if (![self pp_canOwnHomeNavigationChrome]) {
+        return;
+    }
+
     if (!self.homeCartButton ||
         !self.homeSmartSearchAndCartContainer ||
+        self.homeSmartSearchView.superview != self.homeSmartSearchAndCartContainer ||
+        self.homeCartButton.superview != self.homeSmartSearchAndCartContainer ||
         !self.homeCartButtonWidthConstraint ||
         !self.homeCartButtonHeightConstraint ||
         !self.homeSmartSearchTrailingToContainerConstraint ||
@@ -12220,6 +12298,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_handleSavedForLaterUpdatedNotification:(NSNotification *)notification
 {
     (void)notification;
+    if (![self pp_canOwnHomeNavigationChrome]) {
+        return;
+    }
     NSInteger cartCount = MAX([CartManager.sharedManager totalItemsCount], 0);
     [self pp_updateHomeCartButtonPresenceAnimated:YES];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
@@ -13324,6 +13405,10 @@ presentingViewController:self
         return;
     }
 
+    if (![self pp_canOwnHomeNavigationChrome]) {
+        return;
+    }
+
     NSInteger count = [CartManager.sharedManager totalItemsCount];
     count = MAX(count, 0);
     [self refreshNavigationRightItemsForCartCount:count];
@@ -13545,19 +13630,25 @@ presentingViewController:self
             self.ambientBackgroundView = [[PPBackgroundView alloc] init];
             self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
             self.ambientBackgroundView.userInteractionEnabled = NO;
-            self.ambientBackgroundView.PPHeroApexUseShimmer = NO;
+
             self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
             self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
-            //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
-            self.ambientBackgroundView.overrideBorders = YES;
-            self.ambientBackgroundView.overrideBorderColor = UIColor.clearColor;
-            self.ambientBackgroundView.overrideCenterGlowColor = [[UIColor colorNamed:@"NewBg"] colorWithAlphaComponent:1.0];
-            self.ambientBackgroundView.overrideBottomGlowColor = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
-            self.ambientBackgroundView.accentColorOverride = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
-            self.ambientBackgroundView.overrideSurfureColor = AppBackgroundClr;
-            self.ambientBackgroundView.overrideTopGlowColor = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
 
-            self.ambientBackgroundView.cornerGlowOpacityMultiplier = 0.22;
+            //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
+            //self.ambientBackgroundView.overrideBorders = YES;
+            //self.ambientBackgroundView.overrideBorderColor = UIColor.clearColor;
+            //self.ambientBackgroundView.overrideCenterGlowColor = [[UIColor colorNamed:@"NewBg"] colorWithAlphaComponent:1.0];
+            //self.ambientBackgroundView.overrideBottomGlowColor = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
+            //self.ambientBackgroundView.accentColorOverride = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
+            //self.ambientBackgroundView.overrideSurfureColor = AppBackgroundClr;
+            //self.ambientBackgroundView.overrideTopGlowColor = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
+
+            self.ambientBackgroundView.overrideSurfaceColor = nil;
+            self.ambientBackgroundView.accentColorOverride = nil;
+            self.ambientBackgroundView.overrideTopGlowColor = nil;
+            self.ambientBackgroundView.overrideCenterGlowColor = nil;
+            self.ambientBackgroundView.overrideBottomGlowColor = nil;
+
             [self.view insertSubview:self.ambientBackgroundView atIndex:0];
             [NSLayoutConstraint activateConstraints:@[
                 [self.ambientBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -13642,7 +13733,7 @@ presentingViewController:self
 {
     if (PPHomeUseHeroApex) {
        /// self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleSolid;
-       // self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
+        [self pp_applySelectedMainKindAmbientCenterGlowColor];
         [self.ambientBackgroundView stopAnimations];
         [self.ambientBackgroundView reapplyPalette];
     } else {

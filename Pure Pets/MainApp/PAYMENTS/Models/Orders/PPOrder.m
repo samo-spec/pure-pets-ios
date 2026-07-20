@@ -438,15 +438,17 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
             ? @"awaiting_handover"
             : @"delivery_requested";
     }
+    if (PPOrderStatusContainsToken(raw, @"packed")) {
+        return @"ready_to_ship";
+    }
     if (PPOrderStatusContainsToken(raw, @"processing") ||
         PPOrderStatusContainsToken(raw, @"preparing") ||
-        PPOrderStatusContainsToken(raw, @"packed") ||
         PPOrderStatusContainsToken(raw, @"confirmed") ||
         PPOrderStatusContainsToken(raw, @"paid") ||
         PPOrderStatusContainsToken(raw, @"success") ||
         PPOrderStatusContainsToken(raw, @"approved") ||
         PPOrderStatusContainsToken(raw, @"verified")) {
-        return @"ready_to_ship";
+        return @"preparing_for_shipment";
     }
 
     if (self.status == PPOrderStatusFailed || self.status == PPOrderStatusCancelled || self.status == PPOrderStatusAbandoned) {
@@ -503,9 +505,7 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     if ([delivery isEqualToString:@"ready_to_ship"] ||
         [delivery isEqualToString:@"delivery_requested"] ||
         [delivery isEqualToString:@"delivery_reassigned"] ||
-        self.deliveryRequestedAt != nil ||
-        self.readyToShipAt != nil ||
-        self.readyAt != nil) {
+        self.deliveryRequestedAt != nil) {
         return @"ready_for_delivery";
     }
     if (PPOrderStatusContainsToken(raw, @"pending") ||

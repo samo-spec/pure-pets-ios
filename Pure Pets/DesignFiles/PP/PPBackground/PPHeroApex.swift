@@ -114,6 +114,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let phase: CFTimeInterval
     }
 
+    /// Full Screen owns a spatial composition rather than the compact hero
+    /// drift used by Bar and Corner Glow. Points are semantic and mirrored at
+    /// render time so English and Arabic receive the same choreography.
+    private struct FullScreenAuroraMotionSpec {
+        let normalizedPositions: [CGPoint]
+        let scales: [CGFloat]
+        let opacities: [Float]
+        let keyTimes: [NSNumber]
+        let duration: CFTimeInterval
+        let phase: CFTimeInterval
+    }
+
     private struct Palette {
         let accent: UIColor
         let surfaceHighlight: UIColor
@@ -123,6 +135,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let aurora: [UIColor]
         let particle: [UIColor]
         let reactiveLight: UIColor
+        let specularLight: UIColor
         let stroke: UIColor
         let shadowOpacity: Float
     }
@@ -223,9 +236,13 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         set {
             let resolvedMode = AccentMode(rawValue: newValue) ?? .bar
             guard resolvedMode != storedAccentMode else { return }
+            let previousMode = storedAccentMode
             storedAccentMode = resolvedMode
             setNeedsLayout()
-            applyAccentMode(animated: shouldAnimateVisualStateChange)
+            reapplyPalette()
+            if previousMode == .fullScreen && resolvedMode != .fullScreen {
+                restoreCompactAmbientAnimationsIfNeeded()
+            }
         }
     }
 
@@ -246,6 +263,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 if !overlayView.bounds.isEmpty {
                     installSignatureSweepAnimation()
                 }
+                if storedAccentMode == .fullScreen {
+                    refreshFullScreenSpatialAnimations()
+                }
             }
         }
     }
@@ -259,7 +279,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     @objc(PPHeroApexUseUnderFingerMotion)
-    public var useUnderFingerMotion: Bool = false {
+    public var useUnderFingerMotion: Bool = true {
         didSet {
             guard oldValue != useUnderFingerMotion else { return }
             if useUnderFingerMotion {
@@ -309,12 +329,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private let baseGradientLayer = CAGradientLayer()
     private let depthGradientLayer = CAGradientLayer()
     private let vignetteLayer = CAGradientLayer()
+    private let prismLayer = CAGradientLayer()
     private let auroraLayers = (0..<3).map { _ in CAGradientLayer() }
     private let particleLayers = (0..<3).map { _ in CAShapeLayer() }
     private let reactiveLightLayer = CAGradientLayer()
     private let touchLensLayer = CAGradientLayer()
     private let touchCoreLayer = CAGradientLayer()
+    private let contactRingLayer = CAShapeLayer()
     private let signatureSweepLayer = CAGradientLayer()
+    private let topSpecularLayer = CAGradientLayer()
     private let accentBarLayer = CAGradientLayer()
     private let accentGlowLayer = CAGradientLayer()
     private let innerStrokeLayer = CAShapeLayer()
@@ -331,10 +354,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var parallaxMotionEffect: UIMotionEffectGroup?
     private weak var touchHost: UIView?
     private var touchRecognizer: PPHeroPassiveTouchRecognizer?
+    private var hoverRecognizer: UIGestureRecognizer?
+    private var touchDisplayLink: CADisplayLink?
     private var touchResponseActive = false
+    private var hoverResponseActive = false
     private var previousTouchPoint: CGPoint?
     private var previousTouchTimestamp: TimeInterval?
     private var touchVelocity = CGVector.zero
+    private var touchTargetPoint: CGPoint?
+    private var touchRenderedPoint: CGPoint?
+    private var touchStartPoint: CGPoint?
+    private var touchStartTimestamp: TimeInterval?
+    private var touchMaximumTravel: CGFloat = 0
 
     // MARK: - Stable visual state
 
@@ -342,13 +373,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var storedCornerGlowOpacityMultiplier: CGFloat = 1
     private var storedCornerRadius: CGFloat = 30
     private var lastLayoutSize: CGSize = .zero
+    private var lastLayoutDirection: UIUserInterfaceLayoutDirection?
 
     private let auroraAnimationKey = "pp.hero.apex.aurora"
     private let fieldDriftAnimationKey = "pp.hero.apex.field-drift"
     private let particleAnimationKey = "pp.hero.apex.particle"
     private let reactiveLightAnimationKey = "pp.hero.apex.reactive-light"
+    private let prismAnimationKey = "pp.hero.apex.prism"
+    private let fullScreenSurfaceAnimationKey = "pp.hero.apex.full-screen-surface"
     private let signatureSweepAnimationKey = "pp.hero.apex.signature-sweep"
-    private let auroraColorTransitionKey = "pp.hero.apex.aurora-color-transition"
+    private let pressHoldAnimationKey = "pp.hero.apex.press-hold"
+    private let contactWaveAnimationKey = "pp.hero.apex.contact-wave"
+    private let gradientColorTransitionKey = "pp.hero.apex.palette-colors"
     private let accentBarTransitionKey = "pp.hero.apex.accent-bar-transition"
     private let accentGlowTransitionKey = "pp.hero.apex.accent-glow-transition"
 
@@ -369,6 +405,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         entranceAnimator?.stopAnimation(true)
         overlayEntranceAnimator?.stopAnimation(true)
         interactionRecoveryAnimator?.stopAnimation(true)
+        touchDisplayLink?.invalidate()
         detachTouchTracker()
         removeMotionEffects()
         removeAmbientTimeline()
@@ -432,6 +469,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         vignetteLayer.endPoint = CGPoint(x: 1, y: 1)
         vignetteLayer.locations = [0, 0.7, 1]
 
+        prismLayer.type = .conic
+        prismLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+        prismLayer.endPoint = CGPoint(x: 0.5, y: 0)
+        prismLayer.locations = [0, 0.20, 0.43, 0.66, 0.84, 1]
+        prismLayer.drawsAsynchronously = true
+        prismLayer.masksToBounds = true
+        ambientContentView.layer.addSublayer(prismLayer)
+
         for (index, layer) in auroraLayers.enumerated() {
             layer.type = .radial
             layer.startPoint = CGPoint(x: 0.5, y: 0.5)
@@ -471,6 +516,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         touchCoreLayer.locations = [0, 0.36, 1]
         touchCoreLayer.drawsAsynchronously = true
         touchLensView.layer.addSublayer(touchCoreLayer)
+
+        contactRingLayer.fillColor = UIColor.clear.cgColor
+        contactRingLayer.lineWidth = 1
+        contactRingLayer.opacity = 0
+        contactRingLayer.contentsScale = UIScreen.main.scale
+        touchLensView.layer.addSublayer(contactRingLayer)
         touchLensView.alpha = 0
 
         signatureSweepLayer.startPoint = CGPoint(x: 0, y: 0.5)
@@ -479,6 +530,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         signatureSweepLayer.opacity = 0
         signatureSweepLayer.drawsAsynchronously = true
         overlayView.layer.addSublayer(signatureSweepLayer)
+
+        topSpecularLayer.startPoint = CGPoint(x: 0.5, y: 0)
+        topSpecularLayer.endPoint = CGPoint(x: 0.5, y: 1)
+        topSpecularLayer.locations = [0, 0.055, 0.20, 1]
+        topSpecularLayer.drawsAsynchronously = true
+        overlayView.layer.addSublayer(topSpecularLayer)
 
         accentGlowLayer.type = .radial
         accentGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
@@ -560,22 +617,37 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let materialBounds = baseView.bounds
         baseGradientLayer.frame = materialBounds
+        let layoutDirection = effectiveUserInterfaceLayoutDirection
+        baseGradientLayer.startPoint = layoutDirection == .rightToLeft
+            ? CGPoint(x: 1, y: 0)
+            : CGPoint(x: 0, y: 0)
+        baseGradientLayer.endPoint = layoutDirection == .rightToLeft
+            ? CGPoint(x: 0, y: 1)
+            : CGPoint(x: 1, y: 1)
         depthGradientLayer.frame = materialBounds
         vignetteLayer.frame = materialBounds
 
+        layoutPrismLayer(in: ambientContentView.bounds)
         layoutAuroraLayers(in: ambientContentView.bounds)
         layoutParticleLayers(in: ambientContentView.bounds)
         layoutReactiveLight(in: overlayView.bounds)
         layoutSignatureSweep(in: overlayView.bounds)
         layoutAccentLayers(in: overlayView.bounds)
+        topSpecularLayer.frame = overlayView.bounds
         updateCornerGeometry()
 
         CATransaction.commit()
 
         let didChangeSize = lastLayoutSize != .zero && lastLayoutSize != bounds.size
+        let didChangeDirection = lastLayoutDirection != nil &&
+            lastLayoutDirection != layoutDirection
         lastLayoutSize = bounds.size
-        if didChangeSize && ambientTimelineInstalled {
+        lastLayoutDirection = layoutDirection
+        if (didChangeSize || didChangeDirection) && ambientTimelineInstalled {
             installSignatureSweepAnimation()
+            if storedAccentMode == .fullScreen {
+                refreshFullScreenSpatialAnimations()
+            }
         }
         reconcileMotionEnvironment()
     }
@@ -623,6 +695,19 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    private func layoutPrismLayer(in bounds: CGRect) {
+        guard !bounds.isEmpty else { return }
+
+        let diameter = max(max(bounds.width, bounds.height) * 1.36, 280)
+        prismLayer.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        prismLayer.cornerRadius = diameter * 0.5
+        let center = resolvedReactiveLightCenter
+        prismLayer.position = CGPoint(
+            x: bounds.width * center.x,
+            y: bounds.height * (center.y + 0.08)
+        )
+    }
+
     private func layoutParticleLayers(in bounds: CGRect) {
         guard !bounds.isEmpty else { return }
 
@@ -666,11 +751,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             270
         )
         reactiveLightView.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-        let useFlippedLayout = resolvesToFlippedLayout
-        let reactiveCenterX = useFlippedLayout ? (1.0 - defaultReactiveLightCenter.x) : defaultReactiveLightCenter.x
+        let resolvedCenter = resolvedReactiveLightCenter
         reactiveLightView.center = CGPoint(
-            x: bounds.width * reactiveCenterX,
-            y: bounds.height * defaultReactiveLightCenter.y
+            x: bounds.width * resolvedCenter.x,
+            y: bounds.height * resolvedCenter.y
         )
         reactiveLightLayer.frame = reactiveLightView.bounds
         reactiveLightLayer.cornerRadius = diameter * 0.5
@@ -685,6 +769,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         touchCoreLayer.bounds = CGRect(x: 0, y: 0, width: coreDiameter, height: coreDiameter)
         touchCoreLayer.position = CGPoint(x: touchLensView.bounds.midX, y: touchLensView.bounds.midY)
         touchCoreLayer.cornerRadius = coreDiameter * 0.5
+
+        contactRingLayer.frame = touchLensView.bounds
+        contactRingLayer.path = UIBezierPath(
+            ovalIn: touchLensView.bounds.insetBy(dx: 10, dy: 10)
+        ).cgPath
     }
 
     private func layoutSignatureSweep(in bounds: CGRect) {
@@ -736,10 +825,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let palette = makePalette()
         let isDark = traitCollection.userInterfaceStyle == .dark
         let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        let strongerContrast = traitCollection.accessibilityContrast == .high ||
+            UIAccessibility.isDarkerSystemColorsEnabled
+        let animatePalette = shouldAnimateVisualStateChange
 
         materialView.effect = reduceTransparency
             ? nil
-            : UIBlurEffect(style: .systemUltraThinMaterial)
+            : UIBlurEffect(
+                style: strongerContrast ? .systemThinMaterial : .systemUltraThinMaterial
+            )
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -748,11 +842,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         materialView.backgroundColor = .clear
         materialView.contentView.backgroundColor = .clear
 
-        baseGradientLayer.colors = [
-            palette.surfaceHighlight.cgColor,
-            palette.surfaceMiddle.cgColor,
-            palette.surfaceTail.cgColor
-        ]
+        let surfaceAlpha: CGFloat = reduceTransparency
+            ? 1
+            : (strongerContrast ? 0.91 : (isDark ? 0.82 : 0.76))
+        setGradientColors([
+            palette.surfaceHighlight.withAlphaComponent(surfaceAlpha).cgColor,
+            palette.surfaceMiddle.withAlphaComponent(surfaceAlpha).cgColor,
+            palette.surfaceTail.withAlphaComponent(surfaceAlpha).cgColor
+        ], on: baseGradientLayer, animated: animatePalette)
         baseGradientLayer.startPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
             ? CGPoint(x: 1, y: 0)
             : CGPoint(x: 0, y: 0)
@@ -760,19 +857,56 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             ? CGPoint(x: 0, y: 1)
             : CGPoint(x: 1, y: 1)
 
-        depthGradientLayer.colors = [
+        setGradientColors([
             UIColor.clear.cgColor,
             palette.depth.withAlphaComponent(isDark ? 0.055 : 0.018).cgColor,
             palette.depth.withAlphaComponent(isDark ? 0.16 : 0.055).cgColor
-        ]
+        ], on: depthGradientLayer, animated: animatePalette)
 
-        vignetteLayer.colors = [
+        setGradientColors([
             UIColor.clear.cgColor,
             UIColor.clear.cgColor,
             UIColor.black.withAlphaComponent(isDark ? 0.13 : 0.032).cgColor
-        ]
+        ], on: vignetteLayer, animated: animatePalette)
+
+        let prismRoles = auroraRoleColors(from: palette)
+        if storedAccentMode == .fullScreen {
+            // A radial fourth field removes the conic seam that appeared as a
+            // diagonal corner-to-corner line in the Full Screen composition.
+            let prismAlpha: CGFloat = isDark ? 0.30 : 0.34
+            prismLayer.type = .radial
+            prismLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+            prismLayer.endPoint = CGPoint(x: 1, y: 1)
+            prismLayer.locations = [0, 0.34, 0.70, 1]
+            setGradientColors([
+                prismRoles.top.withAlphaComponent(prismAlpha).cgColor,
+                prismRoles.middle.withAlphaComponent(prismAlpha * 0.52).cgColor,
+                prismRoles.bottom.withAlphaComponent(prismAlpha * 0.16).cgColor,
+                UIColor.clear.cgColor
+            ], on: prismLayer, animated: animatePalette)
+        } else {
+            let prismAlpha: CGFloat = isDark ? 0.040 : 0.026
+            prismLayer.type = .conic
+            prismLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+            prismLayer.endPoint = CGPoint(x: 0.5, y: 0)
+            prismLayer.locations = [0, 0.20, 0.43, 0.66, 0.84, 1]
+            setGradientColors([
+                UIColor.clear.cgColor,
+                prismRoles.top.withAlphaComponent(prismAlpha).cgColor,
+                prismRoles.middle.withAlphaComponent(prismAlpha * 0.72).cgColor,
+                UIColor.clear.cgColor,
+                prismRoles.bottom.withAlphaComponent(prismAlpha * 0.82).cgColor,
+                UIColor.clear.cgColor
+            ], on: prismLayer, animated: animatePalette)
+        }
+        prismLayer.opacity = 1
 
         for (index, layer) in auroraLayers.enumerated() {
+            layer.locations = storedAccentMode == .fullScreen
+                ? [0, 0.30, 0.66, 1]
+                : (index == AuroraRole.bottomTrailing.rawValue
+                    ? [0, 0.24, 0.62, 1]
+                    : [0, 0.42, 1])
             let color = auroraBaseColor(for: index, palette: palette)
             let restingOpacity = index < auroraSpecs.count
                 ? auroraSpecs[index].opacityRange.upperBound
@@ -788,11 +922,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 leadingAlpha: leadingAlpha,
                 isDark: isDark
             )
-            setAuroraColors(
+            setGradientColors(
                 targetColors,
                 on: layer,
-                animated: shouldAnimateVisualStateChange &&
-                    !shouldRefreshAmbientAuroraTimelineForPalette
+                animated: animatePalette
             )
             layer.opacity = restingOpacity
         }
@@ -800,47 +933,57 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         for (index, layer) in particleLayers.enumerated() {
             let color = palette.particle[index % palette.particle.count]
             layer.fillColor = color.cgColor
-            layer.opacity = isDark ? 0.31 : 0.24
+            layer.opacity = isDark ? 0.16 : 0.11
             layer.shadowOpacity = 0
             layer.shadowRadius = 0
             layer.shadowOffset = .zero
         }
 
-        reactiveLightLayer.colors = [
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.20 : 0.27).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.06 : 0.08).cgColor,
+        setGradientColors([
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.14 : 0.19).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.042 : 0.060).cgColor,
             UIColor.clear.cgColor
-        ]
-        reactiveLightLayer.opacity = 0.84
+        ], on: reactiveLightLayer, animated: animatePalette)
+        reactiveLightLayer.opacity = 0.72
 
-        touchLensLayer.colors = [
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.28 : 0.34).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
-            palette.accent.withAlphaComponent(isDark ? 0.045 : 0.035).cgColor,
+        setGradientColors([
+            palette.specularLight.withAlphaComponent(isDark ? 0.30 : 0.38).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.13 : 0.17).cgColor,
+            palette.accent.withAlphaComponent(isDark ? 0.040 : 0.030).cgColor,
             UIColor.clear.cgColor
-        ]
-        touchCoreLayer.colors = [
-            UIColor.white.withAlphaComponent(isDark ? 0.24 : 0.36).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.08 : 0.12).cgColor,
+        ], on: touchLensLayer, animated: animatePalette)
+        setGradientColors([
+            palette.specularLight.withAlphaComponent(isDark ? 0.28 : 0.40).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.075 : 0.11).cgColor,
             UIColor.clear.cgColor
-        ]
+        ], on: touchCoreLayer, animated: animatePalette)
+        contactRingLayer.strokeColor = palette.specularLight.withAlphaComponent(
+            isDark ? 0.52 : 0.68
+        ).cgColor
 
-        signatureSweepLayer.colors = [
+        setGradientColors([
             UIColor.clear.cgColor,
             UIColor.clear.cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.025 : 0.05).cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.26 : 0.38).cgColor,
-            UIColor.white.withAlphaComponent(isDark ? 0.07 : 0.12).cgColor,
+            palette.specularLight.withAlphaComponent(isDark ? 0.018 : 0.030).cgColor,
+            palette.specularLight.withAlphaComponent(isDark ? 0.18 : 0.26).cgColor,
+            palette.specularLight.withAlphaComponent(isDark ? 0.045 : 0.075).cgColor,
             UIColor.clear.cgColor,
             UIColor.clear.cgColor
-        ]
+        ], on: signatureSweepLayer, animated: animatePalette)
         signatureSweepLayer.opacity = 0
 
-        accentBarLayer.colors = [
+        setGradientColors([
+            UIColor.white.withAlphaComponent(isDark ? 0.16 : 0.72).cgColor,
+            palette.specularLight.withAlphaComponent(isDark ? 0.075 : 0.22).cgColor,
+            palette.specularLight.withAlphaComponent(isDark ? 0.012 : 0.028).cgColor,
+            UIColor.clear.cgColor
+        ], on: topSpecularLayer, animated: animatePalette)
+
+        setGradientColors([
             palette.accent.withAlphaComponent(0.38).cgColor,
             palette.accent.withAlphaComponent(0.82).cgColor,
             palette.accent.withAlphaComponent(0.22).cgColor
-        ]
+        ], on: accentBarLayer, animated: animatePalette)
 
         let glowStrength = storedCornerGlowOpacityMultiplier
         let middleGlowColor: UIColor
@@ -853,38 +996,39 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             middleGlowAlpha = (isDark ? 0.092 : 0.064) * glowStrength
         }
 
-        accentGlowLayer.colors = [
+        setGradientColors([
             palette.accent.withAlphaComponent((isDark ? 0.17 : 0.115) * glowStrength).cgColor,
             middleGlowColor.withAlphaComponent(middleGlowAlpha).cgColor,
             UIColor.clear.cgColor
-        ]
+        ], on: accentGlowLayer, animated: animatePalette)
 
         innerStrokeLayer.strokeColor = palette.stroke.cgColor
         layer.shadowOpacity = palette.shadowOpacity
 
         CATransaction.commit()
 
-        applyAccentMode(animated: false)
+        applyAccentMode(animated: animatePalette)
         setNeedsLayout()
-        refreshAmbientAuroraTimelineAfterPaletteIfNeeded()
+        refreshModeSpecificAmbientAnimationsIfNeeded()
     }
 
     private func makePalette() -> Palette {
         let isDark = traitCollection.userInterfaceStyle == .dark
-        let strongerContrast = UIAccessibility.isDarkerSystemColorsEnabled
+        let strongerContrast = traitCollection.accessibilityContrast == .high ||
+            UIAccessibility.isDarkerSystemColorsEnabled
 
         let fallbackAccent = UIColor(
-            displayP3Red: 201.0 / 255.0,
-            green: 48.0 / 255.0,
-            blue: 82.0 / 255.0,
+            displayP3Red: 203.0 / 255.0,
+            green: 38.0 / 255.0,
+            blue: 84.0 / 255.0,
             alpha: 1
         )
         let explicitAccent = accentColorOverride.map { resolvedColor($0) }
         let accent = explicitAccent ?? resolvedColor(UIColor(named: "AppPrimaryColor") ?? fallbackAccent)
 
         let surfaceFallback = isDark
-            ? UIColor(white: 0.105, alpha: 1)
-            : UIColor(red: 0.992, green: 0.989, blue: 0.991, alpha: 1)
+            ? UIColor(red: 0.052, green: 0.055, blue: 0.073, alpha: 1)
+            : UIColor(red: 0.985, green: 0.979, blue: 0.987, alpha: 1)
 
         let surfaceBase: UIColor
         if let surfaceOverride = overrideSurfureColor ?? overrideSurfaceColor {
@@ -896,26 +1040,43 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
 
         let polishedSurfaceBase = isDark
-            ? surfaceBase
-            : blend(surfaceBase, with: .white, amount: 0.30)
+            ? blend(surfaceBase, with: UIColor(red: 0.04, green: 0.045, blue: 0.064, alpha: 1), amount: 0.16)
+            : blend(surfaceBase, with: .white, amount: 0.42)
         let highlight = blend(
             polishedSurfaceBase,
             with: .white,
-            amount: isDark ? 0.075 : 0.34
+            amount: isDark ? 0.072 : 0.48
         )
         let middle = blend(
             polishedSurfaceBase,
             with: accent,
-            amount: isDark ? 0.068 : 0.012
+            amount: isDark ? 0.052 : 0.014
         )
         let tail = blend(
             polishedSurfaceBase,
-            with: accent,
-            amount: isDark ? 0.043 : 0.008
+            with: resolvedColor(.systemIndigo),
+            amount: isDark ? 0.064 : 0.012
         )
 
-        let twilight = blend(accent, with: resolvedColor(.systemIndigo), amount: 0.44)
-        let shine = explicitAccent ?? resolvedColor(UIColor(named: "AppPrimaryColorShainer") ?? twilight)
+        let brandShine: UIColor
+        if let explicitAccent {
+            brandShine = blend(explicitAccent, with: .white, amount: 0.23)
+        } else {
+            brandShine = resolvedColor(
+                UIColor(named: "AppPrimaryColorShainer") ??
+                    blend(accent, with: .white, amount: 0.23)
+            )
+        }
+        let warmBloom = blend(
+            brandShine,
+            with: resolvedColor(.systemOrange),
+            amount: explicitAccent == nil ? 0.20 : 0.10
+        )
+        let violetBloom = blend(
+            accent,
+            with: resolvedColor(.systemIndigo),
+            amount: explicitAccent == nil ? 0.46 : 0.28
+        )
 
         let topGlow: UIColor
         if let topGlowOverride = overrideTopGlowColor {
@@ -928,54 +1089,113 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         if let bottomGlowOverride = overrideBottomGlowColor {
             bottomTrailingGlow = resolvedColor(bottomGlowOverride)
         } else {
-            bottomTrailingGlow = blend(
-                shine,
-                with: accent,
-                amount: explicitAccent == nil ? 0.34 : 0.72
-            )
+            bottomTrailingGlow = warmBloom
         }
         let middleGlow: UIColor
         if let centerGlowOverride = overrideCenterGlowColor {
             middleGlow = resolvedColor(centerGlowOverride)
         } else {
-            middleGlow = blend(
-                accent,
-                with: shine,
-                amount: explicitAccent == nil ? 0.52 : 0.18
-            )
+            middleGlow = violetBloom
         }
-        let particlePrimary = blend(accent, with: .white, amount: isDark ? 0.66 : 0.52)
-        let particleSecondary = blend(bottomTrailingGlow, with: .white, amount: isDark ? 0.56 : 0.66)
+        let particlePrimary = blend(accent, with: .white, amount: isDark ? 0.74 : 0.58)
+        let particleSecondary = blend(bottomTrailingGlow, with: .white, amount: isDark ? 0.68 : 0.74)
+        let specular = blend(accent, with: .white, amount: isDark ? 0.86 : 0.94)
+        let isFullScreen = storedAccentMode == .fullScreen
+
+        // Full Screen deliberately stays inside the surface's own tonal
+        // family. Brand color is a whisper in the material, never a hard
+        // pink/blue/orange field painted over the application.
+        let fullScreenLift = blend(
+            polishedSurfaceBase,
+            with: .white,
+            amount: isDark ? 0.14 : 0.54
+        )
+        let fullScreenSoftLift = blend(
+            polishedSurfaceBase,
+            with: .white,
+            amount: isDark ? 0.065 : 0.26
+        )
+        let fullScreenShade = blend(
+            polishedSurfaceBase,
+            with: .black,
+            amount: isDark ? 0.18 : 0.085
+        )
+        let fullScreenDeep = blend(
+            polishedSurfaceBase,
+            with: .black,
+            amount: isDark ? 0.29 : 0.145
+        )
+        let fullScreenBrandWhisper = blend(
+            polishedSurfaceBase,
+            with: accent,
+            amount: isDark ? 0.070 : 0.032
+        )
+        let fullScreenTop = blend(
+            fullScreenLift,
+            with: overrideTopGlowColor == nil ? accent : topGlow,
+            amount: overrideTopGlowColor == nil
+                ? (isDark ? 0.050 : 0.022)
+                : (isDark ? 0.12 : 0.080)
+        )
+        let fullScreenBottom = blend(
+            fullScreenShade,
+            with: overrideBottomGlowColor == nil ? accent : bottomTrailingGlow,
+            amount: overrideBottomGlowColor == nil
+                ? (isDark ? 0.055 : 0.026)
+                : (isDark ? 0.13 : 0.085)
+        )
+        let fullScreenMiddle = blend(
+            fullScreenSoftLift,
+            with: overrideCenterGlowColor == nil ? accent : middleGlow,
+            amount: overrideCenterGlowColor == nil
+                ? (isDark ? 0.045 : 0.020)
+                : (isDark ? 0.11 : 0.075)
+        )
+        let fullScreenAurora = [
+            fullScreenTop,
+            fullScreenLift,
+            fullScreenBrandWhisper,
+            fullScreenDeep,
+            fullScreenSoftLift,
+            fullScreenBottom,
+            fullScreenMiddle
+        ]
+        let fullScreenParticles = [
+            fullScreenLift,
+            fullScreenSoftLift,
+            fullScreenBrandWhisper
+        ]
 
         return Palette(
             accent: accent,
-            surfaceHighlight: highlight,
-            surfaceMiddle: middle,
-            surfaceTail: tail,
-            depth: blend(polishedSurfaceBase, with: .black, amount: isDark ? 0.30 : 0.07),
-            aurora: storedAccentMode == .fullScreen ? [
-                topGlow,
-                blend(topGlow, with: .systemPink, amount: 0.5),
-                blend(topGlow, with: .systemIndigo, amount: 0.6),
-                blend(topGlow, with: .systemTeal, amount: 0.7),
-                UIColor(red: 255.0/255.0, green: 198.0/255.0, blue: 84.0/255.0, alpha: 1.0),
-                bottomTrailingGlow,
-                middleGlow
-            ] : [
+            surfaceHighlight: isFullScreen ? fullScreenLift : highlight,
+            surfaceMiddle: isFullScreen ? fullScreenBrandWhisper : middle,
+            surfaceTail: isFullScreen ? fullScreenShade : tail,
+            depth: isFullScreen
+                ? fullScreenDeep
+                : blend(polishedSurfaceBase, with: .black, amount: isDark ? 0.34 : 0.09),
+            aurora: isFullScreen ? fullScreenAurora : [
                 topGlow,
                 bottomTrailingGlow,
                 middleGlow
             ],
-            particle: [particlePrimary, particleSecondary, UIColor.white],
-            reactiveLight: blend(accent, with: .white, amount: isDark ? 0.76 : 0.86),
+            particle: isFullScreen
+                ? fullScreenParticles
+                : [particlePrimary, particleSecondary, UIColor.white],
+            reactiveLight: isFullScreen
+                ? blend(fullScreenSoftLift, with: accent, amount: isDark ? 0.055 : 0.024)
+                : blend(accent, with: .white, amount: isDark ? 0.80 : 0.89),
+            specularLight: isFullScreen
+                ? blend(fullScreenLift, with: .white, amount: isDark ? 0.38 : 0.62)
+                : specular,
             stroke: UIColor.white.withAlphaComponent(
-                strongerContrast ? (isDark ? 0.24 : 0.92) : (isDark ? 0.13 : 0.76)
+                strongerContrast ? (isDark ? 0.30 : 0.96) : (isDark ? 0.14 : 0.78)
             ),
-            shadowOpacity: isDark ? 0.22 : 0.085
+            shadowOpacity: isDark ? 0.18 : 0.095
         )
     }
 
-    private func setAuroraColors(
+    private func setGradientColors(
         _ colors: [CGColor],
         on layer: CAGradientLayer,
         animated: Bool
@@ -983,7 +1203,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let sourceColors = layer.presentation()?.colors ?? layer.colors
         let targetColors = colors.map { $0 as Any }
 
-        layer.removeAnimation(forKey: auroraColorTransitionKey)
+        layer.removeAnimation(forKey: gradientColorTransitionKey)
         layer.colors = targetColors
 
         guard animated,
@@ -1001,7 +1221,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         transition.duration = PPHeroApexMotionTokens.paletteTransitionDuration
         transition.timingFunction = PPHeroApexMotionTokens.paletteTimingFunction
         transition.isRemovedOnCompletion = true
-        layer.add(transition, forKey: auroraColorTransitionKey)
+        layer.add(transition, forKey: gradientColorTransitionKey)
     }
 
     private func auroraLeadingAlpha(
@@ -1010,12 +1230,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     ) -> CGFloat {
         if storedAccentMode == .fullScreen {
             return reduceTransparency
-                ? (isDark ? 0.24 : 0.18)
-                : (isDark ? 0.38 : 0.26)
+                ? (isDark ? 0.40 : 0.50)
+                : (isDark ? 0.44 : 0.56)
         }
         return reduceTransparency
-            ? (isDark ? 0.19 : 0.14)
-            : (isDark ? 0.28 : 0.19)
+            ? (isDark ? 0.14 : 0.095)
+            : (isDark ? 0.21 : 0.135)
     }
 
     private func auroraBaseColor(for index: Int, palette: Palette) -> UIColor {
@@ -1070,6 +1290,32 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         leadingAlpha: CGFloat,
         isDark: Bool
     ) -> [CGColor] {
+        if storedAccentMode == .fullScreen {
+            let roleStrength: CGFloat
+            switch AuroraRole(rawValue: index) {
+            case .leading:
+                roleStrength = 1
+            case .bottomTrailing:
+                roleStrength = 0.92
+            case .middle:
+                roleStrength = 0.84
+            case .none:
+                roleStrength = 0.88
+            }
+            let alpha = leadingAlpha * roleStrength
+            let brandWhisper = blend(
+                color,
+                with: palette.accent,
+                amount: isDark ? 0.028 : 0.016
+            )
+            return [
+                color.withAlphaComponent(alpha).cgColor,
+                brandWhisper.withAlphaComponent(alpha * 0.54).cgColor,
+                palette.surfaceMiddle.withAlphaComponent(alpha * 0.18).cgColor,
+                UIColor.clear.cgColor
+            ]
+        }
+
         if index == AuroraRole.bottomTrailing.rawValue {
             let trailAlpha = leadingAlpha * (isDark ? 0.94 : 0.88)
             return [
@@ -1094,96 +1340,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
             UIColor.clear.cgColor
         ]
-    }
-
-    private func makeAuroraColorCycleAnimation(
-        for index: Int,
-        palette: Palette
-    ) -> CAKeyframeAnimation? {
-        let route = auroraColorRoute(for: index, palette: palette)
-        guard route.count > 1 else { return nil }
-
-        let isDark = traitCollection.userInterfaceStyle == .dark
-        let leadingAlpha = auroraLeadingAlpha(
-            isDark: isDark,
-            reduceTransparency: UIAccessibility.isReduceTransparencyEnabled
-        )
-        let values: [[Any]] = route.map { color in
-            auroraGradientColors(
-                for: color,
-                palette: palette,
-                index: index,
-                leadingAlpha: leadingAlpha,
-                isDark: isDark
-            ).map { $0 as Any }
-        }
-
-        let colorCycle = CAKeyframeAnimation(keyPath: "colors")
-        colorCycle.values = values
-        colorCycle.keyTimes = [0, 0.24, 0.50, 0.76, 1]
-        colorCycle.calculationMode = .linear
-        colorCycle.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.paletteTimingFunction,
-            count: values.count - 1
-        )
-        return colorCycle
-    }
-
-    private func auroraColorRoute(for index: Int, palette: Palette) -> [UIColor] {
-        let roles = auroraRoleColors(from: palette)
-        switch AuroraRole(rawValue: index) {
-        case .leading:
-            return [
-                roles.top,
-                roles.middle,
-                roles.bottom,
-                roles.middle,
-                roles.top
-            ]
-        case .bottomTrailing:
-            return [
-                roles.bottom,
-                roles.top,
-                roles.middle,
-                roles.top,
-                roles.bottom
-            ]
-        case .middle:
-            return [
-                roles.middle,
-                roles.bottom,
-                roles.top,
-                roles.bottom,
-                roles.middle
-            ]
-        case .none:
-            let base = auroraBaseColor(for: index, palette: palette)
-            return [base, base, base, base, base]
-        }
-    }
-
-    private var shouldRefreshAmbientAuroraTimelineForPalette: Bool {
-        guard ambientTimelineInstalled,
-              !ambientTimelinePaused,
-              !UIAccessibility.isReduceMotionEnabled else {
-            return false
-        }
-
-        switch motionStateMachine.state {
-        case .entering, .ambient, .interactive, .settling:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func refreshAmbientAuroraTimelineAfterPaletteIfNeeded() {
-        guard shouldRefreshAmbientAuroraTimelineForPalette else { return }
-        auroraLayers.forEach { layer in
-            layer.removeAnimation(forKey: auroraColorTransitionKey)
-            layer.removeAnimation(forKey: auroraAnimationKey)
-        }
-        installAuroraAnimations()
     }
 
     private func resolvedColor(_ color: UIColor) -> UIColor {
@@ -1218,10 +1374,28 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             return base
         }
 
+        func toLinear(_ component: CGFloat) -> CGFloat {
+            let value = min(max(component, 0), 1)
+            return value <= 0.04045
+                ? value / 12.92
+                : CGFloat(pow(Double((value + 0.055) / 1.055), 2.4))
+        }
+
+        func toSRGB(_ component: CGFloat) -> CGFloat {
+            let value = min(max(component, 0), 1)
+            return value <= 0.0031308
+                ? value * 12.92
+                : 1.055 * CGFloat(pow(Double(value), 1.0 / 2.4)) - 0.055
+        }
+
+        func mixed(_ first: CGFloat, _ second: CGFloat) -> CGFloat {
+            toSRGB(toLinear(first) * (1 - t) + toLinear(second) * t)
+        }
+
         return UIColor(
-            red: baseRed * (1 - t) + overlayRed * t,
-            green: baseGreen * (1 - t) + overlayGreen * t,
-            blue: baseBlue * (1 - t) + overlayBlue * t,
+            red: mixed(baseRed, overlayRed),
+            green: mixed(baseGreen, overlayGreen),
+            blue: mixed(baseBlue, overlayBlue),
             alpha: baseAlpha * (1 - t) + overlayAlpha * t
         )
     }
@@ -1427,7 +1601,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func ensureAmbientTimelineRunning() {
         if !ambientTimelineInstalled {
+            installFullScreenSurfaceAnimation()
             installFieldDriftAnimation()
+            installPrismAnimation()
             installAuroraAnimations()
             installParticleAnimations()
             installLightAnimations()
@@ -1436,14 +1612,137 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         resumeAmbientTimeline()
     }
 
+    /// Full Screen owns a slowly re-orienting tonal base. This is what lets a
+    /// light region descend while the darker degree migrates upward instead of
+    /// leaving one colored glow parked in the center of the application.
+    private func installFullScreenSurfaceAnimation() {
+        baseGradientLayer.removeAnimation(forKey: fullScreenSurfaceAnimationKey)
+        guard storedAccentMode == .fullScreen else { return }
+        baseGradientLayer.removeAnimation(forKey: gradientColorTransitionKey)
+
+        let palette = makePalette()
+        let isDark = traitCollection.userInterfaceStyle == .dark
+        let brightest = blend(
+            palette.surfaceHighlight,
+            with: .white,
+            amount: isDark ? 0.10 : 0.22
+        )
+        let quiet = blend(
+            palette.surfaceMiddle,
+            with: palette.surfaceHighlight,
+            amount: 0.42
+        )
+        let deepest = blend(
+            palette.surfaceTail,
+            with: palette.depth,
+            amount: isDark ? 0.46 : 0.30
+        )
+        let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
+        let strongerContrast = traitCollection.accessibilityContrast == .high ||
+            UIAccessibility.isDarkerSystemColorsEnabled
+        let surfaceAlpha: CGFloat = reduceTransparency
+            ? 1
+            : (strongerContrast ? 0.91 : (isDark ? 0.82 : 0.76))
+        func animatedSurfaceColor(_ color: UIColor) -> CGColor {
+            color.withAlphaComponent(surfaceAlpha).cgColor
+        }
+        let tonalFrames: [[Any]] = [
+            [
+                animatedSurfaceColor(brightest),
+                animatedSurfaceColor(quiet),
+                animatedSurfaceColor(palette.surfaceTail)
+            ],
+            [
+                animatedSurfaceColor(quiet),
+                animatedSurfaceColor(brightest),
+                animatedSurfaceColor(deepest)
+            ],
+            [
+                animatedSurfaceColor(deepest),
+                animatedSurfaceColor(palette.surfaceMiddle),
+                animatedSurfaceColor(brightest)
+            ],
+            [
+                animatedSurfaceColor(palette.surfaceTail),
+                animatedSurfaceColor(brightest),
+                animatedSurfaceColor(quiet)
+            ],
+            [
+                animatedSurfaceColor(brightest),
+                animatedSurfaceColor(quiet),
+                animatedSurfaceColor(palette.surfaceTail)
+            ]
+        ]
+        let keyTimes: [NSNumber] = [0, 0.23, 0.50, 0.76, 1]
+
+        let colors = CAKeyframeAnimation(keyPath: "colors")
+        colors.values = tonalFrames
+        colors.keyTimes = keyTimes
+        colors.calculationMode = .linear
+        colors.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.paletteTimingFunction,
+            count: keyTimes.count - 1
+        )
+
+        let startPoint = CAKeyframeAnimation(keyPath: "startPoint")
+        startPoint.values = [
+            CGPoint(x: 0.08, y: 0.02),
+            CGPoint(x: 0.92, y: 0.12),
+            CGPoint(x: 0.52, y: 1.00),
+            CGPoint(x: 0.14, y: 0.72),
+            CGPoint(x: 0.08, y: 0.02)
+        ].map {
+            NSValue(cgPoint: resolvedFullScreenPoint($0))
+        }
+        startPoint.keyTimes = keyTimes
+        startPoint.calculationMode = .cubic
+        startPoint.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+            count: keyTimes.count - 1
+        )
+
+        let endPoint = CAKeyframeAnimation(keyPath: "endPoint")
+        endPoint.values = [
+            CGPoint(x: 0.92, y: 0.98),
+            CGPoint(x: 0.12, y: 0.90),
+            CGPoint(x: 0.48, y: 0.00),
+            CGPoint(x: 0.88, y: 0.20),
+            CGPoint(x: 0.92, y: 0.98)
+        ].map {
+            NSValue(cgPoint: resolvedFullScreenPoint($0))
+        }
+        endPoint.keyTimes = keyTimes
+        endPoint.calculationMode = .cubic
+        endPoint.timingFunctions = startPoint.timingFunctions
+
+        let locations = CAKeyframeAnimation(keyPath: "locations")
+        locations.values = [
+            [0.00, 0.50, 1.00],
+            [0.04, 0.42, 1.00],
+            [0.00, 0.56, 1.00],
+            [0.08, 0.48, 0.96],
+            [0.00, 0.50, 1.00]
+        ]
+        locations.keyTimes = keyTimes
+        locations.calculationMode = .cubic
+        locations.timingFunctions = startPoint.timingFunctions
+
+        let group = makeRepeatingAnimationGroup(
+            animations: [colors, startPoint, endPoint, locations],
+            duration: 28.8,
+            phase: 3.4
+        )
+        baseGradientLayer.add(group, forKey: fullScreenSurfaceAnimationKey)
+    }
+
     private func installFieldDriftAnimation() {
         let drift = CAKeyframeAnimation(keyPath: "sublayerTransform")
         drift.values = [
-            NSValue(caTransform3D: ambientTransform(x: -18, y: 11, scale: 1.022)),
-            NSValue(caTransform3D: ambientTransform(x: 32, y: -20, scale: 1.095)),
-            NSValue(caTransform3D: ambientTransform(x: -28, y: 24, scale: 1.046)),
-            NSValue(caTransform3D: ambientTransform(x: 12, y: -8, scale: 1.064)),
-            NSValue(caTransform3D: ambientTransform(x: -18, y: 11, scale: 1.022))
+            NSValue(caTransform3D: ambientTransform(x: -4, y: 3, scale: 1.010)),
+            NSValue(caTransform3D: ambientTransform(x: 7, y: -4, scale: 1.024)),
+            NSValue(caTransform3D: ambientTransform(x: -6, y: 5, scale: 1.016)),
+            NSValue(caTransform3D: ambientTransform(x: 3, y: -2, scale: 1.020)),
+            NSValue(caTransform3D: ambientTransform(x: -4, y: 3, scale: 1.010))
         ]
         drift.keyTimes = [0, 0.28, 0.58, 0.82, 1]
         drift.calculationMode = .cubic
@@ -1460,71 +1759,119 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ambientContentView.layer.add(group, forKey: fieldDriftAnimationKey)
     }
 
-    private func installAuroraAnimations() {
-        let palette = makePalette()
+    private func installPrismAnimation() {
+        if storedAccentMode == .fullScreen {
+            guard !ambientContentView.bounds.isEmpty else { return }
 
+            let normalizedPositions = [
+                CGPoint(x: 0.18, y: 0.14),
+                CGPoint(x: 0.78, y: 0.26),
+                CGPoint(x: 0.52, y: 0.74),
+                CGPoint(x: 0.20, y: 0.86),
+                CGPoint(x: 0.18, y: 0.14)
+            ]
+            let keyTimes: [NSNumber] = [0, 0.24, 0.52, 0.78, 1]
+
+            let position = CAKeyframeAnimation(keyPath: "position")
+            position.values = normalizedPositions.map {
+                NSValue(
+                    cgPoint: fullScreenPosition(
+                        from: $0,
+                        in: ambientContentView.bounds
+                    )
+                )
+            }
+            position.keyTimes = keyTimes
+            position.calculationMode = .cubic
+            position.timingFunctions = Array(
+                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+                count: keyTimes.count - 1
+            )
+
+            let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+            scale.values = [0.82, 1.10, 0.94, 1.06, 0.82]
+            scale.keyTimes = keyTimes
+            scale.calculationMode = .cubic
+            scale.timingFunctions = position.timingFunctions
+
+            let opacity = CAKeyframeAnimation(keyPath: "opacity")
+            opacity.values = [0.58, 0.92, 0.70, 0.86, 0.58]
+            opacity.keyTimes = keyTimes
+            opacity.calculationMode = .cubic
+            opacity.timingFunctions = position.timingFunctions
+
+            let palette = makePalette()
+            let isDark = traitCollection.userInterfaceStyle == .dark
+            let prismAlpha: CGFloat = isDark ? 0.30 : 0.34
+            let colorRoute = [1, 3, 4, 5, 1].map {
+                auroraColor(
+                    at: $0,
+                    in: palette,
+                    fallback: palette.surfaceMiddle
+                )
+            }
+            let colors = CAKeyframeAnimation(keyPath: "colors")
+            colors.values = colorRoute.map { tone -> Any in
+                return [
+                    tone.withAlphaComponent(prismAlpha).cgColor,
+                    blend(tone, with: palette.surfaceMiddle, amount: 0.46)
+                        .withAlphaComponent(prismAlpha * 0.52).cgColor,
+                    palette.surfaceTail.withAlphaComponent(prismAlpha * 0.16).cgColor,
+                    UIColor.clear.cgColor
+                ].map { $0 as Any }
+            }
+            colors.keyTimes = keyTimes
+            colors.calculationMode = .linear
+            colors.timingFunctions = Array(
+                repeating: PPHeroApexMotionTokens.paletteTimingFunction,
+                count: keyTimes.count - 1
+            )
+            prismLayer.removeAnimation(forKey: gradientColorTransitionKey)
+
+            let group = makeRepeatingAnimationGroup(
+                animations: [position, scale, opacity, colors],
+                duration: 29.4,
+                phase: 6.2
+            )
+            prismLayer.add(group, forKey: prismAnimationKey)
+            return
+        }
+
+        let rotation = CAKeyframeAnimation(keyPath: "transform.rotation.z")
+        rotation.values = [-0.10, 1.48, 3.04, 4.62, CGFloat.pi * 2 - 0.10]
+        rotation.keyTimes = [0, 0.25, 0.50, 0.75, 1]
+        rotation.calculationMode = .linear
+
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = [0.72, 1.0, 0.80, 0.94, 0.72]
+        opacity.keyTimes = [0, 0.24, 0.53, 0.78, 1]
+        opacity.calculationMode = .cubic
+        opacity.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+            count: 4
+        )
+
+        let group = makeRepeatingAnimationGroup(
+            animations: [rotation, opacity],
+            duration: 67,
+            phase: 11.3
+        )
+        prismLayer.add(group, forKey: prismAnimationKey)
+    }
+
+    private func installAuroraAnimations() {
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
+
+            if storedAccentMode == .fullScreen {
+                installFullScreenAuroraAnimation(on: layer, index: index)
+                continue
+            }
 
             let transform: CAKeyframeAnimation
             let opacity: CAKeyframeAnimation
 
-            if storedAccentMode == .fullScreen {
-                transform = CAKeyframeAnimation(keyPath: "transform")
-                let rotationDirection: CGFloat = index == AuroraRole.middle.rawValue ? -1 : 1
-                transform.values = [
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.54,
-                        y: spec.travel.height * 0.34,
-                        scale: spec.scaleRange.lowerBound,
-                        angle: 0
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.78,
-                        y: -spec.travel.height * 0.58,
-                        scale: 1.038,
-                        angle: rotationDirection * CGFloat.pi * 0.5
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 1.12,
-                        y: spec.travel.height * 0.46,
-                        scale: spec.scaleRange.upperBound,
-                        angle: rotationDirection * CGFloat.pi
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.36,
-                        y: -spec.travel.height * 0.40,
-                        scale: 1.020,
-                        angle: rotationDirection * CGFloat.pi * 1.5
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.54,
-                        y: spec.travel.height * 0.34,
-                        scale: spec.scaleRange.lowerBound,
-                        angle: rotationDirection * CGFloat.pi * 2.0
-                    ))
-                ]
-                transform.keyTimes = [0, 0.25, 0.50, 0.75, 1]
-                transform.calculationMode = .cubic
-                transform.timingFunctions = Array(
-                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                    count: 4
-                )
-
-                let lowOpacity = spec.opacityRange.lowerBound
-                let highOpacity = spec.opacityRange.upperBound
-                opacity = CAKeyframeAnimation(keyPath: "opacity")
-                opacity.values = [
-                    lowOpacity,
-                    lowOpacity + (highOpacity - lowOpacity) * 0.65,
-                    highOpacity,
-                    lowOpacity + (highOpacity - lowOpacity) * 0.45,
-                    lowOpacity
-                ]
-                opacity.keyTimes = [0, 0.25, 0.50, 0.75, 1]
-                opacity.calculationMode = .cubic
-                opacity.timingFunctions = transform.timingFunctions
-            } else if index == AuroraRole.bottomTrailing.rawValue {
+            if index == AuroraRole.bottomTrailing.rawValue {
                 transform = CAKeyframeAnimation(keyPath: "transform")
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
@@ -1666,16 +2013,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 )
             }
 
-            var animations: [CAAnimation] = [transform, opacity]
-            if let colorCycle = makeAuroraColorCycleAnimation(
-                for: index,
-                palette: palette
-            ) {
-                animations.append(colorCycle)
-            }
-
             let group = makeRepeatingAnimationGroup(
-                animations: animations,
+                animations: [transform, opacity],
                 duration: spec.duration,
                 phase: spec.phase
             )
@@ -1683,11 +2022,88 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    /// Full Screen uses absolute, screen-spanning position choreography. Each
+    /// field follows a different loop so the composition keeps reforming: a
+    /// top-leading wash descends, a bottom-trailing wash rises, and the middle
+    /// wash travels between corners instead of breathing in place.
+    private func installFullScreenAuroraAnimation(
+        on layer: CAGradientLayer,
+        index: Int
+    ) {
+        guard fullScreenAuroraMotionSpecs.indices.contains(index),
+              !ambientContentView.bounds.isEmpty else {
+            return
+        }
+
+        let spec = fullScreenAuroraMotionSpecs[index]
+        layer.removeAnimation(forKey: gradientColorTransitionKey)
+        let position = CAKeyframeAnimation(keyPath: "position")
+        position.values = spec.normalizedPositions.map {
+            NSValue(
+                cgPoint: fullScreenPosition(
+                    from: $0,
+                    in: ambientContentView.bounds
+                )
+            )
+        }
+        position.keyTimes = spec.keyTimes
+        position.calculationMode = .cubic
+        position.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
+            count: max(spec.keyTimes.count - 1, 0)
+        )
+
+        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+        scale.values = spec.scales.map { NSNumber(value: Double($0)) }
+        scale.keyTimes = spec.keyTimes
+        scale.calculationMode = .cubic
+        scale.timingFunctions = position.timingFunctions
+
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = spec.opacities.map { NSNumber(value: $0) }
+        opacity.keyTimes = spec.keyTimes
+        opacity.calculationMode = .cubic
+        opacity.timingFunctions = position.timingFunctions
+
+        let palette = makePalette()
+        let isDark = traitCollection.userInterfaceStyle == .dark
+        let leadingAlpha = auroraLeadingAlpha(
+            isDark: isDark,
+            reduceTransparency: UIAccessibility.isReduceTransparencyEnabled
+        )
+        let colors = CAKeyframeAnimation(keyPath: "colors")
+        colors.values = fullScreenAuroraColorRoute(
+            for: index,
+            palette: palette
+        ).map { color -> Any in
+            return auroraGradientColors(
+                for: color,
+                palette: palette,
+                index: index,
+                leadingAlpha: leadingAlpha,
+                isDark: isDark
+            ).map { $0 as Any }
+        }
+        colors.keyTimes = spec.keyTimes
+        colors.calculationMode = .linear
+        colors.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.paletteTimingFunction,
+            count: max(spec.keyTimes.count - 1, 0)
+        )
+
+        let group = makeRepeatingAnimationGroup(
+            animations: [position, scale, opacity, colors],
+            duration: spec.duration,
+            phase: spec.phase
+        )
+        layer.add(group, forKey: auroraAnimationKey)
+    }
+
     private func installParticleAnimations() {
         for (index, layer) in particleLayers.enumerated() {
             let direction: CGFloat = index.isMultiple(of: 2) ? 1 : -1
-            let travelX = direction * (12 + CGFloat(index) * 4)
-            let travelY = 9 + CGFloat(index) * 2.5
+            let travelX = direction * (4.5 + CGFloat(index) * 1.8)
+            let travelY = 3.5 + CGFloat(index) * 1.4
 
             let transform = CAKeyframeAnimation(keyPath: "transform")
             transform.values = [
@@ -1695,12 +2111,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 NSValue(caTransform3D: ambientTransform(
                     x: travelX,
                     y: -travelY,
-                    scale: 1.08
+                    scale: 1.025
                 )),
                 NSValue(caTransform3D: ambientTransform(
                     x: -travelX * 0.62,
                     y: travelY,
-                    scale: 0.94
+                    scale: 0.982
                 )),
                 NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1))
             ]
@@ -1714,10 +2130,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let opacity = CAKeyframeAnimation(keyPath: "opacity")
             let baseOpacity = layer.opacity
             opacity.values = [
-                baseOpacity * 0.40,
-                min(baseOpacity + 0.18, 0.58),
-                baseOpacity * 0.62,
-                baseOpacity * 0.40
+                baseOpacity * 0.58,
+                min(baseOpacity + 0.055, 0.24),
+                baseOpacity * 0.78,
+                baseOpacity * 0.58
             ]
             opacity.keyTimes = [0, 0.36, 0.74, 1]
             opacity.calculationMode = .cubic
@@ -1726,11 +2142,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 count: 3
             )
 
-            let duration = 5.4 + CFTimeInterval(index) * 1.7
+            let duration = 19.0 + CFTimeInterval(index) * 3.7
             let group = makeRepeatingAnimationGroup(
                 animations: [transform, opacity],
                 duration: duration,
-                phase: 1.3 + CFTimeInterval(index) * 2.2
+                phase: 3.1 + CFTimeInterval(index) * 4.6
             )
             layer.add(group, forKey: particleAnimationKey)
         }
@@ -1738,7 +2154,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func installLightAnimations() {
         let reactiveBreath = CAKeyframeAnimation(keyPath: "opacity")
-        reactiveBreath.values = [0.42, 0.84, 0.55, 0.42]
+        reactiveBreath.values = [0.54, 0.72, 0.62, 0.54]
         reactiveBreath.keyTimes = [0, 0.38, 0.74, 1]
         reactiveBreath.calculationMode = .cubic
         reactiveBreath.timingFunctions = Array(
@@ -1748,10 +2164,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let reactiveTravel = CAKeyframeAnimation(keyPath: "transform")
         reactiveTravel.values = [
-            NSValue(caTransform3D: ambientTransform(x: -11, y: 5, scale: 0.97)),
-            NSValue(caTransform3D: ambientTransform(x: 17, y: -9, scale: 1.055)),
-            NSValue(caTransform3D: ambientTransform(x: -14, y: 11, scale: 1.015)),
-            NSValue(caTransform3D: ambientTransform(x: -11, y: 5, scale: 0.97))
+            NSValue(caTransform3D: ambientTransform(x: -4, y: 2, scale: 0.988)),
+            NSValue(caTransform3D: ambientTransform(x: 7, y: -4, scale: 1.022)),
+            NSValue(caTransform3D: ambientTransform(x: -5, y: 4, scale: 1.006)),
+            NSValue(caTransform3D: ambientTransform(x: -4, y: 2, scale: 0.988))
         ]
         reactiveTravel.keyTimes = [0, 0.38, 0.74, 1]
         reactiveTravel.calculationMode = .cubic
@@ -1762,8 +2178,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let reactiveGroup = makeRepeatingAnimationGroup(
             animations: [reactiveBreath, reactiveTravel],
-            duration: 5.4,
-            phase: 1.1
+            duration: PPHeroApexMotionTokens.reactiveLightCycleDuration,
+            phase: 2.7
         )
         reactiveLightLayer.add(reactiveGroup, forKey: reactiveLightAnimationKey)
 
@@ -1771,7 +2187,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installSignatureSweepAnimation() {
-        guard useShimmer, !overlayView.bounds.isEmpty else {
+        guard useShimmer,
+              storedAccentMode != .fullScreen,
+              !overlayView.bounds.isEmpty else {
             signatureSweepLayer.removeAnimation(forKey: signatureSweepAnimationKey)
             signatureSweepLayer.opacity = 0
             return
@@ -1787,7 +2205,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let travel = CAKeyframeAnimation(keyPath: "position.x")
         travel.values = [startX, startX, endX, endX]
-        travel.keyTimes = [0, 0.06, 0.46, 1]
+        travel.keyTimes = [0, 0.12, 0.34, 1]
         travel.timingFunctions = [
             CAMediaTimingFunction(name: .linear),
             PPHeroApexMotionTokens.signatureSweepTimingFunction,
@@ -1796,12 +2214,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let verticalTravel = CAKeyframeAnimation(keyPath: "position.y")
         verticalTravel.values = [startY, startY, endY, endY]
-        verticalTravel.keyTimes = [0, 0.06, 0.46, 1]
+        verticalTravel.keyTimes = travel.keyTimes
         verticalTravel.timingFunctions = travel.timingFunctions
 
         let visibility = CAKeyframeAnimation(keyPath: "opacity")
-        visibility.values = [0, 0, 1, 0.72, 0, 0]
-        visibility.keyTimes = [0, 0.06, 0.16, 0.36, 0.46, 1]
+        visibility.values = [0, 0, 0.82, 0.56, 0, 0]
+        visibility.keyTimes = [0, 0.12, 0.18, 0.29, 0.34, 1]
         visibility.timingFunctions = [
             CAMediaTimingFunction(name: .linear),
             CAMediaTimingFunction(name: .easeOut),
@@ -1857,11 +2275,49 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         return group
     }
 
+    private func refreshModeSpecificAmbientAnimationsIfNeeded() {
+        guard ambientTimelineInstalled,
+              storedAccentMode == .fullScreen else {
+            return
+        }
+        refreshFullScreenSpatialAnimations()
+    }
+
+    private func refreshFullScreenSpatialAnimations() {
+        guard ambientTimelineInstalled,
+              storedAccentMode == .fullScreen,
+              !ambientContentView.bounds.isEmpty else {
+            return
+        }
+
+        installFullScreenSurfaceAnimation()
+        prismLayer.removeAnimation(forKey: prismAnimationKey)
+        auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
+        signatureSweepLayer.removeAnimation(forKey: signatureSweepAnimationKey)
+        signatureSweepLayer.opacity = 0
+        installPrismAnimation()
+        installAuroraAnimations()
+    }
+
+    private func restoreCompactAmbientAnimationsIfNeeded() {
+        baseGradientLayer.removeAnimation(forKey: fullScreenSurfaceAnimationKey)
+        guard ambientTimelineInstalled else { return }
+
+        prismLayer.removeAnimation(forKey: prismAnimationKey)
+        auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
+        installPrismAnimation()
+        installAuroraAnimations()
+        syncSignatureSweepTimeline()
+    }
+
     private func removeAmbientTimeline() {
+        resetTimelineLayerTiming(baseView.layer)
         resetTimelineLayerTiming(ambientContentView.layer)
         resetTimelineLayerTiming(overlayView.layer)
 
+        baseGradientLayer.removeAnimation(forKey: fullScreenSurfaceAnimationKey)
         ambientContentView.layer.removeAnimation(forKey: fieldDriftAnimationKey)
+        prismLayer.removeAnimation(forKey: prismAnimationKey)
         auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
         particleLayers.forEach { $0.removeAnimation(forKey: particleAnimationKey) }
         reactiveLightLayer.removeAnimation(forKey: reactiveLightAnimationKey)
@@ -1873,6 +2329,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func pauseAmbientTimeline() {
         guard ambientTimelineInstalled, !ambientTimelinePaused else { return }
+        pauseTimelineLayer(baseView.layer)
         pauseTimelineLayer(ambientContentView.layer)
         pauseTimelineLayer(overlayView.layer)
         ambientTimelinePaused = true
@@ -1880,6 +2337,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func resumeAmbientTimeline() {
         guard ambientTimelineInstalled, ambientTimelinePaused else { return }
+        resumeTimelineLayer(baseView.layer)
         resumeTimelineLayer(ambientContentView.layer)
         resumeTimelineLayer(overlayView.layer)
         ambientTimelinePaused = false
@@ -1968,46 +2426,72 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         if touchHost !== host {
             detachTouchTracker()
         }
-        guard touchRecognizer == nil else { return }
 
-        let recognizer = PPHeroPassiveTouchRecognizer(target: nil, action: nil)
-        recognizer.cancelsTouchesInView = false
-        recognizer.delaysTouchesBegan = false
-        recognizer.delaysTouchesEnded = false
-        recognizer.delegate = self
-        recognizer.onUpdate = { [weak self, weak host] point, state, timestamp in
-            guard let self, let host else { return }
-            self.handleTouch(
-                at: point,
-                in: host,
-                state: state,
-                timestamp: timestamp
+        if touchRecognizer == nil {
+            let recognizer = PPHeroPassiveTouchRecognizer(target: nil, action: nil)
+            recognizer.cancelsTouchesInView = false
+            recognizer.delaysTouchesBegan = false
+            recognizer.delaysTouchesEnded = false
+            recognizer.delegate = self
+            recognizer.onUpdate = { [weak self, weak host] point, state, timestamp in
+                guard let self, let host else { return }
+                self.handleTouch(
+                    at: point,
+                    in: host,
+                    state: state,
+                    timestamp: timestamp
+                )
+            }
+            recognizer.onTrackingCancelled = { [weak self] in
+                self?.cancelActiveTouchResponse()
+            }
+            host.addGestureRecognizer(recognizer)
+            touchRecognizer = recognizer
+        }
+
+        if #available(iOS 13.4, *), hoverRecognizer == nil {
+            let hover = UIHoverGestureRecognizer(
+                target: self,
+                action: #selector(handleHover(_:))
             )
+            hover.cancelsTouchesInView = false
+            hover.delegate = self
+            host.addGestureRecognizer(hover)
+            hoverRecognizer = hover
         }
-        recognizer.onTrackingCancelled = { [weak self] in
-            self?.cancelActiveTouchResponse()
-        }
-        host.addGestureRecognizer(recognizer)
+
         touchHost = host
-        touchRecognizer = recognizer
     }
 
     private func detachTouchTracker() {
+        touchResponseActive = false
+        hoverResponseActive = false
         if let touchRecognizer {
             touchRecognizer.onUpdate = nil
             touchRecognizer.onTrackingCancelled = nil
             touchHost?.removeGestureRecognizer(touchRecognizer)
         }
+        if let hoverRecognizer {
+            touchHost?.removeGestureRecognizer(hoverRecognizer)
+        }
+        stopTouchDisplayLink()
+        endFingerPresence()
         touchRecognizer = nil
+        hoverRecognizer = nil
         touchHost = nil
-        touchResponseActive = false
         previousTouchPoint = nil
         previousTouchTimestamp = nil
         touchVelocity = .zero
+        touchTargetPoint = nil
+        touchRenderedPoint = nil
+        touchStartPoint = nil
+        touchStartTimestamp = nil
+        touchMaximumTravel = 0
     }
 
     private var isTouchTrackingEligible: Bool {
         guard useUnderFingerMotion,
+              UIView.areAnimationsEnabled,
               !UIAccessibility.isReduceMotionEnabled,
               window != nil else {
             return false
@@ -2022,11 +2506,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func cancelActiveTouchResponse() {
-        guard touchResponseActive else { return }
+        guard touchResponseActive || hoverResponseActive else { return }
         touchResponseActive = false
+        hoverResponseActive = false
+        stopTouchDisplayLink()
+        endFingerPresence()
         previousTouchPoint = nil
         previousTouchTimestamp = nil
-        touchVelocity = .zero
+        touchTargetPoint = nil
+        touchRenderedPoint = nil
+        touchStartPoint = nil
+        touchStartTimestamp = nil
+        touchMaximumTravel = 0
         sendMotionEvent(.interactionEnded)
     }
 
@@ -2044,30 +2535,123 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         switch state {
         case .began:
             guard hitBounds.contains(localPoint) else { return }
-            sendMotionEvent(.interactionBegan)
+            if hoverResponseActive {
+                hoverResponseActive = false
+            } else {
+                sendMotionEvent(.interactionBegan)
+            }
             guard motionStateMachine.state == .interactive else { return }
             touchResponseActive = true
             previousTouchPoint = localPoint
             previousTouchTimestamp = timestamp
             touchVelocity = .zero
-            applyReactiveDepth(at: localPoint)
+            touchStartPoint = localPoint
+            touchStartTimestamp = timestamp
+            touchMaximumTravel = 0
+            touchTargetPoint = localPoint
+            touchRenderedPoint = localPoint
+            beginFingerPresence()
+            startTouchDisplayLink()
+            applyReactiveDepth(at: localPoint, intensity: 1)
 
         case .changed:
             guard touchResponseActive else { return }
             updateTouchKinetics(at: localPoint, timestamp: timestamp)
-            applyReactiveDepth(at: localPoint)
+            updateTouchTravel(to: localPoint)
+            touchTargetPoint = localPoint
 
         case .ended, .cancelled, .failed:
             guard touchResponseActive else { return }
             updateTouchKinetics(at: localPoint, timestamp: timestamp)
+            updateTouchTravel(to: localPoint)
+            touchTargetPoint = localPoint
+            applyReactiveDepth(at: localPoint, intensity: 1)
+
+            let isTap = state == .ended && isTapCandidate(endingAt: timestamp)
             touchResponseActive = false
+            stopTouchDisplayLink()
+            endFingerPresence()
+            if isTap {
+                playTapPulse(at: localPoint)
+            }
             previousTouchPoint = nil
             previousTouchTimestamp = nil
+            touchTargetPoint = nil
+            touchRenderedPoint = nil
+            touchStartPoint = nil
+            touchStartTimestamp = nil
+            touchMaximumTravel = 0
             sendMotionEvent(.interactionEnded)
 
         default:
             break
         }
+    }
+
+    @available(iOS 13.4, *)
+    @objc private func handleHover(_ recognizer: UIHoverGestureRecognizer) {
+        guard let host = touchHost,
+              !touchResponseActive,
+              isTouchTrackingEligible else {
+            return
+        }
+
+        let point = recognizer.location(in: host)
+        let localPoint = convert(point, from: host)
+        let isInside = bounds.insetBy(dx: -4, dy: -4).contains(localPoint)
+        let timestamp = CACurrentMediaTime()
+
+        switch recognizer.state {
+        case .began, .changed:
+            guard isInside else {
+                endHoverResponseIfNeeded()
+                return
+            }
+            if !hoverResponseActive {
+                sendMotionEvent(.interactionBegan)
+                guard motionStateMachine.state == .interactive else { return }
+                hoverResponseActive = true
+                touchRenderedPoint = localPoint
+                previousTouchPoint = localPoint
+                previousTouchTimestamp = timestamp
+                touchVelocity = .zero
+                startTouchDisplayLink()
+            } else {
+                updateTouchKinetics(at: localPoint, timestamp: timestamp)
+            }
+            touchTargetPoint = localPoint
+
+        case .ended, .cancelled, .failed:
+            endHoverResponseIfNeeded()
+
+        default:
+            break
+        }
+    }
+
+    private func endHoverResponseIfNeeded() {
+        guard hoverResponseActive else { return }
+        hoverResponseActive = false
+        stopTouchDisplayLink()
+        previousTouchPoint = nil
+        previousTouchTimestamp = nil
+        touchTargetPoint = nil
+        touchRenderedPoint = nil
+        sendMotionEvent(.interactionEnded)
+    }
+
+    private func updateTouchTravel(to point: CGPoint) {
+        guard let touchStartPoint else { return }
+        touchMaximumTravel = max(
+            touchMaximumTravel,
+            hypot(point.x - touchStartPoint.x, point.y - touchStartPoint.y)
+        )
+    }
+
+    private func isTapCandidate(endingAt timestamp: TimeInterval) -> Bool {
+        guard let touchStartTimestamp else { return false }
+        return timestamp - touchStartTimestamp <= PPHeroApexMotionTokens.tapMaximumDuration &&
+            touchMaximumTravel <= PPHeroApexMotionTokens.tapMaximumTravel
     }
 
     private func updateTouchKinetics(at point: CGPoint, timestamp: TimeInterval) {
@@ -2094,8 +2678,63 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
     }
 
-    private func applyReactiveDepth(at localPoint: CGPoint) {
+    private func startTouchDisplayLink() {
+        guard touchDisplayLink == nil else { return }
+
+        let displayLink = CADisplayLink(
+            target: self,
+            selector: #selector(renderTouchFrame(_:))
+        )
+        if #available(iOS 15.0, *) {
+            let maximum = Float(window?.screen.maximumFramesPerSecond ?? UIScreen.main.maximumFramesPerSecond)
+            displayLink.preferredFrameRateRange = CAFrameRateRange(
+                minimum: min(60, maximum),
+                maximum: maximum,
+                preferred: maximum
+            )
+        } else {
+            displayLink.preferredFramesPerSecond = UIScreen.main.maximumFramesPerSecond
+        }
+        displayLink.add(to: .main, forMode: .common)
+        touchDisplayLink = displayLink
+    }
+
+    private func stopTouchDisplayLink() {
+        touchDisplayLink?.invalidate()
+        touchDisplayLink = nil
+    }
+
+    @objc private func renderTouchFrame(_ displayLink: CADisplayLink) {
+        guard let target = touchTargetPoint,
+              touchResponseActive || hoverResponseActive else {
+            stopTouchDisplayLink()
+            return
+        }
+
+        let current = touchRenderedPoint ?? target
+        let frameDuration = max(displayLink.targetTimestamp - displayLink.timestamp, 1.0 / 120.0)
+        let base = PPHeroApexMotionTokens.touchSmoothingResponse
+        let response = 1 - CGFloat(
+            pow(Double(1 - base), frameDuration * 60)
+        )
+        var rendered = CGPoint(
+            x: current.x + (target.x - current.x) * response,
+            y: current.y + (target.y - current.y) * response
+        )
+        if hypot(target.x - rendered.x, target.y - rendered.y) < 0.08 {
+            rendered = target
+        }
+        touchRenderedPoint = rendered
+        applyReactiveDepth(
+            at: rendered,
+            intensity: touchResponseActive ? 1 : 0.44
+        )
+    }
+
+    private func applyReactiveDepth(at localPoint: CGPoint, intensity: CGFloat) {
         guard bounds.width > 0, bounds.height > 0 else { return }
+
+        let resolvedIntensity = min(max(intensity, 0), 1)
 
         let normalized = CGPoint(
             x: min(max(localPoint.x / bounds.width, 0), 1),
@@ -2106,48 +2745,55 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         var depthTransform = CATransform3DIdentity
         depthTransform.m34 = -1 / 1100
+        let depthScale = 1 +
+            (PPHeroApexMotionTokens.touchDepthScale - 1) * resolvedIntensity
         depthTransform = CATransform3DScale(
             depthTransform,
-            PPHeroApexMotionTokens.touchDepthScale,
-            PPHeroApexMotionTokens.touchDepthScale,
+            depthScale,
+            depthScale,
             1
         )
         depthTransform = CATransform3DTranslate(
             depthTransform,
-            centeredX * PPHeroApexMotionTokens.maximumTouchTranslationX * 2,
-            centeredY * PPHeroApexMotionTokens.maximumTouchTranslationY * 2,
+            centeredX * PPHeroApexMotionTokens.maximumTouchTranslationX * 2 * resolvedIntensity,
+            centeredY * PPHeroApexMotionTokens.maximumTouchTranslationY * 2 * resolvedIntensity,
             0
         )
         depthTransform = CATransform3DRotate(
             depthTransform,
-            centeredY * PPHeroApexMotionTokens.maximumTouchRotation * 2,
+            centeredY * PPHeroApexMotionTokens.maximumTouchRotation * 2 * resolvedIntensity,
             1,
             0,
             0
         )
         depthTransform = CATransform3DRotate(
             depthTransform,
-            -centeredX * PPHeroApexMotionTokens.maximumTouchRotation * 2,
+            -centeredX * PPHeroApexMotionTokens.maximumTouchRotation * 2 * resolvedIntensity,
             0,
             1,
             0
         )
 
+        let lightCenter = resolvedReactiveLightCenter
+        let lightScale = 1 +
+            (PPHeroApexMotionTokens.touchLightScale - 1) * resolvedIntensity
         let lightTranslation = CGAffineTransform(
-            translationX: (normalized.x - defaultReactiveLightCenter.x)
+            translationX: (normalized.x - lightCenter.x)
                 * bounds.width
-                * PPHeroApexMotionTokens.reactiveLightTravelRatio,
-            y: (normalized.y - defaultReactiveLightCenter.y)
+                * PPHeroApexMotionTokens.reactiveLightTravelRatio
+                * resolvedIntensity,
+            y: (normalized.y - lightCenter.y)
                 * bounds.height
                 * PPHeroApexMotionTokens.reactiveLightTravelRatio
+                * resolvedIntensity
         ).scaledBy(
-            x: PPHeroApexMotionTokens.touchLightScale,
-            y: PPHeroApexMotionTokens.touchLightScale
+            x: lightScale,
+            y: lightScale
         )
 
         let defaultLightCenter = CGPoint(
-            x: bounds.width * defaultReactiveLightCenter.x,
-            y: bounds.height * defaultReactiveLightCenter.y
+            x: bounds.width * lightCenter.x,
+            y: bounds.height * lightCenter.y
         )
         let touchSpeed = hypot(touchVelocity.dx, touchVelocity.dy)
         let velocityBloom = min(
@@ -2156,10 +2802,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
         let lensScale = PPHeroApexMotionTokens.touchLensBaseScale
             + velocityBloom * PPHeroApexMotionTokens.touchLensVelocityBloom
+        let resolvedLensScale = 1 + (lensScale - 1) * resolvedIntensity
         let lensTranslation = CGAffineTransform(
             translationX: localPoint.x - defaultLightCenter.x,
             y: localPoint.y - defaultLightCenter.y
-        ).scaledBy(x: lensScale, y: lensScale)
+        ).scaledBy(x: resolvedLensScale, y: resolvedLensScale)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -2168,7 +2815,110 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         UIView.performWithoutAnimation {
             reactiveLightView.transform = lightTranslation
             touchLensView.transform = lensTranslation
-            touchLensView.alpha = PPHeroApexMotionTokens.touchLensActiveAlpha
+            touchLensView.alpha = PPHeroApexMotionTokens.touchLensActiveAlpha *
+                resolvedIntensity
+        }
+    }
+
+    private func beginFingerPresence() {
+        touchCoreLayer.removeAnimation(forKey: pressHoldAnimationKey)
+        contactRingLayer.removeAnimation(forKey: contactWaveAnimationKey)
+
+        let coreOpacity = CAKeyframeAnimation(keyPath: "opacity")
+        coreOpacity.values = [0.52, 0.88, 0.64, 0.52]
+        coreOpacity.keyTimes = [0, 0.32, 0.72, 1]
+        coreOpacity.duration = 1.56
+
+        let coreScale = CAKeyframeAnimation(keyPath: "transform.scale")
+        coreScale.values = [0.86, 1.08, 0.97, 0.86]
+        coreScale.keyTimes = coreOpacity.keyTimes
+        coreScale.duration = coreOpacity.duration
+
+        let hold = CAAnimationGroup()
+        hold.animations = [coreOpacity, coreScale]
+        hold.duration = coreOpacity.duration
+        hold.repeatCount = .greatestFiniteMagnitude
+        hold.timingFunction = PPHeroApexMotionTokens.ambientTimingFunction
+        touchCoreLayer.add(hold, forKey: pressHoldAnimationKey)
+
+        let contactDuration = PPHeroApexMotionTokens.contactWaveDuration
+        let ringOpacity = CAKeyframeAnimation(keyPath: "opacity")
+        ringOpacity.values = [0, 0.72, 0.22, 0]
+        ringOpacity.keyTimes = [0, 0.12, 0.58, 1]
+        ringOpacity.duration = contactDuration
+
+        let ringScale = CAKeyframeAnimation(keyPath: "transform.scale")
+        ringScale.values = [0.70, 0.82, 1.06, 1.16]
+        ringScale.keyTimes = ringOpacity.keyTimes
+        ringScale.duration = contactDuration
+
+        let contact = CAAnimationGroup()
+        contact.animations = [ringOpacity, ringScale]
+        contact.duration = contactDuration
+        contact.timingFunction = PPHeroApexMotionTokens.accentTimingFunction
+        contactRingLayer.add(contact, forKey: contactWaveAnimationKey)
+    }
+
+    private func endFingerPresence() {
+        touchCoreLayer.removeAnimation(forKey: pressHoldAnimationKey)
+        contactRingLayer.removeAnimation(forKey: contactWaveAnimationKey)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        contactRingLayer.opacity = 0
+        CATransaction.commit()
+    }
+
+    private func playTapPulse(at point: CGPoint) {
+        guard UIView.areAnimationsEnabled,
+              !UIAccessibility.isReduceMotionEnabled,
+              !overlayView.bounds.isEmpty else {
+            return
+        }
+
+        let palette = makePalette()
+        let isDark = traitCollection.userInterfaceStyle == .dark
+        let diameter = min(max(min(bounds.width, bounds.height) * 0.92, 132), 196)
+        let pulse = CAGradientLayer()
+        pulse.type = .radial
+        pulse.startPoint = CGPoint(x: 0.5, y: 0.5)
+        pulse.endPoint = CGPoint(x: 1, y: 1)
+        pulse.locations = [0, 0.22, 0.58, 1]
+        pulse.colors = [
+            palette.specularLight.withAlphaComponent(isDark ? 0.24 : 0.32).cgColor,
+            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
+            palette.accent.withAlphaComponent(isDark ? 0.035 : 0.025).cgColor,
+            UIColor.clear.cgColor
+        ]
+        pulse.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
+        pulse.position = CGPoint(
+            x: min(max(point.x, 0), overlayView.bounds.width),
+            y: min(max(point.y, 0), overlayView.bounds.height)
+        )
+        pulse.cornerRadius = diameter * 0.5
+        pulse.opacity = 0
+        overlayView.layer.insertSublayer(pulse, below: topSpecularLayer)
+
+        let pulseDuration = PPHeroApexMotionTokens.tapPulseDuration
+        let scale = CAKeyframeAnimation(keyPath: "transform.scale")
+        scale.values = [0.34, 0.74, 1.04, 1.18]
+        scale.keyTimes = [0, 0.20, 0.68, 1]
+        scale.duration = pulseDuration
+
+        let opacity = CAKeyframeAnimation(keyPath: "opacity")
+        opacity.values = [0, 0.38, 0.16, 0]
+        opacity.keyTimes = [0, 0.14, 0.58, 1]
+        opacity.duration = pulseDuration
+
+        let group = CAAnimationGroup()
+        group.animations = [scale, opacity]
+        group.duration = pulseDuration
+        group.timingFunction = PPHeroApexMotionTokens.accentTimingFunction
+        pulse.add(group, forKey: "pp.hero.apex.tap-pulse")
+
+        DispatchQueue.main.asyncAfter(
+            deadline: .now() + pulseDuration + 0.05
+        ) { [weak pulse] in
+            pulse?.removeFromSuperlayer()
         }
     }
 
@@ -2251,6 +3001,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func resetInteractiveTransforms() {
+        stopTouchDisplayLink()
+        endFingerPresence()
+
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         ambientView.layer.transform = CATransform3DIdentity
@@ -2262,9 +3015,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             touchLensView.alpha = 0
         }
         touchResponseActive = false
+        hoverResponseActive = false
         previousTouchPoint = nil
         previousTouchTimestamp = nil
         touchVelocity = .zero
+        touchTargetPoint = nil
+        touchRenderedPoint = nil
+        touchStartPoint = nil
+        touchStartTimestamp = nil
+        touchMaximumTravel = 0
     }
 
     public func gestureRecognizer(
@@ -2279,8 +3038,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         shouldReceive touch: UITouch
     ) -> Bool {
         guard gestureRecognizer === touchRecognizer else { return true }
-        guard motionStateMachine.state == .ambient ||
-                motionStateMachine.state == .settling else {
+        let canBegin: Bool
+        switch motionStateMachine.state {
+        case .ambient, .settling:
+            canBegin = true
+        case .interactive:
+            canBegin = hoverResponseActive && !touchResponseActive
+        default:
+            canBegin = false
+        }
+        guard canBegin else {
             return false
         }
         let localPoint = touch.location(in: self)
@@ -2291,6 +3058,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private var shouldAnimateVisualStateChange: Bool {
         guard window != nil,
+              UIView.areAnimationsEnabled,
               !UIAccessibility.isReduceMotionEnabled else {
             return false
         }
@@ -2373,7 +3141,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = reduced ? 0.70 : 0.78
+        reactiveLightLayer.opacity = reduced ? 0.56 : 0.64
+        prismLayer.opacity = reduced ? 0.72 : 0.84
         signatureSweepLayer.opacity = 0
         CATransaction.commit()
 
@@ -2383,7 +3152,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func restoreFullMotionModelState() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = 0.84
+        reactiveLightLayer.opacity = 0.72
+        prismLayer.opacity = 1
         signatureSweepLayer.opacity = 0
         CATransaction.commit()
         applyAccentMode(animated: false)
@@ -2418,7 +3188,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
 
-        if previousTraitCollection == nil ||
+        let contrastChanged = previousTraitCollection?.accessibilityContrast !=
+            traitCollection.accessibilityContrast
+        if previousTraitCollection == nil || contrastChanged ||
             traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
             reapplyPalette()
         }
@@ -2474,34 +3246,125 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CGPoint(x: 0.84, y: 0.10)
     }
 
+    private var resolvedReactiveLightCenter: CGPoint {
+        let center = defaultReactiveLightCenter
+        return CGPoint(
+            x: resolvesToFlippedLayout ? (1 - center.x) : center.x,
+            y: center.y
+        )
+    }
+
+    private func resolvedFullScreenPoint(_ point: CGPoint) -> CGPoint {
+        CGPoint(
+            x: resolvesToFlippedLayout ? (1 - point.x) : point.x,
+            y: point.y
+        )
+    }
+
+    private func fullScreenPosition(
+        from normalizedPoint: CGPoint,
+        in bounds: CGRect
+    ) -> CGPoint {
+        let point = resolvedFullScreenPoint(normalizedPoint)
+        return CGPoint(
+            x: bounds.width * point.x,
+            y: bounds.height * point.y
+        )
+    }
+
+    private var fullScreenAuroraMotionSpecs: [FullScreenAuroraMotionSpec] {
+        [
+            FullScreenAuroraMotionSpec(
+                normalizedPositions: [
+                    CGPoint(x: 0.90, y: -0.08),
+                    CGPoint(x: 0.58, y: 0.16),
+                    CGPoint(x: 0.16, y: 0.10),
+                    CGPoint(x: 0.34, y: 0.54),
+                    CGPoint(x: 0.76, y: 0.36),
+                    CGPoint(x: 0.90, y: -0.08)
+                ],
+                scales: [1.06, 0.92, 1.12, 0.98, 1.08, 1.06],
+                opacities: [0.78, 0.96, 0.72, 0.90, 0.80, 0.78],
+                keyTimes: [0, 0.20, 0.42, 0.64, 0.82, 1],
+                duration: 18.8,
+                phase: 2.4
+            ),
+            FullScreenAuroraMotionSpec(
+                normalizedPositions: [
+                    CGPoint(x: 0.10, y: 1.06),
+                    CGPoint(x: 0.34, y: 0.70),
+                    CGPoint(x: 0.82, y: 0.88),
+                    CGPoint(x: 0.66, y: 0.40),
+                    CGPoint(x: 0.24, y: 0.58),
+                    CGPoint(x: 0.10, y: 1.06)
+                ],
+                scales: [1.10, 0.94, 1.06, 0.90, 1.12, 1.10],
+                opacities: [0.72, 0.94, 0.78, 0.90, 0.70, 0.72],
+                keyTimes: [0, 0.18, 0.40, 0.62, 0.82, 1],
+                duration: 22.6,
+                phase: 7.1
+            ),
+            FullScreenAuroraMotionSpec(
+                normalizedPositions: [
+                    CGPoint(x: 0.50, y: 0.50),
+                    CGPoint(x: 0.80, y: 0.24),
+                    CGPoint(x: 0.22, y: 0.34),
+                    CGPoint(x: 0.72, y: 0.76),
+                    CGPoint(x: 0.30, y: 0.82),
+                    CGPoint(x: 0.50, y: 0.50)
+                ],
+                scales: [0.96, 1.12, 0.92, 1.08, 0.98, 0.96],
+                opacities: [0.66, 0.88, 0.96, 0.72, 0.90, 0.66],
+                keyTimes: [0, 0.22, 0.44, 0.66, 0.84, 1],
+                duration: 26.4,
+                phase: 12.8
+            )
+        ]
+    }
+
+    private func fullScreenAuroraColorRoute(
+        for index: Int,
+        palette: Palette
+    ) -> [UIColor] {
+        let routes = [
+            [0, 1, 4, 2, 3, 0],
+            [5, 3, 1, 4, 2, 5],
+            [6, 2, 4, 1, 3, 6]
+        ]
+        let route = routes.indices.contains(index) ? routes[index] : routes[0]
+        return route.map {
+            auroraColor(at: $0, in: palette, fallback: palette.surfaceMiddle)
+        }
+    }
+
     private var auroraSpecs: [AuroraSpec] {
         [
             AuroraSpec(
-                center: CGPoint(x: 0.88, y: -0.08),
-                size: CGSize(width: 1.04, height: 1.62),
-                travel: CGSize(width: 86, height: 62),
-                scaleRange: 0.93...1.12,
-                opacityRange: 0.52...1,
-                duration: 18.6,
-                phase: 4.9
+                center: CGPoint(x: 0.90, y: -0.06),
+                size: CGSize(width: 1.02, height: 1.54),
+                travel: CGSize(width: 12, height: 9),
+                scaleRange: 0.988...1.030,
+                opacityRange: 0.72...1,
+                duration: 31,
+                phase: 7.4
             ),
             AuroraSpec(
-                center: CGPoint(x: 0.12, y: 1.02),
-                size: CGSize(width: 1.20, height: 1.14),
-                travel: CGSize(width: 76, height: 58),
-                scaleRange: 0.965...1.095,
-                opacityRange: 0.44...0.90,
-                duration: 24.8,
-                phase: 10.6
+                center: CGPoint(x: 0.10, y: 1.04),
+                size: CGSize(width: 1.18, height: 1.18),
+                travel: CGSize(width: 10, height: 8),
+                scaleRange: 0.990...1.026,
+                opacityRange: 0.68...0.94,
+                duration: 39,
+                phase: 13.2
             ),
             AuroraSpec(
                 center: CGPoint(x: 0.50, y: 0.48),
-                size: CGSize(width: 0.94, height: 1.26),
-                travel: CGSize(width: 64, height: 48),
-                scaleRange: 0.97...1.075,
-                opacityRange: 0.36...0.72,
-                duration: 22.4,
-                phase: 7.3
+                size: CGSize(width: 0.90, height: 1.20),
+                travel: CGSize(width: 8, height: 6),
+                scaleRange: 0.992...1.022,
+                opacityRange: 0.58...0.82,
+                duration: 47,
+                phase: 19.6
             )
         ]
     }
@@ -2535,2090 +3398,3 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ]
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//
-//  PPHeroApex.swift
-//  Pure Pets
-//
-//  Flagship-grade, background-only hero material. The Objective-C
-//  PPBackgroundView contract stays stable while this view owns
-//  rendering, accessibility, interaction, and motion lifecycle.
-//
-/*
-import UIKit
-
-/// Samples touches while remaining `.possible`, so controls and scroll views
-/// retain full ownership of recognition, highlighting, and navigation.
-@MainActor
-private final class PPHeroPassiveTouchRecognizer: UIGestureRecognizer {
-    var onUpdate: ((CGPoint, UIGestureRecognizer.State, TimeInterval) -> Void)?
-    var onTrackingCancelled: (() -> Void)?
-
-    private var trackedTouch: UITouch?
-
-    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard trackedTouch == nil,
-              let view,
-              let touch = touches.first else {
-            return
-        }
-
-        trackedTouch = touch
-        onUpdate?(touch.location(in: view), .began, touch.timestamp)
-    }
-
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let view,
-              let trackedTouch,
-              let touch = touches.first(where: { $0 === trackedTouch }) else {
-            return
-        }
-
-        onUpdate?(touch.location(in: view), .changed, touch.timestamp)
-    }
-
-    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let view,
-              let trackedTouch,
-              let touch = touches.first(where: { $0 === trackedTouch }) else {
-            return
-        }
-
-        onUpdate?(touch.location(in: view), .ended, touch.timestamp)
-        self.trackedTouch = nil
-        state = .failed
-    }
-
-    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
-        guard let view,
-              let trackedTouch else {
-            return
-        }
-
-        let touch = touches.first(where: { $0 === trackedTouch }) ?? trackedTouch
-        onUpdate?(touch.location(in: view), .cancelled, touch.timestamp)
-        self.trackedTouch = nil
-        state = .failed
-    }
-
-    override func reset() {
-        let wasTracking = trackedTouch != nil
-        super.reset()
-        trackedTouch = nil
-        if wasTracking {
-            onTrackingCancelled?()
-        }
-    }
-
-    override func canPrevent(_ preventedGestureRecognizer: UIGestureRecognizer) -> Bool {
-        false
-    }
-
-    override func canBePrevented(by preventingGestureRecognizer: UIGestureRecognizer) -> Bool {
-        false
-    }
-}
-
-/// The living visual engine behind shared consumer-app hero surfaces.
-///
-/// This component remains background-only. Copy, actions, navigation,
-/// business state, and truthful action haptics stay with existing callers.
-@objcMembers
-public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
-    private enum AccentMode: Int {
-        case bar = 0
-        case cornerGlow = 1
-        case fullScreen = 2
-    }
-
-    private struct AuroraSpec {
-        let center: CGPoint
-        let size: CGSize
-        let travel: CGSize
-        let scaleRange: ClosedRange<CGFloat>
-        let opacityRange: ClosedRange<Float>
-        let duration: CFTimeInterval
-        let phase: CFTimeInterval
-    }
-
-    private struct Palette {
-        let accent: UIColor
-        let surfaceHighlight: UIColor
-        let surfaceMiddle: UIColor
-        let surfaceTail: UIColor
-        let depth: UIColor
-        let aurora: [UIColor]
-        let particle: [UIColor]
-        let reactiveLight: UIColor
-        let stroke: UIColor
-    }
-
-    private static func marketplaceAllColor(_ hex: UInt32, alpha: CGFloat = 1) -> UIColor {
-        UIColor(
-            red: CGFloat((hex >> 16) & 0xFF) / 255,
-            green: CGFloat((hex >> 8) & 0xFF) / 255,
-            blue: CGFloat(hex & 0xFF) / 255,
-            alpha: alpha
-        )
-    }
-
-    /// Mirrors the Home marketplace hero's `All` selected color source.
-    private static func marketplaceAllAccentColor() -> UIColor {
-        UIColor(named: "AppPrimaryColor") ?? marketplaceAllColor(0xC93052)
-    }
-
-    private static func marketplaceAllShineColor() -> UIColor {
-        UIColor(named: "AppPrimaryColorShainer") ?? marketplaceAllColor(0xF43F6A)
-    }
-
-    private static func marketplaceAllSurfaceBaseColor(isDark: Bool) -> UIColor {
-        let fallback = isDark
-            ? UIColor(white: 0.104, alpha: 1)
-            : UIColor(red: 0.992, green: 0.989, blue: 0.991, alpha: 1)
-        return UIColor(named: "AppForegroundColor") ?? fallback
-    }
-
-    // MARK: - Objective-C compatibility surface
-
-    public var accentColorOverride: UIColor? {
-        didSet {
-            if oldValue == nil && accentColorOverride == nil {
-                return
-            }
-            if let oldValue,
-               let accentColorOverride,
-               oldValue.isEqual(accentColorOverride) {
-                return
-            }
-            updatePalette(animated: shouldAnimateVisualStateChange)
-        }
-    }
-
-    public var accentStyle: Int {
-        get { storedAccentMode.rawValue }
-        set {
-            let resolvedMode = AccentMode(rawValue: newValue) ?? .bar
-            guard resolvedMode != storedAccentMode else { return }
-            storedAccentMode = resolvedMode
-            setNeedsLayout()
-            applyAccentMode(animated: shouldAnimateVisualStateChange)
-        }
-    }
-
-    public var cornerGlowOpacityMultiplier: CGFloat {
-        get { storedCornerGlowOpacityMultiplier }
-        set {
-            let clamped = min(max(newValue, 0), 1)
-            guard abs(clamped - storedCornerGlowOpacityMultiplier) > 0.001 else { return }
-            storedCornerGlowOpacityMultiplier = clamped
-            updatePalette(animated: shouldAnimateVisualStateChange)
-        }
-    }
-
-    /// Synchronized by the Objective-C adapter from the owning hero surface.
-    public var heroCornerRadius: CGFloat {
-        get { storedCornerRadius }
-        set {
-            let clamped = max(newValue, 0)
-            guard abs(clamped - storedCornerRadius) > 0.001 else { return }
-            storedCornerRadius = clamped
-            setNeedsLayout()
-        }
-    }
-
-    // MARK: - Material hierarchy
-
-    private let materialView = UIVisualEffectView(
-        effect: UIBlurEffect(style: .systemUltraThinMaterial)
-    )
-    private let baseView = UIView()
-    private let ambientView = UIView()
-    private let ambientContentView = UIView()
-    private let overlayView = UIView()
-    private let reactiveLightView = UIView()
-    private let touchLensView = UIView()
-
-    private let baseGradientLayer = CAGradientLayer()
-    private let depthGradientLayer = CAGradientLayer()
-    private let vignetteLayer = CAGradientLayer()
-    private let auroraLayers = (0..<2).map { _ in CAGradientLayer() }
-    private let particleLayers = (0..<3).map { _ in CAShapeLayer() }
-    private let reactiveLightLayer = CAGradientLayer()
-    private let touchLensLayer = CAGradientLayer()
-    private let touchCoreLayer = CAGradientLayer()
-    private let accentBarLayer = CAGradientLayer()
-    private let accentGlowLayer = CAGradientLayer()
-    private let innerStrokeLayer = CAShapeLayer()
-
-    // MARK: - Motion ownership
-
-    private var motionStateMachine = PPHeroApexMotionStateMachine()
-    private var entranceAnimator: UIViewPropertyAnimator?
-    private var overlayEntranceAnimator: UIViewPropertyAnimator?
-    private var interactionRecoveryAnimator: UIViewPropertyAnimator?
-    private var ambientTimelineInstalled = false
-    private var ambientTimelinePaused = false
-
-    private var parallaxMotionEffect: UIMotionEffectGroup?
-    private weak var touchHost: UIView?
-    private var touchRecognizer: PPHeroPassiveTouchRecognizer?
-    private var touchResponseActive = false
-    private var previousTouchPoint: CGPoint?
-    private var previousTouchTimestamp: TimeInterval?
-    private var touchVelocity = CGVector.zero
-
-    // MARK: - Stable visual state
-
-    private var storedAccentMode: AccentMode = .bar
-    private var storedCornerGlowOpacityMultiplier: CGFloat = 1
-    private var storedCornerRadius: CGFloat = 30
-
-    private let auroraAnimationKey = "pp.hero.apex.aurora"
-    private let fieldDriftAnimationKey = "pp.hero.apex.field-drift"
-    private let particleAnimationKey = "pp.hero.apex.particle"
-    private let reactiveLightAnimationKey = "pp.hero.apex.reactive-light"
-    private let accentBarTransitionKey = "pp.hero.apex.accent-bar-transition"
-    private let accentGlowTransitionKey = "pp.hero.apex.accent-glow-transition"
-    private let paletteTransitionKey = "pp.hero.apex.palette-transition"
-
-    // MARK: - Initialization
-
-    public override init(frame: CGRect) {
-        super.init(frame: frame)
-        commonInit()
-    }
-
-    public required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        commonInit()
-    }
-
-    deinit {
-        NotificationCenter.default.removeObserver(self)
-        entranceAnimator?.stopAnimation(true)
-        overlayEntranceAnimator?.stopAnimation(true)
-        interactionRecoveryAnimator?.stopAnimation(true)
-        detachTouchTracker()
-        removeMotionEffects()
-        removeAmbientTimeline()
-    }
-
-    private func commonInit() {
-        isUserInteractionEnabled = false
-        isOpaque = false
-        backgroundColor = .clear
-        clipsToBounds = false
-        isAccessibilityElement = false
-        accessibilityElementsHidden = true
-
-        layer.masksToBounds = false
-        layer.shadowOpacity = 0
-
-        configureViewHierarchy()
-        configureLayers()
-        registerForLifecycleChanges()
-        reapplyPalette()
-        prepareEntrancePresentation()
-    }
-
-    private func configureViewHierarchy() {
-        [materialView, baseView, ambientView, ambientContentView, overlayView, reactiveLightView, touchLensView]
-            .forEach { view in
-                view.isUserInteractionEnabled = false
-                view.isAccessibilityElement = false
-                view.accessibilityElementsHidden = true
-                view.backgroundColor = .clear
-            }
-
-        materialView.clipsToBounds = true
-        addSubview(materialView)
-        materialView.contentView.addSubview(baseView)
-        materialView.contentView.addSubview(ambientView)
-        ambientView.addSubview(ambientContentView)
-        materialView.contentView.addSubview(overlayView)
-        overlayView.addSubview(reactiveLightView)
-        overlayView.addSubview(touchLensView)
-    }
-
-    private func configureLayers() {
-        [baseGradientLayer, depthGradientLayer, vignetteLayer].forEach { layer in
-            layer.drawsAsynchronously = true
-            baseView.layer.addSublayer(layer)
-        }
-
-        baseGradientLayer.startPoint = CGPoint(x: 0, y: 0)
-        baseGradientLayer.endPoint = CGPoint(x: 1, y: 1)
-        baseGradientLayer.locations = [0, 0.52, 1]
-
-        depthGradientLayer.startPoint = CGPoint(x: 0.15, y: 0)
-        depthGradientLayer.endPoint = CGPoint(x: 0.85, y: 1)
-        depthGradientLayer.locations = [0, 0.58, 1]
-
-        vignetteLayer.type = .radial
-        vignetteLayer.startPoint = CGPoint(x: 0.5, y: 0.38)
-        vignetteLayer.endPoint = CGPoint(x: 1, y: 1)
-        vignetteLayer.locations = [0, 0.7, 1]
-
-        auroraLayers.forEach { layer in
-            layer.type = .radial
-            layer.startPoint = CGPoint(x: 0.5, y: 0.5)
-            layer.endPoint = CGPoint(x: 1, y: 1)
-            layer.locations = [0, 0.42, 1]
-            layer.drawsAsynchronously = true
-            ambientContentView.layer.addSublayer(layer)
-        }
-
-        particleLayers.forEach { layer in
-            layer.fillColor = UIColor.clear.cgColor
-            layer.lineWidth = 0
-            layer.contentsScale = UIScreen.main.scale
-            layer.allowsEdgeAntialiasing = true
-            ambientContentView.layer.addSublayer(layer)
-        }
-
-        reactiveLightLayer.type = .radial
-        reactiveLightLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        reactiveLightLayer.endPoint = CGPoint(x: 1, y: 1)
-        reactiveLightLayer.locations = [0, 0.34, 1]
-        reactiveLightLayer.drawsAsynchronously = true
-        reactiveLightView.layer.addSublayer(reactiveLightLayer)
-
-        touchLensLayer.type = .radial
-        touchLensLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        touchLensLayer.endPoint = CGPoint(x: 1, y: 1)
-        touchLensLayer.locations = [0, 0.28, 0.62, 1]
-        touchLensLayer.drawsAsynchronously = true
-        touchLensView.layer.addSublayer(touchLensLayer)
-
-        touchCoreLayer.type = .radial
-        touchCoreLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        touchCoreLayer.endPoint = CGPoint(x: 1, y: 1)
-        touchCoreLayer.locations = [0, 0.36, 1]
-        touchCoreLayer.drawsAsynchronously = true
-        touchLensView.layer.addSublayer(touchCoreLayer)
-        touchLensView.alpha = 0
-
-        accentGlowLayer.type = .radial
-        accentGlowLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-        accentGlowLayer.endPoint = CGPoint(x: 1, y: 1)
-        accentGlowLayer.locations = [0, 0.38, 1]
-        overlayView.layer.addSublayer(accentGlowLayer)
-
-        accentBarLayer.startPoint = CGPoint(x: 0, y: 0.5)
-        accentBarLayer.endPoint = CGPoint(x: 1, y: 0.5)
-        accentBarLayer.locations = [0, 0.52, 1]
-        accentBarLayer.cornerRadius = 1.5
-        overlayView.layer.addSublayer(accentBarLayer)
-
-        innerStrokeLayer.fillColor = UIColor.clear.cgColor
-        innerStrokeLayer.lineWidth = 1
-        innerStrokeLayer.contentsScale = UIScreen.main.scale
-        overlayView.layer.addSublayer(innerStrokeLayer)
-    }
-
-    private func registerForLifecycleChanges() {
-        let center = NotificationCenter.default
-        center.addObserver(
-            self,
-            selector: #selector(reduceMotionStatusDidChange),
-            name: UIAccessibility.reduceMotionStatusDidChangeNotification,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(transparencyOrContrastStatusDidChange),
-            name: UIAccessibility.reduceTransparencyStatusDidChangeNotification,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(transparencyOrContrastStatusDidChange),
-            name: UIAccessibility.darkerSystemColorsStatusDidChangeNotification,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(applicationStateDidChange),
-            name: UIApplication.didBecomeActiveNotification,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(applicationStateDidChange),
-            name: UIApplication.willResignActiveNotification,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(energyPolicyDidChange),
-            name: .NSProcessInfoPowerStateDidChange,
-            object: nil
-        )
-        center.addObserver(
-            self,
-            selector: #selector(energyPolicyDidChange),
-            name: ProcessInfo.thermalStateDidChangeNotification,
-            object: nil
-        )
-    }
-
-    // MARK: - Layout
-
-    public override func layoutSubviews() {
-        super.layoutSubviews()
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        materialView.frame = bounds
-        baseView.frame = materialView.contentView.bounds
-        ambientView.frame = materialView.contentView.bounds
-        ambientContentView.frame = ambientView.bounds
-        overlayView.frame = materialView.contentView.bounds
-
-        let materialBounds = baseView.bounds
-        baseGradientLayer.frame = materialBounds
-        depthGradientLayer.frame = materialBounds
-        vignetteLayer.frame = materialBounds
-
-        layoutAuroraLayers(in: ambientContentView.bounds)
-        layoutParticleLayers(in: ambientContentView.bounds)
-        layoutReactiveLight(in: overlayView.bounds)
-        layoutAccentLayers(in: overlayView.bounds)
-        updateCornerGeometry()
-
-        CATransaction.commit()
-        reconcileMotionEnvironment()
-    }
-
-    private func updateCornerGeometry() {
-        let radius = min(
-            storedCornerRadius,
-            max(min(bounds.width, bounds.height) * 0.5, 0)
-        )
-
-        layer.cornerRadius = radius
-        layer.cornerCurve = .continuous
-        materialView.layer.cornerRadius = radius
-        materialView.layer.cornerCurve = .continuous
-
-        innerStrokeLayer.frame = overlayView.bounds
-        innerStrokeLayer.path = UIBezierPath(
-            roundedRect: overlayView.bounds.insetBy(dx: 0.5, dy: 0.5),
-            cornerRadius: max(radius - 0.5, 0)
-        ).cgPath
-
-        layer.shadowPath = nil
-    }
-
-    private func layoutAuroraLayers(in bounds: CGRect) {
-        guard !bounds.isEmpty else { return }
-
-        for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
-            let spec = auroraSpecs[index]
-            let size = CGSize(
-                width: max(bounds.width * spec.size.width, 180),
-                height: max(bounds.height * spec.size.height, 150)
-            )
-            layer.bounds = CGRect(origin: .zero, size: size)
-            layer.position = CGPoint(
-                x: bounds.width * spec.center.x,
-                y: bounds.height * spec.center.y
-            )
-            layer.cornerRadius = min(size.width, size.height) * 0.5
-        }
-    }
-
-    private func layoutParticleLayers(in bounds: CGRect) {
-        guard !bounds.isEmpty else { return }
-
-        let displayScale = max(UIScreen.main.scale, 1)
-
-        for (groupIndex, layer) in particleLayers.enumerated() {
-            layer.frame = bounds
-            let path = UIBezierPath()
-            guard groupIndex < normalizedParticlePointGroups.count else {
-                layer.path = path.cgPath
-                continue
-            }
-
-            for (pointIndex, normalizedPoint) in
-                normalizedParticlePointGroups[groupIndex].enumerated() {
-                let x = (bounds.width * normalizedPoint.x * displayScale).rounded() / displayScale
-                let y = (bounds.height * normalizedPoint.y * displayScale).rounded() / displayScale
-                let diameter: CGFloat = (pointIndex + groupIndex).isMultiple(of: 4) ? 2.2 : 1.35
-                path.append(
-                    UIBezierPath(
-                        ovalIn: CGRect(
-                            x: x - diameter * 0.5,
-                            y: y - diameter * 0.5,
-                            width: diameter,
-                            height: diameter
-                        )
-                    )
-                )
-            }
-            layer.path = path.cgPath
-        }
-    }
-
-    private func layoutReactiveLight(in bounds: CGRect) {
-        guard !bounds.isEmpty else { return }
-
-        let diameter = min(
-            max(max(bounds.width * 0.92, bounds.height * 1.38), 168),
-            270
-        )
-        reactiveLightView.bounds = CGRect(x: 0, y: 0, width: diameter, height: diameter)
-        reactiveLightView.center = CGPoint(
-            x: bounds.width * defaultReactiveLightCenter.x,
-            y: bounds.height * defaultReactiveLightCenter.y
-        )
-        reactiveLightLayer.frame = reactiveLightView.bounds
-        reactiveLightLayer.cornerRadius = diameter * 0.5
-
-        let lensDiameter = min(max(min(bounds.width, bounds.height) * 0.64, 92), 138)
-        touchLensView.bounds = CGRect(x: 0, y: 0, width: lensDiameter, height: lensDiameter)
-        touchLensView.center = reactiveLightView.center
-        touchLensLayer.frame = touchLensView.bounds
-        touchLensLayer.cornerRadius = lensDiameter * 0.5
-
-        let coreDiameter = lensDiameter * 0.44
-        touchCoreLayer.bounds = CGRect(x: 0, y: 0, width: coreDiameter, height: coreDiameter)
-        touchCoreLayer.position = CGPoint(x: touchLensView.bounds.midX, y: touchLensView.bounds.midY)
-        touchCoreLayer.cornerRadius = coreDiameter * 0.5
-    }
-
-    private func layoutAccentLayers(in bounds: CGRect) {
-        guard !bounds.isEmpty else { return }
-
-        let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
-        let barWidth: CGFloat = 44
-        let barLeading: CGFloat = 38
-        let barX = isRTL ? bounds.width - barLeading - barWidth : barLeading
-        accentBarLayer.frame = CGRect(x: barX, y: 0, width: barWidth, height: 3)
-
-        let glowDiameter = max(min(bounds.width * 0.74, 230), 168)
-        accentGlowLayer.frame = CGRect(
-            x: bounds.width - glowDiameter * 0.62,
-            y: -glowDiameter * 0.30,
-            width: glowDiameter,
-            height: glowDiameter
-        )
-    }
-
-    // MARK: - Palette
-
-    public func reapplyPalette() {
-        updatePalette(animated: false)
-    }
-
-    private func updatePalette(animated: Bool) {
-        applyPalette(makePalette(), animated: animated)
-    }
-
-    private func applyPalette(_ palette: Palette, animated: Bool) {
-        let isDark = traitCollection.userInterfaceStyle == .dark
-        let reduceTransparency = UIAccessibility.isReduceTransparencyEnabled
-        let animateColors = animated && shouldAnimateVisualStateChange
-
-        if !animated {
-            materialView.effect = reduceTransparency
-                ? nil
-                : UIBlurEffect(style: .systemUltraThinMaterial)
-        }
-
-        if !animateColors {
-            removePaletteTransitionAnimations()
-        }
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        backgroundColor = .clear
-        materialView.backgroundColor = .clear
-        materialView.contentView.backgroundColor = .clear
-
-        vignetteLayer.colors = [
-            UIColor.white.withAlphaComponent(isDark ? 0.035 : 0.10).cgColor,
-            UIColor.clear.cgColor,
-            UIColor.clear.cgColor
-        ]
-
-        layer.shadowOpacity = 0
-
-        CATransaction.commit()
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-
-        setGradientColors([
-            palette.surfaceHighlight.cgColor,
-            palette.surfaceMiddle.cgColor,
-            palette.surfaceTail.cgColor
-        ], on: baseGradientLayer, animated: animateColors)
-        baseGradientLayer.startPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 1, y: 0)
-            : CGPoint(x: 0, y: 0)
-        baseGradientLayer.endPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 0, y: 1)
-            : CGPoint(x: 1, y: 1)
-
-        setGradientColors([
-            UIColor.clear.cgColor,
-            palette.depth.withAlphaComponent(isDark ? 0.055 : 0.018).cgColor,
-            palette.depth.withAlphaComponent(isDark ? 0.16 : 0.055).cgColor
-        ], on: depthGradientLayer, animated: animateColors)
-
-        for (index, layer) in auroraLayers.enumerated() {
-            let color = palette.aurora[index % palette.aurora.count]
-            let restingOpacity = index < auroraSpecs.count
-                ? auroraSpecs[index].opacityRange.upperBound
-                : 1
-            let leadingAlpha: CGFloat
-            if storedAccentMode == .fullScreen {
-                leadingAlpha = reduceTransparency
-                    ? (isDark ? 0.24 : 0.18)
-                    : (isDark ? 0.38 : 0.26)
-            } else {
-                leadingAlpha = reduceTransparency
-                    ? (isDark ? 0.19 : 0.14)
-                    : (isDark ? 0.28 : 0.19)
-            }
-            setGradientColors([
-                color.withAlphaComponent(leadingAlpha).cgColor,
-                color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
-                UIColor.clear.cgColor
-            ], on: layer, animated: animateColors)
-            layer.opacity = restingOpacity
-        }
-
-        for (index, layer) in particleLayers.enumerated() {
-            let color = palette.particle[index % palette.particle.count]
-            setLayerColor(
-                color.cgColor,
-                on: layer,
-                keyPath: "fillColor",
-                modelColor: layer.fillColor,
-                animated: animateColors
-            ) {
-                layer.fillColor = color.cgColor
-            }
-            layer.opacity = isDark ? 0.31 : 0.24
-            layer.shadowOpacity = 0
-            layer.shadowRadius = 0
-            layer.shadowOffset = .zero
-        }
-
-        setGradientColors([
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.20 : 0.27).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.06 : 0.08).cgColor,
-            UIColor.clear.cgColor
-        ], on: reactiveLightLayer, animated: animateColors)
-        reactiveLightLayer.opacity = 0.84
-
-        setGradientColors([
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.28 : 0.34).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.12 : 0.16).cgColor,
-            palette.accent.withAlphaComponent(isDark ? 0.045 : 0.035).cgColor,
-            UIColor.clear.cgColor
-        ], on: touchLensLayer, animated: animateColors)
-        setGradientColors([
-            UIColor.white.withAlphaComponent(isDark ? 0.24 : 0.36).cgColor,
-            palette.reactiveLight.withAlphaComponent(isDark ? 0.08 : 0.12).cgColor,
-            UIColor.clear.cgColor
-        ], on: touchCoreLayer, animated: animateColors)
-
-        setGradientColors([
-            palette.accent.withAlphaComponent(0.38).cgColor,
-            palette.accent.withAlphaComponent(0.82).cgColor,
-            palette.accent.withAlphaComponent(0.22).cgColor
-        ], on: accentBarLayer, animated: animateColors)
-
-        let glowStrength = storedCornerGlowOpacityMultiplier
-        setGradientColors([
-            palette.accent.withAlphaComponent((isDark ? 0.17 : 0.115) * glowStrength).cgColor,
-            palette.accent.withAlphaComponent((isDark ? 0.055 : 0.034) * glowStrength).cgColor,
-            UIColor.clear.cgColor
-        ], on: accentGlowLayer, animated: animateColors)
-
-        setLayerColor(
-            palette.stroke.cgColor,
-            on: innerStrokeLayer,
-            keyPath: "strokeColor",
-            modelColor: innerStrokeLayer.strokeColor,
-            animated: animateColors
-        ) {
-            innerStrokeLayer.strokeColor = palette.stroke.cgColor
-        }
-
-        CATransaction.commit()
-        applyAccentMode(animated: false)
-        setNeedsLayout()
-    }
-
-    private func makePalette() -> Palette {
-        let isDark = traitCollection.userInterfaceStyle == .dark
-        let strongerContrast = UIAccessibility.isDarkerSystemColorsEnabled
-        let marketplaceAllAccent = resolvedColor(Self.marketplaceAllAccentColor())
-        let explicitAccent = accentColorOverride.map { resolvedColor($0) }
-        let usesMarketplaceAllPalette = explicitAccent.map {
-            colorsApproximatelyMatch($0, marketplaceAllAccent)
-        } ?? true
-        let accent = explicitAccent ?? marketplaceAllAccent
-        let surfaceBase = resolvedColor(Self.marketplaceAllSurfaceBaseColor(isDark: isDark))
-
-        let highlight: UIColor
-        let middle: UIColor
-        let tail: UIColor
-        let aurora: [UIColor]
-        let particlePrimary: UIColor
-        let particleSecondary: UIColor
-        let reactiveLight: UIColor
-        let depth: UIColor
-
-        if usesMarketplaceAllPalette {
-            let surfaceTint = blend(
-                surfaceBase,
-                with: accent,
-                amount: isDark ? 0.11 : 0.045
-            )
-            let backgroundAccent = blend(
-                accent,
-                with: surfaceBase,
-                amount: isDark ? 0.12 : 0.18
-            )
-            let shine = blend(
-                accent,
-                with: resolvedColor(Self.marketplaceAllShineColor()),
-                amount: isDark ? 0.10 : 0.16
-            )
-            let supportGlow = blend(
-                backgroundAccent,
-                with: Self.marketplaceAllColor(0x00F5D4),
-                amount: isDark ? 0.18 : 0.22
-            )
-
-            highlight = blend(
-                surfaceBase,
-                with: .white,
-                amount: isDark ? 0.08 : 0.20
-            )
-            middle = surfaceTint
-            tail = blend(
-                surfaceTint,
-                with: accent,
-                amount: isDark ? 0.08 : 0.03
-            )
-
-            aurora = [accent, UIColor(named: "AppBage") ?? shine]
-            particlePrimary = blend(shine, with: surfaceBase, amount: isDark ? 0.40 : 0.52)
-            particleSecondary = blend(
-                supportGlow,
-                with: surfaceBase,
-                amount: isDark ? 0.42 : 0.58
-            )
-            reactiveLight = supportGlow
-            depth = backgroundAccent
-        } else {
-            let seaGlass = blend(accent, with: resolvedColor(.systemTeal), amount: 0.58)
-            let twilight = blend(accent, with: resolvedColor(.systemIndigo), amount: 0.44)
-            let warmLight = blend(accent, with: resolvedColor(.systemOrange), amount: 0.32)
-
-            highlight = blend(
-                surfaceBase,
-                with: .white,
-                amount: isDark ? 0.075 : 0.18
-            )
-            middle = blend(
-                surfaceBase,
-                with: accent,
-                amount: isDark ? 0.068 : 0.026
-            )
-            tail = blend(
-                middle,
-                with: accent,
-                amount: isDark ? 0.043 : 0.016
-            )
-
-            aurora = [warmLight, UIColor(named: "AppBage") ?? seaGlass]
-            particlePrimary = blend(accent, with: .white, amount: isDark ? 0.66 : 0.52)
-            particleSecondary = blend(
-                seaGlass,
-                with: .white,
-                amount: isDark ? 0.62 : 0.68
-            )
-            reactiveLight = blend(accent, with: .white, amount: isDark ? 0.76 : 0.86)
-            depth = blend(surfaceBase, with: accent, amount: isDark ? 0.12 : 0.045)
-        }
-
-        return Palette(
-            accent: accent,
-            surfaceHighlight: highlight,
-            surfaceMiddle: middle,
-            surfaceTail: tail,
-            depth: depth,
-            aurora: aurora,
-            particle: [
-                particlePrimary,
-                particleSecondary,
-                surfaceBase
-            ],
-            reactiveLight: reactiveLight,
-            stroke: UIColor.white.withAlphaComponent(
-                strongerContrast ? (isDark ? 0.24 : 0.92) : (isDark ? 0.12 : 0.78)
-            )
-        )
-    }
-
-    private func setGradientColors(
-        _ colors: [CGColor],
-        on layer: CAGradientLayer,
-        animated: Bool
-    ) {
-        let sourceColors = layer.presentation()?.colors ?? layer.colors
-        let targetColors = colors.map { $0 as Any }
-
-        layer.removeAnimation(forKey: paletteTransitionKey)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layer.colors = targetColors
-        CATransaction.commit()
-
-        guard animated,
-              let sourceColors,
-              !gradientColorsMatch(sourceColors, targetColors) else {
-            return
-        }
-
-        let transition = CABasicAnimation(keyPath: "colors")
-        transition.fromValue = sourceColors
-        transition.toValue = targetColors
-        transition.duration = PPHeroApexMotionTokens.paletteTransitionDuration
-        transition.timingFunction = PPHeroApexMotionTokens.paletteTimingFunction
-        transition.isRemovedOnCompletion = true
-        layer.add(transition, forKey: paletteTransitionKey)
-    }
-
-    private func setLayerColor(
-        _ color: CGColor,
-        on layer: CALayer,
-        keyPath: String,
-        modelColor: CGColor?,
-        animated: Bool,
-        updateModel: () -> Void
-    ) {
-        let sourceColor: Any?
-        if let presentationColor = layer.presentation()?.value(forKeyPath: keyPath) {
-            sourceColor = presentationColor
-        } else {
-            sourceColor = modelColor
-        }
-
-        layer.removeAnimation(forKey: paletteTransitionKey)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        updateModel()
-        CATransaction.commit()
-
-        guard animated, let sourceColor else { return }
-        if CFEqual(sourceColor as CFTypeRef, color) {
-            return
-        }
-
-        let transition = CABasicAnimation(keyPath: keyPath)
-        transition.fromValue = sourceColor
-        transition.toValue = color
-        transition.duration = PPHeroApexMotionTokens.paletteTransitionDuration
-        transition.timingFunction = PPHeroApexMotionTokens.paletteTimingFunction
-        transition.isRemovedOnCompletion = true
-        layer.add(transition, forKey: paletteTransitionKey)
-    }
-
-    private func gradientColorsMatch(_ first: [Any], _ second: [Any]) -> Bool {
-        guard first.count == second.count else { return false }
-        return zip(first, second).allSatisfy { firstValue, secondValue in
-            CFEqual(firstValue as CFTypeRef, secondValue as CFTypeRef)
-        }
-    }
-
-    private func removePaletteTransitionAnimations() {
-        baseGradientLayer.removeAnimation(forKey: paletteTransitionKey)
-        depthGradientLayer.removeAnimation(forKey: paletteTransitionKey)
-        auroraLayers.forEach { $0.removeAnimation(forKey: paletteTransitionKey) }
-        particleLayers.forEach { $0.removeAnimation(forKey: paletteTransitionKey) }
-        reactiveLightLayer.removeAnimation(forKey: paletteTransitionKey)
-        touchLensLayer.removeAnimation(forKey: paletteTransitionKey)
-        touchCoreLayer.removeAnimation(forKey: paletteTransitionKey)
-        accentBarLayer.removeAnimation(forKey: paletteTransitionKey)
-        accentGlowLayer.removeAnimation(forKey: paletteTransitionKey)
-        innerStrokeLayer.removeAnimation(forKey: paletteTransitionKey)
-    }
-
-    private func resolvedColor(_ color: UIColor) -> UIColor {
-        color.resolvedColor(with: traitCollection)
-    }
-
-    private func blend(_ baseColor: UIColor, with overlayColor: UIColor, amount: CGFloat) -> UIColor {
-        let base = resolvedColor(baseColor)
-        let overlay = resolvedColor(overlayColor)
-        let t = min(max(amount, 0), 1)
-
-        var baseRed: CGFloat = 0
-        var baseGreen: CGFloat = 0
-        var baseBlue: CGFloat = 0
-        var baseAlpha: CGFloat = 0
-        var overlayRed: CGFloat = 0
-        var overlayGreen: CGFloat = 0
-        var overlayBlue: CGFloat = 0
-        var overlayAlpha: CGFloat = 0
-
-        guard base.getRed(
-            &baseRed,
-            green: &baseGreen,
-            blue: &baseBlue,
-            alpha: &baseAlpha
-        ), overlay.getRed(
-            &overlayRed,
-            green: &overlayGreen,
-            blue: &overlayBlue,
-            alpha: &overlayAlpha
-        ) else {
-            return base
-        }
-
-        return UIColor(
-            red: baseRed * (1 - t) + overlayRed * t,
-            green: baseGreen * (1 - t) + overlayGreen * t,
-            blue: baseBlue * (1 - t) + overlayBlue * t,
-            alpha: baseAlpha * (1 - t) + overlayAlpha * t
-        )
-    }
-
-    private func colorsApproximatelyMatch(_ first: UIColor, _ second: UIColor) -> Bool {
-        let lhs = resolvedColor(first)
-        let rhs = resolvedColor(second)
-
-        var lhsRed: CGFloat = 0
-        var lhsGreen: CGFloat = 0
-        var lhsBlue: CGFloat = 0
-        var lhsAlpha: CGFloat = 0
-        var rhsRed: CGFloat = 0
-        var rhsGreen: CGFloat = 0
-        var rhsBlue: CGFloat = 0
-        var rhsAlpha: CGFloat = 0
-
-        guard lhs.getRed(&lhsRed, green: &lhsGreen, blue: &lhsBlue, alpha: &lhsAlpha),
-              rhs.getRed(&rhsRed, green: &rhsGreen, blue: &rhsBlue, alpha: &rhsAlpha) else {
-            return lhs.isEqual(rhs)
-        }
-
-        let tolerance: CGFloat = 0.003
-        return abs(lhsRed - rhsRed) <= tolerance &&
-            abs(lhsGreen - rhsGreen) <= tolerance &&
-            abs(lhsBlue - rhsBlue) <= tolerance &&
-            abs(lhsAlpha - rhsAlpha) <= tolerance
-    }
-
-    // MARK: - Centralized motion state
-
-    public func startAnimations() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.startAnimations()
-            }
-            return
-        }
-
-        sendMotionEvent(.startRequested)
-        reconcileMotionEnvironment()
-    }
-
-    public func stopAnimations() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.stopAnimations()
-            }
-            return
-        }
-
-        sendMotionEvent(.stopRequested)
-    }
-
-    private func reconcileMotionEnvironment(attachedOverride: Bool? = nil) {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.reconcileMotionEnvironment(attachedOverride: attachedOverride)
-            }
-            return
-        }
-
-        let thermalState = ProcessInfo.processInfo.thermalState
-        let environment = PPHeroApexMotionEnvironment(
-            isAttached: attachedOverride ?? (window != nil),
-            hasValidGeometry: bounds.width > 1 && bounds.height > 1,
-            isApplicationActive: UIApplication.shared.applicationState == .active,
-            isReduceMotionEnabled: UIAccessibility.isReduceMotionEnabled,
-            isLowPowerModeEnabled: ProcessInfo.processInfo.isLowPowerModeEnabled,
-            isThermallyConstrained: thermalState == .serious || thermalState == .critical
-        )
-        sendMotionEvent(.environmentChanged(environment))
-    }
-
-    private func sendMotionEvent(_ event: PPHeroApexMotionEvent) {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.sendMotionEvent(event)
-            }
-            return
-        }
-
-        guard let transition = motionStateMachine.send(event) else { return }
-        applyMotionTransition(transition)
-    }
-
-    private func applyMotionTransition(_ transition: PPHeroApexMotionTransition) {
-        if transition.previous == .entering && transition.current != .entering {
-            cancelEntrance(resolveToFinalState: true)
-        }
-
-        if transition.previous == .settling && transition.current != .settling {
-            cancelInteractionRecovery(
-                preservingPresentation: transition.current == .interactive
-            )
-        }
-
-        switch transition.current {
-        case .detached, .suspended:
-            detachTouchTracker()
-            removeMotionEffects()
-            cancelInteractionRecovery(preservingPresentation: false)
-            resetInteractiveTransforms()
-            applyResolvedEntrancePresentation()
-            pauseAmbientTimeline()
-
-        case .idle:
-            detachTouchTracker()
-            removeMotionEffects()
-            cancelInteractionRecovery(preservingPresentation: false)
-            removeAmbientTimeline()
-            applyStaticPresentation(reduced: false)
-
-        case .reduced:
-            detachTouchTracker()
-            removeMotionEffects()
-            cancelInteractionRecovery(preservingPresentation: false)
-            removeAmbientTimeline()
-            applyStaticPresentation(reduced: true)
-
-        case .entering:
-            restoreFullMotionModelState()
-            ensureAmbientTimelineRunning()
-            detachTouchTracker()
-            removeMotionEffects()
-            runEntrance(generation: transition.generation)
-
-        case .ambient:
-            applyResolvedEntrancePresentation()
-            restoreFullMotionModelState()
-            ensureAmbientTimelineRunning()
-            installMotionEffectsIfNeeded()
-            installTouchTrackerIfNeeded()
-
-        case .interactive:
-            restoreFullMotionModelState()
-            ensureAmbientTimelineRunning()
-            installMotionEffectsIfNeeded()
-            installTouchTrackerIfNeeded()
-            cancelInteractionRecovery(preservingPresentation: true)
-
-        case .settling:
-            restoreFullMotionModelState()
-            ensureAmbientTimelineRunning()
-            installMotionEffectsIfNeeded()
-            installTouchTrackerIfNeeded()
-            startInteractionRecovery(generation: transition.generation)
-        }
-    }
-
-    // MARK: - Entrance choreography
-
-    private func prepareEntrancePresentation() {
-        ambientContentView.alpha = 0.18
-        ambientContentView.transform = CGAffineTransform(
-            translationX: 0,
-            y: PPHeroApexMotionTokens.entranceTranslationY
-        ).scaledBy(
-            x: PPHeroApexMotionTokens.entranceScale,
-            y: PPHeroApexMotionTokens.entranceScale
-        )
-        overlayView.alpha = 0.58
-    }
-
-    private func runEntrance(generation: UInt) {
-        cancelEntrance(resolveToFinalState: false)
-        prepareEntrancePresentation()
-
-        guard UIView.areAnimationsEnabled,
-              !UIAccessibility.isReduceMotionEnabled else {
-            applyResolvedEntrancePresentation()
-            sendMotionEvent(.entranceCompleted(generation: generation))
-            return
-        }
-
-        let primaryAnimator = UIViewPropertyAnimator(
-            duration: PPHeroApexMotionTokens.entranceDuration,
-            timingParameters: PPHeroApexMotionTokens.entranceTimingParameters
-        )
-        primaryAnimator.addAnimations { [weak self] in
-            self?.ambientContentView.alpha = 1
-            self?.ambientContentView.transform = .identity
-        }
-        primaryAnimator.addCompletion { [weak self] position in
-            guard let self else { return }
-            self.entranceAnimator = nil
-            guard position == .end else { return }
-            self.overlayEntranceAnimator = nil
-            self.sendMotionEvent(.entranceCompleted(generation: generation))
-        }
-        entranceAnimator = primaryAnimator
-
-        let overlayAnimator = UIViewPropertyAnimator(
-            duration: PPHeroApexMotionTokens.overlayEntranceDuration,
-            timingParameters: PPHeroApexMotionTokens.overlayTimingParameters
-        )
-        overlayAnimator.addAnimations { [weak self] in
-            self?.overlayView.alpha = 1
-        }
-        overlayEntranceAnimator = overlayAnimator
-
-        primaryAnimator.startAnimation()
-        overlayAnimator.startAnimation(
-            afterDelay: PPHeroApexMotionTokens.overlayEntranceDelay
-        )
-    }
-
-    private func cancelEntrance(resolveToFinalState: Bool) {
-        entranceAnimator?.stopAnimation(true)
-        overlayEntranceAnimator?.stopAnimation(true)
-        entranceAnimator = nil
-        overlayEntranceAnimator = nil
-
-        if resolveToFinalState {
-            applyResolvedEntrancePresentation()
-        }
-    }
-
-    private func applyResolvedEntrancePresentation() {
-        UIView.performWithoutAnimation {
-            ambientContentView.alpha = 1
-            ambientContentView.transform = .identity
-            overlayView.alpha = 1
-        }
-    }
-
-    // MARK: - Ambient timeline
-
-    private func ensureAmbientTimelineRunning() {
-        if !ambientTimelineInstalled {
-            installFieldDriftAnimation()
-            installAuroraAnimations()
-            installParticleAnimations()
-            installLightAnimations()
-            ambientTimelineInstalled = true
-        }
-        resumeAmbientTimeline()
-    }
-
-    private func installFieldDriftAnimation() {
-        let drift = CAKeyframeAnimation(keyPath: "sublayerTransform")
-        drift.values = [
-            NSValue(caTransform3D: ambientTransform(x: -2.0, y: 1.4, scale: 1.002)),
-            NSValue(caTransform3D: ambientTransform(x: 3.2, y: -2.1, scale: 1.008)),
-            NSValue(caTransform3D: ambientTransform(x: -2.6, y: 2.4, scale: 1.004)),
-            NSValue(caTransform3D: ambientTransform(x: -2.0, y: 1.4, scale: 1.002))
-        ]
-        drift.keyTimes = [0, 0.30, 0.68, 1]
-        drift.calculationMode = .cubic
-        drift.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
-        )
-
-        let group = makeRepeatingAnimationGroup(
-            animations: [drift],
-            duration: PPHeroApexMotionTokens.fieldDriftCycleDuration,
-            phase: 0.7
-        )
-        ambientContentView.layer.add(group, forKey: fieldDriftAnimationKey)
-    }
-
-    private func installAuroraAnimations() {
-        for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
-            let spec = auroraSpecs[index]
-
-            let transform: CAKeyframeAnimation
-            let opacity: CAKeyframeAnimation
-
-            if index == 2 {
-                transform = CAKeyframeAnimation(keyPath: "transform")
-                transform.values = [
-                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.72,
-                        y: spec.travel.height * 0.22,
-                        scale: spec.scaleRange.lowerBound
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.78,
-                        y: -spec.travel.height * 0.28,
-                        scale: spec.scaleRange.upperBound
-                    )),
-                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
-                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0)),
-                    NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1.0))
-                ]
-                transform.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
-                transform.calculationMode = .cubic
-                transform.timingFunctions = [
-                    PPHeroApexMotionTokens.ambientTimingFunction,
-                    PPHeroApexMotionTokens.ambientTimingFunction,
-                    PPHeroApexMotionTokens.ambientTimingFunction,
-                    CAMediaTimingFunction(name: .easeOut),
-                    CAMediaTimingFunction(name: .linear)
-                ]
-
-                let lowOpacity = spec.opacityRange.lowerBound
-                let midOpacity = lowOpacity + (spec.opacityRange.upperBound - lowOpacity) * 0.55
-                opacity = CAKeyframeAnimation(keyPath: "opacity")
-                opacity.values = [lowOpacity, midOpacity, midOpacity, lowOpacity, lowOpacity, lowOpacity]
-                opacity.keyTimes = [0, 0.22, 0.48, 0.68, 0.82, 1.0]
-                opacity.calculationMode = .cubic
-                opacity.timingFunctions = [
-                    PPHeroApexMotionTokens.ambientTimingFunction,
-                    PPHeroApexMotionTokens.ambientTimingFunction,
-                    CAMediaTimingFunction(name: .easeOut),
-                    CAMediaTimingFunction(name: .linear),
-                    CAMediaTimingFunction(name: .linear)
-                ]
-            } else {
-                transform = CAKeyframeAnimation(keyPath: "transform")
-                transform.values = [
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.18,
-                        y: spec.travel.height * 0.12,
-                        scale: spec.scaleRange.lowerBound
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width,
-                        y: -spec.travel.height * 0.46,
-                        scale: spec.scaleRange.upperBound
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.54,
-                        y: spec.travel.height,
-                        scale: 0.992
-                    )),
-                    NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.18,
-                        y: spec.travel.height * 0.12,
-                        scale: spec.scaleRange.lowerBound
-                    ))
-                ]
-                transform.keyTimes = [0, 0.34, 0.72, 1]
-                transform.calculationMode = .cubic
-                transform.timingFunctions = Array(
-                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                    count: 3
-                )
-
-                let lowOpacity = spec.opacityRange.lowerBound
-                let highOpacity = spec.opacityRange.upperBound
-                let returnOpacity = lowOpacity + (highOpacity - lowOpacity) * 0.42
-                opacity = CAKeyframeAnimation(keyPath: "opacity")
-                opacity.values = [lowOpacity, highOpacity, returnOpacity, lowOpacity]
-                opacity.keyTimes = [0, 0.32, 0.72, 1]
-                opacity.calculationMode = .cubic
-                opacity.timingFunctions = Array(
-                    repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                    count: 3
-                )
-            }
-
-            let group = makeRepeatingAnimationGroup(
-                animations: [transform, opacity],
-                duration: spec.duration,
-                phase: spec.phase
-            )
-            layer.add(group, forKey: auroraAnimationKey)
-        }
-    }
-
-    private func installParticleAnimations() {
-        for (index, layer) in particleLayers.enumerated() {
-            let direction: CGFloat = index.isMultiple(of: 2) ? 1 : -1
-            let travelX = direction * (2.1 + CGFloat(index) * 0.7)
-            let travelY = 1.8 + CGFloat(index) * 0.55
-
-            let transform = CAKeyframeAnimation(keyPath: "transform")
-            transform.values = [
-                NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1)),
-                NSValue(caTransform3D: ambientTransform(
-                    x: travelX,
-                    y: -travelY,
-                    scale: 1.012
-                )),
-                NSValue(caTransform3D: ambientTransform(
-                    x: -travelX * 0.62,
-                    y: travelY,
-                    scale: 0.994
-                )),
-                NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1))
-            ]
-            transform.keyTimes = [0, 0.30, 0.70, 1]
-            transform.calculationMode = .cubic
-            transform.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
-
-            let opacity = CAKeyframeAnimation(keyPath: "opacity")
-            let baseOpacity = layer.opacity
-            opacity.values = [
-                baseOpacity * 0.74,
-                min(baseOpacity + 0.045, 0.32),
-                baseOpacity * 0.84,
-                baseOpacity * 0.74
-            ]
-            opacity.keyTimes = [0, 0.36, 0.74, 1]
-            opacity.calculationMode = .cubic
-            opacity.timingFunctions = Array(
-                repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-                count: 3
-            )
-
-            let duration = 19 + CFTimeInterval(index) * 6.4
-            let group = makeRepeatingAnimationGroup(
-                animations: [transform, opacity],
-                duration: duration,
-                phase: 4.7 + CFTimeInterval(index) * 7.1
-            )
-            layer.add(group, forKey: particleAnimationKey)
-        }
-    }
-
-    private func installLightAnimations() {
-        let reactiveBreath = CAKeyframeAnimation(keyPath: "opacity")
-        reactiveBreath.values = [0.72, 0.94, 0.80, 0.72]
-        reactiveBreath.keyTimes = [0, 0.38, 0.74, 1]
-        reactiveBreath.calculationMode = .cubic
-        reactiveBreath.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
-        )
-
-        let reactiveTravel = CAKeyframeAnimation(keyPath: "transform")
-        reactiveTravel.values = [
-            NSValue(caTransform3D: ambientTransform(x: -4.0, y: 2.0, scale: 0.992)),
-            NSValue(caTransform3D: ambientTransform(x: 6.0, y: -3.2, scale: 1.018)),
-            NSValue(caTransform3D: ambientTransform(x: -4.8, y: 3.8, scale: 1.006)),
-            NSValue(caTransform3D: ambientTransform(x: -4.0, y: 2.0, scale: 0.992))
-        ]
-        reactiveTravel.keyTimes = [0, 0.38, 0.74, 1]
-        reactiveTravel.calculationMode = .cubic
-        reactiveTravel.timingFunctions = Array(
-            repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
-        )
-
-        let reactiveGroup = makeRepeatingAnimationGroup(
-            animations: [reactiveBreath, reactiveTravel],
-            duration: 13.4,
-            phase: 3.2
-        )
-        reactiveLightLayer.add(reactiveGroup, forKey: reactiveLightAnimationKey)
-    }
-
-    private func makeRepeatingAnimationGroup(
-        animations: [CAAnimation],
-        duration: CFTimeInterval,
-        phase: CFTimeInterval
-    ) -> CAAnimationGroup {
-        // CAAnimationGroup does not propagate its duration to child animations.
-        animations.forEach { animation in
-            animation.beginTime = 0
-            animation.duration = duration
-        }
-
-        let group = CAAnimationGroup()
-        group.animations = animations
-        group.duration = duration
-        group.timeOffset = max(phase, 0).truncatingRemainder(dividingBy: duration)
-        group.repeatCount = .greatestFiniteMagnitude
-        group.isRemovedOnCompletion = true
-        return group
-    }
-
-    private func removeAmbientTimeline() {
-        resetTimelineLayerTiming(ambientContentView.layer)
-        resetTimelineLayerTiming(overlayView.layer)
-
-        ambientContentView.layer.removeAnimation(forKey: fieldDriftAnimationKey)
-        auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
-        particleLayers.forEach { $0.removeAnimation(forKey: particleAnimationKey) }
-        reactiveLightLayer.removeAnimation(forKey: reactiveLightAnimationKey)
-
-        ambientTimelineInstalled = false
-        ambientTimelinePaused = false
-    }
-
-    private func pauseAmbientTimeline() {
-        guard ambientTimelineInstalled, !ambientTimelinePaused else { return }
-        pauseTimelineLayer(ambientContentView.layer)
-        pauseTimelineLayer(overlayView.layer)
-        ambientTimelinePaused = true
-    }
-
-    private func resumeAmbientTimeline() {
-        guard ambientTimelineInstalled, ambientTimelinePaused else { return }
-        resumeTimelineLayer(ambientContentView.layer)
-        resumeTimelineLayer(overlayView.layer)
-        ambientTimelinePaused = false
-    }
-
-    private func pauseTimelineLayer(_ layer: CALayer) {
-        guard layer.speed != 0 else { return }
-        let pausedTime = layer.convertTime(CACurrentMediaTime(), from: nil)
-        layer.speed = 0
-        layer.timeOffset = pausedTime
-    }
-
-    private func resumeTimelineLayer(_ layer: CALayer) {
-        let pausedTime = layer.timeOffset
-        layer.speed = 1
-        layer.timeOffset = 0
-        layer.beginTime = 0
-        let elapsedSincePause = layer.convertTime(CACurrentMediaTime(), from: nil) - pausedTime
-        layer.beginTime = elapsedSincePause
-    }
-
-    private func resetTimelineLayerTiming(_ layer: CALayer) {
-        layer.speed = 1
-        layer.timeOffset = 0
-        layer.beginTime = 0
-    }
-
-    private func ambientTransform(x: CGFloat, y: CGFloat, scale: CGFloat) -> CATransform3D {
-        var transform = CATransform3DIdentity
-        transform = CATransform3DTranslate(transform, x, y, 0)
-        transform = CATransform3DScale(transform, scale, scale, 1)
-        return transform
-    }
-
-    // MARK: - Direct interaction and depth
-
-    private func installMotionEffectsIfNeeded() {
-        guard parallaxMotionEffect == nil,
-              !UIAccessibility.isReduceMotionEnabled else {
-            return
-        }
-
-        let horizontal = UIInterpolatingMotionEffect(
-            keyPath: "center.x",
-            type: .tiltAlongHorizontalAxis
-        )
-        horizontal.minimumRelativeValue = -PPHeroApexMotionTokens.horizontalParallax
-        horizontal.maximumRelativeValue = PPHeroApexMotionTokens.horizontalParallax
-
-        let vertical = UIInterpolatingMotionEffect(
-            keyPath: "center.y",
-            type: .tiltAlongVerticalAxis
-        )
-        vertical.minimumRelativeValue = -PPHeroApexMotionTokens.verticalParallax
-        vertical.maximumRelativeValue = PPHeroApexMotionTokens.verticalParallax
-
-        let group = UIMotionEffectGroup()
-        group.motionEffects = [horizontal, vertical]
-        ambientView.addMotionEffect(group)
-        parallaxMotionEffect = group
-    }
-
-    private func removeMotionEffects() {
-        if let parallaxMotionEffect {
-            ambientView.removeMotionEffect(parallaxMotionEffect)
-        }
-        parallaxMotionEffect = nil
-    }
-
-    private func installTouchTrackerIfNeeded() {
-        guard !UIAccessibility.isReduceMotionEnabled else { return }
-
-        var candidate = superview
-        while let current = candidate, !current.isUserInteractionEnabled {
-            candidate = current.superview
-        }
-
-        guard let host = candidate, host.window != nil else { return }
-
-        if touchHost !== host {
-            detachTouchTracker()
-        }
-        guard touchRecognizer == nil else { return }
-
-        let recognizer = PPHeroPassiveTouchRecognizer(target: nil, action: nil)
-        recognizer.cancelsTouchesInView = false
-        recognizer.delaysTouchesBegan = false
-        recognizer.delaysTouchesEnded = false
-        recognizer.delegate = self
-        recognizer.onUpdate = { [weak self, weak host] point, state, timestamp in
-            guard let self, let host else { return }
-            self.handleTouch(
-                at: point,
-                in: host,
-                state: state,
-                timestamp: timestamp
-            )
-        }
-        recognizer.onTrackingCancelled = { [weak self] in
-            self?.cancelActiveTouchResponse()
-        }
-        host.addGestureRecognizer(recognizer)
-        touchHost = host
-        touchRecognizer = recognizer
-    }
-
-    private func detachTouchTracker() {
-        if let touchRecognizer {
-            touchRecognizer.onUpdate = nil
-            touchRecognizer.onTrackingCancelled = nil
-            touchHost?.removeGestureRecognizer(touchRecognizer)
-        }
-        touchRecognizer = nil
-        touchHost = nil
-        touchResponseActive = false
-        previousTouchPoint = nil
-        previousTouchTimestamp = nil
-        touchVelocity = .zero
-    }
-
-    private func cancelActiveTouchResponse() {
-        guard touchResponseActive else { return }
-        touchResponseActive = false
-        previousTouchPoint = nil
-        previousTouchTimestamp = nil
-        touchVelocity = .zero
-        sendMotionEvent(.interactionEnded)
-    }
-
-    private func handleTouch(
-        at point: CGPoint,
-        in host: UIView,
-        state: UIGestureRecognizer.State,
-        timestamp: TimeInterval
-    ) {
-        guard !UIAccessibility.isReduceMotionEnabled else { return }
-
-        let localPoint = convert(point, from: host)
-        let hitBounds = bounds.insetBy(dx: -4, dy: -4)
-
-        switch state {
-        case .began:
-            guard hitBounds.contains(localPoint) else { return }
-            sendMotionEvent(.interactionBegan)
-            guard motionStateMachine.state == .interactive else { return }
-            touchResponseActive = true
-            previousTouchPoint = localPoint
-            previousTouchTimestamp = timestamp
-            touchVelocity = .zero
-            applyReactiveDepth(at: localPoint)
-
-        case .changed:
-            guard touchResponseActive else { return }
-            updateTouchKinetics(at: localPoint, timestamp: timestamp)
-            applyReactiveDepth(at: localPoint)
-
-        case .ended, .cancelled, .failed:
-            guard touchResponseActive else { return }
-            updateTouchKinetics(at: localPoint, timestamp: timestamp)
-            touchResponseActive = false
-            previousTouchPoint = nil
-            previousTouchTimestamp = nil
-            sendMotionEvent(.interactionEnded)
-
-        default:
-            break
-        }
-    }
-
-    private func updateTouchKinetics(at point: CGPoint, timestamp: TimeInterval) {
-        defer {
-            previousTouchPoint = point
-            previousTouchTimestamp = timestamp
-        }
-
-        guard let previousTouchPoint,
-              let previousTouchTimestamp else {
-            return
-        }
-
-        let deltaTime = timestamp - previousTouchTimestamp
-        guard deltaTime > 0.001, deltaTime < 0.25 else { return }
-
-        let sample = CGVector(
-            dx: (point.x - previousTouchPoint.x) / deltaTime,
-            dy: (point.y - previousTouchPoint.y) / deltaTime
-        )
-        touchVelocity = CGVector(
-            dx: touchVelocity.dx * 0.58 + sample.dx * 0.42,
-            dy: touchVelocity.dy * 0.58 + sample.dy * 0.42
-        )
-    }
-
-    private func applyReactiveDepth(at localPoint: CGPoint) {
-        guard bounds.width > 0, bounds.height > 0 else { return }
-
-        let normalized = CGPoint(
-            x: min(max(localPoint.x / bounds.width, 0), 1),
-            y: min(max(localPoint.y / bounds.height, 0), 1)
-        )
-        let centeredX = normalized.x - 0.5
-        let centeredY = normalized.y - 0.5
-
-        var depthTransform = CATransform3DIdentity
-        depthTransform.m34 = -1 / 1100
-        depthTransform = CATransform3DScale(
-            depthTransform,
-            PPHeroApexMotionTokens.touchDepthScale,
-            PPHeroApexMotionTokens.touchDepthScale,
-            1
-        )
-        depthTransform = CATransform3DTranslate(
-            depthTransform,
-            centeredX * PPHeroApexMotionTokens.maximumTouchTranslationX * 2,
-            centeredY * PPHeroApexMotionTokens.maximumTouchTranslationY * 2,
-            0
-        )
-        depthTransform = CATransform3DRotate(
-            depthTransform,
-            centeredY * PPHeroApexMotionTokens.maximumTouchRotation * 2,
-            1,
-            0,
-            0
-        )
-        depthTransform = CATransform3DRotate(
-            depthTransform,
-            -centeredX * PPHeroApexMotionTokens.maximumTouchRotation * 2,
-            0,
-            1,
-            0
-        )
-
-        let lightTranslation = CGAffineTransform(
-            translationX: (normalized.x - defaultReactiveLightCenter.x)
-                * bounds.width
-                * PPHeroApexMotionTokens.reactiveLightTravelRatio,
-            y: (normalized.y - defaultReactiveLightCenter.y)
-                * bounds.height
-                * PPHeroApexMotionTokens.reactiveLightTravelRatio
-        ).scaledBy(
-            x: PPHeroApexMotionTokens.touchLightScale,
-            y: PPHeroApexMotionTokens.touchLightScale
-        )
-
-        let defaultLightCenter = CGPoint(
-            x: bounds.width * defaultReactiveLightCenter.x,
-            y: bounds.height * defaultReactiveLightCenter.y
-        )
-        let touchSpeed = hypot(touchVelocity.dx, touchVelocity.dy)
-        let velocityBloom = min(
-            touchSpeed / PPHeroApexMotionTokens.touchVelocityForMaximumBloom,
-            1
-        )
-        let lensScale = PPHeroApexMotionTokens.touchLensBaseScale
-            + velocityBloom * PPHeroApexMotionTokens.touchLensVelocityBloom
-        let lensTranslation = CGAffineTransform(
-            translationX: localPoint.x - defaultLightCenter.x,
-            y: localPoint.y - defaultLightCenter.y
-        ).scaledBy(x: lensScale, y: lensScale)
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        ambientView.layer.transform = depthTransform
-        CATransaction.commit()
-        UIView.performWithoutAnimation {
-            reactiveLightView.transform = lightTranslation
-            touchLensView.transform = lensTranslation
-            touchLensView.alpha = PPHeroApexMotionTokens.touchLensActiveAlpha
-        }
-    }
-
-    private func startInteractionRecovery(generation: UInt) {
-        cancelInteractionRecovery(preservingPresentation: true)
-
-        let spring = UISpringTimingParameters(
-            dampingRatio: 0.90,
-            initialVelocity: normalizedSpringVelocity()
-        )
-        let animator = UIViewPropertyAnimator(
-            duration: PPHeroApexMotionTokens.interactionSettleDuration,
-            timingParameters: spring
-        )
-        animator.addAnimations { [weak self] in
-            self?.ambientView.layer.transform = CATransform3DIdentity
-            self?.reactiveLightView.transform = .identity
-            self?.touchLensView.transform = .identity
-            self?.touchLensView.alpha = 0
-        }
-        animator.addCompletion { [weak self] position in
-            guard let self else { return }
-            self.interactionRecoveryAnimator = nil
-            guard position == .end else { return }
-            self.sendMotionEvent(.settlingCompleted(generation: generation))
-        }
-        interactionRecoveryAnimator = animator
-        animator.startAnimation()
-    }
-
-    private func normalizedSpringVelocity() -> CGVector {
-        let transform = reactiveLightView.transform
-        let deltaX = -transform.tx
-        let deltaY = -transform.ty
-
-        let x = abs(deltaX) > 0.5 ? touchVelocity.dx / deltaX : 0
-        let y = abs(deltaY) > 0.5 ? touchVelocity.dy / deltaY : 0
-        return CGVector(
-            dx: min(max(x, -1.2), 1.2),
-            dy: min(max(y, -1.2), 1.2)
-        )
-    }
-
-    private func cancelInteractionRecovery(preservingPresentation: Bool) {
-        guard let animator = interactionRecoveryAnimator else { return }
-
-        let ambientPresentationTransform = ambientView.layer.presentation()?.transform
-        let lightPresentationTransform = reactiveLightView.layer.presentation()?.affineTransform()
-        let lensPresentationTransform = touchLensView.layer.presentation()?.affineTransform()
-        let lensPresentationOpacity = touchLensView.layer.presentation()?.opacity
-
-        animator.stopAnimation(true)
-        interactionRecoveryAnimator = nil
-
-        guard preservingPresentation else {
-            resetInteractiveTransforms()
-            return
-        }
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        if let ambientPresentationTransform {
-            ambientView.layer.transform = ambientPresentationTransform
-        }
-        CATransaction.commit()
-
-        if let lightPresentationTransform {
-            UIView.performWithoutAnimation {
-                reactiveLightView.transform = lightPresentationTransform
-            }
-        }
-        if let lensPresentationTransform {
-            UIView.performWithoutAnimation {
-                touchLensView.transform = lensPresentationTransform
-                if let lensPresentationOpacity {
-                    touchLensView.alpha = CGFloat(lensPresentationOpacity)
-                }
-            }
-        }
-    }
-
-    private func resetInteractiveTransforms() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        ambientView.layer.transform = CATransform3DIdentity
-        CATransaction.commit()
-
-        UIView.performWithoutAnimation {
-            reactiveLightView.transform = .identity
-            touchLensView.transform = .identity
-            touchLensView.alpha = 0
-        }
-        touchResponseActive = false
-        previousTouchPoint = nil
-        previousTouchTimestamp = nil
-        touchVelocity = .zero
-    }
-
-    public func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
-    ) -> Bool {
-        true
-    }
-
-    public func gestureRecognizer(
-        _ gestureRecognizer: UIGestureRecognizer,
-        shouldReceive touch: UITouch
-    ) -> Bool {
-        guard gestureRecognizer === touchRecognizer else { return true }
-        guard motionStateMachine.state == .ambient ||
-                motionStateMachine.state == .settling else {
-            return false
-        }
-        let localPoint = touch.location(in: self)
-        return bounds.insetBy(dx: -4, dy: -4).contains(localPoint)
-    }
-
-    // MARK: - Accent continuity
-
-    private var shouldAnimateVisualStateChange: Bool {
-        guard window != nil,
-              !UIAccessibility.isReduceMotionEnabled else {
-            return false
-        }
-        switch motionStateMachine.state {
-        case .entering, .ambient, .interactive, .settling:
-            return true
-        default:
-            return false
-        }
-    }
-
-    private func applyAccentMode(animated: Bool) {
-        let barOpacity: Float = storedAccentMode == .bar ? 1 : 0
-        let glowOpacity: Float = storedAccentMode == .cornerGlow ? 1 : 0
-        let barTransform = storedAccentMode == .bar
-            ? CATransform3DIdentity
-            : CATransform3DMakeTranslation(0, -1.5, 0)
-        let glowTransform = storedAccentMode == .cornerGlow
-            ? CATransform3DIdentity
-            : CATransform3DMakeScale(0.96, 0.96, 1)
-
-        transition(
-            layer: accentBarLayer,
-            toOpacity: barOpacity,
-            transform: barTransform,
-            animated: animated,
-            key: accentBarTransitionKey
-        )
-        transition(
-            layer: accentGlowLayer,
-            toOpacity: glowOpacity,
-            transform: glowTransform,
-            animated: animated,
-            key: accentGlowTransitionKey
-        )
-    }
-
-    private func transition(
-        layer: CALayer,
-        toOpacity: Float,
-        transform: CATransform3D,
-        animated: Bool,
-        key: String
-    ) {
-        let fromOpacity = layer.presentation()?.opacity ?? layer.opacity
-        let fromTransform = layer.presentation()?.transform ?? layer.transform
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        layer.opacity = toOpacity
-        layer.transform = transform
-        CATransaction.commit()
-
-        layer.removeAnimation(forKey: key)
-        guard animated else { return }
-
-        let opacity = CABasicAnimation(keyPath: "opacity")
-        opacity.fromValue = fromOpacity
-        opacity.toValue = toOpacity
-        opacity.duration = PPHeroApexMotionTokens.accentTransitionDuration
-
-        let transformAnimation = CABasicAnimation(keyPath: "transform")
-        transformAnimation.fromValue = NSValue(caTransform3D: fromTransform)
-        transformAnimation.toValue = NSValue(caTransform3D: transform)
-        transformAnimation.duration = PPHeroApexMotionTokens.accentTransitionDuration
-
-        let group = CAAnimationGroup()
-        group.animations = [opacity, transformAnimation]
-        group.duration = PPHeroApexMotionTokens.accentTransitionDuration
-        group.timingFunction = PPHeroApexMotionTokens.accentTimingFunction
-        group.isRemovedOnCompletion = true
-        layer.add(group, forKey: key)
-    }
-
-    // MARK: - Static and full-motion presentation
-
-    private func applyStaticPresentation(reduced: Bool) {
-        cancelEntrance(resolveToFinalState: true)
-        resetInteractiveTransforms()
-
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = reduced ? 0.70 : 0.78
-        CATransaction.commit()
-
-        applyAccentMode(animated: false)
-    }
-
-    private func restoreFullMotionModelState() {
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = 0.84
-        CATransaction.commit()
-        applyAccentMode(animated: false)
-    }
-
-    // MARK: - Lifecycle and accessibility
-
-    public override func willMove(toWindow newWindow: UIWindow?) {
-        super.willMove(toWindow: newWindow)
-        if newWindow == nil {
-            reconcileMotionEnvironment(attachedOverride: false)
-        }
-    }
-
-    public override func didMoveToWindow() {
-        super.didMoveToWindow()
-        setNeedsLayout()
-        layoutIfNeeded()
-        reconcileMotionEnvironment()
-    }
-
-    public override func didMoveToSuperview() {
-        super.didMoveToSuperview()
-        if motionStateMachine.state == .ambient ||
-            motionStateMachine.state == .interactive ||
-            motionStateMachine.state == .settling {
-            detachTouchTracker()
-            installTouchTrackerIfNeeded()
-        }
-    }
-
-    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-
-        if previousTraitCollection == nil ||
-            traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            reapplyPalette()
-        }
-    }
-
-    @objc private func reduceMotionStatusDidChange() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.reduceMotionStatusDidChange()
-            }
-            return
-        }
-
-        reconcileMotionEnvironment()
-    }
-
-    @objc private func transparencyOrContrastStatusDidChange() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.transparencyOrContrastStatusDidChange()
-            }
-            return
-        }
-
-        reapplyPalette()
-    }
-
-    @objc private func applicationStateDidChange() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.applicationStateDidChange()
-            }
-            return
-        }
-
-        reconcileMotionEnvironment()
-    }
-
-    @objc private func energyPolicyDidChange() {
-        guard Thread.isMainThread else {
-            DispatchQueue.main.async { [weak self] in
-                self?.energyPolicyDidChange()
-            }
-            return
-        }
-
-        reconcileMotionEnvironment()
-    }
-
-    // MARK: - Deterministic art direction
-
-    private var defaultReactiveLightCenter: CGPoint {
-        CGPoint(x: 0.84, y: 0.10)
-    }
-
-    private var auroraSpecs: [AuroraSpec] {
-        [
-            AuroraSpec(
-                center: CGPoint(x: 0.90, y: -0.02),
-                size: CGSize(width: 0.92, height: 1.42),
-                travel: CGSize(width: 7.5, height: 5.0),
-                scaleRange: 0.992...1.036,
-                opacityRange: 0.78...1,
-                duration: 29,
-                phase: 7.4
-            ),
-            AuroraSpec(
-                center: CGPoint(x: 0.12, y: 0.90),
-                size: CGSize(width: 0.86, height: 1.28),
-                travel: CGSize(width: 6.5, height: 5.8),
-                scaleRange: 0.988...1.030,
-                opacityRange: 0.76...0.96,
-                duration: 37,
-                phase: 13.2
-            ),
-
-        ]
-    }
-
-    private var normalizedParticlePointGroups: [[CGPoint]] {
-        [
-            [
-                CGPoint(x: 0.08, y: 0.31),
-                CGPoint(x: 0.23, y: 0.72),
-                CGPoint(x: 0.47, y: 0.17),
-                CGPoint(x: 0.71, y: 0.58),
-                CGPoint(x: 0.91, y: 0.27)
-            ],
-            [
-                CGPoint(x: 0.14, y: 0.84),
-                CGPoint(x: 0.34, y: 0.43),
-                CGPoint(x: 0.58, y: 0.81),
-                CGPoint(x: 0.77, y: 0.22),
-                CGPoint(x: 0.86, y: 0.68)
-            ],
-            [
-                CGPoint(x: 0.05, y: 0.57),
-                CGPoint(x: 0.29, y: 0.12),
-                CGPoint(x: 0.53, y: 0.52),
-                CGPoint(x: 0.67, y: 0.91),
-                CGPoint(x: 0.96, y: 0.48)
-            ]
-        ]
-    }
-}
-*/

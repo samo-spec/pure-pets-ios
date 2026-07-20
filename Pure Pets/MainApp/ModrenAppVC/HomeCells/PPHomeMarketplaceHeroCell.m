@@ -656,7 +656,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.42;
+    glass.cornerGlowOpacityMultiplier = 0.62;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
     glass.PPHeroApexUseUnderFingerMotion = NO;
@@ -674,7 +674,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     }
     [glass.layer addSublayer:halo];
     self.tapHaloLayer = halo;
-
+    
     [self pp_buildContentStackInSurface:surface];
     [self pp_buildVisualClusterInSurface:surface];
 

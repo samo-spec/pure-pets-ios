@@ -1,8 +1,10 @@
 #import "PPSaveForLaterManager.h"
 #import "PPUniversalCellViewModel.h"
+#import "PetAccessoryManager.h"
 #import "UserManager.h"
 
 static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpdatedNotification";
+static NSString * const PPSaveForLaterErrorDomain = @"com.purepets.savedForLater";
 
 static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     if ([value respondsToSelector:@selector(integerValue)]) {
@@ -10,6 +12,19 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
         return rawStock == NSNotFound ? NSNotFound : MAX(0, rawStock);
     }
     return NSNotFound;
+}
+
+static NSError *PPSaveForLaterError(NSInteger code, NSString *description) {
+    return [NSError errorWithDomain:PPSaveForLaterErrorDomain
+                               code:code
+                           userInfo:@{NSLocalizedDescriptionKey: description ?: @"Saved item operation failed."}];
+}
+
+static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullable completion, NSError * _Nullable error) {
+    if (!completion) { return; }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        completion(error);
+    });
 }
 
 @interface PPSaveForLaterManager ()
@@ -84,6 +99,14 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     if (userID.length == 0) return; // Must be logged in to save to Firestore
     
     // 1. Update local memory
+    NSInteger resolvedStockQuantity = item.stockQuantity;
+    if (resolvedStockQuantity == NSNotFound) {
+        PetAccessory *cachedAccessory = [[PetAccessoryManager sharedManager] getAccessoryID:item.itemID];
+        if (cachedAccessory) {
+            resolvedStockQuantity = MAX(0, cachedAccessory.quantity);
+        }
+    }
+
     if (![self isItemSaved:item.itemID]) {
         CartItem *itemCopy = [[CartItem alloc] init];
         itemCopy.itemID = item.itemID;
@@ -93,7 +116,7 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
         itemCopy.imageURL = item.imageURL;
         itemCopy.providerID = item.providerID;
         itemCopy.type = item.type ?: @"";
-        itemCopy.stockQuantity = item.stockQuantity;
+        itemCopy.stockQuantity = resolvedStockQuantity;
         itemCopy.quantity = 1;
         [_items addObject:itemCopy];
         [self persistForUser:userID];
@@ -119,8 +142,8 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     if (item.type.length > 0) {
         payload[@"type"] = item.type;
     }
-    if (item.stockQuantity != NSNotFound) {
-        payload[@"stockQuantity"] = @(MAX(0, item.stockQuantity));
+    if (resolvedStockQuantity != NSNotFound) {
+        payload[@"stockQuantity"] = @(MAX(0, resolvedStockQuantity));
     }
     
     [docRef setData:payload merge:YES completion:^(NSError * _Nullable error) {
@@ -136,12 +159,22 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     CartItem *item = [[CartItem alloc] init];
     item.itemID = viewModel.ModelID;
     item.name = viewModel.title ?: @"";
-    item.price = viewModel.finalPrice ? [viewModel.finalPrice doubleValue] : 0.0;
-    item.originalPrice = viewModel.price ? [viewModel.price doubleValue] : 0.0;
+    double basePrice = viewModel.price ? [viewModel.price doubleValue] : 0.0;
+    double finalPrice = viewModel.finalPrice ? [viewModel.finalPrice doubleValue] : basePrice;
+    if (finalPrice <= 0.0 && basePrice > 0.0) {
+        finalPrice = basePrice;
+    }
+    item.price = finalPrice;
+    item.originalPrice = basePrice > 0.0 ? basePrice : finalPrice;
     item.imageURL = viewModel.imageURL ?: @"";
-    item.stockQuantity = NSNotFound;
+    item.stockQuantity = MAX(0, viewModel.itemQuantitiy);
+    item.type = viewModel.modelType ?: @"";
     
     id model = viewModel.ModelObject;
+    if ([model isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)model;
+        item.stockQuantity = MAX(0, accessory.quantity);
+    }
     if ([model respondsToSelector:@selector(providerID)]) {
         item.providerID = [model performSelector:@selector(providerID)];
     } else if ([model respondsToSelector:@selector(userID)]) {
@@ -153,33 +186,85 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     [self saveItemForLater:item];
 }
 
-- (void)removeItem:(CartItem *)item {
-    if (!item || item.itemID.length == 0) return;
-    
+- (NSString *)pp_currentUserID
+{
     NSString *userID = [FIRAuth auth].currentUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
-    if (userID.length == 0) return;
-    
-    // 1. Update local memory
+    return userID ?: @"";
+}
+
+- (FIRDocumentReference *)pp_savedItemDocumentReferenceForUserID:(NSString *)userID
+                                                          itemID:(NSString *)itemID
+{
+    FIRFirestore *db = [FIRFirestore firestore];
+    return [[[[db collectionWithPath:@"UsersCol"]
+              documentWithPath:userID]
+             collectionWithPath:@"savedForLater"]
+            documentWithPath:itemID];
+}
+
+- (void)pp_removeLocalItemID:(NSString *)itemID forUser:(NSString *)userID
+{
+    if (itemID.length == 0 || userID.length == 0) { return; }
     for (CartItem *existing in [_items copy]) {
-        if ([existing.itemID isEqualToString:item.itemID]) {
+        if ([existing.itemID isEqualToString:itemID]) {
             [_items removeObject:existing];
             break;
         }
     }
     [self persistForUser:userID];
+}
+
+- (void)removeItem:(CartItem *)item {
+    if (!item || item.itemID.length == 0) return;
+
+    NSString *userID = [self pp_currentUserID];
+    if (userID.length == 0) return;
+
+    // 1. Update local memory
+    [self pp_removeLocalItemID:item.itemID forUser:userID];
     
     // 2. Delete from Firestore subcollection
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
-                                     documentWithPath:userID]
-                                    collectionWithPath:@"savedForLater"]
-                                   documentWithPath:item.itemID];
+    FIRDocumentReference *docRef = [self pp_savedItemDocumentReferenceForUserID:userID itemID:item.itemID];
     
     [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ SavedForLater: Failed to delete from Firestore: %@", error.localizedDescription);
         }
+    }];
+}
+
+- (void)removeItem:(CartItem *)item completion:(PPSaveForLaterRemoveCompletion _Nullable)completion
+{
+    if (!item || item.itemID.length == 0) {
+        PPSaveForLaterCompleteOnMain(completion, PPSaveForLaterError(1001, @"Invalid saved item."));
+        return;
+    }
+
+    NSString *userID = [self pp_currentUserID];
+    if (userID.length == 0) {
+        PPSaveForLaterCompleteOnMain(completion, PPSaveForLaterError(1002, @"A signed-in user is required."));
+        return;
+    }
+
+    FIRDocumentReference *docRef = [self pp_savedItemDocumentReferenceForUserID:userID itemID:item.itemID];
+    __weak typeof(self) weakSelf = self;
+    [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ SavedForLater: Failed to delete from Firestore: %@", error.localizedDescription);
+            PPSaveForLaterCompleteOnMain(completion, error);
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf pp_removeLocalItemID:item.itemID forUser:userID];
+            }
+            if (completion) {
+                completion(nil);
+            }
+        });
     }];
 }
 

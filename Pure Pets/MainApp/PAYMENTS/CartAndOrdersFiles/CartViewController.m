@@ -2193,7 +2193,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
             [strongSelf pp_notifyCartBadgeAndCollections];
         }
     };
-    [PPFunc presentSheetFrom:self sheetVC:bottomSheet detentStyle:PPSheetDetentStyle70];
+    [PPFunc presentSheetFrom:self sheetVC:bottomSheet detentStyle:PPSheetDetentStyle95];
 }
 
 - (void)pp_savedForLaterPillTouchDown:(UIButton *)button

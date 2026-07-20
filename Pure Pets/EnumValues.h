@@ -406,7 +406,8 @@ typedef NS_ENUM(NSUInteger, PPSheetDetentStyle) {
     PPSheetDetentStyleMediumAndLarge,
     PPSheetDetentStyleSemiLargAndLarge,
     PPSheetDetentStyleProfile,
-    PPSheetDetentStyleFull
+    PPSheetDetentStyleFull,
+    PPSheetDetentStyle95
 };
  
 

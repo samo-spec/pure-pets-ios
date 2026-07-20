@@ -1,6 +1,7 @@
 #import "PPSavedForLaterBottomSheetVC.h"
 #import "PPSaveForLaterManager.h"
 #import "CartManager.h"
+#import "PetAccessoryManager.h"
 #import "PPHUD.h"
 #import <Pure_Pets-Swift.h>
 
@@ -97,6 +98,72 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
 
 #pragma mark - Data
 
+- (CartItem *)pp_copySavedCartItem:(CartItem *)item
+{
+    CartItem *copy = [[CartItem alloc] init];
+    copy.itemID = item.itemID ?: @"";
+    copy.name = item.name ?: @"";
+    copy.quantity = MAX(1, item.quantity);
+    copy.stockQuantity = item.stockQuantity;
+    copy.price = item.price;
+    copy.originalPrice = item.originalPrice;
+    copy.imageURL = item.imageURL ?: @"";
+    copy.providerID = item.providerID ?: @"";
+    copy.type = item.type ?: @"";
+    return copy;
+}
+
+- (CartItem *)pp_cartItemFromSavedItem:(CartItem *)savedItem
+                             accessory:(PetAccessory *)accessory
+{
+    CartItem *resolvedItem = [[CartItem alloc] initWithAccessory:accessory
+                                                        quantity:MAX(1, savedItem.quantity)];
+    if (savedItem.type.length > 0) {
+        resolvedItem.type = savedItem.type;
+    }
+    return resolvedItem;
+}
+
+- (void)pp_resolveCartItemForMoveToCart:(CartItem *)savedItem
+                              completion:(void (^)(CartItem * _Nullable resolvedItem,
+                                                   BOOL isOutOfStock))completion
+{
+    if (savedItem.stockQuantity != NSNotFound) {
+        if (savedItem.stockQuantity <= 0) {
+            completion(nil, YES);
+            return;
+        }
+        if (savedItem.price >= 0.01) {
+            completion([self pp_copySavedCartItem:savedItem], NO);
+            return;
+        }
+    }
+
+    PetAccessory *cachedAccessory = [[PetAccessoryManager sharedManager] getAccessoryID:savedItem.itemID];
+    if (cachedAccessory) {
+        if (cachedAccessory.quantity <= 0) {
+            completion(nil, YES);
+            return;
+        }
+        completion([self pp_cartItemFromSavedItem:savedItem accessory:cachedAccessory], NO);
+        return;
+    }
+
+    [PetAccessoryManager fetchAccessoriesWithIDs:@[savedItem.itemID ?: @""]
+                                      completion:^(NSArray<PetAccessory *> *accessories) {
+        PetAccessory *freshAccessory = accessories.firstObject;
+        if (!freshAccessory) {
+            completion(nil, NO);
+            return;
+        }
+        if (freshAccessory.quantity <= 0) {
+            completion(nil, YES);
+            return;
+        }
+        completion([self pp_cartItemFromSavedItem:savedItem accessory:freshAccessory], NO);
+    }];
+}
+
 - (void)pp_savedItemsDidChange:(NSNotification *)notification
 {
     (void)notification;
@@ -107,6 +174,41 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
 {
     self.savedItems = [[PPSaveForLaterManager sharedManager] savedItems] ?: @[];
     [self.contentController configureWithSavedItems:self.savedItems animated:animated];
+}
+
+- (void)pp_finishSavedItemsRefreshAfterMutationFromController:(PPSavedForLaterSheetContentController *)controller
+{
+    [controller setPendingItemID:nil operation:nil];
+    [self pp_loadSavedItemsAnimated:YES];
+    if (self.savedItems.count == 0) {
+        [self dismissSheet];
+    }
+}
+
+- (void)pp_deleteSavedItem:(CartItem *)item
+                controller:(PPSavedForLaterSheetContentController *)controller
+{
+    [controller setPendingItemID:item.itemID operation:@"remove"];
+    [PPHUD showLoading:kLang(@"saved_for_later_deleting")];
+
+    __weak typeof(self) weakSelf = self;
+    [[PPSaveForLaterManager sharedManager] removeItem:item completion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        [PPHUD dismiss];
+        if (error) {
+            [controller setPendingItemID:nil operation:nil];
+            [PPHUD showError:kLang(@"saved_for_later_delete_failed")];
+            [controller showStatusMessage:kLang(@"saved_for_later_delete_failed") success:NO];
+            [strongSelf pp_loadSavedItemsAnimated:YES];
+            return;
+        }
+
+        [PPHUD showSuccess:kLang(@"saved_for_later_delete_success")];
+        [controller showStatusMessage:kLang(@"saved_for_later_delete_success") success:YES];
+        [strongSelf pp_finishSavedItemsRefreshAfterMutationFromController:controller];
+    }];
 }
 
 #pragma mark - Dismissal
@@ -166,47 +268,69 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
     }
 
     [controller setPendingItemID:item.itemID operation:@"move"];
-
-    CartManager *cartManager = [CartManager sharedManager];
-    BOOL requiresProviderSwitch = [cartManager shouldConfirmProviderSwitchForItem:item];
-    if (!requiresProviderSwitch) {
-        [PPHUD showLoading:kLang(@"moving_to_cart")];
-    } else {
-        [PPHUD dismiss];
-    }
+    [PPHUD showLoading:kLang(@"moving_to_cart")];
 
     __weak typeof(self) weakSelf = self;
-    [cartManager addItem:item
-     presentingViewController:self
-                  completion:^(BOOL success, BOOL didCancel) {
+    [self pp_resolveCartItemForMoveToCart:item
+                                completion:^(CartItem * _Nullable resolvedItem,
+                                             BOOL isOutOfStock) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) { return; }
 
-        if (!success) {
+        if (!resolvedItem) {
             [PPHUD dismiss];
             [controller setPendingItemID:nil operation:nil];
-            if (!didCancel) {
-                [PPHUD showError:kLang(@"SomethingWentWrong")];
-                [controller showErrorMessage:kLang(@"SomethingWentWrong")];
-            }
+            NSString *message = isOutOfStock ? kLang(@"Out of stock") : kLang(@"SomethingWentWrong");
+            [PPHUD showError:message];
+            [controller showErrorMessage:message];
             [strongSelf pp_loadSavedItemsAnimated:YES];
             return;
         }
 
-        [[PPSaveForLaterManager sharedManager] removeItem:item];
+        CartManager *cartManager = [CartManager sharedManager];
+        if ([cartManager shouldConfirmProviderSwitchForItem:resolvedItem]) {
+            [PPHUD dismiss];
+        }
 
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.24 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [PPHUD showSuccess:kLang(@"moved_to_cart_success")];
-            [controller setPendingItemID:nil operation:nil];
-            [controller showStatusMessage:kLang(@"moved_to_cart_success") success:YES];
-            [strongSelf pp_loadSavedItemsAnimated:YES];
+        [cartManager addItem:resolvedItem
+         presentingViewController:strongSelf
+                      completion:^(BOOL success, BOOL didCancel) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) { return; }
+
+            if (!success) {
+                [PPHUD dismiss];
+                [controller setPendingItemID:nil operation:nil];
+                if (!didCancel) {
+                    [PPHUD showError:kLang(@"SomethingWentWrong")];
+                    [controller showErrorMessage:kLang(@"SomethingWentWrong")];
+                }
+                [strongSelf pp_loadSavedItemsAnimated:YES];
+                return;
+            }
+
+            [controller markMoveSucceededForItemID:item.itemID];
             if (strongSelf.onItemsMovedToCart) {
                 strongSelf.onItemsMovedToCart();
             }
-            if (strongSelf.savedItems.count == 0) {
-                [strongSelf dismissSheet];
-            }
-        });
+
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [[PPSaveForLaterManager sharedManager] removeItem:item completion:^(NSError * _Nullable error) {
+                    [PPHUD dismiss];
+                    if (error) {
+                        [controller setPendingItemID:nil operation:nil];
+                        [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
+                        [controller showStatusMessage:kLang(@"saved_for_later_move_partial_error") success:NO];
+                        [strongSelf pp_loadSavedItemsAnimated:YES];
+                        return;
+                    }
+
+                    [PPHUD showSuccess:kLang(@"moved_to_cart_success")];
+                    [controller showStatusMessage:kLang(@"moved_to_cart_success") success:YES];
+                    [strongSelf pp_finishSavedItemsRefreshAfterMutationFromController:controller];
+                }];
+            });
+        }];
     }];
 }
 
@@ -219,16 +343,26 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
         return;
     }
 
-    [controller setPendingItemID:item.itemID operation:@"remove"];
-    [[PPSaveForLaterManager sharedManager] removeItem:item];
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"saved_for_later_delete_confirm_title")
+                             subtitle:kLang(@"saved_for_later_delete_confirm_message")
+                        confirmButton:kLang(@"saved_for_later_delete_confirm_action")
+                         cancelButton:kLang(@"cancel")
+                                 icon:[UIImage systemImageNamed:@"trash"]
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        (void)text;
+        if (!didConfirm) { return; }
 
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [controller setPendingItemID:nil operation:nil];
-        [self pp_loadSavedItemsAnimated:YES];
-        if (self.savedItems.count == 0) {
-            [self dismissSheet];
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        [strongSelf pp_deleteSavedItem:item controller:controller];
+    } cancelBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [controller setPendingItemID:nil operation:nil];
         }
-    });
+    }];
 }
 
 @end

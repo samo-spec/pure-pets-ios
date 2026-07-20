@@ -3643,6 +3643,15 @@
 "saved_for_later_empty_message" = "Items you save from the marketplace will wait here until you are ready to buy.";
 "saved_for_later_retry_message" = "We could not refresh your saved items. Please try again.";
 "saved_for_later_remove_action" = "Remove";
+"saved_for_later_delete_action" = "Delete";
+"saved_for_later_deleting" = "Deleting...";
+"saved_for_later_delete_confirm_title" = "Delete saved item?";
+"saved_for_later_delete_confirm_message" = "This removes it from saved for later only. Your cart and orders will not change.";
+"saved_for_later_delete_confirm_action" = "Delete";
+"saved_for_later_delete_success" = "Removed from saved for later.";
+"saved_for_later_delete_failed" = "We could not delete this saved item. Please try again.";
+"saved_for_later_moved_action" = "Moved";
+"saved_for_later_move_partial_error" = "Added to cart, but could not remove it from saved items. Please try again.";
 "saved_for_later_remove_hint" = "Removes this item from saved for later";
 "saved_for_later_move_hint" = "Moves this item back to your cart";
 "saved_for_later_image_accessibility" = "Image for %@";
