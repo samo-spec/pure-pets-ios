@@ -1,11 +1,11 @@
 import UIKit
 
 private enum PPMainKindsCellMetrics {
-    static let cornerRadius: CGFloat = 22
+    static let cornerRadius: CGFloat = 24
     static let contentInset: CGFloat = 11
-    static let imagePlateSize: CGFloat = 92
+    static let imagePlateSize: CGFloat = 90
     static let compactImagePlateSize: CGFloat = 76
-    static let artworkSize: CGFloat = 62
+    static let artworkSize: CGFloat = 64
     static let allArtworkSize: CGFloat = 32
     static let imageToTitleSpacing: CGFloat = 6
     static let indicatorWidth: CGFloat = 30
@@ -56,7 +56,11 @@ private enum PPMainKindsCellPalette {
     }
 
     static var border: UIColor {
-        UIColor.diff.withAlphaComponent(0.22)
+        UIColor.diff.withAlphaComponent(0.23)
+    }
+    
+    static var borderThin: UIColor {
+        UIColor.diff.withAlphaComponent(0.16)
     }
 }
 
@@ -418,6 +422,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 ? accent.withAlphaComponent(finalAlpha)
                 : PPMainKindsCellPalette.plate
             self.imagePlateView.layer.shadowOpacity = selected ? 0.0 : 0.085
+            self.imagePlateView.layer.borderColor = (selected
+                ? UIColor.clear : PPMainKindsCellPalette.borderThin).resolvedColor(
+                                                        with: self.traitCollection
+                                                     ).cgColor
+            self.imagePlateView.layer.borderWidth = selected
+                ? 0
+                : PPMainKindsCellMetrics.regularBorderWidth
             self.titleLabel.textColor = selected ? accent : PPMainKindsCellPalette.primaryText
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
             self.selectionIndicatorView.backgroundColor = accent

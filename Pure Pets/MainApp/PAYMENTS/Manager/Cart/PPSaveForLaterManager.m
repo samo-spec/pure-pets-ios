@@ -4,9 +4,18 @@
 
 static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpdatedNotification";
 
+static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
+    if ([value respondsToSelector:@selector(integerValue)]) {
+        NSInteger rawStock = [value integerValue];
+        return rawStock == NSNotFound ? NSNotFound : MAX(0, rawStock);
+    }
+    return NSNotFound;
+}
+
 @interface PPSaveForLaterManager ()
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> savedForLaterListener;
 @property (nonatomic, assign) FIRAuthStateDidChangeListenerHandle authStateHandle;
+@property (nonatomic, assign) BOOL suppressSavedForLaterUpdateNotifications;
 @end
 
 @implementation PPSaveForLaterManager {
@@ -26,6 +35,7 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
     self = [super init];
     if (self) {
         _items = [NSMutableArray array];
+        self.suppressSavedForLaterUpdateNotifications = YES;
         
         // Load initial local cache if a user is already signed in
         NSString *userID = [FIRAuth auth].currentUser.uid;
@@ -49,6 +59,8 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
                 [strongSelf clearLocalAndMemory];
             }
         }];
+
+        self.suppressSavedForLaterUpdateNotifications = NO;
     }
     return self;
 }
@@ -80,6 +92,8 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
         itemCopy.originalPrice = item.originalPrice;
         itemCopy.imageURL = item.imageURL;
         itemCopy.providerID = item.providerID;
+        itemCopy.type = item.type ?: @"";
+        itemCopy.stockQuantity = item.stockQuantity;
         itemCopy.quantity = 1;
         [_items addObject:itemCopy];
         [self persistForUser:userID];
@@ -92,7 +106,7 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
                                     collectionWithPath:@"SavedForLaterCol"]
                                    documentWithPath:item.itemID];
     
-    NSDictionary *payload = @{
+    NSMutableDictionary *payload = [@{
         @"itemID": item.itemID ?: @"",
         @"name": item.name ?: @"",
         @"price": @(item.price),
@@ -101,7 +115,13 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
         @"providerID": item.providerID ?: @"",
         @"quantity": @(1),
         @"timestamp": [FIRFieldValue fieldValueForServerTimestamp]
-    };
+    } mutableCopy];
+    if (item.type.length > 0) {
+        payload[@"type"] = item.type;
+    }
+    if (item.stockQuantity != NSNotFound) {
+        payload[@"stockQuantity"] = @(MAX(0, item.stockQuantity));
+    }
     
     [docRef setData:payload merge:YES completion:^(NSError * _Nullable error) {
         if (error) {
@@ -119,6 +139,7 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
     item.price = viewModel.finalPrice ? [viewModel.finalPrice doubleValue] : 0.0;
     item.originalPrice = viewModel.price ? [viewModel.price doubleValue] : 0.0;
     item.imageURL = viewModel.imageURL ?: @"";
+    item.stockQuantity = NSNotFound;
     
     id model = viewModel.ModelObject;
     if ([model respondsToSelector:@selector(providerID)]) {
@@ -193,6 +214,22 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
 
 #pragma mark - Local Caching
 
+- (void)postSavedForLaterUpdatedNotification {
+    if (self.suppressSavedForLaterUpdateNotifications) {
+        return;
+    }
+
+    dispatch_block_t notifyBlock = ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:PPSaveForLaterUpdatedNotification object:nil];
+    };
+
+    if ([NSThread isMainThread]) {
+        notifyBlock();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), notifyBlock);
+    }
+}
+
 - (void)loadLocalCacheForUser:(NSString *)userID {
     if (userID.length == 0) return;
     NSString *userKey = [NSString stringWithFormat:@"PPSaveForLaterItemsKey_%@", userID];
@@ -207,10 +244,12 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
         item.originalPrice = [dict[@"originalPrice"] doubleValue];
         item.imageURL = dict[@"imageURL"];
         item.providerID = dict[@"providerID"];
-        item.quantity = [dict[@"quantity"] integerValue];
+        item.type = [dict[@"type"] isKindOfClass:NSString.class] ? dict[@"type"] : @"";
+        item.stockQuantity = PPSaveForLaterStockQuantityFromValue(dict[@"stockQuantity"]);
+        item.quantity = MAX(1, [dict[@"quantity"] integerValue]);
         [_items addObject:item];
     }
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPSaveForLaterUpdatedNotification object:nil];
+    [self postSavedForLaterUpdatedNotification];
 }
 
 - (void)persistForUser:(NSString *)userID {
@@ -218,7 +257,7 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
     NSString *userKey = [NSString stringWithFormat:@"PPSaveForLaterItemsKey_%@", userID];
     NSMutableArray *serialized = [NSMutableArray array];
     for (CartItem *item in _items) {
-        NSDictionary *dict = @{
+        NSMutableDictionary *dict = [@{
             @"itemID": item.itemID ?: @"",
             @"name": item.name ?: @"",
             @"price": @(item.price),
@@ -226,18 +265,24 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
             @"imageURL": item.imageURL ?: @"",
             @"providerID": item.providerID ?: @"",
             @"quantity": @(item.quantity)
-        };
+        } mutableCopy];
+        if (item.type.length > 0) {
+            dict[@"type"] = item.type;
+        }
+        if (item.stockQuantity != NSNotFound) {
+            dict[@"stockQuantity"] = @(MAX(0, item.stockQuantity));
+        }
         [serialized addObject:dict];
     }
     [[NSUserDefaults standardUserDefaults] setObject:serialized forKey:userKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
     
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPSaveForLaterUpdatedNotification object:nil];
+    [self postSavedForLaterUpdatedNotification];
 }
 
 - (void)clearLocalAndMemory {
     [_items removeAllObjects];
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPSaveForLaterUpdatedNotification object:nil];
+    [self postSavedForLaterUpdatedNotification];
 }
 
 #pragma mark - Firestore Synchronization
@@ -273,7 +318,9 @@ static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpda
             item.originalPrice = [doc[@"originalPrice"] doubleValue];
             item.imageURL = doc[@"imageURL"] ?: @"";
             item.providerID = doc[@"providerID"] ?: @"";
-            item.quantity = [doc[@"quantity"] integerValue] ?: 1;
+            item.type = [doc[@"type"] isKindOfClass:NSString.class] ? doc[@"type"] : @"";
+            item.stockQuantity = PPSaveForLaterStockQuantityFromValue(doc[@"stockQuantity"]);
+            item.quantity = MAX(1, [doc[@"quantity"] integerValue]);
             [remoteItems addObject:item];
         }
         

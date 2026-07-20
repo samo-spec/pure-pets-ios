@@ -248,6 +248,8 @@
 #define AppShadowClr                [UIColor blackColor]
 #define AppClearClr                 [UIColor clearColor]
 
+#define diffColor               [[UIColor colorNamed:@"diffColor"] colorWithAlphaComponent:1.0]
+
 #define NewBgColor               [[UIColor colorNamed:@"NewBg"] colorWithAlphaComponent:0.02]
 
 #define AppPrimaryClr               [[UIColor colorNamed:@"AppPrimaryColor"] colorWithAlphaComponent:1.0]

@@ -7,7 +7,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface PPSaveForLaterManager : NSObject
 
-+ (instancetype)sharedManager;
++ (instancetype)sharedManager NS_SWIFT_NAME(shared());
 
 - (NSArray<CartItem *> *)savedItems;
 - (void)saveItemForLater:(CartItem *)item;

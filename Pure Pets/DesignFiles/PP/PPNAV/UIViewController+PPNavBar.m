@@ -1316,8 +1316,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     if (@available(iOS 26.0, *)) {
         
         UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-        btn = [UIButton new];
+         btn = [UIButton new];
         btn.configuration = cfg;
         [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
     }
@@ -1371,11 +1370,11 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 
     [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     
-    [btn pp_setShadowColor:AppShadowClr];
-    btn.layer.shadowOpacity = 0.04;
-    btn.layer.shadowOffset = CGSizeMake(0, 2);
-    btn.layer.shadowRadius = 6;
-    btn.layer.masksToBounds = NO; // shadow needs this
+    [btn pp_setShadowColor:AppClearClr];
+    btn.layer.shadowOpacity = 0.00;
+    btn.layer.shadowOffset = CGSizeMake(0, 0);
+    btn.layer.shadowRadius = 0;
+    btn.layer.masksToBounds = YES; // shadow needs this
 
     
     // 🔹 If it's SF Symbol, apply config

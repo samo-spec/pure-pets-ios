@@ -32,6 +32,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 @synthesize accentColorOverride = _accentColorOverride;
 @synthesize overrideCenterGlowColor = _overrideCenterGlowColor;
 @synthesize overrideBottomGlowColor = _overrideBottomGlowColor;
+@synthesize overrideTopGlowColor = _overrideTopGlowColor;
+@synthesize overrideSurfureColor = _overrideSurfureColor;
+@synthesize overrideSurfaceColor = _overrideSurfaceColor;
 @synthesize accentStyle = _accentStyle;
 @synthesize cornerGlowOpacityMultiplier = _cornerGlowOpacityMultiplier;
 @synthesize glowDirection = _glowDirection;
@@ -71,6 +74,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     _accentStyle = PPHeroGlassAccentStyleBar;
     self.apexView.overrideCenterGlowColor = nil;
     self.apexView.overrideBottomGlowColor = nil;
+    self.apexView.overrideTopGlowColor = nil;
+    self.apexView.overrideSurfureColor = nil;
+    self.apexView.overrideSurfaceColor = nil;
     _cornerGlowOpacityMultiplier = 1.0;
     _glowDirection = 0; // Default: systemDirection
     _PPHeroApexUseShimmer = NO;
@@ -148,6 +154,39 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
     _overrideBottomGlowColor = overrideBottomGlowColor;
     self.apexView.overrideBottomGlowColor = overrideBottomGlowColor;
+}
+
+- (void)setOverrideTopGlowColor:(UIColor *)overrideTopGlowColor
+{
+    if (_overrideTopGlowColor == overrideTopGlowColor ||
+        [_overrideTopGlowColor isEqual:overrideTopGlowColor]) {
+        return;
+    }
+
+    _overrideTopGlowColor = overrideTopGlowColor;
+    self.apexView.overrideTopGlowColor = overrideTopGlowColor;
+}
+
+- (void)setOverrideSurfureColor:(UIColor *)overrideSurfureColor
+{
+    if (_overrideSurfureColor == overrideSurfureColor ||
+        [_overrideSurfureColor isEqual:overrideSurfureColor]) {
+        return;
+    }
+
+    _overrideSurfureColor = overrideSurfureColor;
+    self.apexView.overrideSurfureColor = overrideSurfureColor;
+}
+
+- (void)setOverrideSurfaceColor:(UIColor *)overrideSurfaceColor
+{
+    if (_overrideSurfaceColor == overrideSurfaceColor ||
+        [_overrideSurfaceColor isEqual:overrideSurfaceColor]) {
+        return;
+    }
+
+    _overrideSurfaceColor = overrideSurfaceColor;
+    self.apexView.overrideSurfaceColor = overrideSurfaceColor;
 }
 
 - (void)setAccentStyle:(PPHeroGlassAccentStyle)accentStyle

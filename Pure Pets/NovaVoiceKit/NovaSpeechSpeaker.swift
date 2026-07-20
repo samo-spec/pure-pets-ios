@@ -100,20 +100,54 @@ final class NovaSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         synthesizer.speak(utterance)
     }
 
-    func speechSynthesizer(
+    // MARK: - AVSpeechSynthesizerDelegate (Non-isolated bridge)
+
+    nonisolated func speechSynthesizer(
         _ synthesizer: AVSpeechSynthesizer,
         didStart utterance: AVSpeechUtterance
     ) {
+        Task { @MainActor in
+            self.handleSpeechStart()
+        }
+    }
+
+    nonisolated func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString characterRange: NSRange,
+        utterance: AVSpeechUtterance
+    ) {
+        Task { @MainActor in
+            self.handleSpeechWillSpeak(characterRange: characterRange)
+        }
+    }
+
+    nonisolated func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        didFinish utterance: AVSpeechUtterance
+    ) {
+        Task { @MainActor in
+            self.handleSpeechFinish()
+        }
+    }
+
+    nonisolated func speechSynthesizer(
+        _ synthesizer: AVSpeechSynthesizer,
+        didCancel utterance: AVSpeechUtterance
+    ) {
+        Task { @MainActor in
+            self.handleSpeechCancel()
+        }
+    }
+
+    // MARK: - MainActor Helpers
+
+    private func handleSpeechStart() {
         if currentChunkIndex == 0 {
             delegate?.speakerDidStart(self)
         }
     }
 
-    func speechSynthesizer(
-        _ synthesizer: AVSpeechSynthesizer,
-        willSpeakRangeOfSpeechString characterRange: NSRange,
-        utterance: AVSpeechUtterance
-    ) {
+    private func handleSpeechWillSpeak(characterRange: NSRange) {
         delegate?.speaker(
             self,
             willSpeakCharacterRange: NSRange(
@@ -124,19 +158,13 @@ final class NovaSpeechSpeaker: NSObject, AVSpeechSynthesizerDelegate {
         )
     }
 
-    func speechSynthesizer(
-        _ synthesizer: AVSpeechSynthesizer,
-        didFinish utterance: AVSpeechUtterance
-    ) {
+    private func handleSpeechFinish() {
         fullTextOffset += (currentText as NSString).length + 1
         currentChunkIndex += 1
         speakCurrentChunk()
     }
 
-    func speechSynthesizer(
-        _ synthesizer: AVSpeechSynthesizer,
-        didCancel utterance: AVSpeechUtterance
-    ) {
+    private func handleSpeechCancel() {
         let notify = !suppressCancelCallback
         suppressCancelCallback = false
         if notify { delegate?.speakerDidCancel(self) }

@@ -40,6 +40,9 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 @property (nonatomic, strong, nullable) UIColor *accentColorOverride;
 @property (nonatomic, strong, nullable) UIColor *overrideCenterGlowColor;
 @property (nonatomic, strong, nullable) UIColor *overrideBottomGlowColor;
+@property (nonatomic, strong, nullable) UIColor *overrideTopGlowColor;
+@property (nonatomic, strong, nullable) UIColor *overrideSurfureColor;
+@property (nonatomic, strong, nullable) UIColor *overrideSurfaceColor;
 
 /// Controls how the accent is rendered. Defaults to the original slim top bar.
 @property (nonatomic, assign) PPHeroGlassAccentStyle accentStyle;

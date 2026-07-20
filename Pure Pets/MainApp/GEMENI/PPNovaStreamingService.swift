@@ -115,6 +115,7 @@ indirect enum JSONValue: Codable, Sendable {
 
 // MARK: - Streaming service
 
+@MainActor
 @objc public class PPNovaStreamingService: NSObject {
     @objc public static let shared = PPNovaStreamingService()
 

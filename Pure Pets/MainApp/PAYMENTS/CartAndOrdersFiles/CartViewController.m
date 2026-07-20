@@ -34,6 +34,18 @@ static UIColor *PPCartScreenBackgroundColor(void)
     return PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
+static UIFont *PPCartScaledFont(NSString *fontName,
+                                CGFloat size,
+                                UIFontWeight fallbackWeight,
+                                UIFontTextStyle textStyle)
+{
+    UIFont *baseFont = [UIFont fontWithName:fontName size:size];
+    if (!baseFont) {
+        baseFont = [UIFont systemFontOfSize:size weight:fallbackWeight];
+    }
+    return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:baseFont];
+}
+
 @interface CustomTextViewCell : XLFormTextViewCell @end
 
 @implementation CustomTextViewCell
@@ -1915,59 +1927,255 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         self.cartTableView.tableFooterView = nil;
         return;
     }
-    
-    UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.cartTableView.bounds.size.width, 72.0)];
+
+    BOOL hadFooter = self.cartTableView.tableFooterView != nil;
+    BOOL isAccessibilitySize = UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+    CGFloat tableWidth = CGRectGetWidth(self.cartTableView.bounds);
+    if (tableWidth < 1.0) {
+        tableWidth = CGRectGetWidth(self.view.bounds);
+    }
+    if (tableWidth < 1.0) {
+        tableWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+    }
+    CGFloat footerHeight = isAccessibilitySize ? 102.0 : 78.0;
+    CGFloat pillHeight = isAccessibilitySize ? 70.0 : 58.0;
+    CGFloat availableCompactWidth = MAX(0.0, tableWidth - (isAccessibilitySize ? 56.0 : 104.0));
+    CGFloat pillWidth = MIN(MAX(isAccessibilitySize ? 318.0 : 282.0, availableCompactWidth),
+                            isAccessibilitySize ? 356.0 : 326.0);
+    CGFloat iconSize = isAccessibilitySize ? 42.0 : 38.0;
+    CGFloat countBadgeHeight = isAccessibilitySize ? 34.0 : 32.0;
+    CGFloat chevronSize = isAccessibilitySize ? 32.0 : 30.0;
+    CGFloat cornerRadius = pillHeight * 0.43;
+    UIColor *accentColor = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    NSString *countText = [NSString stringWithFormat:kLang(@"saved_for_later_count_format"), (long)saved.count];
+
+    UIView *footerView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, tableWidth, footerHeight)];
     footerView.backgroundColor = UIColor.clearColor;
-    
+    footerView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
     UIButton *pillButton = [UIButton buttonWithType:UIButtonTypeCustom];
     pillButton.translatesAutoresizingMaskIntoConstraints = NO;
-    pillButton.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
-    pillButton.layer.cornerRadius = 20.0;
-    pillButton.layer.borderWidth = 1.0;
-    pillButton.layer.borderColor = [GM.appPrimaryColor colorWithAlphaComponent:0.18].CGColor;
-    pillButton.clipsToBounds = YES;
-    
-    [pillButton addTarget:self action:@selector(pp_didTapSavedForLaterPill) forControlEvents:UIControlEventTouchUpInside];
-    
-    UIImage *bookmarkIcon = [[UIImage systemImageNamed:@"bookmark.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    pillButton.backgroundColor = UIColor.clearColor;
+    pillButton.layer.cornerRadius = cornerRadius;
+    pillButton.layer.masksToBounds = NO;
+    pillButton.exclusiveTouch = YES;
+    pillButton.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    pillButton.accessibilityLabel = kLang(@"saved_for_later");
+    pillButton.accessibilityValue = countText;
+    pillButton.accessibilityHint = kLang(@"saved_for_later_open_hint");
+    pillButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [pillButton pp_setShadowColor:UIColor.blackColor];
+    pillButton.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.20 : 0.08;
+    pillButton.layer.shadowRadius = 18.0;
+    pillButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    if (@available(iOS 13.0, *)) {
+        pillButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    if (@available(iOS 13.4, *)) {
+        pillButton.pointerInteractionEnabled = YES;
+    }
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemThinMaterial;
+    UIVisualEffectView *materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    materialView.userInteractionEnabled = NO;
+    materialView.clipsToBounds = YES;
+    materialView.layer.cornerRadius = cornerRadius;
+    materialView.layer.borderWidth = 0.8;
+    UIColor *borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return [UIColor.whiteColor colorWithAlphaComponent:(tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.10 : 0.62];
+    }];
+    [materialView pp_setBorderColor:[borderColor resolvedColorWithTraitCollection:self.traitCollection]];
+    if (@available(iOS 13.0, *)) {
+        materialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [pillButton addSubview:materialView];
+
+    UIView *tintView = [[UIView alloc] init];
+    tintView.translatesAutoresizingMaskIntoConstraints = NO;
+    tintView.userInteractionEnabled = NO;
+    tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.12 green:0.12 blue:0.14 alpha:0.48];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.46];
+    }];
+    [materialView.contentView addSubview:tintView];
+
+    UIView *accentLine = [[UIView alloc] init];
+    accentLine.translatesAutoresizingMaskIntoConstraints = NO;
+    accentLine.userInteractionEnabled = NO;
+    accentLine.backgroundColor = [accentColor colorWithAlphaComponent:0.92];
+    accentLine.layer.cornerRadius = 1.5;
+    [materialView.contentView addSubview:accentLine];
+
+    UIView *iconContainer = [[UIView alloc] init];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.userInteractionEnabled = NO;
+    iconContainer.backgroundColor = [accentColor colorWithAlphaComponent:(self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.20 : 0.12];
+    iconContainer.layer.cornerRadius = iconSize * 0.5;
+    iconContainer.layer.borderWidth = 0.75;
+    [iconContainer pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
+    [materialView.contentView addSubview:iconContainer];
+
+    UIImage *bookmarkIcon = [UIImage pp_symbolNamed:@"bookmark.fill"
+                                          pointSize:17
+                                             weight:UIImageSymbolWeightSemibold
+                                              scale:UIImageSymbolScaleMedium
+                                            palette:@[accentColor, accentColor]
+                                       makeTemplate:YES];
     UIImageView *iconView = [[UIImageView alloc] initWithImage:bookmarkIcon];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = GM.appPrimaryColor;
+    iconView.tintColor = accentColor;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [pillButton addSubview:iconView];
-    
+    [iconContainer addSubview:iconView];
+
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.textColor = GM.appPrimaryColor;
-    titleLabel.font = [UIFont fontWithName:@"Beiruti-Bold" size:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightBold];
-    NSString *countStr = [NSString stringWithFormat:@" (%lu)", (unsigned long)saved.count];
-    NSString *labelText = [NSString stringWithFormat:@"%@%@", kLang(@"saved_for_later"), countStr];
-    titleLabel.text = labelText;
-    [pillButton addSubview:titleLabel];
-    
+    titleLabel.textColor = primaryTextColor;
+    titleLabel.font = PPCartScaledFont(@"Beiruti-Bold", isAccessibilitySize ? 16.4 : 15.8, UIFontWeightBold, UIFontTextStyleSubheadline);
+    titleLabel.adjustsFontForContentSizeCategory = YES;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.82;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    titleLabel.numberOfLines = 1;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    titleLabel.text = kLang(@"saved_for_later");
+    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                forAxis:UILayoutConstraintAxisHorizontal];
+    [materialView.contentView addSubview:titleLabel];
+
+    PPInsetLabel *countBadge = [[PPInsetLabel alloc] init];
+    countBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    countBadge.text = countText;
+    countBadge.textInsets = UIEdgeInsetsMake(5.0, 12.0, 5.0, 12.0);
+    countBadge.font = PPCartScaledFont(@"Beiruti-Bold", 12.2, UIFontWeightSemibold, UIFontTextStyleCaption1);
+    countBadge.adjustsFontForContentSizeCategory = YES;
+    countBadge.textColor = accentColor;
+    countBadge.textAlignment = NSTextAlignmentCenter;
+    countBadge.numberOfLines = 1;
+    countBadge.adjustsFontSizeToFitWidth = YES;
+    countBadge.minimumScaleFactor = 0.76;
+    countBadge.backgroundColor = [accentColor colorWithAlphaComponent:(self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.18 : 0.10];
+    countBadge.layer.cornerRadius = countBadgeHeight * 0.5;
+    countBadge.layer.masksToBounds = YES;
+    countBadge.layer.borderWidth = 0.75;
+    [countBadge pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
+    [countBadge setContentHuggingPriority:UILayoutPriorityRequired
+                                  forAxis:UILayoutConstraintAxisHorizontal];
+    [countBadge setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisHorizontal];
+    [materialView.contentView addSubview:countBadge];
+
+    UIView *chevronContainer = [[UIView alloc] init];
+    chevronContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    chevronContainer.userInteractionEnabled = NO;
+    chevronContainer.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:(self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 : 0.055];
+    chevronContainer.layer.cornerRadius = chevronSize * 0.5;
+    [materialView.contentView addSubview:chevronContainer];
+
+    NSString *chevronName = Language.isRTL ? @"chevron.left" : @"chevron.right";
+    UIImageView *chevronView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:chevronName
+                                                                                pointSize:12
+                                                                                   weight:UIImageSymbolWeightBold
+                                                                                    scale:UIImageSymbolScaleSmall
+                                                                                  palette:@[primaryTextColor, primaryTextColor]
+                                                                             makeTemplate:YES]];
+    chevronView.translatesAutoresizingMaskIntoConstraints = NO;
+    chevronView.tintColor = [primaryTextColor colorWithAlphaComponent:0.78];
+    chevronView.contentMode = UIViewContentModeScaleAspectFit;
+    [chevronContainer addSubview:chevronView];
+
+    [pillButton addTarget:self action:@selector(pp_didTapSavedForLaterPill) forControlEvents:UIControlEventTouchUpInside];
+    [pillButton addTarget:self action:@selector(pp_savedForLaterPillTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [pillButton addTarget:self
+                   action:@selector(pp_savedForLaterPillTouchCancel:)
+         forControlEvents:(UIControlEventTouchCancel | UIControlEventTouchUpOutside | UIControlEventTouchDragExit | UIControlEventTouchUpInside)];
+
     [footerView addSubview:pillButton];
-    
+
+    CGFloat horizontalInset = 18.0;
+    CGFloat internalInset = isAccessibilitySize ? 14.0 : 12.0;
+
     [NSLayoutConstraint activateConstraints:@[
+        [materialView.leadingAnchor constraintEqualToAnchor:pillButton.leadingAnchor],
+        [materialView.trailingAnchor constraintEqualToAnchor:pillButton.trailingAnchor],
+        [materialView.topAnchor constraintEqualToAnchor:pillButton.topAnchor],
+        [materialView.bottomAnchor constraintEqualToAnchor:pillButton.bottomAnchor],
+
+        [tintView.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor],
+        [tintView.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor],
+        [tintView.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor],
+        [tintView.bottomAnchor constraintEqualToAnchor:materialView.contentView.bottomAnchor],
+
         [pillButton.centerXAnchor constraintEqualToAnchor:footerView.centerXAnchor],
         [pillButton.centerYAnchor constraintEqualToAnchor:footerView.centerYAnchor],
-        [pillButton.heightAnchor constraintEqualToConstant:40.0],
-        [pillButton.widthAnchor constraintEqualToConstant:220.0],
-        
-        [iconView.leadingAnchor constraintEqualToAnchor:pillButton.leadingAnchor constant:16.0],
-        [iconView.centerYAnchor constraintEqualToAnchor:pillButton.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:16.0],
-        [iconView.heightAnchor constraintEqualToConstant:16.0],
-        
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:8.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:pillButton.trailingAnchor constant:-16.0],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:pillButton.centerYAnchor]
+        [pillButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:footerView.leadingAnchor constant:horizontalInset],
+        [pillButton.trailingAnchor constraintLessThanOrEqualToAnchor:footerView.trailingAnchor constant:-horizontalInset],
+        [pillButton.heightAnchor constraintEqualToConstant:pillHeight],
+        [pillButton.widthAnchor constraintEqualToConstant:pillWidth],
+
+        [accentLine.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor constant:internalInset],
+        [accentLine.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [accentLine.widthAnchor constraintEqualToConstant:3.0],
+        [accentLine.heightAnchor constraintEqualToConstant:isAccessibilitySize ? 38.0 : 30.0],
+
+        [iconContainer.leadingAnchor constraintEqualToAnchor:accentLine.trailingAnchor constant:9.0],
+        [iconContainer.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [iconContainer.widthAnchor constraintEqualToConstant:iconSize],
+        [iconContainer.heightAnchor constraintEqualToConstant:iconSize],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconContainer.trailingAnchor constant:10.0],
+        [titleLabel.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:materialView.contentView.topAnchor constant:8.0],
+        [titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:materialView.contentView.bottomAnchor constant:-8.0],
+
+        [countBadge.leadingAnchor constraintGreaterThanOrEqualToAnchor:titleLabel.trailingAnchor constant:8.0],
+        [countBadge.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [countBadge.heightAnchor constraintGreaterThanOrEqualToConstant:countBadgeHeight],
+        [countBadge.widthAnchor constraintGreaterThanOrEqualToConstant:isAccessibilitySize ? 76.0 : 68.0],
+        [countBadge.widthAnchor constraintLessThanOrEqualToConstant:isAccessibilitySize ? 110.0 : 92.0],
+
+        [chevronContainer.leadingAnchor constraintEqualToAnchor:countBadge.trailingAnchor constant:6.0],
+        [chevronContainer.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor constant:-internalInset],
+        [chevronContainer.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [chevronContainer.widthAnchor constraintEqualToConstant:chevronSize],
+        [chevronContainer.heightAnchor constraintEqualToConstant:chevronSize],
+
+        [chevronView.centerXAnchor constraintEqualToAnchor:chevronContainer.centerXAnchor],
+        [chevronView.centerYAnchor constraintEqualToAnchor:chevronContainer.centerYAnchor],
+        [chevronView.widthAnchor constraintEqualToConstant:12.0],
+        [chevronView.heightAnchor constraintEqualToConstant:12.0]
     ]];
-    
+
     self.cartTableView.tableFooterView = footerView;
+
+    if (!hadFooter && !UIAccessibilityIsReduceMotionEnabled()) {
+        footerView.alpha = 0.0;
+        footerView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+        [UIView animateWithDuration:0.42
+                              delay:0.04
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.24
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            footerView.alpha = 1.0;
+            footerView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 - (void)pp_didTapSavedForLaterPill
 {
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback impactOccurred];
+
     PPSavedForLaterBottomSheetVC *bottomSheet = [[PPSavedForLaterBottomSheetVC alloc] init];
     __weak typeof(self) weakSelf = self;
     bottomSheet.onDismiss = ^{
@@ -1985,7 +2193,35 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
             [strongSelf pp_notifyCartBadgeAndCollections];
         }
     };
-    [self presentViewController:bottomSheet animated:NO completion:nil];
+    [PPFunc presentSheetFrom:self sheetVC:bottomSheet detentStyle:PPSheetDetentStyle70];
+}
+
+- (void)pp_savedForLaterPillTouchDown:(UIButton *)button
+{
+    if (!button) return;
+
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.982, 0.982);
+        button.alpha = 0.96;
+    } completion:nil];
+}
+
+- (void)pp_savedForLaterPillTouchCancel:(UIButton *)button
+{
+    if (!button) return;
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.32
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+        button.alpha = 1.0;
+    } completion:nil];
 }
 
 - (void)dealloc {

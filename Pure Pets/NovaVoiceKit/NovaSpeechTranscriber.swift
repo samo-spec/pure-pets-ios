@@ -317,10 +317,20 @@ final class NovaSpeechTranscriber: NSObject, SFSpeechRecognizerDelegate {
         }
     }
 
-    func speechRecognizer(
+    // MARK: - SFSpeechRecognizerDelegate (Non-isolated bridge)
+
+    nonisolated func speechRecognizer(
         _ speechRecognizer: SFSpeechRecognizer,
         availabilityDidChange available: Bool
     ) {
+        Task { @MainActor in
+            self.handleSpeechRecognizerAvailabilityDidChange(available)
+        }
+    }
+
+    // MARK: - MainActor Helpers
+
+    private func handleSpeechRecognizerAvailabilityDidChange(_ available: Bool) {
         guard !available, isCapturing else { return }
         delegate?.transcriber(
             self,

@@ -173,6 +173,51 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
+    @objc
+    public var overrideTopGlowColor: UIColor? {
+        didSet {
+            if oldValue == nil && overrideTopGlowColor == nil {
+                return
+            }
+            if let oldValue,
+               let overrideTopGlowColor,
+               oldValue.isEqual(overrideTopGlowColor) {
+                return
+            }
+            reapplyPalette()
+        }
+    }
+
+    @objc
+    public var overrideSurfureColor: UIColor? {
+        didSet {
+            if oldValue == nil && overrideSurfureColor == nil {
+                return
+            }
+            if let oldValue,
+               let overrideSurfureColor,
+               oldValue.isEqual(overrideSurfureColor) {
+                return
+            }
+            reapplyPalette()
+        }
+    }
+
+    @objc
+    public var overrideSurfaceColor: UIColor? {
+        didSet {
+            if oldValue == nil && overrideSurfaceColor == nil {
+                return
+            }
+            if let oldValue,
+               let overrideSurfaceColor,
+               oldValue.isEqual(overrideSurfaceColor) {
+                return
+            }
+            reapplyPalette()
+        }
+    }
+
     public var accentStyle: Int {
         get { storedAccentMode.rawValue }
         set {
@@ -728,48 +773,26 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ]
 
         for (index, layer) in auroraLayers.enumerated() {
-            let color = palette.aurora[index % palette.aurora.count]
+            let color = auroraBaseColor(for: index, palette: palette)
             let restingOpacity = index < auroraSpecs.count
                 ? auroraSpecs[index].opacityRange.upperBound
                 : 1
-            let leadingAlpha: CGFloat
-            if storedAccentMode == .fullScreen {
-                leadingAlpha = reduceTransparency
-                    ? (isDark ? 0.24 : 0.18)
-                    : (isDark ? 0.38 : 0.26)
-            } else {
-                leadingAlpha = reduceTransparency
-                    ? (isDark ? 0.19 : 0.14)
-                    : (isDark ? 0.28 : 0.19)
-            }
-            let targetColors: [CGColor]
-
-            if index == AuroraRole.bottomTrailing.rawValue {
-                let trailAlpha = leadingAlpha * (isDark ? 0.94 : 0.88)
-                targetColors = [
-                    color.withAlphaComponent(trailAlpha).cgColor,
-                    palette.accent.withAlphaComponent(trailAlpha * 0.46).cgColor,
-                    color.withAlphaComponent(trailAlpha * 0.12).cgColor,
-                    UIColor.clear.cgColor
-                ]
-            } else if index == AuroraRole.middle.rawValue {
-                let middleAlpha = leadingAlpha * (isDark ? 0.86 : 0.82)
-                targetColors = [
-                    color.withAlphaComponent(middleAlpha).cgColor,
-                    palette.accent.withAlphaComponent(middleAlpha * 0.38).cgColor,
-                    UIColor.clear.cgColor
-                ]
-            } else {
-                targetColors = [
-                    color.withAlphaComponent(leadingAlpha).cgColor,
-                    color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
-                    UIColor.clear.cgColor
-                ]
-            }
+            let leadingAlpha = auroraLeadingAlpha(
+                isDark: isDark,
+                reduceTransparency: reduceTransparency
+            )
+            let targetColors = auroraGradientColors(
+                for: color,
+                palette: palette,
+                index: index,
+                leadingAlpha: leadingAlpha,
+                isDark: isDark
+            )
             setAuroraColors(
                 targetColors,
                 on: layer,
-                animated: shouldAnimateVisualStateChange
+                animated: shouldAnimateVisualStateChange &&
+                    !shouldRefreshAmbientAuroraTimelineForPalette
             )
             layer.opacity = restingOpacity
         }
@@ -843,6 +866,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         applyAccentMode(animated: false)
         setNeedsLayout()
+        refreshAmbientAuroraTimelineAfterPaletteIfNeeded()
     }
 
     private func makePalette() -> Palette {
@@ -861,9 +885,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let surfaceFallback = isDark
             ? UIColor(white: 0.105, alpha: 1)
             : UIColor(red: 0.992, green: 0.989, blue: 0.991, alpha: 1)
-        let surfaceBase = resolvedColor(
-            UIColor(named: "AppForegroundColor") ?? surfaceFallback
-        )
+
+        let surfaceBase: UIColor
+        if let surfaceOverride = overrideSurfureColor ?? overrideSurfaceColor {
+            surfaceBase = resolvedColor(surfaceOverride)
+        } else {
+            surfaceBase = resolvedColor(
+                UIColor(named: "AppForegroundColor") ?? surfaceFallback
+            )
+        }
+
         let polishedSurfaceBase = isDark
             ? surfaceBase
             : blend(surfaceBase, with: .white, amount: 0.30)
@@ -885,6 +916,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let twilight = blend(accent, with: resolvedColor(.systemIndigo), amount: 0.44)
         let shine = explicitAccent ?? resolvedColor(UIColor(named: "AppPrimaryColorShainer") ?? twilight)
+
+        let topGlow: UIColor
+        if let topGlowOverride = overrideTopGlowColor {
+            topGlow = resolvedColor(topGlowOverride)
+        } else {
+            topGlow = accent
+        }
+
         let bottomTrailingGlow: UIColor
         if let bottomGlowOverride = overrideBottomGlowColor {
             bottomTrailingGlow = resolvedColor(bottomGlowOverride)
@@ -915,15 +954,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             surfaceTail: tail,
             depth: blend(polishedSurfaceBase, with: .black, amount: isDark ? 0.30 : 0.07),
             aurora: storedAccentMode == .fullScreen ? [
-                accent,
-                blend(accent, with: .systemPink, amount: 0.5),
-                blend(accent, with: .systemIndigo, amount: 0.6),
-                blend(accent, with: .systemTeal, amount: 0.7),
+                topGlow,
+                blend(topGlow, with: .systemPink, amount: 0.5),
+                blend(topGlow, with: .systemIndigo, amount: 0.6),
+                blend(topGlow, with: .systemTeal, amount: 0.7),
                 UIColor(red: 255.0/255.0, green: 198.0/255.0, blue: 84.0/255.0, alpha: 1.0),
                 bottomTrailingGlow,
                 middleGlow
             ] : [
-                accent,
+                topGlow,
                 bottomTrailingGlow,
                 middleGlow
             ],
@@ -963,6 +1002,188 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         transition.timingFunction = PPHeroApexMotionTokens.paletteTimingFunction
         transition.isRemovedOnCompletion = true
         layer.add(transition, forKey: auroraColorTransitionKey)
+    }
+
+    private func auroraLeadingAlpha(
+        isDark: Bool,
+        reduceTransparency: Bool
+    ) -> CGFloat {
+        if storedAccentMode == .fullScreen {
+            return reduceTransparency
+                ? (isDark ? 0.24 : 0.18)
+                : (isDark ? 0.38 : 0.26)
+        }
+        return reduceTransparency
+            ? (isDark ? 0.19 : 0.14)
+            : (isDark ? 0.28 : 0.19)
+    }
+
+    private func auroraBaseColor(for index: Int, palette: Palette) -> UIColor {
+        let roles = auroraRoleColors(from: palette)
+        switch AuroraRole(rawValue: index) {
+        case .leading:
+            return roles.top
+        case .bottomTrailing:
+            return roles.bottom
+        case .middle:
+            return roles.middle
+        case .none:
+            guard !palette.aurora.isEmpty else { return palette.accent }
+            return palette.aurora[index % palette.aurora.count]
+        }
+    }
+
+    private func auroraRoleColors(from palette: Palette) -> (
+        top: UIColor,
+        bottom: UIColor,
+        middle: UIColor
+    ) {
+        let top = auroraColor(at: 0, in: palette, fallback: palette.accent)
+        let bottomIndex = storedAccentMode == .fullScreen ? 5 : 1
+        let middleIndex = storedAccentMode == .fullScreen ? 6 : 2
+        let bottom = auroraColor(
+            at: bottomIndex,
+            in: palette,
+            fallback: auroraColor(at: 1, in: palette, fallback: palette.accent)
+        )
+        let middle = auroraColor(
+            at: middleIndex,
+            in: palette,
+            fallback: auroraColor(at: 2, in: palette, fallback: palette.accent)
+        )
+        return (top, bottom, middle)
+    }
+
+    private func auroraColor(
+        at index: Int,
+        in palette: Palette,
+        fallback: UIColor
+    ) -> UIColor {
+        guard palette.aurora.indices.contains(index) else { return fallback }
+        return palette.aurora[index]
+    }
+
+    private func auroraGradientColors(
+        for color: UIColor,
+        palette: Palette,
+        index: Int,
+        leadingAlpha: CGFloat,
+        isDark: Bool
+    ) -> [CGColor] {
+        if index == AuroraRole.bottomTrailing.rawValue {
+            let trailAlpha = leadingAlpha * (isDark ? 0.94 : 0.88)
+            return [
+                color.withAlphaComponent(trailAlpha).cgColor,
+                palette.accent.withAlphaComponent(trailAlpha * 0.46).cgColor,
+                color.withAlphaComponent(trailAlpha * 0.12).cgColor,
+                UIColor.clear.cgColor
+            ]
+        }
+
+        if index == AuroraRole.middle.rawValue {
+            let middleAlpha = leadingAlpha * (isDark ? 0.80 : 0.74)
+            return [
+                color.withAlphaComponent(middleAlpha).cgColor,
+                palette.accent.withAlphaComponent(middleAlpha * 0.30).cgColor,
+                UIColor.clear.cgColor
+            ]
+        }
+
+        return [
+            color.withAlphaComponent(leadingAlpha).cgColor,
+            color.withAlphaComponent(leadingAlpha * 0.32).cgColor,
+            UIColor.clear.cgColor
+        ]
+    }
+
+    private func makeAuroraColorCycleAnimation(
+        for index: Int,
+        palette: Palette
+    ) -> CAKeyframeAnimation? {
+        let route = auroraColorRoute(for: index, palette: palette)
+        guard route.count > 1 else { return nil }
+
+        let isDark = traitCollection.userInterfaceStyle == .dark
+        let leadingAlpha = auroraLeadingAlpha(
+            isDark: isDark,
+            reduceTransparency: UIAccessibility.isReduceTransparencyEnabled
+        )
+        let values: [[Any]] = route.map { color in
+            auroraGradientColors(
+                for: color,
+                palette: palette,
+                index: index,
+                leadingAlpha: leadingAlpha,
+                isDark: isDark
+            ).map { $0 as Any }
+        }
+
+        let colorCycle = CAKeyframeAnimation(keyPath: "colors")
+        colorCycle.values = values
+        colorCycle.keyTimes = [0, 0.24, 0.50, 0.76, 1]
+        colorCycle.calculationMode = .linear
+        colorCycle.timingFunctions = Array(
+            repeating: PPHeroApexMotionTokens.paletteTimingFunction,
+            count: values.count - 1
+        )
+        return colorCycle
+    }
+
+    private func auroraColorRoute(for index: Int, palette: Palette) -> [UIColor] {
+        let roles = auroraRoleColors(from: palette)
+        switch AuroraRole(rawValue: index) {
+        case .leading:
+            return [
+                roles.top,
+                roles.middle,
+                roles.bottom,
+                roles.middle,
+                roles.top
+            ]
+        case .bottomTrailing:
+            return [
+                roles.bottom,
+                roles.top,
+                roles.middle,
+                roles.top,
+                roles.bottom
+            ]
+        case .middle:
+            return [
+                roles.middle,
+                roles.bottom,
+                roles.top,
+                roles.bottom,
+                roles.middle
+            ]
+        case .none:
+            let base = auroraBaseColor(for: index, palette: palette)
+            return [base, base, base, base, base]
+        }
+    }
+
+    private var shouldRefreshAmbientAuroraTimelineForPalette: Bool {
+        guard ambientTimelineInstalled,
+              !ambientTimelinePaused,
+              !UIAccessibility.isReduceMotionEnabled else {
+            return false
+        }
+
+        switch motionStateMachine.state {
+        case .entering, .ambient, .interactive, .settling:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func refreshAmbientAuroraTimelineAfterPaletteIfNeeded() {
+        guard shouldRefreshAmbientAuroraTimelineForPalette else { return }
+        auroraLayers.forEach { layer in
+            layer.removeAnimation(forKey: auroraColorTransitionKey)
+            layer.removeAnimation(forKey: auroraAnimationKey)
+        }
+        installAuroraAnimations()
     }
 
     private func resolvedColor(_ color: UIColor) -> UIColor {
@@ -1218,16 +1439,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func installFieldDriftAnimation() {
         let drift = CAKeyframeAnimation(keyPath: "sublayerTransform")
         drift.values = [
-            NSValue(caTransform3D: ambientTransform(x: -9, y: 6, scale: 1.015)),
-            NSValue(caTransform3D: ambientTransform(x: 18, y: -10, scale: 1.075)),
-            NSValue(caTransform3D: ambientTransform(x: -14, y: 13, scale: 1.035)),
-            NSValue(caTransform3D: ambientTransform(x: -9, y: 6, scale: 1.015))
+            NSValue(caTransform3D: ambientTransform(x: -18, y: 11, scale: 1.022)),
+            NSValue(caTransform3D: ambientTransform(x: 32, y: -20, scale: 1.095)),
+            NSValue(caTransform3D: ambientTransform(x: -28, y: 24, scale: 1.046)),
+            NSValue(caTransform3D: ambientTransform(x: 12, y: -8, scale: 1.064)),
+            NSValue(caTransform3D: ambientTransform(x: -18, y: 11, scale: 1.022))
         ]
-        drift.keyTimes = [0, 0.30, 0.68, 1]
+        drift.keyTimes = [0, 0.28, 0.58, 0.82, 1]
         drift.calculationMode = .cubic
         drift.timingFunctions = Array(
             repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
+            count: 4
         )
 
         let group = makeRepeatingAnimationGroup(
@@ -1239,6 +1461,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installAuroraAnimations() {
+        let palette = makePalette()
+
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
 
@@ -1250,32 +1474,32 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 let rotationDirection: CGFloat = index == AuroraRole.middle.rawValue ? -1 : 1
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.25,
-                        y: spec.travel.height * 0.25,
+                        x: -spec.travel.width * 0.54,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound,
                         angle: 0
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.50,
-                        y: -spec.travel.height * 0.25,
-                        scale: 1.025,
+                        x: spec.travel.width * 0.78,
+                        y: -spec.travel.height * 0.58,
+                        scale: 1.038,
                         angle: rotationDirection * CGFloat.pi * 0.5
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.85,
-                        y: spec.travel.height * 0.25,
+                        x: spec.travel.width * 1.12,
+                        y: spec.travel.height * 0.46,
                         scale: spec.scaleRange.upperBound,
                         angle: rotationDirection * CGFloat.pi
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.15,
-                        y: -spec.travel.height * 0.15,
-                        scale: 1.015,
+                        x: -spec.travel.width * 0.36,
+                        y: -spec.travel.height * 0.40,
+                        scale: 1.020,
                         angle: rotationDirection * CGFloat.pi * 1.5
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.25,
-                        y: spec.travel.height * 0.25,
+                        x: -spec.travel.width * 0.54,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound,
                         angle: rotationDirection * CGFloat.pi * 2.0
                     ))
@@ -1304,28 +1528,28 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 transform = CAKeyframeAnimation(keyPath: "transform")
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.16,
-                        y: spec.travel.height * 0.18,
+                        x: -spec.travel.width * 0.48,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.46,
-                        y: -spec.travel.height * 0.18,
-                        scale: 1.012
+                        x: spec.travel.width * 0.72,
+                        y: -spec.travel.height * 0.54,
+                        scale: 1.026
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width,
-                        y: -spec.travel.height * 0.58,
+                        x: spec.travel.width * 1.14,
+                        y: -spec.travel.height * 0.86,
                         scale: spec.scaleRange.upperBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.24,
-                        y: -spec.travel.height * 0.08,
-                        scale: 1.006
+                        x: -spec.travel.width * 0.24,
+                        y: spec.travel.height * 0.22,
+                        scale: 1.010
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.16,
-                        y: spec.travel.height * 0.18,
+                        x: -spec.travel.width * 0.48,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound
                     ))
                 ]
@@ -1353,28 +1577,28 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 transform = CAKeyframeAnimation(keyPath: "transform")
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.20,
-                        y: spec.travel.height * 0.10,
+                        x: -spec.travel.width * 0.62,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.34,
-                        y: -spec.travel.height * 0.22,
-                        scale: 1.018
+                        x: spec.travel.width * 0.74,
+                        y: -spec.travel.height * 0.46,
+                        scale: 1.028
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width * 0.72,
-                        y: spec.travel.height * 0.18,
+                        x: spec.travel.width * 1.02,
+                        y: spec.travel.height * 0.50,
                         scale: spec.scaleRange.upperBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.08,
-                        y: -spec.travel.height * 0.10,
-                        scale: 1.008
+                        x: -spec.travel.width * 0.42,
+                        y: -spec.travel.height * 0.32,
+                        scale: 1.012
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.20,
-                        y: spec.travel.height * 0.10,
+                        x: -spec.travel.width * 0.62,
+                        y: spec.travel.height * 0.34,
                         scale: spec.scaleRange.lowerBound
                     ))
                 ]
@@ -1402,23 +1626,23 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 transform = CAKeyframeAnimation(keyPath: "transform")
                 transform.values = [
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.18,
-                        y: spec.travel.height * 0.12,
+                        x: -spec.travel.width * 0.50,
+                        y: spec.travel.height * 0.30,
                         scale: spec.scaleRange.lowerBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: spec.travel.width,
-                        y: -spec.travel.height * 0.46,
+                        x: spec.travel.width * 1.08,
+                        y: -spec.travel.height * 0.78,
                         scale: spec.scaleRange.upperBound
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.54,
-                        y: spec.travel.height,
-                        scale: 0.992
+                        x: -spec.travel.width * 0.86,
+                        y: spec.travel.height * 1.06,
+                        scale: 0.986
                     )),
                     NSValue(caTransform3D: ambientTransform(
-                        x: -spec.travel.width * 0.18,
-                        y: spec.travel.height * 0.12,
+                        x: -spec.travel.width * 0.50,
+                        y: spec.travel.height * 0.30,
                         scale: spec.scaleRange.lowerBound
                     ))
                 ]
@@ -1442,8 +1666,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 )
             }
 
+            var animations: [CAAnimation] = [transform, opacity]
+            if let colorCycle = makeAuroraColorCycleAnimation(
+                for: index,
+                palette: palette
+            ) {
+                animations.append(colorCycle)
+            }
+
             let group = makeRepeatingAnimationGroup(
-                animations: [transform, opacity],
+                animations: animations,
                 duration: spec.duration,
                 phase: spec.phase
             )
@@ -2245,31 +2477,31 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var auroraSpecs: [AuroraSpec] {
         [
             AuroraSpec(
-                center: CGPoint(x: 0.90, y: -0.02),
-                size: CGSize(width: 0.92, height: 1.42),
-                travel: CGSize(width: 42, height: 28),
-                scaleRange: 0.94...1.10,
-                opacityRange: 0.55...1,
-                duration: 7.6,
-                phase: 1.3
+                center: CGPoint(x: 0.88, y: -0.08),
+                size: CGSize(width: 1.04, height: 1.62),
+                travel: CGSize(width: 86, height: 62),
+                scaleRange: 0.93...1.12,
+                opacityRange: 0.52...1,
+                duration: 18.6,
+                phase: 4.9
             ),
             AuroraSpec(
-                center: CGPoint(x: 0.10, y: 0.96),
-                size: CGSize(width: 1.08, height: 0.98),
-                travel: CGSize(width: 31, height: 24),
+                center: CGPoint(x: 0.12, y: 1.02),
+                size: CGSize(width: 1.20, height: 1.14),
+                travel: CGSize(width: 76, height: 58),
+                scaleRange: 0.965...1.095,
+                opacityRange: 0.44...0.90,
+                duration: 24.8,
+                phase: 10.6
+            ),
+            AuroraSpec(
+                center: CGPoint(x: 0.50, y: 0.48),
+                size: CGSize(width: 0.94, height: 1.26),
+                travel: CGSize(width: 64, height: 48),
                 scaleRange: 0.97...1.075,
-                opacityRange: 0.48...0.94,
-                duration: 13.6,
-                phase: 4.8
-            ),
-            AuroraSpec(
-                center: CGPoint(x: 0.52, y: 0.46),
-                size: CGSize(width: 0.76, height: 1.12),
-                travel: CGSize(width: 26, height: 20),
-                scaleRange: 0.975...1.055,
-                opacityRange: 0.42...0.78,
-                duration: 11.8,
-                phase: 2.9
+                opacityRange: 0.36...0.72,
+                duration: 22.4,
+                phase: 7.3
             )
         ]
     }

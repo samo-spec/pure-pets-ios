@@ -49,7 +49,7 @@ static const CGFloat kPPDropdownFilterChipHeight = 40.0;
 static const CGFloat kPPProviderFilterChipHeight = 44.0;
 static const CGFloat kPPProviderFilterChipAvatarDiameter = 30.0;
 static const CGFloat kPPProviderFilterChipTrailingIconDiameter = 26.0;
-static const CGFloat kPPFilterContextBarHeight = 44.0;
+static const CGFloat kPPFilterContextBarHeight = 34.0;
 static const CGFloat kPPFilterContextBadgeHeight = 34.0;
 static const CGFloat kPPFilterCollapseHandleHeight = 40.0;
 
@@ -65,7 +65,7 @@ static const CGFloat kPPAdsPinterestMaximumHeightToWidthRatio = 2.15;
 static const CGFloat kPPAdsPinterestMaximumViewportFraction = 0.68;
 static const CGFloat kPPAdsPinterestMinimumContentAllowance = 164.0;
 static const CGFloat kPPDataViewNavigationChromeCornerRadius = 18.0;
-static const CGFloat kPPDataViewSectionsIslandCornerRadius = 18.0;
+static const CGFloat kPPDataViewSectionsIslandCornerRadius = 26.0;
 static const CGFloat kPPDataViewSelectorCornerRadius = 18.0;
 static const CGFloat kPPDataViewSectionsSegmentedCornerRadius = 16.0;
 static const CGFloat kPPDataViewHeaderCollapseDistance = 176.0;

@@ -559,6 +559,7 @@
 		F29F01D52D0D08FD00FF2180 /* PKYStepper.m in Sources */ = {isa = PBXBuildFile; fileRef = F29F01D32D0D08FD00FF2180 /* PKYStepper.m */; };
 		F2A0A6F0300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6EF300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m */; };
 		F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */; };
+		F2A0A6F5300E20000062A529 /* PPSavedForLaterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F4300E20000062A529 /* PPSavedForLaterSheetView.swift */; };
 		F2A0BBB72F1EB01E003715F0 /* ChMessagingController+Record.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */; };
 		F2A0BBBE2F1F0B88003715F0 /* ChatImageMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBBD2F1F0B71003715F0 /* ChatImageMessageCell.m */; };
 		F2A0BBC12F1F0BA4003715F0 /* ChatVideoMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC02F1F0BA4003715F0 /* ChatVideoMessageCell.m */; };
@@ -1888,6 +1889,7 @@
 		F2A0A6EF300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSavedForLaterBottomSheetVC.m; sourceTree = "<group>"; };
 		F2A0A6F1300D7FA50062A529 /* PPSaveForLaterManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSaveForLaterManager.h; sourceTree = "<group>"; };
 		F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSaveForLaterManager.m; sourceTree = "<group>"; };
+		F2A0A6F4300E20000062A529 /* PPSavedForLaterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSavedForLaterSheetView.swift; sourceTree = "<group>"; };
 		F2A0BBB52F1EB01E003715F0 /* ChMessagingController+Record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Record.h"; sourceTree = "<group>"; };
 		F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Record.m"; sourceTree = "<group>"; };
 		F2A0BBBC2F1F0B64003715F0 /* ChatImageMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatImageMessageCell.h; sourceTree = "<group>"; };
@@ -5170,6 +5172,7 @@
 			children = (
 				F2A0A6EA300D7D2D0062A529 /* PPSavedForLaterBottomSheetVC.h */,
 				F2A0A6EF300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m */,
+				F2A0A6F4300E20000062A529 /* PPSavedForLaterSheetView.swift */,
 				F2A0A6E9300D7D2D0062A529 /* PPOrderStatusAppearance.h */,
 				F2E33F613006C412005E31C6 /* PPOrderProgressTimelineView.h */,
 				F2E33F623006C421005E31C6 /* PPOrderProgressTimelineView.m */,
@@ -5800,6 +5803,7 @@
 				F213021F2F0C6573006E71AB /* PPSearchViewController.m in Sources */,
 				F282C1172F0EC788001C110A /* PPBrowseHistoryManager.m in Sources */,
 				F2A0A6F0300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m in Sources */,
+				F2A0A6F5300E20000062A529 /* PPSavedForLaterSheetView.swift in Sources */,
 				F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */,
 				F2B641C62F4A96620092C2BF /* PPStoryPlayerViewController.m in Sources */,
 				F228641D2D57947800967C23 /* PhoneNumberCell.m in Sources */,
@@ -6427,6 +6431,7 @@
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "Pure Pets/Pure Pets-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Debug;
 		};
@@ -6490,6 +6495,7 @@
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OBJC_BRIDGING_HEADER = "Pure Pets/Pure Pets-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

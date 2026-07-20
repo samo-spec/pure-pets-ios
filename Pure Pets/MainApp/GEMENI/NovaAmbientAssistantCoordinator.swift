@@ -8,6 +8,7 @@
 
 import UIKit
 
+@MainActor
 @objc(NovaAmbientAssistantCoordinator)
 public final class NovaAmbientAssistantCoordinator: NSObject {
     @objc(sharedCoordinator)

@@ -326,6 +326,8 @@ private final class PPUniversalCardStore: ObservableObject {
     @Published var userBordersV2 = true
     @Published var isHomePresentation = false
     @Published var showsOwnerRow = false
+    @Published var isContextFocused = false
+    @Published var isSavedForLater = false
 
     let palette: PPUniversalCardPalette
     let uiReferences = PPUniversalUIKitReferences()
@@ -337,6 +339,7 @@ private final class PPUniversalCardStore: ObservableObject {
     var imageSignature = ""
     var favoriteCollection = "favoritesAds"
     var showsFavorite = false
+    var showsSaveForLater = false
     var showsOwnerMenu = false
     var cardTap: (() -> Void)?
     var actions: PPUniversalCardActions
@@ -497,7 +500,11 @@ private final class PPUniversalCardStore: ObservableObject {
         ].joined(separator: "|")
         self.favoriteCollection =
             PPUniversalCellSwiftUIBridge.favoritesCollection(for: objcContext)
-        self.showsFavorite = !viewModel.isOwner && !stableID.isEmpty
+        let showsLeadingAction = !viewModel.isOwner && !stableID.isEmpty
+        self.showsSaveForLater =
+            showsLeadingAction && resolvedContext == .market
+        self.showsFavorite =
+            showsLeadingAction && resolvedContext != .market
         self.showsOwnerMenu =
             viewModel.isOwner && forceShowsOwnerMenuButton
 
@@ -548,6 +555,7 @@ private final class PPUniversalCardStore: ObservableObject {
                 }
             }()
         )
+        refreshSavedForLaterState()
 
         if stableID != previousID {
             resetTransientState(quantity: cartQuantity)
@@ -572,7 +580,9 @@ private final class PPUniversalCardStore: ObservableObject {
         imageSignature = ""
         cardTap = nil
         showsFavorite = false
+        showsSaveForLater = false
         showsOwnerMenu = false
+        isSavedForLater = false
         notifyItemID = nil
         model = PPUniversalCardModel(
             id: "reusable-placeholder",
@@ -583,6 +593,8 @@ private final class PPUniversalCardStore: ObservableObject {
         isNearbyAdsSection = false
         isSuggestionsAd = false
         isHomePresentation = false
+        showsOwnerRow = false
+        isContextFocused = false
         uiReferences.imageView?.image = nil
     }
 
@@ -604,6 +616,17 @@ private final class PPUniversalCardStore: ObservableObject {
         let refreshed =
             PPUniversalCellSwiftUIBridge.cartQuantity(for: viewModel)
         setQuantity(refreshed, animated: false, notifyDelegate: false)
+    }
+
+    func refreshSavedForLaterState() {
+        guard showsSaveForLater,
+              !model.isSkeleton,
+              !model.id.isEmpty else {
+            isSavedForLater = false
+            return
+        }
+        isSavedForLater =
+            PPSaveForLaterManager.shared().isItemSaved(model.id)
     }
 
     func refreshEnvironment() {
@@ -647,6 +670,14 @@ private final class PPUniversalCardStore: ObservableObject {
             model = next
             actions.onFavorite?(next, next.isFavorite)
         }
+    }
+
+    func tapSaveForLater() {
+        guard !model.isSkeleton, let viewModel else {
+            return
+        }
+        delegate?.ppUniversalCell_tapSave?(forLater: viewModel)
+        refreshSavedForLaterState()
     }
 
     private func pp_performTapHaloBurst() {
@@ -1060,7 +1091,13 @@ private struct PPUniversalCardRenderer: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private let cardRadius: CGFloat = 23
-    private let imageRadius: CGFloat = 20
+    private let mediaBottomRadius: CGFloat = 8
+
+    init(store: PPUniversalCardStore) {
+        self.store = store
+    }
+
+    private let mediaTopRadius: CGFloat = 21.5
 
     var body: some View {
         Group {
@@ -1069,26 +1106,44 @@ private struct PPUniversalCardRenderer: View {
                     horizontal: store.layout.isHorizontal,
                     catalog: store.context.isCatalogCommerce,
                     cardRadius: cardRadius,
-                    imageRadius: imageRadius
+                    mediaTopRadius: mediaTopRadius,
+                    mediaBottomRadius: mediaBottomRadius
                 )
             } else {
                 VStack(spacing: 8) {
                     if store.showsOwnerRow {
                         ownerDetailsRow
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 6)
                             .background(
                                 RoundedRectangle(cornerRadius: 18)
                                     .fill(Color(uiColor: .secondarySystemGroupedBackground))
                                     .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 4)
                             )
-                            .transition(.move(edge: .top).combined(with: .opacity))
+                            .transition(
+                                .asymmetric(
+                                    insertion: .scale(scale: 0.92, anchor: .top)
+                                        .combined(with: .opacity)
+                                        .combined(with: .offset(y: -6)),
+                                    removal: .scale(scale: 0.94, anchor: .top)
+                                        .combined(with: .opacity)
+                                        .combined(with: .offset(y: -4))
+                                )
+                            )
                     }
 
                     GeometryReader { proxy in
                         cardLayout(size: proxy.size)
                     }
                 }
+                .animation(
+                    .spring(response: 0.38, dampingFraction: 0.82, blendDuration: 0.08),
+                    value: store.showsOwnerRow
+                )
+                .animation(
+                    .spring(response: 0.38, dampingFraction: 0.82, blendDuration: 0.08),
+                    value: store.isContextFocused
+                )
             }
         }
         .padding(.horizontal, 3)
@@ -1127,12 +1182,16 @@ private struct PPUniversalCardRenderer: View {
                     media
                         .frame(
                             maxWidth: .infinity,
-                            minHeight: store.isHomePresentation ? metrics.mediaHeight : nil,
-                            maxHeight: store.isHomePresentation ? metrics.mediaHeight : .infinity
+                            minHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : nil,
+                            maxHeight: store.isHomePresentation && !store.isContextFocused ? metrics.mediaHeight : .infinity
                         )
                     if store.isHomePresentation {
                         homeVerticalInformationGrid(metrics: metrics)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: store.isContextFocused ? nil : .infinity,
+                                alignment: .top
+                            )
                             .padding(.horizontal, 11)
                             .padding(.top, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
                             .padding(.bottom, dynamicTypeSize.isAccessibilitySize ? 12 : 10)
@@ -1190,6 +1249,8 @@ private struct PPUniversalCardRenderer: View {
                     imageURL: store.model.imageURL?.absoluteString,
                     placeholder: store.imagePlaceholder,
                     placeholderSystemImage: store.model.placeholderSystemImage,
+                    topCornerRadius: mediaTopRadius,
+                    bottomCornerRadius: mediaBottomRadius,
                     contained:
                         store.model.prefersContainedImage &&
                         !shouldFillMediaImage,
@@ -1246,7 +1307,9 @@ private struct PPUniversalCardRenderer: View {
         ZStack {
             VStack {
                 HStack(alignment: .top, spacing: 6) {
-                    if store.showsFavorite {
+                    if store.showsSaveForLater {
+                        saveForLaterControl
+                    } else if store.showsFavorite {
                         favoriteControl
                     }
                     Spacer(minLength: 0)
@@ -1324,7 +1387,7 @@ private struct PPUniversalCardRenderer: View {
             Spacer(minLength: store.layout.isHorizontal ? 6 : 5)
 
             if store.model.usesQuantityControl || store.context.isAdvertisement || store.context.isServiceLike {
-                if !store.isNearbyAdsSection {
+                if !store.isNearbyAdsSection && !store.isContextFocused {
                     bottomCTA
                 }
 
@@ -1349,14 +1412,14 @@ private struct PPUniversalCardRenderer: View {
                     .padding(.top, store.model.subtitle == nil ? 5 : 3)
             }
 
-            if showsBottomCTA {
+            if showsBottomCTA && !store.isContextFocused {
                 bottomCTA
                     .padding(.top, hasPrice ? 8 : 10)
             }
 
             if hasBottomBadges {
                 bottomBadgesRow
-                    .padding(.top, showsBottomCTA ? 8 : 10)
+                    .padding(.top, showsBottomCTA && !store.isContextFocused ? 8 : 10)
             }
         }
         .frame(maxWidth: .infinity, alignment: .bottomLeading)
@@ -1456,10 +1519,10 @@ private struct PPUniversalCardRenderer: View {
             )
 
             Color.clear
-                .frame(height: metrics.priceToActionSpacing)
+                .frame(height: store.isContextFocused ? 0 : metrics.priceToActionSpacing)
 
             Group {
-                if showsBottomCTA {
+                if showsBottomCTA && !store.isContextFocused {
                     bottomCTA
                 } else {
                     Color.clear
@@ -1468,12 +1531,12 @@ private struct PPUniversalCardRenderer: View {
             }
             .frame(
                 maxWidth: .infinity,
-                minHeight: metrics.actionHeight,
-                maxHeight: metrics.actionHeight
+                minHeight: store.isContextFocused ? 0 : metrics.actionHeight,
+                maxHeight: store.isContextFocused ? 0 : metrics.actionHeight
             )
 
             Color.clear
-                .frame(height: metrics.actionToMetadataSpacing)
+                .frame(height: store.isContextFocused ? 0 : metrics.actionToMetadataSpacing)
 
             Group {
                 if hasBottomBadges {
@@ -1602,8 +1665,8 @@ private struct PPUniversalCardRenderer: View {
                             relativeTo: .caption
                         )
                     )
-                    .foregroundStyle(store.palette.secondaryInk)
                     .strikethrough()
+                    .foregroundStyle(store.palette.secondaryInk)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
             }
@@ -2084,6 +2147,63 @@ private struct PPUniversalCardRenderer: View {
         }
     }
 
+    private var saveForLaterControl: some View {
+        Button {
+            store.tapSaveForLater()
+        } label: {
+            Image(systemName: saveForLaterSystemImage)
+                .font(.system(size: 15.5, weight: .semibold))
+                .foregroundStyle(saveForLaterIconColor)
+                .frame(
+                    width: store.isHomePresentation ? 44 : 40,
+                    height: store.isHomePresentation ? 44 : 40
+                )
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(
+                    Circle()
+                        .stroke(
+                            Color.white.opacity(
+                                colorScheme == .dark ? 0.18 : 0.42
+                            ),
+                            lineWidth: 0.75
+                        )
+                )
+                .contentShape(Circle())
+        }
+        .buttonStyle(PPUniversalScaleButtonStyle())
+        .animation(
+            .spring(response: 0.24, dampingFraction: 0.82),
+            value: store.isSavedForLater
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            PPUniversalCardStore.localized(
+                "saved_for_later",
+                fallback: "Save for later"
+            )
+        )
+        .accessibilityAddTraits(
+            store.isSavedForLater ? [.isButton, .isSelected] : .isButton
+        )
+    }
+
+    private var saveForLaterSystemImage: String {
+        store.isSavedForLater ? "bookmark.fill" : "bookmark"
+    }
+
+    private var saveForLaterIconColor: Color {
+        if store.isSavedForLater {
+            return Color(
+                uiColor: UIColor(named: "AppPrimaryColor") ??
+                    UIColor(red: 0.54, green: 0.08, blue: 0.22, alpha: 1)
+            )
+        }
+        return Color(
+            uiColor: UIColor(named: "SecondaryTextColor") ??
+                UIColor.secondaryLabel
+        )
+    }
+
     private var ownerMenu: some View {
         Menu {
             Button {
@@ -2219,19 +2339,21 @@ private struct PPUniversalCardRenderer: View {
                         .foregroundStyle(.gray.opacity(0.3))
                 }
 
-                Text(name)
-                    .font(.custom("Beiruti-Medium", size: 13))
-                    .foregroundStyle(Color(uiColor: .label))
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(name)
+                        .font(.custom("Beiruti-Medium", size: 13))
+                        .foregroundStyle(Color(uiColor: .label))
+                        .lineLimit(1)
 
-                if ownerRating > 0.0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(Color.yellow)
-                        Text(String(format: "%.1f", ownerRating))
-                            .font(.custom("Beiruti-Medium", size: 12))
-                            .foregroundStyle(Color(uiColor: .secondaryLabel))
+                    if ownerRating > 0.0 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Color.yellow)
+                            Text(String(format: "%.1f", ownerRating))
+                                .font(.custom("Beiruti-Medium", size: 12))
+                                .foregroundStyle(Color(uiColor: .secondaryLabel))
+                        }
                     }
                 }
 
@@ -2571,8 +2693,11 @@ private struct PPUniversalCardRenderer: View {
         RoundedRectangle(cornerRadius: cardRadius, style: .continuous)
     }
 
-    private var imageShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: imageRadius, style: .continuous)
+    private var imageShape: PPUniversalMediaRoundedShape {
+        PPUniversalMediaRoundedShape(
+            topRadius: mediaTopRadius,
+            bottomRadius: mediaBottomRadius
+        )
     }
 
     private var actionShape: RoundedRectangle {
@@ -2604,12 +2729,125 @@ private final class PPUniversalMirroredImageView: UIImageView {
 }
 
 @available(iOS 16.0, *)
+private final class PPUniversalMediaContainerView: PPUniversalGradientView {
+    var topCornerRadius: CGFloat = 20 {
+        didSet { setNeedsLayout() }
+    }
+
+    var bottomCornerRadius: CGFloat = 8 {
+        didSet { setNeedsLayout() }
+    }
+
+    weak var primaryImageView: UIView?
+    weak var backgroundImageView: UIView?
+    weak var washView: UIView?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        ppUniversalApplyMediaCornerMask(
+            to: self,
+            topRadius: topCornerRadius,
+            bottomRadius: bottomCornerRadius
+        )
+        if let backgroundImageView {
+            ppUniversalApplyMediaCornerMask(
+                to: backgroundImageView,
+                topRadius: topCornerRadius,
+                bottomRadius: bottomCornerRadius
+            )
+        }
+        if let washView {
+            ppUniversalApplyMediaCornerMask(
+                to: washView,
+                topRadius: topCornerRadius,
+                bottomRadius: bottomCornerRadius
+            )
+        }
+        if let primaryImageView {
+            ppUniversalApplyMediaCornerMask(
+                to: primaryImageView,
+                topRadius: topCornerRadius,
+                bottomRadius: bottomCornerRadius
+            )
+        }
+    }
+}
+
+private func ppUniversalApplyMediaCornerMask(
+    to view: UIView,
+    topRadius: CGFloat,
+    bottomRadius: CGFloat
+) {
+    view.clipsToBounds = true
+    guard !view.bounds.isEmpty else {
+        return
+    }
+
+    let maskLayer: CAShapeLayer
+    if let existing = view.layer.mask as? CAShapeLayer {
+        maskLayer = existing
+    } else {
+        maskLayer = CAShapeLayer()
+        maskLayer.contentsScale = UIScreen.main.scale
+        view.layer.mask = maskLayer
+    }
+
+    maskLayer.frame = view.bounds
+    maskLayer.path = ppUniversalMediaCornerPath(
+        in: view.bounds,
+        topRadius: topRadius,
+        bottomRadius: bottomRadius
+    )
+}
+
+private func ppUniversalMediaCornerPath(
+    in rect: CGRect,
+    topRadius: CGFloat,
+    bottomRadius: CGFloat
+) -> CGPath {
+    guard rect.width > 0, rect.height > 0 else {
+        return UIBezierPath(rect: rect).cgPath
+    }
+
+    let maximumRadius = min(rect.width, rect.height) * 0.5
+    let top = min(max(0, topRadius), maximumRadius)
+    let bottom = min(max(0, bottomRadius), maximumRadius)
+    let path = UIBezierPath()
+
+    path.move(to: CGPoint(x: rect.minX + top, y: rect.minY))
+    path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY))
+    path.addQuadCurve(
+        to: CGPoint(x: rect.maxX, y: rect.minY + top),
+        controlPoint: CGPoint(x: rect.maxX, y: rect.minY)
+    )
+    path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottom))
+    path.addQuadCurve(
+        to: CGPoint(x: rect.maxX - bottom, y: rect.maxY),
+        controlPoint: CGPoint(x: rect.maxX, y: rect.maxY)
+    )
+    path.addLine(to: CGPoint(x: rect.minX + bottom, y: rect.maxY))
+    path.addQuadCurve(
+        to: CGPoint(x: rect.minX, y: rect.maxY - bottom),
+        controlPoint: CGPoint(x: rect.minX, y: rect.maxY)
+    )
+    path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + top))
+    path.addQuadCurve(
+        to: CGPoint(x: rect.minX + top, y: rect.minY),
+        controlPoint: CGPoint(x: rect.minX, y: rect.minY)
+    )
+    path.close()
+    return path.cgPath
+}
+
+@available(iOS 16.0, *)
 private struct PPUniversalImageRepresentable: UIViewRepresentable {
     let references: PPUniversalUIKitReferences
     let signature: String
     let imageURL: String?
     let placeholder: UIImage?
     let placeholderSystemImage: String
+    let topCornerRadius: CGFloat
+    let bottomCornerRadius: CGFloat
     let contained: Bool
     let fillsEmptyAreaWithImageBackground: Bool
     let imageLoader: PPImageLoader?
@@ -2619,7 +2857,9 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     }
 
     func makeUIView(context: Context) -> PPUniversalGradientView {
-        let container = PPUniversalGradientView()
+        let container = PPUniversalMediaContainerView()
+        container.topCornerRadius = topCornerRadius
+        container.bottomCornerRadius = bottomCornerRadius
         container.translatesAutoresizingMaskIntoConstraints = true
         container.backgroundColor = .clear
         container.clipsToBounds = true
@@ -2685,6 +2925,9 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         context.coordinator.backgroundImageView = backgroundImageView
         context.coordinator.washView = washView
         context.coordinator.imageView = imageView
+        container.backgroundImageView = backgroundImageView
+        container.washView = washView
+        container.primaryImageView = imageView
         references.imageContainer = container
         references.imageView = imageView
         return container
@@ -2696,6 +2939,15 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     ) {
         guard let imageView = context.coordinator.imageView ?? references.imageView else {
             return
+        }
+        if let mediaContainer = container as? PPUniversalMediaContainerView {
+            mediaContainer.topCornerRadius = topCornerRadius
+            mediaContainer.bottomCornerRadius = bottomCornerRadius
+            mediaContainer.backgroundImageView =
+                context.coordinator.backgroundImageView
+            mediaContainer.washView = context.coordinator.washView
+            mediaContainer.primaryImageView = imageView
+            mediaContainer.setNeedsLayout()
         }
         let fillsEmptyArea =
             contained && fillsEmptyAreaWithImageBackground
@@ -2871,7 +3123,8 @@ private struct PPUniversalSkeletonCard: View {
     let horizontal: Bool
     let catalog: Bool
     let cardRadius: CGFloat
-    let imageRadius: CGFloat
+    let mediaTopRadius: CGFloat
+    let mediaBottomRadius: CGFloat
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -2924,7 +3177,11 @@ private struct PPUniversalSkeletonCard: View {
     }
 
     private var skeletonMedia: some View {
-        RoundedRectangle(cornerRadius: imageRadius, style: .continuous)
+        let shape = PPUniversalMediaRoundedShape(
+            topRadius: mediaTopRadius,
+            bottomRadius: mediaBottomRadius
+        )
+        return shape
             .fill(
                 LinearGradient(
                     colors: [
@@ -2937,7 +3194,7 @@ private struct PPUniversalSkeletonCard: View {
                 )
             )
             .overlay(
-                RoundedRectangle(cornerRadius: imageRadius, style: .continuous)
+                shape
                     .stroke(Color.primary.opacity(0.035), lineWidth: 0.5)
             )
             .frame(maxHeight: .infinity)
@@ -3506,6 +3763,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         }
 
         store.showsOwnerRow = true
+        store.isContextFocused = true
 
         return UIContextMenuConfiguration(
             identifier: bridgeViewModel?.modelID as NSString?,
@@ -3557,6 +3815,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         animator: UIContextMenuInteractionAnimating?
     ) {
         PPUniversalHaptics.medium()
+        store.isContextFocused = true
         guard !UIAccessibility.isReduceMotionEnabled else {
             return
         }
@@ -3572,6 +3831,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
     ) {
         animator?.addAnimations { [weak self] in
             self?.contentView.transform = .identity
+            self?.store.isContextFocused = false
         }
         animator?.addCompletion { [weak self] in
             self?.store.showsOwnerRow = false
@@ -3624,6 +3884,17 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         )
         observers.append(
             center.addObserver(
+                forName: Notification.Name("PPSaveForLaterUpdatedNotification"),
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.store.refreshSavedForLaterState()
+                }
+            }
+        )
+        observers.append(
+            center.addObserver(
                 forName: Notification.Name("PPLanguageDidChangeNotification"),
                 object: nil,
                 queue: .main
@@ -3632,6 +3903,46 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
                 self?.reconfigureIfNeeded()
             }
         )
+    }
+}
+
+private struct PPUniversalMediaRoundedShape: Shape {
+    let topRadius: CGFloat
+    let bottomRadius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        guard rect.width > 0, rect.height > 0 else {
+            return Path(CGRect.zero)
+        }
+
+        let maximumRadius = min(rect.width, rect.height) * 0.5
+        let top = min(max(0, topRadius), maximumRadius)
+        let bottom = min(max(0, bottomRadius), maximumRadius)
+        var path = Path()
+
+        path.move(to: CGPoint(x: rect.minX + top, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - top, y: rect.minY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX, y: rect.minY + top),
+            control: CGPoint(x: rect.maxX, y: rect.minY)
+        )
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - bottom))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.maxX - bottom, y: rect.maxY),
+            control: CGPoint(x: rect.maxX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX + bottom, y: rect.maxY))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - bottom),
+            control: CGPoint(x: rect.minX, y: rect.maxY)
+        )
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + top))
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX + top, y: rect.minY),
+            control: CGPoint(x: rect.minX, y: rect.minY)
+        )
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -3646,5 +3957,16 @@ private struct PPUniversalTopRoundedShape: Shape {
                 cornerRadii: CGSize(width: radius, height: radius)
             ).cgPath
         )
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func hidden(_ shouldHide: Bool) -> some View {
+        if shouldHide {
+            self.hidden()
+        } else {
+            self
+        }
     }
 }
