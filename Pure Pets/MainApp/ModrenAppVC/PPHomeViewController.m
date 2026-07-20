@@ -135,7 +135,7 @@ static UIColor *PPHomeCartButtonAccentColor(void)
 
 static UIColor *PPHomeCartButtonSurfaceColor(void)
 {
-    UIColor *surface = AppBackgroundClrLigter ?: UIColor.whiteColor;
+    UIColor *surface = AppForgroundColr ?: UIColor.whiteColor;
     return [surface colorWithAlphaComponent:0.94];
 }
 
@@ -2005,6 +2005,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
 - (void)pp_applySelectedMainKindAmbientCenterGlowColor
 {
+    return;
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self pp_applySelectedMainKindAmbientCenterGlowColor];
@@ -2022,9 +2023,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         (currentGlowColor && centerGlowColor && [currentGlowColor isEqual:centerGlowColor])) {
         return;
     }
-
-    self.ambientBackgroundView.overrideCenterGlowColor = centerGlowColor;
-}
+     self.ambientBackgroundView.overrideSurfaceColor = [centerGlowColor colorWithAlphaComponent:0.04];
+ }
 
 - (NSInteger)pp_indexOfSelectedMainKindInRail
 {
@@ -11834,7 +11834,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightRegular scale:UIImageSymbolScaleMedium];
             icon = [icon imageByApplyingSymbolConfiguration:config];
             icon = [icon imageWithTintColor:PPHomeCartButtonAccentColor()
-                              renderingMode:UIImageRenderingModeAlwaysOriginal];
+                              renderingMode:UIImageRenderingModeAlwaysTemplate];
         }
         [btn setImage:icon forState:UIControlStateNormal];
         [btn setImage:icon forState:UIControlStateHighlighted];
@@ -11889,8 +11889,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     UIButton *button = self.homeCartButton;
     UIColor *accentColor = PPHomeCartButtonAccentColor();
-    UIColor *surfaceColor = PPHomeCartButtonSurfaceColor();
-    UIColor *liquidBorderColor = PPHomeCartButtonLiquidBorderColor();
+   // UIColor *surfaceColor = PPHomeCartButtonSurfaceColor();
+   // UIColor *liquidBorderColor = PPHomeCartButtonLiquidBorderColor();
     CGFloat buttonSide = MIN(CGRectGetWidth(button.bounds), CGRectGetHeight(button.bounds));
     if (self.homeCartButtonHeightConstraint && self.homeCartButtonHeightConstraint.constant > 1.0) {
         buttonSide = self.homeCartButtonHeightConstraint.constant;
@@ -11900,7 +11900,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     button.tintColor = accentColor;
-    button.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
     button.backgroundColor = UIColor.clearColor;
     button.adjustsImageWhenHighlighted = NO;
     button.clipsToBounds = NO;
@@ -11909,19 +11908,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    button.layer.borderWidth = 0.0;
-    [button pp_setBorderColor:UIColor.clearColor];
 
-    CAShapeLayer *surfaceLayer = PPHomeCartButtonSurfaceLayer(button);
-    surfaceLayer.frame = CGRectMake(0.0, 0.0, buttonSide, buttonSide);
-    CGRect surfaceRect = CGRectInset(surfaceLayer.bounds, 0.7, 0.7);
-    surfaceLayer.path = [UIBezierPath bezierPathWithOvalInRect:surfaceRect].CGPath;
-    surfaceLayer.fillColor = surfaceColor.CGColor;
-    surfaceLayer.strokeColor = liquidBorderColor.CGColor;
-    surfaceLayer.lineWidth = 1.35;
-    if (button.imageView) {
-        button.imageView.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
-    }
+    
 
     UIImage *icon = [UIImage systemImageNamed:@"cart"];
     if (!icon) {
@@ -11934,7 +11922,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                                                                  weight:UIImageSymbolWeightRegular
                                                                   scale:UIImageSymbolScaleMedium];
             icon = [icon imageByApplyingSymbolConfiguration:config];
-            icon = [icon imageWithTintColor:accentColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+            icon = [icon imageWithTintColor:accentColor renderingMode:UIImageRenderingModeAlwaysTemplate];
         } else {
             icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
         }
@@ -11947,9 +11935,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         configuration.image = icon;
         configuration.imagePadding = 0.0;
         configuration.baseForegroundColor = accentColor;
-        configuration.background.backgroundColor = UIColor.clearColor;
-        configuration.background.strokeColor = UIColor.clearColor;
-        configuration.background.strokeWidth = 0.0;
+        configuration.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.62];
+        configuration.background.strokeWidth = 0.75;
+        configuration.background.strokeColor = [AppForgroundColr colorWithAlphaComponent:0.98];
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         button.configuration = configuration;
     }
