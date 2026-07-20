@@ -453,7 +453,7 @@ private struct PPSavedForLaterItemRow: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(cardBorder)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.20 : 0.055), radius: 18, y: 8)
         .accessibilityElement(children: .contain)
@@ -616,24 +616,7 @@ private struct PPSavedForLaterItemRow: View {
 
     private var moveButtonBackground: some View {
         Capsule()
-            .fill(
-                LinearGradient(
-                    colors: [
-                        Color.ppPrimary.opacity(colorScheme == .dark ? 0.96 : 1),
-                        Color.ppPrimary.opacity(colorScheme == .dark ? 0.74 : 1),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .overlay(alignment: .top) {
-                Capsule()
-                    .fill(Color.white.opacity(colorScheme == .dark ? 0.12 : 0.18))
-                    .frame(height: 18)
-                    .padding(.horizontal, 1)
-                    .blur(radius: 0.35)
-            }
-            .shadow(color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.20 : 0.16), radius: 12, y: 6)
+            .fill(Color.ppPrimary)
     }
 
     private var moveButtonBorder: some View {
@@ -657,12 +640,12 @@ private struct PPSavedForLaterItemRow: View {
     }
 
     private var cardBackground: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
             .fill(Color.ppCard.opacity(colorScheme == .dark ? 0.72 : 0.96))
     }
 
     private var cardBorder: some View {
-        RoundedRectangle(cornerRadius: 24, style: .continuous)
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
             .stroke(
                 Color(uiColor: .lightGray)
                     .opacity(colorScheme == .dark ? 0.30 : 0.18),
@@ -713,7 +696,7 @@ private struct PPSavedForLaterLoadingView: View {
                     )
                 }
                 .padding(12)
-                .background(Color.ppCard, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .background(Color.ppCard, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
         }
         .accessibilityElement(children: .ignore)

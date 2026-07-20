@@ -421,11 +421,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.imagePlateView.backgroundColor = selected
                 ? accent.withAlphaComponent(finalAlpha)
                 : PPMainKindsCellPalette.plate
-            self.imagePlateView.layer.shadowOpacity = selected ? 0.0 : 0.085
-            self.imagePlateView.layer.borderColor = (selected
-                ? UIColor.clear : PPMainKindsCellPalette.borderThin).resolvedColor(
-                                                        with: self.traitCollection
-                                                     ).cgColor
+            self.imagePlateView.layer.shadowOpacity = selected ? 0.015 : 0.085
+            self.imagePlateView.layer.borderColor = selected ? accent
+                .withAlphaComponent(
+                    0.1
+                ).cgColor : PPMainKindsCellPalette.borderThin.cgColor
+            self.imagePlateView.layer.shadowColor = selected ? accent.cgColor : UIColor.black.cgColor
+
             self.imagePlateView.layer.borderWidth = selected
                 ? 0
                 : PPMainKindsCellMetrics.regularBorderWidth

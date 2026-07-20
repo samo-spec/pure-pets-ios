@@ -112,6 +112,10 @@ static CGFloat const PPHomeOrthogonalHorizontalIntentRatio = 1.15;
 static char PPHomeOrthogonalPanGateAssociationKey;
 static char PPHomeOrthogonalPanGateMarkerKey;
 static NSString * const PPHomeCartButtonSurfaceLayerName = @"pp.home.cart.surface";
+static NSString * const PPHomeSaveForLaterUpdatedNotificationName = @"PPSaveForLaterUpdatedNotification";
+static CGFloat const PPHomeSmartSearchCartButtonSide = 44.0;
+static CGFloat const PPHomeSmartSearchCartButtonSpacing = 8.0;
+static NSTimeInterval const PPHomeSmartSearchCartRevealDuration = 0.42;
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -160,6 +164,14 @@ static CAShapeLayer *PPHomeCartButtonSurfaceLayer(UIButton *button)
     surfaceLayer.allowsEdgeAntialiasing = YES;
     [button.layer insertSublayer:surfaceLayer atIndex:0];
     return surfaceLayer;
+}
+
+static CGAffineTransform PPHomeSmartSearchCartHiddenTransform(void)
+{
+    UIUserInterfaceLayoutDirection direction =
+        [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:PPHomeCurrentSemanticAttribute()];
+    CGFloat outwardX = (direction == UIUserInterfaceLayoutDirectionRightToLeft) ? -7.0 : 7.0;
+    return CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardX, 0.0), 0.82, 0.82);
 }
 
 static NSArray<UIBarButtonItem *> *PPHomeBarButtonItems(UIBarButtonItem * _Nullable item)
@@ -1752,6 +1764,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count;
 - (void)pp_applyHomeCartButtonAppearance;
+- (void)pp_updateHomeCartButtonPresenceAnimated:(BOOL)animated;
+- (void)pp_handleSavedForLaterUpdatedNotification:(NSNotification *)notification;
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
 @property (nonatomic, assign) BOOL didAutoScrollSuggestions;
 @property (nonatomic, assign) BOOL didAutoScrollNearbyServices;
@@ -1779,8 +1793,12 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
 @property (nonatomic, strong, nullable) UIView *homeSmartSearchAndCartContainer;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchAndCartContainerWidthConstraint;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchTrailingToContainerConstraint;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchTrailingToCartConstraint;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeCartButtonWidthConstraint;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeCartButtonHeightConstraint;
+@property (nonatomic, assign) BOOL homeCartButtonPresencePrepared;
+@property (nonatomic, assign) BOOL homeCartButtonSlotVisible;
 @property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
 @property (nonatomic, copy) NSArray<NSString *> *homeSmartSearchPlaceholders;
 @property (nonatomic, assign) NSInteger homeSmartSearchPlaceholderIndex;
@@ -3570,6 +3588,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_updateHomeCartButtonPresenceAnimated:NO];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
 }
 
@@ -3598,6 +3617,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_updateHomeCartButtonPresenceAnimated:NO];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
 }
 
@@ -4560,6 +4580,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     [[NSNotificationCenter defaultCenter]
         addObserver:self
+           selector:@selector(pp_handleSavedForLaterUpdatedNotification:)
+               name:PPHomeSaveForLaterUpdatedNotificationName
+             object:nil];
+
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
            selector:@selector(handleAppWillEnterForeground)
                name:UIApplicationWillEnterForegroundNotification
              object:nil];
@@ -5443,6 +5469,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.navigationItem.leftBarButtonItems =
         PPHomeTemporarilyHideLeadingProfileItem ? @[] : PPHomeBarButtonItems(profileItem);
     [self refreshNavigationRightItemsForCartCount:cartCount];
+    [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_updateHomeCartButtonPresenceAnimated:NO];
     [self pp_refreshNavigationMenusForCurrentUser];
 }
 
@@ -9735,39 +9763,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.homeSmartSearchView setCollapseProgress:collapse
                                overscrollProgress:overscroll
                                          animated:animated];
-
-    if (self.homeCartButton) {
-        CGFloat targetHeight = 44.0;
-        CGFloat alpha = 1.0;
-
-        void (^updateBlock)(void) = ^{
-            if (self.homeCartButtonHeightConstraint) {
-                self.homeCartButtonHeightConstraint.constant = targetHeight;
-            }
-            if (self.homeCartButtonWidthConstraint) {
-                self.homeCartButtonWidthConstraint.constant = targetHeight;
-            }
-            self.homeCartButton.layer.cornerRadius = targetHeight * 0.5;
-            [self pp_applyHomeCartButtonAppearance];
-            for (UIView *sub in self.homeCartButton.subviews) {
-                if ([sub isKindOfClass:[UIVisualEffectView class]]) {
-                    sub.layer.cornerRadius = targetHeight * 0.5;
-                }
-            }
-            self.homeCartButton.alpha = alpha;
-            [self.homeSmartSearchAndCartContainer layoutIfNeeded];
-        };
-
-        if (animated) {
-            [UIView animateWithDuration:0.22
-                                  delay:0.0
-                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                             animations:updateBlock
-                             completion:nil];
-        } else {
-            updateBlock();
-        }
-    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -11721,6 +11716,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_updateHomeCartButtonPresenceAnimated:NO];
 
     [self pp_navBarSetTitleViewCentered:nil];
     self.navigationItem.titleView = centerView;
@@ -11745,7 +11741,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     UIButton *btn;
-    CGFloat cartButtonSide = 44.0;
+    CGFloat cartButtonSide = PPHomeSmartSearchCartButtonSide;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
@@ -11793,6 +11789,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     btn.clipsToBounds = NO;
     btn.layer.masksToBounds = NO;
     btn.layer.cornerRadius = cartButtonSide * 0.5;
+    btn.hidden = YES;
+    btn.alpha = 0.0;
+    btn.transform = PPHomeSmartSearchCartHiddenTransform();
+    btn.userInteractionEnabled = NO;
+    btn.accessibilityElementsHidden = YES;
     if (@available(iOS 13.0, *)) {
         btn.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -11807,6 +11808,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [btn pp_setShadowColor:UIColor.clearColor];
 
     self.homeCartButton = btn;
+    self.homeCartButtonPresencePrepared = NO;
+    self.homeCartButtonSlotVisible = NO;
     [self pp_applyHomeCartButtonAppearance];
 }
 
@@ -11832,7 +11835,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.tintAdjustmentMode = UIViewTintAdjustmentModeNormal;
     button.backgroundColor = UIColor.clearColor;
     button.adjustsImageWhenHighlighted = NO;
-    button.alpha = 1.0;
     button.clipsToBounds = NO;
     button.layer.masksToBounds = NO;
     button.layer.cornerRadius = buttonSide * 0.5;
@@ -12112,6 +12114,117 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+- (NSInteger)pp_currentSavedForLaterItemCount
+{
+    NSArray<CartItem *> *savedItems = [[PPSaveForLaterManager sharedManager] savedItems];
+    return MAX((NSInteger)savedItems.count, 0);
+}
+
+- (BOOL)pp_shouldShowHomeCartButton
+{
+    NSInteger cartCount = MAX([CartManager.sharedManager totalItemsCount], 0);
+    NSInteger savedCount = [self pp_currentSavedForLaterItemCount];
+    return cartCount > 0 || savedCount > 0;
+}
+
+- (void)pp_updateHomeCartButtonPresenceAnimated:(BOOL)animated
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_updateHomeCartButtonPresenceAnimated:animated];
+        });
+        return;
+    }
+
+    if (!self.homeCartButton ||
+        !self.homeSmartSearchAndCartContainer ||
+        !self.homeCartButtonWidthConstraint ||
+        !self.homeCartButtonHeightConstraint ||
+        !self.homeSmartSearchTrailingToContainerConstraint ||
+        !self.homeSmartSearchTrailingToCartConstraint) {
+        return;
+    }
+
+    BOOL shouldShow = [self pp_shouldShowHomeCartButton];
+    BOOL stateChanged =
+        !self.homeCartButtonPresencePrepared || self.homeCartButtonSlotVisible != shouldShow;
+    UIView *layoutHost = self.homeSmartSearchAndCartContainer.superview ?: self.homeSmartSearchAndCartContainer;
+
+    [layoutHost layoutIfNeeded];
+    [self.homeSmartSearchAndCartContainer layoutIfNeeded];
+
+    if (shouldShow) {
+        self.homeCartButton.hidden = NO;
+        if (stateChanged && animated) {
+            self.homeCartButton.alpha = 0.0;
+            self.homeCartButton.transform = PPHomeSmartSearchCartHiddenTransform();
+        }
+    }
+
+    self.homeCartButtonPresencePrepared = YES;
+    self.homeCartButtonSlotVisible = shouldShow;
+    self.homeCartButtonWidthConstraint.constant = shouldShow ? PPHomeSmartSearchCartButtonSide : 0.0;
+    self.homeCartButtonHeightConstraint.constant = PPHomeSmartSearchCartButtonSide;
+    self.homeCartButton.userInteractionEnabled = shouldShow;
+    self.homeCartButton.accessibilityElementsHidden = !shouldShow;
+
+    if (shouldShow) {
+        self.homeSmartSearchTrailingToContainerConstraint.active = NO;
+        self.homeSmartSearchTrailingToCartConstraint.active = YES;
+    } else {
+        self.homeSmartSearchTrailingToCartConstraint.active = NO;
+        self.homeSmartSearchTrailingToContainerConstraint.active = YES;
+    }
+
+    self.homeCartButton.layer.cornerRadius = PPHomeSmartSearchCartButtonSide * 0.5;
+    [self pp_applyHomeCartButtonAppearance];
+
+    void (^applyFinalState)(void) = ^{
+        self.homeCartButton.alpha = shouldShow ? 1.0 : 0.0;
+        self.homeCartButton.transform = shouldShow ? CGAffineTransformIdentity : PPHomeSmartSearchCartHiddenTransform();
+        [self.homeSmartSearchAndCartContainer setNeedsLayout];
+        [self.homeSmartSearchAndCartContainer layoutIfNeeded];
+        [layoutHost setNeedsLayout];
+        [layoutHost layoutIfNeeded];
+        [self.navigationController.navigationBar setNeedsLayout];
+        [self.navigationController.navigationBar layoutIfNeeded];
+    };
+
+    void (^finish)(BOOL) = ^(BOOL finished) {
+        (void)finished;
+        self.homeCartButton.hidden = !shouldShow;
+        self.homeCartButton.userInteractionEnabled = shouldShow;
+        if (shouldShow) {
+            NSInteger cartCount = MAX([CartManager.sharedManager totalItemsCount], 0);
+            [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+        }
+    };
+
+    if (!animated || !stateChanged) {
+        [UIView performWithoutAnimation:applyFinalState];
+        finish(YES);
+        return;
+    }
+
+    [UIView animateWithDuration:PPHomeSmartSearchCartRevealDuration
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.32
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseInOut
+                     animations:applyFinalState
+                     completion:finish];
+}
+
+- (void)pp_handleSavedForLaterUpdatedNotification:(NSNotification *)notification
+{
+    (void)notification;
+    NSInteger cartCount = MAX([CartManager.sharedManager totalItemsCount], 0);
+    [self pp_updateHomeCartButtonPresenceAnimated:YES];
+    [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+}
+
 - (CGFloat)preferredNavigationCenterViewWidth
 {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
@@ -12358,23 +12471,31 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             }
         }
     }
+    self.homeSmartSearchTrailingToContainerConstraint = nil;
+    self.homeSmartSearchTrailingToCartConstraint = nil;
 
     self.homeCartButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.homeSmartSearchView.translatesAutoresizingMaskIntoConstraints = NO;
 
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
 
-    // Cart button: standard compact 44x44 control, aligned to trailing and vertically centered.
-    self.homeCartButtonWidthConstraint = [self.homeCartButton.widthAnchor constraintEqualToConstant:44.0];
-    self.homeCartButtonHeightConstraint = [self.homeCartButton.heightAnchor constraintEqualToConstant:44.0];
+    // Cart button: starts collapsed; pp_updateHomeCartButtonPresenceAnimated owns reveal/collapse.
+    self.homeCartButtonWidthConstraint = [self.homeCartButton.widthAnchor constraintEqualToConstant:0.0];
+    self.homeCartButtonHeightConstraint = [self.homeCartButton.heightAnchor constraintEqualToConstant:PPHomeSmartSearchCartButtonSide];
     [constraints addObject:self.homeCartButtonWidthConstraint];
     [constraints addObject:self.homeCartButtonHeightConstraint];
     [constraints addObject:[self.homeCartButton.centerYAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.centerYAnchor]];
     [constraints addObject:[self.homeCartButton.trailingAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.trailingAnchor constant:0.0]];
 
-    // Smart search view: starts at leading, ends at cart button's leading (with 8 points gap), vertically centered, matching container height
+    // Smart search view: full width while the cart slot is collapsed, then shrinks to make room.
+    self.homeSmartSearchTrailingToContainerConstraint =
+        [self.homeSmartSearchView.trailingAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.trailingAnchor
+                                                                constant:0.0];
+    self.homeSmartSearchTrailingToCartConstraint =
+        [self.homeSmartSearchView.trailingAnchor constraintEqualToAnchor:self.homeCartButton.leadingAnchor
+                                                                constant:-PPHomeSmartSearchCartButtonSpacing];
     [constraints addObject:[self.homeSmartSearchView.leadingAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.leadingAnchor constant:0.0]];
-    [constraints addObject:[self.homeSmartSearchView.trailingAnchor constraintEqualToAnchor:self.homeCartButton.leadingAnchor constant:-8.0]];
+    [constraints addObject:self.homeSmartSearchTrailingToContainerConstraint];
     [constraints addObject:[self.homeSmartSearchView.topAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.topAnchor]];
     [constraints addObject:[self.homeSmartSearchView.bottomAnchor constraintEqualToAnchor:self.homeSmartSearchAndCartContainer.bottomAnchor]];
 
@@ -12388,6 +12509,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeSmartSearchAndCartContainer.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     self.homeSmartSearchView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
+    [self pp_updateHomeCartButtonPresenceAnimated:NO];
     [self pp_updateHomeSmartSearchForScrollView:self.collectionView animated:NO];
     return self.homeSmartSearchAndCartContainer;
 }
@@ -13205,6 +13327,7 @@ presentingViewController:self
     NSInteger count = [CartManager.sharedManager totalItemsCount];
     count = MAX(count, 0);
     [self refreshNavigationRightItemsForCartCount:count];
+    [self pp_updateHomeCartButtonPresenceAnimated:YES];
     [self pp_applyHomeCartBadgeCount:count animated:YES];
     [self.homeCartButton setNeedsLayout];
     [self.homeCartButton layoutIfNeeded];
@@ -13379,8 +13502,22 @@ presentingViewController:self
 
 - (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel
 {
-    [[PPSaveForLaterManager sharedManager] saveViewModelForLater:universalModel];
-    [PPHUD showSuccess:kLang(@"Saved")];
+    NSString *itemID = universalModel.ModelID ?: @"";
+    if (itemID.length == 0) {
+        [PPHUD showError:kLang(@"SomethingWentWrong")];
+        return;
+    }
+    PPSaveForLaterManager *manager = [PPSaveForLaterManager sharedManager];
+    if ([manager isItemSaved:itemID]) {
+        CartItem *item = [[CartItem alloc] init];
+        item.itemID = itemID;
+        item.name = universalModel.title ?: @"";
+        [manager removeItem:item];
+        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") ?: @"Removed from saved for later."];
+    } else {
+        [manager saveViewModelForLater:universalModel];
+        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") ?: @"Saved for later. You can find it in your saved items."];
+    }
 }
 
 #pragma mark - Background

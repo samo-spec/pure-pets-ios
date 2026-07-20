@@ -2155,8 +2155,8 @@ private struct PPUniversalCardRenderer: View {
                 .font(.system(size: 15.5, weight: .semibold))
                 .foregroundStyle(saveForLaterIconColor)
                 .frame(
-                    width: store.isHomePresentation ? 44 : 40,
-                    height: store.isHomePresentation ? 44 : 40
+                    width: store.isHomePresentation ? 40 : 38,
+                    height: store.isHomePresentation ? 40 : 38
                 )
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay(
@@ -2182,9 +2182,7 @@ private struct PPUniversalCardRenderer: View {
                 fallback: "Save for later"
             )
         )
-        .accessibilityAddTraits(
-            store.isSavedForLater ? [.isButton, .isSelected] : .isButton
-        )
+        .accessibilityAddTraits(.isButton)
     }
 
     private var saveForLaterSystemImage: String {
@@ -2586,7 +2584,7 @@ private struct PPUniversalCardRenderer: View {
                 ? "checkmark.circle.fill"
                 : "bell.badge.fill"
         }
-        return store.quantity > 0 ? "cart.fill" : "plus.cart.fill"
+        return store.quantity > 0 ? "cart.fill" : "cart"
     }
 
     private var primaryActionForeground: Color {

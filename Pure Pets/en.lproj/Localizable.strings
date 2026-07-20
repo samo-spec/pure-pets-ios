@@ -3631,6 +3631,8 @@
 
 /* Saved for Later Feature */
 "saved_for_later" = "Saved for later";
+"saved_for_later_added_toast" = "Saved for later. You can find it in your saved items.";
+"saved_for_later_removed_toast" = "Removed from saved for later.";
 "choose_items_to_move" = "Choose items to move to cart";
 "move_to_cart" = "Move to Cart";
 "moved_to_cart_success" = "Moved to cart successfully";

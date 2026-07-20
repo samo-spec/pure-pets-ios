@@ -99,11 +99,11 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
         [self persistForUser:userID];
     }
     
-    // 2. Sync to Firestore subcollection: /UsersCol/{userID}/SavedForLaterCol/{itemID}
+    // 2. Sync to Firestore subcollection: /UsersCol/{userID}/savedForLater/{itemID}
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
                                      documentWithPath:userID]
-                                    collectionWithPath:@"SavedForLaterCol"]
+                                    collectionWithPath:@"savedForLater"]
                                    documentWithPath:item.itemID];
     
     NSMutableDictionary *payload = [@{
@@ -173,7 +173,7 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
                                      documentWithPath:userID]
-                                    collectionWithPath:@"SavedForLaterCol"]
+                                    collectionWithPath:@"savedForLater"]
                                    documentWithPath:item.itemID];
     
     [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
@@ -206,7 +206,7 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     for (CartItem *item in itemsToDelete) {
         FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
                                          documentWithPath:userID]
-                                        collectionWithPath:@"SavedForLaterCol"]
+                                        collectionWithPath:@"savedForLater"]
                                        documentWithPath:item.itemID];
         [docRef deleteDocumentWithCompletion:nil];
     }
@@ -301,7 +301,7 @@ static NSInteger PPSaveForLaterStockQuantityFromValue(id value) {
     self.savedForLaterListener =
     [[[[db collectionWithPath:@"UsersCol"]
        documentWithPath:userID]
-      collectionWithPath:@"SavedForLaterCol"]
+      collectionWithPath:@"savedForLater"]
      addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ SavedForLater listener error: %@", error.localizedDescription);

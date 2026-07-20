@@ -1171,6 +1171,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) UIView *dockedSmartFilterPillView;
 @property (nonatomic, strong) UIView *dockedSmartFilterContentView;
 @property (nonatomic, strong) UIImageView *dockedSmartFilterIconView;
+@property (nonatomic, strong) NSLayoutConstraint *dockedSmartFilterIconWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *dockedSmartFilterIconHeightConstraint;
+@property (nonatomic, copy) NSString *dockedSmartFilterLoadedPhotoURL;
 @property (nonatomic, strong) UILabel *dockedSmartFilterPrimaryLabel;
 @property (nonatomic, strong) UILabel *dockedSmartFilterSecondaryLabel;
 @property (nonatomic, strong) UIButton *dockedSmartFilterExpandButton;
@@ -6226,13 +6229,63 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         self.dockedSmartFilterPrimaryLabel.text = primary;
         self.dockedSmartFilterSecondaryLabel.text = secondary;
         self.dockedSmartFilterSecondaryLabel.hidden = (secondary.length == 0);
-        UIImageSymbolConfiguration *iconConfig =
-            [UIImageSymbolConfiguration configurationWithPointSize:15.0
-                                                            weight:UIImageSymbolWeightBold
-                                                             scale:UIImageSymbolScaleSmall];
-        self.dockedSmartFilterIconView.image =
-            [PPDataViewFilterIconImage(iconName, iconConfig, nil)
-             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        
+        NSString *selectedProviderID = [self selectedProviderIDForSection:section];
+        if (selectedProviderID.length > 0) {
+            self.dockedSmartFilterIconWidthConstraint.constant = 26.0;
+            self.dockedSmartFilterIconHeightConstraint.constant = 26.0;
+            self.dockedSmartFilterIconView.layer.cornerRadius = 13.0;
+            self.dockedSmartFilterIconView.clipsToBounds = YES;
+            self.dockedSmartFilterIconView.contentMode = UIViewContentModeScaleAspectFill;
+            
+            NSString *photoURL = [self pp_providerPhotoURLForProviderID:selectedProviderID sourceItems:self.viewModel.items];
+            
+            if (photoURL.length > 0) {
+                if (![self.dockedSmartFilterLoadedPhotoURL isEqualToString:photoURL]) {
+                    UIImage *placeholder = [self pp_providerPlaceholderImage];
+                    self.dockedSmartFilterIconView.image = [placeholder imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+                    
+                    __weak typeof(self) weakSelf = self;
+                    NSString *expectedProviderID = [selectedProviderID copy];
+                    NSString *expectedPhotoURL = [photoURL copy];
+                    [PPImageLoaderManager.shared setImageOnImageView:self.dockedSmartFilterIconView
+                                                                 url:photoURL
+                                                         placeholder:placeholder
+                                                          complation:^(__unused UIImage * _Nonnull image,
+                                                                       __unused NSString * _Nullable urlString) {
+                        __strong typeof(weakSelf) self = weakSelf;
+                        if (!self) return;
+                        NSString *currentProviderID = [self selectedProviderIDForSection:self.viewModel.currentSection];
+                        if ([currentProviderID isEqualToString:expectedProviderID]) {
+                            self.dockedSmartFilterIconView.image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+                            self.dockedSmartFilterIconView.contentMode = UIViewContentModeScaleAspectFill;
+                            self.dockedSmartFilterLoadedPhotoURL = expectedPhotoURL;
+                        }
+                    }];
+                }
+            } else {
+                self.dockedSmartFilterIconView.image = [[self pp_providerPlaceholderImage] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+                self.dockedSmartFilterLoadedPhotoURL = nil;
+            }
+        } else {
+            self.dockedSmartFilterLoadedPhotoURL = nil;
+            self.dockedSmartFilterIconWidthConstraint.constant = 18.0;
+            self.dockedSmartFilterIconHeightConstraint.constant = 18.0;
+            self.dockedSmartFilterIconView.layer.cornerRadius = 0.0;
+            self.dockedSmartFilterIconView.clipsToBounds = NO;
+            self.dockedSmartFilterIconView.contentMode = UIViewContentModeScaleAspectFit;
+            
+            UIImageSymbolConfiguration *iconConfig =
+                [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                                weight:UIImageSymbolWeightBold
+                                                                 scale:UIImageSymbolScaleSmall];
+            self.dockedSmartFilterIconView.image =
+                [PPDataViewFilterIconImage(iconName, iconConfig, nil)
+                 imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        }
+        
+        [self.dockedSmartFilterContentView layoutIfNeeded];
+        
         self.dockedSmartFilterPillView.accessibilityLabel = accessibilitySummary.length > 0
             ? accessibilitySummary
             : primary;
@@ -7818,6 +7871,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSLayoutConstraint *textStackSpacingConstraint =
         [textStack.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:6.0];
 
+    self.dockedSmartFilterIconWidthConstraint = [iconView.widthAnchor constraintEqualToConstant:18.0];
+    self.dockedSmartFilterIconHeightConstraint = [iconView.heightAnchor constraintEqualToConstant:18.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [pill.leadingAnchor constraintEqualToAnchor:self.navContainerView.leadingAnchor constant:1.0],
         [pill.trailingAnchor constraintEqualToAnchor:self.navContainerView.trailingAnchor constant:-1.0],
@@ -7837,8 +7893,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
         [iconView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0],
+        self.dockedSmartFilterIconWidthConstraint,
+        self.dockedSmartFilterIconHeightConstraint,
 
         textStackSpacingConstraint,
         [textStack.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
@@ -9777,8 +9833,22 @@ presentingViewController:self
 
 - (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel
 {
-    [[PPSaveForLaterManager sharedManager] saveViewModelForLater:universalModel];
-    [PPHUD showSuccess:kLang(@"Saved")];
+    NSString *itemID = universalModel.ModelID ?: @"";
+    if (itemID.length == 0) {
+        [PPHUD showError:kLang(@"SomethingWentWrong")];
+        return;
+    }
+    PPSaveForLaterManager *manager = [PPSaveForLaterManager sharedManager];
+    if ([manager isItemSaved:itemID]) {
+        CartItem *item = [[CartItem alloc] init];
+        item.itemID = itemID;
+        item.name = universalModel.title ?: @"";
+        [manager removeItem:item];
+        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") ?: @"Removed from saved for later."];
+    } else {
+        [manager saveViewModelForLater:universalModel];
+        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") ?: @"Saved for later. You can find it in your saved items."];
+    }
 }
 
 #pragma mark - BBDataViewFullDetailsCellDelegate

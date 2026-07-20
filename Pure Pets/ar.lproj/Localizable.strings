@@ -3610,6 +3610,8 @@
 
 /* Saved for Later Feature */
 "saved_for_later" = "المحفوظات لاحقاً";
+"saved_for_later_added_toast" = "تم حفظه لوقت لاحق. ستجده في المحفوظات.";
+"saved_for_later_removed_toast" = "تمت إزالته من المحفوظات لاحقاً.";
 "choose_items_to_move" = "اختر المنتجات لنقلها إلى السلة";
 "move_to_cart" = "انقل للسلة";
 "moved_to_cart_success" = "تم النقل للسلة";
