@@ -2005,7 +2005,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
 
 - (void)pp_applySelectedMainKindAmbientCenterGlowColor
 {
-    return;
+    //return;
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self pp_applySelectedMainKindAmbientCenterGlowColor];
@@ -2023,7 +2023,12 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         (currentGlowColor && centerGlowColor && [currentGlowColor isEqual:centerGlowColor])) {
         return;
     }
-     self.ambientBackgroundView.overrideSurfaceColor = [centerGlowColor colorWithAlphaComponent:0.04];
+    if(self.selectedCategory.ID > 0)
+    {
+        
+    }
+    self.ambientBackgroundView.overrideCenterGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
+    self.ambientBackgroundView.overrideTopGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
  }
 
 - (NSInteger)pp_indexOfSelectedMainKindInRail
@@ -13586,10 +13591,10 @@ presentingViewController:self
         item.itemID = itemID;
         item.name = universalModel.title ?: @"";
         [manager removeItem:item];
-        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") ?: @"Removed from saved for later."];
+        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") subtitle:nil delay:2.5];
     } else {
         [manager saveViewModelForLater:universalModel];
-        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") ?: @"Saved for later. You can find it in your saved items."];
+        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") subtitle:nil delay:2.5];
     }
 }
 
@@ -13619,9 +13624,9 @@ presentingViewController:self
             self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
             self.ambientBackgroundView.userInteractionEnabled = NO;
 
-            self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
+            self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = YES;
             self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
-
+            //self.ambientambientBackgroundViewView.cornerGlowOpacityMultiplier =0.22;
             //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
             //self.ambientBackgroundView.overrideBorders = YES;
             //self.ambientBackgroundView.overrideBorderColor = UIColor.clearColor;
@@ -13724,6 +13729,8 @@ presentingViewController:self
         [self pp_applySelectedMainKindAmbientCenterGlowColor];
         [self.ambientBackgroundView stopAnimations];
         [self.ambientBackgroundView reapplyPalette];
+        [self.ambientBackgroundView startAnimations];
+        
     } else {
         BOOL isDark = NO;
         if (@available(iOS 12.0, *)) {

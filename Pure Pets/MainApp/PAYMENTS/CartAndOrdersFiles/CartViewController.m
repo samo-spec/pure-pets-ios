@@ -26,7 +26,7 @@ static CGFloat const kCartHeaderExpandedHeight = 232.0;
 static CGFloat const kCartHeaderCollapsedHeight = 76.0;
 static CGFloat const kCartHeaderTopInset = 8.0;
 static CGFloat const kCartHeaderTableSpacing = 18.0;
-static CGFloat const kCartTableBottomInset = 26.0;
+static CGFloat const kCartTableBottomInset = 0.0;
 static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 static UIColor *PPCartScreenBackgroundColor(void)
@@ -186,7 +186,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         [self.cartTableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor]
     ]];
     self.tableBottomConstraint =
-    [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-16.0];
+    [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:0.0];
     self.tableBottomConstraint.active = YES;
 
     [self.view bringSubviewToFront:self.summaryView];

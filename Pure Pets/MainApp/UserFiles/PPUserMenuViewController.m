@@ -35,8 +35,7 @@ typedef NS_ENUM(NSInteger, PPUserMenuAction) {
     PPUserMenuActionLogout,
 
     // Quick Access Actions
-    PPUserMenuActionQuickAccessLightAppearance,
-    PPUserMenuActionQuickAccessDarkAppearance,
+    PPUserMenuActionQuickAccessAppearance,
     PPUserMenuActionQuickAccessSwitchToArabic,
     PPUserMenuActionQuickAccessSwitchToEnglish,
     PPUserMenuActionQuickAccessEnableNotifications,
@@ -430,6 +429,9 @@ static UIImage *PPUserMenuSymbol(NSString *name, UIColor *color, CGFloat pointSi
 #pragma mark - Quick Access Cell
 
 static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickAccessCell";
+static const CGFloat PPUserMenuQuickAccessPillHeight = 60.0;
+static const CGFloat PPUserMenuQuickAccessRowHeight = 72.0;
+static const CGFloat PPUserMenuQuickAccessVerticalInset = 6.0;
 
 @interface PPUserMenuQuickAccessCell : UITableViewCell
 @property (nonatomic, strong) UIScrollView *scrollView;
@@ -471,13 +473,13 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             [scrollView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
             [scrollView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
             [scrollView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-            [scrollView.heightAnchor constraintGreaterThanOrEqualToConstant:60.0],
+            [scrollView.heightAnchor constraintGreaterThanOrEqualToConstant:PPUserMenuQuickAccessRowHeight],
 
-            [stackView.topAnchor constraintEqualToAnchor:scrollView.topAnchor constant:8.0],
+            [stackView.topAnchor constraintEqualToAnchor:scrollView.topAnchor constant:PPUserMenuQuickAccessVerticalInset],
             [stackView.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor constant:PPScreenMargin],
             [stackView.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor constant:-PPScreenMargin],
-            [stackView.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor constant:-8.0],
-            [stackView.heightAnchor constraintEqualToConstant:52.0],
+            [stackView.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor constant:-PPUserMenuQuickAccessVerticalInset],
+            [stackView.heightAnchor constraintEqualToConstant:PPUserMenuQuickAccessPillHeight],
             [stackView.widthAnchor constraintEqualToAnchor:scrollView.widthAnchor constant:-(PPScreenMargin * 2)]
         ]];
     }
@@ -512,7 +514,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     surface.translatesAutoresizingMaskIntoConstraints = NO;
     surface.userInteractionEnabled = NO;
     surface.backgroundColor = PPUserMenuSurfaceColor();
-    surface.layer.borderWidth =0.75;
+    surface.layer.borderWidth = 0.75;
     [surface pp_setBorderColor:PPUserMenuBorderColor()];
     PPApplyContinuousCorners(surface, 18.0);
     PPApplyCardShadow(surface);
@@ -539,27 +541,46 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     titleLabel.textAlignment = NSTextAlignmentCenter;
     [surface addSubview:titleLabel];
 
+    UILabel *captionLabel = [UILabel new];
+    captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    captionLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2]
+                         scaledFontForFont:([GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium])];
+    captionLabel.adjustsFontForContentSizeCategory = YES;
+    captionLabel.adjustsFontSizeToFitWidth = YES;
+    captionLabel.minimumScaleFactor = 0.72;
+    captionLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+    captionLabel.numberOfLines = 1;
+    captionLabel.text = PPUserMenuLocalized(item.subtitleKey);
+    captionLabel.textAlignment = NSTextAlignmentCenter;
+    [surface addSubview:captionLabel];
+
     [NSLayoutConstraint activateConstraints:@[
         [surface.topAnchor constraintEqualToAnchor:button.topAnchor ],
         [surface.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
         [surface.trailingAnchor constraintEqualToAnchor:button.trailingAnchor],
         [surface.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
-        [surface.heightAnchor constraintEqualToConstant:52.0],
+        [surface.heightAnchor constraintEqualToConstant:PPUserMenuQuickAccessPillHeight],
 
         [iconView.centerXAnchor constraintEqualToAnchor:surface.centerXAnchor],
-        [iconView.topAnchor constraintEqualToAnchor:surface.topAnchor constant:8.0],
+        [iconView.topAnchor constraintEqualToAnchor:surface.topAnchor constant:7.0],
         [iconView.widthAnchor constraintEqualToConstant:18.0],
         [iconView.heightAnchor constraintEqualToConstant:18.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:4.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:3.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:6.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-6.0],
-        [titleLabel.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-6.0]
+
+        [captionLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:0.0],
+        [captionLabel.leadingAnchor constraintEqualToAnchor:surface.leadingAnchor constant:6.0],
+        [captionLabel.trailingAnchor constraintEqualToAnchor:surface.trailingAnchor constant:-6.0],
+        [captionLabel.bottomAnchor constraintEqualToAnchor:surface.bottomAnchor constant:-5.0]
     ]];
 
     button.tag = item.action;
     [button addTarget:self action:@selector(pp_buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
-    button.accessibilityLabel = titleLabel.text;
+    button.accessibilityLabel = captionLabel.text.length > 0
+        ? [NSString stringWithFormat:@"%@, %@", titleLabel.text ?: @"", captionLabel.text]
+        : titleLabel.text;
     button.accessibilityTraits = UIAccessibilityTraitButton;
 
     // Add pressed state styling
@@ -614,8 +635,6 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 @property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
-@property (nonatomic, strong) PPInsetLabel *statusPillLabel;
-@property (nonatomic, strong) PPInsetLabel *metaLabel;
 @property (nonatomic, strong) UIButton *primaryHeroButton;
 @property (nonatomic, assign) BOOL preparedEntrance;
 @property (nonatomic, assign) BOOL didRunEntrance;
@@ -822,23 +841,6 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     }
     [self.avatarImageView pp_setBorderColor:avatarStroke];
 
-    self.statusPillLabel.backgroundColor = quietFill;
-    self.statusPillLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
-    [self.statusPillLabel pp_setBorderColor:quietStroke];
-
-    if (@available(iOS 13.0, *)) {
-        self.metaLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-            if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-                return [UIColor colorWithWhite:1.0 alpha:0.045];
-            }
-            return [UIColor colorWithWhite:1.0 alpha:0.52];
-        }];
-    } else {
-        self.metaLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.52];
-    }
-    self.metaLabel.textColor = PPUserMenuColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
-    [self.metaLabel pp_setBorderColor:quietStroke];
-
     self.primaryHeroButton.backgroundColor = brand;
     self.primaryHeroButton.tintColor = UIColor.whiteColor;
     [self.primaryHeroButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
@@ -866,7 +868,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 
 - (void)pp_buildHeader
 {
-    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 244.0)];
+    UIView *root = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 206.0)];
     root.backgroundColor = UIColor.clearColor;
     root.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
@@ -884,22 +886,6 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [card insertSubview:bg atIndex:0];
     self.headerBackgroundView = bg;
 
-    PPInsetLabel *statusPill = [PPInsetLabel new];
-    statusPill.translatesAutoresizingMaskIntoConstraints = NO;
-    statusPill.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
-                       scaledFontForFont:([GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold])];
-    statusPill.adjustsFontForContentSizeCategory = YES;
-    statusPill.adjustsFontSizeToFitWidth = YES;
-    statusPill.minimumScaleFactor = 0.78;
-    statusPill.numberOfLines = 1;
-    statusPill.textAlignment = NSTextAlignmentCenter;
-    statusPill.textInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-    statusPill.layer.cornerRadius = 17.0;
-    statusPill.layer.borderWidth = 1.0;
-    statusPill.clipsToBounds = YES;
-    [card addSubview:statusPill];
-    self.statusPillLabel = statusPill;
-
     UIButton *primaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     primaryButton.translatesAutoresizingMaskIntoConstraints = NO;
     primaryButton.titleLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
@@ -907,10 +893,10 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     primaryButton.titleLabel.adjustsFontForContentSizeCategory = YES;
     primaryButton.titleLabel.adjustsFontSizeToFitWidth = YES;
     primaryButton.titleLabel.minimumScaleFactor = 0.78;
-    primaryButton.contentEdgeInsets = UIEdgeInsetsMake(9.0, 14.0, 9.0, 14.0);
-    primaryButton.layer.cornerRadius = 12.0;
+    primaryButton.contentEdgeInsets = UIEdgeInsetsMake(10.0, 16.0, 10.0, 16.0);
+    primaryButton.layer.cornerRadius = 16.0;
     primaryButton.clipsToBounds = YES;
-    PPApplyContinuousCorners(primaryButton, 12.0);
+    PPApplyContinuousCorners(primaryButton, 16.0);
     primaryButton.accessibilityIdentifier = @"profile_menu_hero_primary_action";
     [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchDown:) forControlEvents:UIControlEventTouchDown];
     [primaryButton addTarget:self action:@selector(pp_handleHeroPrimaryTouchUp:) forControlEvents:UIControlEventTouchDragExit | UIControlEventTouchCancel | UIControlEventTouchUpOutside];
@@ -973,22 +959,6 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     [card addSubview:subtitle];
     self.subtitleLabel = subtitle;
 
-    PPInsetLabel *meta = [PPInsetLabel new];
-    meta.translatesAutoresizingMaskIntoConstraints = NO;
-    meta.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleFootnote]
-                 scaledFontForFont:([GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium])];
-    meta.adjustsFontForContentSizeCategory = YES;
-    meta.adjustsFontSizeToFitWidth = YES;
-    meta.minimumScaleFactor = 0.78;
-    meta.numberOfLines = 1;
-    meta.textAlignment = [Language alignmentForCurrentLanguage];
-    meta.textInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-    meta.layer.cornerRadius = 17.0;
-    meta.layer.borderWidth = 1.0;
-    meta.clipsToBounds = YES;
-    [card addSubview:meta];
-    self.metaLabel = meta;
-
     self.cardTopConstraint = [card.topAnchor constraintEqualToAnchor:root.topAnchor constant:PPStatusBarHeight + 12.0];
     [NSLayoutConstraint activateConstraints:@[
         self.cardTopConstraint,
@@ -1001,18 +971,8 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [bg.trailingAnchor constraintEqualToAnchor:card.trailingAnchor],
         [bg.bottomAnchor constraintEqualToAnchor:card.bottomAnchor],
 
-        [statusPill.topAnchor constraintEqualToAnchor:card.topAnchor constant:22.0],
-        [statusPill.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
-        [statusPill.trailingAnchor constraintLessThanOrEqualToAnchor:primaryButton.leadingAnchor constant:-12.0],
-        [statusPill.heightAnchor constraintGreaterThanOrEqualToConstant:34.0],
-
-        [primaryButton.topAnchor constraintEqualToAnchor:card.topAnchor constant:20.0],
-        [primaryButton.trailingAnchor constraintEqualToAnchor:card.trailingAnchor constant:-22.0],
-        [primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:106.0],
-        [primaryButton.heightAnchor constraintGreaterThanOrEqualToConstant:38.0],
-
         [avatarFrame.leadingAnchor constraintEqualToAnchor:card.leadingAnchor constant:24.0],
-        [avatarFrame.topAnchor constraintEqualToAnchor:statusPill.bottomAnchor constant:22.0],
+        [avatarFrame.topAnchor constraintEqualToAnchor:card.topAnchor constant:20.0],
         [avatarFrame.widthAnchor constraintEqualToConstant:96.0],
         [avatarFrame.heightAnchor constraintEqualToConstant:96.0],
 
@@ -1032,16 +992,18 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         [subtitle.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
         [subtitle.trailingAnchor constraintEqualToAnchor:eyebrow.trailingAnchor],
         [subtitle.topAnchor constraintEqualToAnchor:title.bottomAnchor constant:PPSpaceSM],
-        [subtitle.bottomAnchor constraintLessThanOrEqualToAnchor:meta.topAnchor constant:-12.0],
+        [subtitle.bottomAnchor constraintLessThanOrEqualToAnchor:primaryButton.topAnchor constant:-12.0],
 
-        [meta.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
-        [meta.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-24.0],
-        [meta.topAnchor constraintGreaterThanOrEqualToAnchor:avatarFrame.bottomAnchor constant:16.0],
-        [meta.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-24.0],
-        [avatarFrame.bottomAnchor constraintLessThanOrEqualToAnchor:card.bottomAnchor constant:-24.0]
+        [primaryButton.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
+        [primaryButton.trailingAnchor constraintLessThanOrEqualToAnchor:card.trailingAnchor constant:-24.0],
+        [primaryButton.topAnchor constraintGreaterThanOrEqualToAnchor:subtitle.bottomAnchor constant:12.0],
+        [primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:124.0],
+        [primaryButton.heightAnchor constraintGreaterThanOrEqualToConstant:40.0],
+        [primaryButton.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-22.0],
+        [avatarFrame.bottomAnchor constraintLessThanOrEqualToAnchor:card.bottomAnchor constant:-20.0]
     ]];
 
-    // Keep all identity, status, and action content above the decorative hero material.
+    // Keep identity and action content above the decorative hero material.
     [card sendSubviewToBack:bg];
     [self pp_applyHeaderMaterialPalette];
     self.headerRootView = root;
@@ -1080,38 +1042,44 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     
     NSMutableArray<PPUserMenuItem *> *items = [NSMutableArray array];
 
-    // Detect current theme
+    // Detect current theme — use visual appearance for display, saved pref for cycle position
     UIUserInterfaceStyle currentTheme = [[PPThemeManager sharedManager] loadUserInterfaceStyle];
-    BOOL isDarkMode = (currentTheme == UIUserInterfaceStyleDark);
+    UIUserInterfaceStyle visualStyle = self.traitCollection.userInterfaceStyle;
+    BOOL isDarkMode = (visualStyle == UIUserInterfaceStyleDark);
 
     // Detect current language
     NSInteger currentLanguage = [Language languageVal];
     BOOL isArabic = (currentLanguage == 1);
 
-    // Theme quick access
+    // Theme quick access — cycles: Dark → Light → System → Dark
+    NSString *appearanceTitleKey;
+    NSString *appearanceIcon;
+    UIColor *appearanceTint;
     if (isDarkMode) {
-        // Currently dark, suggest light
-        [items addObject:[self pp_itemWithTitleKey:@"Light Appearance"
-                                          subtitleKey:@""
-                                             iconName:@"sun.max.fill"
-                                            tintColor:UIColor.systemYellowColor
-                                               action:PPUserMenuActionQuickAccessLightAppearance
-                                          destructive:NO]];
+        appearanceTitleKey = @"LightMode";
+        appearanceIcon = @"sun.max.fill";
+        appearanceTint = UIColor.systemYellowColor;
+    } else if (currentTheme == UIUserInterfaceStyleLight) {
+        appearanceTitleKey = @"SystemMode";
+        appearanceIcon = @"iphone";
+        appearanceTint = UIColor.systemBlueColor;
     } else {
-        // Currently light or system, suggest dark
-        [items addObject:[self pp_itemWithTitleKey:@"Dark Appearance"
-                                          subtitleKey:@""
-                                             iconName:@"moon.fill"
-                                            tintColor:UIColor.systemIndigoColor
-                                               action:PPUserMenuActionQuickAccessDarkAppearance
-                                          destructive:NO]];
+        appearanceTitleKey = @"DarkMode";
+        appearanceIcon = @"moon.fill";
+        appearanceTint = UIColor.systemIndigoColor;
     }
+    [items addObject:[self pp_itemWithTitleKey:appearanceTitleKey
+                                     subtitleKey:@"quick_access_desc_appearance"
+                                        iconName:appearanceIcon
+                                       tintColor:appearanceTint
+                                          action:PPUserMenuActionQuickAccessAppearance
+                                     destructive:NO]];
 
     // Language quick access
     if (isArabic) {
         // Currently Arabic, suggest English
         [items addObject:[self pp_itemWithTitleKey:@"English"
-                                          subtitleKey:@""
+                                          subtitleKey:@"quick_access_desc_language"
                                              iconName:@"globe.central.south.asia"
                                             tintColor:UIColor.systemBlueColor
                                                action:PPUserMenuActionQuickAccessSwitchToEnglish
@@ -1119,7 +1087,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     } else {
         // Currently English, suggest Arabic
         [items addObject:[self pp_itemWithTitleKey:@"Arabic"
-                                          subtitleKey:@""
+                                          subtitleKey:@"quick_access_desc_language"
                                              iconName:@"globe.central.south.asia"
                                             tintColor:UIColor.systemGreenColor
                                                action:PPUserMenuActionQuickAccessSwitchToArabic
@@ -1127,16 +1095,16 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     }
 
     // Notifications quick access
-    [items addObject:[self pp_itemWithTitleKey:@"Notifications"
-                                      subtitleKey:@""
+    [items addObject:[self pp_itemWithTitleKey:@"Allow Alerts"
+                                      subtitleKey:@"quick_access_desc_notifications"
                                          iconName:@"bell.fill"
                                         tintColor:UIColor.systemRedColor
                                            action:PPUserMenuActionQuickAccessEnableNotifications
                                       destructive:NO]];
 
     // Location quick access
-    [items addObject:[self pp_itemWithTitleKey:@"Location"
-                                      subtitleKey:@""
+    [items addObject:[self pp_itemWithTitleKey:@"My Location"
+                                      subtitleKey:@"quick_access_desc_location"
                                          iconName:@"location.fill"
                                         tintColor:UIColor.systemTealColor
                                            action:PPUserMenuActionQuickAccessEnableLocation
@@ -1267,13 +1235,12 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
     self.eyebrowLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_signed_in_eyebrow") : PPUserMenuLocalized(@"user_menu_guest_eyebrow");
     self.titleLabel.text = displayName;
     self.subtitleLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_subtitle") : PPUserMenuLocalized(@"user_menu_guest_subtitle");
-    self.statusPillLabel.text = loggedIn ? PPUserMenuLocalized(@"user_menu_profile_status_ready") : PPUserMenuLocalized(@"user_menu_profile_status_guest");
 
     NSString *email = loggedIn ? PPSafeString(user.UserEmail) : @"";
     NSString *phone = loggedIn ? PPSafeString(user.MobileNo) : @"";
     NSString *signedInFallback = PPUserMenuLocalized(@"user_menu_profile_meta_signed_in");
     NSString *guestFallback = PPUserMenuLocalized(@"user_menu_profile_meta_guest");
-    self.metaLabel.text = loggedIn
+    NSString *profileMeta = loggedIn
         ? PPUserMenuFirstNonEmptyString(@[email, phone, signedInFallback])
         : guestFallback;
 
@@ -1285,6 +1252,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
         : PPUserMenuLocalized(@"user_menu_login_subtitle");
     self.headerCardView.accessibilityLabel = displayName;
     self.headerCardView.accessibilityHint = self.subtitleLabel.text;
+    self.headerCardView.accessibilityValue = profileMeta;
 
     UIImageSymbolConfiguration *buttonConfiguration =
         [UIImageSymbolConfiguration configurationWithPointSize:13.0
@@ -1484,7 +1452,7 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
 {
     PPUserMenuSection *section = self.sections[indexPath.section];
     if ([section.titleKey isEqualToString:@"quick_access_settings_section"]) {
-        return 60.0; // Fixed height for quick access rail
+        return PPUserMenuQuickAccessRowHeight;
     }
     return UITableViewAutomaticDimension;
 }
@@ -1660,20 +1628,25 @@ static NSString * const PPUserMenuQuickAccessCellIdentifier = @"PPUserMenuQuickA
             break;
 
         // Quick Access Actions
-        case PPUserMenuActionQuickAccessLightAppearance: {
-            [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleLight];
-            [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleLight];
+        case PPUserMenuActionQuickAccessAppearance: {
+            UIUserInterfaceStyle currentTheme = [[PPThemeManager sharedManager] loadUserInterfaceStyle];
+            UIUserInterfaceStyle visualStyle = self.traitCollection.userInterfaceStyle;
+            UIUserInterfaceStyle nextStyle;
+            NSString *toastKey;
+            if (visualStyle == UIUserInterfaceStyleDark) {
+                nextStyle = UIUserInterfaceStyleLight;
+                toastKey = @"quick_access_light_mode_toast";
+            } else if (currentTheme == UIUserInterfaceStyleLight) {
+                nextStyle = UIUserInterfaceStyleUnspecified;
+                toastKey = @"settings_theme_system_active";
+            } else {
+                nextStyle = UIUserInterfaceStyleDark;
+                toastKey = @"quick_access_dark_mode_toast";
+            }
+            [[PPThemeManager sharedManager] saveUserInterfaceStyle:nextStyle];
+            [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:nextStyle];
             [PPFunc triggerLightHaptic];
-            [PPHUD showSuccess:kLang(@"quick_access_light_mode_toast")];
-            [self pp_rebuildSections];
-            [self.tableView reloadData];
-            break;
-        }
-        case PPUserMenuActionQuickAccessDarkAppearance: {
-            [[PPThemeManager sharedManager] saveUserInterfaceStyle:UIUserInterfaceStyleDark];
-            [[PPThemeManager sharedManager] applyInterfaceStyleGlobally:UIUserInterfaceStyleDark];
-            [PPFunc triggerLightHaptic];
-            [PPHUD showSuccess:kLang(@"quick_access_dark_mode_toast")];
+            [PPHUD showSuccess:kLang(toastKey)];
             [self pp_rebuildSections];
             [self.tableView reloadData];
             break;

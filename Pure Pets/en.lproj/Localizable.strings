@@ -3533,6 +3533,10 @@
 "Mute Alerts" = "Mute Alerts";
 "Allow Alerts" = "Allow Alerts";
 "My Location" = "My Location";
+"quick_access_desc_appearance" = "Appearance";
+"quick_access_desc_language" = "Language";
+"quick_access_desc_notifications" = "Alerts";
+"quick_access_desc_location" = "Location";
 
 /* Quick Access HUD Toasts */
 "quick_access_light_mode_toast" = "Light Mode Activated";

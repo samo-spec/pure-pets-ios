@@ -752,6 +752,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         self.materialView.backgroundColor = UIColor.clearColor;
 
         UIColor *surfaceBase = PPHeroGlassSurfaceBaseColor(self.traitCollection);
+        if (self.accentStyle == PPHeroGlassAccentStyleFullScreen ||
+            self.accentStyle == PPHeroGlassAccentStyleFullScreenPink ||
+            self.accentStyle == PPHeroGlassAccentStyleFullScreenPage) {
+            surfaceBase = AppBackgroundClr ?: surfaceBase;
+        }
         UIColor *surfaceHighlight = PPHeroGlassSurfaceHighlightColor(surfaceBase, darkMode, self.traitCollection);
         UIColor *backgroundAccent = PPHeroGlassBackgroundAccentColor(brand, surfaceBase, darkMode, self.traitCollection);
         UIColor *surfaceTint = PPHeroGlassSurfaceTintColor(surfaceBase, backgroundAccent, darkMode, self.traitCollection);

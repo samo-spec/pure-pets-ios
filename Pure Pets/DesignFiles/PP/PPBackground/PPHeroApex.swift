@@ -96,6 +96,18 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         case bar = 0
         case cornerGlow = 1
         case fullScreen = 2
+        case solid = 3
+        case fullScreenPink = 4
+        case fullScreenPage = 5
+
+        var isFullScreen: Bool {
+            switch self {
+            case .fullScreen, .fullScreenPink, .fullScreenPage:
+                return true
+            case .bar, .cornerGlow,.solid:
+                return false
+            }
+        }
     }
 
     private enum AuroraRole: Int {
@@ -141,6 +153,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     // MARK: - Objective-C compatibility surface
+
+    /// Integer keys for Objective-C callers using `accentStyle`.
+    /// 0 = bar, 1 = corner glow, 2 = adaptive full screen,
+    /// 3 = Pink full screen, 4 = Gold full screen.
+    @objc public static let accentStyleFullScreenPink: Int = AccentMode.fullScreenPink.rawValue
+    @objc public static let accentStyleFullScreenGold: Int = AccentMode.fullScreenPage.rawValue
 
     public var accentColorOverride: UIColor? {
         didSet {
@@ -240,7 +258,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             storedAccentMode = resolvedMode
             setNeedsLayout()
             reapplyPalette()
-            if previousMode == .fullScreen && resolvedMode != .fullScreen {
+            if previousMode.isFullScreen && !resolvedMode.isFullScreen {
                 restoreCompactAmbientAnimationsIfNeeded()
             }
         }
@@ -263,7 +281,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 if !overlayView.bounds.isEmpty {
                     installSignatureSweepAnimation()
                 }
-                if storedAccentMode == .fullScreen {
+                if storedAccentMode.isFullScreen {
                     refreshFullScreenSpatialAnimations()
                 }
             }
@@ -645,7 +663,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         lastLayoutDirection = layoutDirection
         if (didChangeSize || didChangeDirection) && ambientTimelineInstalled {
             installSignatureSweepAnimation()
-            if storedAccentMode == .fullScreen {
+            if storedAccentMode.isFullScreen {
                 refreshFullScreenSpatialAnimations()
             }
         }
@@ -870,7 +888,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ], on: vignetteLayer, animated: animatePalette)
 
         let prismRoles = auroraRoleColors(from: palette)
-        if storedAccentMode == .fullScreen {
+        if storedAccentMode.isFullScreen {
             // A radial fourth field removes the conic seam that appeared as a
             // diagonal corner-to-corner line in the Full Screen composition.
             let prismAlpha: CGFloat = isDark ? 0.30 : 0.34
@@ -902,7 +920,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         prismLayer.opacity = 1
 
         for (index, layer) in auroraLayers.enumerated() {
-            layer.locations = storedAccentMode == .fullScreen
+            layer.locations = storedAccentMode.isFullScreen
                 ? [0, 0.30, 0.66, 1]
                 : (index == AuroraRole.bottomTrailing.rawValue
                     ? [0, 0.24, 0.62, 1]
@@ -1017,6 +1035,32 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let strongerContrast = traitCollection.accessibilityContrast == .high ||
             UIAccessibility.isDarkerSystemColorsEnabled
 
+        if storedAccentMode == .fullScreenPink {
+            return makeFixedFullScreenPalette(
+                colors: [
+                    UIColor(hex: 0xC93052).withAlphaComponent(0.12), // warm ivory base
+                    UIColor(hex: 0xF5EAE1).withAlphaComponent(0.12), // soft beige
+                    UIColor(hex: 0xE5AA99).withAlphaComponent(0.12), // muted peach sand
+                    UIColor(hex: 0xE8C6BC).withAlphaComponent(0.12)  // subtle brand-rose beige
+                ],
+                isDark: isDark,
+                strongerContrast: strongerContrast
+            )
+        }
+
+        if storedAccentMode == .fullScreenPage {
+            return makeFixedFullScreenPalette(
+                colors: [
+                    UIColor(hex: 0xFAF6F1).withAlphaComponent(0.02), // warm ivory base
+                    UIColor(hex: 0xF5EAE1).withAlphaComponent(0.02), // soft beige
+                    UIColor(hex: 0xEFD9CC).withAlphaComponent(0.02), // muted peach sand
+                    UIColor(hex: 0xE8C6BC).withAlphaComponent(0.02)  // subtle brand-rose beige
+                ],
+                isDark: isDark,
+                strongerContrast: strongerContrast
+            )
+        }
+
         let fallbackAccent = UIColor(
             displayP3Red: 203.0 / 255.0,
             green: 38.0 / 255.0,
@@ -1100,7 +1144,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let particlePrimary = blend(accent, with: .white, amount: isDark ? 0.74 : 0.58)
         let particleSecondary = blend(bottomTrailingGlow, with: .white, amount: isDark ? 0.68 : 0.74)
         let specular = blend(accent, with: .white, amount: isDark ? 0.86 : 0.94)
-        let isFullScreen = storedAccentMode == .fullScreen
+        let isFullScreen = storedAccentMode.isFullScreen
 
         // Full Screen deliberately stays inside the surface's own tonal
         // family. Brand color is a whisper in the material, never a hard
@@ -1195,6 +1239,61 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
     }
 
+    private func makeFixedFullScreenPalette(
+        colors: [UIColor],
+        isDark: Bool,
+        strongerContrast: Bool
+    ) -> Palette {
+        precondition(colors.count == 4)
+
+        let deep = resolvedColor(colors[0])
+        let vivid = resolvedColor(colors[1])
+        let soft = resolvedColor(colors[2])
+        let light = resolvedColor(colors[3])
+
+        let surfaceHighlight = isDark
+            ? blend(light, with: .black, amount: 0.68)
+            : light
+        let surfaceMiddle = isDark
+            ? blend(soft, with: .black, amount: 0.58)
+            : soft
+        let surfaceTail = isDark
+            ? blend(vivid, with: .black, amount: 0.55)
+            : blend(soft, with: vivid, amount: 0.38)
+        let depth = isDark
+            ? blend(deep, with: .black, amount: 0.54)
+            : deep
+
+        let top = isDark
+            ? blend(light, with: vivid, amount: 0.34)
+            : light
+        let bottom = isDark
+            ? blend(deep, with: vivid, amount: 0.30)
+            : deep
+        let middle = isDark
+            ? blend(soft, with: vivid, amount: 0.30)
+            : soft
+        let lifted = blend(surfaceHighlight, with: .white, amount: isDark ? 0.14 : 0.20)
+        let quiet = blend(surfaceMiddle, with: surfaceHighlight, amount: 0.44)
+        let deepened = blend(surfaceTail, with: depth, amount: isDark ? 0.44 : 0.24)
+
+        return Palette(
+            accent: vivid,
+            surfaceHighlight: surfaceHighlight,
+            surfaceMiddle: surfaceMiddle,
+            surfaceTail: surfaceTail,
+            depth: depth,
+            aurora: [top, lifted, quiet, deepened, middle, bottom, middle],
+            particle: [lifted, soft, vivid],
+            reactiveLight: blend(soft, with: .white, amount: isDark ? 0.24 : 0.52),
+            specularLight: blend(light, with: .white, amount: isDark ? 0.30 : 0.68),
+            stroke: UIColor.white.withAlphaComponent(
+                strongerContrast ? (isDark ? 0.34 : 0.96) : (isDark ? 0.18 : 0.80)
+            ),
+            shadowOpacity: isDark ? 0.20 : 0.10
+        )
+    }
+
     private func setGradientColors(
         _ colors: [CGColor],
         on layer: CAGradientLayer,
@@ -1228,7 +1327,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         isDark: Bool,
         reduceTransparency: Bool
     ) -> CGFloat {
-        if storedAccentMode == .fullScreen {
+        if storedAccentMode.isFullScreen {
             return reduceTransparency
                 ? (isDark ? 0.40 : 0.50)
                 : (isDark ? 0.44 : 0.56)
@@ -1259,8 +1358,8 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         middle: UIColor
     ) {
         let top = auroraColor(at: 0, in: palette, fallback: palette.accent)
-        let bottomIndex = storedAccentMode == .fullScreen ? 5 : 1
-        let middleIndex = storedAccentMode == .fullScreen ? 6 : 2
+        let bottomIndex = storedAccentMode.isFullScreen ? 5 : 1
+        let middleIndex = storedAccentMode.isFullScreen ? 6 : 2
         let bottom = auroraColor(
             at: bottomIndex,
             in: palette,
@@ -1290,7 +1389,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         leadingAlpha: CGFloat,
         isDark: Bool
     ) -> [CGColor] {
-        if storedAccentMode == .fullScreen {
+        if storedAccentMode.isFullScreen {
             let roleStrength: CGFloat
             switch AuroraRole(rawValue: index) {
             case .leading:
@@ -1617,7 +1716,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     /// leaving one colored glow parked in the center of the application.
     private func installFullScreenSurfaceAnimation() {
         baseGradientLayer.removeAnimation(forKey: fullScreenSurfaceAnimationKey)
-        guard storedAccentMode == .fullScreen else { return }
+        guard storedAccentMode.isFullScreen else { return }
         baseGradientLayer.removeAnimation(forKey: gradientColorTransitionKey)
 
         let palette = makePalette()
@@ -1760,7 +1859,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installPrismAnimation() {
-        if storedAccentMode == .fullScreen {
+        if storedAccentMode.isFullScreen {
             guard !ambientContentView.bounds.isEmpty else { return }
 
             let normalizedPositions = [
@@ -1863,7 +1962,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
 
-            if storedAccentMode == .fullScreen {
+            if storedAccentMode.isFullScreen {
                 installFullScreenAuroraAnimation(on: layer, index: index)
                 continue
             }
@@ -2188,7 +2287,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func installSignatureSweepAnimation() {
         guard useShimmer,
-              storedAccentMode != .fullScreen,
+              !storedAccentMode.isFullScreen,
               !overlayView.bounds.isEmpty else {
             signatureSweepLayer.removeAnimation(forKey: signatureSweepAnimationKey)
             signatureSweepLayer.opacity = 0
@@ -2277,7 +2376,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func refreshModeSpecificAmbientAnimationsIfNeeded() {
         guard ambientTimelineInstalled,
-              storedAccentMode == .fullScreen else {
+              storedAccentMode.isFullScreen else {
             return
         }
         refreshFullScreenSpatialAnimations()
@@ -2285,7 +2384,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func refreshFullScreenSpatialAnimations() {
         guard ambientTimelineInstalled,
-              storedAccentMode == .fullScreen,
+              storedAccentMode.isFullScreen,
               !ambientContentView.bounds.isEmpty else {
             return
         }
@@ -3396,5 +3495,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 CGPoint(x: 0.42, y: 0.68)
             ]
         ]
+    }
+}
+
+
+private extension UIColor {
+    convenience init(hex: UInt32) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255.0,
+            green: CGFloat((hex >> 8) & 0xFF) / 255.0,
+            blue: CGFloat(hex & 0xFF) / 255.0,
+            alpha: 1.0
+        )
     }
 }

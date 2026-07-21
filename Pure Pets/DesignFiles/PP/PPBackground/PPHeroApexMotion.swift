@@ -150,8 +150,8 @@ enum PPHeroApexMotionTokens {
     // Entrance is deliberately slower than a control highlight but faster than
     // a navigation transition. It should register as material resolving into
     // focus, never as a card flying onto the screen.
-    static let entranceDuration: TimeInterval = 0.62
-    static let overlayEntranceDuration: TimeInterval = 0.42
+    static let entranceDuration: TimeInterval = 0.42
+    static let overlayEntranceDuration: TimeInterval = 0.32
     static let overlayEntranceDelay: TimeInterval = 0.07
 
     // Optical state changes use one family of curves, so accent, palette and

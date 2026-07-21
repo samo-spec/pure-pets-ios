@@ -3512,6 +3512,10 @@
 "Mute Alerts" = "كتم التنبيهات";
 "Allow Alerts" = "تفعيل التنبيهات";
 "My Location" = "موقعي";
+"quick_access_desc_appearance" = "المظهر";
+"quick_access_desc_language" = "اللغة";
+"quick_access_desc_notifications" = "التنبيهات";
+"quick_access_desc_location" = "الموقع";
 
 /* Quick Access HUD Toasts */
 "quick_access_light_mode_toast" = "تم تفعيل الوضع الفاتح";

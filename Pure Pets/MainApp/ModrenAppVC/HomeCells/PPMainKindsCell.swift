@@ -46,17 +46,21 @@ private enum PPMainKindsCellPalette {
     static var appBackColor: UIColor {
         UIColor(named: "AppBackgroundColor") ?? .secondarySystemBackground
     }
+    
+    static var appForgroundColor: UIColor {
+        UIColor(named: "AppForgroundColor") ?? .secondarySystemBackground
+    }
 
     static var plate: UIColor {
         UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor.white.withAlphaComponent(0.08)
-            :  appBackColor.withAlphaComponent(1.00)
+            :   appForgroundColor.withAlphaComponent(1.00)
         }
     }
 
     static var border: UIColor {
-        UIColor.diff.withAlphaComponent(0.23)
+        UIColor.diff.withAlphaComponent(0.28)
     }
     
     static var borderThin: UIColor {
@@ -429,7 +433,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.imagePlateView.layer.shadowColor = selected ? accent.cgColor : UIColor.black.cgColor
 
             self.imagePlateView.layer.borderWidth = selected
-                ? 0
+            ? 0.3
             : 0.25
             self.titleLabel.textColor = selected ? accent : PPMainKindsCellPalette.primaryText
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)

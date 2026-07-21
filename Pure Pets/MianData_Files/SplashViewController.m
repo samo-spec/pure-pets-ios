@@ -132,8 +132,6 @@ static UIColor *SplashViewControllerGoldColor(void) {
     ambientBackgroundView.PPHeroApexUseShimmer = NO;
     ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
     
-    ambientBackgroundView.overrideSurfaceColor = [UIColor colorNamed:@"AppSurfSecColor"];
-    
     [self.view addSubview:ambientBackgroundView];
     self.ambientBackgroundView = ambientBackgroundView;
 

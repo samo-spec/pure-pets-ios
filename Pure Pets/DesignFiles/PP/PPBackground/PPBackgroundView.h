@@ -14,7 +14,9 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
     PPHeroGlassAccentStyleBar = 0,
     PPHeroGlassAccentStyleCornerGlow,
     PPHeroGlassAccentStyleFullScreen,
-    PPHeroGlassAccentStyleSolid
+    PPHeroGlassAccentStyleSolid,
+    PPHeroGlassAccentStyleFullScreenPink,
+    PPHeroGlassAccentStyleFullScreenPage
 };
 
 /// A reusable background-only UIView that renders the premium hero glass surface

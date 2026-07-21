@@ -267,9 +267,6 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
         return;
     }
 
-    [controller setPendingItemID:item.itemID operation:@"move"];
-    [PPHUD showLoading:kLang(@"moving_to_cart")];
-
     __weak typeof(self) weakSelf = self;
     [self pp_resolveCartItemForMoveToCart:item
                                 completion:^(CartItem * _Nullable resolvedItem,
@@ -278,19 +275,17 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
         if (!strongSelf) { return; }
 
         if (!resolvedItem) {
-            [PPHUD dismiss];
+            if (isOutOfStock) {
+                [strongSelf pp_registerStockNotificationForItem:item controller:controller];
+                return;
+            }
             [controller setPendingItemID:nil operation:nil];
-            NSString *message = isOutOfStock ? kLang(@"Out of stock") : kLang(@"SomethingWentWrong");
-            [PPHUD showError:message];
-            [controller showErrorMessage:message];
+            [controller showErrorMessage:kLang(@"SomethingWentWrong")];
             [strongSelf pp_loadSavedItemsAnimated:YES];
             return;
         }
 
         CartManager *cartManager = [CartManager sharedManager];
-        if ([cartManager shouldConfirmProviderSwitchForItem:resolvedItem]) {
-            [PPHUD dismiss];
-        }
 
         [cartManager addItem:resolvedItem
          presentingViewController:strongSelf
@@ -299,10 +294,8 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
             if (!strongSelf) { return; }
 
             if (!success) {
-                [PPHUD dismiss];
                 [controller setPendingItemID:nil operation:nil];
                 if (!didCancel) {
-                    [PPHUD showError:kLang(@"SomethingWentWrong")];
                     [controller showErrorMessage:kLang(@"SomethingWentWrong")];
                 }
                 [strongSelf pp_loadSavedItemsAnimated:YES];
@@ -316,21 +309,69 @@ static NSString * const PPSavedForLaterUpdatedNotificationName = @"PPSaveForLate
 
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.30 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [[PPSaveForLaterManager sharedManager] removeItem:item completion:^(NSError * _Nullable error) {
-                    [PPHUD dismiss];
                     if (error) {
                         [controller setPendingItemID:nil operation:nil];
-                        [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
                         [controller showStatusMessage:kLang(@"saved_for_later_move_partial_error") success:NO];
                         [strongSelf pp_loadSavedItemsAnimated:YES];
                         return;
                     }
 
-                    [PPHUD showSuccess:kLang(@"moved_to_cart_success")];
                     [controller showStatusMessage:kLang(@"moved_to_cart_success") success:YES];
                     [strongSelf pp_finishSavedItemsRefreshAfterMutationFromController:controller];
                 }];
             });
         }];
+    }];
+}
+
+- (void)savedForLaterSheetContentController:(PPSavedForLaterSheetContentController *)controller
+               didRequestNotifyWhenAvailable:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) {
+        [controller setPendingItemID:nil operation:nil];
+        [controller showErrorMessage:kLang(@"SomethingWentWrong")];
+        return;
+    }
+
+    [self pp_registerStockNotificationForItem:item controller:controller];
+}
+
+- (void)pp_registerStockNotificationForItem:(CartItem *)item
+                                 controller:(PPSavedForLaterSheetContentController *)controller
+{
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"registerStockNotificationRequest"];
+    callable.timeoutInterval = 30.0;
+
+    NSDictionary *payload = @{
+        @"itemId": item.itemID ?: @"",
+        @"source": @"ios_saved_for_later_sheet",
+        @"locale": [Language isRTL] ? @"ar" : @"en"
+    };
+
+    __weak typeof(self) weakSelf = self;
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                [controller setPendingItemID:nil operation:nil];
+                [controller showErrorMessage:kLang(@"stock_notify_failed")];
+                return;
+            }
+
+            NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
+            NSString *status = [response[@"status"] isKindOfClass:NSString.class] ? response[@"status"] : @"";
+
+            [controller setPendingItemID:nil operation:nil];
+
+            if ([status isEqualToString:@"already_available"]) {
+                [controller showStatusMessage:kLang(@"stock_notify_already_available") success:YES];
+            } else {
+                [controller showStatusMessage:kLang(@"stock_notify_success") success:YES];
+            }
+        });
     }];
 }
 

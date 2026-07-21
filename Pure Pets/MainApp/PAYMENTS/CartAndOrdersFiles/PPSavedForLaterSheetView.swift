@@ -28,6 +28,12 @@ public protocol PPSavedForLaterSheetContentControllerDelegate: AnyObject {
         _ controller: PPSavedForLaterSheetContentController,
         didRequestRemove item: CartItem
     )
+
+    @objc(savedForLaterSheetContentController:didRequestNotifyWhenAvailable:)
+    func savedForLaterSheetContentController(
+        _ controller: PPSavedForLaterSheetContentController,
+        didRequestNotifyWhenAvailable item: CartItem
+    )
 }
 
 @objc(PPSavedForLaterSheetContentController)
@@ -62,12 +68,17 @@ public final class PPSavedForLaterSheetContentController: UIViewController {
             onRemove: { [weak self] item in
                 guard let self else { return }
                 self.delegate?.savedForLaterSheetContentController(self, didRequestRemove: item)
+            },
+            onNotifyWhenAvailable: { [weak self] item in
+                guard let self else { return }
+                self.store.beginPending(item: item, operation: .notify)
+                self.delegate?.savedForLaterSheetContentController(self, didRequestNotifyWhenAvailable: item)
             }
         )
 
         let controller = UIHostingController(rootView: rootView)
         controller.view.translatesAutoresizingMaskIntoConstraints = false
-        controller.view.backgroundColor = .clear
+        //controller.view.backgroundColor = .clear
         controller.view.isOpaque = false
 
         addChild(controller)
@@ -125,6 +136,7 @@ private enum PPSavedForLaterPresentation: Equatable {
 private enum PPSavedForLaterPendingOperation: String {
     case move
     case remove
+    case notify
 }
 
 private enum PPSavedForLaterStatusKind {
@@ -285,6 +297,7 @@ private struct PPSavedForLaterSheetRootView: View {
     let onRetry: () -> Void
     let onMoveToCart: (CartItem) -> Void
     let onRemove: (CartItem) -> Void
+    let onNotifyWhenAvailable: (CartItem) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -303,6 +316,7 @@ private struct PPSavedForLaterSheetRootView: View {
                     .offset(y: reduceMotion ? 0 : (store.hasEntered ? 0 : 10))
 
                 stateContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .opacity(store.hasEntered ? 1 : 0)
                     .offset(y: reduceMotion ? 0 : (store.hasEntered ? 0 : 14))
             }
@@ -315,6 +329,8 @@ private struct PPSavedForLaterSheetRootView: View {
             statusToast
                 .padding(.top, 16)
                 .padding(.horizontal, 20)
+                .allowsHitTesting(false)
+                .accessibilityAddTraits(.updatesFrequently)
         }
         .onAppear {
             store.activateEntrance(reduceMotion: reduceMotion)
@@ -430,7 +446,8 @@ private struct PPSavedForLaterSheetRootView: View {
                         isCompletingMove: store.completedItemID == item.ppSavedStableID && store.completedOperation == .move,
                         pendingOperation: store.pendingOperation,
                         onMoveToCart: onMoveToCart,
-                        onRemove: onRemove
+                        onRemove: onRemove,
+                        onNotifyWhenAvailable: onNotifyWhenAvailable
                     )
                     .transition(
                         .asymmetric(
@@ -487,6 +504,7 @@ private struct PPSavedForLaterItemRow: View {
     let pendingOperation: PPSavedForLaterPendingOperation?
     let onMoveToCart: (CartItem) -> Void
     let onRemove: (CartItem) -> Void
+    let onNotifyWhenAvailable: (CartItem) -> Void
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
@@ -504,15 +522,24 @@ private struct PPSavedForLaterItemRow: View {
         isPending && pendingOperation == .remove
     }
 
+    private var isNotifying: Bool {
+        isPending && pendingOperation == .notify
+    }
+
+    private var isOutOfStock: Bool {
+        item.stockQuantity != NSNotFound && item.stockQuantity <= 0
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(alignment: .top, spacing: 12) {
                 productImage
-                titleAndPrice
-                    .padding(.top, 2)
+                VStack(alignment: .leading, spacing: 8) {
+                    titleAndPrice
+                        .padding(.top, 2)
+                    actionBar
+                }
             }
-
-            actionBar
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -602,27 +629,6 @@ private struct PPSavedForLaterItemRow: View {
         )
     }
 
-    private var actionBar: some View {
-        Group {
-            if usesAccessibleLayout {
-                VStack(spacing: 8) {
-                    moveButton
-                    removeButton
-                }
-            } else {
-                HStack(spacing: 10) {
-                    moveButton
-                    removeButton
-                }
-            }
-        }
-        .padding(5)
-        .background(actionBarBackground)
-        .overlay(actionBarBorder)
-        .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
-        .accessibilityElement(children: .contain)
-    }
-
     private var moveButton: some View {
         PPSavedForLaterMoveToCartButton(
             isLoading: isMoving,
@@ -634,10 +640,20 @@ private struct PPSavedForLaterItemRow: View {
         )
     }
 
+    private var notifyButton: some View {
+        PPSavedForLaterNotifyButton(
+            isLoading: isNotifying,
+            isDisabled: isMoving || isDeleting || isCompletingMove || isLockedByOtherItem,
+            action: {
+                onNotifyWhenAvailable(item)
+            }
+        )
+    }
+
     private var removeButton: some View {
         PPSavedForLaterDeleteButton(
             isLoading: isDeleting,
-            isDisabled: isMoving || isCompletingMove || isLockedByOtherItem,
+            isDisabled: isMoving || isNotifying || isCompletingMove || isLockedByOtherItem,
             usesAccessibleLayout: usesAccessibleLayout,
             action: {
                 onRemove(item)
@@ -645,14 +661,29 @@ private struct PPSavedForLaterItemRow: View {
         )
     }
 
-    private var actionBarBackground: some View {
-        RoundedRectangle(cornerRadius: 19, style: .continuous)
-            .fill(Color(uiColor: .secondarySystemGroupedBackground).opacity(colorScheme == .dark ? 0.42 : 0.74))
+    private var actionBar: some View {
+        Group {
+            if usesAccessibleLayout {
+                VStack(spacing: 8) {
+                    primaryActionButton
+                    removeButton
+                }
+            } else {
+                HStack(spacing: 8) {
+                    primaryActionButton
+                    removeButton
+                }
+            }
+        }
     }
 
-    private var actionBarBorder: some View {
-        RoundedRectangle(cornerRadius: 19, style: .continuous)
-            .stroke(Color(uiColor: .separator).opacity(colorScheme == .dark ? 0.20 : 0.14), lineWidth: 0.75)
+    @ViewBuilder
+    private var primaryActionButton: some View {
+        if isOutOfStock {
+            notifyButton
+        } else {
+            moveButton
+        }
     }
 
     private var cardBackground: some View {
@@ -767,6 +798,66 @@ private struct PPSavedForLaterMoveToCartButton: View {
     }
 }
 
+private struct PPSavedForLaterNotifyButton: View {
+    let isLoading: Bool
+    let isDisabled: Bool
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        Button {
+            guard !isLoading, !isDisabled else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: 8) {
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(Color.ppPrimary)
+                        .scaleEffect(0.72)
+                } else {
+                    Image(systemName: "bell.badge")
+                        .font(.system(size: 13, weight: .bold))
+                }
+
+                Text(isLoading
+                     ? ppLocalized("notify_me_loading", fallback: "Saving alert")
+                     : ppLocalized("notify_me", fallback: "Notify me"))
+                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.70)
+            }
+            .foregroundStyle(Color.ppPrimary)
+            .frame(maxWidth: .infinity, minHeight: 50)
+            .padding(.horizontal, 14)
+            .background(background)
+            .overlay(border)
+            .contentShape(Capsule())
+        }
+        .buttonStyle(PPSavedForLaterTransactionButtonStyle())
+        .disabled(isLoading || isDisabled)
+        .opacity(isDisabled && !isLoading ? 0.54 : 1)
+        .accessibilityLabel(ppLocalized("notify_me", fallback: "Notify me"))
+        .accessibilityHint(ppLocalized("stock_notify_success", fallback: "We will notify you when it is back."))
+    }
+
+    private var background: some View {
+        Capsule()
+            .fill(Color.ppPrimary.opacity(colorScheme == .dark ? 0.18 : 0.10))
+            .shadow(
+                color: Color.ppPrimary.opacity(colorScheme == .dark ? 0.12 : 0.18),
+                radius: 12, y: 6
+            )
+    }
+
+    private var border: some View {
+        Capsule()
+            .stroke(Color.ppPrimary.opacity(colorScheme == .dark ? 0.30 : 0.22), lineWidth: 0.75)
+    }
+}
+
 private struct PPSavedForLaterDeleteButton: View {
     let isLoading: Bool
     let isDisabled: Bool
@@ -775,13 +866,17 @@ private struct PPSavedForLaterDeleteButton: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    private var buttonSize: CGFloat {
+        usesAccessibleLayout ? 54 : 50
+    }
+
     var body: some View {
         Button {
             guard !isLoading, !isDisabled else { return }
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             action()
         } label: {
-            HStack(spacing: 7) {
+            ZStack {
                 if isLoading {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -791,22 +886,12 @@ private struct PPSavedForLaterDeleteButton: View {
                     Image(systemName: "trash")
                         .font(.system(size: 14, weight: .bold))
                 }
-
-                Text(isLoading
-                     ? ppLocalized("saved_for_later_deleting", fallback: "Deleting...")
-                     : ppLocalized("saved_for_later_delete_action", fallback: "Delete"))
-                    .font(.custom("Beiruti-Bold", size: 14, relativeTo: .subheadline))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.76)
             }
             .foregroundStyle(Color.ppError)
-            .frame(minWidth: usesAccessibleLayout ? 0 : 110,
-                   maxWidth: usesAccessibleLayout ? .infinity : nil,
-                   minHeight: 50)
-            .padding(.horizontal, 14)
+            .frame(width: buttonSize, height: buttonSize)
             .background(background)
             .overlay(border)
-            .contentShape(Capsule())
+            .contentShape(Circle())
         }
         .buttonStyle(PPSavedForLaterTransactionButtonStyle())
         .disabled(isLoading || isDisabled)
@@ -816,17 +901,17 @@ private struct PPSavedForLaterDeleteButton: View {
     }
 
     private var background: some View {
-        Capsule()
+        Circle()
             .fill(Color.ppError.opacity(colorScheme == .dark ? 0.18 : 0.10))
             .overlay(
-                Capsule()
+                Circle()
                     .fill(Color.white.opacity(colorScheme == .dark ? 0.03 : 0.18))
                     .padding(1)
             )
     }
 
     private var border: some View {
-        Capsule()
+        Circle()
             .stroke(Color.ppError.opacity(colorScheme == .dark ? 0.30 : 0.22), lineWidth: 0.75)
     }
 }
@@ -988,8 +1073,8 @@ private final class PPSavedForLaterImageView: UIImageView {
     }
 
     func pp_applyProductContentMode() {
-        contentMode = isShowingPlaceholder ? .scaleAspectFit : .scaleAspectFill
-        layer.contentsGravity = isShowingPlaceholder ? .resizeAspect : .resizeAspectFill
+        contentMode = .scaleAspectFill
+        layer.contentsGravity = .resizeAspectFill
     }
 }
 

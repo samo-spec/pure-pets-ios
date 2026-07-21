@@ -9844,10 +9844,10 @@ presentingViewController:self
         item.itemID = itemID;
         item.name = universalModel.title ?: @"";
         [manager removeItem:item];
-        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") ?: @"Removed from saved for later."];
+        [PPHUD showInfo:kLang(@"saved_for_later_removed_toast") subtitle:nil delay:2.5];
     } else {
         [manager saveViewModelForLater:universalModel];
-        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") ?: @"Saved for later. You can find it in your saved items."];
+        [PPHUD showSuccess:kLang(@"saved_for_later_added_toast") subtitle:nil delay:2.5];
     }
 }
 
