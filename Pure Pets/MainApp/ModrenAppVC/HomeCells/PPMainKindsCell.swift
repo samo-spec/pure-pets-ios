@@ -8,7 +8,7 @@ private enum PPMainKindsCellMetrics {
     static let artworkSize: CGFloat = 64
     static let allArtworkSize: CGFloat = 32
     static let imageToTitleSpacing: CGFloat = 6
-    static let indicatorWidth: CGFloat = 30
+    static let indicatorWidth: CGFloat = 26
     static let indicatorHeight: CGFloat = 3
     static let selectedBorderWidth: CGFloat = 0.78
     static let regularBorderWidth: CGFloat = 1 / UIScreen.main.scale
@@ -292,7 +292,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let sameBinding = boundCellID == nextCellID
         let wasSelected = isKindSelected
         let wasPreviewingSelectedGlow = isPreviewingSelectedGlow
-        let didSelectionChange = sameBinding && window != nil && wasSelected != selected
+        let didSelectionChange = window != nil && wasSelected != selected
         let shouldAnimateSelection = didSelectionChange && !restoredSelectionAppearance
         let shouldPlayChangeMotion = didSelectionChange &&
             selected &&
@@ -421,7 +421,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.surfaceView.layer.shadowOpacity = selected ? 0.055 : 0.015
             self.surfaceView.layer.shadowRadius = selected ? 10 : 5
             self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 4 : 2)
-            let normalAlpha = reduceTransparency ? 0.18 : 0.28
+            let normalAlpha = reduceTransparency ? 0.18 : 0.22
             let finalAlpha = self.isAllOption ? (normalAlpha * 0.2) : normalAlpha
             self.imagePlateView.backgroundColor = selected
                 ? accent.withAlphaComponent(finalAlpha)
@@ -440,6 +440,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.kindImageView.tintColor = self.resolvedImageViewTintColor(selected: selected)
             self.selectionIndicatorView.backgroundColor = accent
             self.selectionIndicatorView.alpha = selected ? 1 : 0
+            self.selectionIndicatorView.transform = selected ? .identity : CGAffineTransform(scaleX: 0.70, y: 1)
             let glowSelected = self.rendersSelectedGlow
             self.bottomGlowLayer.opacity = self.isPressing
                 ? self.pressedGlowOpacity(selected: glowSelected)
@@ -560,17 +561,17 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     ? self.pressedTapTransform
                     : self.restingTapTransform
                 self.imagePlateView.transform = pressed
-                    ? CGAffineTransform(scaleX: 0.91, y: 0.91)
+                    ? CGAffineTransform(scaleX: 1.08, y: 1.08)
                     : .identity
                 self.kindImageView.transform = pressed
-                    ? CGAffineTransform(scaleX: 0.96, y: 0.96)
+                    ? CGAffineTransform(scaleX: 1.05, y: 1.05)
                     : .identity
                 self.titleLabel.transform = pressed
                     ? CGAffineTransform(translationX: 0, y: 0.5)
                     : .identity
                 self.selectionIndicatorView.transform = pressed
-                    ? CGAffineTransform(scaleX: 0.84, y: 1)
-                    : .identity
+                    ? (self.isKindSelected ? CGAffineTransform(scaleX: 0.92, y: 1) : CGAffineTransform(scaleX: 0.65, y: 1))
+                    : (self.isKindSelected ? .identity : CGAffineTransform(scaleX: 0.70, y: 1))
                 let glowSelected = self.rendersSelectedGlow
                 self.bottomGlowLayer.opacity = pressed
                     ? self.pressedGlowOpacity(selected: glowSelected)
@@ -624,7 +625,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         kindImageView.transform = CGAffineTransform(scaleX: 0.976, y: 0.976)
         titleLabel.transform = CGAffineTransform(translationX: 0, y: 0.5)
         selectionIndicatorView.alpha = 0
-        selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.46, y: 1)
+        selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
         bottomGlowLayer.opacity = max(0, finalBottomGlow - 0.28)
         kindNameGlowLayer.opacity = max(0, finalNameGlow - 0.24)
         tapHaloLayer.opacity = 0
@@ -663,25 +664,30 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let finalBottomGlow = restingGlowOpacity(selected: true)
         let finalNameGlow = kindNameGlowOpacity(selected: true, pressing: false)
 
+        selectionIndicatorView.alpha = 0
+        selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
+
         UIView.animateKeyframes(
             withDuration: PPMainKindsCellMetrics.selectionChangeDuration,
             delay: 0,
             options: [.allowUserInteraction, .beginFromCurrentState, .calculationModeCubic],
             animations: {
-                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.34) {
-                    self.tapButton.transform = CGAffineTransform(scaleX: 1.018, y: 1.018)
-                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.045, y: 1.045)
-                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.022, y: 1.022)
-                    self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 1.22, y: 1)
-                    self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.12)
-                    self.kindNameGlowLayer.opacity = min(1, finalNameGlow + 0.10)
+                UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.40) {
+                    self.tapButton.transform = CGAffineTransform(scaleX: 1.03, y: 1.03)
+                    self.imagePlateView.transform = CGAffineTransform(scaleX: 1.20, y: 1.20)
+                    self.kindImageView.transform = CGAffineTransform(scaleX: 1.12, y: 1.12)
+                    self.selectionIndicatorView.transform = .identity
+                    self.selectionIndicatorView.alpha = 1
+                    self.bottomGlowLayer.opacity = min(1, finalBottomGlow + 0.14)
+                    self.kindNameGlowLayer.opacity = min(1, finalNameGlow + 0.12)
                 }
-                UIView.addKeyframe(withRelativeStartTime: 0.34, relativeDuration: 0.66) {
+                UIView.addKeyframe(withRelativeStartTime: 0.40, relativeDuration: 0.60) {
                     self.tapButton.transform = self.restingTapTransform
                     self.imagePlateView.transform = .identity
                     self.kindImageView.transform = .identity
                     self.titleLabel.transform = .identity
                     self.selectionIndicatorView.transform = .identity
+                    self.selectionIndicatorView.alpha = 1
                     self.bottomGlowLayer.opacity = finalBottomGlow
                     self.kindNameGlowLayer.opacity = finalNameGlow
                     self.tapHaloLayer.opacity = 0
@@ -716,13 +722,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 self.kindImageView.transform = .identity
                 self.titleLabel.transform = .identity
                 self.selectionIndicatorView.alpha = 0
-                self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.62, y: 1)
+                self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
                 self.bottomGlowLayer.opacity = finalBottomGlow
                 self.kindNameGlowLayer.opacity = finalNameGlow
                 self.tapHaloLayer.opacity = 0
             },
             completion: { _ in
-                self.selectionIndicatorView.transform = .identity
+                self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 0.70, y: 1)
                 self.applyAppearance(animated: false)
             }
         )
@@ -780,10 +786,13 @@ public final class PPMainKindsCell: UICollectionViewCell {
         ).integral
         kindNameGlowLayer.cornerRadius = titleGlowHeight / 2
 
-        let haloDiameter = max(materialBounds.width, materialBounds.height) * 1.66
+        let plateFrame = imagePlateView.frame
+        let plateCenterY = plateFrame.midY > 0 ? plateFrame.midY : (materialBounds.height * 0.38)
+        let plateCenterX = plateFrame.midX > 0 ? plateFrame.midX : (materialBounds.width * 0.5)
+        let haloDiameter = max(materialBounds.width, materialBounds.height) * 2.1
         tapHaloLayer.frame = CGRect(
-            x: (materialBounds.width - haloDiameter) / 2,
-            y: materialBounds.height - (haloDiameter * 0.74),
+            x: plateCenterX - (haloDiameter / 2),
+            y: plateCenterY - (haloDiameter / 2),
             width: haloDiameter,
             height: haloDiameter
         ).integral
@@ -923,8 +932,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             accent.withAlphaComponent(0).cgColor
         ]
         tapHaloLayer.colors = [
-            accent.withAlphaComponent(0.28).cgColor,
-            accent.withAlphaComponent(0.09).cgColor,
+            accent.withAlphaComponent(0.46).cgColor,
+            accent.withAlphaComponent(0.22).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
     }
@@ -968,7 +977,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
                     self.tapButton.transform = CGAffineTransform(scaleX: liftScale, y: liftScale)
                     self.imagePlateView.transform = CGAffineTransform(scaleX: 1.07, y: 1.07)
                     self.kindImageView.transform = CGAffineTransform(scaleX: 1.04, y: 1.04)
-                    self.selectionIndicatorView.transform = CGAffineTransform(scaleX: 1.32, y: 1)
+                    self.selectionIndicatorView.transform = .identity
                 }
                 UIView.addKeyframe(withRelativeStartTime: 0.32, relativeDuration: 0.68) {
                     self.tapButton.transform = self.restingTapTransform
@@ -994,12 +1003,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapHaloLayer.opacity = 0
 
         let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0, 0.36, 0]
+        opacity.values = [0, 0.78, 0]
         opacity.keyTimes = [0, 0.22, 1]
 
         let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 0.72
-        scale.toValue = 1.16
+        scale.fromValue = 0.25
+        scale.toValue = 2.20
 
         let group = CAAnimationGroup()
         group.animations = [opacity, scale]
@@ -1018,7 +1027,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
         imagePlateView.transform = .identity
         kindImageView.transform = .identity
         titleLabel.transform = .identity
-        selectionIndicatorView.transform = .identity
+        selectionIndicatorView.transform = rendersSelectedGlow ? .identity : CGAffineTransform(scaleX: 0.70, y: 1)
+        selectionIndicatorView.alpha = rendersSelectedGlow ? 1 : 0
         tapHaloLayer.opacity = 0
         bottomGlowLayer.opacity = restingGlowOpacity(selected: rendersSelectedGlow)
         kindNameGlowLayer.opacity = kindNameGlowOpacity(
