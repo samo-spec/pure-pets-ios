@@ -34,11 +34,11 @@ static UIColor *PPCartCellDeferredAccentColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:0.94 green:0.69 blue:0.30 alpha:1.0]
-                : [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+                ? [UIColor colorWithRed:0.74 green:0.59 blue:0.64 alpha:1.0]
+                : [UIColor colorWithRed:0.56 green:0.42 blue:0.47 alpha:1.0];
         }];
     }
-    return [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+    return [UIColor colorWithRed:0.56 green:0.42 blue:0.47 alpha:1.0];
 }
 
 static UIColor *PPCartCellSurfaceColor(void)
@@ -233,21 +233,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     [surfaceView addSubview:accentRailView];
     self.accentRailView = accentRailView;
 
-    UIView *topGlow = [[UIView alloc] initWithFrame:CGRectZero];
-    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:0.075];
-    topGlow.layer.cornerRadius = 78.0;
-    topGlow.alpha = 0.26;
-    [surfaceView addSubview:topGlow];
-
-    UIView *bottomGlow = [[UIView alloc] initWithFrame:CGRectZero];
-    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [UIColor.systemTealColor colorWithAlphaComponent:0.035];
-    bottomGlow.layer.cornerRadius = 70.0;
-    bottomGlow.alpha = 0.22;
-    [surfaceView addSubview:bottomGlow];
+ 
 
     UIView *imageShellView = [[UIView alloc] initWithFrame:CGRectZero];
     imageShellView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -513,15 +499,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [accentRailView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor],
         [accentRailView.widthAnchor constraintEqualToConstant:kPPCartCellAccentRailWidth],
 
-        [topGlow.widthAnchor constraintEqualToConstant:156.0],
-        [topGlow.heightAnchor constraintEqualToConstant:156.0],
-        [topGlow.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:-54.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:42.0],
 
-        [bottomGlow.widthAnchor constraintEqualToConstant:140.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:140.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:52.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor constant:-34.0],
+        
 
         [imageShellView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:10.0],
         [imageShellView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-10.0],
@@ -597,13 +576,13 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     [self.savedStatusBadgeLabel pp_setBorderColor:[stateAccent colorWithAlphaComponent:dark ? 0.26 : 0.17]];
 
     self.accentRailView.backgroundColor = [stateAccent colorWithAlphaComponent:self.savedForLaterMode
-        ? (dark ? 0.78 : 0.86)
+        ? (dark ? 0.56 : 0.48)
         : (dark ? 0.62 : 0.72)];
     self.imageShellView.backgroundColor = self.savedForLaterMode
-        ? [stateAccent colorWithAlphaComponent:dark ? 0.095 : 0.055]
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.070 : 0.036]
         : PPCartCellSoftFillColor();
     [self.imageShellView pp_setBorderColor:self.savedForLaterMode
-        ? [stateAccent colorWithAlphaComponent:dark ? 0.20 : 0.12]
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.16 : 0.09]
         : PPCartCellHairlineColor()];
     self.itemImageView.backgroundColor = dark ? UIColor.tertiarySystemBackgroundColor : UIColor.secondarySystemBackgroundColor;
     self.itemImageView.alpha = self.savedForLaterMode ? 0.90 : 1.0;

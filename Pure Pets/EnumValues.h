@@ -103,7 +103,6 @@ static NSString * const PPRouteToSearchAccessoriesNotificationKey = @"PPRouteToS
 
 static NSString * const PPHomeSectionDividerKind = @"PPHomeSectionDividerKind";
 static BOOL const PPUSE_LEGACY_BAR = NO;
-extern BOOL PPUniversalCellShowsCTA;
 static NSString * const kPPReusableVideoMediaFeatureFlagKey = @"PPReusableVideoMediaEnabled";
  
 static inline BOOL PPReusableVideoMediaDefaultEnabled(void) {
@@ -368,6 +367,7 @@ typedef NS_ENUM(NSInteger, PPCellContext) {
     PPCellForAdopt,
     PPCellForHomeAds,
     PPCellForContextAccessory,
+    PPCellForSavedForLater,
 };
  
 

@@ -656,10 +656,10 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    glass.cornerGlowOpacityMultiplier = 0.89;
+    //glass.cornerGlowOpacityMultiplier = 0.89;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
-    glass.PPHeroApexUseUnderFingerMotion = YES;
+    glass.PPHeroApexUseUnderFingerMotion = NO;
     [surface insertSubview:glass atIndex:0];
     self.heroGlassBackground = glass;
 

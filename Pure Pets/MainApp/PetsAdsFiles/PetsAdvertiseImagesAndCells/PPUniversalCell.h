@@ -3,6 +3,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 extern BOOL PPUniversalCellShowsCTA;
+BOOL PPUniversalCellGetShowsCTA(void) NS_SWIFT_NAME(PPUniversalCellShowsCTA());
+void PPUniversalCellSetShowsCTA(BOOL showsCTA) NS_SWIFT_NAME(PPUniversalCellSetShowsCTA(_:));
 
 typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
                               NSString *_Nullable url,
@@ -25,6 +27,7 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 - (void)PPUniversalCell_tapChat:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapReport:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapSaveForLater:(PPUniversalCellViewModel *)universalModel;
+- (void)PPUniversalCell_tapMoveToCart:(PPUniversalCellViewModel *)universalModel NS_SWIFT_NAME(ppUniversalCell_tapMove(toCart:));
 
 @end
 
@@ -54,6 +57,7 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
            imageLoader:(PPImageLoader)loader;
 
 @property (nonatomic, assign) BOOL hideTopBadge;
+@property (nonatomic, assign) BOOL showCTA;
 @property (nonatomic, assign) BOOL forceShowsOwnerMenuButton;
 @property (nonatomic, assign) BOOL showsSubtitle;
 @property (nonatomic, assign) BOOL dataViewPresentation;

@@ -38,6 +38,21 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
     NSMutableArray<CartItem *> *_items;
 }
 
+static NSString * const kPPUserFullWidthCellInSavedForLaterKey = @"userFullWidthCellInSavedForLater";
+
++ (BOOL)userFullWidthCellInSavedForLater {
+    id val = [[NSUserDefaults standardUserDefaults] objectForKey:kPPUserFullWidthCellInSavedForLaterKey];
+    if (val == nil) {
+        return YES;
+    }
+    return [val boolValue];
+}
+
++ (void)setUserFullWidthCellInSavedForLater:(BOOL)value {
+    [[NSUserDefaults standardUserDefaults] setBool:value forKey:kPPUserFullWidthCellInSavedForLaterKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
 + (instancetype)sharedManager {
     static PPSaveForLaterManager *manager;
     static dispatch_once_t onceToken;

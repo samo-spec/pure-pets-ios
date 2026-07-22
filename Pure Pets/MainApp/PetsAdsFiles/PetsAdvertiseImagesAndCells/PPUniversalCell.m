@@ -2,6 +2,14 @@
 
 BOOL PPUniversalCellShowsCTA = YES;
 
+BOOL PPUniversalCellGetShowsCTA(void) {
+    return PPUniversalCellShowsCTA;
+}
+
+void PPUniversalCellSetShowsCTA(BOOL showsCTA) {
+    PPUniversalCellShowsCTA = showsCTA;
+}
+
 #pragma mark - PPUniversalGradientView
 
 @implementation PPUniversalGradientView

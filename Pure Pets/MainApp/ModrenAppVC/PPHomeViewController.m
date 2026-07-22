@@ -8388,12 +8388,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                                         forIndexPath:indexPath];
             [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
             cell.delegate = strongSelf;
-
+                //    cell.
             PPUniversalCellViewModel *vm = item.universalViewModel;
             if (!vm || !vm.ModelObject) {
                 pp_stageCell(cell); return cell;
             }
-
+                    PPUniversalCellSetShowsCTA(NO);
             vm.indexPath = indexPath;
 
             [cell applyViewModel:vm

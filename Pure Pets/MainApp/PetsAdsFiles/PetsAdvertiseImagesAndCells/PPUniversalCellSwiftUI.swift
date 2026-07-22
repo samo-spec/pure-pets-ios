@@ -21,6 +21,7 @@ public enum PPUniversalCardContext: Equatable {
     case services
     case vets
     case adopt
+    case savedForLater
 
     var isAdvertisement: Bool {
         self == .ads || self == .homeAds
@@ -235,6 +236,7 @@ public struct PPUniversalCardActions {
     public var onDelete: ((PPUniversalCardModel) -> Void)?
     public var onQuantityChange: ((PPUniversalCardModel, Int) -> Void)?
     public var onNotifyWhenAvailable: ((PPUniversalCardModel) async -> Bool)?
+    public var onMoveToCart: ((PPUniversalCardModel) -> Void)?
 
     public init(
         onTap: ((PPUniversalCardModel) -> Void)? = nil,
@@ -244,7 +246,8 @@ public struct PPUniversalCardActions {
         onVisibilityToggle: ((PPUniversalCardModel) -> Void)? = nil,
         onDelete: ((PPUniversalCardModel) -> Void)? = nil,
         onQuantityChange: ((PPUniversalCardModel, Int) -> Void)? = nil,
-        onNotifyWhenAvailable: ((PPUniversalCardModel) async -> Bool)? = nil
+        onNotifyWhenAvailable: ((PPUniversalCardModel) async -> Bool)? = nil,
+        onMoveToCart: ((PPUniversalCardModel) -> Void)? = nil
     ) {
         self.onTap = onTap
         self.onShare = onShare
@@ -254,6 +257,7 @@ public struct PPUniversalCardActions {
         self.onDelete = onDelete
         self.onQuantityChange = onQuantityChange
         self.onNotifyWhenAvailable = onNotifyWhenAvailable
+        self.onMoveToCart = onMoveToCart
     }
 }
 
@@ -501,10 +505,13 @@ private final class PPUniversalCardStore: ObservableObject {
         self.favoriteCollection =
             PPUniversalCellSwiftUIBridge.favoritesCollection(for: objcContext)
         let showsLeadingAction = !viewModel.isOwner && !stableID.isEmpty
-        self.showsSaveForLater =
-            showsLeadingAction && resolvedContext == .market
-        self.showsFavorite =
-            showsLeadingAction && resolvedContext != .market
+        if resolvedContext == .savedForLater {
+            self.showsSaveForLater = false
+            self.showsFavorite = false
+        } else {
+            self.showsSaveForLater = showsLeadingAction && resolvedContext == .market
+            self.showsFavorite = showsLeadingAction && resolvedContext != .market
+        }
         self.showsOwnerMenu =
             viewModel.isOwner && forceShowsOwnerMenuButton
 
@@ -743,6 +750,13 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     func handlePrimaryAction() {
+        if context == .savedForLater {
+            if let viewModel = viewModel {
+                delegate?.ppUniversalCell_tapMove?(toCart: viewModel)
+            }
+            actions.onMoveToCart?(model)
+            return
+        }
         if !model.usesQuantityControl {
             tapCard()
             return
@@ -1023,6 +1037,8 @@ private final class PPUniversalCardStore: ObservableObject {
             return .vets
         case .forAdopt:
             return .adopt
+        case .forSavedForLater:
+            return .savedForLater
         default:
             return .market
         }
@@ -1430,7 +1446,7 @@ private struct PPUniversalCardRenderer: View {
         metrics: PPUniversalHomeCardGridMetrics
     ) -> some View {
         switch store.context {
-        case .market, .food, .accessory:
+        case .market, .food, .accessory, .savedForLater:
             commerceInformationGrid(metrics: metrics)
         case .adopt:
             adoptionInformationGrid(metrics: metrics)
@@ -1767,7 +1783,8 @@ private struct PPUniversalCardRenderer: View {
     private var usesPrimaryActionForBottomStack: Bool {
         store.model.usesQuantityControl ||
             store.context.isAdvertisement ||
-            store.isSuggestionsAd
+            store.isSuggestionsAd ||
+            store.context == .savedForLater
     }
 
     private var detailsAction: some View {
@@ -2541,6 +2558,12 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var primaryActionTitle: String {
+        if store.context == .savedForLater {
+            return PPUniversalCardStore.localized(
+                "MoveToCart",
+                fallback: "Move to cart"
+            )
+        }
         guard store.model.usesQuantityControl else {
             return PPUniversalCardStore.localized(
                 "Details",

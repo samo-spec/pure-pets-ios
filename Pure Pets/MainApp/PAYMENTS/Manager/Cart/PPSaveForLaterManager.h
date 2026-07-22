@@ -21,6 +21,9 @@ typedef void (^PPSaveForLaterRemoveCompletion)(NSError * _Nullable error);
 - (void)startListeningToSavedForLaterChanges;
 - (void)stopListeningToSavedForLaterChanges;
 
++ (BOOL)userFullWidthCellInSavedForLater NS_SWIFT_NAME(userFullWidthCellInSavedForLater());
++ (void)setUserFullWidthCellInSavedForLater:(BOOL)value NS_SWIFT_NAME(setUserFullWidthCellInSavedForLater(_:));
+
 @end
 
 NS_ASSUME_NONNULL_END

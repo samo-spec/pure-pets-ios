@@ -252,12 +252,12 @@ static inline CGFloat PPHomeProviderCategoryNavHeight(CGFloat width)
         return 76.0;
     }
     if (PPHomeWidthIsTablet(width)) {
-        return 72.0;
+        return 82.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 72.0;
+        return 82.0;
     }
-    return 72.0;
+    return 82.0;
 }
 
 static inline CGFloat PPHomeMarketplaceHeroHeight(CGFloat width)

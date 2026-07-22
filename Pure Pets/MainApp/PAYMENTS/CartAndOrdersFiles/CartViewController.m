@@ -19,19 +19,22 @@
 #import "PPChatsFunc.h"
 #import "PPHUD.h"
 #import "PPBackgroundView.h"
+#import "PPUniversalCell.h"
+#import "PPUniversalCellViewModel.h"
 #import <QuartzCore/QuartzCore.h>
 @import FirebaseFunctions;
 
 static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 static NSString *const kPPCartTableCellIdentifier = @"PPCartTableCell";
 static NSString *const kPPCartSavedDockCellIdentifier = @"PPCartSavedDockCell";
+static NSString *const kPPCartSavedGridCellIdentifier = @"PPCartSavedGridCell";
 static CGFloat const kCartScreenHorizontalInset = 16.0;
-static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
+static CGFloat const kCartFloatingSummaryBottomInset = 0.0;
 static CGFloat const kCartHeaderExpandedHeight = 232.0;
 static CGFloat const kCartHeaderCollapsedHeight = 76.0;
 static CGFloat const kCartHeaderTopInset = 8.0;
 static CGFloat const kCartHeaderTableSpacing = 18.0;
-static CGFloat const kCartTableBottomInset = 0.0;
+static CGFloat const kCartTableBottomInset = 16.0;
 static CGFloat const kCartHeaderStretchLimit = 34.0;
 static NSTimeInterval const kPPSavedDockMorphDuration = 0.30;
 static NSTimeInterval const kPPSavedRowRevealDuration = 0.28;
@@ -49,11 +52,11 @@ static UIColor *PPSavedForLaterDeferredAccentColor(void)
     if (@available(iOS 13.0, *)) {
         return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
-                ? [UIColor colorWithRed:0.94 green:0.69 blue:0.30 alpha:1.0]
-                : [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+                ? [UIColor colorWithRed:0.74 green:0.59 blue:0.64 alpha:1.0]
+                : [UIColor colorWithRed:0.56 green:0.42 blue:0.47 alpha:1.0];
         }];
     }
-    return [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+    return [UIColor colorWithRed:0.56 green:0.42 blue:0.47 alpha:1.0];
 }
 
 static UIFont *PPCartScaledFont(NSString *fontName,
@@ -191,7 +194,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     UIView *iconContainer = [[UIView alloc] init];
     iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
     iconContainer.backgroundColor = [accentColor colorWithAlphaComponent:0.13];
-    iconContainer.layer.cornerRadius = 22.0;
+    iconContainer.layer.cornerRadius = 18.0;
     iconContainer.layer.borderWidth = 0.8;
     [iconContainer pp_setBorderColor:[accentColor colorWithAlphaComponent:0.20]];
     [materialView.contentView addSubview:iconContainer];
@@ -298,12 +301,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         [accentLine.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor constant:14.0],
         [accentLine.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
         [accentLine.widthAnchor constraintEqualToConstant:4.0],
-        [accentLine.heightAnchor constraintEqualToConstant:38.0],
+        [accentLine.heightAnchor constraintEqualToConstant:34.0],
 
         [iconContainer.leadingAnchor constraintEqualToAnchor:accentLine.trailingAnchor constant:10.0],
         [iconContainer.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
-        [iconContainer.widthAnchor constraintEqualToConstant:44.0],
-        [iconContainer.heightAnchor constraintEqualToConstant:44.0],
+        [iconContainer.widthAnchor constraintEqualToConstant:40.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:40.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
@@ -438,6 +441,209 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 }
 
 @end
+
+@interface PPSavedForLaterGridTableCell : UITableViewCell <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate>
+@property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, copy) NSArray<CartItem *> *items;
+@property (nonatomic, copy, nullable) void (^onMoveToCart)(CartItem *item);
+@property (nonatomic, copy, nullable) void (^onRemove)(CartItem *item);
+- (void)configureWithItems:(NSArray<CartItem *> *)items;
+- (UICollectionViewCell * _Nullable)cellForItemID:(NSString *)itemID;
++ (CGFloat)heightForWidth:(CGFloat)width itemCount:(NSInteger)itemCount accessibility:(BOOL)accessibility;
+@end
+
+@implementation PPSavedForLaterGridTableCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
+    if (!self) return nil;
+
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+    layout.scrollDirection = UICollectionViewScrollDirectionVertical;
+    layout.minimumInteritemSpacing = 10.0;
+    layout.minimumLineSpacing = 12.0;
+    layout.sectionInset = UIEdgeInsetsMake(0.0, 16.0, 8.0, 16.0);
+
+    _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
+    _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionView.backgroundColor = UIColor.clearColor;
+    _collectionView.scrollEnabled = NO;
+    _collectionView.alwaysBounceVertical = NO;
+    _collectionView.showsVerticalScrollIndicator = NO;
+    _collectionView.dataSource = self;
+    _collectionView.delegate = self;
+    _collectionView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [PPUniversalCell pp_registerInCollectionView:_collectionView];
+    [self.contentView addSubview:_collectionView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_collectionView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [_collectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [_collectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [_collectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
+    ]];
+    return self;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.items = @[];
+    self.onMoveToCart = nil;
+    self.onRemove = nil;
+    [self.collectionView reloadData];
+}
+
+- (void)configureWithItems:(NSArray<CartItem *> *)items
+{
+    self.items = [items copy] ?: @[];
+    [self.collectionView reloadData];
+}
+
++ (CGFloat)heightForWidth:(CGFloat)width itemCount:(NSInteger)itemCount accessibility:(BOOL)accessibility
+{
+    if (itemCount <= 0 || width <= 0.0) return 0.0;
+    CGFloat availableWidth = MAX(0.0, width - 32.0);
+    CGFloat cardWidth = MAX(1.0, (availableWidth - 10.0) / 2.0);
+    CGFloat cardHeight = accessibility ? MAX(332.0, cardWidth * 1.62) : MAX(294.0, cardWidth * 1.58);
+    NSInteger rowCount = (itemCount + 1) / 2;
+    return (rowCount * cardHeight) + (MAX(0, rowCount - 1) * 12.0) + 8.0;
+}
+
+- (PPUniversalCellViewModel *)pp_viewModelForItem:(CartItem *)item indexPath:(NSIndexPath *)indexPath
+{
+    PPUniversalCellViewModel *viewModel = [[PPUniversalCellViewModel alloc] initWithModel:item
+                                                                                    context:PPCellForSavedForLater];
+    viewModel.ModelID = item.itemID ?: @"";
+    viewModel.title = item.name ?: @"";
+    viewModel.subtitle = @"";
+    viewModel.imageURL = item.imageURL ?: @"";
+    viewModel.imageSize = CGSizeMake(1.0, 1.0);
+    viewModel.price = @(item.price);
+    viewModel.finalPrice = @(item.price);
+    viewModel.priceText = [PPChatsFunc formattedCurrency:item.price] ?: @"";
+    viewModel.currencyCode = @"QAR";
+    viewModel.itemQuantitiy = MAX(1, item.quantity);
+    viewModel.availabilityText = item.stockQuantity != NSNotFound && item.stockQuantity <= 0
+        ? kLang(@"Out of stock")
+        : kLang(@"Available");
+    viewModel.placeholder = [UIImage imageNamed:@"placeholder"];
+    viewModel.indexPath = indexPath;
+    viewModel.publiclyVisible = YES;
+    return viewModel;
+}
+
+- (void)pp_removeButtonTapped:(UIButton *)button
+{
+    NSIndexPath *indexPath = [self.collectionView indexPathForCell:(UICollectionViewCell *)button.superview];
+    if (!indexPath || indexPath.item >= (NSInteger)self.items.count || !self.onRemove) return;
+    self.onRemove(self.items[indexPath.item]);
+}
+
+- (void)pp_addRemoveButtonToCell:(UICollectionViewCell *)cell
+{
+    UIView *oldButton = [cell viewWithTag:9741];
+    [oldButton removeFromSuperview];
+
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.tag = 9741;
+    button.accessibilityLabel = kLang(@"delete");
+    button.tintColor = UIColor.systemRedColor;
+    button.backgroundColor = [UIColor systemBackgroundColor];
+    button.layer.cornerRadius = 18.0;
+    button.layer.masksToBounds = YES;
+    button.layer.borderWidth = 0.7;
+    button.layer.borderColor = [UIColor.systemRedColor colorWithAlphaComponent:0.22].CGColor;
+    [button setImage:[UIImage systemImageNamed:@"trash"] forState:UIControlStateNormal];
+    [button addTarget:self action:@selector(pp_removeButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [cell addSubview:button];
+    [NSLayoutConstraint activateConstraints:@[
+        [button.topAnchor constraintEqualToAnchor:cell.topAnchor constant:10.0],
+        [button.trailingAnchor constraintEqualToAnchor:cell.trailingAnchor constant:-10.0],
+        [button.widthAnchor constraintEqualToConstant:36.0],
+        [button.heightAnchor constraintEqualToConstant:36.0]
+    ]];
+}
+
+- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    if (indexPath.item >= (NSInteger)self.items.count) return cell;
+
+    CartItem *item = self.items[indexPath.item];
+    PPUniversalCellViewModel *viewModel = [self pp_viewModelForItem:item indexPath:indexPath];
+    cell.delegate = self;
+    cell.indexPath = indexPath;
+    cell.context = PPCellForSavedForLater;
+    cell.layoutMode = PPCellLayoutModePinterest;
+    cell.discountStyle = PPDiscountStylePlain;
+    cell.hideTopBadge = YES;
+    cell.showsSubtitle = NO;
+    cell.forceShowsOwnerMenuButton = NO;
+    cell.dataViewPresentation = YES;
+    cell.userBordersV2 = YES;
+    cell.onTap = nil;
+    [cell applyViewModel:viewModel
+                 context:PPCellForSavedForLater
+              layoutMode:PPCellLayoutModePinterest
+            discountMode:PPDiscountStylePlain
+              imageLoader:^(UIImageView *imageView, NSString *url, UIImage *placeholder, UIView *card) {
+        (void)card;
+        [GM setImageFromUrlString:url imageView:imageView phImage:@"placeholder"];
+    }];
+    [self pp_addRemoveButtonToCell:cell];
+    return cell;
+}
+
+- (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section
+{
+    (void)collectionView;
+    (void)section;
+    return self.items.count;
+}
+
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)indexPath;
+    UIEdgeInsets insets = ((UICollectionViewFlowLayout *)layout).sectionInset;
+    CGFloat width = collectionView.bounds.size.width - insets.left - insets.right;
+    CGFloat cardWidth = MAX(1.0, (width - 10.0) / 2.0);
+    BOOL accessibility = UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+    CGFloat cardHeight = accessibility ? MAX(332.0, cardWidth * 1.62) : MAX(294.0, cardWidth * 1.58);
+    return CGSizeMake(cardWidth, cardHeight);
+}
+
+- (UICollectionViewCell *)cellForItemID:(NSString *)itemID
+{
+    if (itemID.length == 0) return nil;
+    for (NSInteger index = 0; index < (NSInteger)self.items.count; index += 1) {
+        if ([self.items[index].itemID isEqualToString:itemID]) {
+            return [self.collectionView cellForItemAtIndexPath:[NSIndexPath indexPathForItem:index inSection:0]];
+        }
+    }
+    return nil;
+}
+
+- (void)PPUniversalCell_tapMoveToCart:(PPUniversalCellViewModel *)universalModel
+{
+    for (CartItem *item in self.items) {
+        if ([item.itemID isEqualToString:universalModel.ModelID]) {
+            if (self.onMoveToCart) self.onMoveToCart(item);
+            return;
+        }
+    }
+}
+
+@end
+
 /*
 @interface PPInsetLabel : UILabel
 @property (nonatomic, assign) UIEdgeInsets textInsets;
@@ -525,8 +731,12 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
 - (void)pp_updateSavedForLaterFooter;
 - (NSArray<CartItem *> *)pp_savedForLaterItems;
+- (BOOL)pp_savedForLaterGridMode;
+- (NSInteger)pp_savedForLaterInlineRowCount;
 - (BOOL)pp_isSavedForLaterDockIndexPath:(NSIndexPath *)indexPath;
+- (BOOL)pp_isSavedForLaterGridIndexPath:(NSIndexPath *)indexPath;
 - (CartItem *)pp_savedForLaterItemAtIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_scrollToLastSavedForLaterRowAnimated:(BOOL)animated;
 - (void)pp_setSavedForLaterExpanded:(BOOL)expanded
                             animated:(BOOL)animated
                           sourceView:(UIView * _Nullable)sourceView;
@@ -535,10 +745,16 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_registerStockNotificationForSavedItem:(CartItem *)item;
 - (void)pp_configureActiveCartCell:(PPCartTableCell *)cell item:(CartItem *)item;
 - (void)pp_configureSavedCartCell:(PPCartTableCell *)cell item:(CartItem *)item;
+- (PPSavedForLaterGridTableCell *)pp_savedForLaterGridCell;
+- (void)pp_configureSavedForLaterGridCell:(PPSavedForLaterGridTableCell *)cell;
+- (UIView *)pp_savedForLaterSourceViewForItem:(CartItem *)item;
 - (void)pp_refreshVisibleSavedItemID:(NSString * _Nullable)itemID;
 - (void)pp_animateTransferSnapshot:(UIView * _Nullable)snapshot
                      toTargetFrame:(CGRect)targetFrame
                         completion:(void (^ _Nullable)(void))completion;
+- (void)pp_presentGridSavedMoveForItem:(CartItem *)item
+                       sourceSnapshot:(UIView * _Nullable)sourceSnapshot
+                               partial:(BOOL)partial;
 - (void)pp_performSavedTransferTableUpdates:(dispatch_block_t)updates
                                   completion:(void (^ _Nullable)(BOOL finished))completion;
 
@@ -579,6 +795,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:kPPCartTableCellIdentifier];
     [self.cartTableView registerClass:[PPSavedForLaterDockTableCell class] forCellReuseIdentifier:kPPCartSavedDockCellIdentifier];
+    [self.cartTableView registerClass:[PPSavedForLaterGridTableCell class] forCellReuseIdentifier:kPPCartSavedGridCellIdentifier];
 
     // Start hidden — pp_runEntranceAnimationIfNeeded reveals with spring animation.
     self.cartTableView.alpha = 0.0;
@@ -663,7 +880,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     }
 
     self.summaryView.alpha = 0.0;
-    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 00.0);
 }
 
 - (void)viewDidLayoutSubviews {
@@ -893,7 +1110,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         backgroundView.userInteractionEnabled = NO;
         backgroundView.clipsToBounds = YES;
         backgroundView.overrideBorders = YES;
-        backgroundView.overrideCornerRadius = 0.01;
+       // backgroundView.overrideCornerRadius = 0.01;
         backgroundView.PPHeroApexUseShimmer = NO;
         backgroundView.PPHeroApexUseUnderFingerMotion = NO;
         backgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
@@ -930,14 +1147,14 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.premiumBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
     self.premiumBackgroundView.overrideBorders = YES;
     self.premiumBackgroundView.overrideBorderColor = UIColor.clearColor;
-    self.premiumBackgroundView.overrideCornerRadius = 0.01;
-    self.premiumBackgroundView.overrideSurfaceColor = AppBackgroundClr;
-    self.premiumBackgroundView.accentColorOverride = AppPrimaryClr;
-    self.premiumBackgroundView.overrideTopGlowColor = AppPrimaryClrShiner ?: AppPrimaryClr;
-    self.premiumBackgroundView.overrideCenterGlowColor = AppPrimaryClr;
-    self.premiumBackgroundView.overrideBottomGlowColor = AppPrimaryClr;
+   // self.premiumBackgroundView.overrideCornerRadius = 0.01;
+    //self.premiumBackgroundView.overrideSurfaceColor = AppBackgroundClr;
+   // self.premiumBackgroundView.accentColorOverride = AppPrimaryClr;
+  // self.premiumBackgroundView.overrideTopGlowColor = AppPrimaryClrShiner ?: AppPrimaryClr;
+    //self.premiumBackgroundView.overrideCenterGlowColor = AppPrimaryClr;
+   // self.premiumBackgroundView.overrideBottomGlowColor = AppPrimaryClr;
     [self.premiumBackgroundView reapplyPalette];
-    self.premiumBackgroundView.layer.shadowOpacity = 0.0f;
+  //  self.premiumBackgroundView.layer.shadowOpacity = 0.0f;
 }
 
 - (UILabel *)pp_buildMetricLabel
@@ -1803,9 +2020,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         NSInteger displayedRows = 0;
         if ([self.cartTableView numberOfSections] > 0) {
             NSInteger totalDisplayedRows = [self.cartTableView numberOfRowsInSection:0];
-            NSInteger savedChromeRows = [self pp_shouldShowSavedForLaterInlineRows]
-                ? 1 + [self pp_savedForLaterItems].count
-                : 0;
+            NSInteger savedChromeRows = [self pp_savedForLaterInlineRowCount];
             displayedRows = MAX(0, totalDisplayedRows - savedChromeRows);
         }
         if (displayedRows == currentRows) {
@@ -2062,6 +2277,21 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     return [CartManager sharedManager].cartItems.count;
 }
 
+- (BOOL)pp_savedForLaterGridMode
+{
+    return ![PPSaveForLaterManager userFullWidthCellInSavedForLater];
+}
+
+- (NSInteger)pp_savedForLaterInlineRowCount
+{
+    if (![self pp_shouldShowSavedForLaterInlineRows]) {
+        return 0;
+    }
+    return [self pp_savedForLaterGridMode]
+        ? 2
+        : 1 + [self pp_savedForLaterItems].count;
+}
+
 - (NSInteger)pp_savedForLaterDockRowIndex
 {
     return [self pp_cartItemsCount];
@@ -2086,9 +2316,18 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     indexPath.row == [self pp_savedForLaterDockRowIndex];
 }
 
+- (BOOL)pp_isSavedForLaterGridIndexPath:(NSIndexPath *)indexPath
+{
+    return [self pp_savedForLaterGridMode] &&
+    indexPath &&
+    indexPath.section == 0 &&
+    [self pp_shouldShowSavedForLaterInlineRows] &&
+    indexPath.row == [self pp_savedForLaterDockRowIndex] + 1;
+}
+
 - (CartItem *)pp_savedForLaterItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (!indexPath || ![self pp_shouldShowSavedForLaterInlineRows]) {
+    if (!indexPath || [self pp_savedForLaterGridMode] || ![self pp_shouldShowSavedForLaterInlineRows]) {
         return nil;
     }
     NSInteger savedIndex = indexPath.row - [self pp_savedForLaterDockRowIndex] - 1;
@@ -2105,12 +2344,41 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         return @[];
     }
     NSInteger dockRow = [self pp_savedForLaterDockRowIndex];
+    if ([self pp_savedForLaterGridMode]) {
+        return @[
+            [NSIndexPath indexPathForRow:dockRow inSection:0],
+            [NSIndexPath indexPathForRow:dockRow + 1 inSection:0]
+        ];
+    }
+
     NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray arrayWithCapacity:(NSUInteger)savedCount + 1];
     [indexPaths addObject:[NSIndexPath indexPathForRow:dockRow inSection:0]];
     for (NSInteger index = 0; index < savedCount; index += 1) {
         [indexPaths addObject:[NSIndexPath indexPathForRow:dockRow + 1 + index inSection:0]];
     }
     return [indexPaths copy];
+}
+
+- (void)pp_scrollToLastSavedForLaterRowAnimated:(BOOL)animated
+{
+    if (![self pp_shouldShowSavedForLaterInlineRows]) {
+        return;
+    }
+
+    NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
+    if (savedItems.count == 0 || [self.cartTableView numberOfSections] == 0) {
+        return;
+    }
+
+    NSInteger targetRow = [self pp_savedForLaterDockRowIndex] + ([self pp_savedForLaterGridMode] ? 1 : savedItems.count);
+    if (targetRow < 0 || targetRow >= [self.cartTableView numberOfRowsInSection:0]) {
+        return;
+    }
+
+    NSIndexPath *targetIndexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
+    [self.cartTableView scrollToRowAtIndexPath:targetIndexPath
+                              atScrollPosition:UITableViewScrollPositionBottom
+                                      animated:animated && !UIAccessibilityIsReduceMotionEnabled()];
 }
 
 - (UIView *)pp_snapshotForSourceView:(UIView *)sourceView
@@ -2239,7 +2507,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         sortedArrayUsingSelector:@selector(compare:)];
     NSMutableArray<NSIndexPath *> *savedPaths = [NSMutableArray array];
     for (NSIndexPath *indexPath in visiblePaths) {
-        if ([self pp_savedForLaterItemAtIndexPath:indexPath]) {
+        if ([self pp_savedForLaterItemAtIndexPath:indexPath] || [self pp_isSavedForLaterGridIndexPath:indexPath]) {
             [savedPaths addObject:indexPath];
         }
     }
@@ -2257,6 +2525,19 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     for (NSInteger index = 0; index < (NSInteger)savedPaths.count; index += 1) {
         UITableViewCell *cell = [self.cartTableView cellForRowAtIndexPath:savedPaths[index]];
         if (!cell) continue;
+
+        if ([self pp_isSavedForLaterGridIndexPath:savedPaths[index]]) {
+            cell.alpha = 0.0;
+            cell.transform = CGAffineTransformMakeTranslation(0.0, -18.0);
+            [UIView animateWithDuration:kPPSavedRowRevealDuration
+                                  delay:0.04
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                cell.alpha = 1.0;
+                cell.transform = CGAffineTransformIdentity;
+            } completion:nil];
+            continue;
+        }
 
         CGFloat offset = MIN(34.0, 18.0 + (index * 4.0));
         cell.alpha = 0.0;
@@ -2331,6 +2612,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                      completion:^{
             self.isPerformingTableMutation = NO;
             self.cartTableView.userInteractionEnabled = YES;
+            [self pp_scrollToLastSavedForLaterRowAnimated:animated];
             [self pp_applyEmptyStateIfNeeded];
         }];
         return;
@@ -2371,6 +2653,15 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         return nil;
     }
 
+    if ([self pp_savedForLaterGridMode]) {
+        for (CartItem *item in [self pp_savedForLaterItems]) {
+            if ([item.itemID isEqualToString:itemID]) {
+                return [NSIndexPath indexPathForRow:[self pp_savedForLaterDockRowIndex] + 1 inSection:0];
+            }
+        }
+        return nil;
+    }
+
     NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
     NSInteger dockRow = [self pp_savedForLaterDockRowIndex];
     for (NSInteger index = 0; index < (NSInteger)savedItems.count; index += 1) {
@@ -2380,6 +2671,16 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         }
     }
     return nil;
+}
+
+- (UIView *)pp_savedForLaterSourceViewForItem:(CartItem *)item
+{
+    if ([self pp_savedForLaterGridMode]) {
+        PPSavedForLaterGridTableCell *gridCell = [self pp_savedForLaterGridCell];
+        return [gridCell cellForItemID:item.itemID];
+    }
+    NSIndexPath *indexPath = [self pp_indexPathForSavedForLaterItemID:item.itemID];
+    return indexPath ? [self.cartTableView cellForRowAtIndexPath:indexPath] : nil;
 }
 
 - (CartItem *)pp_copySavedCartItem:(CartItem *)item
@@ -2541,6 +2842,30 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     };
 }
 
+- (PPSavedForLaterGridTableCell *)pp_savedForLaterGridCell
+{
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[self pp_savedForLaterDockRowIndex] + 1 inSection:0];
+    UITableViewCell *cell = [self.cartTableView cellForRowAtIndexPath:indexPath];
+    return [cell isKindOfClass:PPSavedForLaterGridTableCell.class]
+        ? (PPSavedForLaterGridTableCell *)cell
+        : nil;
+}
+
+- (void)pp_configureSavedForLaterGridCell:(PPSavedForLaterGridTableCell *)cell
+{
+    if (![cell isKindOfClass:PPSavedForLaterGridTableCell.class]) return;
+    [cell configureWithItems:[self pp_savedForLaterItems]];
+    __weak typeof(self) weakSelf = self;
+    cell.onMoveToCart = ^(CartItem *item) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) [strongSelf pp_moveSavedForLaterItemToCart:item];
+    };
+    cell.onRemove = ^(CartItem *item) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) [strongSelf pp_confirmRemoveSavedForLaterItem:item];
+    };
+}
+
 - (void)pp_refreshVisibleSavedItemID:(NSString *)itemID
 {
     if (itemID.length == 0) return;
@@ -2550,6 +2875,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     CartItem *item = [self pp_savedForLaterItemAtIndexPath:indexPath];
     if ([cell isKindOfClass:PPCartTableCell.class] && item) {
         [self pp_configureSavedCartCell:cell item:item];
+    } else if ([self pp_savedForLaterGridMode]) {
+        [self pp_configureSavedForLaterGridCell:[self pp_savedForLaterGridCell]];
     }
 }
 
@@ -2788,6 +3115,64 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     });
 }
 
+- (void)pp_presentGridSavedMoveForItem:(CartItem *)item
+                       sourceSnapshot:(UIView *)sourceSnapshot
+                               partial:(BOOL)partial
+{
+    NSInteger targetRow = [self pp_cartRowForItemID:item.itemID];
+    NSInteger savedCount = [self pp_savedForLaterItems].count;
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+    self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+    self.savedForLaterExpanded = savedCount > 0;
+
+    [UIView performWithoutAnimation:^{
+        [self.cartTableView reloadData];
+        [self.cartTableView layoutIfNeeded];
+    }];
+
+    if (targetRow == NSNotFound) {
+        [sourceSnapshot removeFromSuperview];
+        self.isPerformingTableMutation = NO;
+        self.cartTableView.userInteractionEnabled = YES;
+        [self updateTotalLabel];
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        if (partial) {
+            [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
+        } else {
+            [PPHUD showError:kLang(@"SomethingWentWrong")];
+        }
+        return;
+    }
+
+    CGRect targetFrame = [self pp_controllerFrameForCartRow:targetRow];
+    [self pp_animateTransferSnapshot:sourceSnapshot
+                       toTargetFrame:targetFrame
+                          completion:^{
+        [self pp_finishSavedForLaterArrivalAtRow:targetRow
+                                     savedCount:savedCount
+                                      completion:^{
+            self.isPerformingTableMutation = NO;
+            self.cartTableView.userInteractionEnabled = YES;
+            [self updateTotalLabel];
+            [self pp_notifyCartBadgeAndCollections];
+            [self pp_updateSavedForLaterFooter];
+            [self pp_applyEmptyStateIfNeeded];
+
+            if (partial) {
+                UINotificationFeedbackGenerator *notification = [[UINotificationFeedbackGenerator alloc] init];
+                [notification prepare];
+                [notification notificationOccurred:UINotificationFeedbackTypeError];
+                [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
+            } else {
+                [self pp_finishSavedForLaterMoveFeedback];
+            }
+        }];
+    }];
+}
+
 - (void)pp_presentSuccessfulSavedMoveForItem:(CartItem *)item
                               sourceIndexPath:(NSIndexPath *)sourceIndexPath
                                sourceSnapshot:(UIView *)sourceSnapshot
@@ -2806,6 +3191,11 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.pendingSavedForLaterOperation = nil;
     self.completedSavedForLaterItemID = nil;
     self.cartTableView.userInteractionEnabled = NO;
+
+    if ([self pp_savedForLaterGridMode]) {
+        [self pp_presentGridSavedMoveForItem:item sourceSnapshot:sourceSnapshot partial:NO];
+        return;
+    }
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [sourceSnapshot removeFromSuperview];
@@ -3016,6 +3406,11 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.completedSavedForLaterItemID = nil;
     self.cartTableView.userInteractionEnabled = NO;
 
+    if ([self pp_savedForLaterGridMode]) {
+        [self pp_presentGridSavedMoveForItem:item sourceSnapshot:sourceSnapshot partial:YES];
+        return;
+    }
+
     if (targetRow == NSNotFound) {
         [sourceSnapshot removeFromSuperview];
         [self.cartTableView reloadData];
@@ -3131,6 +3526,22 @@ static UIFont *PPCartScaledFont(NSString *fontName,
                                            oldSavedCount:(NSInteger)oldSavedCount
 {
     NSInteger newSavedCount = [self pp_savedForLaterItems].count;
+
+    if ([self pp_savedForLaterGridMode] && self.savedForLaterExpanded) {
+        self.pendingSavedForLaterItemID = nil;
+        self.pendingSavedForLaterOperation = nil;
+        self.completedSavedForLaterItemID = nil;
+        self.savedForLaterExpanded = newSavedCount > 0;
+        [UIView performWithoutAnimation:^{
+            [self.cartTableView reloadData];
+            [self.cartTableView layoutIfNeeded];
+        }];
+        self.isPerformingTableMutation = NO;
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        return;
+    }
+
     NSMutableArray<NSIndexPath *> *deleteIndexPaths = [NSMutableArray array];
     NSIndexPath *dockIndexPath = [NSIndexPath indexPathForRow:[self pp_savedForLaterDockRowIndex] inSection:0];
     if (oldIndexPath) {
@@ -3246,8 +3657,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     NSInteger oldCartCount = [self pp_cartItemsCount];
     NSInteger oldCartRow = [self pp_cartRowForItemID:item.itemID];
     NSIndexPath *sourceIndexPath = [self pp_indexPathForSavedForLaterItemID:item.itemID];
-    UITableViewCell *sourceCell = sourceIndexPath ? [self.cartTableView cellForRowAtIndexPath:sourceIndexPath] : nil;
-    UIView *transferSnapshot = [self pp_snapshotForSourceView:sourceCell];
+    UIView *sourceView = [self pp_savedForLaterSourceViewForItem:item];
+    UIView *transferSnapshot = [self pp_snapshotForSourceView:sourceView];
     [self pp_setSavedForLaterPendingItemID:item.itemID operation:@"move"];
     self.isPerformingTableMutation = YES;
     self.cartTableView.userInteractionEnabled = NO;
@@ -3380,7 +3791,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     (void)section;
     NSInteger rows = [self pp_cartItemsCount];
     if ([self pp_shouldShowSavedForLaterInlineRows]) {
-        rows += 1 + [self pp_savedForLaterItems].count;
+        rows += [self pp_savedForLaterInlineRowCount];
     }
     return rows;
 }
@@ -3395,12 +3806,22 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
         dockCell.boundaryLineView.hidden = !hasActiveCartBoundary;
         dockCell.boundaryAccentView.hidden = !hasActiveCartBoundary;
-        dockCell.boundaryTopConstraint.constant = hasActiveCartBoundary ? 18.0 : 8.0;
-        dockCell.dockTopConstraint.constant = hasActiveCartBoundary ? 34.0 : 9.0;
+        dockCell.boundaryTopConstraint.constant = hasActiveCartBoundary ? 26.0 : 8.0;
+        dockCell.dockTopConstraint.constant = hasActiveCartBoundary ? 46.0 : 9.0;
         dockCell.dockBottomConstraint.constant = hasActiveCartBoundary ? -2.0 : -9.0;
         dockCell.layer.masksToBounds = NO;
         dockCell.clipsToBounds = NO;
         return dockCell;
+    }
+
+    if ([self pp_isSavedForLaterGridIndexPath:indexPath]) {
+        PPSavedForLaterGridTableCell *gridCell =
+        [tableView dequeueReusableCellWithIdentifier:kPPCartSavedGridCellIdentifier
+                                        forIndexPath:indexPath];
+        [self pp_configureSavedForLaterGridCell:gridCell];
+        gridCell.layer.masksToBounds = NO;
+        gridCell.clipsToBounds = NO;
+        return gridCell;
     }
 
     PPCartTableCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPCartTableCellIdentifier];
@@ -3439,13 +3860,17 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         if (!hasActiveCartBoundary) {
             return isAccessibilitySize ? 110.0 : 88.0;
         }
-        return isAccessibilitySize ? 130.0 : 108.0;
+        return isAccessibilitySize ? 142.0 : 100.0;
     }
-    if ([self pp_savedForLaterItemAtIndexPath:indexPath]) {
+
+    if ([self pp_isSavedForLaterGridIndexPath:indexPath]) {
         BOOL isAccessibilitySize =
         UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
-        return isAccessibilitySize ? 174.0 : 154.0;
+        return [PPSavedForLaterGridTableCell heightForWidth:tableView.bounds.size.width
+                                                 itemCount:[self pp_savedForLaterItems].count
+                                             accessibility:isAccessibilitySize];
     }
+
     return 134.0;
 }
 
@@ -3454,7 +3879,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
     if ([self pp_isSavedForLaterDockIndexPath:indexPath]) {
         UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
-        [self pp_setSavedForLaterExpanded:NO
+        [self pp_setSavedForLaterExpanded:!self.savedForLaterExpanded
                                   animated:YES
                                 sourceView:cell];
     }
@@ -3652,7 +4077,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         self.savedForLaterFooterPillButton = nil;
         self.cartTableView.tableFooterView = nil;
         if (!self.isPerformingTableMutation) {
-            NSInteger expectedRows = [self pp_cartItemsCount] + 1 + saved.count;
+            NSInteger expectedRows = [self pp_cartItemsCount] + [self pp_savedForLaterInlineRowCount];
             NSInteger displayedRows = [self.cartTableView numberOfSections] > 0
                 ? [self.cartTableView numberOfRowsInSection:0]
                 : 0;
@@ -3668,6 +4093,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
                 (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:dockIndexPath];
                 if ([dockCell isKindOfClass:PPSavedForLaterDockTableCell.class]) {
                     [dockCell configureWithSavedCount:saved.count expanded:YES];
+                }
+                if ([self pp_savedForLaterGridMode]) {
+                    [self pp_configureSavedForLaterGridCell:[self pp_savedForLaterGridCell]];
                 }
             }
         }
