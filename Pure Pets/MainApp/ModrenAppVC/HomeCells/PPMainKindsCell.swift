@@ -404,7 +404,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             self.surfaceView.backgroundColor = .clear
             self.materialView.backgroundColor = selected
                 ? PPMainKindsCellPalette.card
-                : PPMainKindsCellPalette.card.withAlphaComponent(reduceTransparency ? 0.46 : 0.60)
+                : PPMainKindsCellPalette.card.withAlphaComponent(reduceTransparency ? 0.46 : 0.82)
             
             self.surfaceView.layer.borderColor = (
                 self.usesRestoredSelectionAppearance && selected

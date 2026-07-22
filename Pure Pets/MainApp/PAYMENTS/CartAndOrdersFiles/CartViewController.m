@@ -862,7 +862,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self.summaryView setCollapsible:YES initiallyCollapsed:NO];
     
     [self.view addSubview:self.summaryView];
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-12.0].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 

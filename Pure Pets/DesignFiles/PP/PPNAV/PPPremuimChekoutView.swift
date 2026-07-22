@@ -841,7 +841,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private func buildLayout() {
         contentStackBottomConstraint = contentStack.bottomAnchor.constraint(
             equalTo: cardView.bottomAnchor,
-            constant: -12
+            constant: -24
         )
         contentStackTopConstraint = contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18)
         iconShellWidthConstraint = iconShell.widthAnchor.constraint(equalToConstant: 38)
@@ -948,7 +948,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         )
         let verticalPadding: CGFloat = summaryCollapsed ? 12.0 : 18.0
         let topPadding = verticalPadding
-        let bottomPadding = verticalPadding
+        let bottomPadding: CGFloat = 24.0
         return ceil(contentSize.height + topPadding + bottomPadding)
     }
 
@@ -1330,7 +1330,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             self.iconViewHeightConstraint?.constant = self.summaryCollapsed ? 13 : 17
             self.iconShell.layer.cornerRadius = self.summaryCollapsed ? 14 : 19
             self.contentStackTopConstraint?.constant = self.summaryCollapsed ? 12 : 18
-            self.contentStackBottomConstraint?.constant = self.summaryCollapsed ? -12 : -18
+            self.contentStackBottomConstraint?.constant = -24
             self.contentStack.spacing = self.summaryCollapsed ? 9 : 13
             self.cardView.layer.cornerRadius = self.summaryCollapsed ? 28 : 34
             self.separator.alpha = (shouldShowExpandedPreview || shouldShowDetails || shouldShowCompact) ? 0.70 : 0.20
