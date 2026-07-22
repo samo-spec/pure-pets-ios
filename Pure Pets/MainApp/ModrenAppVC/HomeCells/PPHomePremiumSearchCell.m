@@ -577,18 +577,8 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 {
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     NSArray<UIColor *> *palette = @[
-        [UIColor colorWithRed:0.96 green:0.40 blue:0.32 alpha:1.0],   // coral
-        [UIColor colorWithRed:0.20 green:0.65 blue:0.85 alpha:1.0],   // ocean blue
-        [UIColor colorWithRed:0.58 green:0.39 blue:0.87 alpha:1.0],   // amethyst
-        [UIColor colorWithRed:0.18 green:0.75 blue:0.54 alpha:1.0],   // emerald
-        [UIColor colorWithRed:0.94 green:0.60 blue:0.22 alpha:1.0],   // tangerine
-        [UIColor colorWithRed:0.84 green:0.32 blue:0.62 alpha:1.0],   // rose
-        [UIColor colorWithRed:0.30 green:0.55 blue:0.92 alpha:1.0],   // royal blue
-        [UIColor colorWithRed:0.16 green:0.72 blue:0.42 alpha:1.0],   // jade
-        [UIColor colorWithRed:0.78 green:0.52 blue:0.20 alpha:1.0],   // amber
-        [UIColor colorWithRed:0.46 green:0.32 blue:0.78 alpha:1.0],   // indigo
-        [UIColor colorWithRed:0.90 green:0.44 blue:0.46 alpha:1.0],   // blush
-        [UIColor colorWithRed:0.22 green:0.60 blue:0.72 alpha:1.0],   // teal
+        UIColor.labelColor,
+        AppPrimaryClr ?: UIColor.systemPinkColor,
     ];
     UIColor *base = palette[_placeholderColorIndex % palette.count];
     _placeholderColorIndex = (_placeholderColorIndex + 1) % palette.count;

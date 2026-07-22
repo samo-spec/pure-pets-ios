@@ -1410,7 +1410,7 @@ static BOOL PPSelectOptionTextContainsAny(NSString *text, NSArray<NSString *> *n
     if ([key containsString:@"glove"] || [key containsString:@"saddle"]) return UIColor.systemBrownColor;
     if ([key containsString:@"hood"] || [key containsString:@"jess"] || [key containsString:@"collar"] || [key containsString:@"halter"]) return UIColor.systemIndigoColor;
     if ([key containsString:@"nest"] || [key containsString:@"bed"] || [key containsString:@"cage"] || [key containsString:@"carrier"]) return UIColor.systemOrangeColor;
-    if (mainKindID == 1) return UIColor.systemTealColor;
+    if (mainKindID == 1) return [UIColor colorWithRed:0.08 green:0.68 blue:0.68 alpha:1.0];
     return AppPrimaryClr ?: UIColor.systemPinkColor;
 }
 

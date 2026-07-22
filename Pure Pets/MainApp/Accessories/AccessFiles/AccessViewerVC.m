@@ -1478,8 +1478,7 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     self.accessoryCollectionView.showsHorizontalScrollIndicator = NO;
     self.accessoryCollectionView.decelerationRate = UIScrollViewDecelerationRateFast;
     self.accessoryCollectionView.clipsToBounds    = NO;
-    [self.accessoryCollectionView registerClass:[PPUniversalCell class]
-                     forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
+    [PPUniversalCell pp_registerInCollectionView:self.accessoryCollectionView];
     [self.suggestionsContainerView addSubview:self.accessoryCollectionView];
 
     // ── Empty-state label ──

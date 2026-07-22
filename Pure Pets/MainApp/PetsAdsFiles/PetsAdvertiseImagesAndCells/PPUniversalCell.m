@@ -48,6 +48,22 @@ void PPUniversalCellSetShowsCTA(BOOL showsCTA) {
 
 @implementation PPUniversalCell
 
+@synthesize delegate = _delegate;
+@synthesize indexPath = _indexPath;
+@synthesize context = _context;
+@synthesize layoutMode = _layoutMode;
+@synthesize discountStyle = _discountStyle;
+@synthesize onTap = _onTap;
+@synthesize quantity = _quantity;
+@synthesize hideTopBadge = _hideTopBadge;
+@synthesize showCTA = _showCTA;
+@synthesize forceShowsOwnerMenuButton = _forceShowsOwnerMenuButton;
+@synthesize showsSubtitle = _showsSubtitle;
+@synthesize dataViewPresentation = _dataViewPresentation;
+@synthesize userBordersV2 = _userBordersV2;
+@synthesize imageView = _imageView;
+@synthesize imageContainer = _imageContainer;
+
 + (NSString *)reuseIdentifier
 {
     return @"PPUniversalCell";
@@ -82,6 +98,53 @@ void PPUniversalCellSetShowsCTA(BOOL showsCTA) {
     }
     if (swiftCell && [cell isKindOfClass:swiftCell]) return YES;
     return NO;
+}
+
+- (void)setQuantity:(NSInteger)quantity animated:(BOOL)animated
+{
+    _quantity = quantity;
+}
+
+- (void)collapseStepper:(BOOL)animated
+{
+}
+
+- (void)refreshThemeAppearance
+{
+}
+
+- (void)stopMediaPlayback
+{
+}
+
+- (void)applyViewModel:(PPUniversalCellViewModel *)vm
+               context:(PPCellContext)context
+            layoutMode:(PPManagerCellLayoutMode)layout
+          discountMode:(PPDiscountStyle)discountStyle
+           imageLoader:(PPImageLoader)loader
+{
+    _context = context;
+    _layoutMode = layout;
+    _discountStyle = discountStyle;
+    if (vm) {
+        _indexPath = vm.indexPath;
+    }
+}
+
+- (UIImageView *)imageView
+{
+    if (!_imageView) {
+        _imageView = [[UIImageView alloc] init];
+    }
+    return _imageView;
+}
+
+- (PPUniversalGradientView *)imageContainer
+{
+    if (!_imageContainer) {
+        _imageContainer = [[PPUniversalGradientView alloc] init];
+    }
+    return _imageContainer;
 }
 
 @end

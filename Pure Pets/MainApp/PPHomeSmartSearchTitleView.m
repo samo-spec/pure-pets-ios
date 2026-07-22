@@ -505,9 +505,8 @@ static UIFont *PPSSBScaledFont(UIFont *font,
 {
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     NSArray<UIColor *> *palette = @[
-        AppPrimaryClr ?: UIColor.systemPinkColor,
         UIColor.labelColor,
-        UIColor.systemTealColor,
+        AppPrimaryClr ?: UIColor.systemPinkColor,
     ];
     UIColor *base = palette[_placeholderColorIndex % palette.count];
     _placeholderColorIndex = (_placeholderColorIndex + 1) % palette.count;

@@ -484,7 +484,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.storefrontGradientLayer.startPoint = CGPointMake(0.12, 0.0);
     self.storefrontGradientLayer.endPoint = CGPointMake(0.92, 1.0);
     self.storefrontPlateView.layer.borderColor = stroke.CGColor;
-    self.storefrontIconView.tintColor = isAllContext ? PPMarketHeroLabelIconColor() : primaryAccent;
+    self.storefrontIconView.tintColor = primaryAccent;
 
     [self pp_applyProductTile:self.primaryProductTileView
                          icon:self.primaryProductIconView
@@ -492,7 +492,7 @@ static BOOL PPMarketHeroReduceMotion(void)
                          dark:darkMode];
     [self pp_applyProductTile:self.secondaryProductTileView
                          icon:self.secondaryProductIconView
-                       accent:PPMarketHeroColor(0x6EAFA2, 1.0)
+                       accent:primaryAccent
                          dark:darkMode];
 }
 
@@ -537,11 +537,12 @@ static BOOL PPMarketHeroReduceMotion(void)
 
 - (UIImage *)pp_storefrontFallbackArtwork
 {
+    UIColor *accent = self.contextAccentColor ?: PPMarketHeroAccentColor();
     return [UIImage pp_symbolNamed:@"storefront.fill"
                          pointSize:46.0
                             weight:UIImageSymbolWeightSemibold
                              scale:UIImageSymbolScaleLarge
-                           palette:@[PPMarketHeroLabelIconColor()]
+                           palette:@[accent]
                       makeTemplate:YES];
 }
 

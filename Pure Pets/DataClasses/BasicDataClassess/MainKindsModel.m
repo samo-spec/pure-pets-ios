@@ -387,11 +387,11 @@ static NSString * const PPMainKindAccessoryCategoriesCacheKey = @"accessoryCateg
         return [UIColor colorWithHexString:self.PetColor];
     }
 
-    if(self.ID == 1)        return [UIColor colorWithRed:0.30 green:0.75 blue:0.55 alpha:1.0]; //[UIColor colorWithHexString:@"#E55B46"];
+    if(self.ID == 1)        return [UIColor colorWithRed:0.08 green:0.68 blue:0.68 alpha:1.0]; // Distinct Teal #14B8A6
     else if(self.ID == 2)    return [UIColor colorWithHexString:@"#D57E3C"];
     else if(self.ID == 3)    return [UIColor colorWithHexString:@"#491708"];
     else if(self.ID == 4)    return [UIColor colorWithHexString:@"#A49179"];
-    else if(self.ID == 5)    return [UIColor colorWithRed:0.25 green:0.55 blue:0.95 alpha:1.0]; //[UIColor colorWithHexString:@"#A46C36"];
+    else if(self.ID == 5)    return [UIColor colorWithRed:0.25 green:0.55 blue:0.95 alpha:1.0]; // Cat Blue
     else if(self.ID == 6)    return [UIColor colorWithRed:0.95 green:0.55 blue:0.25 alpha:1.0]; //[UIColor colorWithHexString:@"#BFA779"];
     else if(self.ID == 7)    return [UIColor colorWithHexString:@"#A4491F"]; //76D6FF
     else if(self.ID == 8)    return [UIColor colorWithHexString:@"#D7606E"];
