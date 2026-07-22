@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */; };
+		0571C185F99B216EE7385515 /* PPSavedForLaterItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AE1F66FB765C7257BBA30D2 /* PPSavedForLaterItemRow.swift */; };
 		084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */; };
 		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
 		12CEBEE12FFAA00100C0A901 /* PPStickerKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12CEBEE02FFAA00100C0A901 /* PPStickerKit.swift */; };
@@ -128,7 +129,6 @@
 		F20F31C02D177602001D1D57 /* PGDatePickManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31982D177602001D1D57 /* PGDatePickManager.m */; };
 		F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31A12D177602001D1D57 /* PGPickerTableView.m */; };
 		F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */ = {isa = PBXBuildFile; fileRef = F20F31852D177602001D1D57 /* PGDatePicker+MonthDay.m */; };
-		F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */; };
 		F213021F2F0C6573006E71AB /* PPSearchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F213021E2F0C655F006E71AB /* PPSearchViewController.m */; };
 		F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302212F0C6629006E71AB /* BBNavigationBar.m */; };
 		F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */; };
@@ -250,12 +250,9 @@
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
 		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
 		F233B43B300C4F4600D55489 /* PPHomeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B43A300C4F4600D55489 /* PPHomeItem.m */; };
-		F233B43E300C516200D55489 /* PPUniversalCellFlags.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B43D300C516200D55489 /* PPUniversalCellFlags.m */; };
-		F233B441300C542000D55489 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B440300C542000D55489 /* PPHomeActionCell.m */; };
 		F233B444300C557F00D55489 /* PPBannerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F233B443300C557F00D55489 /* PPBannerCell.m */; };
 		F233B446300C72D900D55489 /* ModernSegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B445300C72D900D55489 /* ModernSegmentedControl.swift */; };
 		F233B449300C7F2200D55489 /* ModernSegmentedControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */; };
-		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
 		F23AUTH02FC4000000000001 /* PPAuthStepIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F23AUTH01FC4000000000001 /* PPAuthStepIndicatorView.m */; };
@@ -338,7 +335,6 @@
 		F25E800C2F0049840089F659 /* PPCarouselView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800B2F0049740089F659 /* PPCarouselView.m */; };
 		F25E800F2F004C180089F659 /* PPCarouselContainerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */; };
 		F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80102F0060050089F659 /* PPSectionHeaderView.m */; };
-		F25E80142F00A44D0089F659 /* PPHomeSectionDividerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80132F00A44D0089F659 /* PPHomeSectionDividerView.m */; };
 		F26024862EB60BA5006534B4 /* PPCartTableCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26024852EB60B95006534B4 /* PPCartTableCell.m */; };
 		F26045382CB6EC7500FB7FBC /* selectArchiveVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F26045372CB6EC7500FB7FBC /* selectArchiveVC.m */; };
 		F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F260D31E2C7B36EF0098C8F0 /* blank_button@2x.png */; };
@@ -443,6 +439,7 @@
 		F27A48332EE0CB1E0044040E /* PPImageCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A48322EE0CB0E0044040E /* PPImageCollection.m */; };
 		F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A50C32EEDF799006CBE9D /* TrashCollectionViewCell.m */; };
 		F27B81892C605DDE002C0A47 /* CabelCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27B81882C605DDE002C0A47 /* CabelCollectionViewCell.m */; };
+		F27BA91C300FF7DB00911A90 /* ShowTime in Frameworks */ = {isa = PBXBuildFile; productRef = F27BA91B300FF7DB00911A90 /* ShowTime */; };
 		F27CA86B2C65933800E92897 /* TTGSnackbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27CA8682C65933800E92897 /* TTGSnackbar.swift */; };
 		F27D66282E1FD8B10081943A /* OptionModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D66272E1FD8B10081943A /* OptionModel.m */; };
 		F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D662A2E1FD8C80081943A /* BottomOptionsViewController.m */; };
@@ -487,7 +484,6 @@
 		F283FABC2E542933001EF0BA /* UserContactView.m in Sources */ = {isa = PBXBuildFile; fileRef = F283FABB2E542933001EF0BA /* UserContactView.m */; };
 		F2844F002EB76ED200D9A49C /* PPSelectPaymentVC+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */; };
 		F2844F032EB7BA2000D9A49C /* PPPaymentFormViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */; };
-		F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */; };
 		F2856C432E96BA65004B0344 /* PPBirdSummaryCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */; };
 		F286536A2D7E6B8E006EDEDE /* UIActivityIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28653692D7E6B8E006EDEDE /* UIActivityIndicator.m */; };
 		F286BA8A2F207A4D0069CD5C /* PPFullscreenVideoController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */; };
@@ -560,6 +556,7 @@
 		F2A0A6F0300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6EF300D7ED00062A529 /* PPSavedForLaterBottomSheetVC.m */; };
 		F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */; };
 		F2A0A6F5300E20000062A529 /* PPSavedForLaterSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F4300E20000062A529 /* PPSavedForLaterSheetView.swift */; };
+		F2A0A6F7300E20000062A529 /* PPSavedForLaterSheetItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2A0A6F6300E20000062A529 /* PPSavedForLaterSheetItem.swift */; };
 		F2A0BBB72F1EB01E003715F0 /* ChMessagingController+Record.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */; };
 		F2A0BBBE2F1F0B88003715F0 /* ChatImageMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBBD2F1F0B71003715F0 /* ChatImageMessageCell.m */; };
 		F2A0BBC12F1F0BA4003715F0 /* ChatVideoMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A0BBC02F1F0BA4003715F0 /* ChatVideoMessageCell.m */; };
@@ -624,7 +621,6 @@
 		F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */; };
 		F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */; };
 		F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */; };
-		F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
@@ -692,7 +688,6 @@
 		F2C1A1112F00111100C1A111 /* StateModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1A1132F00111100C1A113 /* StateModel.m */; };
 		F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223C52F061DD4006DB76A /* PPHomeFunc.m */; };
 		F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */; };
-		F2C223CE2F062925006DB76A /* PPHomeSectionBackgroundView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */; };
 		F2C5F76E2CA00D3300D7897A /* AAMultiSelectViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7682CA00D3300D7897A /* AAMultiSelectViewController.m */; };
 		F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F76B2CA00D3300D7897A /* AAPopupView.m */; };
 		F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7662CA00D3300D7897A /* AAMultiSelectTableViewCell.m */; };
@@ -902,6 +897,7 @@
 		6A83DC70A7020B60DBD910AC /* ChatBarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChatBarView.swift; sourceTree = "<group>"; };
 		7248B299EE6D39A2B3A84800 /* NovaSpeechTranscriber.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaSpeechTranscriber.swift; sourceTree = "<group>"; };
 		78BDBCFB11D05E53A115F3C0 /* PPVaccinationEditorSheet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVaccinationEditorSheet.h; sourceTree = "<group>"; };
+		7AE1F66FB765C7257BBA30D2 /* PPSavedForLaterItemRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPSavedForLaterItemRow.swift; sourceTree = "<group>"; };
 		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserPermissionsManager.m; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
@@ -1072,8 +1068,6 @@
 		F20F31A32D177602001D1D57 /* PGPickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PGPickerView.m; sourceTree = "<group>"; };
 		F20F31A42D177602001D1D57 /* UIColor+PGHex.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+PGHex.h"; sourceTree = "<group>"; };
 		F20F31A52D177602001D1D57 /* UIColor+PGHex.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+PGHex.m"; sourceTree = "<group>"; };
-		F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PPUniversalCell+SwiftUIAdapter.h"; sourceTree = "<group>"; };
-		F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPUniversalCell+SwiftUIAdapter.m"; sourceTree = "<group>"; };
 		F213021D2F0C6556006E71AB /* PPSearchViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchViewController.h; sourceTree = "<group>"; };
 		F213021E2F0C655F006E71AB /* PPSearchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchViewController.m; sourceTree = "<group>"; };
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
@@ -1311,16 +1305,10 @@
 		F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GoogleMapsCore.xcframework; path = Pods/GoogleMaps/Maps/Frameworks/GoogleMapsCore.xcframework; sourceTree = "<group>"; };
 		F233B439300C4F4600D55489 /* PPHomeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeItem.h; sourceTree = "<group>"; };
 		F233B43A300C4F4600D55489 /* PPHomeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeItem.m; sourceTree = "<group>"; };
-		F233B43C300C516200D55489 /* PPUniversalCellFlags.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellFlags.h; sourceTree = "<group>"; };
-		F233B43D300C516200D55489 /* PPUniversalCellFlags.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellFlags.m; sourceTree = "<group>"; };
-		F233B43F300C542000D55489 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
-		F233B440300C542000D55489 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
 		F233B442300C557F00D55489 /* PPBannerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCell.h; sourceTree = "<group>"; };
 		F233B443300C557F00D55489 /* PPBannerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCell.m; sourceTree = "<group>"; };
 		F233B445300C72D900D55489 /* ModernSegmentedControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernSegmentedControl.swift; sourceTree = "<group>"; };
 		F233B448300C7F2200D55489 /* ModernSegmentedControlBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModernSegmentedControlBridge.swift; sourceTree = "<group>"; };
-		F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeOrderStatusCell.h; sourceTree = "<group>"; };
-		F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeOrderStatusCell.m; sourceTree = "<group>"; };
 		F23686EC2C7624DE001E620C /* TQImageViewer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TQImageViewer.h; sourceTree = "<group>"; };
 		F23686ED2C7624DE001E620C /* TQImageViewer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TQImageViewer.m; sourceTree = "<group>"; };
 		F2390C1D2E23F18A0017D4E1 /* CompanyLocationVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CompanyLocationVC.h; sourceTree = "<group>"; };
@@ -1455,8 +1443,6 @@
 		F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselContainerCell.m; sourceTree = "<group>"; };
 		F25E80102F0060050089F659 /* PPSectionHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeaderView.m; sourceTree = "<group>"; };
 		F25E80112F00600C0089F659 /* PPSectionHeaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSectionHeaderView.h; sourceTree = "<group>"; };
-		F25E80132F00A44D0089F659 /* PPHomeSectionDividerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSectionDividerView.m; sourceTree = "<group>"; };
-		F25E80152F00A45C0089F659 /* PPHomeSectionDividerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSectionDividerView.h; sourceTree = "<group>"; };
 		F26024842EB60B75006534B4 /* PPCartTableCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartTableCell.h; sourceTree = "<group>"; };
 		F26024852EB60B95006534B4 /* PPCartTableCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartTableCell.m; sourceTree = "<group>"; };
 		F26045362CB6EC7500FB7FBC /* selectArchiveVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = selectArchiveVC.h; sourceTree = "<group>"; };
@@ -1751,8 +1737,6 @@
 		F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPSelectPaymentVC+Helper.m"; sourceTree = "<group>"; };
 		F2844F012EB7BA1500D9A49C /* PPPaymentFormViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPaymentFormViewController.h; sourceTree = "<group>"; };
 		F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPaymentFormViewController.m; sourceTree = "<group>"; };
-		F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumCareCell.h; sourceTree = "<group>"; };
-		F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumCareCell.m; sourceTree = "<group>"; };
 		F2856C412E96BA41004B0344 /* PPBirdSummaryCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdSummaryCollectionCell.h; sourceTree = "<group>"; };
 		F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBirdSummaryCollectionCell.m; sourceTree = "<group>"; };
 		F28653682D7E6B8E006EDEDE /* UIActivityIndicator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIActivityIndicator.h; sourceTree = "<group>"; };
@@ -1890,6 +1874,7 @@
 		F2A0A6F1300D7FA50062A529 /* PPSaveForLaterManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSaveForLaterManager.h; sourceTree = "<group>"; };
 		F2A0A6F2300D7FA50062A529 /* PPSaveForLaterManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSaveForLaterManager.m; sourceTree = "<group>"; };
 		F2A0A6F4300E20000062A529 /* PPSavedForLaterSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSavedForLaterSheetView.swift; sourceTree = "<group>"; };
+		F2A0A6F6300E20000062A529 /* PPSavedForLaterSheetItem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PPSavedForLaterSheetItem.swift; sourceTree = "<group>"; };
 		F2A0BBB52F1EB01E003715F0 /* ChMessagingController+Record.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+Record.h"; sourceTree = "<group>"; };
 		F2A0BBB62F1EB01E003715F0 /* ChMessagingController+Record.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+Record.m"; sourceTree = "<group>"; };
 		F2A0BBBC2F1F0B64003715F0 /* ChatImageMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChatImageMessageCell.h; sourceTree = "<group>"; };
@@ -2036,7 +2021,6 @@
 		F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorLayer.m; sourceTree = "<group>"; };
 		F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefresh.h; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
-		F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPUniversalCellViewModelAdapter.swift; sourceTree = "<group>"; };
 		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
 		F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CALayer+TTSpringAnimation.m"; sourceTree = "<group>"; };
 		F2AE2DA82CFD485E00D09E90 /* TTAnimationButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TTAnimationButton.h; sourceTree = "<group>"; };
@@ -2158,8 +2142,6 @@
 		F2C223C52F061DD4006DB76A /* PPHomeFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeFunc.m; sourceTree = "<group>"; };
 		F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellViewModel.h; sourceTree = "<group>"; };
 		F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUniversalCellViewModel.m; sourceTree = "<group>"; };
-		F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSectionBackgroundView.m; sourceTree = "<group>"; };
-		F2C223CF2F06298B006DB76A /* PPHomeSectionBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSectionBackgroundView.h; sourceTree = "<group>"; };
 		F2C2FE082D44535E00BB8828 /* PrefixHeader.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PrefixHeader.pch; sourceTree = "<group>"; };
 		F2C5F75E2CA00D3300D7897A /* AAicon_check@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@2x.png"; sourceTree = "<group>"; };
 		F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "AAicon_check@3x.png"; sourceTree = "<group>"; };
@@ -2402,6 +2384,7 @@
 				F2D894852D5534D000256152 /* CoreTelephony.framework in Frameworks */,
 				F2FFDA152FCDCFC00025B5A9 /* FirebaseInstallations in Frameworks */,
 				F2FFDA172FCDCFC00025B5A9 /* FirebaseMessaging in Frameworks */,
+				F27BA91C300FF7DB00911A90 /* ShowTime in Frameworks */,
 				16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */,
 				F2FFDA192FCDCFC00025B5A9 /* FirebasePerformance in Frameworks */,
 				F2FFDA0D2FCDCFC00025B5A9 /* FirebaseCore in Frameworks */,
@@ -2515,20 +2498,15 @@
 				A11CE2502FEB500000000002 /* PPHomeProviderUnifiedCategoryCardCell.m */,
 				F2BC865A2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.h */,
 				F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */,
-				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
-				F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */,
 				A11CE1102FEA100000000001 /* PPHomeUltraPremuimPetCareCell.h */,
 				A11CE1112FEA100000000002 /* PPHomeUltraPremuimPetCareCell.m */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
-				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
-				F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */,
 				A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */,
 				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
 				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
 				A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */,
 				A11CE2402FEB400000000002 /* PPHomeMarketplaceHeroCell.m */,
-				F2B641B82F4A95290092C2BF /* Stories */,
 				F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */,
 				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
 				F253FA6B2F082EF800323CB4 /* PPCategoryCardCell.h */,
@@ -2540,8 +2518,6 @@
 				F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */,
 				F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */,
 				F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */,
-				F233B43F300C542000D55489 /* PPHomeActionCell.h */,
-				F233B440300C542000D55489 /* PPHomeActionCell.m */,
 			);
 			path = HomeCells;
 			sourceTree = "<group>";
@@ -3460,10 +3436,6 @@
 				F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */,
 				F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */,
 				F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */,
-				F2C223CF2F06298B006DB76A /* PPHomeSectionBackgroundView.h */,
-				F2C223CD2F062925006DB76A /* PPHomeSectionBackgroundView.m */,
-				F25E80152F00A45C0089F659 /* PPHomeSectionDividerView.h */,
-				F25E80132F00A44D0089F659 /* PPHomeSectionDividerView.m */,
 				F25E80112F00600C0089F659 /* PPSectionHeaderView.h */,
 				F25E80102F0060050089F659 /* PPSectionHeaderView.m */,
 				F25E7FF52EFF84A90089F659 /* PPHomeHelper.h */,
@@ -3471,6 +3443,7 @@
 				F2C223C42F061DD4006DB76A /* PPHomeFunc.h */,
 				F2C223C52F061DD4006DB76A /* PPHomeFunc.m */,
 				F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */,
+				F2B641B82F4A95290092C2BF /* Stories */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -3916,7 +3889,6 @@
 				F207D0BE2F14CE1500BA6214 /* UnifiedBlurHash */,
 				F27A482A2EE07CF70044040E /* HXPHPickerBridge */,
 				F27A48282EE07CAA0044040E /* PPCoreBridge.swift */,
-				F2ADAPT0F00000000000001 /* PPUniversalCellViewModelAdapter.swift */,
 			);
 			path = Bridges;
 			sourceTree = "<group>";
@@ -4227,10 +4199,6 @@
 		F29949812ED37AF1003C6A52 /* PetsAdvertiseImagesAndCells */ = {
 			isa = PBXGroup;
 			children = (
-				F21066CA3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.h */,
-				F233B43C300C516200D55489 /* PPUniversalCellFlags.h */,
-				F233B43D300C516200D55489 /* PPUniversalCellFlags.m */,
-				F21066CB3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m */,
 				F2C223CA2F061EE4006DB76A /* PPUniversalCellViewModel.h */,
 				F2C223CB2F061EFD006DB76A /* PPUniversalCellViewModel.m */,
 				F28A0A072EE9C77600EE5055 /* EllipsePageControl.m */,
@@ -5207,6 +5175,8 @@
 				F2201FE62E11D7BF005DBD9F /* CartItem.h */,
 				F2201FE72E11D7C9005DBD9F /* CartItem.m */,
 				F2E33F5A3006C240005E31C6 /* OrderSupportFunc.h */,
+				7AE1F66FB765C7257BBA30D2 /* PPSavedForLaterItemRow.swift */,
+				F2A0A6F6300E20000062A529 /* PPSavedForLaterSheetItem.swift */,
 			);
 			path = CartAndOrdersFiles;
 			sourceTree = "<group>";
@@ -5397,6 +5367,7 @@
 				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
+				F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -5650,7 +5621,7 @@
 				F2B641BB2F4A95690092C2BF /* PPStory.m in Sources */,
 				F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */,
 				F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */,
-				F2ADAPT0F00000000000002 /* PPUniversalCellViewModelAdapter.swift in Sources */,
+
 				F273147B2F3118A000FFA0B8 /* PPPaymentManager.m in Sources */,
 				F24F9BAE2EE65405002AAD27 /* PPAdsBrowser.m in Sources */,
 				F24C04D52D2E3E0400A9F61F /* FileModel.m in Sources */,
@@ -5716,7 +5687,6 @@
 				F27146862CCE6B5300F7F3BA /* XLFormPickerCell.m in Sources */,
 				F27146872CCE6B5300F7F3BA /* XLFormStepCounterCell.m in Sources */,
 				F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */,
-				F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */,
 				A17E26000200000000000002 /* PPHomeOrderStatusSwiftUI.swift in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
 				F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */,
@@ -5792,7 +5762,7 @@
 				F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */,
 				F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */,
 				F21843AB2E8B9EF800D8BF46 /* PPCollection.m in Sources */,
-				F21066CE3009E652002F6A68 /* PPUniversalCell+SwiftUIAdapter.m in Sources */,
+
 				F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */,
 				F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */,
 				F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */,
@@ -5877,7 +5847,7 @@
 				F2AF384A300AC36600FBF82D /* MatchedContainerView.swift in Sources */,
 				F2AF384C300AC36600FBF82D /* TransitionManager.swift in Sources */,
 				F2AF384D300AC36600FBF82D /* TransitionView.swift in Sources */,
-				F233B43E300C516200D55489 /* PPUniversalCellFlags.m in Sources */,
+
 				F2AF384E300AC36600FBF82D /* MatchedGeometryState.swift in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
@@ -5980,7 +5950,6 @@
 				F2B116B32C51E48E00A77F4A /* selectTableViewController.m in Sources */,
 				F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */,
 				F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */,
-				F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */,
 				A11CE1122FEA100000000003 /* PPHomeUltraPremuimPetCareCell.m in Sources */,
 				F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */,
 				F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */,
@@ -6003,7 +5972,6 @@
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
-				F233B441300C542000D55489 /* PPHomeActionCell.m in Sources */,
 				BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */,
 				6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */,
 				9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */,
@@ -6012,7 +5980,6 @@
 				F22C078E2EF66C2F00C00EAC /* NSAttributedString+YYText.m in Sources */,
 				F22C078F2EF66C2F00C00EAC /* YYTextUtilities.m in Sources */,
 				F286BA902F21611D0069CD5C /* ChTypingController.m in Sources */,
-				F2C223CE2F062925006DB76A /* PPHomeSectionBackgroundView.m in Sources */,
 				F22C07902EF66C2F00C00EAC /* UIGestureRecognizer+YYAdd.m in Sources */,
 				F22C07912EF66C2F00C00EAC /* YYTransaction.m in Sources */,
 				F233B449300C7F2200D55489 /* ModernSegmentedControlBridge.swift in Sources */,
@@ -6020,7 +5987,6 @@
 				F22C07932EF66C2F00C00EAC /* NSTimer+YYAdd.m in Sources */,
 				F22C07942EF66C2F00C00EAC /* UIDevice+YYAdd.m in Sources */,
 				F22C07952EF66C2F00C00EAC /* UIImage+YYAdd.m in Sources */,
-				F25E80142F00A44D0089F659 /* PPHomeSectionDividerView.m in Sources */,
 				F276D60D2F14042600782A13 /* PPSearchHelper.m in Sources */,
 				997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */,
 				F286BA8D2F2123930069CD5C /* ChNotificationRouter.m in Sources */,
@@ -6306,6 +6272,8 @@
 				47A8516E7B8BCD81E2831B9C /* NovaVoiceObjCBridge.swift in Sources */,
 				084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */,
 				7E88BDC6B4FDC438D09D8AC7 /* NovaVoiceService.swift in Sources */,
+				0571C185F99B216EE7385515 /* PPSavedForLaterItemRow.swift in Sources */,
+				F2A0A6F7300E20000062A529 /* PPSavedForLaterSheetItem.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6511,7 +6479,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6621,7 +6589,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;
@@ -6727,7 +6695,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6745,7 +6713,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6762,7 +6730,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6779,7 +6747,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 214;
+				CURRENT_PROJECT_VERSION = 215;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -6855,6 +6823,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 12.11.0;
+			};
+		};
+		F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/KaneCheshire/ShowTime";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.3;
 			};
 		};
 		F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */ = {
@@ -6945,6 +6921,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		F27BA91B300FF7DB00911A90 /* ShowTime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */;
+			productName = ShowTime;
 		};
 		F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */ = {
 			isa = XCSwiftPackageProductDependency;

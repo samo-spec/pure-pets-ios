@@ -11,6 +11,7 @@
 #import "UserModel.h"
 #import "PPRolePermission.h"
 #import "UserManager.h"
+#import "OptionModel.h"
 #import "AppClasses.h"
 #import "PPIntroViewController.h"
 #import "PPUserMenuViewController.h"

@@ -1197,9 +1197,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 @property (nonatomic, strong) id imageLoader;
 
 @property (nonatomic, strong) ModernSegmentedControlBridge *sectionsSegmentedControl;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
-@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
+@property (nonatomic, strong) PPBackgroundView *pp_premiumBackgroundView;
 @property (nonatomic, strong) NSCache<NSString *, UIColor *> *pp_topCellColorCache;
 @property (nonatomic, strong) NSMutableSet<NSString *> *pp_inFlightColorExtractions;
 
@@ -1444,9 +1442,9 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 - (void)pp_applyPremiumHeaderCollapseProgress:(CGFloat)progress animated:(BOOL)animated;
 - (void)pp_updatePremiumChromeShadowPaths;
 - (void)pp_applyPremiumDataViewBackgroundAppearance;
-- (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
-- (void)pp_layoutPremiumBackgroundGlowViews;
-- (void)pp_updatePremiumBackgroundGlowAppearance;
+- (void)pp_installPremiumBackgroundViewIfNeeded;
+- (void)pp_layoutPremiumBackgroundView;
+- (void)pp_updatePremiumBackgroundAppearance;
 - (BOOL)pp_allowsPremiumMotion;
 - (void)pp_beginMotionTransition:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
 - (NSInteger)pp_directionForSubKindID:(NSInteger)newSubKindID comparedToCurrentSubKindID:(NSInteger)currentSubKindID;
@@ -3755,177 +3753,80 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Background
 
-/*
- - (void)pp_applyPremiumDataViewBackgroundAppearance
- {
-     self.view.backgroundColor = AppBackgroundClr;
-     if (!self.collectionView) {
-         return;
-     }
-
-     self.collectionView.backgroundColor = AppClearClr;
-     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
-     [self pp_updatePremiumBackgroundGlowAppearance];
- }
- */
-
 - (void)pp_applyPremiumDataViewBackgroundAppearance {
-    // self.view.backgroundColor = AppBackgroundClr;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        self.view.backgroundColor = AppBackgroundClr;
-        if (self.collectionView) {
-            self.collectionView.backgroundColor = AppClearClr;
-            [self pp_installPremiumBackgroundGlowViewsIfNeeded];
-            [self pp_updatePremiumBackgroundGlowAppearance];
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_applyPremiumDataViewBackgroundAppearance];
+        });
+        return;
+    }
+
+    self.view.backgroundColor = UIColor.clearColor;
+    if (self.collectionView) {
+        self.collectionView.backgroundColor = UIColor.clearColor;
+    }
+    [self pp_installPremiumBackgroundViewIfNeeded];
+    [self pp_updatePremiumBackgroundAppearance];
+}
+
+- (void)pp_installPremiumBackgroundViewIfNeeded
+{
+    if (!self.pp_premiumBackgroundView) {
+        PPBackgroundView *backgroundView = [[PPBackgroundView alloc] initWithFrame:CGRectZero];
+        backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+        backgroundView.userInteractionEnabled = NO;
+        backgroundView.clipsToBounds = YES;
+        backgroundView.overrideBorders = YES;
+        backgroundView.overrideCornerRadius = 0.01;
+        backgroundView.PPHeroApexUseShimmer = NO;
+        backgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+        self.pp_premiumBackgroundView = backgroundView;
+    }
+
+    if (self.pp_premiumBackgroundView.superview != self.view) {
+        if (self.collectionView.superview == self.view) {
+            [self.view insertSubview:self.pp_premiumBackgroundView belowSubview:self.collectionView];
+        } else {
+            [self.view insertSubview:self.pp_premiumBackgroundView atIndex:0];
         }
-    });
-}
 
-- (UIView *)pp_makePremiumBackgroundGlowView
-{
-    UIView *glowView = [[UIView alloc] initWithFrame:CGRectZero];
-    glowView.userInteractionEnabled = NO;
-    glowView.backgroundColor = UIColor.clearColor;
-    glowView.clipsToBounds = NO;
-    glowView.layer.masksToBounds = NO;
-    glowView.layer.shadowOffset = CGSizeZero;
-    return glowView;
-}
-
-- (void)pp_insertPremiumBackgroundGlowView:(UIView *)glowView
-{
-    if (!glowView || glowView.superview == self.view) {
-        return;
-    }
-
-    if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:glowView belowSubview:self.collectionView];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.pp_premiumBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.pp_premiumBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.pp_premiumBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.pp_premiumBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    } else if (self.collectionView.superview == self.view) {
+        [self.view insertSubview:self.pp_premiumBackgroundView belowSubview:self.collectionView];
     } else {
-        [self.view addSubview:glowView];
+        [self.view sendSubviewToBack:self.pp_premiumBackgroundView];
     }
 }
 
-- (void)pp_installPremiumBackgroundGlowViewsIfNeeded
+- (void)pp_updatePremiumBackgroundAppearance
 {
-    if (!self.pp_premiumBackgroundGlowViewTop) {
-        self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
-    }
-    if (!self.pp_premiumBackgroundGlowViewMid) {
-        self.pp_premiumBackgroundGlowViewMid = [self pp_makePremiumBackgroundGlowView];
-    }
-    if (!self.pp_premiumBackgroundGlowViewBottom) {
-        self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
-    }
+    [self pp_installPremiumBackgroundViewIfNeeded];
+    self.pp_premiumBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+    self.pp_premiumBackgroundView.overrideBorders = YES;
+    self.pp_premiumBackgroundView.overrideBorderColor = UIColor.clearColor;
+    self.pp_premiumBackgroundView.overrideCornerRadius = 0.01;
+    self.pp_premiumBackgroundView.overrideSurfaceColor = nil;
+    self.pp_premiumBackgroundView.accentColorOverride = nil;
+    self.pp_premiumBackgroundView.overrideTopGlowColor = nil;
+    self.pp_premiumBackgroundView.overrideCenterGlowColor = nil;
+    self.pp_premiumBackgroundView.overrideBottomGlowColor = nil;
+    [self.pp_premiumBackgroundView reapplyPalette];
+    self.pp_premiumBackgroundView.layer.shadowOpacity = 0.0f;
+}
 
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewTop];
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewMid];
-    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewBottom];
-
+- (void)pp_layoutPremiumBackgroundView
+{
+    [self pp_installPremiumBackgroundViewIfNeeded];
+    [self.pp_premiumBackgroundView setNeedsLayout];
     if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
-    }
-}
-
-- (void)pp_applyPremiumGlowView:(UIView *)glowView
-                          color:(UIColor *)color
-                   surfaceAlpha:(CGFloat)surfaceAlpha
-                  shadowOpacity:(CGFloat)shadowOpacity
-                   shadowRadius:(CGFloat)shadowRadius
-{
-    if (!glowView || !color) {
-        return;
-    }
-
-    glowView.alpha = 1.0;
-    glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
-    glowView.layer.shadowColor = color.CGColor;
-    glowView.layer.shadowOpacity = shadowOpacity;
-    glowView.layer.shadowRadius = shadowRadius;
-}
-
-- (void)pp_updatePremiumBackgroundGlowAppearance
-{
-    BOOL isDark = NO;
-    if (@available(iOS 12.0, *)) {
-        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    }
-
-    UIColor *primaryColor = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *secondaryColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:1.0];
-    UIColor *ambientColor = isDark ? UIColor.whiteColor : UIColor.blackColor;
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:primaryColor
-                     surfaceAlpha:isDark ? 0.085 : 0.044
-                    shadowOpacity:isDark ? 0.10f : 0.055f
-                     shadowRadius:isDark ? 68.0 : 58.0];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
-                            color:secondaryColor
-                     surfaceAlpha:isDark ? 0.070 : 0.032
-                    shadowOpacity:isDark ? 0.082f : 0.038f
-                     shadowRadius:isDark ? 58.0 : 48.0];
-
-    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:ambientColor
-                     surfaceAlpha:isDark ? 0.034 : 0.014
-                    shadowOpacity:isDark ? 0.052f : 0.024f
-                     shadowRadius:isDark ? 50.0 : 42.0];
-}
-
-- (void)pp_layoutPremiumBackgroundGlowViews
-{
-    [self pp_installPremiumBackgroundGlowViewsIfNeeded];
-
-    CGRect bounds = self.view.bounds;
-    if (CGRectIsEmpty(bounds) || !self.collectionView) {
-        return;
-    }
-
-    CGFloat width = CGRectGetWidth(bounds);
-    CGFloat height = CGRectGetHeight(bounds);
-    CGFloat safeTop = self.view.safeAreaInsets.top;
-
-    CGFloat topSize = MIN(306.0, MAX(216.0, width * 0.62));
-    CGFloat midSize = MIN(252.0, MAX(184.0, width * 0.49));
-    CGFloat bottomSize = MIN(288.0, MAX(196.0, width * 0.56));
-
-    self.pp_premiumBackgroundGlowViewTop.frame =
-        CGRectMake(width - (topSize * 0.60),
-                   safeTop - (topSize * 0.70),
-                   topSize,
-                   topSize);
-
-    self.pp_premiumBackgroundGlowViewMid.frame =
-        CGRectMake(-(midSize * 0.44),
-                   MAX(152.0, height * 0.28),
-                   midSize,
-                   midSize);
-
-    self.pp_premiumBackgroundGlowViewBottom.frame =
-        CGRectMake(width - (bottomSize * 0.54),
-                   height - (bottomSize * 0.60),
-                   bottomSize,
-                   bottomSize);
-
-    NSArray<UIView *> *glowViews = @[
-        self.pp_premiumBackgroundGlowViewTop,
-        self.pp_premiumBackgroundGlowViewMid,
-        self.pp_premiumBackgroundGlowViewBottom
-    ];
-
-    for (UIView *glowView in glowViews) {
-        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
-        glowView.layer.cornerRadius = radius;
-        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
-    }
-
-    if (self.collectionView.superview == self.view) {
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
-        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
+        [self.view insertSubview:self.pp_premiumBackgroundView belowSubview:self.collectionView];
+    } else {
+        [self.view sendSubviewToBack:self.pp_premiumBackgroundView];
     }
 }
 
@@ -3937,7 +3838,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if(!self.DidFinishLayout)
     {
         [self pp_applyPremiumDataViewBackgroundAppearance];
-        [self pp_layoutPremiumBackgroundGlowViews];
+        [self pp_layoutPremiumBackgroundView];
         [self pp_applyPremiumNavigationChromeAppearance];
         [self pp_applyPremiumSectionsSegmentedAppearance];
         [self pp_updatePremiumChromeShadowPaths];

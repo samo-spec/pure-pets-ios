@@ -149,7 +149,7 @@
         }
     }];
 
-    [PPHomeFunc registerDecorationsForLayout:layout];
+    //[PPHomeFunc registerDecorationsForLayout:layout];
     return layout;
 }
 

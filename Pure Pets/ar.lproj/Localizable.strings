@@ -3628,6 +3628,8 @@
 "saved_for_later_remove_action" = "إزالة";
 "saved_for_later_delete_action" = "حذف";
 "saved_for_later_deleting" = "جاري الحذف...";
+"saved_for_later_remove_action" = "إزالة";
+"saved_for_later_removing" = "جارٍ الإزالة...";
 "saved_for_later_delete_confirm_title" = "حذف المنتج المحفوظ؟";
 "saved_for_later_delete_confirm_message" = "سيتم حذفه من المحفوظات لاحقاً فقط. لن تتغير السلة أو الطلبات.";
 "saved_for_later_delete_confirm_action" = "حذف";
@@ -3640,8 +3642,11 @@
 "saved_for_later_image_accessibility" = "صورة %@";
 "saved_for_later_price_accessibility" = "السعر %@";
 "saved_for_later_item_badge" = "جاهز عندما تقرر";
+"saved_for_later_short_badge" = "محفوظ";
 "saved_for_later_unknown_item" = "منتج محفوظ";
 "saved_for_later_close_accessibility" = "إغلاق المحفوظات";
 "saved_for_later_open_hint" = "يفتح المنتجات المحفوظة.";
+"cart_summary_collapse" = "طي ملخص الطلب";
+"cart_summary_expand" = "توسيع ملخص الطلب";
 "reported_successfully" = "تم الإبلاغ بنجاح";
 "report" = "إبلاغ";

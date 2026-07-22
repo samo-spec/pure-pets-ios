@@ -18,9 +18,6 @@ NS_ASSUME_NONNULL_BEGIN
                                                             contentInsets:(NSDirectionalEdgeInsets)contentInsets;
 @end
 
-
-
-
 @implementation PPHomeFunc
 
 #pragma mark - Design Tokens (2026)
@@ -66,8 +63,6 @@ static inline CGFloat PPHomeSectionEdgeInset(void)
     return PPHomeSpacingSection;
 }
 
- 
-
 static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeInteritemSpacing,
@@ -75,7 +70,6 @@ static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
                                        PPHomeSpacingSection,
                                        PPHomeEdgeSpacing);
 }
- 
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
@@ -97,6 +91,8 @@ static inline NSDirectionalEdgeInsets PPHomeExpandedHorizontalRailHeaderInsets(v
                                        PPHomeVerticalInnerSpacing,
                                        0);
 }
+
+#pragma mark - Universal Horizontal Rail Builder
 
 static NSCollectionLayoutSection *PPHomeBuildHorizontalRailSection(CGFloat cardWidth,
                                                                    CGFloat cardHeight,
@@ -318,7 +314,6 @@ static inline CGFloat PPHomePetProfileHeight(BOOL expanded, CGFloat width)
     return 240.0;
 }
 
-
 static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
@@ -326,7 +321,6 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
     }
     return 48.0;
 }
-
 
 static inline CGFloat PPHomeCareHeight(CGFloat width)
 {
@@ -367,7 +361,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     return PPHomeWidthIsTablet(width) ? 4 : 3;
 }
 
-#pragma mark - Public Sections
+#pragma mark - Single Card Sections
 
 + (NSCollectionLayoutSection *)heroSection
 {
@@ -497,7 +491,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      return section;
  }
 
-
  // MARK: - Main Kinds Horizontal Section
  + (NSCollectionLayoutSection *)mainKindsHorizontalSection
  {
@@ -538,8 +531,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      return section;
  }
 
-
-
  // MARK: - Accessories Section (and Ads, unified card logic)
  + (NSCollectionLayoutSection *)accessoriesSection
  {
@@ -563,14 +554,14 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth
  {
-     
+
      return PPHomeBuildHorizontalRailSection(
                                              PPHomeAccessoryCardWidth(availableWidth),
                                              PPHomeAccessoryCardHeight(availableWidth),
                                              PPHomeSpacingBase,
                                              PPHomeSectionHeaderHeight(YES),
                                              NO);
-      
+
  }
 
  + (NSCollectionLayoutSection *)petProfileSection
@@ -663,12 +654,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                  PPHomeEdgeSpacing,
                                  PPHomeSpacingSection,
                                  PPHomeEdgeSpacing);
- 
-    
+
     return section;
  }
-
-
 
  // MARK: - Suggestions Section (Premium carousel)
  + (NSCollectionLayoutSection *)suggestionsSection
@@ -686,6 +674,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                              NO);
  }
 
+#pragma mark - Section Header
 
  // MARK: - Section Header (single source of truth)
  + (NSCollectionLayoutBoundarySupplementaryItem *)sectionHeaderWithHeight:(float)height
@@ -702,7 +691,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      } else {
          heightDim = [NSCollectionLayoutDimension estimatedDimension:height];
      }
-     
+
      NSCollectionLayoutSize *size =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
@@ -728,7 +717,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      header.contentInsets = contentInsets;
      return header;
  }
-
 
  // MARK: - Main Kinds Grid Section
  + (NSCollectionLayoutSection *)mainKindsGridSection
@@ -773,7 +761,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      return section;
  }
-
 
  // MARK: - Empty/Fallback Section (cleaned, unified)
  + (NSCollectionLayoutSection *)emptyFallbackSection
@@ -971,7 +958,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                              NO);
  }
 
-
  // MARK: - Services Section
  + (NSCollectionLayoutSection *)servicesSection
  {
@@ -1017,7 +1003,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      return section;
  }
 
-
  + (NSCollectionLayoutSection *)categoriesOptionsSection
  {
     NSCollectionLayoutItem *item =
@@ -1049,12 +1034,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
         return section;
  }
 
-
- + (void)registerDecorationsForLayout:(UICollectionViewCompositionalLayout *)layout {
-    [layout registerClass:PPHomeSectionDividerView.class forDecorationViewOfKind:PPHomeSectionDividerKind];
- }
-
-
  // MARK: - Empty Section (cleaned)
  + (NSCollectionLayoutSection *)emptySection
  {
@@ -1073,7 +1052,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      return [NSCollectionLayoutSection sectionWithGroup:group];
  }
-
 
  + (NSCollectionLayoutSection *)categoriesItemsSection {
     return [self categoriesItemsSectionForWidth:UIScreen.mainScreen.bounds.size.width];
@@ -1114,13 +1092,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.interGroupSpacing = PPHomeSpacingBase;
     section.contentInsets = PPHomeFullWidthSectionInsets();
 
-    
     return section;
  }
 
-
- 
- 
+#pragma mark - Carousel Section
 
  + (NSCollectionLayoutSection *)carouselSection {
     return [self carouselSectionForWidth:UIScreen.mainScreen.bounds.size.width];
@@ -1161,18 +1136,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.interGroupSpacing = 0;
     section.contentInsets = PPHomeFullWidthSectionInsets();
 
-
-    
-    
     return section;
  }
-
-
-
-
-
-
 
 @end
 
 NS_ASSUME_NONNULL_END
+

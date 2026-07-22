@@ -2,6 +2,7 @@
 #import "PPUniversalCellViewModel.h"
 #import "PetAccessoryManager.h"
 #import "UserManager.h"
+@import FirebaseFunctions;
 
 static NSString * const PPSaveForLaterUpdatedNotification = @"PPSaveForLaterUpdatedNotification";
 static NSString * const PPSaveForLaterErrorDomain = @"com.purepets.savedForLater";
@@ -122,13 +123,11 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
         [self persistForUser:userID];
     }
     
-    // 2. Sync to Firestore subcollection: /UsersCol/{userID}/savedForLater/{itemID}
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
-                                     documentWithPath:userID]
-                                    collectionWithPath:@"savedForLater"]
-                                   documentWithPath:item.itemID];
-    
+    // 2. Sync via Cloud Function: saveItemForLater
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"saveItemForLater"];
+    callable.timeoutInterval = 30.0;
+
     NSMutableDictionary *payload = [@{
         @"itemID": item.itemID ?: @"",
         @"name": item.name ?: @"",
@@ -137,7 +136,6 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
         @"imageURL": item.imageURL ?: @"",
         @"providerID": item.providerID ?: @"",
         @"quantity": @(1),
-        @"timestamp": [FIRFieldValue fieldValueForServerTimestamp]
     } mutableCopy];
     if (item.type.length > 0) {
         payload[@"type"] = item.type;
@@ -145,10 +143,10 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
     if (resolvedStockQuantity != NSNotFound) {
         payload[@"stockQuantity"] = @(MAX(0, resolvedStockQuantity));
     }
-    
-    [docRef setData:payload merge:YES completion:^(NSError * _Nullable error) {
+
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ SavedForLater: Failed to write to Firestore: %@", error.localizedDescription);
+            NSLog(@"❌ SavedForLater: Failed to save via Cloud Function: %@", error.localizedDescription);
         }
     }];
 }
@@ -193,16 +191,6 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
     return userID ?: @"";
 }
 
-- (FIRDocumentReference *)pp_savedItemDocumentReferenceForUserID:(NSString *)userID
-                                                          itemID:(NSString *)itemID
-{
-    FIRFirestore *db = [FIRFirestore firestore];
-    return [[[[db collectionWithPath:@"UsersCol"]
-              documentWithPath:userID]
-             collectionWithPath:@"savedForLater"]
-            documentWithPath:itemID];
-}
-
 - (void)pp_removeLocalItemID:(NSString *)itemID forUser:(NSString *)userID
 {
     if (itemID.length == 0 || userID.length == 0) { return; }
@@ -224,12 +212,15 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
     // 1. Update local memory
     [self pp_removeLocalItemID:item.itemID forUser:userID];
     
-    // 2. Delete from Firestore subcollection
-    FIRDocumentReference *docRef = [self pp_savedItemDocumentReferenceForUserID:userID itemID:item.itemID];
-    
-    [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+    // 2. Delete via Cloud Function: removeSavedItem
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"removeSavedItem"];
+    callable.timeoutInterval = 30.0;
+
+    NSDictionary *payload = @{ @"itemID": item.itemID ?: @"" };
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ SavedForLater: Failed to delete from Firestore: %@", error.localizedDescription);
+            NSLog(@"❌ SavedForLater: Failed to delete via Cloud Function: %@", error.localizedDescription);
         }
     }];
 }
@@ -247,11 +238,15 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
         return;
     }
 
-    FIRDocumentReference *docRef = [self pp_savedItemDocumentReferenceForUserID:userID itemID:item.itemID];
     __weak typeof(self) weakSelf = self;
-    [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"removeSavedItem"];
+    callable.timeoutInterval = 30.0;
+
+    NSDictionary *payload = @{ @"itemID": item.itemID ?: @"" };
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ SavedForLater: Failed to delete from Firestore: %@", error.localizedDescription);
+            NSLog(@"❌ SavedForLater: Failed to delete via Cloud Function: %@", error.localizedDescription);
             PPSaveForLaterCompleteOnMain(completion, error);
             return;
         }
@@ -283,18 +278,18 @@ static void PPSaveForLaterCompleteOnMain(PPSaveForLaterRemoveCompletion _Nullabl
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
     if (userID.length == 0) return;
     
-    NSArray<CartItem *> *itemsToDelete = [_items copy];
     [_items removeAllObjects];
     [self persistForUser:userID];
     
-    FIRFirestore *db = [FIRFirestore firestore];
-    for (CartItem *item in itemsToDelete) {
-        FIRDocumentReference *docRef = [[[[db collectionWithPath:@"UsersCol"]
-                                         documentWithPath:userID]
-                                        collectionWithPath:@"savedForLater"]
-                                       documentWithPath:item.itemID];
-        [docRef deleteDocumentWithCompletion:nil];
-    }
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"clearSavedForLater"];
+    callable.timeoutInterval = 30.0;
+
+    [callable callWithObject:@{} completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            NSLog(@"❌ SavedForLater: Failed to clear via Cloud Function: %@", error.localizedDescription);
+        }
+    }];
 }
 
 #pragma mark - Local Caching

@@ -11,7 +11,7 @@
 #import "PPCategoryCardCell.h"
 #import "PPHomeFunc.h"
 #import "PPHomeItem.h"
-#import "PPHomeActionCell.h"
+
 #import "PPHomeViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPSaveForLaterManager.h"
@@ -21,7 +21,7 @@
 #import "PPDataViewVC.h"
 #import "PPPetProfile.h"
 #import "PPPetProfileEditorViewController.h"
-#import "PPHomePremiumCareCell.h"
+
 #import "PPHomeUltraPremuimPetCareCell.h"
 #import "PPPetProfilesViewController.h"
 #import "PPMarketplaceHeroCardStyle.h"
@@ -42,7 +42,6 @@
 #import "PurchasedItemsViewController.h"
 #import "PPOrder.h"
 #import <os/signpost.h>
-#import "PPUniversalCellFlags.h"
 static os_log_t PPHomePerformanceLog(void) {
     static os_log_t log;
     static dispatch_once_t onceToken;
@@ -68,7 +67,7 @@ static os_log_t PPHomePerformanceLog(void) {
 #import <objc/runtime.h>
 #import <math.h>
 #import <float.h>
-#import "PPHomeOrderStatusCell.h"
+
 #import "PPOrderStatusAppearance.h"
 #import "PPNovaChatViewController.h"
 #import "UIView+Badge.h"
@@ -117,6 +116,10 @@ static NSString * const PPHomeSaveForLaterUpdatedNotificationName = @"PPSaveForL
 static CGFloat const PPHomeSmartSearchCartButtonSide = 44.0;
 static CGFloat const PPHomeSmartSearchCartButtonSpacing = 8.0;
 static NSTimeInterval const PPHomeSmartSearchCartRevealDuration = 0.42;
+
+static NSInteger const PPHomeOrderStatusHostingViewTag = 1001;
+static NSString * const PPHomeOrderStatusCellIdentifier = @"PPHomeOrderStatusCellIdentifier";
+
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -2027,8 +2030,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     {
         
     }
-    self.ambientBackgroundView.overrideCenterGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
-    self.ambientBackgroundView.overrideTopGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
+   // self.ambientBackgroundView.overrideTopGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
+    self.ambientBackgroundView.accentColorOverride = [centerGlowColor colorWithAlphaComponent:0.06];
  }
 
 - (NSInteger)pp_indexOfSelectedMainKindInRail
@@ -2231,10 +2234,6 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     if (PPULTRA_CARE_IS_ACTIVATED &&
         [rawCell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
         [(PPHomeUltraPremuimPetCareCell *)rawCell
-            configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
-    } else if (!PPULTRA_CARE_IS_ACTIVATED &&
-               [rawCell isKindOfClass:PPHomePremiumCareCell.class]) {
-        [(PPHomePremiumCareCell *)rawCell
             configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
     } else {
         return;
@@ -2806,14 +2805,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
         PPHomeConfigCacheBackgroundGlowsFadedKey : @(glowsFaded),
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit),
-        PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar),
-        @"BBUniversalCellUseSwiftUI" : @(YES)
+        PPHomeConfigCacheUseLegacyBarKey : @(useLegacyBar)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
     [[NSUserDefaults standardUserDefaults] setBool:novaFloatingVisible
                                             forKey:PPNovaFloatingVisibleDefaultsKey];
     [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
-    [[NSUserDefaults standardUserDefaults] setBool:BBUniversalCellUseSwiftUI forKey:@"BBUniversalCellUseSwiftUI"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     // We also set it individually so other view controllers can read it easily
@@ -2857,13 +2854,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     }
     [[NSUserDefaults standardUserDefaults] setBool:useLegacyBar forKey:@"PPUSE_LEGACY_BAR"];
 
-    BOOL useSwiftUICells = YES;
-    id cachedUseSwiftUICells = payload[@"BBUniversalCellUseSwiftUI"];
-    if ([cachedUseSwiftUICells respondsToSelector:@selector(boolValue)]) {
-        useSwiftUICells = [cachedUseSwiftUICells boolValue];
-    }
-    BBUniversalCellUseSwiftUI = useSwiftUICells;
-    [[NSUserDefaults standardUserDefaults] setBool:useSwiftUICells forKey:@"BBUniversalCellUseSwiftUI"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     NSString *cachedMode = payload[PPHomeConfigCacheTitleModeKey];
@@ -5369,19 +5359,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         useLegacyBar = [remoteUseLegacyBar boolValue];
     }
 
-    BOOL useSwiftUICells = YES;
-    id remoteUseSwiftUICells = data[@"BBUniversalCellUseSwiftUI"];
-    if ([remoteUseSwiftUICells respondsToSelector:@selector(boolValue)]) {
-        useSwiftUICells = [remoteUseSwiftUICells boolValue];
-    }
-
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-
-        BBUniversalCellUseSwiftUI = useSwiftUICells;
-        [[NSUserDefaults standardUserDefaults] setBool:useSwiftUICells forKey:@"BBUniversalCellUseSwiftUI"];
 
         NSString *previousSignature = strongSelf.lastAppliedHomeConfigOrderSignature ?: @"";
         if (previousSignature.length == 0 && strongSelf.dataSource) {
@@ -7940,8 +7921,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     [self.collectionView registerClass:PPHomeHeroCell.class
             forCellWithReuseIdentifier:PPHomeHeroCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeOrderStatusCell.class
-            forCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier];
+     
     [self.collectionView registerClass:PPCategoryCardCell.class forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
     [PPUniversalCell pp_registerInCollectionView:self.collectionView];
     [self.collectionView registerClass:PPMainKindsCell.class
@@ -7950,13 +7930,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
      [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
-    if (PPULTRA_CARE_IS_ACTIVATED) {
-        [self.collectionView registerClass:PPHomeUltraPremuimPetCareCell.class
+       [self.collectionView registerClass:PPHomeUltraPremuimPetCareCell.class
                 forCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier];
-    } else {
-        [self.collectionView registerClass:PPHomePremiumCareCell.class
-                forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
-    }
+     
     [self.collectionView registerClass:PPHomePremiumSearchCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
     [self.collectionView registerClass:PPHomeMarketplaceHeroCell.class
@@ -7970,6 +7946,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
      [self.collectionView registerClass:PPBannerCollectionCell.class forCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier];
     [self.collectionView registerClass:PetAdoptCollectionViewCell.class forCellWithReuseIdentifier:@"PetAdoptCollectionViewCell"];
+    [self.collectionView registerClass:UICollectionViewCell.class
+            forCellWithReuseIdentifier:PPHomeOrderStatusCellIdentifier];
 
     [self.collectionView registerClass:PPSectionHeaderView.class
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
@@ -8121,46 +8099,90 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         if (section == PPHomeSectionCurrentOrders) {
-            PPHomeOrderStatusCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier
+            UICollectionViewCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeOrderStatusCellIdentifier
                                                           forIndexPath:indexPath];
+            cell.contentView.clipsToBounds = YES;
+
+            PPHomeOrderStatusHostingView *hostingView =
+                [cell.contentView viewWithTag:PPHomeOrderStatusHostingViewTag];
+            if (!hostingView) {
+                hostingView = [[PPHomeOrderStatusHostingView alloc] init];
+                hostingView.translatesAutoresizingMaskIntoConstraints = NO;
+                hostingView.tag = PPHomeOrderStatusHostingViewTag;
+                [cell.contentView addSubview:hostingView];
+                [NSLayoutConstraint activateConstraints:@[
+                    [hostingView.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor],
+                    [hostingView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor],
+                    [hostingView.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor],
+                    [hostingView.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor],
+                ]];
+            }
+
             BOOL expanded = strongSelf.isCurrentOrdersExpanded;
 
             if (item.payload == [NSNull null] || ![item.payload isKindOfClass:PPOrder.class]) {
-                [cell configurePlaceholderExpanded:expanded];
+                [hostingView configureWithOrderReference:@""
+                                         orderKickerTitle:@""
+                                          previewImageURLs:@[]
+                                                     meta:@""
+                                              statusTitle:@""
+                                               statusHint:@""
+                                                statusKey:@""
+                                                 progress:0
+                                               footerText:@""
+                                              statusColor:UIColor.clearColor
+                                           statusIconName:@""
+                                              actionTitle:@""
+                                             historyTitle:@""
+                               loadingAccessibilityLabel:@""
+                                  toggleAccessibilityLabel:@""
+                                 toggleAccessibilityHint:@""
+                                   expandedStateValue:@""
+                                  collapsedStateValue:@""
+                                                  expanded:expanded
+                                               placeholder:YES
+                                                 animated:NO];
                 pp_stageCell(cell); return cell;
             }
 
             PPOrder *order = (PPOrder *)item.payload;
-            [cell configureWithOrderReference:[order displayOrderReference]
-                             orderKickerTitle:[strongSelf pp_homeOrderKickerTitle:order]
-                              previewImageURLs:[strongSelf pp_homeOrderPreviewImageURLs:order limit:3]
-                                         meta:[strongSelf pp_homeOrderMetaText:order]
-                                  statusTitle:[strongSelf pp_homeOrderStatusTitle:order]
-                                   statusHint:[strongSelf pp_homeOrderStatusHint:order]
-                                    statusKey:[strongSelf pp_homeOrderStatusKey:order]
-                                     progress:[strongSelf pp_homeOrderProgress:order]
-                                   footerText:[strongSelf pp_homeOrderFooterText:order]
-                                  statusColor:[strongSelf pp_homeOrderStatusColor:order]
-                               statusIconName:[strongSelf pp_homeOrderStatusIconName:order]
-                                  actionTitle:(kLang(@"order_action_track") ?: @"Track order")
-                                     expanded:expanded];
+            [hostingView configureWithOrderReference:[order displayOrderReference]
+                                     orderKickerTitle:[strongSelf pp_homeOrderKickerTitle:order]
+                                      previewImageURLs:[strongSelf pp_homeOrderPreviewImageURLs:order limit:3]
+                                                 meta:[strongSelf pp_homeOrderMetaText:order]
+                                          statusTitle:[strongSelf pp_homeOrderStatusTitle:order]
+                                           statusHint:[strongSelf pp_homeOrderStatusHint:order]
+                                            statusKey:[strongSelf pp_homeOrderStatusKey:order]
+                                             progress:[strongSelf pp_homeOrderProgress:order]
+                                           footerText:[strongSelf pp_homeOrderFooterText:order]
+                                          statusColor:[strongSelf pp_homeOrderStatusColor:order]
+                                       statusIconName:[strongSelf pp_homeOrderStatusIconName:order]
+                                          actionTitle:(kLang(@"order_action_track") ?: @"Track order")
+                                         historyTitle:(kLang(@"OrderHistory") ?: @"")
+                           loadingAccessibilityLabel:(kLang(@"order_status_loading_accessibility") ?: @"Loading order status")
+                              toggleAccessibilityLabel:(kLang(@"order_status_toggle_expand") ?: @"Expand or collapse")
+                             toggleAccessibilityHint:(kLang(@"order_status_toggle_hint") ?: @"Double-tap to expand or collapse")
+                               expandedStateValue:(kLang(@"expanded") ?: @"Expanded")
+                              collapsedStateValue:(kLang(@"collapsed") ?: @"Collapsed")
+                                              expanded:expanded
+                                           placeholder:NO
+                                             animated:NO];
 
-            // 🎯 Ensure gradient layers are matched to final bounds on first load/re-config
-            [cell refreshDecorativeLayersForCurrentBounds];
+            [hostingView refreshForCurrentBounds];
 
             __weak typeof(strongSelf) weakHome = strongSelf;
-            cell.onTrackTap = ^{
+            hostingView.onTrackTap = ^{
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
                 [self pp_openOrderDetailsForOrder:order];
             };
-            cell.onHistoryTap = ^{
+            hostingView.onHistoryTap = ^{
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
                 [self handleSeeAllForSection:PPHomeSectionCurrentOrders];
             };
-            cell.onCollapseTap = ^{
+            hostingView.onCollapseTap = ^{
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
                 BOOL shouldExpand = !self.isCurrentOrdersExpanded;
@@ -8267,20 +8289,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             pp_stageCell(cell); return cell;
         }
 
-        if ( section == PPHomeSectionPremiumCare) {
-            if (PPULTRA_CARE_IS_ACTIVATED) {
-                PPHomeUltraPremuimPetCareCell *cell =
-                    [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier
-                                                              forIndexPath:indexPath];
-                [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
-                pp_stageCell(cell); return cell;
-            }
-
-            PPHomePremiumCareCell *legacyCell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
+        if (section == PPHomeSectionPremiumCare) {
+            PPHomeUltraPremuimPetCareCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeUltraPremuimPetCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
-            [legacyCell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
-            pp_stageCell(legacyCell); return legacyCell;
+            [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
+            pp_stageCell(cell); return cell;
         }
 
         if (section == PPHomeSectionCarousel) {
@@ -8498,8 +8512,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         if (section == PPHomeSectionAdsNearBy &&
             [item.payload isKindOfClass:NSString.class]) {
-            PPHomeActionCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeActionCell.reuseIdentifier
+            PPModernHomeActionCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             NSString *token = (NSString *)item.payload;
             if ([token isEqualToString:@"nearby-empty-state"]) {
@@ -8522,8 +8536,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         if (section == PPHomeSectionNearbyServices &&
             [item.payload isKindOfClass:NSString.class]) {
-            PPHomeActionCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeActionCell.reuseIdentifier
+            PPModernHomeActionCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             NSString *token = (NSString *)item.payload;
             if ([token isEqualToString:@"services-empty-state"]) {
@@ -9346,21 +9360,20 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         currentOrderIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
     }
 
-    PPHomeOrderStatusCell *visibleOrderCell =
+    UICollectionViewCell *visibleCell =
         currentOrderIndexPath
-        ? (PPHomeOrderStatusCell *)[self.collectionView cellForItemAtIndexPath:currentOrderIndexPath]
+        ? [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath]
         : nil;
-    if (![visibleOrderCell isKindOfClass:PPHomeOrderStatusCell.class]) {
-        visibleOrderCell = nil;
-    }
+    PPHomeOrderStatusHostingView *visibleHostingView =
+        (PPHomeOrderStatusHostingView *)[visibleCell.contentView viewWithTag:PPHomeOrderStatusHostingViewTag];
 
     // Update the flag — the existing section provider already reads it
     // and returns the correct height on the next layout pass.
     self.layoutManager.isCurrentOrdersExpanded = expanded;
     [self refreshHeroSectionAppearance];
 
-    if (visibleOrderCell) {
-        [visibleOrderCell setExpandedState:expanded animated:animated];
+    if (visibleHostingView) {
+        [visibleHostingView setExpanded:expanded animated:animated];
     }
 
     // Invalidate the existing layout instead of rebuilding it entirely.
@@ -9380,13 +9393,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
         UICollectionViewCell *updatedCell =
             [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
-        if (![updatedCell isKindOfClass:PPHomeOrderStatusCell.class]) return;
-
-        PPHomeOrderStatusCell *updatedOrderCell = (PPHomeOrderStatusCell *)updatedCell;
-        if (updatedOrderCell != visibleOrderCell) {
-            [updatedOrderCell setExpandedState:expanded animated:NO];
+        PPHomeOrderStatusHostingView *updatedHostingView =
+            (PPHomeOrderStatusHostingView *)[updatedCell.contentView viewWithTag:PPHomeOrderStatusHostingViewTag];
+        if (updatedHostingView && updatedHostingView != visibleHostingView) {
+            [updatedHostingView setExpanded:expanded animated:NO];
         }
-        [updatedOrderCell refreshDecorativeLayersForCurrentBounds];
+        [updatedHostingView refreshForCurrentBounds];
     };
 
     if (animated) {
@@ -11274,16 +11286,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         cell.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    if (section == PPHomeSectionPremiumCare) {
-        if (PPULTRA_CARE_IS_ACTIVATED &&
-            [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
-            [(PPHomeUltraPremuimPetCareCell *)cell
-                pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
-        } else if (!PPULTRA_CARE_IS_ACTIVATED &&
-                   [cell isKindOfClass:PPHomePremiumCareCell.class]) {
-            [(PPHomePremiumCareCell *)cell
-                pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
-        }
+    if (section == PPHomeSectionPremiumCare &&
+        [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
+        [(PPHomeUltraPremuimPetCareCell *)cell
+            pp_playPostLayoutEntranceWithDelay:(delay + 0.10)];
     }
 }
 
@@ -11464,14 +11470,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     cell.alpha = initialAlpha;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
     cell.transform = CGAffineTransformScale(transform, scale, scale);
-    if (section == PPHomeSectionPremiumCare && !isLateAppearance) {
-        if (PPULTRA_CARE_IS_ACTIVATED &&
-            [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
-            [(PPHomeUltraPremuimPetCareCell *)cell pp_preparePostLayoutEntranceState];
-        } else if (!PPULTRA_CARE_IS_ACTIVATED &&
-                   [cell isKindOfClass:PPHomePremiumCareCell.class]) {
-            [(PPHomePremiumCareCell *)cell pp_preparePostLayoutEntranceState];
-        }
+    if (section == PPHomeSectionPremiumCare &&
+        !isLateAppearance &&
+        [cell isKindOfClass:PPHomeUltraPremuimPetCareCell.class]) {
+        [(PPHomeUltraPremuimPetCareCell *)cell pp_preparePostLayoutEntranceState];
     }
     [CATransaction commit];
 }

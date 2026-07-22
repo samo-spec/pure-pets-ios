@@ -16,15 +16,29 @@
 #endif
 
 static CGFloat const kPPCartCellOuterVerticalInset = 8.0;
-static CGFloat const kPPCartCellOuterHorizontalInset = 15.0;
+static CGFloat const kPPCartCellOuterHorizontalInset = 16.0;
 static CGFloat const kPPCartCellCardCornerRadius = 24.0;
 static CGFloat const kPPCartCellImageShellWidth = 94.0;
 static CGFloat const kPPCartCellStepperHeight = 38.0;
+static CGFloat const kPPCartSavedActionCornerRadius = 16.0;
 static CGFloat const kPPCartCellAccentRailWidth = 3.0;
+static NSTimeInterval const kPPCartSavedArrivalDuration = 0.46;
 
 static UIColor *PPCartCellAccentColor(void)
 {
     return AppPrimaryClr ?: UIColor.systemOrangeColor;
+}
+
+static UIColor *PPCartCellDeferredAccentColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:0.94 green:0.69 blue:0.30 alpha:1.0]
+                : [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+        }];
+    }
+    return [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
 }
 
 static UIColor *PPCartCellSurfaceColor(void)
@@ -69,6 +83,8 @@ static UIColor *PPCartCellSoftFillColor(void)
 typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartActionButtonKindNeutral = 0,
     PPCartActionButtonKindAccent = 1,
+    PPCartActionButtonKindDestructive = 2,
+    PPCartActionButtonKindSuccess = 3,
 };
 
 @interface PPCartInsetLabel : UILabel
@@ -108,6 +124,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 @property (nonatomic, strong) UIView *cardContainer;
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *savedStateTintView;
 @property (nonatomic, strong) UIView *accentRailView;
 @property (nonatomic, strong) UIView *imageShellView;
 @property (nonatomic, strong) UIView *stepperPillView;
@@ -115,9 +132,12 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 @property (nonatomic, strong) PPCartInsetLabel *eyebrowLabel;
 @property (nonatomic, strong) PPCartInsetLabel *subtotalPillLabel;
 @property (nonatomic, strong) PPCartInsetLabel *savingsPillLabel;
+@property (nonatomic, strong) PPCartInsetLabel *savedStatusBadgeLabel;
 
 @property (nonatomic, strong) UIStackView *textStack;
 @property (nonatomic, strong) UIStackView *stepperStack;
+@property (nonatomic, strong) UIStackView *bottomRow;
+@property (nonatomic, strong) UIStackView *savedActionsRow;
 
 @property (nonatomic, strong, readwrite) UIImageView *itemImageView;
 @property (nonatomic, strong, readwrite) UILabel *nameLabel;
@@ -127,8 +147,24 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 @property (nonatomic, strong) UIButton *minusButton;
 @property (nonatomic, strong) UIButton *plusButton;
+@property (nonatomic, strong) UIButton *savedRemoveButton;
+@property (nonatomic, strong) UIButton *savedPrimaryButton;
 
 @property (nonatomic, strong) CartItem *currentItem;
+@property (nonatomic, assign) BOOL savedForLaterMode;
+@property (nonatomic, copy) NSString *savedForLaterPrimaryActionName;
+@property (nonatomic, assign) BOOL savedForLaterActionCompleted;
+@property (nonatomic, assign) NSUInteger savedArrivalAnimationToken;
+
+- (UIImage *)pp_actionImageNamed:(NSString *)systemName;
+- (void)pp_setActionButton:(UIButton *)button systemName:(NSString *)systemName;
+- (void)pp_animateSavedForLaterActionFromButton:(UIButton *)button;
+- (void)pp_configureSavedActionButton:(UIButton *)button
+                                title:(NSString *)title
+                           systemName:(NSString *)systemName
+                              primary:(BOOL)primary
+                          destructive:(BOOL)destructive
+                              enabled:(BOOL)enabled;
 
 @end
 
@@ -182,6 +218,13 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     }
     [cardContainer addSubview:surfaceView];
     self.surfaceView = surfaceView;
+
+    UIView *savedStateTintView = [[UIView alloc] initWithFrame:CGRectZero];
+    savedStateTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    savedStateTintView.userInteractionEnabled = NO;
+    savedStateTintView.alpha = 0.0;
+    [surfaceView addSubview:savedStateTintView];
+    self.savedStateTintView = savedStateTintView;
 
     UIView *accentRailView = [[UIView alloc] initWithFrame:CGRectZero];
     accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -252,6 +295,23 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
                                                forAxis:UILayoutConstraintAxisVertical];
     self.nameLabel = nameLabel;
 
+    PPCartInsetLabel *savedStatusBadgeLabel =
+    [self pp_buildCapsuleLabelWithFont:[GM boldFontWithSize:10.5]
+                             textColor:PPCartCellDeferredAccentColor()
+                       backgroundColor:[PPCartCellDeferredAccentColor() colorWithAlphaComponent:0.10]
+                           borderColor:[PPCartCellDeferredAccentColor() colorWithAlphaComponent:0.17]
+                               corners:11.0];
+    savedStatusBadgeLabel.textInsets = UIEdgeInsetsMake(4.0, 8.0, 4.0, 8.0);
+    savedStatusBadgeLabel.textAlignment = NSTextAlignmentCenter;
+    savedStatusBadgeLabel.adjustsFontSizeToFitWidth = YES;
+    savedStatusBadgeLabel.minimumScaleFactor = 0.76;
+    savedStatusBadgeLabel.hidden = YES;
+    [savedStatusBadgeLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                             forAxis:UILayoutConstraintAxisHorizontal];
+    [savedStatusBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                            forAxis:UILayoutConstraintAxisHorizontal];
+    self.savedStatusBadgeLabel = savedStatusBadgeLabel;
+
     UILabel *priceLabel = [[UILabel alloc] init];
     priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     priceLabel.font = [GM boldFontWithSize:17.5];
@@ -290,7 +350,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIStackView *headerRow = [[UIStackView alloc] initWithArrangedSubviews:@[
         nameLabel,
-        headerSpacer
+        headerSpacer,
+        savedStatusBadgeLabel
     ]];
     headerRow.translatesAutoresizingMaskIntoConstraints = NO;
     headerRow.axis = UILayoutConstraintAxisHorizontal;
@@ -377,11 +438,51 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     bottomRow.axis = UILayoutConstraintAxisHorizontal;
     bottomRow.alignment = UIStackViewAlignmentCenter;
     bottomRow.spacing = 9.0;
+    self.bottomRow = bottomRow;
+
+    UIButton *savedRemoveButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    savedRemoveButton.translatesAutoresizingMaskIntoConstraints = NO;
+    savedRemoveButton.adjustsImageWhenHighlighted = NO;
+    [savedRemoveButton setContentHuggingPriority:UILayoutPriorityRequired
+                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [savedRemoveButton setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                       forAxis:UILayoutConstraintAxisHorizontal];
+    [savedRemoveButton addTarget:self
+                          action:@selector(didTapSavedRemoveButton)
+                forControlEvents:UIControlEventTouchUpInside];
+    [self pp_applyPressTargetsToButton:savedRemoveButton];
+    self.savedRemoveButton = savedRemoveButton;
+
+    UIButton *savedPrimaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    savedPrimaryButton.translatesAutoresizingMaskIntoConstraints = NO;
+    savedPrimaryButton.adjustsImageWhenHighlighted = NO;
+    [savedPrimaryButton setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                          forAxis:UILayoutConstraintAxisHorizontal];
+    [savedPrimaryButton setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                        forAxis:UILayoutConstraintAxisHorizontal];
+    [savedPrimaryButton addTarget:self
+                           action:@selector(didTapSavedPrimaryButton)
+                 forControlEvents:UIControlEventTouchUpInside];
+    [self pp_applyPressTargetsToButton:savedPrimaryButton];
+    self.savedPrimaryButton = savedPrimaryButton;
+
+    UIStackView *savedActionsRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        savedRemoveButton,
+        savedPrimaryButton
+    ]];
+    savedActionsRow.translatesAutoresizingMaskIntoConstraints = NO;
+    savedActionsRow.axis = UILayoutConstraintAxisHorizontal;
+    savedActionsRow.alignment = UIStackViewAlignmentFill;
+    savedActionsRow.distribution = UIStackViewDistributionFill;
+    savedActionsRow.spacing = 8.0;
+    savedActionsRow.hidden = YES;
+    self.savedActionsRow = savedActionsRow;
 
     UIStackView *contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         headerRow,
         priceRow,
-        bottomRow
+        bottomRow,
+        savedActionsRow
     ]];
     contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     contentStack.axis = UILayoutConstraintAxisVertical;
@@ -401,6 +502,11 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [surfaceView.bottomAnchor constraintEqualToAnchor:cardContainer.bottomAnchor],
         [surfaceView.leadingAnchor constraintEqualToAnchor:cardContainer.leadingAnchor],
         [surfaceView.trailingAnchor constraintEqualToAnchor:cardContainer.trailingAnchor],
+
+        [savedStateTintView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor],
+        [savedStateTintView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor],
+        [savedStateTintView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor],
+        [savedStateTintView.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor],
 
         [accentRailView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:18.0],
         [accentRailView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-18.0],
@@ -439,6 +545,10 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [stepperPillView.heightAnchor constraintEqualToConstant:kPPCartCellStepperHeight],
         [stepperPillView.widthAnchor constraintGreaterThanOrEqualToConstant:118.0],
 
+        [savedActionsRow.heightAnchor constraintEqualToConstant:kPPCartCellStepperHeight],
+        [savedRemoveButton.widthAnchor constraintGreaterThanOrEqualToConstant:72.0],
+        [savedPrimaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:140.0],
+
         [stepperStack.topAnchor constraintEqualToAnchor:stepperPillView.topAnchor constant:6.0],
         [stepperStack.bottomAnchor constraintEqualToAnchor:stepperPillView.bottomAnchor constant:-6.0],
         [stepperStack.leadingAnchor constraintEqualToAnchor:stepperPillView.leadingAnchor constant:7.0],
@@ -451,8 +561,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [quantityLabel.widthAnchor constraintGreaterThanOrEqualToConstant:28.0],
     ]];
 
-    self.minusButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_decrease_qty", @"Decrease quantity");
-    self.plusButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_increase_qty", @"Increase quantity");
+    self.minusButton.accessibilityLabel = kLang(@"a11y_btn_decrease_qty");
+    self.plusButton.accessibilityLabel = kLang(@"a11y_btn_increase_qty");
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
@@ -467,33 +577,60 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     }
 
     UIColor *accent = PPCartCellAccentColor();
+    UIColor *stateAccent = self.savedForLaterMode ? PPCartCellDeferredAccentColor() : accent;
     UIColor *surfaceColor = PPCartCellSurfaceColor();
 
-    self.cardContainer.layer.shadowOpacity = dark ? 0.18 : 0.08;
-    self.cardContainer.layer.shadowRadius = dark ? 18.0 : 22.0;
-    self.cardContainer.layer.shadowOffset = CGSizeMake(0.0, dark ? 8.0 : 12.0);
+    self.cardContainer.layer.shadowOpacity = self.savedForLaterMode ? (dark ? 0.13 : 0.055) : (dark ? 0.18 : 0.08);
+    self.cardContainer.layer.shadowRadius = self.savedForLaterMode ? 14.0 : (dark ? 18.0 : 22.0);
+    self.cardContainer.layer.shadowOffset = CGSizeMake(0.0, self.savedForLaterMode ? 7.0 : (dark ? 8.0 : 12.0));
 
     self.surfaceView.backgroundColor = surfaceColor;
-    [self.surfaceView pp_setBorderColor:PPCartCellHairlineColor()];
+    [self.surfaceView pp_setBorderColor:self.savedForLaterMode
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.22 : 0.14]
+        : PPCartCellHairlineColor()];
 
-    self.accentRailView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.62 : 0.72];
-    self.imageShellView.backgroundColor = PPCartCellSoftFillColor();
-    [self.imageShellView pp_setBorderColor:PPCartCellHairlineColor()];
+    self.savedStateTintView.alpha = self.savedForLaterMode ? 1.0 : 0.0;
+    self.savedStateTintView.backgroundColor = [stateAccent colorWithAlphaComponent:dark ? 0.075 : 0.040];
+
+    self.savedStatusBadgeLabel.textColor = stateAccent;
+    self.savedStatusBadgeLabel.backgroundColor = [stateAccent colorWithAlphaComponent:dark ? 0.18 : 0.10];
+    [self.savedStatusBadgeLabel pp_setBorderColor:[stateAccent colorWithAlphaComponent:dark ? 0.26 : 0.17]];
+
+    self.accentRailView.backgroundColor = [stateAccent colorWithAlphaComponent:self.savedForLaterMode
+        ? (dark ? 0.78 : 0.86)
+        : (dark ? 0.62 : 0.72)];
+    self.imageShellView.backgroundColor = self.savedForLaterMode
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.095 : 0.055]
+        : PPCartCellSoftFillColor();
+    [self.imageShellView pp_setBorderColor:self.savedForLaterMode
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.20 : 0.12]
+        : PPCartCellHairlineColor()];
     self.itemImageView.backgroundColor = dark ? UIColor.tertiarySystemBackgroundColor : UIColor.secondarySystemBackgroundColor;
+    self.itemImageView.alpha = self.savedForLaterMode ? 0.90 : 1.0;
 
     self.nameLabel.textColor = PPCartCellPrimaryTextColor();
-    self.priceLabel.textColor = PPCartCellPrimaryTextColor();
+    self.priceLabel.textColor = self.savedForLaterMode
+        ? [PPCartCellPrimaryTextColor() colorWithAlphaComponent:0.78]
+        : PPCartCellPrimaryTextColor();
     self.originalPriceLabel.textColor = [PPCartCellSecondaryTextColor() colorWithAlphaComponent:0.62];
     self.quantityLabel.textColor = PPCartCellPrimaryTextColor();
 
-    self.eyebrowLabel.textColor = accent;
-    self.eyebrowLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.12];
-    [self.eyebrowLabel pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.16]];
+    self.eyebrowLabel.textColor = stateAccent;
+    self.eyebrowLabel.backgroundColor = [stateAccent colorWithAlphaComponent:dark ? 0.18 : 0.11];
+    [self.eyebrowLabel pp_setBorderColor:[stateAccent colorWithAlphaComponent:dark ? 0.25 : 0.17]];
 
-    self.stepperPillView.backgroundColor = PPCartCellSoftFillColor();
-    [self.stepperPillView pp_setBorderColor:PPCartCellHairlineColor()];
+    self.stepperPillView.backgroundColor = self.savedForLaterMode
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.12 : 0.065]
+        : PPCartCellSoftFillColor();
+    [self.stepperPillView pp_setBorderColor:self.savedForLaterMode
+        ? [stateAccent colorWithAlphaComponent:dark ? 0.22 : 0.14]
+        : PPCartCellHairlineColor()];
 
-    if (self.currentItem.hasDiscount) {
+    if (self.savedForLaterMode) {
+        self.subtotalPillLabel.backgroundColor = [stateAccent colorWithAlphaComponent:dark ? 0.18 : 0.10];
+        [self.subtotalPillLabel pp_setBorderColor:[stateAccent colorWithAlphaComponent:dark ? 0.25 : 0.16]];
+        self.subtotalPillLabel.textColor = stateAccent;
+    } else if (self.currentItem.hasDiscount) {
         self.subtotalPillLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.14];
         [self.subtotalPillLabel pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.18]];
         self.subtotalPillLabel.textColor = accent;
@@ -504,7 +641,9 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     }
 
     if (self.currentItem) {
-        [self pp_updateActionAvailability];
+        if (!self.savedForLaterMode) {
+            [self pp_updateActionAvailability];
+        }
     }
 }
 
@@ -538,7 +677,12 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 {
     [super prepareForReuse];
 
+    self.savedArrivalAnimationToken += 1;
     self.currentItem = nil;
+    self.savedForLaterMode = NO;
+    self.savedForLaterPrimaryActionName = nil;
+    self.savedForLaterActionCompleted = NO;
+    self.onAction = nil;
     self.itemImageView.image = nil;
     self.nameLabel.text = @"";
     self.eyebrowLabel.text = @"";
@@ -546,24 +690,49 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     self.originalPriceLabel.attributedText = nil;
     self.originalPriceLabel.hidden = YES;
     self.quantityLabel.text = @"";
+    self.quantityLabel.font = [GM boldFontWithSize:15.0];
     self.subtotalPillLabel.text = @"";
     self.savingsPillLabel.text = @"";
     self.savingsPillLabel.hidden = YES;
+    self.savedStatusBadgeLabel.text = @"";
+    self.savedStatusBadgeLabel.hidden = YES;
+    self.bottomRow.hidden = NO;
+    self.savedActionsRow.hidden = YES;
 
     [self pp_setCardHighlighted:NO animated:NO];
 
     [self.cardContainer.layer removeAllAnimations];
     [self.surfaceView.layer removeAllAnimations];
     [self.stepperPillView.layer removeAllAnimations];
+    [self.savedActionsRow.layer removeAllAnimations];
     [self.quantityLabel.layer removeAllAnimations];
+    [self.savedStateTintView.layer removeAllAnimations];
+    [self.accentRailView.layer removeAllAnimations];
+    [self.itemImageView.layer removeAllAnimations];
+    self.cardContainer.alpha = 1.0;
     self.cardContainer.transform = CGAffineTransformIdentity;
     self.surfaceView.transform = CGAffineTransformIdentity;
     self.stepperPillView.transform = CGAffineTransformIdentity;
+    self.savedActionsRow.transform = CGAffineTransformIdentity;
     self.quantityLabel.transform = CGAffineTransformIdentity;
     self.minusButton.transform = CGAffineTransformIdentity;
     self.plusButton.transform = CGAffineTransformIdentity;
     self.minusButton.alpha = 1.0;
     self.plusButton.alpha = 1.0;
+    self.savedRemoveButton.alpha = 1.0;
+    self.savedPrimaryButton.alpha = 1.0;
+    self.savedRemoveButton.transform = CGAffineTransformIdentity;
+    self.savedPrimaryButton.transform = CGAffineTransformIdentity;
+    self.savedStateTintView.alpha = 0.0;
+    self.itemImageView.alpha = 1.0;
+    self.accentRailView.alpha = 1.0;
+    self.accentRailView.transform = CGAffineTransformIdentity;
+    [self pp_setActionButton:self.minusButton systemName:@"minus"];
+    [self pp_setActionButton:self.plusButton systemName:@"plus"];
+    self.minusButton.accessibilityLabel = kLang(@"a11y_btn_decrease_qty");
+    self.minusButton.accessibilityHint = nil;
+    self.plusButton.accessibilityLabel = kLang(@"a11y_btn_increase_qty");
+    self.plusButton.accessibilityHint = nil;
 
     [self pp_applyVisualTheme];
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
@@ -592,12 +761,125 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 - (void)configureWithItem:(CartItem *)item
 {
+    self.savedForLaterMode = NO;
+    self.savedForLaterPrimaryActionName = nil;
+    self.savedForLaterActionCompleted = NO;
+    self.quantityLabel.font = [GM boldFontWithSize:15.0];
+    [self pp_setActionButton:self.minusButton systemName:@"minus"];
+    [self pp_setActionButton:self.plusButton systemName:@"plus"];
+    self.minusButton.accessibilityLabel = kLang(@"a11y_btn_decrease_qty");
+    self.minusButton.accessibilityHint = nil;
+    self.plusButton.accessibilityLabel = kLang(@"a11y_btn_increase_qty");
+    self.plusButton.accessibilityHint = nil;
+    self.savedStatusBadgeLabel.hidden = YES;
+    self.bottomRow.hidden = NO;
+    self.savedActionsRow.hidden = YES;
+
     self.currentItem = item;
     [self pp_refreshContentForCurrentItem];
 
     DLog(@"Configured cell | itemID=%@ | name=%@ | price=%.2f | original=%.2f | discount=%@ | qty=%ld",
          item.itemID, item.name, item.price, item.originalPrice,
          item.hasDiscount ? @"YES" : @"NO", (long)item.quantity);
+}
+
+- (void)configureWithSavedForLaterItem:(CartItem *)item
+                      pendingOperation:(NSString * _Nullable)pendingOperation
+                             completed:(BOOL)completed
+{
+    self.savedForLaterMode = YES;
+    self.savedForLaterActionCompleted = completed;
+    self.currentItem = item;
+
+    BOOL pendingMove = [pendingOperation isEqualToString:@"move"];
+    BOOL pendingRemove = [pendingOperation isEqualToString:@"remove"];
+    BOOL pendingNotify = [pendingOperation isEqualToString:@"notify"];
+    BOOL hasPending = pendingMove || pendingRemove || pendingNotify;
+    BOOL stockIsKnown = item.stockQuantity != NSNotFound;
+    BOOL isOutOfStock = stockIsKnown && item.stockQuantity <= 0;
+
+    self.savedForLaterPrimaryActionName = isOutOfStock ? @"notifySavedWhenAvailable" : @"moveSavedToCart";
+    self.quantityLabel.font = [GM boldFontWithSize:13.0];
+    self.savedStatusBadgeLabel.text = kLang(@"saved_for_later_short_badge");
+    self.savedStatusBadgeLabel.hidden = NO;
+    self.bottomRow.hidden = YES;
+    self.savedActionsRow.hidden = NO;
+
+    NSString *eyebrowText = item.type.length > 0 ? item.type : kLang(@"saved_for_later_item_badge");
+    eyebrowText = [[eyebrowText stringByReplacingOccurrencesOfString:@"_" withString:@" "] uppercaseString];
+    self.eyebrowLabel.text = eyebrowText.length > 0 ? eyebrowText : kLang(@"saved_for_later_item_badge");
+    self.nameLabel.text = item.name.length > 0 ? item.name : kLang(@"saved_for_later_unknown_item");
+    self.priceLabel.text = [PPChatsFunc formattedCurrency:item.price];
+    self.subtotalPillLabel.text = kLang(@"saved_for_later_item_badge");
+
+    if (item.hasDiscount) {
+        NSString *originalText = [PPChatsFunc formattedCurrency:item.originalPrice];
+        NSDictionary *attributes = @{
+            NSStrikethroughStyleAttributeName: @(NSUnderlineStyleSingle),
+            NSForegroundColorAttributeName: [PPCartCellSecondaryTextColor() colorWithAlphaComponent:0.62],
+            NSFontAttributeName: self.originalPriceLabel.font
+        };
+        self.originalPriceLabel.attributedText = [[NSAttributedString alloc] initWithString:originalText
+                                                                                 attributes:attributes];
+        self.originalPriceLabel.hidden = NO;
+        self.savingsPillLabel.text = [NSString stringWithFormat:@"-%@",
+                                      [PPChatsFunc formattedCurrency:item.discountPerUnit]];
+        self.savingsPillLabel.hidden = NO;
+    } else {
+        self.originalPriceLabel.attributedText = nil;
+        self.originalPriceLabel.hidden = YES;
+        self.savingsPillLabel.text = @"";
+        self.savingsPillLabel.hidden = YES;
+    }
+
+    NSString *primarySymbol = isOutOfStock ? @"bell.badge" : @"cart.badge.plus";
+    NSString *primaryLabel = isOutOfStock ? kLang(@"notify_me") : kLang(@"move_to_cart");
+    NSString *primaryHint = isOutOfStock ? kLang(@"stock_notify_success") : kLang(@"saved_for_later_move_hint");
+
+    if (pendingMove) {
+        primarySymbol = @"hourglass";
+        primaryLabel = kLang(@"moving_to_cart");
+    } else if (pendingNotify) {
+        primarySymbol = @"hourglass";
+        primaryLabel = kLang(@"notify_me_loading");
+    } else if (completed) {
+        primarySymbol = @"checkmark";
+        primaryLabel = kLang(@"saved_for_later_moved_action");
+    }
+
+    NSString *removeSymbol = pendingRemove ? @"hourglass" : @"trash";
+    [self pp_setActionButton:self.minusButton systemName:removeSymbol];
+    [self pp_setActionButton:self.plusButton systemName:primarySymbol];
+    self.quantityLabel.text = primaryLabel;
+
+    self.minusButton.accessibilityLabel = kLang(@"saved_for_later_delete_action");
+    self.minusButton.accessibilityHint = kLang(@"saved_for_later_remove_hint");
+    self.plusButton.accessibilityLabel = primaryLabel;
+    self.plusButton.accessibilityHint = primaryHint;
+
+    [self pp_configureSavedActionButton:self.savedRemoveButton
+                                  title:pendingRemove ? kLang(@"saved_for_later_removing") : kLang(@"saved_for_later_remove_action")
+                             systemName:removeSymbol
+                                primary:NO
+                            destructive:YES
+                                enabled:!hasPending && !completed];
+    [self pp_configureSavedActionButton:self.savedPrimaryButton
+                                  title:primaryLabel
+                             systemName:primarySymbol
+                                primary:YES
+                            destructive:NO
+                                enabled:!hasPending && !completed];
+    self.savedRemoveButton.accessibilityHint = kLang(@"saved_for_later_remove_hint");
+    self.savedPrimaryButton.accessibilityHint = primaryHint;
+
+    [self pp_applyVisualTheme];
+    [self pp_styleActionButton:self.minusButton
+                          kind:PPCartActionButtonKindDestructive
+                       enabled:!hasPending && !completed];
+    [self pp_styleActionButton:self.plusButton
+                          kind:completed ? PPCartActionButtonKindSuccess : PPCartActionButtonKindAccent
+                       enabled:!hasPending && !completed];
+    [GM setImageFromUrlString:item.imageURL imageView:self.itemImageView phImage:@"placeholder"];
 }
 
 - (void)pp_refreshContentForCurrentItem
@@ -645,6 +927,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 - (void)pp_updateActionAvailability
 {
     if (!self.currentItem) return;
+    if (self.savedForLaterMode) return;
 
     BOOL canDecrease = self.currentItem.quantity > 1;
     BOOL stockIsKnown = self.currentItem.stockQuantity != NSNotFound;
@@ -658,6 +941,14 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 - (void)didTapMinus
 {
+    if (self.savedForLaterMode) {
+        [self pp_animateSavedForLaterActionFromButton:self.minusButton];
+        if (self.onAction) {
+            self.onAction(self.currentItem, @"removeSavedForLater");
+        }
+        return;
+    }
+
     if (!self.currentItem || self.currentItem.quantity <= 1) return;
 
     DLog(@"Minus tapped for %@", self.currentItem.name);
@@ -673,6 +964,14 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 - (void)didTapPlus
 {
+    if (self.savedForLaterMode) {
+        [self pp_animateSavedForLaterActionFromButton:self.plusButton];
+        if (self.onAction) {
+            self.onAction(self.currentItem, self.savedForLaterPrimaryActionName ?: @"moveSavedToCart");
+        }
+        return;
+    }
+
     if (!self.currentItem) return;
     if (self.currentItem.stockQuantity != NSNotFound &&
         self.currentItem.quantity >= self.currentItem.stockQuantity) {
@@ -690,14 +989,33 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     }
 }
 
+- (void)didTapSavedRemoveButton
+{
+    if (!self.savedForLaterMode || !self.currentItem || !self.savedRemoveButton.userInteractionEnabled) {
+        return;
+    }
+    [self pp_animateSavedForLaterActionFromButton:self.savedRemoveButton];
+    if (self.onAction) {
+        self.onAction(self.currentItem, @"removeSavedForLater");
+    }
+}
+
+- (void)didTapSavedPrimaryButton
+{
+    if (!self.savedForLaterMode || !self.currentItem || !self.savedPrimaryButton.userInteractionEnabled) {
+        return;
+    }
+    [self pp_animateSavedForLaterActionFromButton:self.savedPrimaryButton];
+    if (self.onAction) {
+        self.onAction(self.currentItem, self.savedForLaterPrimaryActionName ?: @"moveSavedToCart");
+    }
+}
+
 #pragma mark - Helpers
 
 - (UIButton *)pp_createIconButtonWithSystemName:(NSString *)iconName kind:(PPCartActionButtonKind)kind
 {
-    UIImageSymbolConfiguration *configuration =
-        [UIImageSymbolConfiguration configurationWithPointSize:13.0
-                                                        weight:UIImageSymbolWeightSemibold];
-    UIImage *image = [[UIImage systemImageNamed:iconName] imageByApplyingSymbolConfiguration:configuration];
+    UIImage *image = [self pp_actionImageNamed:iconName];
 
     UIButton *button;
     if (@available(iOS 15.0, *)) {
@@ -720,6 +1038,27 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     return button;
 }
 
+- (UIImage *)pp_actionImageNamed:(NSString *)systemName
+{
+    UIImageSymbolConfiguration *configuration =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                        weight:UIImageSymbolWeightSemibold];
+    return [[UIImage systemImageNamed:systemName ?: @"circle"] imageByApplyingSymbolConfiguration:configuration];
+}
+
+- (void)pp_setActionButton:(UIButton *)button systemName:(NSString *)systemName
+{
+    if (!button) return;
+    UIImage *image = [self pp_actionImageNamed:systemName];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        config.image = image;
+        button.configuration = config;
+    } else {
+        [button setImage:image forState:UIControlStateNormal];
+    }
+}
+
 - (void)pp_styleActionButton:(UIButton *)button kind:(PPCartActionButtonKind)kind enabled:(BOOL)enabled
 {
     if (!button) return;
@@ -734,6 +1073,16 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
             backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:enabled ? 0.15 : 0.06];
             borderColor = [PPCartCellAccentColor() colorWithAlphaComponent:enabled ? 0.20 : 0.08];
             break;
+        case PPCartActionButtonKindDestructive:
+            foregroundColor = UIColor.systemRedColor;
+            backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:enabled ? 0.12 : 0.05];
+            borderColor = [UIColor.systemRedColor colorWithAlphaComponent:enabled ? 0.18 : 0.07];
+            break;
+        case PPCartActionButtonKindSuccess:
+            foregroundColor = UIColor.systemGreenColor;
+            backgroundColor = [UIColor.systemGreenColor colorWithAlphaComponent:enabled ? 0.16 : 0.10];
+            borderColor = [UIColor.systemGreenColor colorWithAlphaComponent:0.22];
+            break;
         case PPCartActionButtonKindNeutral:
         default:
             foregroundColor = PPCartCellPrimaryTextColor();
@@ -742,6 +1091,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
             break;
     }
 
+    button.enabled = enabled;
     button.userInteractionEnabled = enabled;
     button.alpha = enabled ? 1.0 : 0.46;
 
@@ -759,6 +1109,73 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         button.backgroundColor = backgroundColor;
         button.layer.borderWidth = 0.8;
         [button pp_setBorderColor:borderColor];
+    }
+}
+
+- (void)pp_configureSavedActionButton:(UIButton *)button
+                                title:(NSString *)title
+                           systemName:(NSString *)systemName
+                              primary:(BOOL)primary
+                          destructive:(BOOL)destructive
+                              enabled:(BOOL)enabled
+{
+    if (!button) return;
+    (void)destructive;
+
+    NSString *resolvedTitle = title.length > 0 ? title : @"";
+    UIColor *savedAccentColor = PPCartCellDeferredAccentColor();
+    UIColor *foregroundColor = primary ? UIColor.whiteColor : savedAccentColor;
+    UIColor *backgroundColor = primary
+        ? savedAccentColor
+        : [savedAccentColor colorWithAlphaComponent:enabled ? 0.105 : 0.050];
+    UIColor *borderColor = primary
+        ? [UIColor.whiteColor colorWithAlphaComponent:0.17]
+        : [savedAccentColor colorWithAlphaComponent:enabled ? 0.22 : 0.10];
+    UIImage *image = [self pp_actionImageNamed:systemName];
+
+    button.enabled = enabled;
+    button.userInteractionEnabled = enabled;
+    button.alpha = enabled ? 1.0 : 0.52;
+    button.accessibilityLabel = resolvedTitle;
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.78;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = primary
+            ? [UIButtonConfiguration filledButtonConfiguration]
+            : [UIButtonConfiguration tintedButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        configuration.baseForegroundColor = foregroundColor;
+        configuration.background.backgroundColor = backgroundColor;
+        configuration.background.cornerRadius = kPPCartSavedActionCornerRadius;
+        configuration.background.strokeColor = borderColor;
+        configuration.background.strokeWidth = 0.8;
+        configuration.image = image;
+        configuration.imagePadding = 6.0;
+        configuration.imagePlacement = NSDirectionalRectEdgeLeading;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(7.0, primary ? 14.0 : 11.0, 7.0, primary ? 14.0 : 11.0);
+        configuration.attributedTitle = [[NSAttributedString alloc]
+            initWithString:resolvedTitle
+                attributes:@{
+                    NSFontAttributeName: [GM boldFontWithSize:12.5],
+                    NSForegroundColorAttributeName: foregroundColor
+                }];
+        button.configuration = configuration;
+    } else {
+        [button setTitle:resolvedTitle forState:UIControlStateNormal];
+        [button setTitleColor:foregroundColor forState:UIControlStateNormal];
+        [button setImage:image forState:UIControlStateNormal];
+        button.tintColor = foregroundColor;
+        button.titleLabel.font = [GM boldFontWithSize:12.5];
+        button.backgroundColor = backgroundColor;
+        button.layer.cornerRadius = kPPCartSavedActionCornerRadius;
+        button.layer.borderWidth = 0.8;
+        [button pp_setBorderColor:borderColor];
+        button.contentEdgeInsets = UIEdgeInsetsMake(7.0, primary ? 14.0 : 11.0, 7.0, primary ? 14.0 : 11.0);
+        if (@available(iOS 13.0, *)) {
+            button.layer.cornerCurve = kCACornerCurveContinuous;
+        }
     }
 }
 
@@ -848,6 +1265,115 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
                      animations:^{
         button.transform = CGAffineTransformIdentity;
         button.alpha = button.userInteractionEnabled ? 1.0 : 0.46;
+    } completion:nil];
+}
+
+- (void)pp_animateSavedForLaterActionFromButton:(UIButton *)button
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    UIView *targetButton = button ?: self.plusButton;
+    self.savedActionsRow.transform = CGAffineTransformMakeScale(0.992, 0.992);
+    targetButton.transform = CGAffineTransformMakeScale(0.94, 0.94);
+
+    [UIView animateWithDuration:0.30
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.savedActionsRow.transform = CGAffineTransformIdentity;
+        targetButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)playSavedForLaterArrivalAnimation
+{
+    [self playSavedForLaterArrivalAnimationWithCompletion:nil];
+}
+
+- (void)playSavedForLaterArrivalAnimationWithCompletion:(dispatch_block_t)completion
+{
+    NSUInteger animationToken = self.savedArrivalAnimationToken + 1;
+    self.savedArrivalAnimationToken = animationToken;
+    [self.cardContainer.layer removeAllAnimations];
+    [self.savedStateTintView.layer removeAllAnimations];
+    [self.accentRailView.layer removeAllAnimations];
+    [self.itemImageView.layer removeAllAnimations];
+
+    self.cardContainer.alpha = 0.0;
+    self.cardContainer.transform = CGAffineTransformIdentity;
+    self.savedStateTintView.alpha = 0.0;
+    self.accentRailView.alpha = 1.0;
+    self.accentRailView.transform = CGAffineTransformIdentity;
+    self.itemImageView.alpha = 1.0;
+    self.itemImageView.transform = CGAffineTransformIdentity;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionCurveEaseOut |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.cardContainer.alpha = 1.0;
+        } completion:^(__unused BOOL finished) {
+            if (self.savedArrivalAnimationToken != animationToken) {
+                if (completion) completion();
+                return;
+            }
+            if (completion) completion();
+        }];
+        return;
+    }
+
+    self.cardContainer.alpha = 0.08;
+    self.cardContainer.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 10.0),
+                                CGAffineTransformMakeScale(0.978, 0.978));
+    self.savedStateTintView.backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:0.10];
+    self.savedStateTintView.alpha = 0.16;
+    self.accentRailView.alpha = 0.22;
+    self.accentRailView.transform = CGAffineTransformMakeScale(1.0, 0.18);
+    self.itemImageView.alpha = 0.72;
+    self.itemImageView.transform = CGAffineTransformMakeScale(1.035, 1.035);
+
+    [UIView animateWithDuration:kPPCartSavedArrivalDuration
+                          delay:0.0
+         usingSpringWithDamping:0.93
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.cardContainer.alpha = 1.0;
+        self.cardContainer.transform = CGAffineTransformIdentity;
+        self.accentRailView.alpha = 1.0;
+        self.accentRailView.transform = CGAffineTransformIdentity;
+        self.itemImageView.alpha = 1.0;
+        self.itemImageView.transform = CGAffineTransformIdentity;
+    } completion:^(__unused BOOL finished) {
+        if (self.savedArrivalAnimationToken != animationToken) {
+            if (completion) completion();
+            return;
+        }
+        self.cardContainer.alpha = 1.0;
+        self.cardContainer.transform = CGAffineTransformIdentity;
+        self.savedStateTintView.alpha = 0.0;
+        self.accentRailView.alpha = 1.0;
+        self.accentRailView.transform = CGAffineTransformIdentity;
+        self.itemImageView.alpha = 1.0;
+        self.itemImageView.transform = CGAffineTransformIdentity;
+        if (completion) completion();
+    }];
+
+    [UIView animateWithDuration:0.34
+                          delay:0.10
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.savedStateTintView.alpha = 0.0;
     } completion:nil];
 }
 

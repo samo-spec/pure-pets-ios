@@ -788,7 +788,7 @@ static UIColor *PPCheckoutSoftStrokeColor(void) {
     [self.pricingStack addArrangedSubview:self.itemsPreviewCollection];
     [self.pricingStack addArrangedSubview:self.trustBannerView];
     
-    
+   
     if(Language.isRTL)
     {
         self.itemsLabel.textAlignment = NSTextAlignmentRight;

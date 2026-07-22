@@ -201,8 +201,6 @@
  
  
 #import "PPUniversalCell.h"
- 
-#import "PPUniversalCell+SwiftUIAdapter.h"
 #import "PPBannerCollectionCell.h"
 #import "CustomButtonCell.h"
  

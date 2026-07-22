@@ -426,7 +426,7 @@ private final class PPUniversalCardStore: ObservableObject {
         var resolvedSubtitle: String? = nil
         if dataViewPresentation {
             if isAdLike {
-                let loc = viewModel.location ?? ""
+                let loc = viewModel.location
                 if !loc.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     resolvedSubtitle = loc
                 } else {
@@ -873,7 +873,7 @@ private final class PPUniversalCardStore: ObservableObject {
     }
 
     private func delegateResponds(to selectorName: String) -> Bool {
-        guard let object = delegate as? NSObjectProtocol else {
+        guard let object = delegate else {
             return false
         }
         return object.responds(to: NSSelectorFromString(selectorName))
@@ -1738,7 +1738,7 @@ private struct PPUniversalCardRenderer: View {
                     }
                     .foregroundStyle(Color(uiColor: .secondaryLabel))
                 }
-            } else {
+            } else if showsBottomCTA {
                 detailsAction
             }
         }
@@ -1747,17 +1747,19 @@ private struct PPUniversalCardRenderer: View {
 
     @ViewBuilder
     private var bottomCTA: some View {
-        if usesPrimaryActionForBottomStack {
-            if !store.isNearbyAdsSection {
-                primaryAction
+        if showsBottomCTA {
+            if usesPrimaryActionForBottomStack {
+                if !store.isNearbyAdsSection {
+                    primaryAction
+                }
+            } else {
+                detailsAction
             }
-        } else {
-            detailsAction
         }
     }
 
     private var showsBottomCTA: Bool {
-        usesPrimaryActionForBottomStack
+        return usesPrimaryActionForBottomStack
             ? !store.isNearbyAdsSection
             : true
     }
@@ -2914,9 +2916,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
         haloLayer.endPoint = CGPoint(x: 1.0, y: 1.0)
         haloLayer.locations = [0.0, 0.48, 1.0]
         haloLayer.opacity = 0.0
-        if #available(iOS 12.0, *) {
-            haloLayer.type = .radial
-        }
+        haloLayer.type = .radial
         container.layer.addSublayer(haloLayer)
         references.tapHaloLayer = haloLayer
 
@@ -3709,7 +3709,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
     }
 
     private func delegateResponds(to selectorName: String) -> Bool {
-        guard let object = delegate as? NSObjectProtocol else {
+        guard let object = delegate else {
             return false
         }
         return object.responds(to: NSSelectorFromString(selectorName))

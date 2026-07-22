@@ -10,7 +10,7 @@ private enum PPMainKindsCellMetrics {
     static let imageToTitleSpacing: CGFloat = 6
     static let indicatorWidth: CGFloat = 30
     static let indicatorHeight: CGFloat = 3
-    static let selectedBorderWidth: CGFloat = 1.1
+    static let selectedBorderWidth: CGFloat = 0.78
     static let regularBorderWidth: CGFloat = 1 / UIScreen.main.scale
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22

@@ -49,6 +49,10 @@ typedef NS_ENUM(NSInteger, PPHUDMode) {
     self.accessibilityViewIsModal = YES;
     self.isAccessibilityElement = NO;
 
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_didTapOverlay)];
+    tap.numberOfTapsRequired = 1;
+    [self addGestureRecognizer:tap];
+
     UIBlurEffect *effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
     _materialView = [[UIVisualEffectView alloc] initWithEffect:effect];
     _materialView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -168,6 +172,11 @@ typedef NS_ENUM(NSInteger, PPHUDMode) {
             [self pp_applyPalette];
         }
     }
+}
+
+- (void)pp_didTapOverlay
+{
+    [PPHUD dismiss];
 }
 
 - (void)pp_applyPalette

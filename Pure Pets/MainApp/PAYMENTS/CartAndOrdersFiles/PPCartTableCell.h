@@ -34,6 +34,11 @@ typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 
 /// Configure the cell with a cart item
 - (void)configureWithItem:(CartItem *)item;
+- (void)configureWithSavedForLaterItem:(CartItem *)item
+                      pendingOperation:(nullable NSString *)pendingOperation
+                             completed:(BOOL)completed;
+- (void)playSavedForLaterArrivalAnimation;
+- (void)playSavedForLaterArrivalAnimationWithCompletion:(nullable dispatch_block_t)completion;
 - (void)pp_setCardHighlighted:(BOOL)highlighted animated:(BOOL)animated;
 - (void)pp_applyPressTargetsToButton:(UIButton *)button;
 - (void)pp_buttonTouchDown:(UIButton *)button;

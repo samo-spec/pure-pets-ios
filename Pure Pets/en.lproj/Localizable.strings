@@ -3649,6 +3649,8 @@
 "saved_for_later_remove_action" = "Remove";
 "saved_for_later_delete_action" = "Delete";
 "saved_for_later_deleting" = "Deleting...";
+"saved_for_later_remove_action" = "Remove";
+"saved_for_later_removing" = "Removing...";
 "saved_for_later_delete_confirm_title" = "Delete saved item?";
 "saved_for_later_delete_confirm_message" = "This removes it from saved for later only. Your cart and orders will not change.";
 "saved_for_later_delete_confirm_action" = "Delete";
@@ -3661,8 +3663,11 @@
 "saved_for_later_image_accessibility" = "Image for %@";
 "saved_for_later_price_accessibility" = "Price %@";
 "saved_for_later_item_badge" = "Ready when you are";
+"saved_for_later_short_badge" = "Saved";
 "saved_for_later_unknown_item" = "Saved item";
 "saved_for_later_close_accessibility" = "Close saved items";
 "saved_for_later_open_hint" = "Opens your saved items.";
+"cart_summary_collapse" = "Collapse order summary";
+"cart_summary_expand" = "Expand order summary";
 "reported_successfully" = "Reported successfully";
 "report" = "Report";

@@ -1,7 +1,8 @@
-
 #import <UIKit/UIKit.h>
 #import "PPCollectionLayoutManager.h"
 NS_ASSUME_NONNULL_BEGIN
+
+extern BOOL PPUniversalCellShowsCTA;
 
 typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
                               NSString *_Nullable url,
@@ -13,7 +14,6 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 @protocol PPUniversalCellDelegate <NSObject>
 
 @optional
-// Legacy (kept)
 - (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapVideo:(PPUniversalCellViewModel *)universalModel;
@@ -36,20 +36,16 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 @property (nonatomic, weak) id<PPUniversalCellDelegate> delegate;
 + (NSString *)reuseIdentifier;
 @property (nonatomic, strong) NSIndexPath *indexPath;
-/// Core config
 @property (nonatomic, assign) PPCellContext      context;
 @property (nonatomic, assign) PPManagerCellLayoutMode   layoutMode;
-@property (nonatomic, assign) PPDiscountStyle    discountStyle; // default: Badge
+@property (nonatomic, assign) PPDiscountStyle    discountStyle;
 @property (nonatomic, copy, nullable) void (^onTap)(void);
 
-/// Quantity (only used in Marker context)
 @property (nonatomic, assign, readonly) NSInteger quantity;
 - (void)setQuantity:(NSInteger)quantity animated:(BOOL)animated;
 - (void)collapseStepper:(BOOL)animated;
-/// Re-resolves dynamic layer colors after foreground/theme restoration.
 - (void)refreshThemeAppearance;
 - (void)stopMediaPlayback;
-/// Configure cell from a view model
 
 - (void)applyViewModel:(PPUniversalCellViewModel *)vm
                context:(PPCellContext)context
@@ -57,21 +53,24 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
           discountMode:(PPDiscountStyle)discountStyle
            imageLoader:(PPImageLoader)loader;
 
-/// Hides the top reason/location badge when set to YES.
 @property (nonatomic, assign) BOOL hideTopBadge;
-
-/// Shows the owner edit/delete menu even while the universal menu button is hidden elsewhere.
 @property (nonatomic, assign) BOOL forceShowsOwnerMenuButton;
-
-/// Shows the subtitle label when set to YES (default NO — subtitle hidden).
 @property (nonatomic, assign) BOOL showsSubtitle;
-/// Marks the owning presentation as PPDataView so horizontal-row and ad
-/// subtitle rules match that screen instead of embedded carousel rules.
 @property (nonatomic, assign) BOOL dataViewPresentation;
-/// YES keeps the current liquid inner/outer borders. NO restores the pre-liquid layer borders. Default YES.
 @property (nonatomic, assign) BOOL userBordersV2;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) PPUniversalGradientView *imageContainer;
+
+/// Registers the SwiftUI PPUniversalCardHostingCell under reuseIdentifier @"PPUniversalCell".
++ (void)pp_registerInCollectionView:(UICollectionView *)collectionView;
+
+/// Dequeues a PPUniversalCardHostingCell. Returns the cell as `id`; callers
+/// should rely on dynamic dispatch for the PPUniversalCell-compatible API.
++ (id)pp_dequeueFromCollectionView:(UICollectionView *)collectionView
+                         indexPath:(NSIndexPath *)indexPath;
+
+/// Returns YES when the cell is a PPUniversalCardHostingCell.
++ (BOOL)pp_isUniversalCell:(UICollectionViewCell *)cell;
 @end
 
 NS_ASSUME_NONNULL_END

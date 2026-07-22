@@ -11,7 +11,7 @@
 #import "Language.h"
 #import "PPOptionCell.h"
 #import <QuartzCore/QuartzCore.h>
-
+#import "OptionModel.h"
 // Simple log helpers
 #ifndef DLog
 #define DLog(fmt, ...) NSLog((@"[PPLOG] " fmt), ##__VA_ARGS__)

@@ -8,18 +8,23 @@
 
 #import "CartManager.h"
 #import "PPSaveForLaterManager.h"
-#import "PPSavedForLaterBottomSheetVC.h"
 #import "PPCartCalculator.h"
 #import "PPOrderManager.h"
 #import "PPSPinnerView.h"
+#import "PetAccessoryManager.h"
 #import "ChManager.h"
 #import "AppClasses.h"
 #import "UIViewController+PPBottomSurface.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPChatsFunc.h"
+#import "PPHUD.h"
+#import "PPBackgroundView.h"
 #import <QuartzCore/QuartzCore.h>
+@import FirebaseFunctions;
 
 static NSString *const kCartSupportPhoneNumber = @"+97459997720";
+static NSString *const kPPCartTableCellIdentifier = @"PPCartTableCell";
+static NSString *const kPPCartSavedDockCellIdentifier = @"PPCartSavedDockCell";
 static CGFloat const kCartScreenHorizontalInset = 16.0;
 static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 static CGFloat const kCartHeaderExpandedHeight = 232.0;
@@ -28,10 +33,27 @@ static CGFloat const kCartHeaderTopInset = 8.0;
 static CGFloat const kCartHeaderTableSpacing = 18.0;
 static CGFloat const kCartTableBottomInset = 0.0;
 static CGFloat const kCartHeaderStretchLimit = 34.0;
+static NSTimeInterval const kPPSavedDockMorphDuration = 0.30;
+static NSTimeInterval const kPPSavedRowRevealDuration = 0.28;
+static NSTimeInterval const kPPSavedTransferAnticipationDuration = 0.10;
+static NSTimeInterval const kPPSavedTransferDuration = 0.62;
+static NSTimeInterval const kPPSavedTableReflowDuration = 0.50;
 
 static UIColor *PPCartScreenBackgroundColor(void)
 {
     return PPBackgroundColorForIOS26(AppBackgroundClr);
+}
+
+static UIColor *PPSavedForLaterDeferredAccentColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithRed:0.94 green:0.69 blue:0.30 alpha:1.0]
+                : [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
+        }];
+    }
+    return [UIColor colorWithRed:0.72 green:0.45 blue:0.10 alpha:1.0];
 }
 
 static UIFont *PPCartScaledFont(NSString *fontName,
@@ -54,6 +76,365 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.textView.layer.cornerRadius = 12;
     self.textView.layer.masksToBounds = YES;
     self.textView.backgroundColor = AppBackgroundClr;
+}
+
+@end
+
+@interface PPSavedForLaterDockTableCell : UITableViewCell
+@property (nonatomic, strong) UIView *dockContainerView;
+@property (nonatomic, strong) UIView *boundaryLineView;
+@property (nonatomic, strong) UIView *boundaryAccentView;
+@property (nonatomic, strong) NSLayoutConstraint *dockTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *dockBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *boundaryTopConstraint;
+@property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIView *tintView;
+@property (nonatomic, strong) UIView *accentLineView;
+@property (nonatomic, strong) UIView *iconContainerView;
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UILabel *countBadgeLabel;
+@property (nonatomic, strong) UIView *chevronContainerView;
+@property (nonatomic, strong) UIImageView *chevronView;
+@property (nonatomic, assign) BOOL hasPlayedEntry;
+- (void)configureWithSavedCount:(NSInteger)count expanded:(BOOL)expanded;
+- (void)playExpansionEntryIfNeeded;
+@end
+
+@implementation PPSavedForLaterDockTableCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    self = [super initWithStyle:UITableViewCellStyleDefault reuseIdentifier:reuseIdentifier];
+    if (self) {
+        [self pp_setupDockCell];
+    }
+    return self;
+}
+
+- (void)pp_setupDockCell
+{
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    UIColor *accentColor = PPSavedForLaterDeferredAccentColor();
+    UIColor *primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
+
+    UIView *boundaryLineView = [[UIView alloc] init];
+    boundaryLineView.translatesAutoresizingMaskIntoConstraints = NO;
+    boundaryLineView.userInteractionEnabled = NO;
+    boundaryLineView.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.34];
+    [self.contentView addSubview:boundaryLineView];
+    self.boundaryLineView = boundaryLineView;
+
+    UIView *boundaryAccentView = [[UIView alloc] init];
+    boundaryAccentView.translatesAutoresizingMaskIntoConstraints = NO;
+    boundaryAccentView.userInteractionEnabled = NO;
+    boundaryAccentView.backgroundColor = [accentColor colorWithAlphaComponent:0.70];
+    boundaryAccentView.layer.cornerRadius = 1.0;
+    [self.contentView addSubview:boundaryAccentView];
+    self.boundaryAccentView = boundaryAccentView;
+
+    UIView *container = [[UIView alloc] init];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.backgroundColor = UIColor.clearColor;
+    container.layer.cornerRadius = 28.0;
+    [container pp_setShadowColor:UIColor.blackColor];
+    container.layer.shadowOpacity = 0.0;
+    container.layer.shadowRadius = 0.0;
+    container.layer.shadowOffset = CGSizeZero;
+    if (@available(iOS 13.0, *)) {
+        container.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contentView addSubview:container];
+    self.dockContainerView = container;
+
+    UIVisualEffectView *materialView =
+    [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+    materialView.translatesAutoresizingMaskIntoConstraints = NO;
+    materialView.clipsToBounds = YES;
+    materialView.layer.cornerRadius = 28.0;
+    materialView.layer.borderWidth = 0.85;
+    UIColor *borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return [UIColor.whiteColor colorWithAlphaComponent:(tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.13 : 0.58];
+    }];
+    [materialView pp_setBorderColor:[borderColor resolvedColorWithTraitCollection:self.traitCollection]];
+    if (@available(iOS 13.0, *)) {
+        materialView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [container addSubview:materialView];
+    self.materialView = materialView;
+
+    UIView *tintView = [[UIView alloc] init];
+    tintView.translatesAutoresizingMaskIntoConstraints = NO;
+    tintView.userInteractionEnabled = NO;
+    tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.13 green:0.13 blue:0.15 alpha:0.58];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.54];
+    }];
+    [materialView.contentView addSubview:tintView];
+    self.tintView = tintView;
+
+    UIView *accentLine = [[UIView alloc] init];
+    accentLine.translatesAutoresizingMaskIntoConstraints = NO;
+    accentLine.backgroundColor = [accentColor colorWithAlphaComponent:0.92];
+    accentLine.layer.cornerRadius = 2.0;
+    [materialView.contentView addSubview:accentLine];
+    self.accentLineView = accentLine;
+
+    UIView *iconContainer = [[UIView alloc] init];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.backgroundColor = [accentColor colorWithAlphaComponent:0.13];
+    iconContainer.layer.cornerRadius = 22.0;
+    iconContainer.layer.borderWidth = 0.8;
+    [iconContainer pp_setBorderColor:[accentColor colorWithAlphaComponent:0.20]];
+    [materialView.contentView addSubview:iconContainer];
+    self.iconContainerView = iconContainer;
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"bookmark.fill"
+                                                                              pointSize:18
+                                                                                 weight:UIImageSymbolWeightSemibold
+                                                                                  scale:UIImageSymbolScaleMedium
+                                                                                palette:@[accentColor, accentColor]
+                                                                           makeTemplate:YES]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = accentColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconContainer addSubview:iconView];
+    self.iconView = iconView;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.text = kLang(@"saved_for_later");
+    titleLabel.font = PPCartScaledFont(@"Beiruti-Bold", 18.0, UIFontWeightBold, UIFontTextStyleHeadline);
+    titleLabel.textColor = primaryTextColor;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    titleLabel.numberOfLines = 1;
+    titleLabel.adjustsFontForContentSizeCategory = YES;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.82;
+    [materialView.contentView addSubview:titleLabel];
+    self.titleLabel = titleLabel;
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.text = kLang(@"choose_items_to_move");
+    subtitleLabel.font = PPCartScaledFont(@"Beiruti-Medium", 12.5, UIFontWeightMedium, UIFontTextStyleFootnote);
+    subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.58];
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.numberOfLines = 1;
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    subtitleLabel.adjustsFontSizeToFitWidth = YES;
+    subtitleLabel.minimumScaleFactor = 0.78;
+    [materialView.contentView addSubview:subtitleLabel];
+    self.subtitleLabel = subtitleLabel;
+
+    UILabel *countBadge = [[UILabel alloc] init];
+    countBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    countBadge.font = PPCartScaledFont(@"Beiruti-Bold", 12.2, UIFontWeightSemibold, UIFontTextStyleCaption1);
+    countBadge.textColor = accentColor;
+    countBadge.textAlignment = NSTextAlignmentCenter;
+    countBadge.numberOfLines = 1;
+    countBadge.adjustsFontForContentSizeCategory = YES;
+    countBadge.adjustsFontSizeToFitWidth = YES;
+    countBadge.minimumScaleFactor = 0.72;
+    countBadge.backgroundColor = [accentColor colorWithAlphaComponent:0.11];
+    countBadge.layer.cornerRadius = 16.0;
+    countBadge.layer.masksToBounds = YES;
+    countBadge.layer.borderWidth = 0.75;
+    [countBadge pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
+    [materialView.contentView addSubview:countBadge];
+    self.countBadgeLabel = countBadge;
+
+    UIView *chevronContainer = [[UIView alloc] init];
+    chevronContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    chevronContainer.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.055];
+    chevronContainer.layer.cornerRadius = 17.0;
+    [materialView.contentView addSubview:chevronContainer];
+    self.chevronContainerView = chevronContainer;
+
+    UIImageView *chevronView = [[UIImageView alloc] init];
+    chevronView.translatesAutoresizingMaskIntoConstraints = NO;
+    chevronView.tintColor = [primaryTextColor colorWithAlphaComponent:0.76];
+    chevronView.contentMode = UIViewContentModeScaleAspectFit;
+    [chevronContainer addSubview:chevronView];
+    self.chevronView = chevronView;
+
+    self.boundaryTopConstraint = [boundaryLineView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:18.0];
+    self.dockTopConstraint = [container.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:34.0];
+    self.dockBottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-2.0];
+    [NSLayoutConstraint activateConstraints:@[
+        [boundaryLineView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:34.0],
+        [boundaryLineView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-34.0],
+        self.boundaryTopConstraint,
+        [boundaryLineView.heightAnchor constraintEqualToConstant:1.0],
+
+        [boundaryAccentView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [boundaryAccentView.centerYAnchor constraintEqualToAnchor:boundaryLineView.centerYAnchor],
+        [boundaryAccentView.widthAnchor constraintEqualToConstant:34.0],
+        [boundaryAccentView.heightAnchor constraintEqualToConstant:2.0],
+
+        self.dockTopConstraint,
+        self.dockBottomConstraint,
+        [container.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
+        [container.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
+
+        [materialView.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [materialView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+        [materialView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [materialView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+
+        [tintView.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor],
+        [tintView.bottomAnchor constraintEqualToAnchor:materialView.contentView.bottomAnchor],
+        [tintView.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor],
+        [tintView.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor],
+
+        [accentLine.leadingAnchor constraintEqualToAnchor:materialView.contentView.leadingAnchor constant:14.0],
+        [accentLine.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [accentLine.widthAnchor constraintEqualToConstant:4.0],
+        [accentLine.heightAnchor constraintEqualToConstant:38.0],
+
+        [iconContainer.leadingAnchor constraintEqualToAnchor:accentLine.trailingAnchor constant:10.0],
+        [iconContainer.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [iconContainer.widthAnchor constraintEqualToConstant:44.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:44.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:19.0],
+        [iconView.heightAnchor constraintEqualToConstant:19.0],
+
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconContainer.trailingAnchor constant:12.0],
+        [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:countBadge.leadingAnchor constant:-10.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor constant:16.0],
+
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevronContainer.leadingAnchor constant:-10.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:3.0],
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:materialView.contentView.bottomAnchor constant:-14.0],
+
+        [countBadge.centerYAnchor constraintEqualToAnchor:titleLabel.centerYAnchor],
+        [countBadge.heightAnchor constraintEqualToConstant:32.0],
+        [countBadge.widthAnchor constraintGreaterThanOrEqualToConstant:74.0],
+        [countBadge.widthAnchor constraintLessThanOrEqualToConstant:112.0],
+
+        [chevronContainer.leadingAnchor constraintEqualToAnchor:countBadge.trailingAnchor constant:8.0],
+        [chevronContainer.trailingAnchor constraintEqualToAnchor:materialView.contentView.trailingAnchor constant:-14.0],
+        [chevronContainer.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
+        [chevronContainer.widthAnchor constraintEqualToConstant:34.0],
+        [chevronContainer.heightAnchor constraintEqualToConstant:34.0],
+
+        [chevronView.centerXAnchor constraintEqualToAnchor:chevronContainer.centerXAnchor],
+        [chevronView.centerYAnchor constraintEqualToAnchor:chevronContainer.centerYAnchor],
+        [chevronView.widthAnchor constraintEqualToConstant:13.0],
+        [chevronView.heightAnchor constraintEqualToConstant:13.0],
+    ]];
+
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (!CGRectIsEmpty(self.dockContainerView.bounds)) {
+        self.dockContainerView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.dockContainerView.bounds
+                                  cornerRadius:self.dockContainerView.layer.cornerRadius].CGPath;
+    }
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.hasPlayedEntry = NO;
+    self.dockContainerView.alpha = 1.0;
+    self.dockContainerView.transform = CGAffineTransformIdentity;
+    self.accentLineView.transform = CGAffineTransformIdentity;
+    self.iconContainerView.transform = CGAffineTransformIdentity;
+    self.countBadgeLabel.transform = CGAffineTransformIdentity;
+    self.chevronContainerView.transform = CGAffineTransformIdentity;
+    self.boundaryAccentView.transform = CGAffineTransformIdentity;
+    self.boundaryAccentView.alpha = 1.0;
+}
+
+- (void)configureWithSavedCount:(NSInteger)count expanded:(BOOL)expanded
+{
+    NSString *countText = [NSString stringWithFormat:kLang(@"saved_for_later_count_format"), (long)MAX(count, 0)];
+    self.titleLabel.text = kLang(@"saved_for_later");
+    self.subtitleLabel.text = expanded ? kLang(@"choose_items_to_move") : kLang(@"saved_for_later_open_hint");
+    self.countBadgeLabel.text = countText;
+    self.chevronView.image = [UIImage pp_symbolNamed:expanded ? @"chevron.up" : @"chevron.down"
+                                           pointSize:12
+                                              weight:UIImageSymbolWeightBold
+                                               scale:UIImageSymbolScaleSmall
+                                             palette:@[self.chevronView.tintColor ?: UIColor.labelColor,
+                                                       self.chevronView.tintColor ?: UIColor.labelColor]
+                                        makeTemplate:YES];
+    self.accessibilityLabel = kLang(@"saved_for_later");
+    self.accessibilityValue = countText;
+    self.accessibilityHint = kLang(@"saved_for_later_open_hint");
+    self.accessibilityTraits = UIAccessibilityTraitButton | (expanded ? UIAccessibilityTraitSelected : 0);
+}
+
+- (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated
+{
+    [super setHighlighted:highlighted animated:animated];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.dockContainerView.alpha = highlighted ? 0.95 : 1.0;
+        return;
+    }
+    void (^changes)(void) = ^{
+        self.dockContainerView.transform = highlighted ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
+        self.dockContainerView.alpha = highlighted ? 0.96 : 1.0;
+    };
+    if (!animated) {
+        changes();
+        return;
+    }
+    [UIView animateWithDuration:highlighted ? 0.10 : 0.30
+                          delay:0.0
+         usingSpringWithDamping:highlighted ? 1.0 : 0.74
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:nil];
+}
+
+- (void)playExpansionEntryIfNeeded
+{
+    if (self.hasPlayedEntry || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    self.hasPlayedEntry = YES;
+    self.dockContainerView.alpha = 1.0;
+    self.dockContainerView.transform = CGAffineTransformIdentity;
+    self.accentLineView.transform = CGAffineTransformMakeScale(1.0, 0.34);
+    self.iconContainerView.transform = CGAffineTransformMakeScale(0.88, 0.88);
+    self.countBadgeLabel.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    self.chevronContainerView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    self.boundaryAccentView.alpha = 0.24;
+    self.boundaryAccentView.transform = CGAffineTransformMakeScale(0.34, 1.0);
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.28
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.accentLineView.transform = CGAffineTransformIdentity;
+        self.iconContainerView.transform = CGAffineTransformIdentity;
+        self.countBadgeLabel.transform = CGAffineTransformIdentity;
+        self.chevronContainerView.transform = CGAffineTransformIdentity;
+        self.boundaryAccentView.alpha = 1.0;
+        self.boundaryAccentView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 @end
@@ -96,9 +477,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
 @property (nonatomic, strong) UITableView *cartTableView;
 @property (nonatomic, strong) PPPremuimChekoutView *summaryView;
-@property (nonatomic, strong) UIView *topGlowView;
-@property (nonatomic, strong) UIView *bottomGlowView;
-@property (nonatomic, strong) UIView *bottomSecondaryGlowView;
+@property (nonatomic, strong) PPBackgroundView *premiumBackgroundView;
 @property (nonatomic, strong) UIView *headerChromeContainerView;
 @property (nonatomic, strong) UIVisualEffectView *headerChromeView;
 @property (nonatomic, strong) UIView *headerTintOverlayView;
@@ -134,8 +513,34 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
 @property (nonatomic, assign) CGFloat headerCollapseProgress;
+@property (nonatomic, assign) BOOL savedForLaterExpanded;
+@property (nonatomic, copy, nullable) NSString *pendingSavedForLaterItemID;
+@property (nonatomic, copy, nullable) NSString *pendingSavedForLaterOperation;
+@property (nonatomic, copy, nullable) NSString *completedSavedForLaterItemID;
+@property (nonatomic, assign) NSUInteger savedForLaterAnimationToken;
+@property (nonatomic, assign) BOOL savedForLaterRevealInProgress;
+@property (nonatomic, assign) BOOL savedForLaterRetainsEmptyDockDuringTransition;
+@property (nonatomic, weak, nullable) UIButton *savedForLaterFooterPillButton;
+@property (nonatomic, strong, nullable) UINotificationFeedbackGenerator *savedMoveFeedbackGenerator;
 
 - (void)pp_updateSavedForLaterFooter;
+- (NSArray<CartItem *> *)pp_savedForLaterItems;
+- (BOOL)pp_isSavedForLaterDockIndexPath:(NSIndexPath *)indexPath;
+- (CartItem *)pp_savedForLaterItemAtIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_setSavedForLaterExpanded:(BOOL)expanded
+                            animated:(BOOL)animated
+                          sourceView:(UIView * _Nullable)sourceView;
+- (void)pp_moveSavedForLaterItemToCart:(CartItem *)item;
+- (void)pp_confirmRemoveSavedForLaterItem:(CartItem *)item;
+- (void)pp_registerStockNotificationForSavedItem:(CartItem *)item;
+- (void)pp_configureActiveCartCell:(PPCartTableCell *)cell item:(CartItem *)item;
+- (void)pp_configureSavedCartCell:(PPCartTableCell *)cell item:(CartItem *)item;
+- (void)pp_refreshVisibleSavedItemID:(NSString * _Nullable)itemID;
+- (void)pp_animateTransferSnapshot:(UIView * _Nullable)snapshot
+                     toTargetFrame:(CGRect)targetFrame
+                        completion:(void (^ _Nullable)(void))completion;
+- (void)pp_performSavedTransferTableUpdates:(dispatch_block_t)updates
+                                  completion:(void (^ _Nullable)(BOOL finished))completion;
 
 @end
 
@@ -152,7 +557,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [super viewDidLoad];
 
     [self pp_applyCartScreenBackgroundColor];
-    [self pp_buildBackgroundDecor];
+    [self pp_installPremiumCartBackgroundViewIfNeeded];
+    [self pp_updatePremiumCartBackgroundAppearance];
 
     self.cartTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.cartTableView.dataSource = self;
@@ -171,7 +577,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         self.cartTableView.sectionHeaderTopPadding = 0.0;
     }
 
-     [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:@"PPCartTableCell"];
+    [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:kPPCartTableCellIdentifier];
+    [self.cartTableView registerClass:[PPSavedForLaterDockTableCell class] forCellReuseIdentifier:kPPCartSavedDockCellIdentifier];
 
     // Start hidden — pp_runEntranceAnimationIfNeeded reveals with spring animation.
     self.cartTableView.alpha = 0.0;
@@ -217,6 +624,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)setSummuryViewAtBottom
 {
     self.summaryView = [[PPPremuimChekoutView alloc] init];
+    [self.summaryView setCollapsible:YES initiallyCollapsed:NO];
     
     [self.view addSubview:self.summaryView];
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
@@ -267,15 +675,6 @@ static UIFont *PPCartScaledFont(NSString *fontName,
         self.undoContainerView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.undoContainerView.bounds
                                       cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
-    }
-
-    if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
-        self.bottomGlowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
-    }
-    if (!CGRectIsEmpty(self.bottomSecondaryGlowView.bounds)) {
-        self.bottomSecondaryGlowView.layer.shadowPath =
-            [UIBezierPath bezierPathWithOvalInRect:self.bottomSecondaryGlowView.bounds].CGPath;
     }
 
     if (!self.didPrimeInitialCartScrollPosition && self.cartTableView) {
@@ -395,6 +794,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:NO];
     [self pp_applyCartScreenBackgroundColor];
+    [self pp_updatePremiumCartBackgroundAppearance];
 
     NSString *leadingSymbol = [self pp_cartCanNavigateBackInStack] ? PPChevronName : @"house.fill";
     self.navigationItem.leftBarButtonItem =
@@ -412,7 +812,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self.summaryView setCheckoutLoading:NO];
     [self updateTotalLabel];
     [self.summaryView layoutIfNeeded];
-    [self pp_startBackgroundGlowMotionIfNeeded];
+    [self.premiumBackgroundView startAnimations];
     [self pp_updateSavedForLaterFooter];
     [self pp_applyBottomSurfaceAnimated:animated];
 }
@@ -420,7 +820,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)pp_applyCartScreenBackgroundColor
 {
 
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = UIColor.clearColor;
     self.navigationController.view.backgroundColor = AppBackgroundClr;
     self.cartTableView.backgroundColor = UIColor.clearColor;
     self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
@@ -476,7 +876,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [super viewWillDisappear:animated];
     //[[NSNotificationCenter defaultCenter]   postNotificationName:PPExpandSystemTabBarNotification  object:nil];
     [_summaryView pp_stopTrustBannerShimmer];
-    [self pp_stopBackgroundGlowMotion];
+    [self.premiumBackgroundView stopAnimations];
     [self pp_hideUndoBarAnimated:NO clearPayload:NO];
 }
 
@@ -485,127 +885,59 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self pp_handleLeadingCartNavigation];
 }
 
-- (void)pp_buildBackgroundDecor
+- (void)pp_installPremiumCartBackgroundViewIfNeeded
 {
-    if (self.topGlowView || self.bottomGlowView || self.bottomSecondaryGlowView) return;
-
-    UIView *topGlow = [[UIView alloc] init];
-    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-    topGlow.layer.cornerRadius = 110.0;
-    topGlow.alpha = 0.42;
-
-    UIView *bottomGlow = [[UIView alloc] init];
-    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.075];
-    bottomGlow.layer.cornerRadius = 165.0;
-    bottomGlow.alpha = 0.50;
-    [bottomGlow pp_setShadowColor:(AppPrimaryClr ?: UIColor.systemPinkColor)];
-    bottomGlow.layer.shadowOpacity = 0.22;
-    bottomGlow.layer.shadowRadius = 46.0;
-    bottomGlow.layer.shadowOffset = CGSizeZero;
-
-    UIView *bottomSecondaryGlow = [[UIView alloc] init];
-    bottomSecondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomSecondaryGlow.userInteractionEnabled = NO;
-    bottomSecondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.22];
-    bottomSecondaryGlow.layer.cornerRadius = 130.0;
-    bottomSecondaryGlow.alpha = 0.36;
-    [bottomSecondaryGlow pp_setShadowColor:[UIColor whiteColor]];
-    bottomSecondaryGlow.layer.shadowOpacity = 0.18;
-    bottomSecondaryGlow.layer.shadowRadius = 34.0;
-    bottomSecondaryGlow.layer.shadowOffset = CGSizeZero;
-
-    [self.view addSubview:topGlow];
-    [self.view addSubview:bottomSecondaryGlow];
-    [self.view addSubview:bottomGlow];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-76.0],
-        [topGlow.rightAnchor constraintEqualToAnchor:self.view.rightAnchor constant:96.0],
-
-        [bottomSecondaryGlow.widthAnchor constraintEqualToConstant:260.0],
-        [bottomSecondaryGlow.heightAnchor constraintEqualToConstant:260.0],
-        [bottomSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:78.0],
-        [bottomSecondaryGlow.rightAnchor constraintEqualToAnchor:self.view.rightAnchor constant:88.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:330.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:330.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:118.0],
-        [bottomGlow.leftAnchor constraintEqualToAnchor:self.view.leftAnchor constant:-132.0]
-    ]];
-
-    self.topGlowView = topGlow;
-    self.bottomGlowView = bottomGlow;
-    self.bottomSecondaryGlowView = bottomSecondaryGlow;
-    [self pp_startBackgroundGlowMotionIfNeeded];
-}
-
-- (void)pp_startBackgroundGlowMotionIfNeeded
-{
-    if (!self.bottomGlowView && !self.bottomSecondaryGlowView) return;
-
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        [self.bottomGlowView.layer removeAnimationForKey:@"pp_cart_bottom_glow_breath"];
-        [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_cart_bottom_secondary_glow_breath"];
-        self.bottomGlowView.transform = CGAffineTransformIdentity;
-        self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
-        self.bottomGlowView.alpha = 0.50;
-        self.bottomSecondaryGlowView.alpha = 0.36;
-        return;
+    if (!self.premiumBackgroundView) {
+        PPBackgroundView *backgroundView = [[PPBackgroundView alloc] initWithFrame:CGRectZero];
+        backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+        backgroundView.userInteractionEnabled = NO;
+        backgroundView.clipsToBounds = YES;
+        backgroundView.overrideBorders = YES;
+        backgroundView.overrideCornerRadius = 0.01;
+        backgroundView.PPHeroApexUseShimmer = NO;
+        backgroundView.PPHeroApexUseUnderFingerMotion = NO;
+        backgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+        self.premiumBackgroundView = backgroundView;
     }
 
-    [self pp_addBreathingGlowToView:self.bottomGlowView
-                                 key:@"pp_cart_bottom_glow_breath"
-                           fromAlpha:0.40
-                             toAlpha:0.58
-                           fromScale:0.95
-                             toScale:1.08
-                            duration:6.8];
-    [self pp_addBreathingGlowToView:self.bottomSecondaryGlowView
-                                 key:@"pp_cart_bottom_secondary_glow_breath"
-                           fromAlpha:0.28
-                             toAlpha:0.43
-                           fromScale:1.04
-                             toScale:0.96
-                            duration:7.6];
+    if (self.premiumBackgroundView.superview != self.view) {
+        if (self.cartTableView.superview == self.view) {
+            [self.view insertSubview:self.premiumBackgroundView belowSubview:self.cartTableView];
+        } else {
+            [self.view insertSubview:self.premiumBackgroundView atIndex:0];
+        }
+
+        [NSLayoutConstraint activateConstraints:@[
+            [self.premiumBackgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.premiumBackgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.premiumBackgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.premiumBackgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        ]];
+    } else if (self.cartTableView.superview == self.view) {
+        [self.view insertSubview:self.premiumBackgroundView belowSubview:self.cartTableView];
+    } else {
+        [self.view sendSubviewToBack:self.premiumBackgroundView];
+    }
 }
 
-- (void)pp_addBreathingGlowToView:(UIView *)view
-                               key:(NSString *)key
-                         fromAlpha:(CGFloat)fromAlpha
-                           toAlpha:(CGFloat)toAlpha
-                         fromScale:(CGFloat)fromScale
-                           toScale:(CGFloat)toScale
-                          duration:(CFTimeInterval)duration
+- (void)pp_updatePremiumCartBackgroundAppearance
 {
-    if (!view || [view.layer animationForKey:key]) return;
-
-    CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacity.fromValue = @(fromAlpha);
-    opacity.toValue = @(toAlpha);
-
-    CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scale.fromValue = @(fromScale);
-    scale.toValue = @(toScale);
-
-    CAAnimationGroup *group = [CAAnimationGroup animation];
-    group.animations = @[opacity, scale];
-    group.duration = duration;
-    group.autoreverses = YES;
-    group.repeatCount = HUGE_VALF;
-    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [view.layer addAnimation:group forKey:key];
-}
-
-- (void)pp_stopBackgroundGlowMotion
-{
-    [self.bottomGlowView.layer removeAnimationForKey:@"pp_cart_bottom_glow_breath"];
-    [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_cart_bottom_secondary_glow_breath"];
+    [self pp_installPremiumCartBackgroundViewIfNeeded];
+    self.view.backgroundColor = UIColor.clearColor;
+    self.navigationController.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    self.cartTableView.backgroundColor = UIColor.clearColor;
+    self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
+    self.premiumBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+    self.premiumBackgroundView.overrideBorders = YES;
+    self.premiumBackgroundView.overrideBorderColor = UIColor.clearColor;
+    self.premiumBackgroundView.overrideCornerRadius = 0.01;
+    self.premiumBackgroundView.overrideSurfaceColor = AppBackgroundClr;
+    self.premiumBackgroundView.accentColorOverride = AppPrimaryClr;
+    self.premiumBackgroundView.overrideTopGlowColor = AppPrimaryClrShiner ?: AppPrimaryClr;
+    self.premiumBackgroundView.overrideCenterGlowColor = AppPrimaryClr;
+    self.premiumBackgroundView.overrideBottomGlowColor = AppPrimaryClr;
+    [self.premiumBackgroundView reapplyPalette];
+    self.premiumBackgroundView.layer.shadowOpacity = 0.0f;
 }
 
 - (UILabel *)pp_buildMetricLabel
@@ -1315,7 +1647,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     if (!self.cartTableView) return;
 
     NSInteger itemsCount = [CartManager sharedManager].cartItems.count;
-    if (itemsCount > 0) {
+    BOOL hasExpandedSavedItems = self.savedForLaterExpanded && [self pp_savedForLaterItems].count > 0;
+    if (itemsCount > 0 || hasExpandedSavedItems) {
         self.cartTableView.backgroundView = nil;
         return;
     }
@@ -1462,10 +1795,19 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (void)updateViewFromSync
 {
     if (self.pendingQuantitySyncReloadSkips > 0) {
-        NSInteger displayedRows = [self.cartTableView numberOfSections] > 0
-            ? [self.cartTableView numberOfRowsInSection:0]
-            : 0;
+        if ([self.pendingSavedForLaterOperation isEqualToString:@"move"]) {
+            self.pendingQuantitySyncReloadSkips -= 1;
+            return;
+        }
         NSInteger currentRows = CartManager.sharedManager.cartItems.count;
+        NSInteger displayedRows = 0;
+        if ([self.cartTableView numberOfSections] > 0) {
+            NSInteger totalDisplayedRows = [self.cartTableView numberOfRowsInSection:0];
+            NSInteger savedChromeRows = [self pp_shouldShowSavedForLaterInlineRows]
+                ? 1 + [self pp_savedForLaterItems].count
+                : 0;
+            displayedRows = MAX(0, totalDisplayedRows - savedChromeRows);
+        }
         if (displayedRows == currentRows) {
             self.pendingQuantitySyncReloadSkips -= 1;
             [self updateTotalLabel];
@@ -1708,41 +2050,1379 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self.navigationController pushViewController:vc animated:YES];
 }
 
-#pragma mark - UITableViewDataSource
+#pragma mark - Saved For Later Inline Rows
 
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+- (NSArray<CartItem *> *)pp_savedForLaterItems
+{
+    return [[PPSaveForLaterManager sharedManager] savedItems] ?: @[];
+}
+
+- (NSInteger)pp_cartItemsCount
+{
     return [CartManager sharedManager].cartItems.count;
 }
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 
-    PPCartTableCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPCartTableCell"];
-    if (!cell) cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPCartTableCell"];
+- (NSInteger)pp_savedForLaterDockRowIndex
+{
+    return [self pp_cartItemsCount];
+}
 
-    NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
-    if (indexPath.row >= (NSInteger)items.count) {
-        return cell;
+- (BOOL)pp_shouldShowSavedForLaterInlineRows
+{
+    return self.savedForLaterExpanded &&
+    ([self pp_savedForLaterItems].count > 0 || self.savedForLaterRetainsEmptyDockDuringTransition);
+}
+
+- (BOOL)pp_isCartItemIndexPath:(NSIndexPath *)indexPath
+{
+    return indexPath && indexPath.section == 0 && indexPath.row < [self pp_cartItemsCount];
+}
+
+- (BOOL)pp_isSavedForLaterDockIndexPath:(NSIndexPath *)indexPath
+{
+    return indexPath &&
+    indexPath.section == 0 &&
+    [self pp_shouldShowSavedForLaterInlineRows] &&
+    indexPath.row == [self pp_savedForLaterDockRowIndex];
+}
+
+- (CartItem *)pp_savedForLaterItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (!indexPath || ![self pp_shouldShowSavedForLaterInlineRows]) {
+        return nil;
     }
-    CartItem *item = items[indexPath.row];
+    NSInteger savedIndex = indexPath.row - [self pp_savedForLaterDockRowIndex] - 1;
+    NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
+    if (savedIndex < 0 || savedIndex >= (NSInteger)savedItems.count) {
+        return nil;
+    }
+    return savedItems[savedIndex];
+}
+
+- (NSArray<NSIndexPath *> *)pp_savedForLaterExpandedIndexPathsForSavedCount:(NSInteger)savedCount
+{
+    if (savedCount <= 0) {
+        return @[];
+    }
+    NSInteger dockRow = [self pp_savedForLaterDockRowIndex];
+    NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray arrayWithCapacity:(NSUInteger)savedCount + 1];
+    [indexPaths addObject:[NSIndexPath indexPathForRow:dockRow inSection:0]];
+    for (NSInteger index = 0; index < savedCount; index += 1) {
+        [indexPaths addObject:[NSIndexPath indexPathForRow:dockRow + 1 + index inSection:0]];
+    }
+    return [indexPaths copy];
+}
+
+- (UIView *)pp_snapshotForSourceView:(UIView *)sourceView
+{
+    if (!sourceView || !sourceView.window) {
+        return nil;
+    }
+    [sourceView layoutIfNeeded];
+    UIView *snapshot = [sourceView snapshotViewAfterScreenUpdates:NO];
+    snapshot.frame = [sourceView.superview convertRect:sourceView.frame toView:self.view];
+    snapshot.layer.cornerRadius = sourceView.layer.cornerRadius;
+    snapshot.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        snapshot.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    return snapshot;
+}
+
+- (void)pp_runSavedDockMorphFromSnapshot:(UIView *)sourceSnapshot
+                               toTargetView:(UIView *)targetView
+                                  expanding:(BOOL)expanding
+                                  completion:(void (^)(void))completion
+{
+    if (!targetView || !targetView.superview) {
+        [sourceSnapshot removeFromSuperview];
+        if (completion) completion();
+        return;
+    }
+
+    [targetView.superview layoutIfNeeded];
+    CGRect targetFrame = [targetView.superview convertRect:targetView.frame toView:self.view];
+    UIView *targetSnapshot = [targetView snapshotViewAfterScreenUpdates:YES];
+    if (!targetSnapshot) {
+        [sourceSnapshot removeFromSuperview];
+        targetView.alpha = 1.0;
+        if (completion) completion();
+        return;
+    }
+    targetSnapshot.frame = targetFrame;
+    targetSnapshot.userInteractionEnabled = NO;
+    targetView.alpha = 0.0;
+
+    if (!sourceSnapshot || UIAccessibilityIsReduceMotionEnabled()) {
+        [sourceSnapshot removeFromSuperview];
+        if (targetSnapshot) {
+            targetSnapshot.alpha = 0.0;
+            [self.view addSubview:targetSnapshot];
+            [UIView animateWithDuration:0.18 animations:^{
+                targetSnapshot.alpha = 1.0;
+            } completion:^(__unused BOOL finished) {
+                targetView.alpha = 1.0;
+                [targetSnapshot removeFromSuperview];
+                if (completion) completion();
+            }];
+        } else if (completion) {
+            targetView.alpha = 1.0;
+            completion();
+        }
+        return;
+    }
+
+    self.savedForLaterAnimationToken += 1;
+    NSUInteger token = self.savedForLaterAnimationToken;
+
+    CGFloat sourceWidth = MAX(CGRectGetWidth(sourceSnapshot.bounds), 1.0);
+    CGFloat targetWidth = MAX(CGRectGetWidth(targetFrame), 1.0);
+    CGFloat sourceToTargetScale = targetWidth / sourceWidth;
+    CGFloat targetFromSourceScale = sourceWidth / targetWidth;
+
+    UIView *accentBloom = [[UIView alloc] initWithFrame:CGRectInset(targetFrame, -8.0, -6.0)];
+    accentBloom.userInteractionEnabled = NO;
+    accentBloom.backgroundColor = [PPSavedForLaterDeferredAccentColor() colorWithAlphaComponent:0.12];
+    accentBloom.layer.cornerRadius = CGRectGetHeight(accentBloom.bounds) * 0.42;
+    accentBloom.alpha = 0.0;
+    accentBloom.transform = CGAffineTransformMakeScale(0.94, 0.94);
+
+    targetSnapshot.alpha = 0.0;
+    targetSnapshot.transform = CGAffineTransformMakeScale(targetFromSourceScale, targetFromSourceScale);
+    [self.view addSubview:accentBloom];
+    [self.view addSubview:sourceSnapshot];
+    [self.view addSubview:targetSnapshot];
+
+    [UIView animateKeyframesWithDuration:kPPSavedDockMorphDuration
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionCalculationModeCubic | UIViewKeyframeAnimationOptionAllowUserInteraction
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.00 relativeDuration:0.76 animations:^{
+            sourceSnapshot.center = CGPointMake(CGRectGetMidX(targetFrame), CGRectGetMidY(targetFrame));
+            sourceSnapshot.transform = CGAffineTransformMakeScale(sourceToTargetScale, sourceToTargetScale);
+            sourceSnapshot.alpha = 0.94;
+            accentBloom.alpha = 0.16;
+            accentBloom.transform = CGAffineTransformMakeScale(1.02, 1.02);
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.42 relativeDuration:0.48 animations:^{
+            sourceSnapshot.alpha = 0.0;
+            targetSnapshot.alpha = 1.0;
+            targetSnapshot.transform = CGAffineTransformIdentity;
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.70 relativeDuration:0.30 animations:^{
+            accentBloom.alpha = 0.0;
+            accentBloom.transform = CGAffineTransformMakeScale(1.06, 1.06);
+        }];
+    } completion:^(__unused BOOL finished) {
+        [sourceSnapshot removeFromSuperview];
+        [targetSnapshot removeFromSuperview];
+        [accentBloom removeFromSuperview];
+        targetView.alpha = 1.0;
+
+        if (token == self.savedForLaterAnimationToken && expanding &&
+            [targetView.superview.superview isKindOfClass:PPSavedForLaterDockTableCell.class]) {
+            [(PPSavedForLaterDockTableCell *)targetView.superview.superview playExpansionEntryIfNeeded];
+        }
+        if (UIAccessibilityIsVoiceOverRunning()) {
+            id focusTarget = expanding && [targetView.superview.superview isKindOfClass:PPSavedForLaterDockTableCell.class]
+                ? targetView.superview.superview
+                : targetView;
+            UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, focusTarget);
+        }
+        if (completion) completion();
+    }];
+}
+
+- (void)pp_revealSavedForLaterRowsFromDock
+{
+    NSArray<NSIndexPath *> *visiblePaths = [[self.cartTableView indexPathsForVisibleRows]
+        sortedArrayUsingSelector:@selector(compare:)];
+    NSMutableArray<NSIndexPath *> *savedPaths = [NSMutableArray array];
+    for (NSIndexPath *indexPath in visiblePaths) {
+        if ([self pp_savedForLaterItemAtIndexPath:indexPath]) {
+            [savedPaths addObject:indexPath];
+        }
+    }
+
+    if (savedPaths.count == 0 || UIAccessibilityIsReduceMotionEnabled()) {
+        for (NSIndexPath *indexPath in savedPaths) {
+            UITableViewCell *cell = [self.cartTableView cellForRowAtIndexPath:indexPath];
+            cell.alpha = 1.0;
+            cell.transform = CGAffineTransformIdentity;
+        }
+        self.savedForLaterRevealInProgress = NO;
+        return;
+    }
+
+    for (NSInteger index = 0; index < (NSInteger)savedPaths.count; index += 1) {
+        UITableViewCell *cell = [self.cartTableView cellForRowAtIndexPath:savedPaths[index]];
+        if (!cell) continue;
+
+        CGFloat offset = MIN(34.0, 18.0 + (index * 4.0));
+        cell.alpha = 0.0;
+        cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -offset),
+                                                 CGAffineTransformMakeScale(0.974, 0.974));
+        NSTimeInterval delay = 0.055 + MIN(0.034 * index, 0.14);
+        [UIView animateWithDuration:kPPSavedRowRevealDuration
+                              delay:delay
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.20
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            cell.alpha = 1.0;
+            cell.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+
+    NSTimeInterval finalDelay = 0.055 + MIN(0.034 * MAX((NSInteger)savedPaths.count - 1, 0), 0.14);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                 (int64_t)((finalDelay + kPPSavedRowRevealDuration) * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        self.savedForLaterRevealInProgress = NO;
+    });
+}
+
+- (void)pp_setSavedForLaterExpanded:(BOOL)expanded
+                            animated:(BOOL)animated
+                          sourceView:(UIView *)sourceView
+{
+    NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
+    if (expanded && savedItems.count == 0) {
+        return;
+    }
+    if (self.savedForLaterExpanded == expanded || self.isPerformingTableMutation) {
+        return;
+    }
+
+    NSInteger savedCount = savedItems.count;
+    NSArray<NSIndexPath *> *indexPaths = [self pp_savedForLaterExpandedIndexPathsForSavedCount:savedCount];
+    if (indexPaths.count == 0) {
+        return;
+    }
+
+    UISelectionFeedbackGenerator *selection = [[UISelectionFeedbackGenerator alloc] init];
+    [selection prepare];
+    [selection selectionChanged];
+
+    self.isPerformingTableMutation = YES;
+    self.cartTableView.userInteractionEnabled = NO;
+    if (expanded) {
+        self.savedForLaterExpanded = YES;
+        self.savedForLaterRevealInProgress = animated && !UIAccessibilityIsReduceMotionEnabled();
+        self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+        UIView *source = sourceView ?: self.cartTableView.tableFooterView;
+        UIView *sourceSnapshot = [self pp_snapshotForSourceView:source];
+        self.savedForLaterFooterPillButton = nil;
+        self.cartTableView.tableFooterView = nil;
+        [UIView performWithoutAnimation:^{
+            [self.cartTableView performBatchUpdates:^{
+                [self.cartTableView insertRowsAtIndexPaths:indexPaths
+                                          withRowAnimation:UITableViewRowAnimationNone];
+            } completion:nil];
+            [self.cartTableView layoutIfNeeded];
+        }];
+
+        PPSavedForLaterDockTableCell *dockCell =
+        (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:indexPaths.firstObject];
+        [self pp_revealSavedForLaterRowsFromDock];
+        [self pp_runSavedDockMorphFromSnapshot:animated ? sourceSnapshot : nil
+                                  toTargetView:dockCell.dockContainerView
+                                     expanding:YES
+                                     completion:^{
+            self.isPerformingTableMutation = NO;
+            self.cartTableView.userInteractionEnabled = YES;
+            [self pp_applyEmptyStateIfNeeded];
+        }];
+        return;
+    }
+
+    NSIndexPath *dockIndexPath = indexPaths.firstObject;
+    PPSavedForLaterDockTableCell *dockCell =
+    (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:dockIndexPath];
+    UIView *sourceSnapshot = [self pp_snapshotForSourceView:dockCell.dockContainerView ?: dockCell];
+    self.savedForLaterExpanded = NO;
+    self.savedForLaterRevealInProgress = NO;
+    self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+    [UIView performWithoutAnimation:^{
+        [self.cartTableView performBatchUpdates:^{
+            [self.cartTableView deleteRowsAtIndexPaths:indexPaths
+                                      withRowAnimation:UITableViewRowAnimationNone];
+        } completion:nil];
+        [self pp_updateSavedForLaterFooter];
+        [self.cartTableView layoutIfNeeded];
+    }];
+
+    [self pp_runSavedDockMorphFromSnapshot:animated ? sourceSnapshot : nil
+                              toTargetView:self.savedForLaterFooterPillButton
+                                 expanding:NO
+                                 completion:^{
+        self.isPerformingTableMutation = NO;
+        self.cartTableView.userInteractionEnabled = YES;
+        [self pp_applyEmptyStateIfNeeded];
+    }];
+}
+
+- (NSIndexPath *)pp_indexPathForSavedForLaterItemID:(NSString *)itemID
+{
+    if (itemID.length == 0 || ![self pp_shouldShowSavedForLaterInlineRows]) {
+        return nil;
+    }
+
+    NSArray<CartItem *> *savedItems = [self pp_savedForLaterItems];
+    NSInteger dockRow = [self pp_savedForLaterDockRowIndex];
+    for (NSInteger index = 0; index < (NSInteger)savedItems.count; index += 1) {
+        CartItem *item = savedItems[index];
+        if ([item.itemID isEqualToString:itemID]) {
+            return [NSIndexPath indexPathForRow:dockRow + 1 + index inSection:0];
+        }
+    }
+    return nil;
+}
+
+- (CartItem *)pp_copySavedCartItem:(CartItem *)item
+{
+    CartItem *copy = [[CartItem alloc] init];
+    copy.itemID = item.itemID ?: @"";
+    copy.name = item.name ?: @"";
+    copy.quantity = MAX(1, item.quantity);
+    copy.stockQuantity = item.stockQuantity;
+    copy.price = item.price;
+    copy.originalPrice = item.originalPrice;
+    copy.imageURL = item.imageURL ?: @"";
+    copy.providerID = item.providerID ?: @"";
+    copy.type = item.type ?: @"";
+    return copy;
+}
+
+- (CartItem *)pp_cartItemFromSavedItem:(CartItem *)savedItem
+                             accessory:(PetAccessory *)accessory
+{
+    CartItem *resolvedItem = [[CartItem alloc] initWithAccessory:accessory
+                                                        quantity:MAX(1, savedItem.quantity)];
+    if (savedItem.type.length > 0) {
+        resolvedItem.type = savedItem.type;
+    }
+    return resolvedItem;
+}
+
+- (void)pp_resolveCartItemForMoveToCart:(CartItem *)savedItem
+                              completion:(void (^)(CartItem * _Nullable resolvedItem,
+                                                   BOOL isOutOfStock))completion
+{
+    if (!savedItem || savedItem.itemID.length == 0) {
+        if (completion) completion(nil, NO);
+        return;
+    }
+
+    if (savedItem.stockQuantity != NSNotFound) {
+        if (savedItem.stockQuantity <= 0) {
+            if (completion) completion(nil, YES);
+            return;
+        }
+        if (savedItem.price >= 0.01) {
+            if (completion) completion([self pp_copySavedCartItem:savedItem], NO);
+            return;
+        }
+    }
+
+    PetAccessory *cachedAccessory = [[PetAccessoryManager sharedManager] getAccessoryID:savedItem.itemID];
+    if (cachedAccessory) {
+        if (cachedAccessory.quantity <= 0) {
+            if (completion) completion(nil, YES);
+            return;
+        }
+        if (completion) completion([self pp_cartItemFromSavedItem:savedItem accessory:cachedAccessory], NO);
+        return;
+    }
+
+    [PetAccessoryManager fetchAccessoriesWithIDs:@[savedItem.itemID ?: @""]
+                                      completion:^(NSArray<PetAccessory *> *accessories) {
+        PetAccessory *freshAccessory = accessories.firstObject;
+        if (!freshAccessory) {
+            if (completion) completion(nil, NO);
+            return;
+        }
+        if (freshAccessory.quantity <= 0) {
+            if (completion) completion(nil, YES);
+            return;
+        }
+        if (completion) completion([self pp_cartItemFromSavedItem:savedItem accessory:freshAccessory], NO);
+    }];
+}
+
+- (void)pp_setSavedForLaterPendingItemID:(NSString *)itemID operation:(NSString *)operation
+{
+    self.pendingSavedForLaterItemID = itemID.length > 0 ? itemID : nil;
+    self.pendingSavedForLaterOperation = self.pendingSavedForLaterItemID ? operation : nil;
+    if (self.pendingSavedForLaterItemID) {
+        self.completedSavedForLaterItemID = nil;
+    }
+    [self pp_refreshVisibleSavedItemID:self.pendingSavedForLaterItemID];
+}
+
+- (void)pp_clearSavedForLaterPendingStateAndReload
+{
+    NSString *previousItemID = self.pendingSavedForLaterItemID;
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+    [self pp_refreshVisibleSavedItemID:previousItemID];
+}
+
+- (NSInteger)pp_cartRowForItemID:(NSString *)itemID
+{
+    if (itemID.length == 0) return NSNotFound;
+    NSArray<CartItem *> *cartItems = [CartManager sharedManager].cartItems;
+    for (NSInteger index = 0; index < (NSInteger)cartItems.count; index += 1) {
+        CartItem *item = cartItems[index];
+        if ([item.itemID isEqualToString:itemID]) {
+            return index;
+        }
+    }
+    return NSNotFound;
+}
+
+- (void)pp_configureActiveCartCell:(PPCartTableCell *)cell item:(CartItem *)item
+{
+    if (![cell isKindOfClass:PPCartTableCell.class] || !item) {
+        return;
+    }
+
     [cell configureWithItem:item];
     __weak typeof(self) weakSelf = self;
-    cell.onAction = ^(CartItem *item, NSString *action) {
+    cell.onAction = ^(CartItem *actionItem, NSString *action) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
         if ([action isEqualToString:@"plus"] || [action isEqualToString:@"minus"]) {
             NSUInteger previousSkipCount = strongSelf.pendingQuantitySyncReloadSkips;
             strongSelf.pendingQuantitySyncReloadSkips = MIN(previousSkipCount + 2, 8);
-            [[CartManager sharedManager] updateQuantity:item.quantity
-                                                forItem:item
+            [[CartManager sharedManager] updateQuantity:actionItem.quantity
+                                                forItem:actionItem
                                              completion:^(BOOL success) {
                 if (!success) {
                     strongSelf.pendingQuantitySyncReloadSkips = previousSkipCount;
                 }
             }];
             [strongSelf updateTotalLabel];
-            return;
         }
     };
+}
+
+- (void)pp_configureSavedCartCell:(PPCartTableCell *)cell item:(CartItem *)item
+{
+    if (![cell isKindOfClass:PPCartTableCell.class] || !item) {
+        return;
+    }
+
+    NSString *pendingOperation = [item.itemID isEqualToString:self.pendingSavedForLaterItemID]
+        ? self.pendingSavedForLaterOperation
+        : nil;
+    BOOL completed = [item.itemID isEqualToString:self.completedSavedForLaterItemID];
+    [cell configureWithSavedForLaterItem:item
+                        pendingOperation:pendingOperation
+                               completed:completed];
+
+    __weak typeof(self) weakSelf = self;
+    cell.onAction = ^(CartItem *actionItem, NSString *action) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        if ([action isEqualToString:@"moveSavedToCart"]) {
+            [strongSelf pp_moveSavedForLaterItemToCart:actionItem];
+        } else if ([action isEqualToString:@"removeSavedForLater"]) {
+            [strongSelf pp_confirmRemoveSavedForLaterItem:actionItem];
+        } else if ([action isEqualToString:@"notifySavedWhenAvailable"]) {
+            [strongSelf pp_registerStockNotificationForSavedItem:actionItem];
+        }
+    };
+}
+
+- (void)pp_refreshVisibleSavedItemID:(NSString *)itemID
+{
+    if (itemID.length == 0) return;
+    NSIndexPath *indexPath = [self pp_indexPathForSavedForLaterItemID:itemID];
+    if (!indexPath) return;
+    PPCartTableCell *cell = (PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:indexPath];
+    CartItem *item = [self pp_savedForLaterItemAtIndexPath:indexPath];
+    if ([cell isKindOfClass:PPCartTableCell.class] && item) {
+        [self pp_configureSavedCartCell:cell item:item];
+    }
+}
+
+- (void)pp_animateTransferSnapshot:(UIView *)snapshot
+                     toTargetFrame:(CGRect)targetFrame
+                        completion:(void (^)(void))completion
+{
+    if (!snapshot || CGRectIsEmpty(targetFrame)) {
+        [snapshot removeFromSuperview];
+        if (completion) completion();
+        return;
+    }
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        if (!snapshot.superview) [self.view addSubview:snapshot];
+        [UIView animateWithDuration:0.18 animations:^{
+            snapshot.alpha = 0.0;
+        } completion:^(__unused BOOL finished) {
+            [snapshot removeFromSuperview];
+            if (completion) completion();
+        }];
+        return;
+    }
+
+    if (!snapshot.superview) {
+        [self.view addSubview:snapshot];
+    }
+    [self.view bringSubviewToFront:snapshot];
+    snapshot.userInteractionEnabled = NO;
+
+    CGPoint startPoint = snapshot.center;
+    CGPoint endPoint = CGPointMake(CGRectGetMidX(targetFrame), CGRectGetMidY(targetFrame));
+    CGFloat direction = Language.isRTL ? -1.0 : 1.0;
+    CGFloat verticalDistance = fabs(endPoint.y - startPoint.y);
+    CGFloat arcDistance = MIN(28.0, MAX(12.0, verticalDistance * 0.08));
+    CGPoint liftedPoint = CGPointMake(startPoint.x + (5.0 * direction), startPoint.y - 8.0);
+    CGPoint midpoint = CGPointMake((startPoint.x + endPoint.x) * 0.5 + (arcDistance * direction),
+                                   (startPoint.y + endPoint.y) * 0.5 - MIN(24.0, MAX(14.0, verticalDistance * 0.06)));
+
+    CGFloat sourceWidth = MAX(CGRectGetWidth(snapshot.bounds), 1.0);
+    CGFloat sourceHeight = MAX(CGRectGetHeight(snapshot.bounds), 1.0);
+    CGFloat widthScale = CGRectGetWidth(targetFrame) / sourceWidth;
+    CGFloat heightScale = CGRectGetHeight(targetFrame) / sourceHeight;
+    CGFloat targetScale = MAX(0.88, MIN(1.02, MIN(widthScale, heightScale)));
+    UIViewKeyframeAnimationOptions options = UIViewKeyframeAnimationOptionCalculationModeCubic |
+        UIViewAnimationOptionBeginFromCurrentState |
+        UIViewAnimationOptionAllowUserInteraction;
+
+    [UIView animateKeyframesWithDuration:kPPSavedTransferDuration
+                                   delay:0.0
+                                 options:options
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.0
+                                relativeDuration:0.16
+                                      animations:^{
+            snapshot.center = liftedPoint;
+            snapshot.transform = CGAffineTransformMakeScale(0.985, 0.985);
+            snapshot.alpha = 1.0;
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.16
+                                relativeDuration:0.50
+                                      animations:^{
+            snapshot.center = midpoint;
+            snapshot.transform = CGAffineTransformMakeScale(1.006, 1.006);
+            snapshot.alpha = 1.0;
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.66
+                                relativeDuration:0.34
+                                      animations:^{
+            snapshot.center = endPoint;
+            snapshot.transform = CGAffineTransformMakeScale(targetScale, targetScale);
+            snapshot.alpha = 0.04;
+        }];
+    } completion:^(__unused BOOL finished) {
+        [snapshot removeFromSuperview];
+        if (completion) completion();
+    }];
+}
+
+- (CGRect)pp_controllerFrameForCartRow:(NSInteger)row
+{
+    if (row == NSNotFound || row < 0) {
+        return CGRectZero;
+    }
+
+    NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:0];
+    UITableViewCell *visibleCell = [self.cartTableView cellForRowAtIndexPath:indexPath];
+    CGRect frame = CGRectZero;
+    if (visibleCell && visibleCell.superview) {
+        frame = [visibleCell.superview convertRect:visibleCell.frame toView:self.view];
+        frame.size.height = 134.0;
+    } else {
+        CGRect rowRect = [self.cartTableView rectForRowAtIndexPath:indexPath];
+        rowRect.size.height = 134.0;
+        frame = [self.cartTableView convertRect:rowRect toView:self.view];
+    }
+
+    CGRect visibleTableFrame = [self.cartTableView convertRect:self.cartTableView.bounds toView:self.view];
+    if (CGRectGetMaxY(frame) < CGRectGetMinY(visibleTableFrame)) {
+        frame.origin.y = CGRectGetMinY(visibleTableFrame) - (CGRectGetHeight(frame) * 0.56);
+    } else if (CGRectGetMinY(frame) > CGRectGetMaxY(visibleTableFrame)) {
+        frame.origin.y = CGRectGetMaxY(visibleTableFrame) - (CGRectGetHeight(frame) * 0.44);
+    }
+    return frame;
+}
+
+- (void)pp_performSavedTransferTableUpdates:(dispatch_block_t)updates
+                                  completion:(void (^)(BOOL finished))completion
+{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                                 (int64_t)(kPPSavedTransferAnticipationDuration * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [CATransaction begin];
+        [CATransaction setAnimationDuration:kPPSavedTableReflowDuration];
+        [CATransaction setAnimationTimingFunction:
+         [CAMediaTimingFunction functionWithControlPoints:0.40 :0.0 :0.20 :1.0]];
+        [self.cartTableView performBatchUpdates:^{
+            if (updates) updates();
+        } completion:^(BOOL finished) {
+            if (completion) completion(finished);
+        }];
+        [CATransaction commit];
+    });
+}
+
+- (void)pp_finishSavedForLaterMoveFeedback
+{
+    self.isPerformingTableMutation = NO;
+    self.cartTableView.userInteractionEnabled = YES;
+    [self updateTotalLabel];
+    [self pp_notifyCartBadgeAndCollections];
+    [self pp_updateSavedForLaterFooter];
+    [self pp_applyEmptyStateIfNeeded];
+
+    UINotificationFeedbackGenerator *notification = self.savedMoveFeedbackGenerator;
+    if (!notification) {
+        notification = [[UINotificationFeedbackGenerator alloc] init];
+        [notification prepare];
+    }
+    [notification notificationOccurred:UINotificationFeedbackTypeSuccess];
+    self.savedMoveFeedbackGenerator = nil;
+    [PPHUD showSuccess:kLang(@"moved_to_cart_success")];
+}
+
+- (void)pp_finishSavedForLaterArrivalAtRow:(NSInteger)targetRow
+                              savedCount:(NSInteger)savedCount
+                               completion:(void (^)(void))completion
+{
+    [self.savedMoveFeedbackGenerator prepare];
+    dispatch_group_t choreographyGroup = dispatch_group_create();
+    NSIndexPath *targetIndexPath = targetRow == NSNotFound
+        ? nil
+        : [NSIndexPath indexPathForRow:targetRow inSection:0];
+    PPCartTableCell *targetCell = targetIndexPath
+        ? (PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:targetIndexPath]
+        : nil;
+    if ([targetCell isKindOfClass:PPCartTableCell.class]) {
+        NSArray<CartItem *> *cartItems = [CartManager sharedManager].cartItems;
+        if (targetRow >= 0 && targetRow < (NSInteger)cartItems.count) {
+            [self pp_configureActiveCartCell:targetCell item:cartItems[targetRow]];
+        }
+        targetCell.alpha = 1.0;
+        targetCell.transform = CGAffineTransformIdentity;
+        dispatch_group_enter(choreographyGroup);
+        [targetCell playSavedForLaterArrivalAnimationWithCompletion:^{
+            if (UIAccessibilityIsVoiceOverRunning()) {
+                UIAccessibilityPostNotification(UIAccessibilityLayoutChangedNotification, targetCell);
+            }
+            dispatch_group_leave(choreographyGroup);
+        }];
+    }
+
+    if (savedCount > 0) {
+        NSIndexPath *dockIndexPath = [NSIndexPath indexPathForRow:[self pp_cartItemsCount] inSection:0];
+        PPSavedForLaterDockTableCell *dockCell =
+        (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:dockIndexPath];
+        if ([dockCell isKindOfClass:PPSavedForLaterDockTableCell.class]) {
+            dispatch_group_enter(choreographyGroup);
+            [UIView transitionWithView:dockCell.countBadgeLabel
+                              duration:0.20
+                               options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
+                            animations:^{
+                [dockCell configureWithSavedCount:savedCount expanded:YES];
+                dockCell.countBadgeLabel.transform = CGAffineTransformMakeScale(1.035, 1.035);
+            } completion:^(__unused BOOL finished) {
+                [UIView animateWithDuration:0.18
+                                      delay:0.0
+                     usingSpringWithDamping:0.92
+                      initialSpringVelocity:0.16
+                                    options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                                 animations:^{
+                    dockCell.countBadgeLabel.transform = CGAffineTransformIdentity;
+                } completion:^(__unused BOOL settled) {
+                    dispatch_group_leave(choreographyGroup);
+                }];
+            }];
+        }
+    } else if (self.savedForLaterRetainsEmptyDockDuringTransition) {
+        NSIndexPath *emptyDockIndexPath = [NSIndexPath indexPathForRow:[self pp_cartItemsCount] inSection:0];
+        PPSavedForLaterDockTableCell *emptyDockCell =
+        (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:emptyDockIndexPath];
+        dispatch_group_enter(choreographyGroup);
+
+        void (^deleteEmptyDock)(void) = ^{
+            self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+            self.savedForLaterExpanded = NO;
+            [UIView performWithoutAnimation:^{
+                [self.cartTableView performBatchUpdates:^{
+                    [self.cartTableView deleteRowsAtIndexPaths:@[emptyDockIndexPath]
+                                              withRowAnimation:UITableViewRowAnimationNone];
+                } completion:^(__unused BOOL finished) {
+                    dispatch_group_leave(choreographyGroup);
+                }];
+            }];
+        };
+
+        if (!emptyDockCell || UIAccessibilityIsReduceMotionEnabled()) {
+            deleteEmptyDock();
+        } else {
+            [UIView animateWithDuration:0.22
+                                  delay:0.04
+                                options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                emptyDockCell.dockContainerView.alpha = 0.0;
+                emptyDockCell.dockContainerView.transform =
+                CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -8.0),
+                                        CGAffineTransformMakeScale(0.982, 0.982));
+            } completion:^(__unused BOOL finished) {
+                deleteEmptyDock();
+            }];
+        }
+    }
+
+    dispatch_group_notify(choreographyGroup, dispatch_get_main_queue(), ^{
+        if (completion) completion();
+    });
+}
+
+- (void)pp_presentSuccessfulSavedMoveForItem:(CartItem *)item
+                              sourceIndexPath:(NSIndexPath *)sourceIndexPath
+                               sourceSnapshot:(UIView *)sourceSnapshot
+                                  oldCartCount:(NSInteger)oldCartCount
+                                    oldCartRow:(NSInteger)oldCartRow
+{
+    NSInteger newCartCount = [self pp_cartItemsCount];
+    NSInteger newSavedCount = [self pp_savedForLaterItems].count;
+    NSInteger targetRow = [self pp_cartRowForItemID:item.itemID];
+    BOOL insertedNewCartRow = oldCartRow == NSNotFound &&
+        targetRow != NSNotFound && newCartCount == oldCartCount + 1;
+    BOOL mergedIntoCartRow = oldCartRow != NSNotFound &&
+        targetRow != NSNotFound && newCartCount == oldCartCount;
+
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+    self.cartTableView.userInteractionEnabled = NO;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [sourceSnapshot removeFromSuperview];
+        void (^finishReducedMotionUpdate)(void) = ^{
+            [self pp_finishSavedForLaterArrivalAtRow:targetRow
+                                         savedCount:newSavedCount
+                                          completion:^{
+                [self pp_finishSavedForLaterMoveFeedback];
+            }];
+        };
+
+        if (insertedNewCartRow && sourceIndexPath) {
+            self.savedForLaterRetainsEmptyDockDuringTransition = newSavedCount == 0;
+            self.savedForLaterExpanded = YES;
+            NSIndexPath *targetIndexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
+            [UIView performWithoutAnimation:^{
+                [self.cartTableView performBatchUpdates:^{
+                    [self.cartTableView moveRowAtIndexPath:sourceIndexPath toIndexPath:targetIndexPath];
+                } completion:^(__unused BOOL finished) {
+                    finishReducedMotionUpdate();
+                }];
+            }];
+            return;
+        }
+
+        if (mergedIntoCartRow && sourceIndexPath) {
+            NSMutableArray<NSIndexPath *> *deletePaths = [NSMutableArray arrayWithObject:sourceIndexPath];
+            if (newSavedCount == 0) {
+                [deletePaths addObject:[NSIndexPath indexPathForRow:oldCartCount inSection:0]];
+            }
+            self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+            self.savedForLaterExpanded = newSavedCount > 0;
+            [UIView performWithoutAnimation:^{
+                [self.cartTableView performBatchUpdates:^{
+                    [self.cartTableView deleteRowsAtIndexPaths:deletePaths
+                                              withRowAnimation:UITableViewRowAnimationNone];
+                } completion:^(__unused BOOL finished) {
+                    finishReducedMotionUpdate();
+                }];
+            }];
+            return;
+        }
+
+        self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+        self.savedForLaterExpanded = newSavedCount > 0;
+        [UIView performWithoutAnimation:^{
+            [self.cartTableView reloadData];
+            [self.cartTableView layoutIfNeeded];
+        }];
+        finishReducedMotionUpdate();
+        return;
+    }
+
+    if (insertedNewCartRow && sourceIndexPath) {
+        self.savedForLaterRetainsEmptyDockDuringTransition = newSavedCount == 0;
+        self.savedForLaterExpanded = YES;
+
+        NSIndexPath *targetIndexPath = [NSIndexPath indexPathForRow:targetRow inSection:0];
+        CGRect targetFrame = [self pp_controllerFrameForCartRow:targetRow];
+        UITableViewCell *sourceCell = [self.cartTableView cellForRowAtIndexPath:sourceIndexPath];
+        if (sourceSnapshot && sourceCell.window) {
+            sourceSnapshot.frame = [sourceCell.superview convertRect:sourceCell.frame toView:self.view];
+        } else if (sourceSnapshot) {
+            [sourceSnapshot removeFromSuperview];
+            sourceSnapshot = nil;
+        }
+        if (sourceSnapshot) sourceCell.alpha = 0.0;
+
+        __block BOOL tableFinished = NO;
+        __block BOOL visualFinished = sourceSnapshot == nil;
+        __block BOOL didFinish = NO;
+        void (^finishWhenReady)(void) = ^{
+            if (didFinish || !tableFinished || !visualFinished) return;
+            didFinish = YES;
+            sourceCell.alpha = 1.0;
+            [self pp_finishSavedForLaterArrivalAtRow:targetRow
+                                         savedCount:newSavedCount
+                                          completion:^{
+                [self pp_finishSavedForLaterMoveFeedback];
+            }];
+        };
+
+        [self pp_animateTransferSnapshot:sourceSnapshot
+                           toTargetFrame:targetFrame
+                              completion:^{
+            visualFinished = YES;
+            finishWhenReady();
+        }];
+
+        [self pp_performSavedTransferTableUpdates:^{
+            [self.cartTableView moveRowAtIndexPath:sourceIndexPath toIndexPath:targetIndexPath];
+        } completion:^(__unused BOOL finished) {
+            tableFinished = YES;
+            finishWhenReady();
+        }];
+        return;
+    }
+
+    if (mergedIntoCartRow && sourceIndexPath) {
+        CGRect targetFrame = [self pp_controllerFrameForCartRow:targetRow];
+        UITableViewCell *sourceCell = [self.cartTableView cellForRowAtIndexPath:sourceIndexPath];
+        if (sourceSnapshot && sourceCell.window) {
+            sourceSnapshot.frame = [sourceCell.superview convertRect:sourceCell.frame toView:self.view];
+        } else if (sourceSnapshot) {
+            [sourceSnapshot removeFromSuperview];
+            sourceSnapshot = nil;
+        }
+        if (sourceSnapshot) sourceCell.alpha = 0.0;
+
+        NSMutableArray<NSIndexPath *> *deletePaths = [NSMutableArray arrayWithObject:sourceIndexPath];
+        if (newSavedCount == 0) {
+            [deletePaths addObject:[NSIndexPath indexPathForRow:oldCartCount inSection:0]];
+        }
+        self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+        self.savedForLaterExpanded = newSavedCount > 0;
+
+        __block BOOL tableFinished = NO;
+        __block BOOL visualFinished = sourceSnapshot == nil;
+        __block BOOL didFinish = NO;
+        void (^finishWhenReady)(void) = ^{
+            if (didFinish || !tableFinished || !visualFinished) return;
+            didFinish = YES;
+            sourceCell.alpha = 1.0;
+            [self pp_finishSavedForLaterArrivalAtRow:targetRow
+                                         savedCount:newSavedCount
+                                          completion:^{
+                [self pp_finishSavedForLaterMoveFeedback];
+            }];
+        };
+
+        [self pp_animateTransferSnapshot:sourceSnapshot
+                           toTargetFrame:targetFrame
+                              completion:^{
+            visualFinished = YES;
+            finishWhenReady();
+        }];
+
+        [self pp_performSavedTransferTableUpdates:^{
+            [self.cartTableView deleteRowsAtIndexPaths:deletePaths
+                                      withRowAnimation:UITableViewRowAnimationTop];
+        } completion:^(__unused BOOL finished) {
+            tableFinished = YES;
+            finishWhenReady();
+        }];
+        return;
+    }
+
+    self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+    self.savedForLaterExpanded = newSavedCount > 0;
+    UIView *continuitySnapshot = [self.cartTableView snapshotViewAfterScreenUpdates:NO];
+    if (continuitySnapshot) {
+        continuitySnapshot.frame = [self.cartTableView.superview convertRect:self.cartTableView.frame toView:self.view];
+        continuitySnapshot.userInteractionEnabled = NO;
+        [self.view insertSubview:continuitySnapshot aboveSubview:self.cartTableView];
+    }
+    [UIView performWithoutAnimation:^{
+        [self.cartTableView reloadData];
+        [self.cartTableView layoutIfNeeded];
+    }];
+
+    void (^continueTransfer)(void) = ^{
+        CGRect targetFrame = [self pp_controllerFrameForCartRow:targetRow];
+        [self pp_animateTransferSnapshot:sourceSnapshot
+                           toTargetFrame:targetFrame
+                              completion:^{
+            [self pp_finishSavedForLaterArrivalAtRow:targetRow
+                                         savedCount:newSavedCount
+                                          completion:^{
+                [self pp_finishSavedForLaterMoveFeedback];
+            }];
+        }];
+    };
+
+    if (!continuitySnapshot) {
+        continueTransfer();
+        return;
+    }
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        continuitySnapshot.alpha = 0.0;
+        continuitySnapshot.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -6.0),
+                                CGAffineTransformMakeScale(0.995, 0.995));
+    } completion:^(__unused BOOL finished) {
+        [continuitySnapshot removeFromSuperview];
+        continueTransfer();
+    }];
+}
+
+- (void)pp_presentPartialSavedMoveForItem:(CartItem *)item
+                          sourceIndexPath:(NSIndexPath *)sourceIndexPath
+                           sourceSnapshot:(UIView *)sourceSnapshot
+                              oldCartCount:(NSInteger)oldCartCount
+                                oldCartRow:(NSInteger)oldCartRow
+{
+    self.savedMoveFeedbackGenerator = nil;
+    NSInteger newCartCount = [self pp_cartItemsCount];
+    NSInteger targetRow = [self pp_cartRowForItemID:item.itemID];
+    BOOL insertedNewCartRow = oldCartRow == NSNotFound &&
+        targetRow != NSNotFound && newCartCount == oldCartCount + 1;
+    BOOL mergedIntoCartRow = oldCartRow != NSNotFound &&
+        targetRow != NSNotFound && newCartCount == oldCartCount;
+
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+    self.cartTableView.userInteractionEnabled = NO;
+
+    if (targetRow == NSNotFound) {
+        [sourceSnapshot removeFromSuperview];
+        [self.cartTableView reloadData];
+        self.isPerformingTableMutation = NO;
+        self.cartTableView.userInteractionEnabled = YES;
+        [self updateTotalLabel];
+        [self pp_notifyCartBadgeAndCollections];
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
+
+        UINotificationFeedbackGenerator *notification = [[UINotificationFeedbackGenerator alloc] init];
+        [notification prepare];
+        [notification notificationOccurred:UINotificationFeedbackTypeError];
+        return;
+    }
+
+    UITableViewCell *sourceCell = sourceIndexPath
+        ? [self.cartTableView cellForRowAtIndexPath:sourceIndexPath]
+        : nil;
+    if (sourceSnapshot && sourceCell.window) {
+        sourceSnapshot.frame = [sourceCell.superview convertRect:sourceCell.frame toView:self.view];
+    } else if (sourceSnapshot) {
+        [sourceSnapshot removeFromSuperview];
+        sourceSnapshot = nil;
+    }
+
+    void (^startTransfer)(void) = ^{
+        [self.cartTableView layoutIfNeeded];
+        CGRect targetFrame = [self pp_controllerFrameForCartRow:targetRow];
+        [self pp_animateTransferSnapshot:sourceSnapshot
+                           toTargetFrame:targetFrame
+                              completion:^{
+            PPCartTableCell *targetCell = (PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:
+                [NSIndexPath indexPathForRow:targetRow inSection:0]];
+            if ([targetCell isKindOfClass:PPCartTableCell.class]) {
+                NSArray<CartItem *> *cartItems = [CartManager sharedManager].cartItems;
+                if (targetRow >= 0 && targetRow < (NSInteger)cartItems.count) {
+                    [self pp_configureActiveCartCell:targetCell item:cartItems[targetRow]];
+                }
+            }
+
+            void (^finishPartialFeedback)(void) = ^{
+                self.isPerformingTableMutation = NO;
+                self.cartTableView.userInteractionEnabled = YES;
+                [self updateTotalLabel];
+                [self pp_notifyCartBadgeAndCollections];
+                [self pp_updateSavedForLaterFooter];
+                [self pp_applyEmptyStateIfNeeded];
+
+                UINotificationFeedbackGenerator *notification = [[UINotificationFeedbackGenerator alloc] init];
+                [notification prepare];
+                [notification notificationOccurred:UINotificationFeedbackTypeError];
+                [PPHUD showError:kLang(@"saved_for_later_move_partial_error")];
+            };
+
+            if ([targetCell isKindOfClass:PPCartTableCell.class]) {
+                [targetCell playSavedForLaterArrivalAnimationWithCompletion:finishPartialFeedback];
+            } else {
+                finishPartialFeedback();
+            }
+        }];
+    };
+
+    if (insertedNewCartRow) {
+        [self.cartTableView performBatchUpdates:^{
+            [self.cartTableView insertRowsAtIndexPaths:@[[NSIndexPath indexPathForRow:targetRow inSection:0]]
+                                      withRowAnimation:UITableViewRowAnimationTop];
+        } completion:^(__unused BOOL finished) {
+            startTransfer();
+        }];
+        return;
+    }
+
+    if (mergedIntoCartRow) {
+        PPCartTableCell *targetCell = (PPCartTableCell *)[self.cartTableView cellForRowAtIndexPath:
+            [NSIndexPath indexPathForRow:targetRow inSection:0]];
+        NSArray<CartItem *> *cartItems = [CartManager sharedManager].cartItems;
+        if ([targetCell isKindOfClass:PPCartTableCell.class] &&
+            targetRow >= 0 && targetRow < (NSInteger)cartItems.count) {
+            [self pp_configureActiveCartCell:targetCell item:cartItems[targetRow]];
+        }
+        startTransfer();
+        return;
+    }
+
+    UIView *continuitySnapshot = [self.cartTableView snapshotViewAfterScreenUpdates:NO];
+    if (continuitySnapshot) {
+        continuitySnapshot.frame = [self.cartTableView.superview convertRect:self.cartTableView.frame toView:self.view];
+        continuitySnapshot.userInteractionEnabled = NO;
+        [self.view insertSubview:continuitySnapshot aboveSubview:self.cartTableView];
+    }
+    [UIView performWithoutAnimation:^{
+        [self.cartTableView reloadData];
+        [self.cartTableView layoutIfNeeded];
+    }];
+    if (!continuitySnapshot) {
+        startTransfer();
+        return;
+    }
+    [UIView animateWithDuration:0.18
+                     animations:^{
+        continuitySnapshot.alpha = 0.0;
+        continuitySnapshot.transform = CGAffineTransformMakeTranslation(0.0, -4.0);
+    } completion:^(__unused BOOL finished) {
+        [continuitySnapshot removeFromSuperview];
+        startTransfer();
+    }];
+}
+
+- (void)pp_finishSuccessfulSavedForLaterRemovalForItemID:(NSString *)itemID
+                                            oldIndexPath:(NSIndexPath *)oldIndexPath
+                                           oldSavedCount:(NSInteger)oldSavedCount
+{
+    NSInteger newSavedCount = [self pp_savedForLaterItems].count;
+    NSMutableArray<NSIndexPath *> *deleteIndexPaths = [NSMutableArray array];
+    NSIndexPath *dockIndexPath = [NSIndexPath indexPathForRow:[self pp_savedForLaterDockRowIndex] inSection:0];
+    if (oldIndexPath) {
+        [deleteIndexPaths addObject:oldIndexPath];
+    }
+    if (newSavedCount == 0 && oldSavedCount > 0) {
+        [deleteIndexPaths insertObject:dockIndexPath atIndex:0];
+    }
+
+    self.pendingSavedForLaterItemID = nil;
+    self.pendingSavedForLaterOperation = nil;
+    self.completedSavedForLaterItemID = nil;
+
+    if (deleteIndexPaths.count == 0 || !self.savedForLaterExpanded) {
+        self.isPerformingTableMutation = NO;
+        self.savedForLaterExpanded = newSavedCount > 0 ? self.savedForLaterExpanded : NO;
+        [self.cartTableView reloadData];
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+        return;
+    }
+
+    [self.cartTableView performBatchUpdates:^{
+        if (newSavedCount == 0) {
+            self.savedForLaterExpanded = NO;
+        }
+        [self.cartTableView deleteRowsAtIndexPaths:deleteIndexPaths
+                                  withRowAnimation:UITableViewRowAnimationTop];
+    } completion:^(__unused BOOL finished) {
+        self.isPerformingTableMutation = NO;
+        [self pp_updateSavedForLaterFooter];
+        [self pp_applyEmptyStateIfNeeded];
+    }];
+}
+
+- (void)pp_removeSavedForLaterItem:(CartItem *)item showLoading:(BOOL)showLoading
+{
+    if (!item || item.itemID.length == 0) {
+        [PPHUD showError:kLang(@"SomethingWentWrong")];
+        return;
+    }
+
+    NSIndexPath *oldIndexPath = [self pp_indexPathForSavedForLaterItemID:item.itemID];
+    NSInteger oldSavedCount = [self pp_savedForLaterItems].count;
+    if (showLoading && ![self.pendingSavedForLaterItemID isEqualToString:item.itemID]) {
+        [self pp_setSavedForLaterPendingItemID:item.itemID operation:@"remove"];
+    }
+
+    self.isPerformingTableMutation = YES;
+    __weak typeof(self) weakSelf = self;
+    [[PPSaveForLaterManager sharedManager] removeItem:item completion:^(NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+
+        if (error) {
+            strongSelf.isPerformingTableMutation = NO;
+            [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+            [PPHUD showError:showLoading ? kLang(@"saved_for_later_delete_failed") : kLang(@"saved_for_later_move_partial_error")];
+            return;
+        }
+
+        if (showLoading) {
+            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartItemRemoved];
+        }
+        if (showLoading) {
+            [PPHUD showSuccess:kLang(@"saved_for_later_delete_success")];
+        }
+        [strongSelf pp_finishSuccessfulSavedForLaterRemovalForItemID:item.itemID
+                                                        oldIndexPath:oldIndexPath
+                                                       oldSavedCount:oldSavedCount];
+    }];
+}
+
+- (void)pp_confirmRemoveSavedForLaterItem:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) {
+        [PPHUD showError:kLang(@"SomethingWentWrong")];
+        return;
+    }
+
+    [self pp_setSavedForLaterPendingItemID:item.itemID operation:@"remove"];
+    __weak typeof(self) weakSelf = self;
+    [PPAlertHelper showConfirmationIn:self
+                                title:kLang(@"saved_for_later_delete_confirm_title")
+                             subtitle:kLang(@"saved_for_later_delete_confirm_message")
+                        confirmButton:kLang(@"saved_for_later_delete_confirm_action")
+                         cancelButton:kLang(@"cancel")
+                                 icon:[UIImage systemImageNamed:@"trash"]
+                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+        (void)text;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        if (!didConfirm) {
+            [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+            return;
+        }
+        [strongSelf pp_removeSavedForLaterItem:item showLoading:YES];
+    } cancelBlock:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+        }
+    }];
+}
+
+- (void)pp_moveSavedForLaterItemToCart:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0 || self.pendingSavedForLaterItemID.length > 0) {
+        return;
+    }
+
+    [PPHUD dismiss];
+    NSInteger oldCartCount = [self pp_cartItemsCount];
+    NSInteger oldCartRow = [self pp_cartRowForItemID:item.itemID];
+    NSIndexPath *sourceIndexPath = [self pp_indexPathForSavedForLaterItemID:item.itemID];
+    UITableViewCell *sourceCell = sourceIndexPath ? [self.cartTableView cellForRowAtIndexPath:sourceIndexPath] : nil;
+    UIView *transferSnapshot = [self pp_snapshotForSourceView:sourceCell];
+    [self pp_setSavedForLaterPendingItemID:item.itemID operation:@"move"];
+    self.isPerformingTableMutation = YES;
+    self.cartTableView.userInteractionEnabled = NO;
+    self.savedMoveFeedbackGenerator = [[UINotificationFeedbackGenerator alloc] init];
+    [self.savedMoveFeedbackGenerator prepare];
+
+    __weak typeof(self) weakSelf = self;
+    [self pp_resolveCartItemForMoveToCart:item
+                                completion:^(CartItem * _Nullable resolvedItem,
+                                             BOOL isOutOfStock) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) { return; }
+
+            if (!resolvedItem) {
+                strongSelf.isPerformingTableMutation = NO;
+                strongSelf.cartTableView.userInteractionEnabled = YES;
+                strongSelf.savedMoveFeedbackGenerator = nil;
+                if (isOutOfStock) {
+                    [strongSelf pp_registerStockNotificationForSavedItem:item];
+                    return;
+                }
+                [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+                [PPHUD showError:kLang(@"SomethingWentWrong")];
+                [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                return;
+            }
+
+            NSUInteger previousSkipCount = strongSelf.pendingQuantitySyncReloadSkips;
+            strongSelf.pendingQuantitySyncReloadSkips = MIN(previousSkipCount + 2, 8);
+            [[CartManager sharedManager] addItem:resolvedItem
+                         presentingViewController:strongSelf
+                                      completion:^(BOOL success, BOOL didCancel) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (!strongSelf) { return; }
+
+                    if (!success) {
+                        strongSelf.pendingQuantitySyncReloadSkips = previousSkipCount;
+                        strongSelf.isPerformingTableMutation = NO;
+                        strongSelf.cartTableView.userInteractionEnabled = YES;
+                        strongSelf.savedMoveFeedbackGenerator = nil;
+                        [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+                        if (!didCancel) {
+                            [PPHUD showError:kLang(@"SomethingWentWrong")];
+                            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                        }
+                        return;
+                    }
+
+                    strongSelf.pendingQuantitySyncReloadSkips = previousSkipCount;
+
+                    [[PPSaveForLaterManager sharedManager] removeItem:item
+                                                            completion:^(NSError * _Nullable error) {
+                        __strong typeof(weakSelf) innerSelf = weakSelf;
+                        if (!innerSelf) { return; }
+
+                        if (error) {
+                            [innerSelf pp_presentPartialSavedMoveForItem:item
+                                                        sourceIndexPath:sourceIndexPath
+                                                         sourceSnapshot:transferSnapshot
+                                                            oldCartCount:oldCartCount
+                                                              oldCartRow:oldCartRow];
+                            return;
+                        }
+
+                        [innerSelf pp_presentSuccessfulSavedMoveForItem:item
+                                                        sourceIndexPath:sourceIndexPath
+                                                         sourceSnapshot:transferSnapshot
+                                                            oldCartCount:oldCartCount
+                                                              oldCartRow:oldCartRow];
+                    }];
+                });
+            }];
+        });
+    }];
+}
+
+- (void)pp_registerStockNotificationForSavedItem:(CartItem *)item
+{
+    if (!item || item.itemID.length == 0) {
+        [self pp_clearSavedForLaterPendingStateAndReload];
+        [PPHUD showError:kLang(@"SomethingWentWrong")];
+        return;
+    }
+
+    [self pp_setSavedForLaterPendingItemID:item.itemID operation:@"notify"];
+
+    FIRHTTPSCallable *callable = [[FIRFunctions functionsForRegion:@"us-central1"]
+                                  HTTPSCallableWithName:@"registerStockNotificationRequest"];
+    callable.timeoutInterval = 30.0;
+
+    NSDictionary *payload = @{
+        @"itemId": item.itemID ?: @"",
+        @"source": @"ios_saved_for_later_inline_cart",
+        @"locale": [Language isRTL] ? @"ar" : @"en"
+    };
+
+    __weak typeof(self) weakSelf = self;
+    [callable callWithObject:payload completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) { return; }
+
+            [strongSelf pp_clearSavedForLaterPendingStateAndReload];
+            if (error) {
+                [PPHUD showError:kLang(@"stock_notify_failed")];
+                [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                UINotificationFeedbackGenerator *notification = [[UINotificationFeedbackGenerator alloc] init];
+                [notification notificationOccurred:UINotificationFeedbackTypeError];
+                return;
+            }
+
+            NSDictionary *response = [result.data isKindOfClass:NSDictionary.class] ? result.data : @{};
+            NSString *status = [response[@"status"] isKindOfClass:NSString.class] ? response[@"status"] : @"";
+            NSString *message = [status isEqualToString:@"already_available"]
+                ? kLang(@"stock_notify_already_available")
+                : kLang(@"stock_notify_success");
+            [PPHUD showSuccess:message];
+            UINotificationFeedbackGenerator *notification = [[UINotificationFeedbackGenerator alloc] init];
+            [notification notificationOccurred:UINotificationFeedbackTypeSuccess];
+        });
+    }];
+}
+
+#pragma mark - UITableViewDataSource
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    (void)tableView;
+    (void)section;
+    NSInteger rows = [self pp_cartItemsCount];
+    if ([self pp_shouldShowSavedForLaterInlineRows]) {
+        rows += 1 + [self pp_savedForLaterItems].count;
+    }
+    return rows;
+}
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+
+    if ([self pp_isSavedForLaterDockIndexPath:indexPath]) {
+        PPSavedForLaterDockTableCell *dockCell =
+        [tableView dequeueReusableCellWithIdentifier:kPPCartSavedDockCellIdentifier
+                                        forIndexPath:indexPath];
+        [dockCell configureWithSavedCount:[self pp_savedForLaterItems].count
+                                  expanded:self.savedForLaterExpanded];
+        BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
+        dockCell.boundaryLineView.hidden = !hasActiveCartBoundary;
+        dockCell.boundaryAccentView.hidden = !hasActiveCartBoundary;
+        dockCell.boundaryTopConstraint.constant = hasActiveCartBoundary ? 18.0 : 8.0;
+        dockCell.dockTopConstraint.constant = hasActiveCartBoundary ? 34.0 : 9.0;
+        dockCell.dockBottomConstraint.constant = hasActiveCartBoundary ? -2.0 : -9.0;
+        dockCell.layer.masksToBounds = NO;
+        dockCell.clipsToBounds = NO;
+        return dockCell;
+    }
+
+    PPCartTableCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPCartTableCellIdentifier];
+    if (!cell) {
+        cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault
+                                      reuseIdentifier:kPPCartTableCellIdentifier];
+    }
+
+    CartItem *savedItem = [self pp_savedForLaterItemAtIndexPath:indexPath];
+    if (savedItem) {
+        [self pp_configureSavedCartCell:cell item:savedItem];
+        cell.layer.masksToBounds = NO;
+        cell.clipsToBounds = NO;
+        return cell;
+    }
+
+    NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
+    if (indexPath.row >= (NSInteger)items.count) {
+        return cell;
+    }
+    CartItem *item = items[indexPath.row];
+    [self pp_configureActiveCartCell:cell item:item];
 
     cell.layer.masksToBounds = NO;
     cell.clipsToBounds = NO;
@@ -1752,8 +3432,32 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)tableView;
-    (void)indexPath;
+    if ([self pp_isSavedForLaterDockIndexPath:indexPath]) {
+        BOOL isAccessibilitySize =
+        UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+        BOOL hasActiveCartBoundary = [self pp_cartItemsCount] > 0;
+        if (!hasActiveCartBoundary) {
+            return isAccessibilitySize ? 110.0 : 88.0;
+        }
+        return isAccessibilitySize ? 130.0 : 108.0;
+    }
+    if ([self pp_savedForLaterItemAtIndexPath:indexPath]) {
+        BOOL isAccessibilitySize =
+        UIContentSizeCategoryIsAccessibilityCategory(UIApplication.sharedApplication.preferredContentSizeCategory);
+        return isAccessibilitySize ? 174.0 : 154.0;
+    }
     return 134.0;
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if ([self pp_isSavedForLaterDockIndexPath:indexPath]) {
+        UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+        [self pp_setSavedForLaterExpanded:NO
+                                  animated:YES
+                                sourceView:cell];
+    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -1764,7 +3468,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)tableView;
-    return indexPath.row < CartManager.sharedManager.cartItems.count;
+    return [self pp_isCartItemIndexPath:indexPath];
 }
 
 // Enable swipe-to-delete (SAFE)
@@ -1773,13 +3477,14 @@ commitEditingStyle:(UITableViewCellEditingStyle)style
 forRowAtIndexPath:(NSIndexPath *)indexPath {
 
     if (style != UITableViewCellEditingStyleDelete) return;
+    if (![self pp_isCartItemIndexPath:indexPath]) return;
     [self pp_removeItemAtIndexPath:indexPath];
 }
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
 trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (indexPath.row >= CartManager.sharedManager.cartItems.count) return nil;
+    if (![self pp_isCartItemIndexPath:indexPath]) return nil;
 
     UIContextualAction *removeAction =
     [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -1806,7 +3511,9 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)tableView;
-    (void)indexPath;
+    if (![self pp_isCartItemIndexPath:indexPath]) {
+        return nil;
+    }
     return kLang(@"cart_swipe_remove");
 }
 /*
@@ -1899,32 +3606,71 @@ titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell
 forRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    (void)indexPath;
 
     cell.layer.mask = nil;
     cell.contentView.layer.mask = nil;
 
-    if (UIAccessibilityIsReduceMotionEnabled()) {
+    if (self.savedForLaterRevealInProgress &&
+        !UIAccessibilityIsReduceMotionEnabled() &&
+        [self pp_savedForLaterItemAtIndexPath:indexPath]) {
+        NSInteger savedOffset = MAX(0, indexPath.row - [self pp_savedForLaterDockRowIndex] - 1);
+        CGFloat offset = MIN(34.0, 18.0 + (savedOffset * 4.0));
+        cell.alpha = 0.0;
+        cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -offset),
+                                                 CGAffineTransformMakeScale(0.974, 0.974));
         return;
     }
 
-    cell.alpha = 0.0;
-    cell.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
-
-    [UIView animateWithDuration:0.34
-                          delay:0.02
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        cell.alpha = 1.0;
-        cell.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    cell.alpha = 1.0;
+    cell.transform = CGAffineTransformIdentity;
 }
 
 - (void)pp_updateSavedForLaterFooter
 {
-    NSArray *saved = [[PPSaveForLaterManager sharedManager] savedItems];
+    NSArray *saved = [self pp_savedForLaterItems];
     if (saved.count == 0) {
+        self.savedForLaterFooterPillButton = nil;
+        if (self.isPerformingTableMutation) {
+            self.cartTableView.tableFooterView = nil;
+            return;
+        }
+        BOOL wasExpanded = self.savedForLaterExpanded;
+        self.savedForLaterExpanded = NO;
+        self.savedForLaterRetainsEmptyDockDuringTransition = NO;
+        self.savedForLaterRevealInProgress = NO;
+        self.pendingSavedForLaterItemID = nil;
+        self.pendingSavedForLaterOperation = nil;
+        self.completedSavedForLaterItemID = nil;
         self.cartTableView.tableFooterView = nil;
+        if (wasExpanded && !self.isPerformingTableMutation) {
+            [self.cartTableView reloadData];
+        }
+        return;
+    }
+
+    if (self.savedForLaterExpanded) {
+        self.savedForLaterFooterPillButton = nil;
+        self.cartTableView.tableFooterView = nil;
+        if (!self.isPerformingTableMutation) {
+            NSInteger expectedRows = [self pp_cartItemsCount] + 1 + saved.count;
+            NSInteger displayedRows = [self.cartTableView numberOfSections] > 0
+                ? [self.cartTableView numberOfRowsInSection:0]
+                : 0;
+            if (displayedRows != expectedRows) {
+                [UIView performWithoutAnimation:^{
+                    [self.cartTableView reloadData];
+                    [self.cartTableView layoutIfNeeded];
+                }];
+            } else {
+                NSIndexPath *dockIndexPath =
+                [NSIndexPath indexPathForRow:[self pp_savedForLaterDockRowIndex] inSection:0];
+                PPSavedForLaterDockTableCell *dockCell =
+                (PPSavedForLaterDockTableCell *)[self.cartTableView cellForRowAtIndexPath:dockIndexPath];
+                if ([dockCell isKindOfClass:PPSavedForLaterDockTableCell.class]) {
+                    [dockCell configureWithSavedCount:saved.count expanded:YES];
+                }
+            }
+        }
         return;
     }
 
@@ -1946,7 +3692,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat countBadgeHeight = isAccessibilitySize ? 34.0 : 32.0;
     CGFloat chevronSize = isAccessibilitySize ? 32.0 : 30.0;
     CGFloat cornerRadius = pillHeight * 0.43;
-    UIColor *accentColor = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *accentColor = PPSavedForLaterDeferredAccentColor();
     UIColor *primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
     NSString *countText = [NSString stringWithFormat:kLang(@"saved_for_later_count_format"), (long)saved.count];
 
@@ -1966,9 +3712,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     pillButton.accessibilityHint = kLang(@"saved_for_later_open_hint");
     pillButton.accessibilityTraits = UIAccessibilityTraitButton;
     [pillButton pp_setShadowColor:UIColor.blackColor];
-    pillButton.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.20 : 0.08;
-    pillButton.layer.shadowRadius = 18.0;
-    pillButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    pillButton.layer.shadowOpacity = 0.0;
+    pillButton.layer.shadowRadius = 0.0;
+    pillButton.layer.shadowOffset = CGSizeZero;
     if (@available(iOS 13.0, *)) {
         pillButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -2087,7 +3833,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     chevronView.contentMode = UIViewContentModeScaleAspectFit;
     [chevronContainer addSubview:chevronView];
 
-    [pillButton addTarget:self action:@selector(pp_didTapSavedForLaterPill) forControlEvents:UIControlEventTouchUpInside];
+    [pillButton addTarget:self action:@selector(pp_didTapSavedForLaterPill:) forControlEvents:UIControlEventTouchUpInside];
     [pillButton addTarget:self action:@selector(pp_savedForLaterPillTouchDown:) forControlEvents:UIControlEventTouchDown];
     [pillButton addTarget:self
                    action:@selector(pp_savedForLaterPillTouchCancel:)
@@ -2155,6 +3901,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     ]];
 
     self.cartTableView.tableFooterView = footerView;
+    self.savedForLaterFooterPillButton = pillButton;
 
     if (!hadFooter && !UIAccessibilityIsReduceMotionEnabled()) {
         footerView.alpha = 0.0;
@@ -2171,29 +3918,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     }
 }
 
-- (void)pp_didTapSavedForLaterPill
+- (void)pp_didTapSavedForLaterPill:(UIButton *)sender
 {
-    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [feedback impactOccurred];
-
-    PPSavedForLaterBottomSheetVC *bottomSheet = [[PPSavedForLaterBottomSheetVC alloc] init];
-    __weak typeof(self) weakSelf = self;
-    bottomSheet.onDismiss = ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (strongSelf) {
-            [strongSelf pp_updateSavedForLaterFooter];
-            [strongSelf updateViewFromSync];
-        }
-    };
-    bottomSheet.onItemsMovedToCart = ^{
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (strongSelf) {
-            [strongSelf pp_updateSavedForLaterFooter];
-            [strongSelf updateViewFromSync];
-            [strongSelf pp_notifyCartBadgeAndCollections];
-        }
-    };
-    [PPFunc presentSheetFrom:self sheetVC:bottomSheet detentStyle:PPSheetDetentStyle95];
+    [self.summaryView setSummaryCollapsed:YES animated:YES];
+    [self pp_setSavedForLaterExpanded:YES
+                              animated:YES
+                            sourceView:sender ?: self.cartTableView.tableFooterView];
 }
 
 - (void)pp_savedForLaterPillTouchDown:(UIButton *)button

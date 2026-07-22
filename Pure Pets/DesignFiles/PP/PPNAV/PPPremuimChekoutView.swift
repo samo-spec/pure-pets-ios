@@ -350,6 +350,8 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private let titleLabel = UILabel()
     private let headerMetaLabel = UILabel()
     private let countLabel = UILabel()
+    private let collapseIndicatorShell = UIView()
+    private let collapseIndicatorView = UIImageView()
     private let amountRow = UIStackView()
     private let amountStack = UIStackView()
     private let amountCaptionLabel = UILabel()
@@ -357,13 +359,27 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private let ctaButton = PPPremiumCheckoutButton()
     private let separator = UIView()
     private let detailsStack = UIStackView()
+    private let itemsRow = UIView()
+    private let shippingRow = UIView()
     private let itemsValueLabel = UILabel()
     private let shippingValueLabel = UILabel()
     private let previewCollection: UICollectionView
     private let trustPill = UIView()
     private let trustIcon = UIImageView()
     private let trustLabel = UILabel()
+    private let compactMetaRow = UIStackView()
+    private let compactItemsPill = UIView()
+    private let compactShippingPill = UIView()
+    private let compactItemsValueLabel = UILabel()
+    private let compactShippingValueLabel = UILabel()
+    private let compactTrustPill = UIView()
+    private let compactTrustIcon = UIImageView()
     private var contentStackBottomConstraint: NSLayoutConstraint?
+    private var contentStackTopConstraint: NSLayoutConstraint?
+    private var iconShellWidthConstraint: NSLayoutConstraint?
+    private var iconShellHeightConstraint: NSLayoutConstraint?
+    private var iconViewWidthConstraint: NSLayoutConstraint?
+    private var iconViewHeightConstraint: NSLayoutConstraint?
 
     private var didRunEntrance = false
     private var liveEffectsRunning = false
@@ -373,6 +389,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private var checkoutLoading = false
     private var checkoutTitle = NSLocalizedString("Checkout", comment: "")
     private var checkoutImage: UIImage? = UIImage(systemName: "arrow.forward")
+    private var collapsible = false
+    private var summaryCollapsed = false
+    private var lastVisibilitySignature = -1
+    private var summaryStateAnimator: UIViewPropertyAnimator?
     private weak var activeAmountTransitionLabel: UILabel?
     private var amountChangeAnimator: UIViewPropertyAnimator?
 
@@ -520,6 +540,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         buildDetails()
         buildPreview()
         buildTrustPill()
+        buildCompactMetaRow()
         refreshColors()
     }
 
@@ -574,11 +595,26 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         countLabel.layer.masksToBounds = true
         countLabel.isHidden = true
 
+        collapseIndicatorShell.translatesAutoresizingMaskIntoConstraints = false
+        collapseIndicatorShell.layer.cornerRadius = 15
+        collapseIndicatorShell.layer.cornerCurve = .continuous
+        collapseIndicatorShell.isHidden = true
+
+        collapseIndicatorView.translatesAutoresizingMaskIntoConstraints = false
+        collapseIndicatorView.contentMode = .scaleAspectFit
+        collapseIndicatorView.image = UIImage(systemName: "chevron.down")
+        collapseIndicatorShell.addSubview(collapseIndicatorView)
+
         headerRow.addArrangedSubview(iconShell)
         headerRow.addArrangedSubview(headerTextStack)
         headerRow.addArrangedSubview(spacer)
         headerRow.addArrangedSubview(countLabel)
+        headerRow.addArrangedSubview(collapseIndicatorShell)
         contentStack.addArrangedSubview(headerRow)
+
+        headerRow.isUserInteractionEnabled = false
+        headerRow.isAccessibilityElement = false
+        headerRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(didTapSummaryHeader)))
     }
 
     private func buildAmountRow() {
@@ -627,13 +663,14 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         detailsStack.axis = .vertical
         detailsStack.alignment = .fill
         detailsStack.spacing = 8
-        detailsStack.addArrangedSubview(detailRow(title: NSLocalizedString("Selected Items", comment: ""), valueLabel: itemsValueLabel))
-        detailsStack.addArrangedSubview(detailRow(title: NSLocalizedString("Shipping Fee", comment: ""), valueLabel: shippingValueLabel))
+        configureDetailRow(itemsRow, title: NSLocalizedString("Selected Items", comment: ""), valueLabel: itemsValueLabel)
+        configureDetailRow(shippingRow, title: NSLocalizedString("Shipping Fee", comment: ""), valueLabel: shippingValueLabel)
+        detailsStack.addArrangedSubview(itemsRow)
+        detailsStack.addArrangedSubview(shippingRow)
         contentStack.addArrangedSubview(detailsStack)
     }
 
-    private func detailRow(title: String, valueLabel: UILabel) -> UIView {
-        let row = UIView()
+    private func configureDetailRow(_ row: UIView, title: String, valueLabel: UILabel) {
         row.translatesAutoresizingMaskIntoConstraints = false
         row.layer.cornerRadius = 18
         row.layer.cornerCurve = .continuous
@@ -671,7 +708,6 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             stack.topAnchor.constraint(equalTo: row.topAnchor),
             stack.bottomAnchor.constraint(equalTo: row.bottomAnchor)
         ])
-        return row
     }
 
     private func buildPreview() {
@@ -711,11 +747,107 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         contentStack.addArrangedSubview(trustPill)
     }
 
+    private func buildCompactMetaRow() {
+        compactMetaRow.axis = .horizontal
+        compactMetaRow.alignment = .center
+        compactMetaRow.distribution = .fill
+        compactMetaRow.spacing = 8
+        compactMetaRow.isHidden = true
+
+        configureCompactValuePill(
+            compactItemsPill,
+            iconName: "bag.fill",
+            valueLabel: compactItemsValueLabel,
+            accessibilityTitle: NSLocalizedString("Selected Items", comment: "")
+        )
+        configureCompactValuePill(
+            compactShippingPill,
+            iconName: "shippingbox.fill",
+            valueLabel: compactShippingValueLabel,
+            accessibilityTitle: NSLocalizedString("Shipping Fee", comment: "")
+        )
+
+        compactTrustPill.translatesAutoresizingMaskIntoConstraints = false
+        compactTrustPill.layer.cornerRadius = 17
+        compactTrustPill.layer.cornerCurve = .continuous
+        compactTrustPill.layer.borderWidth = 1
+        compactTrustPill.layer.masksToBounds = true
+        compactTrustPill.isAccessibilityElement = true
+        compactTrustPill.accessibilityLabel = NSLocalizedString("Securecheckout", comment: "")
+
+        compactTrustIcon.translatesAutoresizingMaskIntoConstraints = false
+        compactTrustIcon.contentMode = .scaleAspectFit
+        compactTrustIcon.image = UIImage(systemName: "checkmark.shield.fill")
+        compactTrustPill.addSubview(compactTrustIcon)
+
+        compactMetaRow.addArrangedSubview(compactItemsPill)
+        compactMetaRow.addArrangedSubview(compactShippingPill)
+        compactMetaRow.addArrangedSubview(compactTrustPill)
+        contentStack.addArrangedSubview(compactMetaRow)
+
+        NSLayoutConstraint.activate([
+            compactMetaRow.heightAnchor.constraint(equalToConstant: 34),
+            compactItemsPill.heightAnchor.constraint(equalToConstant: 34),
+            compactShippingPill.heightAnchor.constraint(equalToConstant: 34),
+            compactItemsPill.widthAnchor.constraint(equalTo: compactShippingPill.widthAnchor),
+            compactTrustPill.widthAnchor.constraint(equalToConstant: 34),
+            compactTrustPill.heightAnchor.constraint(equalToConstant: 34),
+            compactTrustIcon.centerXAnchor.constraint(equalTo: compactTrustPill.centerXAnchor),
+            compactTrustIcon.centerYAnchor.constraint(equalTo: compactTrustPill.centerYAnchor),
+            compactTrustIcon.widthAnchor.constraint(equalToConstant: 17),
+            compactTrustIcon.heightAnchor.constraint(equalToConstant: 17)
+        ])
+    }
+
+    private func configureCompactValuePill(_ pill: UIView,
+                                           iconName: String,
+                                           valueLabel: UILabel,
+                                           accessibilityTitle: String) {
+        pill.translatesAutoresizingMaskIntoConstraints = false
+        pill.layer.cornerRadius = 17
+        pill.layer.cornerCurve = .continuous
+        pill.layer.borderWidth = 1
+        pill.layer.masksToBounds = true
+        pill.isAccessibilityElement = true
+        pill.accessibilityLabel = accessibilityTitle
+
+        let iconView = UIImageView(image: UIImage(systemName: iconName))
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.contentMode = .scaleAspectFit
+        iconView.tintColor = PPPremiumCheckoutStyle.brand
+
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.font = PPPremiumCheckoutFont.bold(11.5, textStyle: .caption1)
+        valueLabel.textColor = .label
+        valueLabel.textAlignment = .natural
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.adjustsFontForContentSizeCategory = true
+        valueLabel.minimumScaleFactor = 0.66
+        valueLabel.numberOfLines = 1
+
+        pill.addSubview(iconView)
+        pill.addSubview(valueLabel)
+        NSLayoutConstraint.activate([
+            iconView.leadingAnchor.constraint(equalTo: pill.leadingAnchor, constant: 10),
+            iconView.centerYAnchor.constraint(equalTo: pill.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 14),
+            iconView.heightAnchor.constraint(equalToConstant: 14),
+            valueLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 6),
+            valueLabel.trailingAnchor.constraint(equalTo: pill.trailingAnchor, constant: -9),
+            valueLabel.centerYAnchor.constraint(equalTo: pill.centerYAnchor)
+        ])
+    }
+
     private func buildLayout() {
         contentStackBottomConstraint = contentStack.bottomAnchor.constraint(
             equalTo: cardView.safeAreaLayoutGuide.bottomAnchor,
             constant: -18
         )
+        contentStackTopConstraint = contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18)
+        iconShellWidthConstraint = iconShell.widthAnchor.constraint(equalToConstant: 38)
+        iconShellHeightConstraint = iconShell.heightAnchor.constraint(equalToConstant: 38)
+        iconViewWidthConstraint = iconView.widthAnchor.constraint(equalToConstant: 17)
+        iconViewHeightConstraint = iconView.heightAnchor.constraint(equalToConstant: 17)
 
         NSLayoutConstraint.activate([
             cardView.topAnchor.constraint(equalTo: topAnchor),
@@ -748,20 +880,27 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             secondaryGlowView.bottomAnchor.constraint(equalTo: glowContainerView.bottomAnchor, constant: 32),
             secondaryGlowView.leadingAnchor.constraint(equalTo: glowContainerView.leadingAnchor, constant: -32),
 
-            contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18),
+            contentStackTopConstraint!,
             contentStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
             contentStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
             contentStackBottomConstraint!,
 
-            iconShell.widthAnchor.constraint(equalToConstant: 38),
-            iconShell.heightAnchor.constraint(equalToConstant: 38),
+            iconShellWidthConstraint!,
+            iconShellHeightConstraint!,
             iconView.centerXAnchor.constraint(equalTo: iconShell.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconShell.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 17),
-            iconView.heightAnchor.constraint(equalToConstant: 17),
+            iconViewWidthConstraint!,
+            iconViewHeightConstraint!,
 
             countLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 46),
             countLabel.heightAnchor.constraint(equalToConstant: 30),
+
+            collapseIndicatorShell.widthAnchor.constraint(equalToConstant: 30),
+            collapseIndicatorShell.heightAnchor.constraint(equalToConstant: 30),
+            collapseIndicatorView.centerXAnchor.constraint(equalTo: collapseIndicatorShell.centerXAnchor),
+            collapseIndicatorView.centerYAnchor.constraint(equalTo: collapseIndicatorShell.centerYAnchor),
+            collapseIndicatorView.widthAnchor.constraint(equalToConstant: 12),
+            collapseIndicatorView.heightAnchor.constraint(equalToConstant: 12),
 
             ctaButton.heightAnchor.constraint(equalToConstant: 54),
             ctaButton.widthAnchor.constraint(greaterThanOrEqualToConstant: 148),
@@ -807,8 +946,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             withHorizontalFittingPriority: .required,
             verticalFittingPriority: .fittingSizeLevel
         )
-        let topPadding: CGFloat = 18.0
-        let bottomPadding: CGFloat = 18.0 + safeAreaInsets.bottom
+        let verticalPadding: CGFloat = summaryCollapsed ? 12.0 : 18.0
+        let topPadding = verticalPadding
+        let bottomPadding = verticalPadding + safeAreaInsets.bottom
         return ceil(contentSize.height + topPadding + bottomPadding)
     }
 
@@ -849,6 +989,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         countLabel.textColor = brand
         countLabel.backgroundColor = PPPremiumCheckoutStyle.softPink
         countLabel.layer.borderColor = brand.withAlphaComponent(0.18).cgColor
+        collapseIndicatorShell.backgroundColor = PPPremiumCheckoutStyle.mutedFill
+        collapseIndicatorShell.layer.borderWidth = 1
+        collapseIndicatorShell.layer.borderColor = PPPremiumCheckoutStyle.stroke.cgColor
+        collapseIndicatorView.tintColor = UIColor.secondaryLabel
 
         separator.backgroundColor = PPPremiumCheckoutStyle.divider
         for row in detailsStack.arrangedSubviews {
@@ -859,6 +1003,14 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         trustPill.backgroundColor = PPPremiumCheckoutStyle.softPink
         trustPill.layer.borderColor = brand.withAlphaComponent(0.18).cgColor
         trustIcon.tintColor = brand
+
+        [compactItemsPill, compactShippingPill].forEach { pill in
+            pill.backgroundColor = PPPremiumCheckoutStyle.mutedFill
+            pill.layer.borderColor = PPPremiumCheckoutStyle.stroke.cgColor
+        }
+        compactTrustPill.backgroundColor = PPPremiumCheckoutStyle.softPink
+        compactTrustPill.layer.borderColor = brand.withAlphaComponent(0.18).cgColor
+        compactTrustIcon.tintColor = brand
 
         ctaButton.refreshColors()
         previewCollection.visibleCells.forEach { cell in
@@ -889,6 +1041,10 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
         itemsValueLabel.text = PPPremiumCheckoutCurrency.format(itemsTotal)
         shippingValueLabel.text = PPPremiumCheckoutCurrency.format(shippingFee)
+        compactItemsValueLabel.text = PPPremiumCheckoutCurrency.format(itemsTotal)
+        compactShippingValueLabel.text = PPPremiumCheckoutCurrency.format(shippingFee)
+        compactItemsPill.accessibilityValue = compactItemsValueLabel.text
+        compactShippingPill.accessibilityValue = compactShippingValueLabel.text
         amountCaptionLabel.isHidden = false
 
         let newText = PPPremiumCheckoutCurrency.format(subtotal)
@@ -996,7 +1152,11 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     @objc(setShowsItemsPreview:)
     func setShowsItemsPreview(_ showsItemsPreview: Bool) {
+        let needsReload = showsItemsPreview && !self.showsItemsPreview
         self.showsItemsPreview = showsItemsPreview
+        if needsReload {
+            previewCollection.reloadData()
+        }
         updateVisibility(animated: window != nil)
     }
 
@@ -1006,7 +1166,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         let totalQuantity = previewItems.reduce(0) { $0 + max($1.quantity, 0) }
         countLabel.text = "\(totalQuantity)"
         countLabel.isHidden = totalQuantity <= 0
-        previewCollection.reloadData()
+        if showsItemsPreview {
+            previewCollection.reloadData()
+        }
         updateVisibility(animated: window != nil)
     }
 
@@ -1083,52 +1245,139 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         trustPill.alpha = 1
     }
 
+    @objc(setCollapsible:initiallyCollapsed:)
+    public func setCollapsible(_ enabled: Bool, initiallyCollapsed collapsed: Bool) {
+        collapsible = enabled
+        summaryCollapsed = enabled && collapsed
+        collapseIndicatorShell.isHidden = !enabled
+        headerRow.isUserInteractionEnabled = enabled
+        headerRow.isAccessibilityElement = enabled
+        lastVisibilitySignature = -1
+        updateCollapseAccessibility()
+        updateVisibility(animated: false)
+    }
+
+    @objc(setSummaryCollapsed:animated:)
+    public func setSummaryCollapsed(_ collapsed: Bool, animated: Bool) {
+        guard collapsible, summaryCollapsed != collapsed else { return }
+        summaryCollapsed = collapsed
+        updateCollapseAccessibility()
+        updateVisibility(animated: animated)
+    }
+
+    @objc private func didTapSummaryHeader() {
+        guard collapsible else { return }
+        let feedback = UISelectionFeedbackGenerator()
+        feedback.prepare()
+        feedback.selectionChanged()
+        setSummaryCollapsed(!summaryCollapsed, animated: true)
+    }
+
+    private func updateCollapseAccessibility() {
+        let action = summaryCollapsed
+            ? NSLocalizedString("cart_summary_expand", comment: "")
+            : NSLocalizedString("cart_summary_collapse", comment: "")
+        headerRow.accessibilityLabel = titleLabel.text
+        headerRow.accessibilityValue = amountLabel.text
+        headerRow.accessibilityHint = action
+        headerRow.accessibilityTraits = [.button]
+    }
+
     private func updateVisibility(animated: Bool) {
         let shouldShowPreview = showsItemsPreview && !previewItems.isEmpty
-        let shouldShowDetails = showDetails && !shouldShowPreview
-        let shouldShowTrust = !previewItems.isEmpty || subtotal > 0.009
+        let hasTrustContent = !previewItems.isEmpty || subtotal > 0.009
+        let shouldShowCompact = collapsible && summaryCollapsed && hasTrustContent
+        let shouldShowDetails = !summaryCollapsed && showDetails && !shouldShowPreview
+        let shouldShowTrust = !summaryCollapsed && hasTrustContent
+        let shouldShowExpandedPreview = !summaryCollapsed && shouldShowPreview
 
-        if shouldShowPreview { previewCollection.isHidden = false }
+        let signature = (shouldShowExpandedPreview ? 1 : 0)
+            | (shouldShowDetails ? 2 : 0)
+            | (shouldShowTrust ? 4 : 0)
+            | (shouldShowCompact ? 8 : 0)
+            | (summaryCollapsed ? 16 : 0)
+        let previousSignature = lastVisibilitySignature
+        let collapseStateChanged = previousSignature >= 0 && (previousSignature & 16) != (signature & 16)
+        let shouldAnimate = animated && signature != previousSignature
+        lastVisibilitySignature = signature
+
+        summaryStateAnimator?.stopAnimation(false)
+        summaryStateAnimator?.finishAnimation(at: .current)
+        summaryStateAnimator = nil
+
+        if shouldShowExpandedPreview { previewCollection.isHidden = false }
         if shouldShowDetails { detailsStack.isHidden = false }
         if shouldShowTrust { trustPill.isHidden = false }
+        if shouldShowCompact { compactMetaRow.isHidden = false }
+        if !summaryCollapsed { headerMetaLabel.isHidden = false }
 
         let changes = {
-            self.previewCollection.alpha = shouldShowPreview ? 1 : 0
+            self.previewCollection.alpha = shouldShowExpandedPreview ? 1 : 0
             self.detailsStack.alpha = shouldShowDetails ? 1 : 0
             self.trustPill.alpha = shouldShowTrust ? 1 : 0
-            self.previewCollection.transform = shouldShowPreview ? .identity : CGAffineTransform(translationX: 0, y: 6)
+            self.compactMetaRow.alpha = shouldShowCompact ? 1 : 0
+            self.headerMetaLabel.alpha = self.summaryCollapsed ? 0 : 1
+            self.previewCollection.transform = shouldShowExpandedPreview ? .identity : CGAffineTransform(translationX: 0, y: 6)
             self.detailsStack.transform = shouldShowDetails ? .identity : CGAffineTransform(translationX: 0, y: -4)
-            self.separator.alpha = (shouldShowPreview || shouldShowDetails) ? 0.70 : 0.20
-            self.layoutIfNeeded()
-        }
-
-        let completion = {
-            self.previewCollection.isHidden = !shouldShowPreview
+            self.trustPill.transform = shouldShowTrust ? .identity : CGAffineTransform(translationX: 0, y: -3)
+            self.compactMetaRow.transform = shouldShowCompact ? .identity : CGAffineTransform(translationX: 0, y: 5).scaledBy(x: 0.985, y: 0.985)
+            self.collapseIndicatorView.transform = self.summaryCollapsed
+                ? CGAffineTransform(rotationAngle: .pi)
+                : .identity
+            self.iconShellWidthConstraint?.constant = self.summaryCollapsed ? 28 : 38
+            self.iconShellHeightConstraint?.constant = self.summaryCollapsed ? 28 : 38
+            self.iconViewWidthConstraint?.constant = self.summaryCollapsed ? 13 : 17
+            self.iconViewHeightConstraint?.constant = self.summaryCollapsed ? 13 : 17
+            self.iconShell.layer.cornerRadius = self.summaryCollapsed ? 14 : 19
+            self.contentStackTopConstraint?.constant = self.summaryCollapsed ? 12 : 18
+            self.contentStackBottomConstraint?.constant = self.summaryCollapsed ? -12 : -18
+            self.contentStack.spacing = self.summaryCollapsed ? 9 : 13
+            self.cardView.layer.cornerRadius = self.summaryCollapsed ? 28 : 34
+            self.separator.alpha = (shouldShowExpandedPreview || shouldShowDetails || shouldShowCompact) ? 0.70 : 0.20
+            self.headerMetaLabel.isHidden = self.summaryCollapsed
+            self.previewCollection.isHidden = !shouldShowExpandedPreview
             self.detailsStack.isHidden = !shouldShowDetails
             self.trustPill.isHidden = !shouldShowTrust
-            self.previewCollection.transform = .identity
-            self.detailsStack.transform = .identity
+            self.compactMetaRow.isHidden = !shouldShowCompact
             self.invalidateIntrinsicContentSize()
-            self.superview?.setNeedsLayout()
+            self.layoutIfNeeded()
             self.superview?.layoutIfNeeded()
         }
 
-        guard animated, !UIAccessibility.isReduceMotionEnabled else {
+        let completion = {
+            self.previewCollection.isHidden = !shouldShowExpandedPreview
+            self.detailsStack.isHidden = !shouldShowDetails
+            self.trustPill.isHidden = !shouldShowTrust
+            self.compactMetaRow.isHidden = !shouldShowCompact
+            self.headerMetaLabel.isHidden = self.summaryCollapsed
+            self.previewCollection.transform = .identity
+            self.detailsStack.transform = .identity
+            self.trustPill.transform = .identity
+            self.compactMetaRow.transform = .identity
+            self.invalidateIntrinsicContentSize()
+            self.superview?.setNeedsLayout()
+            self.superview?.layoutIfNeeded()
+            self.updateTopOuterShadowPath()
+            self.updateCollapseAccessibility()
+            if collapseStateChanged && UIAccessibility.isVoiceOverRunning {
+                UIAccessibility.post(notification: .layoutChanged, argument: self.headerRow)
+            }
+        }
+
+        guard shouldAnimate, !UIAccessibility.isReduceMotionEnabled else {
             changes()
             completion()
             return
         }
 
-        UIView.animate(
-            withDuration: 0.28,
-            delay: 0,
-            usingSpringWithDamping: 0.88,
-            initialSpringVelocity: 0,
-            options: [.beginFromCurrentState, .allowUserInteraction],
-            animations: changes
-        ) { _ in
+        let animator = UIViewPropertyAnimator(duration: 0.38, dampingRatio: 0.88, animations: changes)
+        animator.addCompletion { [weak self] _ in
+            guard let self else { return }
+            self.summaryStateAnimator = nil
             completion()
         }
+        summaryStateAnimator = animator
+        animator.startAnimation()
     }
 
     private func runEntranceIfNeeded() {

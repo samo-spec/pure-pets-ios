@@ -28,7 +28,7 @@
 + (NSCollectionLayoutSection *)petProfileSection;
 + (NSCollectionLayoutSection *)premiumCareSection;
 + (NSCollectionLayoutSection *)emptySection;
-+ (void)registerDecorationsForLayout:(UICollectionViewCompositionalLayout *)layout;
+//+ (void)registerDecorationsForLayout:(UICollectionViewCompositionalLayout *)layout;
 + (NSCollectionLayoutSection *)adoptSection;
 + (NSCollectionLayoutSection *)categoriesOptionsSection;
 + (NSCollectionLayoutSection *)categoriesItemsSection;
