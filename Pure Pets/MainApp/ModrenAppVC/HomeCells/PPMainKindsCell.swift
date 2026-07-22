@@ -52,11 +52,7 @@ private enum PPMainKindsCellPalette {
     }
 
     static var plate: UIColor {
-        UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor.white.withAlphaComponent(0.08)
-            :   appForgroundColor.withAlphaComponent(1.00)
-        }
+        UIColor(named: "AppForgroundColor") ?? .secondarySystemBackground
     }
 
     static var border: UIColor {
@@ -424,7 +420,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
             let finalAlpha = self.isAllOption ? (normalAlpha * 0.2) : normalAlpha
             self.imagePlateView.backgroundColor = selected
                 ? accent.withAlphaComponent(finalAlpha)
-                : PPMainKindsCellPalette.plate
+            : PPMainKindsCellPalette.plate.withAlphaComponent(0.42)
             self.imagePlateView.layer.shadowOpacity = selected ? 0.015 : 0.085
             self.imagePlateView.layer.borderColor = selected ? accent
                 .withAlphaComponent(

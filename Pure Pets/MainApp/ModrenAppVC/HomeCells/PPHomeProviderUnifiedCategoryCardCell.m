@@ -7,7 +7,7 @@
 #import "PPMarketplaceHeroCardStyle.h"
 #import "PetCareHelpers.h"
 
-BOOL PPHomeUseUnifiedProviderCategoryCard = NO;
+BOOL PPHomeUseUnifiedProviderCategoryCard = YES;
 
 static UIColor *PPHomeUnifiedProviderDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
