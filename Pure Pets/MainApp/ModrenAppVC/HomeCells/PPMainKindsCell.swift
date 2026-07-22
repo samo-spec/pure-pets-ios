@@ -14,9 +14,9 @@ private enum PPMainKindsCellMetrics {
     static let regularBorderWidth: CGFloat = 1 / UIScreen.main.scale
     static let pressDuration: TimeInterval = 0.10
     static let releaseDuration: TimeInterval = 0.22
-    static let selectionDuration: TimeInterval = 0.24
+    static let selectionDuration: TimeInterval = 0.28
     static let restoredEntranceDuration: TimeInterval = 0.38
-    static let selectionChangeDuration: TimeInterval = 0.34
+    static let selectionChangeDuration: TimeInterval = 0.28
     static let haloDuration: TimeInterval = 0.40
     static let glowCommitDuration: TimeInterval = 0.36
 }
@@ -45,6 +45,10 @@ private enum PPMainKindsCellPalette {
 
     static var appBackColor: UIColor {
         UIColor(named: "AppBackgroundColor") ?? .secondarySystemBackground
+    }
+    
+    static var appBackgroundColorLigter: UIColor {
+        UIColor(named: "AppBackgroundColorLigter") ?? .secondarySystemBackground
     }
     
     static var appForgroundColor: UIColor {
@@ -412,19 +416,20 @@ public final class PPMainKindsCell: UICollectionViewCell {
                 : (selected
                     ? PPMainKindsCellMetrics.selectedBorderWidth
                     : PPMainKindsCellMetrics.regularBorderWidth)
-            self.surfaceView.layer.shadowColor = UIColor.black.cgColor
-            self.surfaceView.layer.shadowOpacity = selected ? 0.055 : 0.025
-            self.surfaceView.layer.shadowRadius = selected ? 10 : 7
+            self.surfaceView.layer.shadowColor = selected ?  accent.cgColor : UIColor.black
+                .withAlphaComponent(0.3).cgColor
+            self.surfaceView.layer.shadowOpacity = selected ? 0.055 : 0.015
+            self.surfaceView.layer.shadowRadius = selected ? 10 : 5
             self.surfaceView.layer.shadowOffset = CGSize(width: 0, height: selected ? 4 : 2)
-            let normalAlpha = reduceTransparency ? 0.18 : 0.31
+            let normalAlpha = reduceTransparency ? 0.18 : 0.28
             let finalAlpha = self.isAllOption ? (normalAlpha * 0.2) : normalAlpha
             self.imagePlateView.backgroundColor = selected
                 ? accent.withAlphaComponent(finalAlpha)
-            : PPMainKindsCellPalette.plate.withAlphaComponent(0.42)
+            : PPMainKindsCellPalette.appBackgroundColorLigter.withAlphaComponent(0.92)
             self.imagePlateView.layer.shadowOpacity = selected ? 0.015 : 0.085
             self.imagePlateView.layer.borderColor = selected ? accent
                 .withAlphaComponent(
-                    0.1
+                    0.12
                 ).cgColor : PPMainKindsCellPalette.borderThin.cgColor
             self.imagePlateView.layer.shadowColor = selected ? accent.cgColor : UIColor.black.cgColor
 
@@ -881,20 +886,20 @@ public final class PPMainKindsCell: UICollectionViewCell {
 
     private func restingGlowOpacity(selected: Bool) -> Float {
         if selected {
-            return isAllOption ? 0.70 : 0.84
+            return isAllOption ? 0.30 : 0.38
         }
-        return isAllOption ? 0.08 : 0.14
+        return isAllOption ? 0.04 : 0.08
     }
 
     private func pressedGlowOpacity(selected: Bool) -> Float {
-        min(1, restingGlowOpacity(selected: selected) + (selected ? 0.14 : 0.08))
+        min(1, restingGlowOpacity(selected: selected) + (selected ? 0.08 : 0.04))
     }
 
     private func kindNameGlowOpacity(selected: Bool, pressing: Bool) -> Float {
         if selected {
-            return pressing ? 0.96 : 0.86
+            return pressing ? 0.45 : 0.35
         }
-        return pressing ? 0.58 : 0.18
+        return pressing ? 0.25 : 0.08
     }
 
     private func updateMotionLayerPalette() {

@@ -385,9 +385,11 @@ static BOOL PPMarketHeroReduceMotion(void)
         self.accessibilityHint = kLang(@"home_marketplace_hero_accessibility_hint") ?: @"";
     };
 
-    if (animated && contentChanged && !PPMarketHeroReduceMotion()) {
+    BOOL shouldAnimate = animated && contentChanged && !PPMarketHeroReduceMotion();
+
+    if (shouldAnimate) {
         [UIView transitionWithView:self.surfaceControl
-                          duration:0.22
+                          duration:0.28
                            options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                         animations:applyContent
                         completion:nil];
@@ -413,7 +415,12 @@ static BOOL PPMarketHeroReduceMotion(void)
     self.titleLabel.textAlignment = PPMarketHeroTextAlignment();
     self.subtitleLabel.textAlignment = PPMarketHeroTextAlignment();
     self.ctaLabel.textAlignment = PPMarketHeroTextAlignment();
-    [self refreshThemeAppearance];
+
+    if (shouldAnimate) {
+        [self pp_animateThemeTransition];
+    } else {
+        [self refreshThemeAppearance];
+    }
 }
 
 - (void)refreshThemeAppearance
@@ -447,6 +454,12 @@ static BOOL PPMarketHeroReduceMotion(void)
 
     self.eyebrowPillView.backgroundColor = eyebrowFill;
     self.eyebrowPillView.layer.borderColor = [primaryAccent colorWithAlphaComponent:darkMode ? 0.30 : 0.24].CGColor;
+    self.eyebrowIconView.image = [UIImage pp_symbolNamed:@"storefront.fill"
+                                               pointSize:10.5
+                                                  weight:UIImageSymbolWeightSemibold
+                                                   scale:UIImageSymbolScaleMedium
+                                                 palette:@[primaryAccent]
+                                            makeTemplate:YES];
     self.eyebrowIconView.tintColor = primaryAccent;
     self.eyebrowLabel.textColor = primaryAccent;
 
@@ -494,6 +507,90 @@ static BOOL PPMarketHeroReduceMotion(void)
                          icon:self.secondaryProductIconView
                        accent:primaryAccent
                          dark:darkMode];
+}
+
+/// Crossfade-based theme transition: snapshot old CALayer colors,
+/// apply new theme, then animate with a matched 280 ms ease-out spring.
+- (void)pp_animateThemeTransition
+{
+    // Snapshot old CALayer color values before update
+    NSArray *oldCTAColors = [self.ctaGradientLayer.colors copy];
+    NSArray *oldHaloColors = [self.visualHaloGradientLayer.colors copy];
+    NSArray *oldTapHaloColors = [self.tapHaloLayer.colors copy];
+    NSArray *oldStorefrontColors = [self.storefrontGradientLayer.colors copy];
+    CGColorRef oldStrokeColor = self.storefrontPlateView.layer.borderColor;
+    CGColorRef oldEyebrowBorder = self.eyebrowPillView.layer.borderColor;
+
+    // Apply the new theme state (sets final layer & view values)
+    [self refreshThemeAppearance];
+
+    // Animate CALayer color properties with a crossfade transition
+    NSTimeInterval duration = 0.28;
+    NSString *timingName = kCAMediaTimingFunctionEaseOut;
+    CAMediaTimingFunction *timing = [CAMediaTimingFunction functionWithName:timingName];
+
+    // CTA gradient
+    if (oldCTAColors && self.ctaGradientLayer.colors) {
+        CABasicAnimation *ctaAnim = [CABasicAnimation animationWithKeyPath:@"colors"];
+        ctaAnim.fromValue = oldCTAColors;
+        ctaAnim.duration = duration;
+        ctaAnim.timingFunction = timing;
+        [self.ctaGradientLayer addAnimation:ctaAnim forKey:@"pp_ctaColorTransition"];
+    }
+    // Visual halo gradient
+    if (oldHaloColors && self.visualHaloGradientLayer.colors) {
+        CABasicAnimation *haloAnim = [CABasicAnimation animationWithKeyPath:@"colors"];
+        haloAnim.fromValue = oldHaloColors;
+        haloAnim.duration = duration;
+        haloAnim.timingFunction = timing;
+        [self.visualHaloGradientLayer addAnimation:haloAnim forKey:@"pp_haloColorTransition"];
+    }
+    // Tap halo gradient
+    if (oldTapHaloColors && self.tapHaloLayer.colors) {
+        CABasicAnimation *tapAnim = [CABasicAnimation animationWithKeyPath:@"colors"];
+        tapAnim.fromValue = oldTapHaloColors;
+        tapAnim.duration = duration;
+        tapAnim.timingFunction = timing;
+        [self.tapHaloLayer addAnimation:tapAnim forKey:@"pp_tapHaloColorTransition"];
+    }
+    // Storefront gradient
+    if (oldStorefrontColors && self.storefrontGradientLayer.colors) {
+        CABasicAnimation *sfAnim = [CABasicAnimation animationWithKeyPath:@"colors"];
+        sfAnim.fromValue = oldStorefrontColors;
+        sfAnim.duration = duration;
+        sfAnim.timingFunction = timing;
+        [self.storefrontGradientLayer addAnimation:sfAnim forKey:@"pp_storefrontColorTransition"];
+    }
+    // Storefront plate border
+    if (oldStrokeColor) {
+        CABasicAnimation *borderAnim = [CABasicAnimation animationWithKeyPath:@"borderColor"];
+        borderAnim.fromValue = (__bridge id)oldStrokeColor;
+        borderAnim.duration = duration;
+        borderAnim.timingFunction = timing;
+        [self.storefrontPlateView.layer addAnimation:borderAnim forKey:@"pp_strokeTransition"];
+    }
+    // Eyebrow pill border
+    if (oldEyebrowBorder) {
+        CABasicAnimation *eyeAnim = [CABasicAnimation animationWithKeyPath:@"borderColor"];
+        eyeAnim.fromValue = (__bridge id)oldEyebrowBorder;
+        eyeAnim.duration = duration;
+        eyeAnim.timingFunction = timing;
+        [self.eyebrowPillView.layer addAnimation:eyeAnim forKey:@"pp_eyebrowBorderTransition"];
+    }
+
+    // Animate UIView tint / backgroundColor properties with a matching spring
+    [UIView animateWithDuration:duration
+                          delay:0
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        // Force layout to ensure tint propagation
+        [self.eyebrowPillView layoutIfNeeded];
+        [self.ctaView layoutIfNeeded];
+        [self.storefrontPlateView layoutIfNeeded];
+    }
+                     completion:nil];
 }
 
 - (void)pp_loadShopLottieAnimation
@@ -657,7 +754,7 @@ static BOOL PPMarketHeroReduceMotion(void)
     PPBackgroundView *glass = [PPBackgroundView new];
     glass.translatesAutoresizingMaskIntoConstraints = NO;
     glass.accentStyle = PPHeroGlassAccentStyleCornerGlow;
-    //glass.cornerGlowOpacityMultiplier = 0.89;
+    glass.cornerGlowOpacityMultiplier = 0.89;
     glass.glowDirection = PPIsRL ? PPHeroGlowDirectionLeftDirect : PPHeroGlowDirectionRightDirection;
     glass.PPHeroApexUseShimmer = NO;
     glass.PPHeroApexUseUnderFingerMotion = NO;

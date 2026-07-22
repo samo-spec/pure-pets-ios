@@ -305,26 +305,26 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 {
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 14.0, 5.0, 14.0);
-    cfg.imagePadding = 6.0;
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 12.0, 5.0, 12.0);
+    cfg.imagePadding = 5.0;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.baseForegroundColor = [self pp_accentColor];
+    cfg.baseForegroundColor = [self pp_actionForegroundColor];
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
-    background.strokeWidth = PPSectionHeaderPixel();
-    background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.20 : 0.10];
-    background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.07];
+    background.strokeWidth = 0.0;
+    background.strokeColor = UIColor.clearColor;
+    background.backgroundColor = UIColor.clearColor;
     cfg.background = background;
 
     UIImageSymbolConfiguration *symbolConfig =
-        [UIImageSymbolConfiguration configurationWithPointSize:12.5
-                                                        weight:UIImageSymbolWeightSemibold
+        [UIImageSymbolConfiguration configurationWithPointSize:11.5
+                                                        weight:UIImageSymbolWeightRegular
                                                          scale:UIImageSymbolScaleMedium];
     UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolConfig];
     if (@available(iOS 15.0, *)) {
         chevron = [chevron imageByApplyingSymbolConfiguration:
-                   [UIImageSymbolConfiguration configurationWithPaletteColors:@[[self pp_accentColor]]]];
+                   [UIImageSymbolConfiguration configurationWithPaletteColors:@[[self pp_actionForegroundColor]]]];
     }
     cfg.image = chevron;
 
@@ -335,14 +335,16 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 {
     UIButtonConfiguration *cfg = [self pp_baseActionButtonConfiguration];
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.imagePadding = subtitleVisible ? 0.0 : 6.0;
+    cfg.imagePadding = subtitleVisible ? 0.0 : 5.0;
     cfg.contentInsets = subtitleVisible
-        ? NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0)
-        : NSDirectionalEdgeInsetsMake(5.0, 14.0, 5.0, 14.0);
+        ? NSDirectionalEdgeInsetsMake(5.0, 6.0, 5.0, 6.0)
+        : NSDirectionalEdgeInsetsMake(5.0, 12.0, 5.0, 12.0);
 
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     background.strokeWidth = 0.0;
+    background.strokeColor = UIColor.clearColor;
+    background.backgroundColor = UIColor.clearColor;
     cfg.background = background;
     return cfg;
 }
@@ -374,12 +376,12 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
     UIButtonConfiguration *cfg = self.actionButton.configuration ?: [self pp_baseActionButtonConfiguration];
     UIBackgroundConfiguration *background = cfg.background ?: [UIBackgroundConfiguration clearConfiguration];
     background.cornerRadius = PPSectionHeaderActionHeight * 0.5;
-    background.strokeWidth = PPSectionHeaderPixel();
-    background.strokeColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.22 : 0.10)];
-    background.backgroundColor = [accentColor colorWithAlphaComponent:(darkMode ? 0.14 : 0.07)];
+    background.strokeWidth = 0.0;
+    background.strokeColor = UIColor.clearColor;
+    background.backgroundColor = UIColor.clearColor;
     cfg.background = background;
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.baseForegroundColor = accentColor;
+    cfg.baseForegroundColor = [self pp_actionForegroundColor];
     self.actionButton.configuration = cfg;
     self.actionButton.layer.cornerRadius = PPSectionHeaderActionHeight * 0.5;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -388,6 +390,11 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 - (UIColor *)pp_accentColor
 {
     return AppPrimaryClr ?: UIColor.systemTealColor;
+}
+
+- (UIColor *)pp_actionForegroundColor
+{
+    return UIColor.secondaryLabelColor;
 }
 
 - (UIColor *)pp_titleColor
@@ -426,9 +433,9 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 
 - (UIFont *)pp_actionFont
 {
-    UIFont *font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+    UIFont *font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1];
-    return [metrics scaledFontForFont:font maximumPointSize:17.0];
+    return [metrics scaledFontForFont:font maximumPointSize:16.0];
 }
 
 - (BOOL)pp_isDarkMode
@@ -841,7 +848,7 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
             NSMutableDictionary<NSAttributedStringKey,id> *values =
                 attrs.mutableCopy ?: [NSMutableDictionary dictionary];
             values[NSFontAttributeName] = self ? [self pp_actionFont] : [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
-            values[NSForegroundColorAttributeName] = self ? [self pp_accentColor] : UIColor.systemPinkColor;
+            values[NSForegroundColorAttributeName] = self ? [self pp_actionForegroundColor] : UIColor.secondaryLabelColor;
             return values;
         };
     }
@@ -865,32 +872,32 @@ static NSString * const PPSectionHeaderLineBreathAnimationKey = @"pp.sectionHead
 {
     UIButtonConfiguration *cfg = configuration;
     UIImage *image = nil;
-    CGFloat pointSize = subtitleVisible ? 13.5 : 12.5;
+    CGFloat pointSize = subtitleVisible ? 12.5 : 11.5;
 
     if (iconName.length > 0) {
         image = [UIImage pp_symbolNamed:iconName
                               pointSize:pointSize
-                                 weight:UIImageSymbolWeightSemibold
+                                 weight:UIImageSymbolWeightRegular
                                   scale:UIImageSymbolScaleMedium
-                                palette:@[[self pp_accentColor]]
+                                palette:@[[self pp_actionForegroundColor]]
                            makeTemplate:YES];
     } else if (section == PPHomeSectionMainKinds) {
         UIImageSymbolConfiguration *symbolConfig =
             [UIImageSymbolConfiguration configurationWithPointSize:pointSize
-                                                            weight:UIImageSymbolWeightSemibold
+                                                            weight:UIImageSymbolWeightRegular
                                                              scale:UIImageSymbolScaleMedium];
         image = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolConfig];
     }
 
     cfg.image = image;
-    cfg.imagePadding = (image && !subtitleVisible) ? 6.0 : 0.0;
+    cfg.imagePadding = (image && !subtitleVisible) ? 5.0 : 0.0;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
 
     BOOL hasTitleText = (cfg.title.length > 0 || cfg.attributedTitle.string.length > 0);
     if (!hasTitleText && image) {
         cfg.contentInsets = subtitleVisible
-            ? NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0)
-            : NSDirectionalEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
+            ? NSDirectionalEdgeInsetsMake(5.0, 6.0, 5.0, 6.0)
+            : NSDirectionalEdgeInsetsMake(5.0, 8.0, 5.0, 8.0);
     }
 
     return cfg;

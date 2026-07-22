@@ -385,7 +385,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.heroSurfaceView = [[UIView alloc] init];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSurfaceView.backgroundColor = [UIColor hx_colorWithHexStr:@"#17171E" alpha:1.0];
+    self.heroSurfaceView.backgroundColor = [UIColor colorWithRed:0.992 green:0.989 blue:0.991 alpha:1.0];
     self.heroSurfaceView.layer.cornerRadius = PPCornerCard + 8.0;
     self.heroSurfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -1541,11 +1541,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     NSMutableArray *gradientColors = [NSMutableArray arrayWithCapacity:baseColors.count];
     for (NSUInteger idx = 0; idx < baseColors.count; idx++) {
         UIColor *base = baseColors[idx];
-        CGFloat deepenMix = (idx == 0) ? 0.08 : (idx == baseColors.count - 1 ? 0.03 : 0.05);
-        UIColor *deepened = PPBlendColors(base, UIColor.blackColor, deepenMix);
+        CGFloat lightenMix = (idx == 0) ? 0.75 : (idx == baseColors.count - 1 ? 0.85 : 0.80);
+        UIColor *lightened = PPBlendColors(base, UIColor.whiteColor, lightenMix);
         UIColor *accentSource = (idx >= 3) ? liftedAccent : accent;
         UIColor *resolved =
-            PPBlendColors(deepened, accentSource, [accentMixes[idx] doubleValue]);
+            PPBlendColors(lightened, accentSource, [accentMixes[idx] doubleValue] * 0.4);
         [resolvedColors addObject:resolved];
         [gradientColors addObject:(id)resolved.CGColor];
     }

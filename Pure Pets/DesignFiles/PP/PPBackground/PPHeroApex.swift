@@ -1072,7 +1072,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let surfaceFallback = isDark
             ? UIColor(red: 0.052, green: 0.055, blue: 0.073, alpha: 1)
-            : UIColor(red: 0.985, green: 0.979, blue: 0.987, alpha: 1)
+            : UIColor.white
 
         let surfaceBase: UIColor
         if let surfaceOverride = overrideSurfureColor ?? overrideSurfaceColor {
@@ -1085,21 +1085,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let polishedSurfaceBase = isDark
             ? blend(surfaceBase, with: UIColor(red: 0.04, green: 0.045, blue: 0.064, alpha: 1), amount: 0.16)
-            : blend(surfaceBase, with: .white, amount: 0.42)
+            : blend(surfaceBase, with: .white, amount: 0.92)
         let highlight = blend(
             polishedSurfaceBase,
             with: .white,
-            amount: isDark ? 0.072 : 0.48
+            amount: isDark ? 0.072 : 0.85
         )
         let middle = blend(
             polishedSurfaceBase,
             with: accent,
-            amount: isDark ? 0.052 : 0.014
+            amount: isDark ? 0.052 : 0.008
         )
         let tail = blend(
             polishedSurfaceBase,
             with: resolvedColor(.systemIndigo),
-            amount: isDark ? 0.064 : 0.012
+            amount: isDark ? 0.064 : 0.006
         )
 
         let brandShine: UIColor
@@ -1152,23 +1152,19 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let fullScreenLift = blend(
             polishedSurfaceBase,
             with: .white,
-            amount: isDark ? 0.14 : 0.54
+            amount: isDark ? 0.14 : 0.88
         )
         let fullScreenSoftLift = blend(
             polishedSurfaceBase,
             with: .white,
-            amount: isDark ? 0.065 : 0.26
+            amount: isDark ? 0.065 : 0.75
         )
-        let fullScreenShade = blend(
-            polishedSurfaceBase,
-            with: .black,
-            amount: isDark ? 0.18 : 0.085
-        )
-        let fullScreenDeep = blend(
-            polishedSurfaceBase,
-            with: .black,
-            amount: isDark ? 0.29 : 0.145
-        )
+        let fullScreenShade = isDark
+            ? blend(polishedSurfaceBase, with: .black, amount: 0.18)
+            : blend(polishedSurfaceBase, with: .white, amount: 0.60)
+        let fullScreenDeep = isDark
+            ? blend(polishedSurfaceBase, with: .black, amount: 0.29)
+            : blend(polishedSurfaceBase, with: .white, amount: 0.45)
         let fullScreenBrandWhisper = blend(
             polishedSurfaceBase,
             with: accent,

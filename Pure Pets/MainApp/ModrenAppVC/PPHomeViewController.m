@@ -2026,12 +2026,23 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         (currentGlowColor && centerGlowColor && [currentGlowColor isEqual:centerGlowColor])) {
         return;
     }
-    if(self.selectedCategory.ID > 0)
-    {
-        
+
+    UIColor *nextAccent = [centerGlowColor colorWithAlphaComponent:0.06];
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    if (reduceMotion) {
+        self.ambientBackgroundView.accentColorOverride = nextAccent;
+        return;
     }
-   // self.ambientBackgroundView.overrideTopGlowColor = [centerGlowColor colorWithAlphaComponent:0.86];
-    self.ambientBackgroundView.accentColorOverride = [centerGlowColor colorWithAlphaComponent:0.06];
+
+    [UIView animateWithDuration:0.28
+                          delay:0
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.ambientBackgroundView.accentColorOverride = nextAccent;
+    }
+                     completion:nil];
  }
 
 - (NSInteger)pp_indexOfSelectedMainKindInRail
@@ -2158,9 +2169,11 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
         });
     }
 
-    void (^applySelectionAndRoute)(void) = ^{
+    void (^applySelection)(void) = ^{
         [self pp_refreshHomeCategorySelectionAnimated:changed];
+    };
 
+    void (^routeAfterAnimation)(void) = ^{
         if (!navigate) {
             return;
         }
@@ -2174,11 +2187,26 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     };
 
     if ([NSThread isMainThread]) {
-        applySelectionAndRoute();
+        applySelection();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), applySelection);
+    }
+
+    if (!navigate) {
         return;
     }
 
-    dispatch_async(dispatch_get_main_queue(), applySelectionAndRoute);
+    // Delay push until the coordinated category animation (0.28 s) finishes
+    BOOL shouldDelay = changed && navigate && !UIAccessibilityIsReduceMotionEnabled();
+    NSTimeInterval navigationDelay = shouldDelay ? 0.30 : 0.0;
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(navigationDelay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) { return; }
+        routeAfterAnimation();
+    });
 }
 
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames
