@@ -492,9 +492,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         cardView.layer.cornerRadius = 34
         cardView.layer.cornerCurve = .continuous
         cardView.layer.borderWidth = 1
-        cardView.layer.shadowOpacity = 0.10
-        cardView.layer.shadowRadius = 18
-        cardView.layer.shadowOffset = CGSize(width: 0, height: -8)
+        cardView.layer.shadowOpacity = 0.045
+        cardView.layer.shadowRadius = 12
+        cardView.layer.shadowOffset = CGSize(width: 0, height: -4)
         addSubview(cardView)
 
         glassMaterialView.translatesAutoresizingMaskIntoConstraints = false
@@ -840,8 +840,8 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     private func buildLayout() {
         contentStackBottomConstraint = contentStack.bottomAnchor.constraint(
-            equalTo: cardView.safeAreaLayoutGuide.bottomAnchor,
-            constant: -18
+            equalTo: cardView.bottomAnchor,
+            constant: -12
         )
         contentStackTopConstraint = contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18)
         iconShellWidthConstraint = iconShell.widthAnchor.constraint(equalToConstant: 38)
@@ -948,7 +948,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         )
         let verticalPadding: CGFloat = summaryCollapsed ? 12.0 : 18.0
         let topPadding = verticalPadding
-        let bottomPadding = verticalPadding + safeAreaInsets.bottom
+        let bottomPadding = verticalPadding
         return ceil(contentSize.height + topPadding + bottomPadding)
     }
 
@@ -957,9 +957,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         cardView.backgroundColor = PPPremiumCheckoutStyle.surface
         cardView.layer.borderColor = PPPremiumCheckoutStyle.stroke.cgColor
         cardView.layer.shadowColor = UIColor.black.cgColor
-        cardView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.26 : 0.10
-        cardView.layer.shadowRadius = 18
-        cardView.layer.shadowOffset = CGSize(width: 0, height: -8)
+        cardView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.12 : 0.045
+        cardView.layer.shadowRadius = 12
+        cardView.layer.shadowOffset = CGSize(width: 0, height: -4)
 
         glassMaterialView.effect = nil
         glassTintView.backgroundColor = PPPremiumCheckoutStyle.glassTint

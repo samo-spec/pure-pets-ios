@@ -1229,9 +1229,9 @@ private struct PPUniversalCardRenderer: View {
             .clipShape(cardShape)
             .overlay(cardBorder)
             .shadow(
-                color: .black.opacity(colorScheme == .dark ? 0.14 : 0.045),
-                radius: colorScheme == .dark ? 9 : 7,
-                y: colorScheme == .dark ? 4 : 3
+                color: .black.opacity(colorScheme == .dark ? 0.10 : 0.030),
+                radius: colorScheme == .dark ? 7 : 5,
+                y: colorScheme == .dark ? 3 : 2
             )
             .scaleEffect(
                 store.isHighlighted && !reduceMotion ? 0.98 : 1

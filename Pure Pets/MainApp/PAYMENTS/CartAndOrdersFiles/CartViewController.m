@@ -29,7 +29,7 @@ static NSString *const kPPCartTableCellIdentifier = @"PPCartTableCell";
 static NSString *const kPPCartSavedDockCellIdentifier = @"PPCartSavedDockCell";
 static NSString *const kPPCartSavedGridCellIdentifier = @"PPCartSavedGridCell";
 static CGFloat const kCartScreenHorizontalInset = 16.0;
-static CGFloat const kCartFloatingSummaryBottomInset = 0.0;
+static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 static CGFloat const kCartHeaderExpandedHeight = 232.0;
 static CGFloat const kCartHeaderCollapsedHeight = 76.0;
 static CGFloat const kCartHeaderTopInset = 8.0;
@@ -96,8 +96,13 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 @property (nonatomic, strong) UIView *iconContainerView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *titleCollapsedHeightConstraint;
 @property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleTopToTitleConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleTopToMaterialConstraint;
 @property (nonatomic, strong) UILabel *countBadgeLabel;
+@property (nonatomic, strong) NSLayoutConstraint *countCenterToTitleConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *countCenterToMaterialConstraint;
 @property (nonatomic, strong) UIView *chevronContainerView;
 @property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, assign) BOOL hasPlayedEntry;
@@ -145,7 +150,8 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
-    container.layer.cornerRadius = 28.0;
+    static CGFloat const kPPSavedForLaterDockCornerRadius = 24.0;
+    container.layer.cornerRadius = kPPSavedForLaterDockCornerRadius;
     [container pp_setShadowColor:UIColor.blackColor];
     container.layer.shadowOpacity = 0.0;
     container.layer.shadowRadius = 0.0;
@@ -160,7 +166,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
     materialView.translatesAutoresizingMaskIntoConstraints = NO;
     materialView.clipsToBounds = YES;
-    materialView.layer.cornerRadius = 28.0;
+    materialView.layer.cornerRadius = kPPSavedForLaterDockCornerRadius;
     materialView.layer.borderWidth = 0.85;
     UIColor *borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         return [UIColor.whiteColor colorWithAlphaComponent:(tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.13 : 0.58];
@@ -272,6 +278,11 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     self.boundaryTopConstraint = [boundaryLineView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:18.0];
     self.dockTopConstraint = [container.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:34.0];
     self.dockBottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-2.0];
+    self.subtitleTopToTitleConstraint = [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:3.0];
+    self.subtitleTopToMaterialConstraint = [subtitleLabel.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor constant:17.0];
+    self.titleCollapsedHeightConstraint = [titleLabel.heightAnchor constraintEqualToConstant:0.0];
+    self.countCenterToTitleConstraint = [countBadge.centerYAnchor constraintEqualToAnchor:titleLabel.centerYAnchor];
+    self.countCenterToMaterialConstraint = [countBadge.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor];
     [NSLayoutConstraint activateConstraints:@[
         [boundaryLineView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:34.0],
         [boundaryLineView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-34.0],
@@ -319,10 +330,10 @@ static UIFont *PPCartScaledFont(NSString *fontName,
 
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevronContainer.leadingAnchor constant:-10.0],
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:3.0],
+        self.subtitleTopToTitleConstraint,
         [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:materialView.contentView.bottomAnchor constant:-14.0],
 
-        [countBadge.centerYAnchor constraintEqualToAnchor:titleLabel.centerYAnchor],
+        self.countCenterToTitleConstraint,
         [countBadge.heightAnchor constraintEqualToConstant:32.0],
         [countBadge.widthAnchor constraintGreaterThanOrEqualToConstant:74.0],
         [countBadge.widthAnchor constraintLessThanOrEqualToConstant:112.0],
@@ -372,6 +383,13 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     NSString *countText = [NSString stringWithFormat:kLang(@"saved_for_later_count_format"), (long)MAX(count, 0)];
     self.titleLabel.text = kLang(@"saved_for_later");
     self.subtitleLabel.text = expanded ? kLang(@"choose_items_to_move") : kLang(@"saved_for_later_open_hint");
+    self.titleLabel.hidden = expanded;
+    self.titleLabel.alpha = expanded ? 0.0 : 1.0;
+    self.titleCollapsedHeightConstraint.active = expanded;
+    self.subtitleTopToTitleConstraint.active = !expanded;
+    self.subtitleTopToMaterialConstraint.active = expanded;
+    self.countCenterToTitleConstraint.active = !expanded;
+    self.countCenterToMaterialConstraint.active = expanded;
     self.countBadgeLabel.text = countText;
     self.chevronView.image = [UIImage pp_symbolNamed:expanded ? @"chevron.up" : @"chevron.down"
                                            pointSize:12
@@ -844,7 +862,7 @@ static UIFont *PPCartScaledFont(NSString *fontName,
     [self.summaryView setCollapsible:YES initiallyCollapsed:NO];
     
     [self.view addSubview:self.summaryView];
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-12.0].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
@@ -4111,15 +4129,15 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
     if (tableWidth < 1.0) {
         tableWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
     }
-    CGFloat footerHeight = isAccessibilitySize ? 102.0 : 78.0;
-    CGFloat pillHeight = isAccessibilitySize ? 70.0 : 58.0;
+    CGFloat footerHeight = isAccessibilitySize ? 112.0 : 92.0;
+    CGFloat pillHeight = isAccessibilitySize ? 80.0 : 72.0;
     CGFloat availableCompactWidth = MAX(0.0, tableWidth - (isAccessibilitySize ? 56.0 : 104.0));
     CGFloat pillWidth = MIN(MAX(isAccessibilitySize ? 318.0 : 282.0, availableCompactWidth),
                             isAccessibilitySize ? 356.0 : 326.0);
     CGFloat iconSize = isAccessibilitySize ? 42.0 : 38.0;
     CGFloat countBadgeHeight = isAccessibilitySize ? 34.0 : 32.0;
     CGFloat chevronSize = isAccessibilitySize ? 32.0 : 30.0;
-    CGFloat cornerRadius = pillHeight * 0.43;
+    CGFloat cornerRadius = 24.0;
     UIColor *accentColor = PPSavedForLaterDeferredAccentColor();
     UIColor *primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
     NSString *countText = [NSString stringWithFormat:kLang(@"saved_for_later_count_format"), (long)saved.count];
@@ -4220,6 +4238,19 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
                                                 forAxis:UILayoutConstraintAxisHorizontal];
     [materialView.contentView addSubview:titleLabel];
 
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.text = kLang(@"saved_for_later_open_hint");
+    subtitleLabel.textColor = [primaryTextColor colorWithAlphaComponent:0.56];
+    subtitleLabel.font = PPCartScaledFont(@"Beiruti-Medium", isAccessibilitySize ? 12.6 : 11.5, UIFontWeightMedium, UIFontTextStyleCaption1);
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    subtitleLabel.adjustsFontSizeToFitWidth = YES;
+    subtitleLabel.minimumScaleFactor = 0.78;
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.numberOfLines = 1;
+    subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [materialView.contentView addSubview:subtitleLabel];
+
     PPInsetLabel *countBadge = [[PPInsetLabel alloc] init];
     countBadge.translatesAutoresizingMaskIntoConstraints = NO;
     countBadge.text = countText;
@@ -4306,9 +4337,13 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
         [iconView.heightAnchor constraintEqualToConstant:18.0],
 
         [titleLabel.leadingAnchor constraintEqualToAnchor:iconContainer.trailingAnchor constant:10.0],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],
-        [titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:materialView.contentView.topAnchor constant:8.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:materialView.contentView.topAnchor constant:12.0],
         [titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:materialView.contentView.bottomAnchor constant:-8.0],
+
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:chevronContainer.leadingAnchor constant:-10.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:1.0],
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:materialView.contentView.bottomAnchor constant:-10.0],
 
         [countBadge.leadingAnchor constraintGreaterThanOrEqualToAnchor:titleLabel.trailingAnchor constant:8.0],
         [countBadge.centerYAnchor constraintEqualToAnchor:materialView.contentView.centerYAnchor],

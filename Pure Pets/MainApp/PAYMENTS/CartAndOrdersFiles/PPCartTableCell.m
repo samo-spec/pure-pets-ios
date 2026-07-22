@@ -196,9 +196,9 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     cardContainer.backgroundColor = UIColor.clearColor;
     cardContainer.layer.cornerRadius = kPPCartCellCardCornerRadius;
     [cardContainer pp_setShadowColor:UIColor.blackColor];
-    cardContainer.layer.shadowOpacity = 0.10;
-    cardContainer.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-    cardContainer.layer.shadowRadius = 22.0;
+    cardContainer.layer.shadowOpacity = 0.045;
+    cardContainer.layer.shadowOffset = CGSizeMake(0.0, 7.0);
+    cardContainer.layer.shadowRadius = 16.0;
     cardContainer.layer.masksToBounds = NO;
     if (@available(iOS 13.0, *)) {
         cardContainer.layer.cornerCurve = kCACornerCurveContinuous;
@@ -559,9 +559,9 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     UIColor *stateAccent = self.savedForLaterMode ? PPCartCellDeferredAccentColor() : accent;
     UIColor *surfaceColor = PPCartCellSurfaceColor();
 
-    self.cardContainer.layer.shadowOpacity = self.savedForLaterMode ? (dark ? 0.13 : 0.055) : (dark ? 0.18 : 0.08);
-    self.cardContainer.layer.shadowRadius = self.savedForLaterMode ? 14.0 : (dark ? 18.0 : 22.0);
-    self.cardContainer.layer.shadowOffset = CGSizeMake(0.0, self.savedForLaterMode ? 7.0 : (dark ? 8.0 : 12.0));
+    self.cardContainer.layer.shadowOpacity = self.savedForLaterMode ? (dark ? 0.075 : 0.028) : (dark ? 0.11 : 0.045);
+    self.cardContainer.layer.shadowRadius = self.savedForLaterMode ? 10.0 : (dark ? 14.0 : 16.0);
+    self.cardContainer.layer.shadowOffset = CGSizeMake(0.0, self.savedForLaterMode ? 4.0 : (dark ? 5.0 : 7.0));
 
     self.surfaceView.backgroundColor = surfaceColor;
     [self.surfaceView pp_setBorderColor:self.savedForLaterMode
@@ -1182,7 +1182,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     }
     CGFloat scale = (highlighted && !reduceMotion) ? 0.985 : 1.0;
     CGFloat alpha = highlighted ? 0.97 : 1.0;
-    CGFloat shadowOpacity = highlighted ? 0.06 : (dark ? 0.18 : 0.08);
+    CGFloat shadowOpacity = highlighted ? 0.04 : (self.savedForLaterMode ? (dark ? 0.075 : 0.028) : (dark ? 0.11 : 0.045));
 
     void (^changes)(void) = ^{
         target.transform = CGAffineTransformMakeScale(scale, scale);
