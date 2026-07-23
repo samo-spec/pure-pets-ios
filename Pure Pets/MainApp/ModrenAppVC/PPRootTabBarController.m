@@ -2772,11 +2772,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_setupPremiumBottomNavigation
 {
     [self pp_setupPremiumBottomFade];
-    [self addPlusTabBarButton];
-    //[self addNovaTabBarButton];
-    [self pp_setupPremiumNovaButton];
 
     if (self.useLegacyBar) {
+        [self addPlusTabBarButton];
+        [self pp_setupPremiumNovaButton];
         // On iOS < 26 keep the original system tab bar visible and skip the custom dock
         self.tabBar.hidden = NO;
         self.tabBar.alpha = 1.0;
@@ -2802,6 +2801,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:dockView];
     self.premiumTabbarView = dockView;
+
+    [self addPlusTabBarButton];
+    [self pp_setupPremiumNovaButton];
     
     UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
@@ -2878,7 +2880,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         dockHeight = 83.0;
     }
     NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
-        [dockView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-8],
+        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-6.0],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
     if (!self.useLegacyBar) {
@@ -4195,12 +4197,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self.view addSubview:NovaButton];
     self.trailingTabButton = NovaButton;
 
+    NSLayoutYAxisAnchor *targetCenterY = (self.premiumTabbarView && [self.premiumTabbarView isDescendantOfView:self.view]) 
+        ? self.premiumTabbarView.centerYAnchor 
+        : self.tabBar.centerYAnchor;
+
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [NovaButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
-            [NovaButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
-            [NovaButton.widthAnchor constraintEqualToConstant:58.0],
-            [NovaButton.heightAnchor constraintEqualToConstant:58.0]
+            [NovaButton.centerYAnchor constraintEqualToAnchor:targetCenterY],
+            [NovaButton.widthAnchor constraintEqualToConstant:52.0],
+            [NovaButton.heightAnchor constraintEqualToConstant:52.0]
         ]];
         // Symbol effect (iOS 26+ only)
         __weak UIButton *weakButton = NovaButton;
