@@ -23,12 +23,10 @@ public final class PPRootFeatureFlag: NSObject, @unchecked Sendable {
     /// Global boolean controlling whether `PPRootSwiftCoordinator` is instantiated inside `PPRootTabBarController`.
     @objc public var isSwiftUIRootEnabled: Bool {
         get {
-            #if DEBUG
             if let override = UserDefaults.standard.object(forKey: Self.kUseSwiftUIRootKey) as? Bool {
                 return override
             }
-            #endif
-            return UserDefaults.standard.bool(forKey: Self.kUseSwiftUIRootKey)
+            return true
         }
         set {
             UserDefaults.standard.set(newValue, forKey: Self.kUseSwiftUIRootKey)

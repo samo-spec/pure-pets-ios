@@ -2878,24 +2878,19 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         dockHeight = 83.0;
     }
     NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
-        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-4],
+        [dockView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-8],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
     if (!self.useLegacyBar) {
      
         
-        [dockConstraints addObject:
-            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2.0]];
-        
-            [dockConstraints addObject:
-             [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:10.0]];
+        [dockConstraints addObject: [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2.0]];
+        [dockConstraints addObject: [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:10.0]];
             
         
     } else {
-        [dockConstraints addObject:
-            [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
-        [dockConstraints addObject:
-            [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
+        [dockConstraints addObject: [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
+        [dockConstraints addObject: [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
     }
     [NSLayoutConstraint activateConstraints:dockConstraints];
     dockView.backgroundColor = UIColor.clearColor;
@@ -4126,17 +4121,21 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         showAddMenuButton.hidden = YES;
     }
 
+    NSLayoutYAxisAnchor *targetCenterY = (self.premiumTabbarView && [self.premiumTabbarView isDescendantOfView:self.view]) 
+        ? self.premiumTabbarView.centerYAnchor 
+        : self.tabBar.centerYAnchor;
+
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-2.0],
+            [showAddMenuButton.centerYAnchor constraintEqualToAnchor:targetCenterY],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
         ]];
     } else {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
+            [showAddMenuButton.centerYAnchor constraintEqualToAnchor:targetCenterY],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
         ]];

@@ -101,7 +101,7 @@ struct PPPetAdViewerScreen: View {
                 onDismiss: {
                     store.isMediaViewerPresented = false
                 },
-                onShare: store.share
+                onShare: { store.share() }
             )
         }
         .confirmationDialog(
@@ -162,7 +162,7 @@ struct PPPetAdViewerScreen: View {
             PPPetAdViewerErrorStateView(
                 isOffline: true,
                 message: message,
-                onRetry: store.refresh,
+                onRetry: { store.refresh() },
                 onClose: handleBack
             )
             .transition(.opacity)
@@ -170,7 +170,7 @@ struct PPPetAdViewerScreen: View {
             PPPetAdViewerErrorStateView(
                 isOffline: false,
                 message: message,
-                onRetry: store.refresh,
+                onRetry: { store.refresh() },
                 onClose: handleBack
             )
             .transition(.opacity)
@@ -185,11 +185,14 @@ private extension PPPetAdViewerScreen {
     /// overlapping the hero. Eliminates dual-scroll gesture conflicts.
     func content(proxy: GeometryProxy) -> some View {
         let heroHeight = min(
-            max(proxy.size.width * 0.62, 220),
-            horizontalSizeClass == .regular ? 320 : 286
+            max(proxy.size.width * 1.10, 360),
+            horizontalSizeClass == .regular ? 540 : 480
         )
         let navBarBottomY = proxy.safeAreaInsets.top + 60.0
-        let minHeroHeight = max(navBarBottomY, heroHeight * 0.40)
+        let minHeroHeight = navBarBottomY + 80.0
+
+        let pinThreshold = max(0, heroHeight - minHeroHeight)
+        let lockDelta = max(0, -heroMinY - pinThreshold)
 
         return ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
@@ -200,8 +203,8 @@ private extension PPPetAdViewerScreen {
                 .frame(height: heroHeight)
 
                 detailsSheet()
-                    .offset(y: -PPSpace.xl)
-                    .padding(.bottom, -PPSpace.xl)
+                    .offset(y: lockDelta)
+                    .padding(.bottom, lockDelta)
             }
         }
         .coordinateSpace(name: "PPPetAdViewerScroll")
@@ -248,7 +251,7 @@ private extension PPPetAdViewerScreen {
             PPPetAdHeroGallery(
                 items: store.snapshot.media,
                 selection: $store.selectedMediaIndex,
-                onOpen: store.selectMedia
+                onOpen: { index in store.selectMedia(at: index) }
             )
             .frame(height: currentHeight)
             .blur(radius: blurRadius)
@@ -269,12 +272,7 @@ private extension PPPetAdViewerScreen {
     /// trust → story → discovery. Each step is a spring, never a snap.
     func detailsSheet() -> some View {
         VStack(spacing: PPSpace.base) {
-            Capsule()
-                .fill(Color.ppTextTertiary.opacity(0.22))
-                .frame(width: 40, height: 5)
-                .padding(.top, PPSpace.sm)
-                .accessibilityHidden(true)
-                .adCascade(step: 0, appeared: hasAppeared, reduceMotion: reduceMotion)
+            ultraLuminousGalleryDivider
 
             PPPetAdHeaderCard(
                 title: store.snapshot.title,
@@ -318,8 +316,8 @@ private extension PPPetAdViewerScreen {
                 ),
                 state: store.relatedAdsState,
                 items: store.relatedAds,
-                onRetry: store.retryRelatedAds,
-                onSelect: store.selectRelatedItem
+                onRetry: { store.retryRelatedAds() },
+                onSelect: { item in store.selectRelatedItem(item) }
             )
             .adCascade(step: 5, appeared: hasAppeared, reduceMotion: reduceMotion)
 
@@ -335,8 +333,8 @@ private extension PPPetAdViewerScreen {
                 ),
                 state: store.accessoriesState,
                 items: store.relatedAccessories,
-                onRetry: store.retryAccessories,
-                onSelect: store.selectRelatedItem
+                onRetry: { store.retryAccessories() },
+                onSelect: { item in store.selectRelatedItem(item) }
             )
             .adCascade(step: 6, appeared: hasAppeared, reduceMotion: reduceMotion)
 
@@ -345,13 +343,31 @@ private extension PPPetAdViewerScreen {
         .padding(.top, PPSpace.sm)
         .frame(maxWidth: contentMaxWidth)
         .frame(maxWidth: .infinity)
-        .background(
-            Color.ppBackground,
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.hero,
-                style: .continuous
+        .background {
+            PPPetAdViewerBackground()
+        }
+    }
+
+    /// Ultra-luminous glass boundary line separating hero gallery from content container.
+    var ultraLuminousGalleryDivider: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.40),
+                    Color.ppPrimary.opacity(0.35),
+                    Color.white.opacity(0.12)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
             )
-        )
+            .frame(height: 1.25)
+            .shadow(color: Color.ppPrimary.opacity(0.30), radius: 6, y: 0)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.55))
+                .frame(height: 0.5)
+        }
+        .accessibilityHidden(true)
     }
 }
 
@@ -394,9 +410,9 @@ private extension PPPetAdViewerScreen {
                 store.canReport,
             isReportWorking: store.reportState == .working,
             onBack: handleBack,
-            onFavorite: store.toggleFavorite,
-            onShare: store.share,
-            onReport: store.requestReport
+            onFavorite: { store.toggleFavorite() },
+            onShare: { store.share() },
+            onReport: { store.requestReport() }
         )
         .zIndex(10)
     }

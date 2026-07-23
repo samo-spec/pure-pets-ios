@@ -129,20 +129,8 @@ private extension PPPetAdRelatedSection {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: PPSpace.md) {
                 ForEach(items) { item in
-                    if #available(iOS 16.0, *) {
-                        PPUniversalCardView(
-                            model: item.universalCardModel,
-                            context: item.universalContext,
-                            layout: .pinterest,
-                            actions: PPUniversalCardActions(
-                                onTap: { _ in onSelect(item) }
-                            )
-                        )
-                        .frame(width: 210)
-                    } else {
-                        PPPetAdRelatedCard(item: item) {
-                            onSelect(item)
-                        }
+                    PPPetAdRelatedCard(item: item) {
+                        onSelect(item)
                     }
                 }
             }
