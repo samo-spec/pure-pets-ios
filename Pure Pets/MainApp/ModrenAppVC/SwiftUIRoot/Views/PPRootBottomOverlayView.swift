@@ -34,29 +34,29 @@ public struct PPRootBottomOverlayView: View {
                     .passthroughTouches(true)
                 
                 ZStack(alignment: .bottomTrailing) {
-                    // Main Dock TabBar
+                    // Main Dock TabBar (if custom SwiftUI dock is active)
                     if store.shouldShowDock {
                         PPRootDock(store: store)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
-                    // Floating Cart Bar surface (floating above tab bar when active)
+                    // Floating Cart Bar surface (floats neatly above tab bar)
                     if store.shouldShowCartBar {
                         PPCartFloatingBarView(state: store.cartState) {
                             store.handleCartTapped()
                         }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, max(proxy.safeAreaInsets.bottom, 12))
+                        .padding(.bottom, store.useLegacyBar ? max(proxy.safeAreaInsets.bottom + 54, 88) : max(proxy.safeAreaInsets.bottom, 8))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
-                    // Nova AI Button (floating above native tab bar)
+                    // Nova AI Button (floats neatly above tab bar)
                     if store.shouldShowNovaButton && !store.shouldShowCartBar {
                         PPRootNovaButton(state: store.novaState) {
                             store.handleNovaTapped()
                         }
                         .padding(.trailing, 16)
-                        .padding(.bottom, store.shouldShowDock ? max(proxy.safeAreaInsets.bottom + 54, 64) : max(proxy.safeAreaInsets.bottom, 12))
+                        .padding(.bottom, store.useLegacyBar ? max(proxy.safeAreaInsets.bottom + 54, 88) : (store.shouldShowDock ? max(proxy.safeAreaInsets.bottom + 54, 64) : max(proxy.safeAreaInsets.bottom, 8)))
                         .transition(.scale.combined(with: .opacity))
                     }
                 }

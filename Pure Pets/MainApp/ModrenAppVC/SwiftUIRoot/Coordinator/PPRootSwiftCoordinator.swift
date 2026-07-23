@@ -211,8 +211,38 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         hostingController.isInteractivePoint = { [weak self] point in
             guard let self = self, let host = self.hostController else { return false }
             let totalHeight = host.view.bounds.height
-            let dockInteractiveHeight = max(self.store.bottomOverlayHeight, 88.0) + 32.0
-            return point.y >= (totalHeight - dockInteractiveHeight)
+            let totalWidth = host.view.bounds.width
+            
+            let tabBarHeight = host.tabBar.frame.height > 0 ? host.tabBar.frame.height : (49.0 + host.view.safeAreaInsets.bottom)
+            if self.useLegacyBar && point.y >= (totalHeight - tabBarHeight) {
+                return false
+            }
+            
+            if self.store.shouldShowCartBar {
+                let cartBottom = totalHeight - (self.useLegacyBar ? tabBarHeight : host.view.safeAreaInsets.bottom)
+                let cartTop = cartBottom - 64.0
+                if point.y >= cartTop && point.y <= cartBottom {
+                    return true
+                }
+            }
+            
+            if self.store.shouldShowNovaButton {
+                let novaBottom = totalHeight - (self.useLegacyBar ? tabBarHeight : host.view.safeAreaInsets.bottom)
+                let novaTop = novaBottom - 64.0
+                let novaLeft = totalWidth - 80.0
+                if point.y >= novaTop && point.y <= novaBottom && point.x >= novaLeft {
+                    return true
+                }
+            }
+            
+            if !self.useLegacyBar && self.store.shouldShowDock {
+                let dockTop = totalHeight - (host.view.safeAreaInsets.bottom + 64.0)
+                if point.y >= dockTop {
+                    return true
+                }
+            }
+            
+            return false
         }
         
         host.addChild(hostingController)
