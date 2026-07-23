@@ -170,7 +170,7 @@ static UIColor *PPDataViewDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPDataViewChromeSurfaceColor(void)
 {
-    return PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.78],
+    return PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.98],
                                   [UIColor colorWithWhite:0.10 alpha:0.76]);
 }
 
@@ -339,7 +339,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
     if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
+        blurStyle = UIBlurEffectStyleSystemMaterialLight;
     }
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -443,11 +443,11 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     UIColor *foregroundSurface = PPDataViewAppForegroundSurfaceColor();
     UIColor *surface = PPDataViewChromeSurfaceColor();
-    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
-                                                    [UIColor colorWithWhite:1.0 alpha:0.18]);
-    UIColor *surfaceTop = [foregroundSurface colorWithAlphaComponent:isDark ? 0.24 : 0.58];
-    UIColor *surfaceMid = [surface colorWithAlphaComponent:isDark ? 0.76 : 0.82];
-    UIColor *surfaceBottom = [AppBackgroundClrLigter colorWithAlphaComponent:isDark ? 0.18 : 0.12];
+    UIColor *softHighlight = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.24]);
+    UIColor *surfaceTop = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.28 : 0.98];
+    UIColor *surfaceMid = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.80 : 0.95];
+    UIColor *surfaceBottom = [UIColor.whiteColor colorWithAlphaComponent:isDark ? 0.20 : 0.92];
     UIColor *borderLead = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
                                                  [UIColor colorWithWhite:1.0 alpha:0.34]);
     UIColor *borderMid = PPDataViewDynamicColor([UIColor colorWithWhite:1.0 alpha:0.58],
@@ -457,7 +457,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
 
     void (^updates)(void) = ^{
         self.blurView.hidden = NO;
-        CGFloat baseBlurAlpha = isDark ? 0.54 : 0.72;
+        CGFloat baseBlurAlpha = isDark ? 0.54 : 0.92;
         self.blurView.alpha = baseBlurAlpha * (1.0 - (0.90 * dockedProgress));
         self.backgroundColor = [foregroundSurface colorWithAlphaComponent:dockedProgress];
 
@@ -467,7 +467,7 @@ static BOOL PPDataViewCurrentAppAppearanceIsDark(UITraitCollection *traitCollect
             PPDataViewResolvedLayerColor(surfaceBottom, self.traitCollection)
         ];
         self.surfaceGradientLayer.locations = @[@0.0, @0.48, @1.0];
-        CGFloat baseSurfaceOpacity = isDark ? 0.76 : 0.68;
+        CGFloat baseSurfaceOpacity = isDark ? 0.76 : 0.94;
         self.surfaceGradientLayer.opacity = baseSurfaceOpacity * (1.0 - (0.90 * dockedProgress));
 
         self.liquidBorderLayer.colors = @[

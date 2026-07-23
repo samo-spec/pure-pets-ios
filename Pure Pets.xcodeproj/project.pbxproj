@@ -7,6 +7,32 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000065 /* PPRootLegacyAdapter.m */; };
+		F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */; };
+		F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000069 /* PPRootObjCAdapter.swift */; };
+		F2E90000000000000000006C /* PPRootStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006B /* PPRootStore.swift */; };
+		F2E90000000000000000006E /* PPRootSwiftCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */; };
+		F2E900000000000000000074 /* PPRootFeatureFlag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000073 /* PPRootFeatureFlag.swift */; };
+		F2E900000000000000000076 /* PPBlockedAccountState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000075 /* PPBlockedAccountState.swift */; };
+		F2E900000000000000000078 /* PPCartFloatingBarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000077 /* PPCartFloatingBarState.swift */; };
+		F2E90000000000000000007A /* PPRootNovaState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000079 /* PPRootNovaState.swift */; };
+		F2E90000000000000000007C /* PPRootSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007B /* PPRootSessionState.swift */; };
+		F2E90000000000000000007E /* PPRootTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007D /* PPRootTab.swift */; };
+		F2E900000000000000000080 /* PPRootActionHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007F /* PPRootActionHandling.swift */; };
+		F2E900000000000000000082 /* PPRootParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000081 /* PPRootParityTests.swift */; };
+		F2E900000000000000000084 /* PPHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000083 /* PPHaptics.swift */; };
+		F2E900000000000000000086 /* PPBlockedAccountOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */; };
+		F2E900000000000000000088 /* PPCartFloatingBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000087 /* PPCartFloatingBarView.swift */; };
+		F2E90000000000000000008A /* PPLottieAnimationRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */; };
+		F2E90000000000000000008C /* PPRootAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008B /* PPRootAvatarView.swift */; };
+		F2E90000000000000000008E /* PPRootBottomOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008D /* PPRootBottomOverlayView.swift */; };
+		F2E900000000000000000090 /* PPRootDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008F /* PPRootDock.swift */; };
+		F2E900000000000000000092 /* PPRootDockItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000091 /* PPRootDockItem.swift */; };
+		F2E900000000000000000094 /* PPRootGuestProfileLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */; };
+		F2E900000000000000000096 /* PPRootNovaButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000095 /* PPRootNovaButton.swift */; };
+		F2E900000000000000000098 /* PPRootNovaLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000097 /* PPRootNovaLottieView.swift */; };
+		F2E90000000000000000009A /* PPRootPassthroughHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */; };
+		F2E90000000000000000009C /* PPRootPassthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000009B /* PPRootPassthroughView.swift */; };
 		020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */; };
 		084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */; };
 		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
@@ -438,7 +464,6 @@
 		F27A48332EE0CB1E0044040E /* PPImageCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A48322EE0CB0E0044040E /* PPImageCollection.m */; };
 		F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A50C32EEDF799006CBE9D /* TrashCollectionViewCell.m */; };
 		F27B81892C605DDE002C0A47 /* CabelCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27B81882C605DDE002C0A47 /* CabelCollectionViewCell.m */; };
-		F27BA91C300FF7DB00911A90 /* ShowTime in Frameworks */ = {isa = PBXBuildFile; productRef = F27BA91B300FF7DB00911A90 /* ShowTime */; };
 		F27CA86B2C65933800E92897 /* TTGSnackbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27CA8682C65933800E92897 /* TTGSnackbar.swift */; };
 		F27D66282E1FD8B10081943A /* OptionModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D66272E1FD8B10081943A /* OptionModel.m */; };
 		F27D662B2E1FD8D90081943A /* BottomOptionsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F27D662A2E1FD8C80081943A /* BottomOptionsViewController.m */; };
@@ -862,6 +887,37 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		F2E900000000000000000064 /* PPRootLegacyAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRootLegacyAdapter.h; sourceTree = "<group>"; };
+		F2E900000000000000000065 /* PPRootLegacyAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootLegacyAdapter.m; sourceTree = "<group>"; };
+		F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNavigationDelegateProxy.swift; sourceTree = "<group>"; };
+		F2E900000000000000000069 /* PPRootObjCAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootObjCAdapter.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006B /* PPRootStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootStore.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSwiftCoordinator.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006F /* PPRootBuildReadinessReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootBuildReadinessReport.md; sourceTree = "<group>"; };
+		F2E900000000000000000070 /* PPRootDependencyReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootDependencyReport.md; sourceTree = "<group>"; };
+		F2E900000000000000000071 /* PPRootIntegrationGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootIntegrationGuide.md; sourceTree = "<group>"; };
+		F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootLegacyParityMatrix.md; sourceTree = "<group>"; };
+		F2E900000000000000000073 /* PPRootFeatureFlag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootFeatureFlag.swift; sourceTree = "<group>"; };
+		F2E900000000000000000075 /* PPBlockedAccountState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountState.swift; sourceTree = "<group>"; };
+		F2E900000000000000000077 /* PPCartFloatingBarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarState.swift; sourceTree = "<group>"; };
+		F2E900000000000000000079 /* PPRootNovaState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaState.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007B /* PPRootSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSessionState.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007D /* PPRootTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootTab.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007F /* PPRootActionHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootActionHandling.swift; sourceTree = "<group>"; };
+		F2E900000000000000000081 /* PPRootParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootParityTests.swift; sourceTree = "<group>"; };
+		F2E900000000000000000083 /* PPHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHaptics.swift; sourceTree = "<group>"; };
+		F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountOverlayView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000087 /* PPCartFloatingBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPLottieAnimationRepresentable.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008B /* PPRootAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootAvatarView.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008D /* PPRootBottomOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootBottomOverlayView.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008F /* PPRootDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDock.swift; sourceTree = "<group>"; };
+		F2E900000000000000000091 /* PPRootDockItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDockItem.swift; sourceTree = "<group>"; };
+		F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootGuestProfileLottieView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000095 /* PPRootNovaButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaButton.swift; sourceTree = "<group>"; };
+		F2E900000000000000000097 /* PPRootNovaLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaLottieView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughHostingController.swift; sourceTree = "<group>"; };
+		F2E90000000000000000009B /* PPRootPassthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughView.swift; sourceTree = "<group>"; };
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
@@ -2375,7 +2431,6 @@
 				F2D894852D5534D000256152 /* CoreTelephony.framework in Frameworks */,
 				F2FFDA152FCDCFC00025B5A9 /* FirebaseInstallations in Frameworks */,
 				F2FFDA172FCDCFC00025B5A9 /* FirebaseMessaging in Frameworks */,
-				F27BA91C300FF7DB00911A90 /* ShowTime in Frameworks */,
 				16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */,
 				F2FFDA192FCDCFC00025B5A9 /* FirebasePerformance in Frameworks */,
 				F2FFDA0D2FCDCFC00025B5A9 /* FirebaseCore in Frameworks */,
@@ -2419,6 +2474,116 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		F2E90000000000000000009D /* Adapters */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000064 /* PPRootLegacyAdapter.h */,
+				F2E900000000000000000065 /* PPRootLegacyAdapter.m */,
+				F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */,
+				F2E900000000000000000069 /* PPRootObjCAdapter.swift */,
+			);
+			path = Adapters;
+			sourceTree = "<group>";
+		};
+		F2E90000000000000000009E /* Coordinator */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000006B /* PPRootStore.swift */,
+				F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */,
+			);
+			path = Coordinator;
+			sourceTree = "<group>";
+		};
+		F2E90000000000000000009F /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000006F /* PPRootBuildReadinessReport.md */,
+				F2E900000000000000000070 /* PPRootDependencyReport.md */,
+				F2E900000000000000000071 /* PPRootIntegrationGuide.md */,
+				F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */,
+			);
+			path = Documentation;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A0 /* FeatureFlag */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000073 /* PPRootFeatureFlag.swift */,
+			);
+			path = FeatureFlag;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A1 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000075 /* PPBlockedAccountState.swift */,
+				F2E900000000000000000077 /* PPCartFloatingBarState.swift */,
+				F2E900000000000000000079 /* PPRootNovaState.swift */,
+				F2E90000000000000000007B /* PPRootSessionState.swift */,
+				F2E90000000000000000007D /* PPRootTab.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A2 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000007F /* PPRootActionHandling.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A3 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000081 /* PPRootParityTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A4 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000083 /* PPHaptics.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A5 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */,
+				F2E900000000000000000087 /* PPCartFloatingBarView.swift */,
+				F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */,
+				F2E90000000000000000008B /* PPRootAvatarView.swift */,
+				F2E90000000000000000008D /* PPRootBottomOverlayView.swift */,
+				F2E90000000000000000008F /* PPRootDock.swift */,
+				F2E900000000000000000091 /* PPRootDockItem.swift */,
+				F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */,
+				F2E900000000000000000095 /* PPRootNovaButton.swift */,
+				F2E900000000000000000097 /* PPRootNovaLottieView.swift */,
+				F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */,
+				F2E90000000000000000009B /* PPRootPassthroughView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A6 /* SwiftUIRoot */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000009D /* Adapters */,
+				F2E90000000000000000009E /* Coordinator */,
+				F2E90000000000000000009F /* Documentation */,
+				F2E9000000000000000000A0 /* FeatureFlag */,
+				F2E9000000000000000000A1 /* Models */,
+				F2E9000000000000000000A2 /* Protocols */,
+				F2E9000000000000000000A3 /* Tests */,
+				F2E9000000000000000000A4 /* Utilities */,
+				F2E9000000000000000000A5 /* Views */,
+			);
+			path = SwiftUIRoot;
+			sourceTree = "<group>";
+		};
 		07D577F1CC0A3CD1744A9EF3 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -5071,6 +5236,7 @@
 		F2DF5DC72EFBE5B3009C7B6F /* ModrenAppVC */ = {
 			isa = PBXGroup;
 			children = (
+				F2E9000000000000000000A6 /* SwiftUIRoot */,
 				F281B4892FCBBFD1009118F2 /* PPIntroViewController.h */,
 				F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */,
 				F282C1132F0EC700001C110A /* SmartSuggest */,
@@ -5353,7 +5519,6 @@
 				F2FFDA012FCDCFC00025B5A9 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				F2AF383F300AB06200FBF82D /* XCLocalSwiftPackageReference "MyFrames/PurePetsLayoutKit" */,
 				F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */,
-				F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */,
 			);
 			productRefGroup = F2D0C5D62C4BE1B80023CE53 /* Products */;
 			projectDirPath = "";
@@ -5537,6 +5702,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */,
+				F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */,
+				F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */,
+				F2E90000000000000000006C /* PPRootStore.swift in Sources */,
+				F2E90000000000000000006E /* PPRootSwiftCoordinator.swift in Sources */,
+				F2E900000000000000000074 /* PPRootFeatureFlag.swift in Sources */,
+				F2E900000000000000000076 /* PPBlockedAccountState.swift in Sources */,
+				F2E900000000000000000078 /* PPCartFloatingBarState.swift in Sources */,
+				F2E90000000000000000007A /* PPRootNovaState.swift in Sources */,
+				F2E90000000000000000007C /* PPRootSessionState.swift in Sources */,
+				F2E90000000000000000007E /* PPRootTab.swift in Sources */,
+				F2E900000000000000000080 /* PPRootActionHandling.swift in Sources */,
+				F2E900000000000000000084 /* PPHaptics.swift in Sources */,
+				F2E900000000000000000086 /* PPBlockedAccountOverlayView.swift in Sources */,
+				F2E900000000000000000088 /* PPCartFloatingBarView.swift in Sources */,
+				F2E90000000000000000008A /* PPLottieAnimationRepresentable.swift in Sources */,
+				F2E90000000000000000008C /* PPRootAvatarView.swift in Sources */,
+				F2E90000000000000000008E /* PPRootBottomOverlayView.swift in Sources */,
+				F2E900000000000000000090 /* PPRootDock.swift in Sources */,
+				F2E900000000000000000092 /* PPRootDockItem.swift in Sources */,
+				F2E900000000000000000094 /* PPRootGuestProfileLottieView.swift in Sources */,
+				F2E900000000000000000096 /* PPRootNovaButton.swift in Sources */,
+				F2E900000000000000000098 /* PPRootNovaLottieView.swift in Sources */,
+				F2E90000000000000000009A /* PPRootPassthroughHostingController.swift in Sources */,
+				F2E90000000000000000009C /* PPRootPassthroughView.swift in Sources */,
 				F25D68C72F82773300700694 /* PPImageUploadValidator.h in Sources */,
 				681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */,
 				F25D68C82F82773300700694 /* PPFirestoreErrorNotifier.h in Sources */,
@@ -6260,6 +6450,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2E900000000000000000082 /* PPRootParityTests.swift in Sources */,
 				F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */,
 				F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */,
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
@@ -6804,14 +6995,6 @@
 				minimumVersion = 12.11.0;
 			};
 		};
-		F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/KaneCheshire/ShowTime";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.3;
-			};
-		};
 		F2AF3850300AC46E00FBF82D /* XCRemoteSwiftPackageReference "swiftui-hosting-transitions" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/pbalduz/swiftui-hosting-transitions";
@@ -6900,11 +7083,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = F251007D2F73C2D8008F6AFE /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
-		};
-		F27BA91B300FF7DB00911A90 /* ShowTime */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = F27BA91A300FF7DB00911A90 /* XCRemoteSwiftPackageReference "ShowTime" */;
-			productName = ShowTime;
 		};
 		F2AF383D300AAFD800FBF82D /* PurePetsLayoutKit */ = {
 			isa = XCSwiftPackageProductDependency;

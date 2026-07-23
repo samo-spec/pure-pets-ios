@@ -24,8 +24,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^PPCartFloatingBarOpenHandler)(void);
 @class ChatThreadModel;
+@class PPRootSwiftCoordinator;
  
 @interface PPRootTabBarController : UITabBarController <UITabBarControllerDelegate>
+@property (nonatomic, strong, nullable) PPRootSwiftCoordinator *swiftCoordinator;
 @property (nonatomic, assign) BOOL useLegacyBar;
 - (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated;
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;

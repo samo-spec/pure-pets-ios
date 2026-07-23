@@ -789,7 +789,7 @@ public final class PPMainKindsCell: UICollectionViewCell {
         let plateFrame = imagePlateView.frame
         let plateCenterY = plateFrame.midY > 0 ? plateFrame.midY : (materialBounds.height * 0.38)
         let plateCenterX = plateFrame.midX > 0 ? plateFrame.midX : (materialBounds.width * 0.5)
-        let haloDiameter = max(materialBounds.width, materialBounds.height) * 2.1
+        let haloDiameter = max(materialBounds.width, materialBounds.height) * 2.6
         tapHaloLayer.frame = CGRect(
             x: plateCenterX - (haloDiameter / 2),
             y: plateCenterY - (haloDiameter / 2),
@@ -932,8 +932,8 @@ public final class PPMainKindsCell: UICollectionViewCell {
             accent.withAlphaComponent(0).cgColor
         ]
         tapHaloLayer.colors = [
-            accent.withAlphaComponent(0.46).cgColor,
-            accent.withAlphaComponent(0.22).cgColor,
+            accent.withAlphaComponent(0.68).cgColor,
+            accent.withAlphaComponent(0.35).cgColor,
             accent.withAlphaComponent(0).cgColor
         ]
     }
@@ -1003,12 +1003,12 @@ public final class PPMainKindsCell: UICollectionViewCell {
         tapHaloLayer.opacity = 0
 
         let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0, 0.78, 0]
+        opacity.values = [0, 0.92, 0]
         opacity.keyTimes = [0, 0.22, 1]
 
         let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 0.25
-        scale.toValue = 2.20
+        scale.fromValue = 0.20
+        scale.toValue = 2.75
 
         let group = CAAnimationGroup()
         group.animations = [opacity, scale]

@@ -16,3 +16,4 @@
 #import "FavoriteButton.h"
 #import "PPImageLoaderManager.h"
 #import "PPSaveForLaterManager.h"
+#import "PPRootLegacyAdapter.h"
