@@ -1,11 +1,7 @@
-//  MyServicesViewController.m
-//  Pure Pets
-
-//  MyServicesViewController.m
-//  Pure Pets
-
 #import "MyServicesViewController.h"
-#import "ServiceCollectionViewCell.h"
+#import "PPUniversalCell.h"
+#import "PPUniversalCellViewModel.h"
+#import "PPImageLoaderManager.h"
 #import "ServicesManager.h"
 #import "CCActivityHUD.h"
 #import "CategoryModel.h"
@@ -30,7 +26,7 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     return 2;
 }
 
-@interface MyServicesViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, ServiceCollectionViewCellDelegate, UISearchBarDelegate>
+@interface MyServicesViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate, UISearchBarDelegate>
 
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewFlowLayout *collectionLayout;
@@ -91,7 +87,7 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     self.collectionView.alwaysBounceVertical = YES;
     self.collectionView.delegate = self;
     self.collectionView.dataSource = self;
-    [self.collectionView registerClass:[ServiceCollectionViewCell class] forCellWithReuseIdentifier:@"ServiceCell"];
+    [PPUniversalCell pp_registerInCollectionView:self.collectionView];
 
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshServices) forControlEvents:UIControlEventValueChanged];
@@ -153,10 +149,23 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    ServiceCollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"ServiceCell" forIndexPath:indexPath];
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
     ServiceModel *service = self.filteredServices[indexPath.item];
-    [cell configureWithService:service isUserOwned:YES];
+    PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:service context:PPCellForServices];
+    vm.indexPath = indexPath;
     cell.delegate = self;
+    cell.forceShowsOwnerMenuButton = YES;
+    cell.showsSubtitle = YES;
+    cell.hideTopBadge = NO;
+    [cell applyViewModel:vm
+                 context:PPCellForServices
+              layoutMode:PPCellLayoutModePinterest
+            discountMode:PPDiscountStyleBadge
+             imageLoader:^(UIImageView * _Nullable iv, NSString * _Nullable url, UIImage * _Nullable ph, UIView * _Nullable card) {
+        if (url.length > 0) {
+            [[PPImageLoaderManager shared] setImageOnImageView:iv url:url complation:nil];
+        }
+    }];
     return cell;
 }
 
@@ -177,19 +186,17 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     return CGSizeMake(itemWidth, mediaHeight);
 }
 
-#pragma mark - ServiceCollectionViewCellDelegate
+#pragma mark - PPUniversalCellDelegate
 
-- (void)serviceCellDidTapEdit:(ServiceCollectionViewCell *)cell {
-    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
-    if (!indexPath) { NSLog(@"❌ MyServicesVC: nil indexPath in didTapEdit"); return; }
+- (void)PPUniversalCell_tapEdit:(PPUniversalCellViewModel *)universalModel {
+    NSIndexPath *indexPath = universalModel.indexPath;
+    if (!indexPath || indexPath.item >= (NSInteger)self.filteredServices.count) return;
     ServiceModel *service = self.filteredServices[indexPath.item];
-
-
 }
 
-- (void)serviceCellDidTapDelete:(ServiceCollectionViewCell *)cell {
-    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
-    if (!indexPath) { NSLog(@"❌ MyServicesVC: nil indexPath in didTapDelete"); return; }
+- (void)PPUniversalCell_tapDelete:(PPUniversalCellViewModel *)universalModel {
+    NSIndexPath *indexPath = universalModel.indexPath;
+    if (!indexPath || indexPath.item >= (NSInteger)self.filteredServices.count) return;
     ServiceModel *service = self.filteredServices[indexPath.item];
 
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:(kLang(@"service_delete_title") ?: @"Delete Service")
@@ -219,17 +226,17 @@ static inline NSInteger PPServicesGridColumnCount(CGFloat width)
     [self presentViewController:alert animated:YES completion:nil];
 }
 
-- (void)serviceCellDidTapShare:(ServiceCollectionViewCell *)cell {
-    NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
-    if (!indexPath) { NSLog(@"❌ MyServicesVC: nil indexPath in didTapShare"); return; }
+- (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel {
+    NSIndexPath *indexPath = universalModel.indexPath;
+    if (!indexPath || indexPath.item >= (NSInteger)self.filteredServices.count) return;
     ServiceModel *service = self.filteredServices[indexPath.item];
     NSString *text = [NSString stringWithFormat:@"خدمة: %@\nالسعر: %.2f", service.title, service.price];
     UIActivityViewController *activity = [[UIActivityViewController alloc] initWithActivityItems:@[text] applicationActivities:nil];
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        activity.popoverPresentationController.sourceView = cell ?: self.view;
-        activity.popoverPresentationController.sourceRect = cell ? cell.bounds : CGRectMake(CGRectGetMidX(self.view.bounds),
-                                                                                            CGRectGetMidY(self.view.bounds),
-                                                                                            0, 0);
+        activity.popoverPresentationController.sourceView = self.view;
+        activity.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                                                        CGRectGetMidY(self.view.bounds),
+                                                                        0, 0);
         activity.popoverPresentationController.permittedArrowDirections = UIPopoverArrowDirectionAny;
     }
     [self presentViewController:activity animated:YES completion:nil];

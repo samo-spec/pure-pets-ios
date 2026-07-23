@@ -1,8 +1,5 @@
-
-
 #import "MainBannerModel.h"
 #import "PPChatsFunc.h"
-#import "PetAdoptCollectionViewCell.h"
 #import "PPUniversalCell.h"
 #import "PPBannerCollectionCell.h"
 #import "PPBannersCollection.h"
@@ -7973,7 +7970,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
      [self.collectionView registerClass:PPBannerCollectionCell.class forCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier];
-    [self.collectionView registerClass:PetAdoptCollectionViewCell.class forCellWithReuseIdentifier:@"PetAdoptCollectionViewCell"];
     [self.collectionView registerClass:UICollectionViewCell.class
             forCellWithReuseIdentifier:PPHomeOrderStatusCellIdentifier];
 
@@ -8389,14 +8385,22 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         */
 
             if (section == PPHomeSectionAdopt) {
-            PetAdoptCollectionViewCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:@"PetAdoptCollectionViewCell"
-                                                          forIndexPath:indexPath];
-
-            [cell configureWithTitle:kLang(@"home_adopt_title")
-                            subtitle:kLang(@"home_adopt_subtitle")
-                           seedImage:[UIImage imageNamed:@"icn_cat"]];
-
+            PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+            AdoptPetModel *adoptModel = [item.payload isKindOfClass:AdoptPetModel.class] ? (AdoptPetModel *)item.payload : nil;
+            if (adoptModel) {
+                PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:adoptModel context:PPCellForAdopt];
+                vm.indexPath = indexPath;
+                cell.delegate = self;
+                cell.showsSubtitle = YES;
+                cell.hideTopBadge = NO;
+                [cell applyViewModel:vm
+                             context:PPCellForAdopt
+                          layoutMode:PPCellLayoutModePinterest
+                        discountMode:PPDiscountStyleBadge
+                         imageLoader:^(UIImageView *iv, NSString *url, UIImage *ph, UIView *card) {
+                    if (url.length > 0) { [[PPImageLoaderManager shared] setImageOnImageView:iv url:url complation:nil]; }
+                }];
+            }
             pp_stageCell(cell); return cell;
         }
 

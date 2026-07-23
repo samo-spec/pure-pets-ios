@@ -89,16 +89,16 @@ public final class PPRootStore: ObservableObject {
     /// Adaptive safe-area-aware content clearance calculation (Fixes Risk #1).
     public var computedBottomContentClearance: CGFloat {
         if cartState.isVisible {
-            let baseBarHeight: CGFloat = cartState.isCollapsed ? 56.0 : 56.0
-            return ceil(baseBarHeight + 16.0 + 12.0)
+            let baseBarHeight: CGFloat = 56.0
+            return ceil(baseBarHeight + 12.0)
         }
         if isDockHidden || isExternallyHidden {
             return 0.0
         }
         if !useLegacyBar {
-            return ceil(bottomOverlayHeight > 0 ? bottomOverlayHeight + 12.0 : 88.0)
+            return ceil(bottomOverlayHeight > 0 ? bottomOverlayHeight + 8.0 : 64.0)
         }
-        return 12.0
+        return 8.0
     }
     
     // MARK: - State Mutations & Actions

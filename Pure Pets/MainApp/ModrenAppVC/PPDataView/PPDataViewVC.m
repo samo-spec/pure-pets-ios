@@ -4221,14 +4221,7 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
         CGFloat rootTargetBottomInset = ceil(rootClearance);
         targetBottomInset = MAX(targetBottomInset, rootTargetBottomInset);
     } else if (!resolvedBottomInsetFromNavigationFrame) {
-        CGFloat bottomInset = 0.0;
-        if (self.tabBarController &&
-            !self.tabBarController.tabBar.hidden &&
-            self.tabBarController.tabBar.alpha > 0.01) {
-            bottomInset += self.tabBarController.tabBar.bounds.size.height;
-        }
-        bottomInset += self.view.safeAreaInsets.bottom;
-        targetBottomInset = bottomInset + (fullDetails ? 0.0 : 16.0);
+        targetBottomInset = fullDetails ? 0.0 : 12.0;
     }
     UIEdgeInsets currentInset = self.collectionView.contentInset;
     CGFloat previousAdjustedTop = self.collectionView.adjustedContentInset.top;

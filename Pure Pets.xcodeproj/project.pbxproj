@@ -7,32 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000065 /* PPRootLegacyAdapter.m */; };
-		F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */; };
-		F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000069 /* PPRootObjCAdapter.swift */; };
-		F2E90000000000000000006C /* PPRootStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006B /* PPRootStore.swift */; };
-		F2E90000000000000000006E /* PPRootSwiftCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */; };
-		F2E900000000000000000074 /* PPRootFeatureFlag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000073 /* PPRootFeatureFlag.swift */; };
-		F2E900000000000000000076 /* PPBlockedAccountState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000075 /* PPBlockedAccountState.swift */; };
-		F2E900000000000000000078 /* PPCartFloatingBarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000077 /* PPCartFloatingBarState.swift */; };
-		F2E90000000000000000007A /* PPRootNovaState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000079 /* PPRootNovaState.swift */; };
-		F2E90000000000000000007C /* PPRootSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007B /* PPRootSessionState.swift */; };
-		F2E90000000000000000007E /* PPRootTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007D /* PPRootTab.swift */; };
-		F2E900000000000000000080 /* PPRootActionHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007F /* PPRootActionHandling.swift */; };
-		F2E900000000000000000082 /* PPRootParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000081 /* PPRootParityTests.swift */; };
-		F2E900000000000000000084 /* PPHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000083 /* PPHaptics.swift */; };
-		F2E900000000000000000086 /* PPBlockedAccountOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */; };
-		F2E900000000000000000088 /* PPCartFloatingBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000087 /* PPCartFloatingBarView.swift */; };
-		F2E90000000000000000008A /* PPLottieAnimationRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */; };
-		F2E90000000000000000008C /* PPRootAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008B /* PPRootAvatarView.swift */; };
-		F2E90000000000000000008E /* PPRootBottomOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008D /* PPRootBottomOverlayView.swift */; };
-		F2E900000000000000000090 /* PPRootDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008F /* PPRootDock.swift */; };
-		F2E900000000000000000092 /* PPRootDockItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000091 /* PPRootDockItem.swift */; };
-		F2E900000000000000000094 /* PPRootGuestProfileLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */; };
-		F2E900000000000000000096 /* PPRootNovaButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000095 /* PPRootNovaButton.swift */; };
-		F2E900000000000000000098 /* PPRootNovaLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000097 /* PPRootNovaLottieView.swift */; };
-		F2E90000000000000000009A /* PPRootPassthroughHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */; };
-		F2E90000000000000000009C /* PPRootPassthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000009B /* PPRootPassthroughView.swift */; };
 		020973329FED4C5E282FFD6C /* NovaSpeechSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21D44B1CD8666A784125689 /* NovaSpeechSpeaker.swift */; };
 		084CF1F2B02DD8B39A84295C /* NovaVoicePermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5B6BF9F08404B78BF10F774 /* NovaVoicePermissionManager.swift */; };
 		1196CF59786945545EB6FDDB /* ChatBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A83DC70A7020B60DBD910AC /* ChatBarView.swift */; };
@@ -110,7 +84,6 @@
 		F20CB1422EF50E1500CDD5AD /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = F20CB1412EF50E1500CDD5AD /* GoogleSignIn */; };
 		F20CB1532EF59D5D00CDD5AD /* PPSalesPDFGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F20CB1522EF59D5D00CDD5AD /* PPSalesPDFGenerator.m */; };
 		F20D112B2D376E4D00F8F0A5 /* ColorsAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F20D112A2D376E4D00F8F0A5 /* ColorsAssets.xcassets */; };
-		F20DBFC12F19BDDD0089D685 /* PPSimilarAdsView.m in Sources */ = {isa = PBXBuildFile; fileRef = F20DBFC02F19BDCB0089D685 /* PPSimilarAdsView.m */; };
 		F20DFEDF2EB2CB6D00318A8F /* PPAddressesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F20DFEDE2EB2CB6D00318A8F /* PPAddressesManager.m */; };
 		F20E9D6C2CF3193B00B810EB /* EmptyDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F20E9D662CF3193B00B810EB /* EmptyDataManager.m */; };
 		F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F20E9D642CF3193B00B810EB /* button_background_icloud_normal@2x.png */; };
@@ -288,7 +261,6 @@
 		F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F240BD432D74D237004DDA6A /* BarcodeGenerator.m */; };
 		F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C44D2E25354600CC9BE9 /* ServicesManager.m */; };
 		F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4512E254D3900CC9BE9 /* ServiceModel.m */; };
-		F241C4542E255B7100CC9BE9 /* ServiceCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4532E255B7100CC9BE9 /* ServiceCollectionViewCell.m */; };
 		F241C4582E255C6B00CC9BE9 /* CategoryModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4572E255C6B00CC9BE9 /* CategoryModel.m */; };
 		F241C45B2E257A2B00CC9BE9 /* MyServicesViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C45A2E257A2B00CC9BE9 /* MyServicesViewController.m */; };
 		F241C4622E26A05E00CC9BE9 /* VetModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C4612E26A05E00CC9BE9 /* VetModel.m */; };
@@ -434,7 +406,6 @@
 		F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */; };
 		F276D6082F13E94800782A13 /* ArabicNormalizer.m in Sources */ = {isa = PBXBuildFile; fileRef = F276D6072F13E94800782A13 /* ArabicNormalizer.m */; };
 		F276D60D2F14042600782A13 /* PPSearchHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F276D60C2F14042600782A13 /* PPSearchHelper.m */; };
-		F276E5C42DE313B300926D56 /* ViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F276E5C32DE313B300926D56 /* ViewerVC.m */; };
 		F276E5C72DE314E400926D56 /* PetImageGalleryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F276E5C62DE314D000926D56 /* PetImageGalleryView.m */; };
 		F276E5CA2DE3363E00926D56 /* FavoriteButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F276E5C92DE3363E00926D56 /* FavoriteButton.m */; };
 		F276E5CD2DE383D500926D56 /* ButtonsContainerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F276E5CC2DE383D500926D56 /* ButtonsContainerView.m */; };
@@ -531,7 +502,6 @@
 		F28CB3842E4C6735009DD547 /* AdoptPetManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3832E4C6735009DD547 /* AdoptPetManager.m */; };
 		F28CB3872E4C67B5009DD547 /* HXPhotosFormCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3862E4C67A5009DD547 /* HXPhotosFormCell.m */; };
 		F28CB38A2E4C685C009DD547 /* AddAdoptPetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */; };
-		F28CB38D2E4C6871009DD547 /* AdoptPetCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB38C2E4C6871009DD547 /* AdoptPetCell.m */; };
 		F28CB3902E4C68A6009DD547 /* AdoptPetsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */; };
 		F28CB3932E4C68D7009DD547 /* AdoptPetDetailsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */; };
 		F28CB3962E4C9749009DD547 /* OptionTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28CB3952E4C973A009DD547 /* OptionTableViewCell.m */; };
@@ -554,6 +524,52 @@
 		F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2916F0F2D54C6B600FF0394 /* PopupPickerView.m */; };
 		F291F51B2D71361E00A2B971 /* LBHamburgerButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */; };
 		F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */; };
+		F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */; };
+		F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */; };
+		F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */; };
+		F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */; };
+		F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */; };
+		F294A79E301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78F301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */; };
+		F294A79F301232DD005EFBC7 /* PPPetAdRelatedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */; };
+		F294A7A0301232DD005EFBC7 /* PPPetAdViewerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */; };
+		F294A7A1301232DD005EFBC7 /* PPPetAdViewerActionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */; };
+		F294A7A2301232DD005EFBC7 /* PPPetAdVideoState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A782301232DD005EFBC7 /* PPPetAdVideoState.swift */; };
+		F294A7A3301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */; };
+		F294A7A4301232DD005EFBC7 /* PPPetAdImageLoadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */; };
+		F294A7A5301232DD005EFBC7 /* PPPetAdViewerScreenState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */; };
+		F294A7A6301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */; };
+		F294A7A7301232DD005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A775301232DD005EFBC7 /* PPPetAdMediaViewerScreen.swift */; };
+		F294A7A8301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A771301232DD005EFBC7 /* PPPetAdInfoPillView.swift */; };
+		F294A7A9301232DD005EFBC7 /* PPPetAdRemoteImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */; };
+		F294A7AA301232DD005EFBC7 /* PPPetAdInlineStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */; };
+		F294A7AB301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76B301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */; };
+		F294A7AC301232DD005EFBC7 /* PPPetAdMediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */; };
+		F294A7AD301232DD005EFBC7 /* PPPetAdViewerSectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */; };
+		F294A7AE301232DD005EFBC7 /* PPPetAdOwner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A776301232DD005EFBC7 /* PPPetAdOwner.swift */; };
+		F294A7AF301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76C301232DD005EFBC7 /* PPPetAdHeaderCard.swift */; };
+		F294A7B0301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F294A78C301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m */; };
+		F294A7B1301232DD005EFBC7 /* PPPetAdViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A789301232DD005EFBC7 /* PPPetAdViewerHostingController.swift */; };
+		F294A7B2301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A770301232DD005EFBC7 /* PPPetAdInfoGrid.swift */; };
+		F294A7B3301232DD005EFBC7 /* PPPetAdViewerInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78A301232DD005EFBC7 /* PPPetAdViewerInteraction.swift */; };
+		F294A7B4301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */; };
+		F294A7B5301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A769301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift */; };
+		F294A7B6301232DD005EFBC7 /* PPPetAdViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A796301232DD005EFBC7 /* PPPetAdViewerStore.swift */; };
+		F294A7B7301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77B301232DD005EFBC7 /* PPPetAdRelatedSection.swift */; };
+		F294A7B8301232DD005EFBC7 /* PPPetAdLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */; };
+		F294A7B9301232DD005EFBC7 /* PPPetAdHeroGallery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */; };
+		F294A7BA301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */; };
+		F294A7BB301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77E301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift */; };
+		F294A7BC301232DD005EFBC7 /* PPPetAdRelatedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A778301232DD005EFBC7 /* PPPetAdRelatedCard.swift */; };
+		F294A7BD301232DD005EFBC7 /* PPPetAdViewerHostActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */; };
+		F294A7BE301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A777301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift */; };
+		F294A7BF301232DD005EFBC7 /* PPPetAdVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */; };
+		F294A7C0301232DD005EFBC7 /* PPPetAdVideoPlayerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A781301232DD005EFBC7 /* PPPetAdVideoPlayerModel.swift */; };
+		F294A7C1301232DD005EFBC7 /* PPPetAdToastView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77F301232DD005EFBC7 /* PPPetAdToastView.swift */; };
+		F294A7C2301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76A301232DD005EFBC7 /* PPPetAdContactCard.swift */; };
+		F294A7C3301232DD005EFBC7 /* PPPetAdTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A780301232DD005EFBC7 /* PPPetAdTypography.swift */; };
+		F294A7C4301232DD005EFBC7 /* PPPetAdZoomableImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A797301232DD005EFBC7 /* PPPetAdZoomableImageView.swift */; };
+		F294A7C5301232DD005EFBC7 /* PPPetAdReportReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77D301232DD005EFBC7 /* PPPetAdReportReason.swift */; };
+		F294A7C6301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78D301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift */; };
 		F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */; };
 		F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2957C292EEF424F00006CB3 /* TrashManager.m */; };
 		F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D562E4ABAC7003A7005 /* SearchResultItem.m */; };
@@ -783,10 +799,35 @@
 		F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E78D682F187DA300C5AE68 /* PPAdSharingHelper.m */; };
 		F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E7C8102D7D5584002383C2 /* ArchivesManager.m */; };
 		F2E8B7CE2E5381CF00B88C38 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E8B7CD2E5381CF00B88C38 /* Utils.m */; };
+		F2E900000000000000000066 /* PPRootLegacyAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000065 /* PPRootLegacyAdapter.m */; };
+		F2E900000000000000000068 /* PPRootNavigationDelegateProxy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */; };
+		F2E90000000000000000006A /* PPRootObjCAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000069 /* PPRootObjCAdapter.swift */; };
+		F2E90000000000000000006C /* PPRootStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006B /* PPRootStore.swift */; };
+		F2E90000000000000000006E /* PPRootSwiftCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */; };
+		F2E900000000000000000074 /* PPRootFeatureFlag.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000073 /* PPRootFeatureFlag.swift */; };
+		F2E900000000000000000076 /* PPBlockedAccountState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000075 /* PPBlockedAccountState.swift */; };
+		F2E900000000000000000078 /* PPCartFloatingBarState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000077 /* PPCartFloatingBarState.swift */; };
+		F2E90000000000000000007A /* PPRootNovaState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000079 /* PPRootNovaState.swift */; };
+		F2E90000000000000000007C /* PPRootSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007B /* PPRootSessionState.swift */; };
+		F2E90000000000000000007E /* PPRootTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007D /* PPRootTab.swift */; };
+		F2E900000000000000000080 /* PPRootActionHandling.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000007F /* PPRootActionHandling.swift */; };
+		F2E900000000000000000082 /* PPRootParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000081 /* PPRootParityTests.swift */; };
+		F2E900000000000000000084 /* PPHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000083 /* PPHaptics.swift */; };
+		F2E900000000000000000086 /* PPBlockedAccountOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */; };
+		F2E900000000000000000088 /* PPCartFloatingBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000087 /* PPCartFloatingBarView.swift */; };
+		F2E90000000000000000008A /* PPLottieAnimationRepresentable.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */; };
+		F2E90000000000000000008C /* PPRootAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008B /* PPRootAvatarView.swift */; };
+		F2E90000000000000000008E /* PPRootBottomOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008D /* PPRootBottomOverlayView.swift */; };
+		F2E900000000000000000090 /* PPRootDock.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000008F /* PPRootDock.swift */; };
+		F2E900000000000000000092 /* PPRootDockItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000091 /* PPRootDockItem.swift */; };
+		F2E900000000000000000094 /* PPRootGuestProfileLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */; };
+		F2E900000000000000000096 /* PPRootNovaButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000095 /* PPRootNovaButton.swift */; };
+		F2E900000000000000000098 /* PPRootNovaLottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000097 /* PPRootNovaLottieView.swift */; };
+		F2E90000000000000000009A /* PPRootPassthroughHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */; };
+		F2E90000000000000000009C /* PPRootPassthroughView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2E90000000000000000009B /* PPRootPassthroughView.swift */; };
 		F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E981EE2CBFD2A7005411D0 /* CountryCodeModel.m */; };
 		F2EAA0672FA9951C00E34CCD /* PPNovaChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */; };
 		F2EB74302E48EABF00A31008 /* UIButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB742F2E48EABF00A31008 /* UIButton.m */; };
-		F2EB74332E4903EA00A31008 /* PetAdoptCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB74322E4903EA00A31008 /* PetAdoptCollectionViewCell.m */; };
 		F2EB80672E863B68005E9ABD /* RNFrostedSidebar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB80662E863B68005E9ABD /* RNFrostedSidebar.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2EBDA362E469A6100BF3B8B /* MainKindsArrayManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EBDA352E469A6100BF3B8B /* MainKindsArrayManager.m */; };
 		F2EC65642D32432B004A58BD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = F2EC65622D32432B004A58BD /* Localizable.strings */; };
@@ -887,37 +928,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		F2E900000000000000000064 /* PPRootLegacyAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRootLegacyAdapter.h; sourceTree = "<group>"; };
-		F2E900000000000000000065 /* PPRootLegacyAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootLegacyAdapter.m; sourceTree = "<group>"; };
-		F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNavigationDelegateProxy.swift; sourceTree = "<group>"; };
-		F2E900000000000000000069 /* PPRootObjCAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootObjCAdapter.swift; sourceTree = "<group>"; };
-		F2E90000000000000000006B /* PPRootStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootStore.swift; sourceTree = "<group>"; };
-		F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSwiftCoordinator.swift; sourceTree = "<group>"; };
-		F2E90000000000000000006F /* PPRootBuildReadinessReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootBuildReadinessReport.md; sourceTree = "<group>"; };
-		F2E900000000000000000070 /* PPRootDependencyReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootDependencyReport.md; sourceTree = "<group>"; };
-		F2E900000000000000000071 /* PPRootIntegrationGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootIntegrationGuide.md; sourceTree = "<group>"; };
-		F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootLegacyParityMatrix.md; sourceTree = "<group>"; };
-		F2E900000000000000000073 /* PPRootFeatureFlag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootFeatureFlag.swift; sourceTree = "<group>"; };
-		F2E900000000000000000075 /* PPBlockedAccountState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountState.swift; sourceTree = "<group>"; };
-		F2E900000000000000000077 /* PPCartFloatingBarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarState.swift; sourceTree = "<group>"; };
-		F2E900000000000000000079 /* PPRootNovaState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaState.swift; sourceTree = "<group>"; };
-		F2E90000000000000000007B /* PPRootSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSessionState.swift; sourceTree = "<group>"; };
-		F2E90000000000000000007D /* PPRootTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootTab.swift; sourceTree = "<group>"; };
-		F2E90000000000000000007F /* PPRootActionHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootActionHandling.swift; sourceTree = "<group>"; };
-		F2E900000000000000000081 /* PPRootParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootParityTests.swift; sourceTree = "<group>"; };
-		F2E900000000000000000083 /* PPHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHaptics.swift; sourceTree = "<group>"; };
-		F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountOverlayView.swift; sourceTree = "<group>"; };
-		F2E900000000000000000087 /* PPCartFloatingBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarView.swift; sourceTree = "<group>"; };
-		F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPLottieAnimationRepresentable.swift; sourceTree = "<group>"; };
-		F2E90000000000000000008B /* PPRootAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootAvatarView.swift; sourceTree = "<group>"; };
-		F2E90000000000000000008D /* PPRootBottomOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootBottomOverlayView.swift; sourceTree = "<group>"; };
-		F2E90000000000000000008F /* PPRootDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDock.swift; sourceTree = "<group>"; };
-		F2E900000000000000000091 /* PPRootDockItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDockItem.swift; sourceTree = "<group>"; };
-		F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootGuestProfileLottieView.swift; sourceTree = "<group>"; };
-		F2E900000000000000000095 /* PPRootNovaButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaButton.swift; sourceTree = "<group>"; };
-		F2E900000000000000000097 /* PPRootNovaLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaLottieView.swift; sourceTree = "<group>"; };
-		F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughHostingController.swift; sourceTree = "<group>"; };
-		F2E90000000000000000009B /* PPRootPassthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughView.swift; sourceTree = "<group>"; };
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
@@ -1035,8 +1045,6 @@
 		F20CB1512EF59D5300CDD5AD /* PPSalesPDFGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSalesPDFGenerator.h; sourceTree = "<group>"; };
 		F20CB1522EF59D5D00CDD5AD /* PPSalesPDFGenerator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSalesPDFGenerator.m; sourceTree = "<group>"; };
 		F20D112A2D376E4D00F8F0A5 /* ColorsAssets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = ColorsAssets.xcassets; sourceTree = "<group>"; };
-		F20DBFBF2F19BCA00089D685 /* PPSimilarAdsView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSimilarAdsView.h; sourceTree = "<group>"; };
-		F20DBFC02F19BDCB0089D685 /* PPSimilarAdsView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSimilarAdsView.m; sourceTree = "<group>"; };
 		F20DFEDD2EB2CB6100318A8F /* PPAddressesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAddressesManager.h; sourceTree = "<group>"; };
 		F20DFEDE2EB2CB6D00318A8F /* PPAddressesManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAddressesManager.m; sourceTree = "<group>"; };
 		F20E9D612CF3193B00B810EB /* button_background_icloud_highlight.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = button_background_icloud_highlight.png; sourceTree = "<group>"; };
@@ -1380,8 +1388,6 @@
 		F241C44D2E25354600CC9BE9 /* ServicesManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServicesManager.m; sourceTree = "<group>"; };
 		F241C4502E254D2D00CC9BE9 /* ServiceModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceModel.h; sourceTree = "<group>"; };
 		F241C4512E254D3900CC9BE9 /* ServiceModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServiceModel.m; sourceTree = "<group>"; };
-		F241C4532E255B7100CC9BE9 /* ServiceCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServiceCollectionViewCell.m; sourceTree = "<group>"; };
-		F241C4552E255B7900CC9BE9 /* ServiceCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceCollectionViewCell.h; sourceTree = "<group>"; };
 		F241C4562E255C5F00CC9BE9 /* CategoryModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CategoryModel.h; sourceTree = "<group>"; };
 		F241C4572E255C6B00CC9BE9 /* CategoryModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CategoryModel.m; sourceTree = "<group>"; };
 		F241C4592E257A2B00CC9BE9 /* MyServicesViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyServicesViewController.h; sourceTree = "<group>"; };
@@ -1644,8 +1650,6 @@
 		F276D6072F13E94800782A13 /* ArabicNormalizer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArabicNormalizer.m; sourceTree = "<group>"; };
 		F276D60B2F14042600782A13 /* PPSearchHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchHelper.h; sourceTree = "<group>"; };
 		F276D60C2F14042600782A13 /* PPSearchHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchHelper.m; sourceTree = "<group>"; };
-		F276E5C22DE313B300926D56 /* ViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewerVC.h; sourceTree = "<group>"; };
-		F276E5C32DE313B300926D56 /* ViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ViewerVC.m; sourceTree = "<group>"; };
 		F276E5C52DE314BF00926D56 /* PetImageGalleryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetImageGalleryView.h; sourceTree = "<group>"; };
 		F276E5C62DE314D000926D56 /* PetImageGalleryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetImageGalleryView.m; sourceTree = "<group>"; };
 		F276E5C82DE3362500926D56 /* FavoriteButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FavoriteButton.h; sourceTree = "<group>"; };
@@ -1833,8 +1837,6 @@
 		F28CB3862E4C67A5009DD547 /* HXPhotosFormCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotosFormCell.m; sourceTree = "<group>"; };
 		F28CB3882E4C683F009DD547 /* AddAdoptPetViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddAdoptPetViewController.h; sourceTree = "<group>"; };
 		F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddAdoptPetViewController.m; sourceTree = "<group>"; };
-		F28CB38B2E4C686B009DD547 /* AdoptPetCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AdoptPetCell.h; sourceTree = "<group>"; };
-		F28CB38C2E4C6871009DD547 /* AdoptPetCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AdoptPetCell.m; sourceTree = "<group>"; };
 		F28CB38E2E4C6885009DD547 /* AdoptPetsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AdoptPetsViewController.h; sourceTree = "<group>"; };
 		F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AdoptPetsViewController.m; sourceTree = "<group>"; };
 		F28CB3912E4C68B2009DD547 /* AdoptPetDetailsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AdoptPetDetailsViewController.h; sourceTree = "<group>"; };
@@ -1876,6 +1878,53 @@
 		F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LBHamburgerButton.m; sourceTree = "<group>"; };
 		F293B2182F1BE612001F0831 /* PPChatHeaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatHeaderView.h; sourceTree = "<group>"; };
 		F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatHeaderView.m; sourceTree = "<group>"; };
+		F294A769301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPLegacyPetAdViewerRepository.swift; sourceTree = "<group>"; };
+		F294A76A301232DD005EFBC7 /* PPPetAdContactCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdContactCard.swift; sourceTree = "<group>"; };
+		F294A76B301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdDescriptionCard.swift; sourceTree = "<group>"; };
+		F294A76C301232DD005EFBC7 /* PPPetAdHeaderCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdHeaderCard.swift; sourceTree = "<group>"; };
+		F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdHeroGallery.swift; sourceTree = "<group>"; };
+		F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdImageLoader.swift; sourceTree = "<group>"; };
+		F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdImageLoadState.swift; sourceTree = "<group>"; };
+		F294A770301232DD005EFBC7 /* PPPetAdInfoGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoGrid.swift; sourceTree = "<group>"; };
+		F294A771301232DD005EFBC7 /* PPPetAdInfoPillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoPillView.swift; sourceTree = "<group>"; };
+		F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInlineStateView.swift; sourceTree = "<group>"; };
+		F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdLocalization.swift; sourceTree = "<group>"; };
+		F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaItem.swift; sourceTree = "<group>"; };
+		F294A775301232DD005EFBC7 /* PPPetAdMediaViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaViewerScreen.swift; sourceTree = "<group>"; };
+		F294A776301232DD005EFBC7 /* PPPetAdOwner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdOwner.swift; sourceTree = "<group>"; };
+		F294A777301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdPressButtonStyle.swift; sourceTree = "<group>"; };
+		F294A778301232DD005EFBC7 /* PPPetAdRelatedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedCard.swift; sourceTree = "<group>"; };
+		F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedItem.swift; sourceTree = "<group>"; };
+		F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedItemKind.swift; sourceTree = "<group>"; };
+		F294A77B301232DD005EFBC7 /* PPPetAdRelatedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedSection.swift; sourceTree = "<group>"; };
+		F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRemoteImageView.swift; sourceTree = "<group>"; };
+		F294A77D301232DD005EFBC7 /* PPPetAdReportReason.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdReportReason.swift; sourceTree = "<group>"; };
+		F294A77E301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdScrollOffsetPreferenceKey.swift; sourceTree = "<group>"; };
+		F294A77F301232DD005EFBC7 /* PPPetAdToastView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdToastView.swift; sourceTree = "<group>"; };
+		F294A780301232DD005EFBC7 /* PPPetAdTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdTypography.swift; sourceTree = "<group>"; };
+		F294A781301232DD005EFBC7 /* PPPetAdVideoPlayerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdVideoPlayerModel.swift; sourceTree = "<group>"; };
+		F294A782301232DD005EFBC7 /* PPPetAdVideoState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdVideoState.swift; sourceTree = "<group>"; };
+		F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdVideoView.swift; sourceTree = "<group>"; };
+		F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerActionState.swift; sourceTree = "<group>"; };
+		F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerBackground.swift; sourceTree = "<group>"; };
+		F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerEmptyStateView.swift; sourceTree = "<group>"; };
+		F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerErrorStateView.swift; sourceTree = "<group>"; };
+		F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerHostActions.swift; sourceTree = "<group>"; };
+		F294A789301232DD005EFBC7 /* PPPetAdViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerHostingController.swift; sourceTree = "<group>"; };
+		F294A78A301232DD005EFBC7 /* PPPetAdViewerInteraction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerInteraction.swift; sourceTree = "<group>"; };
+		F294A78B301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetAdViewerLegacyBridge.h; sourceTree = "<group>"; };
+		F294A78C301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetAdViewerLegacyBridge.m; sourceTree = "<group>"; };
+		F294A78D301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerLoadingStateView.swift; sourceTree = "<group>"; };
+		F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerMotion.swift; sourceTree = "<group>"; };
+		F294A78F301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationBar.swift; sourceTree = "<group>"; };
+		F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationRoot.swift; sourceTree = "<group>"; };
+		F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerRepository.swift; sourceTree = "<group>"; };
+		F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreen.swift; sourceTree = "<group>"; };
+		F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreenState.swift; sourceTree = "<group>"; };
+		F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSectionState.swift; sourceTree = "<group>"; };
+		F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSnapshot.swift; sourceTree = "<group>"; };
+		F294A796301232DD005EFBC7 /* PPPetAdViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerStore.swift; sourceTree = "<group>"; };
+		F294A797301232DD005EFBC7 /* PPPetAdZoomableImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdZoomableImageView.swift; sourceTree = "<group>"; };
 		F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyPremiumCardCell.h; sourceTree = "<group>"; };
 		F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyPremiumCardCell.m; sourceTree = "<group>"; };
 		F2957C282EEF424600006CB3 /* TrashManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrashManager.h; sourceTree = "<group>"; };
@@ -2327,6 +2376,37 @@
 		F2E7C8122D7D5592002383C2 /* ArchivesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchivesManager.h; sourceTree = "<group>"; };
 		F2E8B7CC2E5381C900B88C38 /* Utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Utils.h; sourceTree = "<group>"; };
 		F2E8B7CD2E5381CF00B88C38 /* Utils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
+		F2E900000000000000000064 /* PPRootLegacyAdapter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRootLegacyAdapter.h; sourceTree = "<group>"; };
+		F2E900000000000000000065 /* PPRootLegacyAdapter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootLegacyAdapter.m; sourceTree = "<group>"; };
+		F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNavigationDelegateProxy.swift; sourceTree = "<group>"; };
+		F2E900000000000000000069 /* PPRootObjCAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootObjCAdapter.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006B /* PPRootStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootStore.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSwiftCoordinator.swift; sourceTree = "<group>"; };
+		F2E90000000000000000006F /* PPRootBuildReadinessReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootBuildReadinessReport.md; sourceTree = "<group>"; };
+		F2E900000000000000000070 /* PPRootDependencyReport.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootDependencyReport.md; sourceTree = "<group>"; };
+		F2E900000000000000000071 /* PPRootIntegrationGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootIntegrationGuide.md; sourceTree = "<group>"; };
+		F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PPRootLegacyParityMatrix.md; sourceTree = "<group>"; };
+		F2E900000000000000000073 /* PPRootFeatureFlag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootFeatureFlag.swift; sourceTree = "<group>"; };
+		F2E900000000000000000075 /* PPBlockedAccountState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountState.swift; sourceTree = "<group>"; };
+		F2E900000000000000000077 /* PPCartFloatingBarState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarState.swift; sourceTree = "<group>"; };
+		F2E900000000000000000079 /* PPRootNovaState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaState.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007B /* PPRootSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootSessionState.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007D /* PPRootTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootTab.swift; sourceTree = "<group>"; };
+		F2E90000000000000000007F /* PPRootActionHandling.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootActionHandling.swift; sourceTree = "<group>"; };
+		F2E900000000000000000081 /* PPRootParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootParityTests.swift; sourceTree = "<group>"; };
+		F2E900000000000000000083 /* PPHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHaptics.swift; sourceTree = "<group>"; };
+		F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPBlockedAccountOverlayView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000087 /* PPCartFloatingBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCartFloatingBarView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPLottieAnimationRepresentable.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008B /* PPRootAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootAvatarView.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008D /* PPRootBottomOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootBottomOverlayView.swift; sourceTree = "<group>"; };
+		F2E90000000000000000008F /* PPRootDock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDock.swift; sourceTree = "<group>"; };
+		F2E900000000000000000091 /* PPRootDockItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootDockItem.swift; sourceTree = "<group>"; };
+		F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootGuestProfileLottieView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000095 /* PPRootNovaButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaButton.swift; sourceTree = "<group>"; };
+		F2E900000000000000000097 /* PPRootNovaLottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootNovaLottieView.swift; sourceTree = "<group>"; };
+		F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughHostingController.swift; sourceTree = "<group>"; };
+		F2E90000000000000000009B /* PPRootPassthroughView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPRootPassthroughView.swift; sourceTree = "<group>"; };
 		F2E981ED2CBFD2A7005411D0 /* CountryCodeModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CountryCodeModel.h; sourceTree = "<group>"; };
 		F2E981EE2CBFD2A7005411D0 /* CountryCodeModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CountryCodeModel.m; sourceTree = "<group>"; };
 		F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaChatViewController.h; sourceTree = "<group>"; };
@@ -2334,8 +2414,6 @@
 		F2EAAC432C5883D700870525 /* Pure Pets-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Pure Pets-Bridging-Header.h"; sourceTree = "<group>"; };
 		F2EB742E2E48EAB300A31008 /* UIButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIButton.h; sourceTree = "<group>"; };
 		F2EB742F2E48EABF00A31008 /* UIButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIButton.m; sourceTree = "<group>"; };
-		F2EB74312E4903E000A31008 /* PetAdoptCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetAdoptCollectionViewCell.h; sourceTree = "<group>"; };
-		F2EB74322E4903EA00A31008 /* PetAdoptCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAdoptCollectionViewCell.m; sourceTree = "<group>"; };
 		F2EB80652E863B68005E9ABD /* RNFrostedSidebar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RNFrostedSidebar.h; sourceTree = "<group>"; };
 		F2EB80662E863B68005E9ABD /* RNFrostedSidebar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RNFrostedSidebar.m; sourceTree = "<group>"; };
 		F2EBDA342E469A4F00BF3B8B /* MainKindsArrayManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainKindsArrayManager.h; sourceTree = "<group>"; };
@@ -2474,116 +2552,6 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		F2E90000000000000000009D /* Adapters */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000064 /* PPRootLegacyAdapter.h */,
-				F2E900000000000000000065 /* PPRootLegacyAdapter.m */,
-				F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */,
-				F2E900000000000000000069 /* PPRootObjCAdapter.swift */,
-			);
-			path = Adapters;
-			sourceTree = "<group>";
-		};
-		F2E90000000000000000009E /* Coordinator */ = {
-			isa = PBXGroup;
-			children = (
-				F2E90000000000000000006B /* PPRootStore.swift */,
-				F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */,
-			);
-			path = Coordinator;
-			sourceTree = "<group>";
-		};
-		F2E90000000000000000009F /* Documentation */ = {
-			isa = PBXGroup;
-			children = (
-				F2E90000000000000000006F /* PPRootBuildReadinessReport.md */,
-				F2E900000000000000000070 /* PPRootDependencyReport.md */,
-				F2E900000000000000000071 /* PPRootIntegrationGuide.md */,
-				F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */,
-			);
-			path = Documentation;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A0 /* FeatureFlag */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000073 /* PPRootFeatureFlag.swift */,
-			);
-			path = FeatureFlag;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A1 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000075 /* PPBlockedAccountState.swift */,
-				F2E900000000000000000077 /* PPCartFloatingBarState.swift */,
-				F2E900000000000000000079 /* PPRootNovaState.swift */,
-				F2E90000000000000000007B /* PPRootSessionState.swift */,
-				F2E90000000000000000007D /* PPRootTab.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A2 /* Protocols */ = {
-			isa = PBXGroup;
-			children = (
-				F2E90000000000000000007F /* PPRootActionHandling.swift */,
-			);
-			path = Protocols;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A3 /* Tests */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000081 /* PPRootParityTests.swift */,
-			);
-			path = Tests;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A4 /* Utilities */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000083 /* PPHaptics.swift */,
-			);
-			path = Utilities;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A5 /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */,
-				F2E900000000000000000087 /* PPCartFloatingBarView.swift */,
-				F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */,
-				F2E90000000000000000008B /* PPRootAvatarView.swift */,
-				F2E90000000000000000008D /* PPRootBottomOverlayView.swift */,
-				F2E90000000000000000008F /* PPRootDock.swift */,
-				F2E900000000000000000091 /* PPRootDockItem.swift */,
-				F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */,
-				F2E900000000000000000095 /* PPRootNovaButton.swift */,
-				F2E900000000000000000097 /* PPRootNovaLottieView.swift */,
-				F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */,
-				F2E90000000000000000009B /* PPRootPassthroughView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		F2E9000000000000000000A6 /* SwiftUIRoot */ = {
-			isa = PBXGroup;
-			children = (
-				F2E90000000000000000009D /* Adapters */,
-				F2E90000000000000000009E /* Coordinator */,
-				F2E90000000000000000009F /* Documentation */,
-				F2E9000000000000000000A0 /* FeatureFlag */,
-				F2E9000000000000000000A1 /* Models */,
-				F2E9000000000000000000A2 /* Protocols */,
-				F2E9000000000000000000A3 /* Tests */,
-				F2E9000000000000000000A4 /* Utilities */,
-				F2E9000000000000000000A5 /* Views */,
-			);
-			path = SwiftUIRoot;
-			sourceTree = "<group>";
-		};
 		07D577F1CC0A3CD1744A9EF3 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
@@ -3453,8 +3421,6 @@
 				F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */,
 				F241C4572E255C6B00CC9BE9 /* CategoryModel.m */,
 				F241C4562E255C5F00CC9BE9 /* CategoryModel.h */,
-				F241C4552E255B7900CC9BE9 /* ServiceCollectionViewCell.h */,
-				F241C4532E255B7100CC9BE9 /* ServiceCollectionViewCell.m */,
 				F241C4502E254D2D00CC9BE9 /* ServiceModel.h */,
 				F241C4512E254D3900CC9BE9 /* ServiceModel.m */,
 				F241C44C2E25353D00CC9BE9 /* ServicesManager.h */,
@@ -4266,16 +4232,12 @@
 				F28CB3922E4C68C1009DD547 /* AdoptPetDetailsViewController.m */,
 				F28CB38E2E4C6885009DD547 /* AdoptPetsViewController.h */,
 				F28CB38F2E4C688D009DD547 /* AdoptPetsViewController.m */,
-				F28CB38B2E4C686B009DD547 /* AdoptPetCell.h */,
-				F28CB38C2E4C6871009DD547 /* AdoptPetCell.m */,
 				F28CB3882E4C683F009DD547 /* AddAdoptPetViewController.h */,
 				F28CB3892E4C6849009DD547 /* AddAdoptPetViewController.m */,
 				F28CB3822E4C6728009DD547 /* AdoptPetManager.h */,
 				F28CB3832E4C6735009DD547 /* AdoptPetManager.m */,
 				F28CB37D2E4C66DF009DD547 /* AdoptPetModel.h */,
 				F28CB3802E4C671C009DD547 /* AdoptPetModel.m */,
-				F2EB74312E4903E000A31008 /* PetAdoptCollectionViewCell.h */,
-				F2EB74322E4903EA00A31008 /* PetAdoptCollectionViewCell.m */,
 			);
 			path = AdoptPet;
 			sourceTree = "<group>";
@@ -4333,6 +4295,60 @@
 				F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */,
 			);
 			path = helpers;
+			sourceTree = "<group>";
+		};
+		F294A798301232DD005EFBC7 /* SwiftUI */ = {
+			isa = PBXGroup;
+			children = (
+				F294A769301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift */,
+				F294A76A301232DD005EFBC7 /* PPPetAdContactCard.swift */,
+				F294A76B301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */,
+				F294A76C301232DD005EFBC7 /* PPPetAdHeaderCard.swift */,
+				F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */,
+				F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */,
+				F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */,
+				F294A770301232DD005EFBC7 /* PPPetAdInfoGrid.swift */,
+				F294A771301232DD005EFBC7 /* PPPetAdInfoPillView.swift */,
+				F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */,
+				F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */,
+				F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */,
+				F294A775301232DD005EFBC7 /* PPPetAdMediaViewerScreen.swift */,
+				F294A776301232DD005EFBC7 /* PPPetAdOwner.swift */,
+				F294A777301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift */,
+				F294A778301232DD005EFBC7 /* PPPetAdRelatedCard.swift */,
+				F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */,
+				F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */,
+				F294A77B301232DD005EFBC7 /* PPPetAdRelatedSection.swift */,
+				F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */,
+				F294A77D301232DD005EFBC7 /* PPPetAdReportReason.swift */,
+				F294A77E301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift */,
+				F294A77F301232DD005EFBC7 /* PPPetAdToastView.swift */,
+				F294A780301232DD005EFBC7 /* PPPetAdTypography.swift */,
+				F294A781301232DD005EFBC7 /* PPPetAdVideoPlayerModel.swift */,
+				F294A782301232DD005EFBC7 /* PPPetAdVideoState.swift */,
+				F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */,
+				F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */,
+				F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */,
+				F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */,
+				F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */,
+				F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */,
+				F294A789301232DD005EFBC7 /* PPPetAdViewerHostingController.swift */,
+				F294A78A301232DD005EFBC7 /* PPPetAdViewerInteraction.swift */,
+				F294A78B301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.h */,
+				F294A78C301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m */,
+				F294A78D301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift */,
+				F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */,
+				F294A78F301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */,
+				F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */,
+				F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */,
+				F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */,
+				F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */,
+				F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */,
+				F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */,
+				F294A796301232DD005EFBC7 /* PPPetAdViewerStore.swift */,
+				F294A797301232DD005EFBC7 /* PPPetAdZoomableImageView.swift */,
+			);
+			path = SwiftUI;
 			sourceTree = "<group>";
 		};
 		F2977D542E4ABAA0003A7005 /* Search Controllers */ = {
@@ -5269,12 +5285,9 @@
 		F2E78D5E2F1812C800C5AE68 /* AdsViewer Files */ = {
 			isa = PBXGroup;
 			children = (
-				F20DBFBF2F19BCA00089D685 /* PPSimilarAdsView.h */,
-				F20DBFC02F19BDCB0089D685 /* PPSimilarAdsView.m */,
+				F294A798301232DD005EFBC7 /* SwiftUI */,
 				F2A25D732F195D5A00B5E0F6 /* PPInfoPillsView.h */,
 				F2A25D742F195D6600B5E0F6 /* PPInfoPillsView.m */,
-				F276E5C22DE313B300926D56 /* ViewerVC.h */,
-				F276E5C32DE313B300926D56 /* ViewerVC.m */,
 				F2E78D5F2F1812E100C5AE68 /* PPPetsTitleView.h */,
 				F2E78D602F18130900C5AE68 /* PPPetsTitleView.m */,
 			);
@@ -5331,6 +5344,116 @@
 				F2E33F5A3006C240005E31C6 /* OrderSupportFunc.h */,
 			);
 			path = CartAndOrdersFiles;
+			sourceTree = "<group>";
+		};
+		F2E90000000000000000009D /* Adapters */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000064 /* PPRootLegacyAdapter.h */,
+				F2E900000000000000000065 /* PPRootLegacyAdapter.m */,
+				F2E900000000000000000067 /* PPRootNavigationDelegateProxy.swift */,
+				F2E900000000000000000069 /* PPRootObjCAdapter.swift */,
+			);
+			path = Adapters;
+			sourceTree = "<group>";
+		};
+		F2E90000000000000000009E /* Coordinator */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000006B /* PPRootStore.swift */,
+				F2E90000000000000000006D /* PPRootSwiftCoordinator.swift */,
+			);
+			path = Coordinator;
+			sourceTree = "<group>";
+		};
+		F2E90000000000000000009F /* Documentation */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000006F /* PPRootBuildReadinessReport.md */,
+				F2E900000000000000000070 /* PPRootDependencyReport.md */,
+				F2E900000000000000000071 /* PPRootIntegrationGuide.md */,
+				F2E900000000000000000072 /* PPRootLegacyParityMatrix.md */,
+			);
+			path = Documentation;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A0 /* FeatureFlag */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000073 /* PPRootFeatureFlag.swift */,
+			);
+			path = FeatureFlag;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A1 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000075 /* PPBlockedAccountState.swift */,
+				F2E900000000000000000077 /* PPCartFloatingBarState.swift */,
+				F2E900000000000000000079 /* PPRootNovaState.swift */,
+				F2E90000000000000000007B /* PPRootSessionState.swift */,
+				F2E90000000000000000007D /* PPRootTab.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A2 /* Protocols */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000007F /* PPRootActionHandling.swift */,
+			);
+			path = Protocols;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A3 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000081 /* PPRootParityTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A4 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000083 /* PPHaptics.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A5 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				F2E900000000000000000085 /* PPBlockedAccountOverlayView.swift */,
+				F2E900000000000000000087 /* PPCartFloatingBarView.swift */,
+				F2E900000000000000000089 /* PPLottieAnimationRepresentable.swift */,
+				F2E90000000000000000008B /* PPRootAvatarView.swift */,
+				F2E90000000000000000008D /* PPRootBottomOverlayView.swift */,
+				F2E90000000000000000008F /* PPRootDock.swift */,
+				F2E900000000000000000091 /* PPRootDockItem.swift */,
+				F2E900000000000000000093 /* PPRootGuestProfileLottieView.swift */,
+				F2E900000000000000000095 /* PPRootNovaButton.swift */,
+				F2E900000000000000000097 /* PPRootNovaLottieView.swift */,
+				F2E900000000000000000099 /* PPRootPassthroughHostingController.swift */,
+				F2E90000000000000000009B /* PPRootPassthroughView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		F2E9000000000000000000A6 /* SwiftUIRoot */ = {
+			isa = PBXGroup;
+			children = (
+				F2E90000000000000000009D /* Adapters */,
+				F2E90000000000000000009E /* Coordinator */,
+				F2E90000000000000000009F /* Documentation */,
+				F2E9000000000000000000A0 /* FeatureFlag */,
+				F2E9000000000000000000A1 /* Models */,
+				F2E9000000000000000000A2 /* Protocols */,
+				F2E9000000000000000000A3 /* Tests */,
+				F2E9000000000000000000A4 /* Utilities */,
+				F2E9000000000000000000A5 /* Views */,
+			);
+			path = SwiftUIRoot;
 			sourceTree = "<group>";
 		};
 		F2EF8EDC2F87750700A797B3 /* ProfileCells */ = {
@@ -5763,7 +5886,6 @@
 				F2AB48D22C72D43D00D88603 /* KafkaArrowFooter.m in Sources */,
 				F2AB48CF2C72D43D00D88603 /* UIScrollView+KafkaRefreshControl.m in Sources */,
 				F2449C4C2D0F169B00DB6BBC /* subKindItemsModel.m in Sources */,
-				F276E5C42DE313B300926D56 /* ViewerVC.m in Sources */,
 				F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */,
 				F256E4E42FE0C70C004E1E2E /* PPUserMenuViewController.m in Sources */,
 				F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */,
@@ -5878,7 +6000,6 @@
 				F2A0BBC12F1F0BA4003715F0 /* ChatVideoMessageCell.m in Sources */,
 				F271468C2CCE6B5300F7F3BA /* XLFormBaseCell.m in Sources */,
 				F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */,
-				F241C4542E255B7100CC9BE9 /* ServiceCollectionViewCell.m in Sources */,
 				F2A0F5F22CC842D300B38F14 /* KBSwipeCell.m in Sources */,
 				F2DF5DD02EFC8E8F009C7B6F /* PPRootTabBarController.m in Sources */,
 				2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */,
@@ -5990,7 +6111,6 @@
 				F24D2AB42FABEF5B0015EC83 /* PPNovaReviewMessageCell.m in Sources */,
 				F20F31B62D177602001D1D57 /* NSDate+PGCategory.m in Sources */,
 				F2B790722DE5BD6000F8B03F /* DeepLinkRouter.m in Sources */,
-				F20DBFC12F19BDDD0089D685 /* PPSimilarAdsView.m in Sources */,
 				F20F31B72D177602001D1D57 /* PGDatePickerView.m in Sources */,
 				F28A09FE2EE772E900EE5055 /* YTScaledCenterCarouselPaginator.m in Sources */,
 				F28A09FF2EE772E900EE5055 /* YTScaledCenterCarouselLayout.m in Sources */,
@@ -6143,6 +6263,52 @@
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
+				F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */,
+				F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */,
+				F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */,
+				F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */,
+				F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */,
+				F294A79E301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */,
+				F294A79F301232DD005EFBC7 /* PPPetAdRelatedItem.swift in Sources */,
+				F294A7A0301232DD005EFBC7 /* PPPetAdViewerRepository.swift in Sources */,
+				F294A7A1301232DD005EFBC7 /* PPPetAdViewerActionState.swift in Sources */,
+				F294A7A2301232DD005EFBC7 /* PPPetAdVideoState.swift in Sources */,
+				F294A7A3301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */,
+				F294A7A4301232DD005EFBC7 /* PPPetAdImageLoadState.swift in Sources */,
+				F294A7A5301232DD005EFBC7 /* PPPetAdViewerScreenState.swift in Sources */,
+				F294A7A6301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift in Sources */,
+				F294A7A7301232DD005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */,
+				F294A7A8301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */,
+				F294A7A9301232DD005EFBC7 /* PPPetAdRemoteImageView.swift in Sources */,
+				F294A7AA301232DD005EFBC7 /* PPPetAdInlineStateView.swift in Sources */,
+				F294A7AB301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */,
+				F294A7AC301232DD005EFBC7 /* PPPetAdMediaItem.swift in Sources */,
+				F294A7AD301232DD005EFBC7 /* PPPetAdViewerSectionState.swift in Sources */,
+				F294A7AE301232DD005EFBC7 /* PPPetAdOwner.swift in Sources */,
+				F294A7AF301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */,
+				F294A7B0301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m in Sources */,
+				F294A7B1301232DD005EFBC7 /* PPPetAdViewerHostingController.swift in Sources */,
+				F294A7B2301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */,
+				F294A7B3301232DD005EFBC7 /* PPPetAdViewerInteraction.swift in Sources */,
+				F294A7B4301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift in Sources */,
+				F294A7B5301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift in Sources */,
+				F294A7B6301232DD005EFBC7 /* PPPetAdViewerStore.swift in Sources */,
+				F294A7B7301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */,
+				F294A7B8301232DD005EFBC7 /* PPPetAdLocalization.swift in Sources */,
+				F294A7B9301232DD005EFBC7 /* PPPetAdHeroGallery.swift in Sources */,
+				F294A7BA301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift in Sources */,
+				F294A7BB301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift in Sources */,
+				F294A7BC301232DD005EFBC7 /* PPPetAdRelatedCard.swift in Sources */,
+				F294A7BD301232DD005EFBC7 /* PPPetAdViewerHostActions.swift in Sources */,
+				F294A7BE301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift in Sources */,
+				F294A7BF301232DD005EFBC7 /* PPPetAdVideoView.swift in Sources */,
+				F294A7C0301232DD005EFBC7 /* PPPetAdVideoPlayerModel.swift in Sources */,
+				F294A7C1301232DD005EFBC7 /* PPPetAdToastView.swift in Sources */,
+				F294A7C2301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */,
+				F294A7C3301232DD005EFBC7 /* PPPetAdTypography.swift in Sources */,
+				F294A7C4301232DD005EFBC7 /* PPPetAdZoomableImageView.swift in Sources */,
+				F294A7C5301232DD005EFBC7 /* PPPetAdReportReason.swift in Sources */,
+				F294A7C6301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift in Sources */,
 				BA8D97649F694D6CA5D06B9F /* NovaAmbientAssistantView.swift in Sources */,
 				6DAB7F97AF31458C9A2A0E2E /* NovaAmbientAssistantCoordinator.swift in Sources */,
 				9FDD5D40097C4B31B8A083AE /* PPNovaAmbientAssistantChatBridge.m in Sources */,
@@ -6355,7 +6521,6 @@
 				F2E33F633006C485005E31C6 /* PPOrderProgressTimelineView.m in Sources */,
 				F260D3302C7B37B70098C8F0 /* UIScrollView+EmptyDataSet.m in Sources */,
 				F2CEC1022CB4682300E3B181 /* CCActivityHUD.m in Sources */,
-				F2EB74332E4903EA00A31008 /* PetAdoptCollectionViewCell.m in Sources */,
 				F2CEC1032CB4682300E3B181 /* UIImage+animatedGIF.m in Sources */,
 				F27FAE9B2D2F363200EA6B56 /* JPVideoPlayerScrollViewProtocol.m in Sources */,
 				F27FAE9C2D2F363200EA6B56 /* JPVideoPlayerCompat.m in Sources */,
@@ -6416,7 +6581,6 @@
 				F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */,
 				F2EB80672E863B68005E9ABD /* RNFrostedSidebar.m in Sources */,
 				F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */,
-				F28CB38D2E4C6871009DD547 /* AdoptPetCell.m in Sources */,
 				F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */,
 				F260D32C2C7B36EF0098C8F0 /* FOREmptyAssistantConfiger.m in Sources */,
 				F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */,

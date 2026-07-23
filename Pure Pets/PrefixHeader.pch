@@ -220,7 +220,7 @@
 #import "ProfileVC.h"
 #import "SettingVC.h"
 #import "SalesVCViewController.h"
-#import "ViewerVC.h"
+#import "PPPetAdViewerLegacyBridge.h"
 #import "MyItemsViewController.h"
 #import "MyServicesViewController.h"
 #import "ServiceViewerViewController.h"

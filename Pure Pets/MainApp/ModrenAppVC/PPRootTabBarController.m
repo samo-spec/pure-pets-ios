@@ -35,7 +35,7 @@
 #import "CartManager.h"
 #import "PPBottomSurfaceCoordinator.h"
 #import "UIViewController+PPBottomSurface.h"
-#import <Pure_Pets-Swift.h>
+#import "Pure_Pets-Swift.h"
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
 
@@ -2937,7 +2937,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return 0.0;
     }
 
-    CGFloat extraBreathingRoom = 12.0;
+    CGFloat extraBreathingRoom = 6.0;
     if (!self.useLegacyBar && self.leadingTabButton && !self.leadingTabButton.hidden) {
         CGRect buttonFrame = [self.leadingTabButton.superview convertRect:self.leadingTabButton.frame
                                                                     toView:self.view];
