@@ -1,0 +1,115 @@
+# PurePets SwiftUI Root Refactor — Comprehensive Build Readiness & Risk Audit Report
+
+This report presents a thorough build-readiness audit, deployment target evaluation, runtime crash risk assessment, and Xcode integration checklist for the generated `PurePetsSwiftUIRefactor/Root/` architecture.
+
+---
+
+## 1. Runtime-Crash Risk Report
+
+| Risk ID | Feature / Component | Analyzed Code Pattern | Risk Assessment & Mitigation Status |
+| :--- | :--- | :--- | :--- |
+| **RCR-01** | Avatar Dynamic Invocation | `PPModernAvatarRenderer` method reflection | **MITIGATED**. Replaced `unsafeBitCast` with type-safe `perform(_:with:with:)` message dispatching and default placeholder fallback renderer. Zero `unsafeBitCast` pointer operations. |
+| **RCR-02** | Lottie Framework Linkage | `LOTAnimationView` instantiation | **MITIGATED**. Safely checks `NSClassFromString(@"LOTAnimationView")` and `NSSelectorFromString(@"animationNamed:")` with standard SF Symbol vector fallback. No runtime exception risk if Lottie pod is missing. |
+| **RCR-03** | Navigation Delegate Proxy | `UINavigationControllerDelegate` forwarding | **MITIGATED**. `PPRootNavigationDelegateProxy` implements `responds(to:)` and `forwardingTarget(for:)` safely with `Selector?` optionality. Prevents delegate overrides or unhandled selector crashes. |
+| **RCR-04** | Cart Auto-Collapse Timer | `PPRootStore` 6.0s timer management | **MITIGATED**. Main-thread scheduled timer with weak self-capturing closures and explicit cancellation on `stop()` / `deinit`. Prevents retain cycles or post-dealloc callback execution. |
+| **RCR-05** | Hit-Test Pass-Through | `PPRootPassthroughHostingController` | **MITIGATED**. Overrides `hitTest(_:with:)` to return `nil` for touches outside interactive elements (`PPRootDock`, `PPRootNovaButton`, `PPCartFloatingBarView`), permitting full gesture pass-through to underlying UIKit views. |
+
+---
+
+## 2. Objective-C Interoperability Table
+
+| Objective-C Signature / Selector | Swift Property / Method | Bridging Behavior |
+| :--- | :--- | :--- |
+| `- (instancetype)initWithHostController:(UITabBarController *)hostController useLegacyBar:(BOOL)useLegacyBar` | `PPRootSwiftCoordinator.init(hostController:useLegacyBar:)` | Exposed as `PPRootSwiftCoordinator` initializer. |
+| `- (void)start` | `PPRootSwiftCoordinator.start()` | Binds observers, installs hosting overlays, and configures system tab bar. |
+| `- (void)stop` | `PPRootSwiftCoordinator.stop()` | Dismantles hosting controllers, cancels timers, and detaches proxies. |
+| `- (void)setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated` | `PPRootSwiftCoordinator.setBottomNavigationHidden(_:animated:)` | Animates bottom dock overlay opacity and visibility. |
+| `- (CGFloat)currentBottomNavigationContentClearance` | `PPRootSwiftCoordinator.currentBottomNavigationContentClearance()` | Computes dynamic safe-area-aware content clearance. |
+| `- (void)activateFloatingCartWithSourceViewController:(UIViewController *)sourceViewController openCartHandler:(void (^)(void))openCartHandler animated:(BOOL)animated` | `PPRootSwiftCoordinator.activateFloatingCart(...)` | Presents floating cart banner for active source view controller. |
+
+---
+
+## 3. Exact Expected `Pure_Pets-Swift.h` Declarations
+
+When compiled by Xcode, Swift compiler auto-generates `<Pure_Pets-Swift.h>` containing:
+
+```objc
+SWIFT_CLASS("_TtC8Pure_Pets22PPRootSwiftCoordinator")
+@interface PPRootSwiftCoordinator : NSObject <UITabBarControllerDelegate, UINavigationControllerDelegate>
+@property (nonatomic, readonly, weak) UITabBarController * _Nullable hostController;
+- (nonnull instancetype)initWithHostController:(UITabBarController * _Nonnull)hostController useLegacyBar:(BOOL)useLegacyBar OBJC_DESIGNATED_INITIALIZER;
+- (void)start;
+- (void)stop;
+- (void)viewWillAppearWithAnimated:(BOOL)animated;
+- (void)viewDidAppearWithAnimated:(BOOL)animated;
+- (void)viewDidLayoutSubviews;
+- (void)setUsesLegacyBar:(BOOL)enabled;
+- (void)setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
+- (void)setDockHidden:(BOOL)hidden animated:(BOOL)animated;
+- (CGFloat)currentBottomNavigationContentClearance SWIFT_WARN_UNUSED_RESULT;
+- (void)activateFloatingCartWithSourceViewController:(UIViewController * _Nonnull)sourceViewController openCartHandler:(void (^ _Nonnull)(void))openCartHandler animated:(BOOL)animated;
+- (void)deactivateFloatingCartWithSourceViewController:(UIViewController * _Nonnull)sourceViewController animated:(BOOL)animated;
+- (BOOL)openChatThreadFromNotificationWithThread:(id _Nonnull)thread animated:(BOOL)animated SWIFT_WARN_UNUSED_RESULT;
+- (nonnull instancetype)init SWIFT_UNAVAILABLE("use initWithHostController:useLegacyBar:");
+@end
+
+SWIFT_CLASS("_TtC8Pure_Pets17PPRootFeatureFlag")
+@interface PPRootFeatureFlag : NSObject
+@property (nonatomic, class, readonly, strong) PPRootFeatureFlag * _Nonnull shared;
+@property (nonatomic) BOOL isSwiftUIRootEnabled;
+@property (nonatomic, readonly) BOOL isLegacyBarForced;
+@end
+```
+
+---
+
+## 4. Target Membership Allocation
+
+### App Target (`Pure Pets`):
+- `Models/*` (5 files)
+- `Protocols/PPRootActionHandling.swift`
+- `Adapters/*` (2 files)
+- `Coordinator/*` (2 files)
+- `Views/*` (12 files)
+- `FeatureFlag/PPRootFeatureFlag.swift`
+
+### Test Target (`Pure PetsTests`):
+- `Tests/PPRootParityTests.swift`
+
+---
+
+## 5. Missing Asset & Resource Checklist
+
+- [x] **`Ncolored.json`**: Lottie asset in app bundle for Nova AI button.
+- [x] **`Profile.lottie`**: Lottie asset for guest profile tab state.
+- [x] **`contactUs`**: Lottie asset for suspended account header.
+- [x] **Localized String Keys**: Verified key strings (`MainPage`, `menu_action_orders`, `add_post_title`, `chats_tab_title`, `menu_title`, `Cart`, `checkout_review_cart_action`, `auth_account_blocked_title`, `auth_account_blocked_message`, `order_support_button`, `logout`).
+
+---
+
+## 6. Manual Xcode Integration Sequence
+
+1. Open `Pure Pets.xcworkspace` in Xcode.
+2. Drag `PurePetsSwiftUIRefactor/Root/` folder into Xcode project navigator under `Pure Pets/MainApp/ModrenAppVC/`.
+3. Select **"Copy items if needed"** = unchecked (keep reference) and **Target Membership** = `Pure Pets`.
+4. Add `PPRootParityTests.swift` to `Pure PetsTests` target.
+5. Verify build setting `SWIFT_VERSION` = 5.0+.
+6. Build project (Cmd+B) on a connected physical device.
+
+---
+
+## 7. Physical-Device Test Plan
+
+1. **Tab Switching:** Tap Home, MyAds, Chats, and Menu. Verify active tab styling and haptics.
+2. **Create Tab (+) Interception:** Tap center + button. Verify action sheet presents without changing selected tab.
+3. **Tab Reselection:** Scroll down on Home, tap Home tab again. Verify scroll view pops to top.
+4. **Nova AI Floating Button:** Tap sparkles button. Verify Nova chat presents cleanly.
+5. **Floating Cart:** Add item to cart, verify cart banner expands, auto-collapses in 6 seconds, and dismisses when leaving checkout.
+6. **RTL Language Test:** Switch language to Arabic. Verify dock items, badges, cart banner, and gestures flip naturally.
+7. **Blocked User Test:** Mock suspended user state in Firebase. Verify full-screen glass overlay displays with call support and sign-out buttons.
+
+---
+
+## 8. Remaining Blockers
+
+- **Compilation Verification:** Pending physical connected-device build in Xcode (per `AGENTS.md` mandate forbidding `xcodebuild`).

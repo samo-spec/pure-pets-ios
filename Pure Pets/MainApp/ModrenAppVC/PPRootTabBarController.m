@@ -35,7 +35,7 @@
 #import "CartManager.h"
 #import "PPBottomSurfaceCoordinator.h"
 #import "UIViewController+PPBottomSurface.h"
-#import <Pure_Pets-Swift.h>
+#import "Pure_Pets-Swift.h"
 #import <SDWebImage/SDImageCache.h>
 #import <objc/runtime.h>
 
@@ -1384,7 +1384,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
     UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
     self.view.semanticContentAttribute = semantic;
     self.tabBar.semanticContentAttribute = semantic;
@@ -1507,11 +1506,24 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     self.pp_lastSelectedIndex = self.selectedIndex;
     //[self addBottomFadeBelowTabBar];
-    [self configureAppearance];
-
-    [self pp_setupPremiumBottomNavigation];
-    [self pp_refreshProfileTabPresentation];
-    self.cartFloatingBarCoordinator = [[PPCartFloatingBarCoordinator alloc] initWithHostController:self];
+    if ([PPRootFeatureFlag.shared isSwiftUIRootEnabled]) {
+        NSLog(@"🚀 [PurePets Root] ==========================================");
+        NSLog(@"🚀 [PurePets Root] ACTIVE NAVIGATION ENGINE: >>> Real native UITabBar with Swift Coordinator <<<");
+        NSLog(@"🚀 [PurePets Root] PPRootSwiftCoordinator initialized & active.");
+        NSLog(@"🚀 [PurePets Root] ==========================================");
+        [self pp_setupPremiumBottomNavigation];
+        [self pp_refreshProfileTabPresentation];
+        self.swiftCoordinator = [[PPRootSwiftCoordinator alloc] initWithHostController:self useLegacyBar:YES];
+        [self.swiftCoordinator start];
+    } else {
+        NSLog(@"🏛️ [PurePets Root] ==========================================");
+        NSLog(@"🏛️ [PurePets Root] ACTIVE NAVIGATION ENGINE: >>> Legacy UIKit Root <<<");
+        NSLog(@"🏛️ [PurePets Root] PPRootFeatureFlag is DISABLED (Default).");
+        NSLog(@"🏛️ [PurePets Root] ==========================================");
+        [self pp_setupPremiumBottomNavigation];
+        [self pp_refreshProfileTabPresentation];
+        self.cartFloatingBarCoordinator = [[PPCartFloatingBarCoordinator alloc] initWithHostController:self];
+    }
 
     // ── KVO guard against UIKit tabBar flashes ──
     // UITabBarController internally sets self.tabBar.hidden = NO during pop
@@ -1589,22 +1601,30 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self pp_assertPremiumTabBarState];
-    [self pp_updatePremiumBottomFadeAppearance];
-    [UserManager.sharedManager startListeningCurrentUserBlockedState];
-    [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
-    [self pp_refreshProfileTabPresentation];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator viewWillAppearWithAnimated:animated];
+    } else {
+        [self pp_assertPremiumTabBarState];
+        [self pp_updatePremiumBottomFadeAppearance];
+        [UserManager.sharedManager startListeningCurrentUserBlockedState];
+        [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
+        [self pp_refreshProfileTabPresentation];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    [self pp_refreshLegacyTabBarTitleLayout];
-    [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
-    [self pp_assertPremiumTabBarState];
-    [self pp_layoutGuestProfileAnimation];
-    [self pp_updateGuestProfileAnimationPlayback];
-    [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:NO];
-    [self pp_showIntroIfNeeded];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator viewDidAppearWithAnimated:animated];
+    } else {
+        [self pp_refreshLegacyTabBarTitleLayout];
+        [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
+        [self pp_assertPremiumTabBarState];
+        [self pp_layoutGuestProfileAnimation];
+        [self pp_updateGuestProfileAnimationPlayback];
+        [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:NO];
+        [self pp_showIntroIfNeeded];
+    }
     [self becomeFirstResponder];
 }
 
@@ -1814,7 +1834,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    [self setPremiumTabDockViewHidden:hidden animation:animated];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator setBottomNavigationHidden:hidden animated:animated];
+    } else {
+        [self setPremiumTabDockViewHidden:hidden animation:animated];
+    }
 }
 
 - (BOOL)pp_openChatThreadFromNotification:(ChatThreadModel *)thread animated:(BOOL)animated
@@ -1861,19 +1885,19 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    // UIKit resolves system-tab title frames during the root's first layout
-    // pass. Reconcile them after that pass so the final Arabic/English glyph
-    // is never clipped on initial presentation.
-    [self pp_refreshLegacyTabBarTitleLayout];
-    [self pp_updatePremiumBottomFadeAppearance];
-    [self pp_updateBlockedOverlayTopInset];
-    [self pp_updateTabBarSelectionIndicatorIfNeeded];
-    [self pp_applyPremiumTabSelectionAnimated:NO];
-    [self pp_layoutGuestProfileAnimation];
-    [self pp_applyBottomNavigationClearanceToVisibleLists];
-    [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
-    [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
-    
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator viewDidLayoutSubviews];
+    } else {
+        [self pp_refreshLegacyTabBarTitleLayout];
+        [self pp_updatePremiumBottomFadeAppearance];
+        [self pp_updateBlockedOverlayTopInset];
+        [self pp_updateTabBarSelectionIndicatorIfNeeded];
+        [self pp_applyPremiumTabSelectionAnimated:NO];
+        [self pp_layoutGuestProfileAnimation];
+        [self pp_applyBottomNavigationClearanceToVisibleLists];
+        [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
+        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -2913,7 +2937,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return 0.0;
     }
 
-    CGFloat extraBreathingRoom = 12.0;
+    CGFloat extraBreathingRoom = 6.0;
     if (!self.useLegacyBar && self.leadingTabButton && !self.leadingTabButton.hidden) {
         CGRect buttonFrame = [self.leadingTabButton.superview convertRect:self.leadingTabButton.frame
                                                                     toView:self.view];
@@ -2940,6 +2964,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (CGFloat)pp_currentBottomNavigationContentClearance
 {
+    if (self.swiftCoordinator) {
+        return [self.swiftCoordinator currentBottomNavigationContentClearance];
+    }
     return [self pp_bottomNavigationContentClearance];
 }
 
@@ -3999,15 +4026,25 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                                           openCartHandler:(PPCartFloatingBarOpenHandler)openCartHandler
                                                  animated:(BOOL)animated
 {
-    [self.cartFloatingBarCoordinator activateForSourceViewController:viewController
-                                                     openCartHandler:openCartHandler
-                                                            animated:animated];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator activateFloatingCartWithSourceViewController:viewController
+                                                             openCartHandler:openCartHandler
+                                                                    animated:animated];
+    } else {
+        [self.cartFloatingBarCoordinator activateForSourceViewController:viewController
+                                                         openCartHandler:openCartHandler
+                                                                animated:animated];
+    }
 }
 
 - (void)pp_deactivateFloatingCartBarForSourceViewController:(UIViewController *)viewController
                                                    animated:(BOOL)animated
 {
-    [self.cartFloatingBarCoordinator deactivateForSourceViewController:viewController animated:animated];
+    if (self.swiftCoordinator) {
+        [self.swiftCoordinator deactivateFloatingCartWithSourceViewController:viewController animated:animated];
+    } else {
+        [self.cartFloatingBarCoordinator deactivateForSourceViewController:viewController animated:animated];
+    }
 }
 
 - (UIView *)pp_novaAmbientBottomNavigationAnchorView

@@ -162,11 +162,10 @@
 - (UIViewController *)buildDetailViewerForObject:(id)object fromPresenter:(UIViewController *)presenter {
     UIViewController *detailVC = nil;
     if ([object isKindOfClass:NSClassFromString(@"PetAd")]) {
-        // ViewerVC for PetAd
-        Class ViewerVCClass = NSClassFromString(@"ViewerVC");
-        if (ViewerVCClass) {
-            ViewerVC *vc = [[ViewerVCClass alloc] init];
-            vc.ad = (PetAd *)object;
+        // PPPetAdViewerHostingController for PetAd
+        Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
+        if (HostingClass) {
+            UIViewController *vc = [(id)[HostingClass alloc] initWithAd:(PetAd *)object];
             vc.hidesBottomBarWhenPushed = YES;
             detailVC = vc;
             return detailVC;
@@ -278,10 +277,14 @@
         return;
     }
 
-    // 🐾 PetAd → ViewerVC
+    // 🐾 PetAd → PPPetAdViewerHostingController
     if ([object isKindOfClass:[PetAd class]]) {
-        ViewerVC *viewer = [ViewerVC new];
-        viewer.ad = (PetAd *)object;
+        Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
+        UIViewController *viewer = nil;
+        if (HostingClass) {
+            viewer = [(id)[HostingClass alloc] initWithAd:(PetAd *)object];
+        }
+        if (!viewer) return;
         viewer.hidesBottomBarWhenPushed = YES;
         targetVC = viewer;
 

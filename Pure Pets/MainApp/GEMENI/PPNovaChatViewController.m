@@ -23,7 +23,7 @@
 #import "CartItem.h"
 #import "PPHUD.h"
 #import "AccessViewerVC.h"
-#import "ViewerVC.h"
+#import "PPPetAdViewerLegacyBridge.h"
 #import "ServiceViewerViewController.h"
 #import "PPPetCareViewerVC.h"
 #import "PetAdManager.h"
@@ -9396,9 +9396,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [PPAnalytics logNovaPreviewOpenedWithItemKind:@"pet_ad"
                                                itemID:ad.adID
                                             sessionID:self.novaSessionId];
-        ViewerVC *viewer = [[ViewerVC alloc] init];
-        viewer.ad = ad;
-        [self pp_openNovaStackViewer:viewer];
+        Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
+        UIViewController *viewer = nil;
+        if (HostingClass) {
+            viewer = [(id)[HostingClass alloc] initWithAd:ad];
+        }
+        if (viewer) {
+            [self pp_openNovaStackViewer:viewer];
+        }
         return;
     }
 

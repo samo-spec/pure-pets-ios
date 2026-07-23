@@ -11,7 +11,6 @@
 #import "AdoptPetManager.h"
 #import "PetAd.h"
 #import "PetAccessory.h"
-#import "AdoptPetCell.h"
 #import "AdoptPetModel.h"
 #import "AppClasses.h"
 #import "GM.h"
@@ -374,7 +373,6 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     UICollectionViewDataSource,
     UICollectionViewDelegate,
     PPUniversalCellDelegate,
-    AdoptCollectionViewCellDelegate,
     AddNewAdDelegate
 >
 
@@ -809,8 +807,6 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
         UIEdgeInsetsMake(0.0, 0.0, PPSpaceXL + self.view.safeAreaInsets.bottom, 0.0);
 
     [PPUniversalCell pp_registerInCollectionView:self.collectionView];
-    [self.collectionView registerClass:AdoptPetCell.class
-            forCellWithReuseIdentifier:@"AdoptPetCell"];
     [self.collectionView registerClass:PPMyItemsSkeletonCell.class
             forCellWithReuseIdentifier:@"PPMyItemsSkeletonCell"];
 
@@ -1418,42 +1414,24 @@ static UIColor *PPMyItemsPillSurfaceColor(void)
     }
 
     PPUniversalCellViewModel *viewModel = self.items[indexPath.item];
-    UICollectionViewCell *resolvedCell = nil;
-
-    if ([viewModel.ModelObject isKindOfClass:AdoptPetModel.class]) {
-        AdoptPetCell *cell =
-            [collectionView dequeueReusableCellWithReuseIdentifier:@"AdoptPetCell"
-                                                      forIndexPath:indexPath];
-        AdoptPetModel *model = (AdoptPetModel *)viewModel.ModelObject;
-        cell.adoptModel = model;
-        cell.delegate = self;
-        NSString *cityName = [CitiesManager.shared cityNameForID:model.cityID];
-        [cell configureWithName:model.name
-                       imageURL:model.imageURLs.firstObject
-                       subtitle:cityName
-                  adoptPetModel:model];
-        [cell pp_applyOwnerMode:self.mode == MyItemsModeMyAds animated:NO];
-        resolvedCell = cell;
-    } else {
-        PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
-        cell.delegate = self;
-        cell.forceShowsOwnerMenuButton = self.mode == MyItemsModeMyAds;
-        cell.showsSubtitle = YES;
-        viewModel.indexPath = indexPath;
-        [cell applyViewModel:viewModel
-                     context:viewModel.modelContext
-                  layoutMode:PPCellLayoutModePinterest
-                discountMode:PPDiscountStyleBadge
-                 imageLoader:^(UIImageView *imageView,
-                               NSString *urlString,
-                               __unused UIImage *placeholder,
-                               __unused UIView *card) {
-            [[PPImageLoaderManager shared] setImageOnImageView:imageView
-                                                           url:urlString
-                                                    complation:nil];
-        }];
-        resolvedCell = cell;
-    }
+    PPUniversalCell *cell = (PPUniversalCell *)[PPUniversalCell pp_dequeueFromCollectionView:collectionView indexPath:indexPath];
+    cell.delegate = self;
+    cell.forceShowsOwnerMenuButton = self.mode == MyItemsModeMyAds;
+    cell.showsSubtitle = YES;
+    viewModel.indexPath = indexPath;
+    [cell applyViewModel:viewModel
+                 context:viewModel.modelContext
+              layoutMode:PPCellLayoutModePinterest
+            discountMode:PPDiscountStyleBadge
+             imageLoader:^(UIImageView *imageView,
+                           NSString *urlString,
+                           __unused UIImage *placeholder,
+                           __unused UIView *card) {
+        [[PPImageLoaderManager shared] setImageOnImageView:imageView
+                                                       url:urlString
+                                                complation:nil];
+    }];
+    UICollectionViewCell *resolvedCell = cell;
 
     if ([self.pendingEntranceIndexPaths containsObject:indexPath]) {
         resolvedCell.alpha = 0.0;
@@ -1707,48 +1685,6 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)addNewAd:(AddNewAd *)viewController didUpdateAd:(PetAd *)ad
 {
     [self fetchDataForCurrentSegment];
-}
-
-#pragma mark - AdoptCollectionViewCellDelegate
-
-- (void)adoptCellDidTapEdit:(AdoptPetCell *)cell
-                    onModel:(AdoptPetModel *)adoptModel
-{
-    AddAdoptPetViewController *viewController = [AddAdoptPetViewController new];
-    viewController.editingPet = adoptModel;
-    UINavigationController *navigationController =
-        [[UINavigationController alloc] initWithRootViewController:viewController];
-    [self presentViewController:navigationController animated:YES completion:nil];
-}
-
-- (void)adoptCellDidTapDelete:(AdoptPetCell *)cell
-                      onModel:(AdoptPetModel *)adoptModel
-{
-    __weak typeof(self) weakSelf = self;
-    [GM showDeleteConfirmationFrom:self
-                             title:kLang(@"Confirm Deletion")
-                           message:kLang(@"Are you sure you want to delete this item?")
-                        completion:^(BOOL confirmed) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf || !confirmed) {
-            return;
-        }
-        [AdoptPetManager.shared
-            deletePetWithID:adoptModel.documentID
-                 completion:^(BOOL success, NSError *error) {
-            if (success) {
-                [strongSelf fetchDataForCurrentSegment];
-                [AppManager.sharedInstance showSnakBar:kLang(@"Trash")
-                                            withColor:GM.appPrimaryColor
-                                          andDuration:0.3
-                                        containerView:strongSelf.view];
-            } else if (error) {
-                [PPAlertHelper showErrorIn:strongSelf
-                                     title:kLang(@"Error")
-                                  subtitle:error.localizedDescription];
-            }
-        }];
-    }];
 }
 
 #pragma mark - Styling
