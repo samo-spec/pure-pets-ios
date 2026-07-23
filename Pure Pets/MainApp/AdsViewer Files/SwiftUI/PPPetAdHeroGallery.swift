@@ -1,11 +1,11 @@
 import SwiftUI
 import UIKit
 
-/// Full-bleed cinematic gallery: paged media, a frosted page counter, and
-/// a leading-edge thumbnail rail with a spring-loaded selection ring.
+/// Full-bleed cinematic gallery: paged media, dual-phase legibility scrims, and
+/// a floating frosted-glass thumbnail rail with spring selection dynamics.
 ///
 /// Tapping any page opens the fullscreen media viewer. Neighboring pages
-/// are prefetched so swiping never shows a placeholder.
+/// are prefetched so swiping never displays a placeholder.
 struct PPPetAdHeroGallery: View {
     let items: [PPPetAdMediaItem]
     @Binding var selection: Int
@@ -25,8 +25,9 @@ struct PPPetAdHeroGallery: View {
             bottomScrim
 
             if items.count > 1 {
-                bottomThumbnailRail
-                    .padding(.bottom, PPSpace.xxxl)
+                floatingThumbnailRail
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, PPSpace.xxl)
             }
         }
         .background(Color.black)
@@ -46,9 +47,7 @@ struct PPPetAdHeroGallery: View {
 
     private var pager: some View {
         TabView(selection: $selection) {
-            ForEach(Array(items.enumerated()), id: \.element.id) {
-                index,
-                item in
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                 mediaPage(item, index: index)
                     .tag(index)
             }
@@ -98,10 +97,10 @@ struct PPPetAdHeroGallery: View {
                     }
                     .overlay {
                         Circle()
-                            .stroke(.white.opacity(0.34), lineWidth: 0.75)
+                            .stroke(.white.opacity(0.36), lineWidth: 0.75)
                     }
                     .shadow(
-                        color: .black.opacity(0.26),
+                        color: .black.opacity(0.28),
                         radius: 18,
                         y: 8
                     )
@@ -113,26 +112,62 @@ struct PPPetAdHeroGallery: View {
         }
     }
 
-    // MARK: - Thumbnail rail
+    // MARK: - Scrims & Floating Thumbnail Rail
 
-    var bottomThumbnailRail: some View {
+    private var topScrim: some View {
+        LinearGradient(
+            colors: [
+                .black.opacity(0.52),
+                .black.opacity(0.12),
+                .clear
+            ],
+            startPoint: .top,
+            endPoint: .center
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var bottomScrim: some View {
+        LinearGradient(
+            colors: [
+                .clear,
+                .black.opacity(0.06),
+                .black.opacity(0.56)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// Premium frosted glass floating container for thumbnail items.
+    private var floatingThumbnailRail: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: PPSpace.md) {
+                HStack(spacing: PPSpace.sm + 2) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         thumbnailButton(item, index: index)
+                            .id(item.id)
                     }
                 }
-                .padding(.horizontal, 22)
-                .padding(.vertical, PPSpace.xs)
+                .padding(.horizontal, PPSpace.md)
+                .padding(.vertical, PPSpace.sm - 2)
             }
-            .frame(maxHeight: 76)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(Color.white.opacity(0.20), lineWidth: 0.75)
+            }
+            .shadow(color: .black.opacity(0.24), radius: 14, y: 6)
             .adOnChange(of: selection) { value in
                 withAnimation(.snappy) {
                     proxy.scrollTo(items[value].id, anchor: .center)
                 }
             }
         }
+        .frame(maxHeight: 74)
         .accessibilityLabel(
             PPPetAdLocalization.text(
                 "pet_ad_viewer_gallery_thumbnails",
@@ -141,13 +176,13 @@ struct PPPetAdHeroGallery: View {
         )
     }
 
-    // MARK: - Thumbnail button
-
-    func thumbnailButton(
+    private func thumbnailButton(
         _ item: PPPetAdMediaItem,
         index: Int
     ) -> some View {
-        Button {
+        let isSelected = index == selection
+
+        return Button {
             if reduceMotion {
                 selection = index
             } else {
@@ -160,43 +195,28 @@ struct PPPetAdHeroGallery: View {
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
                 contentMode: .fill,
-                accessibilityLabel:
-                    mediaAccessibilityLabel(index: index)
+                accessibilityLabel: mediaAccessibilityLabel(index: index)
             )
-            .frame(width: 44, height: 44)
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 12,
-                    style: .continuous
-                )
-            )
+            .frame(width: 48, height: 48)
+            .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
             .overlay {
-                RoundedRectangle(
-                    cornerRadius: 12,
-                    style: .continuous
-                )
-                .stroke(
-                    index == selection
-                        ? Color.white
-                        : Color.white.opacity(0.30),
-                    lineWidth: index == selection ? 2 : 0.75
-                )
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.white : Color.white.opacity(0.24),
+                        lineWidth: isSelected ? 2.25 : 0.75
+                    )
             }
-            .brightness(index == selection ? 0.05 : 0)
+            .scaleEffect(isSelected ? 1.06 : 0.94)
             .shadow(
-                color: index == selection ? .black.opacity(0.3) : .clear,
-                radius: 4,
-                y: 2
+                color: isSelected ? .black.opacity(0.35) : .clear,
+                radius: 6,
+                y: 3
             )
         }
-        .buttonStyle(
-            PPPetAdPressButtonStyle(pressedScale: 0.90)
-        )
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
     }
 
-    // MARK: - Empty hero
-
-    var emptyHero: some View {
+    private var emptyHero: some View {
         ZStack {
             LinearGradient(
                 colors: [
@@ -217,27 +237,21 @@ struct PPPetAdHeroGallery: View {
                         fallback: "Photos are not available"
                     )
                 )
-                .font(
-                    .custom(
-                        "Beiruti-Bold",
-                        size: 17,
-                        relativeTo: .headline
-                    )
-                )
+                .font(.custom("Beiruti-Bold", size: 17, relativeTo: .headline))
             }
             .foregroundStyle(.white.opacity(0.92))
         }
         .accessibilityElement(children: .combine)
     }
 
-    func mediaAccessibilityLabel(index: Int) -> String {
+    private func mediaAccessibilityLabel(index: Int) -> String {
         let type = items[index].isVideo
             ? PPPetAdLocalization.text("Video", fallback: "Video")
             : PPPetAdLocalization.text("Photo", fallback: "Photo")
         return "\(type) \(index + 1) \(PPPetAdLocalization.text("of", fallback: "of")) \(items.count)"
     }
 
-    func prefetchNeighbors(around index: Int) {
+    private func prefetchNeighbors(around index: Int) {
         guard !items.isEmpty else { return }
         let indexes = [index - 1, index, index + 1]
         let urls = indexes.compactMap { value -> String? in
@@ -245,39 +259,5 @@ struct PPPetAdHeroGallery: View {
             return items[value].imageURL
         }
         PPPetAdViewerLegacyBridge.prefetch(urls: urls)
-    }
-}
-
-// MARK: - Scrims, footer & states
-
-private extension PPPetAdHeroGallery {
-    /// Keeps the navigation chrome legible over bright imagery.
-    var topScrim: some View {
-        LinearGradient(
-            colors: [
-                .black.opacity(0.38),
-                .black.opacity(0.08),
-                .clear
-            ],
-            startPoint: .top,
-            endPoint: .center
-        )
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    /// Grounds the page counter and thumbnails against light photos.
-    var bottomScrim: some View {
-        LinearGradient(
-            colors: [
-                .clear,
-                .black.opacity(0.04),
-                .black.opacity(0.44)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
     }
 }

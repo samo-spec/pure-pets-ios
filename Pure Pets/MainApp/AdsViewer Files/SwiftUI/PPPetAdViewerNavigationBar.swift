@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Floating viewer chrome that morphs continuously from an invisible
-/// overlay into a frosted navigation bar as the hero scrolls away.
+/// Floating viewer chrome that morphs continuously from a cinematic overlay
+/// into a studio-grade frosted navigation bar as the hero content scrolls.
 struct PPPetAdViewerNavigationBar: View {
     let title: String
     let isCollapsed: Bool
@@ -26,9 +26,9 @@ struct PPPetAdViewerNavigationBar: View {
         return min(1, max(0, Double(-scrollOffset / 160.0)))
     }
 
-    /// Title appears only in the final third of the morph.
+    /// Title appears smoothly in the final half of the scroll collapse.
     private var titleOpacity: Double {
-        min(1, max(0, (progress - 0.66) / 0.34))
+        min(1, max(0, (progress - 0.50) / 0.50))
     }
 
     var body: some View {
@@ -53,62 +53,50 @@ struct PPPetAdViewerNavigationBar: View {
                 .accessibilityHidden(titleOpacity < 1)
 
             HStack(spacing: PPSpace.xs) {
-                if canShare || canFavorite || canReport {
+                if canShare {
+                    navigationButton(
+                        symbol: "square.and.arrow.up",
+                        label: PPPetAdLocalization.text("Share", fallback: "Share"),
+                        action: onShare
+                    )
+                }
+
+                if canFavorite {
+                    navigationButton(
+                        symbol: isFavorite ? "heart.fill" : "heart",
+                        label: isFavorite
+                            ? PPPetAdLocalization.text("a11y_btn_unfavorite", fallback: "Remove from favorites")
+                            : PPPetAdLocalization.text("a11y_btn_favorite", fallback: "Add to favorites"),
+                        tint: isFavorite ? Color.ppPrimary : .white,
+                        isEnabled: !isFavoriteWorking,
+                        isLoading: isFavoriteWorking,
+                        action: onFavorite
+                    )
+                }
+
+                if canReport {
                     Menu {
-                        if canShare {
-                            Button(action: onShare) {
-                                Label(
-                                    PPPetAdLocalization.text("Share", fallback: "Share"),
-                                    systemImage: "square.and.arrow.up"
-                                )
-                            }
+                        Button(role: .destructive, action: onReport) {
+                            Label(
+                                PPPetAdLocalization.text("report_ad_title", fallback: "Report advertisement"),
+                                systemImage: "flag.fill"
+                            )
                         }
-
-                        if canFavorite {
-                            Button(action: onFavorite) {
-                                Label(
-                                    isFavorite
-                                        ? PPPetAdLocalization.text("a11y_btn_unfavorite", fallback: "Remove from favorites")
-                                        : PPPetAdLocalization.text("a11y_btn_favorite", fallback: "Add to favorites"),
-                                    systemImage: isFavorite ? "heart.fill" : "heart"
-                                )
-                            }
-                            .disabled(isFavoriteWorking)
-                        }
-
-                        if canReport {
-                            Button(role: .destructive, action: onReport) {
-                                Label(
-                                    PPPetAdLocalization.text("report_ad_title", fallback: "Report advertisement"),
-                                    systemImage: "flag.fill"
-                                )
-                            }
-                            .disabled(isReportWorking)
-                        }
-
-                        if canShare {
-                            Divider()
-                            Button(action: onShare) {
-                                Label(
-                                    PPPetAdLocalization.text("Copy Link", fallback: "Copy Link"),
-                                    systemImage: "link"
-                                )
-                            }
-                        }
+                        .disabled(isReportWorking)
                     } label: {
                         ZStack {
                             Circle()
                                 .fill(.ultraThinMaterial)
                                 .frame(width: 42, height: 42)
                             Circle()
-                                .fill(Color.black.opacity(0.28 - progress * 0.16))
+                                .fill(Color.black.opacity(0.26 - progress * 0.14))
                             Image(systemName: "ellipsis")
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundStyle(.white)
                         }
                         .overlay {
                             Circle()
-                                .stroke(Color.white.opacity(0.32 - progress * 0.12), lineWidth: 0.75)
+                                .stroke(Color.white.opacity(0.30 - progress * 0.10), lineWidth: 0.75)
                         }
                         .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
                     }
@@ -128,14 +116,13 @@ struct PPPetAdViewerNavigationBar: View {
 // MARK: - Chrome background & buttons
 
 private extension PPPetAdViewerNavigationBar {
-    /// Two crossfading layers: a legibility gradient over the hero and a
-    /// frosted material that solidifies as content scrolls beneath it.
+    /// Crossfading layers: legibility gradient over hero + frosted glass material.
     var chromeBackground: some View {
         ZStack {
             LinearGradient(
                 colors: [
-                    .black.opacity(0.52),
-                    .black.opacity(0.16),
+                    .black.opacity(0.56),
+                    .black.opacity(0.18),
                     .clear
                 ],
                 startPoint: .top,
@@ -143,12 +130,12 @@ private extension PPPetAdViewerNavigationBar {
             )
             .opacity(1 - progress)
 
-            Color.black.opacity(0.30)
+            Color.black.opacity(0.32)
                 .background(.ultraThinMaterial)
                 .opacity(progress)
                 .overlay(alignment: .bottom) {
                     Rectangle()
-                        .fill(Color.white.opacity(0.16))
+                        .fill(Color.white.opacity(0.18))
                         .frame(height: 0.75)
                         .opacity(progress)
                 }
@@ -180,15 +167,13 @@ private extension PPPetAdViewerNavigationBar {
             .background(
                 ZStack {
                     Circle().fill(.ultraThinMaterial)
-                    Circle().fill(
-                        Color.black.opacity(0.28 - progress * 0.16)
-                    )
+                    Circle().fill(Color.black.opacity(0.26 - progress * 0.14))
                 }
             )
             .overlay {
                 Circle()
                     .stroke(
-                        Color.white.opacity(0.32 - progress * 0.12),
+                        Color.white.opacity(0.30 - progress * 0.10),
                         lineWidth: 0.75
                     )
             }
@@ -199,15 +184,8 @@ private extension PPPetAdViewerNavigationBar {
             )
             .contentShape(Circle())
         }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.88))
+        .buttonStyle(PPPetAdPressButtonStyle())
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.52)
         .accessibilityLabel(label)
-        .accessibilityValue(
-            isLoading
-                ? PPPetAdLocalization.text("Loading", fallback: "Loading")
-                : ""
-        )
     }
 }
-
