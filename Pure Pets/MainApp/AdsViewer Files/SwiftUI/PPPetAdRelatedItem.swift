@@ -72,4 +72,34 @@ struct PPPetAdRelatedItem: Identifiable {
         blurHash = accessory.imageItems.first?.blurHash ?? accessory.blurHash
         kind = .accessory(accessory)
     }
+
+    /// Adapter to `PPUniversalCardModel` for use with `PPUniversalCardView`.
+    var universalCardModel: PPUniversalCardModel {
+        PPUniversalCardModel(
+            id: id,
+            title: title,
+            subtitle: subtitle.isEmpty ? nil : subtitle,
+            imageURL: imageURL.flatMap { URL(string: $0) },
+            priceText: price.isEmpty ? nil : price,
+            badgeText: kindLabel
+        )
+    }
+
+    var universalContext: PPUniversalCardContext {
+        switch kind {
+        case .petAd:
+            return .ads
+        case .accessory:
+            return .accessory
+        }
+    }
+
+    private var kindLabel: String {
+        switch kind {
+        case .petAd:
+            return PPPetAdLocalization.text("pet_ad_viewer_pet_badge", fallback: "Pet")
+        case .accessory:
+            return PPPetAdLocalization.text("pet_ad_viewer_accessory_badge", fallback: "Accessory")
+        }
+    }
 }

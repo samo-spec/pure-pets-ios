@@ -25,13 +25,12 @@ struct PPPetAdHeroGallery: View {
             bottomScrim
 
             if items.count > 1 {
-                galleryFooter
-                    .padding(.leading, 22)
-                    .frame(maxHeight: .infinity, alignment: .center)
+                bottomThumbnailRail
+                    .padding(.bottom, PPSpace.xxxl)
             }
         }
         .background(Color.black)
-        .onChange(of: selection) { value in
+        .adOnChange(of: selection) { value in
             guard items.indices.contains(value) else { return }
             UISelectionFeedbackGenerator().selectionChanged()
             prefetchNeighbors(around: value)
@@ -113,76 +112,36 @@ struct PPPetAdHeroGallery: View {
             onOpen(index)
         }
     }
-}
 
-// MARK: - Scrims, footer & states
+    // MARK: - Thumbnail rail
 
-private extension PPPetAdHeroGallery {
-    /// Keeps the navigation chrome legible over bright imagery.
-    var topScrim: some View {
-        LinearGradient(
-            colors: [
-                .black.opacity(0.46),
-                .black.opacity(0.10),
-                .clear
-            ],
-            startPoint: .top,
-            endPoint: .center
-        )
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    /// Grounds the page counter and thumbnails against light photos.
-    var bottomScrim: some View {
-        LinearGradient(
-            colors: [
-                .clear,
-                .black.opacity(0.08),
-                .black.opacity(0.58)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
-
-    var galleryFooter: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            Text("\(selection + 1) / \(items.count)")
-                .font(
-                    .custom(
-                        "Beiruti-Bold",
-                        size: 12,
-                        relativeTo: .caption
-                    )
-                )
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(.white.opacity(0.22), lineWidth: 0.75)
-                }
-                .accessibilityLabel(
-                    "\(selection + 1) \(PPPetAdLocalization.text("of", fallback: "of")) \(items.count)"
-                )
-
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: PPSpace.xs) {
-                    ForEach(Array(items.enumerated()), id: \.element.id) {
-                        index,
-                        item in
+    var bottomThumbnailRail: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: PPSpace.md) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         thumbnailButton(item, index: index)
                     }
                 }
+                .padding(.horizontal, 22)
+                .padding(.vertical, PPSpace.xs)
             }
-            .frame(maxHeight: 180)
+            .frame(maxHeight: 76)
+            .adOnChange(of: selection) { value in
+                withAnimation(.snappy) {
+                    proxy.scrollTo(items[value].id, anchor: .center)
+                }
+            }
         }
+        .accessibilityLabel(
+            PPPetAdLocalization.text(
+                "pet_ad_viewer_gallery_thumbnails",
+                fallback: "Photo thumbnails"
+            )
+        )
     }
+
+    // MARK: - Thumbnail button
 
     func thumbnailButton(
         _ item: PPPetAdMediaItem,
@@ -204,7 +163,7 @@ private extension PPPetAdHeroGallery {
                 accessibilityLabel:
                     mediaAccessibilityLabel(index: index)
             )
-            .frame(width: 40, height: 40)
+            .frame(width: 44, height: 44)
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: 12,
@@ -219,16 +178,23 @@ private extension PPPetAdHeroGallery {
                 .stroke(
                     index == selection
                         ? Color.white
-                        : Color.white.opacity(0.25),
+                        : Color.white.opacity(0.30),
                     lineWidth: index == selection ? 2 : 0.75
                 )
             }
-            .scaleEffect(index == selection ? 1.05 : 0.92)
+            .brightness(index == selection ? 0.05 : 0)
+            .shadow(
+                color: index == selection ? .black.opacity(0.3) : .clear,
+                radius: 4,
+                y: 2
+            )
         }
         .buttonStyle(
             PPPetAdPressButtonStyle(pressedScale: 0.90)
         )
     }
+
+    // MARK: - Empty hero
 
     var emptyHero: some View {
         ZStack {
@@ -282,3 +248,36 @@ private extension PPPetAdHeroGallery {
     }
 }
 
+// MARK: - Scrims, footer & states
+
+private extension PPPetAdHeroGallery {
+    /// Keeps the navigation chrome legible over bright imagery.
+    var topScrim: some View {
+        LinearGradient(
+            colors: [
+                .black.opacity(0.38),
+                .black.opacity(0.08),
+                .clear
+            ],
+            startPoint: .top,
+            endPoint: .center
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// Grounds the page counter and thumbnails against light photos.
+    var bottomScrim: some View {
+        LinearGradient(
+            colors: [
+                .clear,
+                .black.opacity(0.04),
+                .black.opacity(0.44)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}

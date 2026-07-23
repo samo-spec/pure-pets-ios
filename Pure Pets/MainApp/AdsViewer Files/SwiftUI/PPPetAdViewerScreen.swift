@@ -15,11 +15,11 @@ struct PPPetAdViewerScreen: View {
     let authenticationRevision: UUID
 
     @StateObject private var store: PPPetAdViewerStore
-    @Environment(\.presentationMode) private var presentationMode
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var isNavigationCollapsed = false
-    @State private var scrollOffset: CGFloat = 0
+    @State private var heroMinY: CGFloat = 0
     @State private var hasAppeared = false
 
     private let repository: PPPetAdViewerRepository
@@ -136,10 +136,10 @@ struct PPPetAdViewerScreen: View {
             guard !hasAppeared else { return }
             hasAppeared = true
         }
-        .onChange(of: languageCode) { _ in
+        .adOnChange(of: languageCode) { _ in
             store.refreshLocalization()
         }
-        .onChange(of: authenticationRevision) { _ in
+        .adOnChange(of: authenticationRevision) { _ in
             store.refreshAuthenticationState()
         }
     }
@@ -181,13 +181,15 @@ struct PPPetAdViewerScreen: View {
 // MARK: - Content scene
 
 private extension PPPetAdViewerScreen {
+    /// Single ScrollView: hero as stretchy header, sheet content below
+    /// overlapping the hero. Eliminates dual-scroll gesture conflicts.
     func content(proxy: GeometryProxy) -> some View {
         let heroHeight = min(
-            max(proxy.size.width * 1.06, 360),
-            horizontalSizeClass == .regular ? 560 : 500
+            max(proxy.size.width * 0.62, 220),
+            horizontalSizeClass == .regular ? 320 : 286
         )
         let navBarBottomY = proxy.safeAreaInsets.top + 60.0
-        let minHeroHeight = max(navBarBottomY, heroHeight * 0.45)
+        let minHeroHeight = max(navBarBottomY, heroHeight * 0.40)
 
         return ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
@@ -196,24 +198,19 @@ private extension PPPetAdViewerScreen {
                     minHeroHeight: minHeroHeight
                 )
                 .frame(height: heroHeight)
-                .zIndex(1)
 
-                detailsSheet
-                    .offset(y: -PPSpace.xxl)
-                    .padding(.bottom, -PPSpace.xxl)
-                    .zIndex(2)
+                detailsSheet()
+                    .offset(y: -PPSpace.xl)
+                    .padding(.bottom, -PPSpace.xl)
             }
         }
         .coordinateSpace(name: "PPPetAdViewerScroll")
         .ignoresSafeArea(edges: .top)
-        .refreshable {
-            store.refresh()
-        }
-        .onPreferenceChange(PPPetAdScrollOffsetPreferenceKey.self) {
-            value in
-            scrollOffset = value
+        .refreshable { store.refresh() }
+        .onPreferenceChange(PPPetAdScrollOffsetPreferenceKey.self) { value in
+            heroMinY = value
             let nextValue =
-                value < -(heroHeight - navBarBottomY - 20)
+                value < -(heroHeight - navBarBottomY - PPSpace.lg)
             if nextValue != isNavigationCollapsed {
                 withAnimation(
                     reduceMotion ? nil : PPPetAdViewerMotion.navigation
@@ -270,12 +267,12 @@ private extension PPPetAdViewerScreen {
 private extension PPPetAdViewerScreen {
     /// Sections rise in a 55ms stagger: grabber → identity → facts →
     /// trust → story → discovery. Each step is a spring, never a snap.
-    var detailsSheet: some View {
-        VStack(spacing: PPSpace.lg) {
+    func detailsSheet() -> some View {
+        VStack(spacing: PPSpace.base) {
             Capsule()
                 .fill(Color.ppTextTertiary.opacity(0.22))
-                .frame(width: 44, height: 5)
-                .padding(.top, PPSpace.md)
+                .frame(width: 40, height: 5)
+                .padding(.top, PPSpace.sm)
                 .accessibilityHidden(true)
                 .adCascade(step: 0, appeared: hasAppeared, reduceMotion: reduceMotion)
 
@@ -343,9 +340,9 @@ private extension PPPetAdViewerScreen {
             )
             .adCascade(step: 6, appeared: hasAppeared, reduceMotion: reduceMotion)
 
-            Color.clear.frame(height: PPSpace.xxxxl)
+            Color.clear.frame(height: PPSpace.xxxl)
         }
-        .padding(.top, PPSpace.xs)
+        .padding(.top, PPSpace.sm)
         .frame(maxWidth: contentMaxWidth)
         .frame(maxWidth: .infinity)
         .background(
@@ -385,7 +382,7 @@ private extension PPPetAdViewerScreen {
         PPPetAdViewerNavigationBar(
             title: store.snapshot.title,
             isCollapsed: isNavigationCollapsed,
-            scrollOffset: scrollOffset,
+            scrollOffset: heroMinY,
             isFavorite: store.isFavorite,
             isFavoriteWorking: store.favoriteState == .working,
             canShare: store.screenState == .content,
@@ -436,7 +433,7 @@ private extension PPPetAdViewerScreen {
         if isRoot {
             store.close()
         } else {
-            presentationMode.wrappedValue.dismiss()
+            dismiss()
         }
     }
 }

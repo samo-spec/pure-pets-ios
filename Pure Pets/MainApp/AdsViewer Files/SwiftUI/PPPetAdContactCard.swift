@@ -3,17 +3,15 @@ import SwiftUI
 
 /// Trust surface of the viewer: who is selling, and how to reach them.
 ///
-/// Exactly one action is ever the visual primary — chat when available,
-/// otherwise the phone call — so the next step is never ambiguous.
-/// All gating (signed-out, own listing, offline, unavailable) resolves
-/// into calm, fully designed states rather than hidden buttons.
+/// The primary chat action spans full width with 56pt minimum height.
+/// All gating resolves into calm, fully designed states.
 struct PPPetAdContactCard: View {
     @ObservedObject var store: PPPetAdViewerStore
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.base) {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
             Label {
                 Text(
                     PPPetAdLocalization.text(
@@ -37,7 +35,7 @@ struct PPPetAdContactCard: View {
                 ownerContent
             }
         }
-        .padding(PPSpace.lg)
+        .padding(PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ppCard()
     }
@@ -45,11 +43,11 @@ struct PPPetAdContactCard: View {
     // MARK: - Signed out
 
     private var signedOutContent: some View {
-        VStack(spacing: PPSpace.base) {
+        VStack(spacing: PPSpace.md) {
             Image(systemName: "lock.shield.fill")
-                .font(.system(size: 26, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(Color.ppPrimary)
-                .frame(width: 54, height: 54)
+                .frame(width: 44, height: 44)
                 .background(Color.ppPrimary.opacity(0.11), in: Circle())
 
             Text(
@@ -64,7 +62,7 @@ struct PPPetAdContactCard: View {
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
 
-            Button(action: store.requireSignInForContact) {
+            Button(action: { store.requireSignInForContact() }) {
                 Label(
                     PPPetAdLocalization.text(
                         "Login",
@@ -74,7 +72,7 @@ struct PPPetAdContactCard: View {
                 )
                 .font(PPPetAdTypography.calloutBold)
                 .foregroundStyle(Color.white)
-                .frame(maxWidth: .infinity, minHeight: 52)
+                .frame(maxWidth: .infinity, minHeight: 56)
                 .background(PPGradient.hero)
                 .clipShape(Capsule())
                 .shadow(
@@ -95,283 +93,127 @@ struct PPPetAdContactCard: View {
         PPPetAdInlineStateView(
             symbol: "checkmark.seal.fill",
             title: PPPetAdLocalization.text(
-                "pet_ad_viewer_your_listing",
+                "contact_own_ad",
                 fallback: "This is your advertisement"
             ),
             message: PPPetAdLocalization.text(
-                "pet_ad_viewer_your_listing_detail",
+                "contact_own_ad_detail",
                 fallback:
-                    "Contact actions are hidden when you view your own listing."
+                    "You are listed as the advertiser for this pet. If you want to update the details, edit the advertisement."
             ),
-            actionTitle: nil,
-            tint: .ppSuccess,
-            action: nil
+            actionTitle: PPPetAdLocalization.text(
+                "Edit",
+                fallback: "Edit"
+            ),
+            tint: Color.ppInfo,
+            action: { store.close() }
         )
     }
-}
 
-// MARK: - Owner states
+    // MARK: - Owner content
 
-private extension PPPetAdContactCard {
-    @ViewBuilder
-    var ownerContent: some View {
-        switch store.ownerState {
-        case .idle, .loading:
-            loadingOwner
-        case .loaded:
+    private var ownerContent: some View {
+        VStack(spacing: PPSpace.md) {
             if let owner = store.owner {
-                loadedOwner(owner)
+                ownerRow(owner: owner)
+                primaryActions(owner: owner)
+                secondaryActions(owner: owner)
             } else {
                 unavailableOwner
             }
-        case .empty:
-            unavailableOwner
-        case let .offline(message):
-            PPPetAdInlineStateView(
-                symbol: "wifi.slash",
-                title: PPPetAdLocalization.text(
-                    "pet_ad_viewer_owner_offline",
-                    fallback: "Contact details are offline"
-                ),
-                message: message,
-                actionTitle: PPPetAdLocalization.text(
-                    "Retry",
-                    fallback: "Retry"
-                ),
-                tint: .ppWarning,
-                action: store.retryOwner
-            )
-        case let .failed(message):
-            PPPetAdInlineStateView(
-                symbol: "person.crop.circle.badge.exclamationmark",
-                title: PPPetAdLocalization.text(
-                    "pet_ad_viewer_owner_unavailable",
-                    fallback: "Contact details are unavailable"
-                ),
-                message: message,
-                actionTitle: PPPetAdLocalization.text(
-                    "Retry",
-                    fallback: "Retry"
-                ),
-                tint: .ppError,
-                action: store.retryOwner
-            )
         }
     }
 
-    var loadingOwner: some View {
-        HStack(spacing: PPSpace.md) {
-            ProgressView()
-                .tint(Color.ppPrimary)
-                .frame(width: 52, height: 52)
-                .background(
-                    Color.ppPrimary.opacity(0.08),
-                    in: Circle()
-                )
+    // MARK: - Owner Row
 
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.ppTextTertiary.opacity(0.16))
-                    .frame(width: 150, height: 15)
-                RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.ppTextTertiary.opacity(0.11))
-                    .frame(width: 105, height: 12)
+    private var ownerAvatarSessionState: PPRootSessionState {
+        PPRootSessionState(
+            isLoggedIn: true,
+            displayName: store.owner?.displayName ?? "",
+            userImageUrl: store.owner.flatMap {
+                URL(string: $0.avatarURL ?? "")
             }
-
-            Spacer()
-        }
-        .padding(.vertical, PPSpace.sm)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            PPPetAdLocalization.text(
-                "pet_ad_viewer_owner_loading",
-                fallback: "Loading advertiser details"
-            )
         )
     }
 
-    func loadedOwner(_ owner: PPPetAdOwner) -> some View {
-        VStack(spacing: PPSpace.base) {
-            ownerRow(owner)
-            contactActions(for: owner)
-        }
-    }
-
-    func ownerRow(_ owner: PPPetAdOwner) -> some View {
-        HStack(spacing: PPSpace.md) {
-            PPPetAdRemoteImageView(
-                urlString: owner.avatarURL,
-                blurHash: nil,
-                contentMode: .fill,
-                accessibilityLabel: owner.displayName
+    func ownerRow(owner: PPPetAdOwner) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            PPRootAvatarView(
+                sessionState: ownerAvatarSessionState,
+                isSelected: false
             )
-            .frame(width: 58, height: 58)
-            .clipShape(Circle())
-            .overlay {
-                Circle()
-                    .stroke(
-                        Color.ppPrimary.opacity(0.16),
-                        lineWidth: 1
-                    )
-            }
-            .accessibilityHidden(true)
+            .frame(width: 40, height: 40)
 
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                HStack(spacing: PPSpace.xs) {
-                    Text(owner.displayName)
-                        .font(PPPetAdTypography.headline)
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .lineLimit(2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(owner.displayName)
+                    .font(PPPetAdTypography.subheadlineBold)
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .lineLimit(1)
 
-                    if owner.isVerified {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(Color.ppInfo)
-                            .accessibilityLabel(
-                                PPPetAdLocalization.text(
-                                    "Verified",
-                                    fallback: "Verified"
-                                )
+                if owner.isVerified {
+                    Label {
+                        Text(
+                            PPPetAdLocalization.text(
+                                "Verified",
+                                fallback: "Verified"
                             )
+                        )
+                    } icon: {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(Color.ppPrimary)
                     }
+                    .font(PPPetAdTypography.caption)
+                    .foregroundStyle(Color.ppTextSecondary)
                 }
-
-                Text(
-                    owner.isVerified
-                        ? PPPetAdLocalization.text(
-                            "pet_ad_viewer_verified_owner",
-                            fallback: "Verified Pure Pets member"
-                        )
-                        : PPPetAdLocalization.text(
-                            "pet_ad_viewer_owner",
-                            fallback: "Pure Pets member"
-                        )
-                )
-                .font(PPPetAdTypography.footnote)
-                .foregroundStyle(Color.ppTextSecondary)
             }
 
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
-    }
-}
-
-
-// MARK: - Contact actions
-
-private extension PPPetAdContactCard {
-    /// One dominant action, everything else secondary.
-    @ViewBuilder
-    func contactActions(for owner: PPPetAdOwner) -> some View {
-        if store.canMessageOwner {
-            VStack(spacing: PPSpace.sm) {
-                primaryChatButton
-
-                if store.canCallOwner {
-                    secondaryRow(for: owner)
-                }
-            }
-        } else if store.canCallOwner {
-            VStack(spacing: PPSpace.sm) {
-                primaryCallButton(for: owner)
-                whatsAppButton(for: owner)
-            }
-        } else {
-            Text(
-                PPPetAdLocalization.text(
-                    "pet_ad_viewer_no_contact_channels",
-                    fallback:
-                        "This advertiser has no contact channel available right now."
-                )
-            )
-            .font(PPPetAdTypography.subheadline)
-            .foregroundStyle(Color.ppTextSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    var primaryChatButton: some View {
-        Button(action: store.openChat) {
-            ZStack {
-                if store.chatState == .working {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Label(
-                        PPPetAdLocalization.text(
-                            "Chat",
-                            fallback: "Chat"
-                        ),
-                        systemImage: "message.fill"
-                    )
-                }
-            }
-            .font(PPPetAdTypography.calloutBold)
-            .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .background(PPGradient.hero)
-            .clipShape(Capsule())
-            .shadow(
-                color: Color.ppPrimary.opacity(0.22),
-                radius: 14,
-                y: 8
-            )
-        }
-        .buttonStyle(PPPetAdPressButtonStyle())
-        .disabled(store.chatState == .working)
-        .accessibilityLabel(ownerChatAccessibilityLabel)
-        .accessibilityValue(
-            store.chatState == .working
-                ? PPPetAdLocalization.text(
-                    "Loading",
-                    fallback: "Loading"
-                )
-                : ""
+        .accessibilityLabel(
+            "\(owner.displayName), \(PPPetAdLocalization.text("Contact", fallback: "contact"))"
         )
     }
 
-    var ownerChatAccessibilityLabel: String {
-        String(
-            format: PPPetAdLocalization.text(
-                "a11y_btn_chat_user_format",
-                fallback: "Chat with %@"
-            ),
-            store.owner?.displayName ?? ""
-        )
-    }
+    // MARK: - Primary Action
 
-    func secondaryRow(for owner: PPPetAdOwner) -> some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: PPSpace.sm) {
-                    callButton(for: owner)
-                    whatsAppButton(for: owner)
-                }
-            } else {
+    func primaryActions(owner: PPPetAdOwner) -> some View {
+        VStack(spacing: PPSpace.sm) {
+            // Chat button — full width, 56pt min height, primary emphasis
+            chatButton(for: owner)
+
+            if store.canCallOwner, owner.phoneNumber?.isEmpty == false {
                 HStack(spacing: PPSpace.sm) {
                     callButton(for: owner)
-                    whatsAppButton(for: owner)
+                    if owner.phoneNumber?.isEmpty == false {
+                        whatsAppButton(for: owner)
+                    }
                 }
             }
         }
     }
-}
 
+    func secondaryActions(owner: PPPetAdOwner) -> some View {
+        EmptyView()
+    }
 
-// MARK: - Buttons
+    // MARK: - Chat Button (Primary CTA)
 
-private extension PPPetAdContactCard {
-    func primaryCallButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        Button(action: store.callOwner) {
-            Label(
-                PPPetAdLocalization.text("Call", fallback: "Call"),
-                systemImage: "phone.fill"
-            )
-            .font(PPPetAdTypography.calloutBold)
+    func chatButton(for owner: PPPetAdOwner) -> some View {
+        Button(action: store.openChat) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "message.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                Text(
+                    PPPetAdLocalization.text(
+                        "Chat",
+                        fallback: "Message"
+                    )
+                )
+                .font(PPPetAdTypography.calloutBold)
+            }
             .foregroundStyle(Color.white)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity, minHeight: 56)
             .background(PPGradient.hero)
             .clipShape(Capsule())
             .shadow(
@@ -384,8 +226,8 @@ private extension PPPetAdContactCard {
         .accessibilityLabel(
             String(
                 format: PPPetAdLocalization.text(
-                    "a11y_btn_call_user_format",
-                    fallback: "Call %@"
+                    "a11y_btn_chat_user_format",
+                    fallback: "Message %@"
                 ),
                 owner.displayName
             )
@@ -404,7 +246,7 @@ private extension PPPetAdContactCard {
                 ),
                 owner.displayName
             ),
-            action: store.callOwner
+            action: { store.callOwner() }
         )
     }
 
@@ -423,7 +265,7 @@ private extension PPPetAdContactCard {
                 ),
                 owner.displayName
             ),
-            action: store.openWhatsApp
+            action: { store.openWhatsApp() }
         )
     }
 
@@ -475,8 +317,7 @@ private extension PPPetAdContactCard {
                 fallback: "Retry"
             ),
             tint: .ppWarning,
-            action: store.retryOwner
+            action: { store.retryOwner() }
         )
     }
 }
-

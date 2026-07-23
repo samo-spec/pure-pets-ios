@@ -83,7 +83,7 @@ struct PPPetAdDescriptionCard: View {
                 )
             }
         }
-        .padding(PPSpace.lg)
+        .padding(PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ppCard()
     }

@@ -1,16 +1,20 @@
 import SwiftUI
 
 /// The listing carries no renderable content — removed, completed, or
-/// malformed. A quiet dead end with one obvious way out.
+/// malformed. A quiet dead end with one obvious way out and a gentle
+/// entrance animation.
 struct PPPetAdViewerEmptyStateView: View {
     let onClose: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasAppeared = false
 
     var body: some View {
         VStack(spacing: PPSpace.xl) {
             Image(systemName: "pawprint.circle")
-                .font(.system(size: 64, weight: .light))
+                .font(.system(size: 56, weight: .light))
                 .foregroundStyle(Color.ppPrimary)
-                .frame(width: 108, height: 108)
+                .frame(width: 96, height: 96)
                 .background(
                     Color.ppPrimary.opacity(0.08),
                     in: Circle()
@@ -59,5 +63,16 @@ struct PPPetAdViewerEmptyStateView: View {
         .padding(PPSpace.xxl)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(reduceMotion ? 1 : (hasAppeared ? 1 : 0))
+        .scaleEffect(reduceMotion ? 1 : (hasAppeared ? 1 : 0.92))
+        .onAppear {
+            guard !reduceMotion, !hasAppeared else {
+                hasAppeared = true
+                return
+            }
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                hasAppeared = true
+            }
+        }
     }
 }

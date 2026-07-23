@@ -49,7 +49,7 @@ struct PPPetAdMediaViewerScreen: View {
         .onAppear {
             selection = min(max(selection, 0), max(items.count - 1, 0))
         }
-        .onChange(of: selection) { _ in
+        .adOnChange(of: selection) { _ in
             isZoomed = false
             if dragOffset != 0 {
                 dragOffset = 0

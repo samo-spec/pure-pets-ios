@@ -62,8 +62,48 @@ enum PPPetAdViewerMotion {
         blendDuration: 0.06
     )
 
+    /// Skeleton shimmer sweep — steady, calming 1.5 s cycle.
+    static let shimmer = Animation.linear(duration: 1.5)
+        .repeatForever(autoreverses: false)
+
+    /// State view entrance — gentle settle, no overshoot.
+    static let stateEntrance = Animation.spring(
+        response: 0.40,
+        dampingFraction: 0.86,
+        blendDuration: 0.08
+    )
+
+    /// Error state subtle shake — alerting but not alarming.
+    static let errorShake = Animation.easeOut(duration: 0.30)
+
+    /// Skeleton → content crossfade.
+    static let skeletonFade = Animation.easeOut(duration: 0.35)
+
     /// Staggered cascade for a section at `index` (0-based).
     static func cascadeDelay(_ index: Int) -> Animation {
         cascade.delay(0.04 + Double(index) * 0.055)
+    }
+}
+
+// MARK: - Equatable change observation (iOS 15+ compatibility)
+
+extension View {
+    /// Cross-version `onChange` that silences the iOS 17 deprecation of the
+    /// single-parameter `onChange(of:perform:)` without dropping iOS 15
+    /// support. On iOS 17+ it routes through the two-parameter closure; on
+    /// earlier releases it uses the original `perform:` form. Behavior is
+    /// identical on every OS — the action always receives the new value.
+    @ViewBuilder
+    func adOnChange<V: Equatable>(
+        of value: V,
+        perform action: @escaping (V) -> Void
+    ) -> some View {
+        if #available(iOS 17, *) {
+            onChange(of: value) { _, newValue in
+                action(newValue)
+            }
+        } else {
+            onChange(of: value, perform: action)
+        }
     }
 }

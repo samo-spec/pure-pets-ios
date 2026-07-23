@@ -82,7 +82,7 @@ struct PPPetAdVideoView: View {
                 model.play()
             }
         }
-        .onChange(of: isActive) { active in
+        .adOnChange(of: isActive) { active in
             if active {
                 model.play()
             } else {

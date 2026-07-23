@@ -2,11 +2,15 @@ import SwiftUI
 
 /// Recoverable failure and offline states — a tinted symbol, plain-spoken
 /// copy, and one gradient retry action with a quiet escape hatch.
+/// Entrance animated with subtle spring.
 struct PPPetAdViewerErrorStateView: View {
     let isOffline: Bool
     let message: String
     let onRetry: () -> Void
     let onClose: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hasAppeared = false
 
     var body: some View {
         VStack(spacing: PPSpace.xl) {
@@ -15,11 +19,11 @@ struct PPPetAdViewerErrorStateView: View {
                     ? "wifi.slash"
                     : "exclamationmark.triangle.fill"
             )
-            .font(.system(size: 46, weight: .semibold))
+            .font(.system(size: 40, weight: .semibold))
             .foregroundStyle(
                 isOffline ? Color.ppWarning : Color.ppError
             )
-            .frame(width: 96, height: 96)
+            .frame(width: 88, height: 88)
             .background(
                 (isOffline ? Color.ppWarning : Color.ppError)
                     .opacity(0.10),
@@ -80,7 +84,7 @@ struct PPPetAdViewerErrorStateView: View {
                     )
                     .font(PPPetAdTypography.calloutBold)
                     .foregroundStyle(Color.ppPrimary)
-                    .frame(minHeight: 46)
+                    .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -89,5 +93,16 @@ struct PPPetAdViewerErrorStateView: View {
         .padding(PPSpace.xxl)
         .frame(maxWidth: 520)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .opacity(reduceMotion ? 1 : (hasAppeared ? 1 : 0))
+        .offset(y: reduceMotion ? 0 : (hasAppeared ? 0 : 12))
+        .onAppear {
+            guard !reduceMotion, !hasAppeared else {
+                hasAppeared = true
+                return
+            }
+            withAnimation(.spring(response: 0.40, dampingFraction: 0.86)) {
+                hasAppeared = true
+            }
+        }
     }
 }

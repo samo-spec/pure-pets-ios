@@ -35,8 +35,8 @@ struct PPPetAdViewerNavigationBar: View {
         HStack(spacing: PPSpace.sm) {
             navigationButton(
                 symbol: layoutDirection == .rightToLeft
-                    ? "chevron.forward"
-                    : "chevron.backward",
+                    ? "arrow.right"
+                    : "arrow.left",
                 label: PPPetAdLocalization.text("Back", fallback: "Back"),
                 action: onBack
             )
@@ -53,51 +53,67 @@ struct PPPetAdViewerNavigationBar: View {
                 .accessibilityHidden(titleOpacity < 1)
 
             HStack(spacing: PPSpace.xs) {
-                if canShare {
-                    navigationButton(
-                        symbol: "square.and.arrow.up",
-                        label: PPPetAdLocalization.text(
-                            "Share",
-                            fallback: "Share"
-                        ),
-                        action: onShare
-                    )
-                }
+                if canShare || canFavorite || canReport {
+                    Menu {
+                        if canShare {
+                            Button(action: onShare) {
+                                Label(
+                                    PPPetAdLocalization.text("Share", fallback: "Share"),
+                                    systemImage: "square.and.arrow.up"
+                                )
+                            }
+                        }
 
-                if canFavorite {
-                    navigationButton(
-                        symbol: isFavorite ? "heart.fill" : "heart",
-                        label: isFavorite
-                            ? PPPetAdLocalization.text(
-                                "a11y_btn_unfavorite",
-                                fallback: "Remove from favorites"
-                            )
-                            : PPPetAdLocalization.text(
-                                "a11y_btn_favorite",
-                                fallback: "Add to favorites"
-                            ),
-                        tint: isFavorite ? Color.ppPrimary : .white,
-                        isEnabled: !isFavoriteWorking,
-                        isLoading: isFavoriteWorking,
-                        action: onFavorite
-                    )
-                    .scaleEffect(isFavorite ? 1.12 : 1)
-                    .animation(
-                        reduceMotion ? nil : PPPetAdViewerMotion.heartPop,
-                        value: isFavorite
-                    )
-                }
+                        if canFavorite {
+                            Button(action: onFavorite) {
+                                Label(
+                                    isFavorite
+                                        ? PPPetAdLocalization.text("a11y_btn_unfavorite", fallback: "Remove from favorites")
+                                        : PPPetAdLocalization.text("a11y_btn_favorite", fallback: "Add to favorites"),
+                                    systemImage: isFavorite ? "heart.fill" : "heart"
+                                )
+                            }
+                            .disabled(isFavoriteWorking)
+                        }
 
-                if canReport {
-                    navigationButton(
-                        symbol: "ellipsis",
-                        label: PPPetAdLocalization.text(
-                            "report_ad_title",
-                            fallback: "Report advertisement"
-                        ),
-                        isEnabled: !isReportWorking,
-                        isLoading: isReportWorking,
-                        action: onReport
+                        if canReport {
+                            Button(role: .destructive, action: onReport) {
+                                Label(
+                                    PPPetAdLocalization.text("report_ad_title", fallback: "Report advertisement"),
+                                    systemImage: "flag.fill"
+                                )
+                            }
+                            .disabled(isReportWorking)
+                        }
+
+                        if canShare {
+                            Divider()
+                            Button(action: onShare) {
+                                Label(
+                                    PPPetAdLocalization.text("Copy Link", fallback: "Copy Link"),
+                                    systemImage: "link"
+                                )
+                            }
+                        }
+                    } label: {
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 42, height: 42)
+                            Circle()
+                                .fill(Color.black.opacity(0.28 - progress * 0.16))
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                        .overlay {
+                            Circle()
+                                .stroke(Color.white.opacity(0.32 - progress * 0.12), lineWidth: 0.75)
+                        }
+                        .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+                    }
+                    .accessibilityLabel(
+                        PPPetAdLocalization.text("More actions", fallback: "More actions")
                     )
                 }
             }
