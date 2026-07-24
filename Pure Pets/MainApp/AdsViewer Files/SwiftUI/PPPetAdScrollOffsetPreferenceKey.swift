@@ -1,12 +1,3 @@
-import SwiftUI
-
-struct PPPetAdScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(
-        value: inout CGFloat,
-        nextValue: () -> CGFloat
-    ) {
-        value = nextValue()
-    }
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

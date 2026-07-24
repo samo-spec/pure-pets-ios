@@ -877,17 +877,28 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
      [self.heroContainerView addSubview:self.closeButton];
     [self.heroContainerView addSubview:self.titleView];
 
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroContainerView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [self.heroContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.heroContainerView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         self.heroHeightConstraint,
+        [self.heroContainerView.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.heroImageView.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor],
         [self.heroImageView.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
         [self.heroImageView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
         [self.heroImageView.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
+        [self.heroImageView.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.closeButton.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor constant:18.0],
         [self.closeButton.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:18.0],

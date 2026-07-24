@@ -60,7 +60,7 @@ final class PPPetAdViewerHostActions {
             )
         }
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        try await withCheckedThrowingContinuation { continuation in
             PPPetAdViewerLegacyBridge.openChat(
                 for: owner.user,
                 from: presenter
@@ -68,7 +68,7 @@ final class PPPetAdViewerHostActions {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: ())
+                    continuation.resume(returning: Void())
                 }
             }
         }

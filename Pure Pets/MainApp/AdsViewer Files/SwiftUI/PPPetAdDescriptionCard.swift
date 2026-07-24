@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// The pet's story. Long copy collapses behind a soft fade with a single
-/// quiet control; expanding springs open without layout jumps.
 struct PPPetAdDescriptionCard: View {
     let description: String
 
@@ -25,16 +23,13 @@ struct PPPetAdDescriptionCard: View {
             }
             .accessibilityAddTraits(.isHeader)
 
-            Text(description)
+            Text(normalizedDescription)
                 .font(PPPetAdTypography.body)
                 .foregroundStyle(Color.ppTextSecondary)
-                .lineSpacing(6)
+                .lineSpacing(5)
                 .lineLimit(isExpanded ? nil : 6)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
-                .overlay(alignment: .bottom) {
-                    collapseFade
-                }
 
             if shouldOfferExpansion {
                 Button {
@@ -58,11 +53,12 @@ struct PPPetAdDescriptionCard: View {
                                     fallback: "Read more"
                                 )
                         )
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .bold))
-                            .rotationEffect(
-                                .degrees(isExpanded ? 180 : 0)
-                            )
+                        Image(
+                            systemName: isExpanded
+                                ? "chevron.up"
+                                : "chevron.down"
+                        )
+                        .font(.system(size: 12, weight: .bold))
                     }
                     .font(PPPetAdTypography.calloutBold)
                     .foregroundStyle(Color.ppPrimary)
@@ -83,31 +79,23 @@ struct PPPetAdDescriptionCard: View {
                 )
             }
         }
-        .padding(PPSpace.base)
+        .padding(PPSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ppCard()
     }
 
-    /// Soft fade suggesting more copy beneath the fold.
-    @ViewBuilder
-    private var collapseFade: some View {
-        if !isExpanded, shouldOfferExpansion {
-            LinearGradient(
-                colors: [
-                    Color.ppCard.opacity(0),
-                    Color.ppCard
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 36)
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
+    private var normalizedDescription: String {
+        description
+            .components(separatedBy: .newlines)
+            .map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
     }
 
     private var shouldOfferExpansion: Bool {
-        description.count > 260 ||
-            description.components(separatedBy: "\n").count > 4
+        normalizedDescription.count > 260 ||
+            normalizedDescription.components(separatedBy: "\n").count > 4
     }
 }

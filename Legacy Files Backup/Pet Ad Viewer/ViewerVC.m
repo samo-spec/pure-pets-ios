@@ -619,17 +619,28 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     CGFloat galleryHeight = [self pp_heroHeight];
     self.galleryMaxHeight = galleryHeight;
 
-    self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:galleryHeight];
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+
+    self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:MAX(galleryHeight, minGalleryHeight)];
     [NSLayoutConstraint activateConstraints:@[
         [self.heroContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.heroContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         self.heroHeightConstraint,
+        [self.heroContainerView.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.imageGallery.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor],
         [self.imageGallery.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
         [self.imageGallery.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
         [self.imageGallery.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
+        [self.imageGallery.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
     ]];
 
     self.galleryScrimView = [[UIView alloc] init];
@@ -691,7 +702,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
     self.contentSheetRestingTopConstant = -24.0;
     self.contentSheetExpandedTopConstant = [self pp_contentSheetExpandedTopConstantForHeroHeight:galleryHeight];
-    self.contentSheetTopConstraint = [self.contentScrollView.topAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor
+    self.contentSheetTopConstraint = [self.contentScrollView.topAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor
                                                                                        constant:self.contentSheetRestingTopConstant];
     [NSLayoutConstraint activateConstraints:@[
         self.contentSheetTopConstraint,
@@ -745,7 +756,15 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    return MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0;
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+    return MAX(MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0, minGalleryHeight);
 }
 
 

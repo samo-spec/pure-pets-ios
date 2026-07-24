@@ -88,28 +88,6 @@ static UIViewController *PPPetAdViewerResolvedPresenter(
     return authID.length > 0 ? authID : nil;
 }
 
-+ (void)fetchAdForID:(NSString *)adID
-          completion:(void (^)(PetAd * _Nullable, NSError * _Nullable))completion
-{
-    if (adID.length == 0) {
-        NSError *error = [NSError errorWithDomain:PPPetAdViewerBridgeErrorDomain
-                                             code:1000
-                                         userInfo:@{
-            NSLocalizedDescriptionKey: @"The ad identifier is missing."
-        }];
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(nil, error);
-        });
-        return;
-    }
-
-    [PetAdManager fetchAdsWithIDs:@[adID] completion:^(NSArray<PetAd *> *ads) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            completion(ads.firstObject, nil);
-        });
-    }];
-}
-
 + (void)fetchOwnerForID:(NSString *)ownerID
              completion:(void (^)(UserModel * _Nullable,
                                   NSError * _Nullable))completion
@@ -376,13 +354,6 @@ static UIViewController *PPPetAdViewerResolvedPresenter(
     }
     NSString *unit = months == 1 ? @"month" : @"months";
     return [NSString stringWithFormat:@"%ld %@", (long)months, unit];
-}
-
-+ (nullable NSString *)formattedDateForAd:(PetAd *)ad
-{
-    NSDate *date = ad.postedDate ?: ad.createdAt;
-    if (!date) return nil;
-    return [GM formatDateFromDate:date];
 }
 
 + (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory

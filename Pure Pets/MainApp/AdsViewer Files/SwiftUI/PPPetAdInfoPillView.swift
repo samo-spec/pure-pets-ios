@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// A single factual attribute — icon, label, value — presented as a
-/// soft tinted capsule. Pills scan horizontally like a spec sheet and
-/// reflow vertically at accessibility text sizes.
 struct PPPetAdInfoPillView: View {
     let symbol: String
     let label: String
@@ -14,7 +11,7 @@ struct PPPetAdInfoPillView: View {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 38, height: 38)
+                .frame(width: 36, height: 36)
                 .background(tint.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: PPSpace.xxs) {
@@ -31,7 +28,7 @@ struct PPPetAdInfoPillView: View {
             Spacer(minLength: 0)
         }
         .padding(PPSpace.md)
-        .frame(maxWidth: .infinity, minHeight: 68, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
         .background(Color.ppForeground.opacity(0.72))
         .clipShape(
             RoundedRectangle(

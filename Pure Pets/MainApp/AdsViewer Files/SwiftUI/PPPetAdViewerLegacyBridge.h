@@ -1,9 +1,9 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import "UserModel.h"
 
 @class PetAccessory;
 @class PetAd;
+@class UserModel;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -18,11 +18,6 @@ NS_ASSUME_NONNULL_BEGIN
 + (BOOL)isSignedIn NS_SWIFT_NAME(isSignedIn());
 + (BOOL)isNetworkAvailable NS_SWIFT_NAME(isNetworkAvailable());
 + (nullable NSString *)currentUserID NS_SWIFT_NAME(currentUserID());
-
-+ (void)fetchAdForID:(NSString *)adID
-          completion:(void (^)(PetAd * _Nullable ad,
-                               NSError * _Nullable error))completion
-    NS_SWIFT_NAME(fetchAd(id:completion:));
 
 + (void)fetchOwnerForID:(NSString *)ownerID
              completion:(void (^)(UserModel * _Nullable user,
@@ -75,8 +70,6 @@ NS_ASSUME_NONNULL_BEGIN
     NS_SWIFT_NAME(locationName(for:));
 + (NSString *)ageTextForAd:(PetAd *)ad
     NS_SWIFT_NAME(ageText(for:));
-+ (nullable NSString *)formattedDateForAd:(PetAd *)ad
-    NS_SWIFT_NAME(formattedDate(for:));
 + (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(formattedPrice(forAccessory:));
 + (NSString *)subtitleForAccessory:(PetAccessory *)accessory

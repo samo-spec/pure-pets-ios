@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// Discovery rail: a titled horizontal strip of related listings with
-/// breathing skeletons while loading and calm inline states for empty,
-/// offline, and failed outcomes.
 struct PPPetAdRelatedSection: View {
     let title: String
     let subtitle: String
@@ -10,9 +7,6 @@ struct PPPetAdRelatedSection: View {
     let items: [PPPetAdRelatedItem]
     let onRetry: () -> Void
     let onSelect: (PPPetAdRelatedItem) -> Void
-
-    @State private var skeletonBreathing = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
@@ -40,9 +34,34 @@ struct PPPetAdRelatedSection: View {
     private var sectionContent: some View {
         switch state {
         case .idle, .loading:
-            skeletonRail
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: PPSpace.md) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        loadingCard
+                    }
+                }
+                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.vertical, PPSpace.xs)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                PPPetAdLocalization.text(
+                    "Loading",
+                    fallback: "Loading recommendations"
+                )
+            )
         case .loaded:
-            loadedRail
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: PPSpace.md) {
+                    ForEach(items) { item in
+                        PPPetAdRelatedCard(item: item) {
+                            onSelect(item)
+                        }
+                    }
+                }
+                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.vertical, PPSpace.xs)
+            }
         case .empty:
             stateCard(
                 symbol: "sparkles",
@@ -91,55 +110,8 @@ struct PPPetAdRelatedSection: View {
             )
         }
     }
-}
 
-// MARK: - Rails & states
-
-private extension PPPetAdRelatedSection {
-    var skeletonRail: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: PPSpace.md) {
-                ForEach(0..<3, id: \.self) { _ in
-                    loadingCard
-                }
-            }
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.vertical, PPSpace.xs)
-        }
-        .opacity(skeletonBreathing ? 0.55 : 1)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(
-                .easeInOut(duration: 1.1)
-                    .repeatForever(autoreverses: true)
-            ) {
-                skeletonBreathing = true
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            PPPetAdLocalization.text(
-                "Loading",
-                fallback: "Loading recommendations"
-            )
-        )
-    }
-
-    var loadedRail: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: PPSpace.md) {
-                ForEach(items) { item in
-                    PPPetAdRelatedCard(item: item) {
-                        onSelect(item)
-                    }
-                }
-            }
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.vertical, PPSpace.xs)
-        }
-    }
-
-    var loadingCard: some View {
+    private var loadingCard: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             RoundedRectangle(
                 cornerRadius: PPCorner.medium,
@@ -182,7 +154,7 @@ private extension PPPetAdRelatedSection {
         }
     }
 
-    func stateCard(
+    private func stateCard(
         symbol: String,
         title: String,
         message: String,
@@ -208,4 +180,3 @@ private extension PPPetAdRelatedSection {
         .padding(.horizontal, PPSpace.screenMargin)
     }
 }
-

@@ -1,8 +1,3 @@
-import UIKit
-
-enum PPPetAdImageLoadState {
-    case idle
-    case loading(placeholder: UIImage?)
-    case loaded(UIImage)
-    case failed
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

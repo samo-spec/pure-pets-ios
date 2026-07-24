@@ -8,6 +8,7 @@
 #import "AppManager.h"
 #import "AppDelegate.h"
 #import "FBLPromises.h"
+#import "Pure_Pets-Swift.h"
 
 @interface AppManager()
 
@@ -198,6 +199,7 @@ static NSInteger loadingCardFlag = 0;
 
 -(void)setupAppConfiguration
 {
+    PPRootFeatureFlag.shared.isSwiftUIRootEnabled = YES;
     [self scheduleDailyCheck];
 }
 

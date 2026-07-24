@@ -2875,24 +2875,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     dockView.items = items.copy;
     self.premiumTabItems = items.copy;
 
-    CGFloat dockHeight = 64.0;
-    if (@available(iOS 26.0, *)) {
-        dockHeight = 83.0;
-    }
+    CGFloat dockHeight = PPIOS26()  ? 83.0 : 64.0;
     NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
-        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-6.0],
+        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-4.0],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
     if (!self.useLegacyBar) {
-     
-        
-        [dockConstraints addObject: [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2.0]];
-        [dockConstraints addObject: [dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:10.0]];
-            
-        
+        [dockConstraints addObject:[dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8.0]];
+        [dockConstraints addObject:[dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:-6.0]];
     } else {
-        [dockConstraints addObject: [dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
-        [dockConstraints addObject: [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
+        [dockConstraints addObject:[dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
+        [dockConstraints addObject:[dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
     }
     [NSLayoutConstraint activateConstraints:dockConstraints];
     dockView.backgroundColor = UIColor.clearColor;
@@ -3088,7 +3081,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [fadeView.heightAnchor constraintEqualToConstant:70.0]
+        [fadeView.heightAnchor constraintEqualToConstant:120.0]
     ]];
 }
 

@@ -1,12 +1,3 @@
-import Foundation
-
-enum PPPetAdLocalization {
-    @inline(__always)
-    static func text(_ key: String, fallback: String) -> String {
-        let localized = Language.get(key, alter: fallback)
-        guard let localized, !localized.isEmpty, localized != key else {
-            return fallback
-        }
-        return localized
-    }
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

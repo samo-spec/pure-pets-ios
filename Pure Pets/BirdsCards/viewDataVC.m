@@ -134,13 +134,21 @@ typedef enum : NSUInteger {
     _imageGallery.layer.cornerRadius = 0;
     _imageGallery.clipsToBounds = YES;
     _imageGallery.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner ;
-    // Setup imageGallery constraints
-     CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height  ;
+     CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.imageGallery.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:- statusBarHeight],
+        [self.imageGallery.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.imageGallery.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.imageGallery.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.imageGallery.heightAnchor constraintEqualToConstant:self.view.hx_h * 0.6]
+        [self.imageGallery.heightAnchor constraintEqualToConstant:MAX(self.view.hx_h * 0.6, minGalleryHeight)],
+        [self.imageGallery.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight]
     ]];
     [self addActionsView];
     

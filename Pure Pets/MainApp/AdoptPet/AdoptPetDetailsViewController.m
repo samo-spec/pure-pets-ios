@@ -538,15 +538,27 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.pageControl.hidesForSinglePage = YES;
     [self.heroContainer addSubview:self.pageControl];
 
-    self.imagesHeightConstraint = [self.heroContainer.heightAnchor constraintEqualToConstant:440.0];
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+
+    self.imagesHeightConstraint = [self.heroContainer.heightAnchor constraintEqualToConstant:MAX(440.0, minGalleryHeight)];
 
     [NSLayoutConstraint activateConstraints:@[
         self.imagesHeightConstraint,
+        [self.heroContainer.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.heroContainer.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.imagesCV.topAnchor constraintEqualToAnchor:self.heroContainer.topAnchor],
         [self.imagesCV.leadingAnchor constraintEqualToAnchor:self.heroContainer.leadingAnchor],
         [self.imagesCV.trailingAnchor constraintEqualToAnchor:self.heroContainer.trailingAnchor],
         [self.imagesCV.bottomAnchor constraintEqualToAnchor:self.heroContainer.bottomAnchor],
+        [self.imagesCV.heightAnchor constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.heroShadeView.topAnchor constraintEqualToAnchor:self.heroContainer.topAnchor],
         [self.heroShadeView.leadingAnchor constraintEqualToAnchor:self.heroContainer.leadingAnchor],

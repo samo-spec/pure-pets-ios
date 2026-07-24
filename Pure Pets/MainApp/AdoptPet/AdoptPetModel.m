@@ -33,29 +33,32 @@
     if (self = [self init]) {
         _documentID = snapshot.documentID ?: @"";
         NSDictionary *d = snapshot.data ?: @{};
-        _name      = [d[@"name"] isKindOfClass:NSString.class] ? d[@"name"] : @"";
-        _kindID    = [d[@"kindID"]?:@(0) integerValue];
-        _breedID   = [d[@"breedID"]?:@(0) integerValue];
-        _ageMonths = [d[@"ageMonths"]?:@(0) integerValue];
+        _name      = [d[@"name"] isKindOfClass:NSString.class] ? d[@"name"] : ([d[@"adTitle"] isKindOfClass:NSString.class] ? d[@"adTitle"] : ([d[@"title"] isKindOfClass:NSString.class] ? d[@"title"] : @""));
+        _kindID    = [(d[@"kindID"] ?: d[@"category"] ?: d[@"mainCategoryID"] ?: @(0)) integerValue];
+        _breedID   = [(d[@"breedID"] ?: d[@"subcategory"] ?: d[@"subCategoryID"] ?: @(0)) integerValue];
+        _ageMonths = [(d[@"ageMonths"] ?: d[@"petAge"] ?: d[@"petAgeMonths"] ?: d[@"age"] ?: @(0)) integerValue];
         _gender    = [d[@"gender"] isKindOfClass:NSString.class] ? d[@"gender"] : @"Male";
-        _cityID    = [d[@"cityID"]?:@(0) integerValue];
-        _details   = [d[@"details"] isKindOfClass:NSString.class] ? d[@"details"] : @"";
-        _ownerID   = [d[@"ownerID"] isKindOfClass:NSString.class] ? d[@"ownerID"] : @"";
+        _cityID    = [(d[@"cityID"] ?: d[@"adLocation"] ?: @(0)) integerValue];
+        _details   = [d[@"details"] isKindOfClass:NSString.class] ? d[@"details"] : ([d[@"desc"] isKindOfClass:NSString.class] ? d[@"desc"] : ([d[@"adDescription"] isKindOfClass:NSString.class] ? d[@"adDescription"] : ([d[@"description"] isKindOfClass:NSString.class] ? d[@"description"] : @"")));
+        _ownerID   = [d[@"ownerID"] isKindOfClass:NSString.class] ? d[@"ownerID"] : ([d[@"uid"] isKindOfClass:NSString.class] ? d[@"uid"] : ([d[@"userId"] isKindOfClass:NSString.class] ? d[@"userId"] : @""));
         if ([d[@"visibility"] respondsToSelector:@selector(integerValue)]) {
             _visibility = [d[@"visibility"] integerValue];
         }
 
-        NSArray *rawURLs = [d[@"imageURLs"] isKindOfClass:NSArray.class] ? d[@"imageURLs"] : @[];
-        NSMutableArray<NSString *> *urls = [NSMutableArray arrayWithCapacity:rawURLs.count];
-        for (id raw in rawURLs) {
+        id rawURLs = d[@"imageURLs"] ?: d[@"photos"] ?: d[@"images"] ?: d[@"photoURLs"];
+        NSArray *urlsArray = [rawURLs isKindOfClass:NSArray.class] ? rawURLs : @[];
+        NSMutableArray<NSString *> *urls = [NSMutableArray arrayWithCapacity:urlsArray.count];
+        for (id raw in urlsArray) {
             if ([raw isKindOfClass:NSString.class] && [((NSString *)raw) length] > 0) {
                 [urls addObject:raw];
+            } else if ([raw isKindOfClass:NSDictionary.class] && [raw[@"url"] isKindOfClass:NSString.class]) {
+                [urls addObject:raw[@"url"]];
             }
         }
         _imageURLs = urls.copy;
         _imageMeta = [d[@"imageMeta"] isKindOfClass:NSArray.class] ? d[@"imageMeta"] : @[];
 
-        id ts = d[@"createdAt"];
+        id ts = d[@"createdAt"] ?: d[@"postedDate"] ?: d[@"updatedAt"];
         if ([ts isKindOfClass:[FIRTimestamp class]]) {
             _createdAt = ((FIRTimestamp *)ts).dateValue;
         }

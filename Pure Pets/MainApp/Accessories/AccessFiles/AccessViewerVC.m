@@ -838,18 +838,29 @@ static UIColor *AVSellerCardSurfaceColor(void) {
     [self.heroContainerView addSubview:self.heroStockBadgeLabel];
 
     // ── Constraints ──
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor constant:kAVSpace8],
+        [self.heroContainerView.topAnchor      constraintEqualToAnchor:self.view.topAnchor],
         [self.heroContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:kAVHeroHorizontalInset],
         [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVHeroHorizontalInset],
         self.heroHeightConstraint,
+        [self.heroContainerView.heightAnchor   constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.imageGallery.topAnchor      constraintEqualToAnchor:self.heroContainerView.topAnchor],
         [self.imageGallery.leadingAnchor  constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
         [self.imageGallery.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
         [self.imageGallery.bottomAnchor   constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
+        [self.imageGallery.heightAnchor   constraintGreaterThanOrEqualToConstant:minGalleryHeight],
 
         [self.heroKindBadgeLabel.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:kAVSectionInset],
         [self.heroKindBadgeLabel.topAnchor     constraintEqualToAnchor:self.heroContainerView.topAnchor     constant:kAVSectionInset],
@@ -1938,7 +1949,15 @@ static UIColor *AVSellerCardSurfaceColor(void) {
 
 - (CGFloat)pp_heroHeight {
     CGFloat width = UIScreen.mainScreen.bounds.size.width;
-    return width;//MIN(MAX(width * 1.0, 420.0), 540.0);
+    CGFloat statusBarHeight = [UIApplication sharedApplication].statusBarFrame.size.height;
+    if (@available(iOS 11.0, *)) {
+        if (self.view.safeAreaInsets.top > 0) {
+            statusBarHeight = self.view.safeAreaInsets.top;
+        }
+    }
+    CGFloat navBarHeight = (self.navigationController && !self.navigationController.navigationBarHidden) ? self.navigationController.navigationBar.frame.size.height : 44.0;
+    CGFloat minGalleryHeight = navBarHeight + statusBarHeight + 80.0;
+    return MAX(width, minGalleryHeight);
 }
 
 - (CGSize)pp_suggestionItemSize {

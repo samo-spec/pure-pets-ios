@@ -52,8 +52,13 @@
 #pragma mark - Navigation Handlers
 
 - (void)navigateToPetAdWithID:(NSString *)adID {
-    //ViewerVC *vc = [[ViewerVC alloc] initWithAdID:adID];
-    //[self pushToRootViewController:vc];
+    if (adID.length == 0) return;
+    Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
+    if (HostingClass) {
+        UIViewController *vc = [(id)[HostingClass alloc] initWithAdID:adID];
+        vc.hidesBottomBarWhenPushed = YES;
+        [self pushToRootViewController:vc];
+    }
 }
 
 - (void)navigateToAccessoryWithID:(NSString *)accessoryID {

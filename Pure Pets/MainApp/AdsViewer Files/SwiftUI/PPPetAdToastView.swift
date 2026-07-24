@@ -1,14 +1,11 @@
 import SwiftUI
 
-/// Lightweight confirmation banner for completed actions — favorite saved,
-/// report submitted, network warnings. Appears from the bottom edge with
-/// a spring and announces itself to VoiceOver.
 struct PPPetAdToastView: View {
     let message: String
 
     var body: some View {
         HStack(spacing: PPSpace.md) {
-            Image(systemName: "checkmark.circle.fill")
+            Image(systemName: "info.circle.fill")
                 .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Color.ppPrimary)
 
@@ -19,20 +16,15 @@ struct PPPetAdToastView: View {
         }
         .padding(.horizontal, PPSpace.base)
         .padding(.vertical, PPSpace.md)
-        .background(.ultraThinMaterial)
-        .clipShape(
-            RoundedRectangle(
+        .ppGlassSurface(
+            in: RoundedRectangle(
                 cornerRadius: PPCorner.medium,
                 style: .continuous
-            )
+            ),
+            tint: Color.ppBackground.opacity(0.18),
+            fallback: Color.ppCard,
+            stroke: Color(uiColor: .separator).opacity(0.20)
         )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            )
-            .stroke(Color.white.opacity(0.18), lineWidth: 0.75)
-        }
         .shadow(
             color: Color.black.opacity(0.14),
             radius: 18,

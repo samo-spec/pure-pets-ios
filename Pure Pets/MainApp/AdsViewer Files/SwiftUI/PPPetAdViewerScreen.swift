@@ -1,25 +1,15 @@
 import SwiftUI
 
-/// Root scene of the pet-ad viewer.
-///
-/// Composition contract:
-/// 1. A full-bleed hero that stretches on pull and parallax-collapses
-///    beneath floating chrome.
-/// 2. A continuous-corner sheet that cascades its sections in on first
-///    appearance — identity, facts, trust, story, discovery.
-/// 3. A single store driving five fully designed screen states
-///    (loading / content / empty / offline / failed).
 struct PPPetAdViewerScreen: View {
     let isRoot: Bool
     let languageCode: String
     let authenticationRevision: UUID
 
     @StateObject private var store: PPPetAdViewerStore
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.presentationMode) private var presentationMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var collapseProgress: CGFloat = 0
     @State private var isNavigationCollapsed = false
-    @State private var heroMinY: CGFloat = 0
     @State private var hasAppeared = false
 
     private let repository: PPPetAdViewerRepository
@@ -47,23 +37,39 @@ struct PPPetAdViewerScreen: View {
         )
     }
 
-    /// Readable measure on iPad and multitasking widths.
-    private var contentMaxWidth: CGFloat {
-        horizontalSizeClass == .regular ? 720 : .infinity
-    }
-
     var body: some View {
         GeometryReader { proxy in
             ZStack {
                 PPPetAdViewerBackground()
 
-                sceneContent(proxy: proxy)
-                    .animation(
-                        reduceMotion ? nil : PPPetAdViewerMotion.content,
-                        value: store.screenState
+                switch store.screenState {
+                case .loading:
+                    PPPetAdViewerLoadingStateView()
+                case .content:
+                    content(proxy: proxy)
+                case .empty:
+                    PPPetAdViewerEmptyStateView(onClose: handleBack)
+                case .offline(let message):
+                    PPPetAdViewerErrorStateView(
+                        isOffline: true,
+                        message: message,
+                        onRetry: store.refresh,
+                        onClose: handleBack
                     )
+                case .failed(let message):
+                    PPPetAdViewerErrorStateView(
+                        isOffline: false,
+                        message: message,
+                        onRetry: store.refresh,
+                        onClose: handleBack
+                    )
+                }
 
                 navigationBar
+                    .padding(.top, proxy.safeAreaInsets.top)
+                    .background {
+                        navigationBackground
+                    }
                     .frame(maxHeight: .infinity, alignment: .top)
 
                 navigationLink
@@ -79,9 +85,7 @@ struct PPPetAdViewerScreen: View {
                         .transition(
                             reduceMotion
                                 ? .opacity
-                                : .move(edge: .bottom).combined(
-                                    with: .opacity
-                                )
+                                : .move(edge: .bottom).combined(with: .opacity)
                         )
                         .zIndex(20)
                 }
@@ -92,16 +96,14 @@ struct PPPetAdViewerScreen: View {
             )
         }
         .navigationBarHidden(true)
-        .fullScreenCover(
-            isPresented: $store.isMediaViewerPresented
-        ) {
+        .fullScreenCover(isPresented: $store.isMediaViewerPresented) {
             PPPetAdMediaViewerScreen(
                 items: store.snapshot.media,
                 selection: $store.selectedMediaIndex,
                 onDismiss: {
                     store.isMediaViewerPresented = false
                 },
-                onShare: { store.share() }
+                onShare: store.share
             )
         }
         .confirmationDialog(
@@ -126,182 +128,119 @@ struct PPPetAdViewerScreen: View {
             Text(
                 PPPetAdLocalization.text(
                     "report_ad_message",
-                    fallback:
-                        "Choose the reason that best describes the issue."
+                    fallback: "Choose the reason that best describes the issue."
                 )
             )
         }
         .onAppear {
             store.start()
             guard !hasAppeared else { return }
-            hasAppeared = true
+            if reduceMotion {
+                hasAppeared = true
+            } else {
+                withAnimation(PPPetAdViewerMotion.content.delay(0.04)) {
+                    hasAppeared = true
+                }
+            }
         }
-        .adOnChange(of: languageCode) { _ in
+        .onChange(of: languageCode) { _ in
             store.refreshLocalization()
         }
-        .adOnChange(of: authenticationRevision) { _ in
+        .onChange(of: authenticationRevision) { _ in
             store.refreshAuthenticationState()
         }
     }
 
-    // MARK: - Scene states
-
-    @ViewBuilder
-    private func sceneContent(proxy: GeometryProxy) -> some View {
-        switch store.screenState {
-        case .loading:
-            PPPetAdViewerLoadingStateView()
-                .transition(.opacity)
-        case .content:
-            content(proxy: proxy)
-                .transition(.opacity)
-        case .empty:
-            PPPetAdViewerEmptyStateView(onClose: handleBack)
-                .transition(.opacity)
-        case let .offline(message):
-            PPPetAdViewerErrorStateView(
-                isOffline: true,
-                message: message,
-                onRetry: { store.refresh() },
-                onClose: handleBack
-            )
-            .transition(.opacity)
-        case let .failed(message):
-            PPPetAdViewerErrorStateView(
-                isOffline: false,
-                message: message,
-                onRetry: { store.refresh() },
-                onClose: handleBack
-            )
-            .transition(.opacity)
-        }
-    }
-}
-
-// MARK: - Content scene
-
-private extension PPPetAdViewerScreen {
-    /// Single ScrollView: hero as stretchy header, sheet content below
-    /// overlapping the hero. Eliminates dual-scroll gesture conflicts.
-    func content(proxy: GeometryProxy) -> some View {
-        let heroHeight = min(
-            max(proxy.size.width * 1.10, 360),
-            horizontalSizeClass == .regular ? 540 : 480
+    private func content(proxy: GeometryProxy) -> some View {
+        let metrics = PPPetAdViewerLayoutMetrics(
+            containerSize: proxy.size,
+            safeAreaTop: proxy.safeAreaInsets.top
         )
-        let navBarBottomY = proxy.safeAreaInsets.top + 60.0
-        let minHeroHeight = navBarBottomY + 80.0
-
-        let pinThreshold = max(0, heroHeight - minHeroHeight)
-        let lockDelta = max(0, -heroMinY - pinThreshold)
 
         return ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 0) {
-                heroBlock(
-                    heroHeight: heroHeight,
-                    minHeroHeight: minHeroHeight
-                )
-                .frame(height: heroHeight)
+                GeometryReader { heroProxy in
+                    let offset = heroProxy.frame(
+                        in: .named("PPPetAdViewerScroll")
+                    ).minY
+                    let progress = metrics.collapseProgress(
+                        for: offset
+                    )
 
-                detailsSheet()
-                    .offset(y: lockDelta)
-                    .padding(.bottom, lockDelta)
+                    PPPetAdHeroGallery(
+                        items: store.snapshot.media,
+                        selection: $store.selectedMediaIndex,
+                        collapseProgress: progress,
+                        onOpen: store.selectMedia
+                    )
+                    .frame(
+                        width: heroProxy.size.width,
+                        height: metrics.heroHeight(for: offset)
+                    )
+                    .offset(y: -offset)
+                    .preference(
+                        key: PPPetAdScrollOffsetPreferenceKey.self,
+                        value: offset
+                    )
+                }
+                .frame(height: metrics.expandedHeroHeight)
+                .zIndex(2)
+
+                detailsSheet(bottomInset: proxy.safeAreaInsets.bottom)
+                    .zIndex(1)
             }
         }
         .coordinateSpace(name: "PPPetAdViewerScroll")
         .ignoresSafeArea(edges: .top)
-        .refreshable { store.refresh() }
-        .onPreferenceChange(PPPetAdScrollOffsetPreferenceKey.self) { value in
-            heroMinY = value
-            let nextValue =
-                value < -(heroHeight - navBarBottomY - PPSpace.lg)
-            if nextValue != isNavigationCollapsed {
-                withAnimation(
-                    reduceMotion ? nil : PPPetAdViewerMotion.navigation
-                ) {
-                    isNavigationCollapsed = nextValue
-                }
+        .refreshable {
+            store.refresh()
+        }
+        .onPreferenceChange(PPPetAdScrollOffsetPreferenceKey.self) {
+            offset in
+            let nextProgress = metrics.collapseProgress(for: offset)
+            if abs(nextProgress - collapseProgress) > 0.002 {
+                collapseProgress = nextProgress
+            }
+
+            let nextCollapsed =
+                isNavigationCollapsed
+                ? nextProgress > 0.72
+                : nextProgress >= 0.86
+            if nextCollapsed != isNavigationCollapsed {
+                isNavigationCollapsed = nextCollapsed
             }
         }
     }
 
-    /// Stretchy, parallaxing hero that blurs as it collapses.
-    func heroBlock(
-        heroHeight: CGFloat,
-        minHeroHeight: CGFloat
-    ) -> some View {
-        GeometryReader { heroGeometry in
-            let minY = heroGeometry
-                .frame(in: .named("PPPetAdViewerScroll"))
-                .minY
-            let isPullingDown = minY > 0
-
-            let currentHeight: CGFloat = {
-                if isPullingDown {
-                    return heroHeight + minY
-                }
-                let maxCollapse = heroHeight - minHeroHeight
-                let collapse = min(maxCollapse, abs(minY))
-                return heroHeight - collapse
-            }()
-
-            let offsetY: CGFloat = -minY
-            let blurRadius =
-                isPullingDown ? 0 : min(8.0, abs(minY) / 40.0)
-
-            PPPetAdHeroGallery(
-                items: store.snapshot.media,
-                selection: $store.selectedMediaIndex,
-                onOpen: { index in store.selectMedia(at: index) }
-            )
-            .frame(height: currentHeight)
-            .blur(radius: blurRadius)
-            .offset(y: offsetY)
-            .preference(
-                key: PPPetAdScrollOffsetPreferenceKey.self,
-                value: minY
-            )
-        }
-    }
-}
-
-
-// MARK: - Details sheet
-
-private extension PPPetAdViewerScreen {
-    /// Sections rise in a 55ms stagger: grabber → identity → facts →
-    /// trust → story → discovery. Each step is a spring, never a snap.
-    func detailsSheet() -> some View {
-        VStack(spacing: PPSpace.base) {
-            ultraLuminousGalleryDivider
-
+    private func detailsSheet(bottomInset: CGFloat) -> some View {
+        VStack(spacing: PPSpace.lg) {
             PPPetAdHeaderCard(
                 title: store.snapshot.title,
-                categoryLine: store.snapshot.categoryLine,
+                category: store.snapshot.category,
+                subcategory: store.snapshot.subcategory,
                 location: store.snapshot.location,
-                price: store.snapshot.price,
-                postedDate: store.snapshot.postedDate
+                price: store.snapshot.price
             )
             .padding(.horizontal, PPSpace.screenMargin)
-            .adCascade(step: 1, appeared: hasAppeared, reduceMotion: reduceMotion)
+            .padding(.top, PPSpace.xl)
 
             PPPetAdInfoGrid(
-                type: store.snapshot.typeLabel,
+                type: store.snapshot.subcategory.isEmpty
+                    ? store.snapshot.category
+                    : store.snapshot.subcategory,
                 age: store.snapshot.age,
                 gender: store.snapshot.gender
             )
             .padding(.horizontal, PPSpace.screenMargin)
-            .adCascade(step: 2, appeared: hasAppeared, reduceMotion: reduceMotion)
 
             PPPetAdContactCard(store: store)
                 .padding(.horizontal, PPSpace.screenMargin)
-                .adCascade(step: 3, appeared: hasAppeared, reduceMotion: reduceMotion)
 
-            if !store.snapshot.normalizedDescription.isEmpty {
+            if !store.snapshot.description.isEmpty {
                 PPPetAdDescriptionCard(
-                    description: store.snapshot.normalizedDescription
+                    description: store.snapshot.description
                 )
                 .padding(.horizontal, PPSpace.screenMargin)
-                .adCascade(step: 4, appeared: hasAppeared, reduceMotion: reduceMotion)
             }
 
             PPPetAdRelatedSection(
@@ -311,15 +250,13 @@ private extension PPPetAdViewerScreen {
                 ),
                 subtitle: PPPetAdLocalization.text(
                     "pet_ad_viewer_similar_detail",
-                    fallback:
-                        "More listings selected from this category."
+                    fallback: "More listings selected from this category."
                 ),
                 state: store.relatedAdsState,
                 items: store.relatedAds,
-                onRetry: { store.retryRelatedAds() },
-                onSelect: { item in store.selectRelatedItem(item) }
+                onRetry: store.retryRelatedAds,
+                onSelect: store.selectRelatedItem
             )
-            .adCascade(step: 5, appeared: hasAppeared, reduceMotion: reduceMotion)
 
             PPPetAdRelatedSection(
                 title: PPPetAdLocalization.text(
@@ -328,101 +265,88 @@ private extension PPPetAdViewerScreen {
                 ),
                 subtitle: PPPetAdLocalization.text(
                     "pet_ad_viewer_accessories_detail",
-                    fallback:
-                        "Useful finds chosen for pets in this category."
+                    fallback: "Useful finds chosen for pets in this category."
                 ),
                 state: store.accessoriesState,
                 items: store.relatedAccessories,
-                onRetry: { store.retryAccessories() },
-                onSelect: { item in store.selectRelatedItem(item) }
+                onRetry: store.retryAccessories,
+                onSelect: store.selectRelatedItem
             )
-            .adCascade(step: 6, appeared: hasAppeared, reduceMotion: reduceMotion)
 
-            Color.clear.frame(height: PPSpace.xxxl)
+            Color.clear.frame(
+                height: max(
+                    PPSpace.xxxxl,
+                    bottomInset + PPSpace.xxl
+                )
+            )
         }
-        .padding(.top, PPSpace.sm)
-        .frame(maxWidth: contentMaxWidth)
         .frame(maxWidth: .infinity)
-        .background {
-            PPPetAdViewerBackground()
-        }
-    }
-
-    /// Ultra-luminous glass boundary line separating hero gallery from content container.
-    var ultraLuminousGalleryDivider: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(0.40),
-                    Color.ppPrimary.opacity(0.35),
-                    Color.white.opacity(0.12)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
+        .background(
+            Color.ppBackground,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.hero,
+                style: .continuous
             )
-            .frame(height: 1.25)
-            .shadow(color: Color.ppPrimary.opacity(0.30), radius: 6, y: 0)
-
-            Rectangle()
-                .fill(Color.white.opacity(0.55))
-                .frame(height: 0.5)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-// MARK: - Cascade entrance
-
-private extension View {
-    /// Applies the sheet's staggered first-appearance rise. When Reduce
-    /// Motion is on, content simply appears — never animates.
-    func adCascade(
-        step: Int,
-        appeared: Bool,
-        reduceMotion: Bool
-    ) -> some View {
-        opacity(appeared ? 1 : 0)
-            .offset(y: appeared || reduceMotion ? 0 : 24)
-            .animation(
-                reduceMotion ? nil : PPPetAdViewerMotion.cascadeDelay(step),
-                value: appeared
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.hero,
+                style: .continuous
             )
+            .stroke(
+                Color(uiColor: .separator).opacity(0.16),
+                lineWidth: 0.5
+            )
+        }
+        .opacity(hasAppeared ? 1 : 0)
     }
-}
 
-
-// MARK: - Chrome, navigation & dismissal
-
-private extension PPPetAdViewerScreen {
-    var navigationBar: some View {
+    private var navigationBar: some View {
         PPPetAdViewerNavigationBar(
             title: store.snapshot.title,
             isCollapsed: isNavigationCollapsed,
-            scrollOffset: heroMinY,
             isFavorite: store.isFavorite,
             isFavoriteWorking: store.favoriteState == .working,
             canShare: store.screenState == .content,
             canFavorite:
-                store.screenState == .content &&
-                !store.snapshot.ad.adID.isEmpty,
+                store.screenState == .content && !store.snapshot.ad.adID.isEmpty,
             canReport:
-                store.screenState == .content &&
-                store.canReport,
+                store.screenState == .content && store.canReport,
             isReportWorking: store.reportState == .working,
             onBack: handleBack,
-            onFavorite: { store.toggleFavorite() },
-            onShare: { store.share() },
-            onReport: { store.requestReport() }
+            onFavorite: store.toggleFavorite,
+            onShare: store.share,
+            onReport: store.requestReport
         )
         .zIndex(10)
     }
 
-    /// Push-based drill-in for related pet ads. Accessories route through
-    /// the legacy navigation stack via the host actions instead.
-    var navigationLink: some View {
-        NavigationLink(
-            isActive: $store.isRelatedViewerPresented
-        ) {
+    @ViewBuilder
+    private var navigationBackground: some View {
+        if store.screenState == .content {
+            Color.clear
+                .ppGlassSurface(
+                    in: Rectangle(),
+                    tint: Color.black.opacity(0.30),
+                    fallback: Color.black.opacity(0.92),
+                    stroke: .clear,
+                    lineWidth: 0
+                )
+                .overlay(alignment: .bottom) {
+                    Divider()
+                        .overlay(Color.white.opacity(0.10))
+                }
+                .opacity(collapseProgress)
+                .ignoresSafeArea(edges: .top)
+        } else {
+            PPGradient.hero
+                .overlay(Color.black.opacity(0.12))
+                .ignoresSafeArea(edges: .top)
+        }
+    }
+
+    private var navigationLink: some View {
+        NavigationLink(isActive: $store.isRelatedViewerPresented) {
             Group {
                 if let ad = store.selectedPetAd {
                     PPPetAdViewerScreen(
@@ -431,8 +355,7 @@ private extension PPPetAdViewerScreen {
                         hostActions: hostActions,
                         isRoot: false,
                         languageCode: languageCode,
-                        authenticationRevision:
-                            authenticationRevision
+                        authenticationRevision: authenticationRevision
                     )
                     .id(ObjectIdentifier(ad))
                 } else {
@@ -445,12 +368,11 @@ private extension PPPetAdViewerScreen {
         .hidden()
     }
 
-    func handleBack() {
+    private func handleBack() {
         if isRoot {
             store.close()
         } else {
-            dismiss()
+            presentationMode.wrappedValue.dismiss()
         }
     }
 }
-

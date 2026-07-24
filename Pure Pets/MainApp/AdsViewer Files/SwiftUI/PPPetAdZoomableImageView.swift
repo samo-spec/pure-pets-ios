@@ -1,14 +1,9 @@
 import SwiftUI
 
-/// Pinch / double-tap / pan-zoomable image for the fullscreen viewer.
-///
-/// Reports its zoom state upward so the container can suspend the
-/// drag-to-dismiss gesture while the user is inspecting a zoomed photo.
 struct PPPetAdZoomableImageView: View {
     let item: PPPetAdMediaItem
     let accessibilityLabel: String
     let onSingleTap: () -> Void
-    var onZoomChange: ((Bool) -> Void)? = nil
 
     @State private var scale: CGFloat = 1
     @State private var lastScale: CGFloat = 1
@@ -65,7 +60,6 @@ struct PPPetAdZoomableImageView: View {
             .onChanged { value in
                 scale = min(max(lastScale * value, 1), 5)
                 offset = clamped(offset, in: size, at: scale)
-                reportZoom()
             }
             .onEnded { _ in
                 lastScale = scale
@@ -75,7 +69,6 @@ struct PPPetAdZoomableImageView: View {
                     offset = clamped(offset, in: size, at: scale)
                     lastOffset = offset
                 }
-                reportZoom()
             }
     }
 
@@ -83,7 +76,6 @@ struct PPPetAdZoomableImageView: View {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
                 guard scale > 1 else { return }
-                onZoomChange?(true)
                 offset = clamped(
                     CGSize(
                         width:
@@ -113,7 +105,6 @@ struct PPPetAdZoomableImageView: View {
                 scale = 2.35
                 lastScale = 2.35
             }
-            reportZoom()
         }
     }
 
@@ -139,10 +130,5 @@ struct PPPetAdZoomableImageView: View {
             offset = .zero
             lastOffset = .zero
         }
-        onZoomChange?(false)
-    }
-
-    private func reportZoom() {
-        onZoomChange?(scale > 1.01)
     }
 }

@@ -1,10 +1,3 @@
-import Foundation
-
-enum PPPetAdViewerSectionState: Equatable {
-    case idle
-    case loading
-    case loaded
-    case empty
-    case offline(message: String)
-    case failed(message: String)
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

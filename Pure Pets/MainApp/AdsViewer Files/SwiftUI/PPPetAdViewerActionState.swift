@@ -1,8 +1,3 @@
-import Foundation
-
-enum PPPetAdViewerActionState: Equatable {
-    case idle
-    case working
-    case succeeded(message: String)
-    case failed(message: String)
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

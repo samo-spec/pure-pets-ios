@@ -1,7 +1,3 @@
-import Foundation
-
-enum PPPetAdVideoState: Equatable {
-    case loading
-    case ready
-    case failed
-}
+// Compatibility stub.
+// The type previously declared here now lives in
+// PPPetAdViewerInteraction.swift with the other consolidated viewer support.

@@ -1,10 +1,5 @@
 import Foundation
 
-/// Production repository that forwards every data and analytics call to the
-/// application's existing Objective-C managers through the legacy bridge.
-///
-/// The bridge owns Firebase access, formatting, caching, and navigation;
-/// this type only adapts callback-based APIs into structured concurrency.
 @MainActor
 final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     var isSignedIn: Bool {
@@ -20,24 +15,33 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func makeSnapshot(for ad: PetAd) -> PPPetAdViewerSnapshot {
-        PPPetAdViewerSnapshot(
+        let title =
+            ad.adTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
+            ?? ""
+        return PPPetAdViewerSnapshot(
             ad: ad,
-            title: ad.adTitle ?? "",
+            title: title,
             category: PPPetAdViewerLegacyBridge.categoryName(for: ad),
-            subcategory: PPPetAdViewerLegacyBridge.subcategoryName(for: ad),
+            subcategory:
+                PPPetAdViewerLegacyBridge.subcategoryName(for: ad),
             location: PPPetAdViewerLegacyBridge.locationName(for: ad),
             price: PPPetAdViewerLegacyBridge.formattedPrice(for: ad),
             age: PPPetAdViewerLegacyBridge.ageText(for: ad),
-            gender: ad.genderText,
-            description: ad.adDescription ?? "",
-            postedDate: PPPetAdViewerLegacyBridge.formattedDate(for: ad) ?? "",
+            gender:
+                ad.genderText.trimmingCharacters(in: .whitespacesAndNewlines),
+            description:
+                ad.adDescription?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? "",
             media: PPPetAdMediaItem.items(from: ad)
         )
     }
 
     func loadOwner(ownerID: String) async throws -> PPPetAdOwner? {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PPPetAdOwner?, Error>) in
-            PPPetAdViewerLegacyBridge.fetchOwner(id: ownerID) { user, error in
+        try await withCheckedThrowingContinuation { continuation in
+            PPPetAdViewerLegacyBridge.fetchOwner(id: ownerID) {
+                user,
+                error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
@@ -53,7 +57,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         limit: Int
     ) async throws -> [PPPetAdRelatedItem] {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[PPPetAdRelatedItem], Error>) in
+        try await withCheckedThrowingContinuation { continuation in
             PPPetAdViewerLegacyBridge.fetchSimilarAds(
                 for: ad,
                 limit: limit
@@ -77,7 +81,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         limit: Int
     ) async throws -> [PPPetAdRelatedItem] {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[PPPetAdRelatedItem], Error>) in
+        try await withCheckedThrowingContinuation { continuation in
             PPPetAdViewerLegacyBridge.fetchAccessories(
                 for: ad,
                 limit: limit
@@ -97,8 +101,10 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func loadFavorite(adID: String) async throws -> Bool {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
-            PPPetAdViewerLegacyBridge.loadFavorite(adID: adID) { isFavorite, error in
+        try await withCheckedThrowingContinuation { continuation in
+            PPPetAdViewerLegacyBridge.loadFavorite(adID: adID) {
+                isFavorite,
+                error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
@@ -109,7 +115,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func setFavorite(_ isFavorite: Bool, adID: String) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        try await withCheckedThrowingContinuation { continuation in
             PPPetAdViewerLegacyBridge.setFavorite(
                 isFavorite,
                 adID: adID
@@ -117,7 +123,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: ())
+                    continuation.resume(returning: Void())
                 }
             }
         }
@@ -127,7 +133,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         reason: PPPetAdReportReason
     ) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        try await withCheckedThrowingContinuation { continuation in
             PPPetAdViewerLegacyBridge.submitReport(
                 for: ad,
                 reason: reason.rawValue
@@ -135,7 +141,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: ())
+                    continuation.resume(returning: Void())
                 }
             }
         }

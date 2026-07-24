@@ -83,7 +83,7 @@ struct PPPetAdRemoteImageView: View {
         .onAppear {
             loader.load(urlString: urlString, blurHash: blurHash)
         }
-        .adOnChange(of: urlString) { value in
+        .onChange(of: urlString) { value in
             loader.load(urlString: value, blurHash: blurHash)
         }
         .onDisappear {

@@ -53,7 +53,11 @@ struct PPPetAdVideoView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, PPSpace.lg)
                     .frame(minHeight: 48)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .ppGlassSurface(
+                        in: Capsule(),
+                        tint: Color.black.opacity(0.14),
+                        fallback: Color.black.opacity(0.84)
+                    )
                 }
                 .buttonStyle(PPPetAdPressButtonStyle())
             case .ready:
@@ -65,7 +69,11 @@ struct PPPetAdVideoView: View {
                             .font(.system(size: 25, weight: .bold))
                             .foregroundStyle(.white)
                             .frame(width: 68, height: 68)
-                            .background(.ultraThinMaterial, in: Circle())
+                            .ppGlassSurface(
+                                in: Circle(),
+                                tint: Color.black.opacity(0.14),
+                                fallback: Color.black.opacity(0.84)
+                            )
                     }
                     .buttonStyle(PPPetAdPressButtonStyle())
                     .accessibilityLabel(
@@ -82,7 +90,7 @@ struct PPPetAdVideoView: View {
                 model.play()
             }
         }
-        .adOnChange(of: isActive) { active in
+        .onChange(of: isActive) { active in
             if active {
                 model.play()
             } else {

@@ -766,34 +766,30 @@ fromViewController:(UIViewController *)vc
 
     if (self = [super init]) {
 
-        _adID         = docID ?: @"";
-        _ownerID      = dict[@"ownerID"] ?: @"";
-        _blurHash      = dict[@"blurHash"] ?: @"";
-        _ownerName    = dict[@"ownerName"];
-        _ownerContact = dict[@"ownerContact"];
+        _adID         = docID.length > 0 ? docID : (dict[@"adID"] ?: dict[@"id"] ?: @"");
+        _ownerID      = dict[@"ownerID"] ?: dict[@"uid"] ?: dict[@"userId"] ?: dict[@"user_id"] ?: dict[@"owner_id"] ?: @"";
+        _blurHash     = dict[@"blurHash"] ?: dict[@"blur_hash"] ?: @"";
+        _ownerName    = dict[@"ownerName"] ?: dict[@"userName"] ?: dict[@"name"] ?: dict[@"user_name"];
+        _ownerContact = dict[@"ownerContact"] ?: dict[@"phone"] ?: dict[@"userPhone"] ?: dict[@"contactPhone"];
 
-        _category     = [dict[@"category"] integerValue];
-        _subcategory  = [dict[@"subcategory"] integerValue];
-        _adTitle      = dict[@"adTitle"];
-        _searchTitle      = dict[@"searchTitle"];
-        /*
-         name_lowercase is a derived, persisted field used for Firebase prefix search.
-         Older documents may not contain it; the computed helper safely falls back
-         to adTitle.lowercaseString.
-        */
-        _adDescription = dict[@"desc"] ?: dict[@"adDescription"];
-        _adLocation  = [dict[@"adLocation"] integerValue];
-        _latitude = [dict[@"latitude"] doubleValue];
-        _longitude = [dict[@"longitude"] doubleValue];
-        _geohash = [dict[@"geohash"] isKindOfClass:NSString.class] ? dict[@"geohash"] : nil;
-        _locationName = [dict[@"locationName"] isKindOfClass:NSString.class] ? dict[@"locationName"] : nil;
+        _category     = dict[@"category"] ? [dict[@"category"] integerValue] : [dict[@"mainCategoryID"] integerValue];
+        _subcategory  = dict[@"subcategory"] ? [dict[@"subcategory"] integerValue] : [dict[@"subCategoryID"] integerValue];
+        _adTitle      = dict[@"adTitle"] ?: dict[@"title"] ?: dict[@"name"] ?: @"";
+        _searchTitle  = dict[@"searchTitle"];
+
+        _adDescription = dict[@"desc"] ?: dict[@"adDescription"] ?: dict[@"description"] ?: dict[@"adDesc"] ?: @"";
+        _adLocation   = dict[@"adLocation"] ? [dict[@"adLocation"] integerValue] : [dict[@"cityID"] integerValue];
+        _latitude     = [dict[@"latitude"] doubleValue];
+        _longitude    = [dict[@"longitude"] doubleValue];
+        _geohash      = [dict[@"geohash"] isKindOfClass:NSString.class] ? dict[@"geohash"] : nil;
+        _locationName = [dict[@"locationName"] isKindOfClass:NSString.class] ? dict[@"locationName"] : ([dict[@"cityName"] isKindOfClass:NSString.class] ? dict[@"cityName"] : nil);
         if (_locationName.length == 0 && _adLocation > 0) {
             _locationName = [CitiesManager.shared cityNameForID:_adLocation];
         }
 
-        _price           = dict[@"price"];
-        _discountPercent = dict[@"discountPercent"];
-        _petAgeMonths    = dict[@"petAge"];
+        _price           = dict[@"price"] ?: dict[@"finalPrice"];
+        _discountPercent = dict[@"discountPercent"] ?: dict[@"discount"];
+        _petAgeMonths    = dict[@"petAge"] ?: dict[@"petAgeMonths"] ?: dict[@"ageMonths"] ?: dict[@"age"];
         _gender          = PPPetAdNormalizedGender(dict[@"gender"]);
         _isFemale        = [dict[@"isFemale"] boolValue];
         if ([_gender isEqualToString:PPPetAdGenderFemale]) {
@@ -801,13 +797,14 @@ fromViewController:(UIViewController *)vc
         } else if ([_gender isEqualToString:PPPetAdGenderMale]) {
             _isFemale = NO;
         }
- 
 
-        id meta = dict[@"imageItems"];
+        id meta = dict[@"imageItems"] ?: dict[@"mediaItems"] ?: dict[@"images"];
         if ([meta isKindOfClass:NSArray.class] && [(NSArray *)meta count] > 0) {
             _imageItemsRaw = meta;
         } else {
-            _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(dict[@"imageURLs"], dict[@"imageMeta"]);
+            id legacyURLs = dict[@"imageURLs"] ?: dict[@"photos"] ?: dict[@"photoURLs"] ?: dict[@"images"];
+            id legacyMeta = dict[@"imageMeta"] ?: dict[@"mediaMeta"];
+            _imageItemsRaw = PPPetAdMediaItemsFromLegacyFields(legacyURLs, legacyMeta);
         }
 
         _isSold = [dict[@"isSold"] boolValue];

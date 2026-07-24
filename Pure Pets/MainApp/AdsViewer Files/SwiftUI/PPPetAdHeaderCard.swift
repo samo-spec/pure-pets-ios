@@ -1,21 +1,17 @@
 import SwiftUI
 
-/// Identity block of the viewer: title + price in one visual group,
-/// metadata in a compact secondary row. Reads in one glance, in either
-/// language, at any Dynamic Type size with strict 8pt rhythm.
 struct PPPetAdHeaderCard: View {
     let title: String
-    let categoryLine: String
+    let category: String
+    let subcategory: String
     let location: String
     let price: String
-    let postedDate: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            // Title + Price — same visual group, leading/trailing split
-            HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
                 Text(
                     title.isEmpty
                         ? PPPetAdLocalization.text(
@@ -28,68 +24,66 @@ struct PPPetAdHeaderCard: View {
                 .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-                .frame(maxWidth: .infinity, alignment: .leading)
 
-                if !price.isEmpty {
-                    Text(price)
-                        .font(PPPetAdTypography.title2)
-                        .foregroundStyle(Color.ppPrimary)
-                        .multilineTextAlignment(.trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(
-                            "\(PPPetAdLocalization.text("Price", fallback: "Price")): \(price)"
-                        )
-                }
-            }
-
-            // Compact secondary row: category • location • posted date
-            HStack(spacing: PPSpace.xs) {
                 if !categoryLine.isEmpty {
                     Text(categoryLine)
                         .font(PPPetAdTypography.subheadline)
                         .foregroundStyle(Color.ppTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+            }
 
-                if !categoryLine.isEmpty && (!location.isEmpty || !postedDate.isEmpty) {
-                    Text("·")
-                        .font(PPPetAdTypography.subheadline)
-                        .foregroundStyle(Color.ppTextTertiary)
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    locationLabel
+                    priceLabel
                 }
-
-                if !location.isEmpty {
-                    Label {
-                        Text(location)
-                            .lineLimit(1)
-                    } icon: {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .font(PPPetAdTypography.footnote)
-                    .foregroundStyle(Color.ppTextSecondary)
-                }
-
-                if !location.isEmpty && !postedDate.isEmpty {
-                    Text("·")
-                        .font(PPPetAdTypography.subheadline)
-                        .foregroundStyle(Color.ppTextTertiary)
-                }
-
-                if !postedDate.isEmpty {
-                    Label {
-                        Text(postedDate)
-                    } icon: {
-                        Image(systemName: "clock")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .font(PPPetAdTypography.footnote)
-                    .foregroundStyle(Color.ppTextTertiary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: PPSpace.md) {
+                    locationLabel
+                    Spacer(minLength: PPSpace.sm)
+                    priceLabel
                 }
             }
-            .accessibilityElement(children: .combine)
         }
-        .padding(PPSpace.base)
+        .padding(PPSpace.lg)
         .frame(maxWidth: .infinity, alignment: .leading)
         .ppCard()
+    }
+
+    private var categoryLine: String {
+        [category, subcategory]
+            .map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: " · ")
+    }
+
+    private var locationLabel: some View {
+        Label {
+            Text(location)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: "location.fill")
+                .foregroundStyle(Color.ppPrimary)
+        }
+        .font(PPPetAdTypography.callout)
+        .foregroundStyle(Color.ppTextSecondary)
+    }
+
+    @ViewBuilder
+    private var priceLabel: some View {
+        if !price.isEmpty {
+            Text(price)
+                .font(PPPetAdTypography.title2)
+                .foregroundStyle(Color.ppPrimary)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityLabel(
+                    "\(PPPetAdLocalization.text("Price", fallback: "Price")): \(price)"
+                )
+        }
     }
 }

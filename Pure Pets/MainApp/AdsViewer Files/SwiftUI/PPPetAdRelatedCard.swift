@@ -14,34 +14,37 @@ struct PPPetAdRelatedCard: View {
                         contentMode: .fill,
                         accessibilityLabel: item.title
                     )
-                    .frame(height: 148)
-                    .clipped()
+                    .frame(height: 168)
+                    .accessibilityHidden(true)
 
                     Text(kindLabel)
                         .font(PPPetAdTypography.footnoteBold)
                         .foregroundStyle(Color.white)
                         .padding(.horizontal, PPSpace.md)
-                        .frame(minHeight: 28)
-                        .background(.ultraThinMaterial, in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(Color.white.opacity(0.20), lineWidth: 0.75)
-                        }
-                        .padding(PPSpace.sm)
+                        .frame(minHeight: 32)
+                        .ppGlassSurface(
+                            in: Capsule(),
+                            tint: Color.black.opacity(0.12),
+                            fallback: Color.black.opacity(0.82)
+                        )
+                        .padding(PPSpace.md)
                 }
+                .clipped()
 
-                VStack(alignment: .leading, spacing: PPSpace.xs) {
+                VStack(alignment: .leading, spacing: PPSpace.sm) {
                     Text(item.title)
                         .font(PPPetAdTypography.headline)
                         .foregroundStyle(Color.ppTextPrimary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     if !item.subtitle.isEmpty {
                         Text(item.subtitle)
                             .font(PPPetAdTypography.footnote)
                             .foregroundStyle(Color.ppTextSecondary)
-                            .lineLimit(1)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
                     }
 
                     if !item.price.isEmpty {
@@ -49,17 +52,33 @@ struct PPPetAdRelatedCard: View {
                             .font(PPPetAdTypography.calloutBold)
                             .foregroundStyle(Color.ppPrimary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.80)
                     }
                 }
-                .padding(PPSpace.md)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(PPSpace.base)
+                .frame(
+                    maxWidth: .infinity,
+                    minHeight: 124,
+                    alignment: .topLeading
+                )
             }
-            .frame(width: 210)
+            .frame(width: 270)
             .background(Color.ppCard)
-            .clipShape(RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous))
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: PPCorner.card,
+                    style: .continuous
+                )
+            )
             .overlay {
-                RoundedRectangle(cornerRadius: PPCorner.card, style: .continuous)
-                    .stroke(Color(uiColor: .separator).opacity(0.24), lineWidth: 0.5)
+                RoundedRectangle(
+                    cornerRadius: PPCorner.card,
+                    style: .continuous
+                )
+                .stroke(
+                    Color(uiColor: .separator).opacity(0.24),
+                    lineWidth: 0.5
+                )
             }
             .shadow(
                 color: PPShadow.card.color,
@@ -71,17 +90,26 @@ struct PPPetAdRelatedCard: View {
         .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.97))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
+        .accessibilityHint(
+            PPPetAdLocalization.text(
+                "pet_ad_viewer_open_related_hint",
+                fallback: "Opens this listing"
+            )
+        )
     }
 
     private var kindLabel: String {
         switch item.kind {
         case .petAd:
-            return PPPetAdLocalization.text("pet_ad_viewer_pet_badge", fallback: "Pet")
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_pet_badge",
+                fallback: "Pet"
+            )
         case .accessory:
-            return PPPetAdLocalization.text("pet_ad_viewer_accessory_badge", fallback: "Accessory")
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_accessory_badge",
+                fallback: "Accessory"
+            )
         }
     }
 }
-
-
-

@@ -1,7 +1,5 @@
 import SwiftUI
 
-/// Compact, centered state block used inside cards — symbol in a tinted
-/// halo, a title, a sentence of context, and at most one action.
 struct PPPetAdInlineStateView: View {
     let symbol: String
     let title: String
@@ -13,9 +11,9 @@ struct PPPetAdInlineStateView: View {
     var body: some View {
         VStack(spacing: PPSpace.md) {
             Image(systemName: symbol)
-                .font(.system(size: 24, weight: .semibold))
+                .font(.system(size: 25, weight: .semibold))
                 .foregroundStyle(tint)
-                .frame(width: 52, height: 52)
+                .frame(width: 50, height: 50)
                 .background(tint.opacity(0.11), in: Circle())
 
             VStack(spacing: PPSpace.xs) {
@@ -23,7 +21,6 @@ struct PPPetAdInlineStateView: View {
                     .font(PPPetAdTypography.headline)
                     .foregroundStyle(Color.ppTextPrimary)
                     .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
 
                 if !message.isEmpty {
                     Text(message)

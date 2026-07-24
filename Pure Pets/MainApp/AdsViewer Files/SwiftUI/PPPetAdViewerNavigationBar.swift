@@ -1,13 +1,8 @@
 import SwiftUI
 
-/// Floating chrome that morphs continuously from a cinematic legibility
-/// gradient into a studio-grade frosted navigation bar as the hero scrolls.
-/// A single overflow menu consolidates every trailing action to reduce
-/// visual noise over the imagery.
 struct PPPetAdViewerNavigationBar: View {
     let title: String
     let isCollapsed: Bool
-    let scrollOffset: CGFloat
     let isFavorite: Bool
     let isFavoriteWorking: Bool
     let canShare: Bool
@@ -22,165 +17,161 @@ struct PPPetAdViewerNavigationBar: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Continuous 0→1 collapse progress across a 160pt scroll window.
-    private var progress: Double {
-        if isCollapsed { return 1 }
-        return min(1, max(0, Double(-scrollOffset / 160.0)))
-    }
-
-    /// Title appears smoothly in the final half of the morph.
-    private var titleOpacity: Double {
-        min(1, max(0, (progress - 0.50) / 0.50))
+    private var hasActions: Bool {
+        canShare || canFavorite || canReport
     }
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
-            // Back — leading
-            chromeButton(
-                symbol: layoutDirection == .rightToLeft ? "arrow.right" : "arrow.left",
-                label: PPPetAdLocalization.text("Back", fallback: "Back"),
-                action: onBack
-            )
-            .accessibilitySortPriority(4)
+            backButton
 
-            // Title — center, fades in
-            Text(title)
-                .font(PPPetAdTypography.headline)
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .multilineTextAlignment(.center)
-                .opacity(titleOpacity)
-                .offset(y: reduceMotion ? 0 : (1 - titleOpacity) * 8)
-                .frame(maxWidth: .infinity)
-                .accessibilityHidden(titleOpacity < 1)
-
-            // Overflow menu — trailing, single button
-            if canShare || canFavorite || canReport {
-                Menu {
-                    if canShare {
-                        Button(action: onShare) {
-                            Label(
-                                PPPetAdLocalization.text("Share", fallback: "Share"),
-                                systemImage: "square.and.arrow.up"
-                            )
-                        }
-                    }
-
-                    if canFavorite {
-                        Button(action: onFavorite) {
-                            Label(
-                                isFavorite
-                                    ? PPPetAdLocalization.text("a11y_btn_unfavorite", fallback: "Remove from favorites")
-                                    : PPPetAdLocalization.text("a11y_btn_favorite", fallback: "Add to favorites"),
-                                systemImage: isFavorite ? "heart.fill" : "heart"
-                            )
-                        }
-                        .disabled(isFavoriteWorking)
-                    }
-
-                    if canReport {
-                        Button(role: .destructive, action: onReport) {
-                            Label(
-                                PPPetAdLocalization.text("report_ad_title", fallback: "Report advertisement"),
-                                systemImage: "flag.fill"
-                            )
-                        }
-                        .disabled(isReportWorking)
-                    }
-
-                    if canShare {
-                        Divider()
-                        Button(action: onShare) {
-                            Label(
-                                PPPetAdLocalization.text("Copy Link", fallback: "Copy Link"),
-                                systemImage: "link"
-                            )
-                        }
-                    }
-                } label: {
-                    chromeIcon(symbol: "ellipsis")
-                }
-                .accessibilityLabel(PPPetAdLocalization.text("More actions", fallback: "More actions"))
-                .accessibilitySortPriority(3)
+            if isCollapsed {
+                Text(title)
+                    .font(PPPetAdTypography.headline)
+                    .foregroundStyle(Color.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, PPSpace.xs)
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .opacity.combined(with: .move(edge: .top))
+                    )
             } else {
-                Color.clear.frame(width: 42, height: 42)
+                Spacer(minLength: PPSpace.sm)
+            }
+
+            if hasActions {
+                actionGroup
             }
         }
         .padding(.horizontal, PPSpace.base)
-        .padding(.vertical, PPSpace.sm)
-        .background { chromeBackground }
+        .padding(.vertical, PPPetAdViewerLayoutMetrics.navigationVerticalPadding)
+        .animation(
+            reduceMotion ? nil : PPPetAdViewerMotion.navigation,
+            value: isCollapsed
+        )
     }
 
-    // MARK: - Chrome background
-
-    private var chromeBackground: some View {
-        ZStack {
-            // Legibility gradient — visible over hero
-            LinearGradient(
-                colors: [.black.opacity(0.54), .black.opacity(0.16), .clear],
-                startPoint: .top,
-                endPoint: .bottom
+    private var backButton: some View {
+        Button(action: onBack) {
+            Image(
+                systemName: layoutDirection == .rightToLeft
+                    ? "chevron.right"
+                    : "chevron.left"
             )
-            .opacity(1 - progress)
-
-            // Frosted material — solidifies as content scrolls beneath
-            Color.black.opacity(0.30)
-                .background(.ultraThinMaterial)
-                .opacity(progress)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(Color.white.opacity(0.16))
-                        .frame(height: 0.75)
-                        .opacity(progress)
-                }
+            .font(.system(size: 17, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(
+                width: PPPetAdViewerLayoutMetrics.navigationControlSize,
+                height: PPPetAdViewerLayoutMetrics.navigationControlSize
+            )
+            .contentShape(Circle())
         }
-        .ignoresSafeArea(edges: .top)
-        .accessibilityHidden(true)
+        .ppGlassSurface(
+            in: Circle(),
+            tint: Color.black.opacity(0.16),
+            fallback: Color.black.opacity(0.84)
+        )
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.88))
+        .accessibilityLabel(
+            PPPetAdLocalization.text("Back", fallback: "Back")
+        )
     }
 
-    // MARK: - Buttons
+    private var actionGroup: some View {
+        HStack(spacing: 0) {
+            if canShare {
+                actionButton(
+                    symbol: "square.and.arrow.up",
+                    label: PPPetAdLocalization.text(
+                        "Share",
+                        fallback: "Share"
+                    ),
+                    action: onShare
+                )
+            }
 
-    private func chromeButton(
+            if canFavorite {
+                actionButton(
+                    symbol: isFavorite ? "heart.fill" : "heart",
+                    label: isFavorite
+                        ? PPPetAdLocalization.text(
+                            "a11y_btn_unfavorite",
+                            fallback: "Remove from favorites"
+                        )
+                        : PPPetAdLocalization.text(
+                            "a11y_btn_favorite",
+                            fallback: "Add to favorites"
+                        ),
+                    tint: isFavorite ? .ppPrimaryShiner : .white,
+                    isEnabled: !isFavoriteWorking,
+                    isLoading: isFavoriteWorking,
+                    action: onFavorite
+                )
+                .scaleEffect(isFavorite ? 1.04 : 1)
+                .animation(
+                    reduceMotion ? nil : PPPetAdViewerMotion.expansion,
+                    value: isFavorite
+                )
+            }
+
+            if canReport {
+                actionButton(
+                    symbol: "ellipsis",
+                    label: PPPetAdLocalization.text(
+                        "report_ad_title",
+                        fallback: "Report advertisement"
+                    ),
+                    isEnabled: !isReportWorking,
+                    isLoading: isReportWorking,
+                    action: onReport
+                )
+            }
+        }
+        .padding(3)
+        .ppGlassSurface(
+            in: Capsule(),
+            tint: Color.black.opacity(0.16),
+            fallback: Color.black.opacity(0.84)
+        )
+        .fixedSize()
+    }
+
+    private func actionButton(
         symbol: String,
         label: String,
         tint: Color = .white,
+        isEnabled: Bool = true,
         isLoading: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            chromeIcon(symbol: symbol, tint: tint, isLoading: isLoading)
-        }
-        .buttonStyle(PPPetAdPressButtonStyle())
-        .accessibilityLabel(label)
-        .accessibilityValue(isLoading ? PPPetAdLocalization.text("Loading", fallback: "Loading") : "")
-    }
-
-    @ViewBuilder
-    private func chromeIcon(
-        symbol: String,
-        tint: Color = .white,
-        isLoading: Bool = false
-    ) -> some View {
-        ZStack {
-            Circle()
-                .fill(.ultraThinMaterial)
-            Circle()
-                .fill(Color.black.opacity(0.26 - progress * 0.14))
-
-            if isLoading {
-                ProgressView().tint(tint)
-            } else {
-                Image(systemName: symbol)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(tint)
+            ZStack {
+                if isLoading {
+                    ProgressView()
+                        .tint(tint)
+                } else {
+                    Image(systemName: symbol)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(tint)
+                }
             }
+            .frame(width: 40, height: 40)
+            .contentShape(Circle())
         }
-        .frame(width: 42, height: 42)
-        .overlay {
-            Circle()
-                .stroke(Color.white.opacity(0.30 - progress * 0.10), lineWidth: 0.75)
-        }
-        .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
-        .contentShape(Circle())
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.88))
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.52)
+        .accessibilityLabel(label)
+        .accessibilityValue(
+            isLoading
+                ? PPPetAdLocalization.text(
+                    "Loading",
+                    fallback: "Loading"
+                )
+                : ""
+        )
     }
 }
