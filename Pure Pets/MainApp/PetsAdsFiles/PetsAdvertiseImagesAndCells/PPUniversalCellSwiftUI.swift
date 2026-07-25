@@ -172,6 +172,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var stock: Int?
     public var usesQuantityControl: Bool
     public var prefersContainedImage: Bool
+    public var prefersEdgeToEdgeMedia: Bool
     public var preferredAspectRatio: CGFloat
 
     public init(
@@ -198,6 +199,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         stock: Int? = nil,
         usesQuantityControl: Bool = false,
         prefersContainedImage: Bool = false,
+        prefersEdgeToEdgeMedia: Bool = false,
         preferredAspectRatio: CGFloat = 0.82
     ) {
         self.id = id
@@ -223,6 +225,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.stock = stock.map { max(0, $0) }
         self.usesQuantityControl = usesQuantityControl
         self.prefersContainedImage = prefersContainedImage
+        self.prefersEdgeToEdgeMedia = prefersEdgeToEdgeMedia
         self.preferredAspectRatio = preferredAspectRatio
     }
 }
@@ -1219,7 +1222,15 @@ private struct PPUniversalCardRenderer: View {
                             .padding(.bottom, 8)
                     }
                 }
-                .padding(4)
+                .padding(
+                    .horizontal,
+                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                )
+                .padding(
+                    .top,
+                    store.model.prefersEdgeToEdgeMedia ? 0 : 4
+                )
+                .padding(.bottom, 4)
             }
         }
 
@@ -1335,6 +1346,15 @@ private struct PPUniversalCardRenderer: View {
                 }
                 Spacer(minLength: 0)
                 HStack(alignment: .bottom, spacing: 6) {
+                    if let badge = store.model.badgeText,
+                       !badge.isEmpty {
+                        PPUniversalPill(
+                            text: badge,
+                            foreground: .white,
+                            background: store.palette.accent,
+                            border: store.palette.accent.opacity(0.3)
+                        )
+                    }
                     if let reason = store.model.reasonText,
                        !reason.isEmpty {
                         PPUniversalPill(
@@ -2029,6 +2049,7 @@ private struct PPUniversalCardRenderer: View {
     }
 
     private var hasBottomBadges: Bool {
+        if let badge = store.model.badgeText, !badge.isEmpty { return true }
         let availability = store.model.availability
         let hasAvailability =
             availability?.text.isEmpty == false ||
@@ -2046,13 +2067,26 @@ private struct PPUniversalCardRenderer: View {
             !usesCompressedAccessibilityLayout &&
             availability?.text.isEmpty == false
         let hasGender = store.model.gender != nil
+        let hasBadge = store.model.badgeText?.isEmpty == false
         let activeBadgeCount =
             (hasMeta ? 1 : 0) +
             (hasText ? 1 : 0) +
-            (hasGender ? 1 : 0)
-        let fillsAvailableWidth = hasText && (hasMeta || hasGender)
+            (hasGender ? 1 : 0) +
+            (hasBadge ? 1 : 0)
+        let fillsAvailableWidth = hasText && (hasMeta || hasGender || hasBadge)
 
         return HStack(spacing: 6) {
+            if let badgeText = store.model.badgeText, !badgeText.isEmpty {
+                PPUniversalPill(
+                    text: badgeText,
+                    foreground: store.palette.accent,
+                    background: store.palette.accent.opacity(
+                        colorScheme == .dark ? 0.18 : 0.12
+                    ),
+                    border: store.palette.accent.opacity(0.24)
+                )
+            }
+
             if hasMeta,
                let meta = availability?.metaText,
                !meta.isEmpty,
@@ -2992,20 +3026,9 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
             return
         }
 
-        guard let imageURL,
-              let url = URL(string: imageURL) else {
-            return
-        }
-        context.coordinator.task = URLSession.shared.dataTask(
-            with: url
-        ) { data, _, _ in
-            guard let data, let image = UIImage(data: data) else {
-                return
-            }
-            DispatchQueue.main.async {
-                guard context.coordinator.signature == signature else {
-                    return
-                }
+        if let imageURL, !imageURL.isEmpty {
+            PPPetAdViewerLegacyBridge.loadImage(url: imageURL) { image in
+                guard context.coordinator.signature == signature, let image else { return }
                 UIView.transition(
                     with: imageView,
                     duration: 0.2,
@@ -3014,6 +3037,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
                     imageView.image = image
                 }
             }
+            return
         }
         context.coordinator.task?.resume()
     }

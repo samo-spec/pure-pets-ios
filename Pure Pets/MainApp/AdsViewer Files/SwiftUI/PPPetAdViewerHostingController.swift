@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+@available(iOS 16.0, *)
 @objc(PPPetAdViewerHostingController)
 final class PPPetAdViewerHostingController: UIViewController {
     private let hostActions: PPPetAdViewerHostActions
@@ -9,6 +10,7 @@ final class PPPetAdViewerHostingController: UIViewController {
     private weak var containingNavigationController:
         UINavigationController?
     private var previousNavigationBarHidden: Bool?
+    private var previousNavigationBarStyle: UIBarStyle?
     private var shouldRestoreChrome = false
 
     @objc(initWithAd:)
@@ -23,6 +25,9 @@ final class PPPetAdViewerHostingController: UIViewController {
                 hostActions: actions
             )
         )
+        if #available(iOS 16.4, *) {
+            contentController.safeAreaRegions = []
+        }
 
         super.init(nibName: nil, bundle: nil)
 
@@ -72,10 +77,15 @@ final class PPPetAdViewerHostingController: UIViewController {
             previousNavigationBarHidden =
                 navigationController?.isNavigationBarHidden
         }
+        if previousNavigationBarStyle == nil {
+            previousNavigationBarStyle =
+                navigationController?.navigationBar.barStyle
+        }
         navigationController?.setNavigationBarHidden(
             true,
             animated: animated
         )
+        applyViewerStatusBarAppearance()
         navigationController?.interactivePopGestureRecognizer?.isEnabled =
             true
         PPPetAdViewerLegacyBridge.setPremiumTabDockHidden(
@@ -86,8 +96,23 @@ final class PPPetAdViewerHostingController: UIViewController {
         shouldRestoreChrome = false
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        PPPetAdViewerLegacyBridge.setPremiumTabDockHidden(
+            true,
+            animated: false,
+            from: self
+        )
+    }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+
+        shouldRestoreChrome =
+            isMovingFromParent ||
+            isBeingDismissed ||
+            navigationController?.isBeingDismissed == true
+        guard shouldRestoreChrome else { return }
 
         if let previousNavigationBarHidden {
             containingNavigationController?.setNavigationBarHidden(
@@ -95,10 +120,12 @@ final class PPPetAdViewerHostingController: UIViewController {
                 animated: animated
             )
         }
-        shouldRestoreChrome =
-            isMovingFromParent ||
-            isBeingDismissed ||
-            navigationController?.isBeingDismissed == true
+        if let previousNavigationBarStyle {
+            containingNavigationController?.navigationBar.barStyle =
+                previousNavigationBarStyle
+            containingNavigationController?
+                .setNeedsStatusBarAppearanceUpdate()
+        }
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -112,7 +139,29 @@ final class PPPetAdViewerHostingController: UIViewController {
         )
     }
 
+    override func traitCollectionDidChange(
+        _ previousTraitCollection: UITraitCollection?
+    ) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.userInterfaceStyle
+                != traitCollection.userInterfaceStyle else {
+            return
+        }
+        applyViewerStatusBarAppearance()
+    }
+
     override var preferredStatusBarStyle: UIStatusBarStyle {
-        .lightContent
+        traitCollection.userInterfaceStyle == .dark
+            ? .lightContent
+            : .darkContent
+    }
+
+    private func applyViewerStatusBarAppearance() {
+        navigationController?.navigationBar.barStyle =
+            traitCollection.userInterfaceStyle == .dark
+                ? .black
+                : .default
+        navigationController?.setNeedsStatusBarAppearanceUpdate()
+        setNeedsStatusBarAppearanceUpdate()
     }
 }

@@ -8,6 +8,12 @@
 
 #import "DeepLinkRouter.h"
 #import <UIKit/UIKit.h>
+#import "PetAd.h"
+ 
+
+@protocol PPPetAdViewerHostingControllerRouting <NSObject>
+- (UIViewController *)initWithAd:(PetAd *)ad;
+@end
 
 @implementation DeepLinkRouter
 
@@ -53,12 +59,27 @@
 
 - (void)navigateToPetAdWithID:(NSString *)adID {
     if (adID.length == 0) return;
-    Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
-    if (HostingClass) {
-        UIViewController *vc = [(id)[HostingClass alloc] initWithAdID:adID];
+
+    __weak typeof(self) weakSelf = self;
+    [PetAdManager fetchAdsWithIDs:@[adID] completion:^(NSArray<PetAd *> *ads) {
+        PetAd *ad = ads.firstObject;
+        if (!ad) {
+            NSLog(@"❌ DeepLinkRouter: pet ad not found for id %@", adID);
+            return;
+        }
+
+        Class HostingClass = NSClassFromString(@"PPPetAdViewerHostingController");
+        if (!HostingClass) {
+            NSLog(@"❌ DeepLinkRouter: PPPetAdViewerHostingController unavailable");
+            return;
+        }
+
+        id<PPPetAdViewerHostingControllerRouting> allocatedViewer =
+            (id<PPPetAdViewerHostingControllerRouting>)[HostingClass alloc];
+        UIViewController *vc = [allocatedViewer initWithAd:ad];
         vc.hidesBottomBarWhenPushed = YES;
-        [self pushToRootViewController:vc];
-    }
+        [(weakSelf ?: DeepLinkRouter.shared) pushToRootViewController:vc];
+    }];
 }
 
 - (void)navigateToAccessoryWithID:(NSString *)accessoryID {

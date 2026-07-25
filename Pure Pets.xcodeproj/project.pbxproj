@@ -147,6 +147,13 @@
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
 		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
+		F2AC11013020000100BEE001 /* PPAccessoryViewerLegacyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */; };
+		F2AC11023020000100BEE001 /* PPAccessoryViewerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */; };
+		F2AC11033020000100BEE001 /* PPAccessoryViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */; };
+		F2AC11043020000100BEE001 /* PPAccessoryViewerMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */; };
+		F2AC11053020000100BEE001 /* PPAccessoryViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */; };
+		F2AC11063020000100BEE001 /* PPAccessoryViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */; };
+		F2AC11073020000100BEE001 /* PPAccessoryViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
 		F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22840FE2C5591C200D77937 /* MainCollectionViewCell.m */; };
 		F228641D2D57947800967C23 /* PhoneNumberCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F228641C2D57947800967C23 /* PhoneNumberCell.m */; };
@@ -528,6 +535,7 @@
 		F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */; };
 		F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */; };
 		F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */; };
+		F294A775301232EE005EFBC7 /* PPHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A775301232FF005EFBC7 /* PPHero.swift */; };
 		F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */; };
 		F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */; };
 		F294A79F301232DD005EFBC7 /* PPPetAdRelatedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */; };
@@ -536,6 +544,16 @@
 		F294A7A2301232DD005EFBC7 /* PPPetAdVideoState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A782301232DD005EFBC7 /* PPPetAdVideoState.swift */; };
 		F294A7A4301232DD005EFBC7 /* PPPetAdImageLoadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */; };
 		F294A7A5301232DD005EFBC7 /* PPPetAdViewerScreenState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */; };
+		F294A7A7301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */; };
+		F294A774301232EE005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */; };
+		F294A774301232AA005EFBC7 /* PPComponentSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232BB005EFBC7 /* PPComponentSwift.swift */; };
+		F294A7C9301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */; };
+		F294A7CA301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */; };
+		F294A7CB301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */; };
+		F294A7CC301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D4301232DD005EFBC7 /* PPPetAdContactCard.swift */; };
+		F294A7CD301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */; };
+		F294A7CF301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */; };
+		F294A7D0301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */; };
 		F294A7A6301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */; };
 		F294A7A9301232DD005EFBC7 /* PPPetAdRemoteImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */; };
 		F294A7AA301232DD005EFBC7 /* PPPetAdInlineStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */; };
@@ -1156,6 +1174,14 @@
 		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
 		F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessViewerVC.m; sourceTree = "<group>"; };
+		F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAccessoryViewerLegacyBridge.h; sourceTree = "<group>"; };
+		F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAccessoryViewerLegacyBridge.m; sourceTree = "<group>"; };
+		F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerModels.swift; sourceTree = "<group>"; };
+		F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerStore.swift; sourceTree = "<group>"; };
+		F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerMedia.swift; sourceTree = "<group>"; };
+		F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerComponents.swift; sourceTree = "<group>"; };
+		F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerScreen.swift; sourceTree = "<group>"; };
+		F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerHostingController.swift; sourceTree = "<group>"; };
 		F22819622CD36D2D005E57FF /* XLFormImageSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormImageSelectorCell.h; sourceTree = "<group>"; };
 		F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormImageSelectorCell.m; sourceTree = "<group>"; };
 		F22840FD2C5591C200D77937 /* MainCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainCollectionViewCell.h; sourceTree = "<group>"; };
@@ -1891,6 +1917,7 @@
 		F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdVideoView.swift; sourceTree = "<group>"; };
 		F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerActionState.swift; sourceTree = "<group>"; };
 		F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerBackground.swift; sourceTree = "<group>"; };
+		F294A775301232FF005EFBC7 /* PPHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHero.swift; sourceTree = "<group>"; };
 		F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerEmptyStateView.swift; sourceTree = "<group>"; };
 		F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerErrorStateView.swift; sourceTree = "<group>"; };
 		F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerHostActions.swift; sourceTree = "<group>"; };
@@ -1902,6 +1929,16 @@
 		F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerMotion.swift; sourceTree = "<group>"; };
 		F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationRoot.swift; sourceTree = "<group>"; };
 		F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerRepository.swift; sourceTree = "<group>"; };
+		F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreen.swift; sourceTree = "<group>"; };
+		F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaViewerScreen.swift; sourceTree = "<group>"; };
+		F294A774301232BB005EFBC7 /* PPComponentSwift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPComponentSwift.swift; sourceTree = "<group>"; };
+		F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdHeaderCard.swift; sourceTree = "<group>"; };
+		F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoGrid.swift; sourceTree = "<group>"; };
+		F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoPillView.swift; sourceTree = "<group>"; };
+		F294A7D4301232DD005EFBC7 /* PPPetAdContactCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdContactCard.swift; sourceTree = "<group>"; };
+		F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdDescriptionCard.swift; sourceTree = "<group>"; };
+		F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedSection.swift; sourceTree = "<group>"; };
+		F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationBar.swift; sourceTree = "<group>"; };
 		F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreenState.swift; sourceTree = "<group>"; };
 		F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSectionState.swift; sourceTree = "<group>"; };
 		F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSnapshot.swift; sourceTree = "<group>"; };
@@ -4144,6 +4181,14 @@
 				F290F54E2FD9E943008EADEE /* SellerProfileVC.m */,
 				F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */,
 				F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */,
+				F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */,
+				F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */,
+				F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */,
+				F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */,
+				F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */,
+				F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */,
+				F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */,
+				F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */,
 				F2E1345D2DDC6F40006770E5 /* AddNewAccessory.h */,
 				F2E1345E2DDC6F40006770E5 /* AddNewAccessory.m */,
 				F2E1345B2DDC6DB3006770E5 /* PetAccessoryManager.h */,
@@ -4284,9 +4329,14 @@
 			children = (
 				F2882CAF3012EA2800656E2F /* PPPetAdZoomableImageView.swift */,
 				F294A769301232DD005EFBC7 /* PPLegacyPetAdViewerRepository.swift */,
+				F294A7D4301232DD005EFBC7 /* PPPetAdContactCard.swift */,
+				F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */,
+				F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */,
 				F294A76D301232DD005EFBC7 /* PPPetAdHeroGallery.swift */,
 				F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */,
 				F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */,
+				F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */,
+				F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */,
 				F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */,
 				F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */,
 				F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */,
@@ -4294,6 +4344,7 @@
 				F294A777301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift */,
 				F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */,
 				F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */,
+				F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */,
 				F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */,
 				F294A77D301232DD005EFBC7 /* PPPetAdReportReason.swift */,
 				F294A77E301232DD005EFBC7 /* PPPetAdScrollOffsetPreferenceKey.swift */,
@@ -4304,6 +4355,7 @@
 				F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */,
 				F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */,
 				F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */,
+				F294A775301232FF005EFBC7 /* PPHero.swift */,
 				F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */,
 				F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */,
 				F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */,
@@ -4313,9 +4365,13 @@
 				F294A78C301232DD005EFBC7 /* PPPetAdViewerLegacyBridge.m */,
 				F294A78D301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift */,
 				F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */,
+				F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */,
 				F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */,
 				F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */,
 				F294A7C7301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift */,
+				F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */,
+				F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */,
+				F294A774301232BB005EFBC7 /* PPComponentSwift.swift */,
 				F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */,
 				F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */,
 				F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */,
@@ -5898,6 +5954,13 @@
 				F271466F2CCE6B5300F7F3BA /* XLFormCheckCell.m in Sources */,
 				F27146702CCE6B5300F7F3BA /* XLFormRightDetailCell.m in Sources */,
 				F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */,
+				F2AC11013020000100BEE001 /* PPAccessoryViewerLegacyBridge.m in Sources */,
+				F2AC11023020000100BEE001 /* PPAccessoryViewerModels.swift in Sources */,
+				F2AC11033020000100BEE001 /* PPAccessoryViewerStore.swift in Sources */,
+				F2AC11043020000100BEE001 /* PPAccessoryViewerMedia.swift in Sources */,
+				F2AC11053020000100BEE001 /* PPAccessoryViewerComponents.swift in Sources */,
+				F2AC11063020000100BEE001 /* PPAccessoryViewerScreen.swift in Sources */,
+				F2AC11073020000100BEE001 /* PPAccessoryViewerHostingController.swift in Sources */,
 				F27146712CCE6B5300F7F3BA /* UIView+XLFormAdditions.m in Sources */,
 				F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */,
 				6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */,
@@ -6239,6 +6302,7 @@
 				F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */,
 				F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */,
 				F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */,
+				F294A775301232EE005EFBC7 /* PPHero.swift in Sources */,
 				F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */,
 				F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */,
 				F294A79F301232DD005EFBC7 /* PPPetAdRelatedItem.swift in Sources */,
@@ -6248,6 +6312,16 @@
 				F294A7C8301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift in Sources */,
 				F294A7A4301232DD005EFBC7 /* PPPetAdImageLoadState.swift in Sources */,
 				F294A7A5301232DD005EFBC7 /* PPPetAdViewerScreenState.swift in Sources */,
+				F294A7A7301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */,
+				F294A774301232EE005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */,
+				F294A774301232AA005EFBC7 /* PPComponentSwift.swift in Sources */,
+				F294A7C9301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */,
+				F294A7CA301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */,
+				F294A7CB301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */,
+				F294A7CC301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */,
+				F294A7CD301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */,
+				F294A7CF301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */,
+				F294A7D0301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */,
 				F294A7A6301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift in Sources */,
 				F294A7A9301232DD005EFBC7 /* PPPetAdRemoteImageView.swift in Sources */,
 				F294A7AA301232DD005EFBC7 /* PPPetAdInlineStateView.swift in Sources */,

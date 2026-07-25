@@ -149,38 +149,230 @@ struct PPPetAdViewerSnapshot {
 }
 
 enum PPPetAdViewerMotion {
-    static let press = Animation.easeOut(duration: 0.14)
+    static let press = Animation.easeOut(duration: 0.10)
     static let content = Animation.easeOut(duration: 0.28)
-    static let expansion = Animation.spring(
-        response: 0.38,
-        dampingFraction: 0.86,
-        blendDuration: 0.08
-    )
-    static let navigation = Animation.spring(
-        response: 0.44,
-        dampingFraction: 0.88,
-        blendDuration: 0.10
-    )
-    static let toast = Animation.spring(
-        response: 0.34,
-        dampingFraction: 0.84,
+    static let state = Animation.easeInOut(duration: 0.22)
+    static let entrance = Animation.spring(
+        response: 0.46,
+        dampingFraction: 0.92,
         blendDuration: 0.06
     )
+    static let expansion = Animation.spring(
+        response: 0.36,
+        dampingFraction: 0.90,
+        blendDuration: 0.06
+    )
+    static let navigation = Animation.spring(
+        response: 0.40,
+        dampingFraction: 0.92,
+        blendDuration: 0.06
+    )
+    static let toast = Animation.spring(
+        response: 0.32,
+        dampingFraction: 0.90,
+        blendDuration: 0.04
+    )
+
+    static func entrance(delayIndex: Int) -> Animation {
+        entrance.delay(Double(max(delayIndex, 0)) * 0.04)
+    }
+}
+
+enum PPPetAdViewerSurfaceElevation: Equatable {
+    case base
+    case raised
+}
+
+enum PPPetAdViewerStyle {
+    static let sheetRadius: CGFloat = 34
+    static let surfaceRadius: CGFloat = 20
+    static let insetRadius: CGFloat = 14
+    static let infoRadius: CGFloat = 20
+    static let descriptionRadius: CGFloat = 22
+    static let surfacePadding: CGFloat = 18
+    static let compactSurfacePadding: CGFloat = 14
+    static let sectionSpacing: CGFloat = 20
+    static let contentTopPadding: CGFloat = 30
+    static let contentBottomPadding: CGFloat = 36
+    static let sheetOverlap: CGFloat = 30
+    static let dockControlSize: CGFloat = 60
+    static let hairlineWidth: CGFloat = 0.5
+
+    static let heroPeachTop = Color.ppBackground
+    static let heroPeachBottom = Color.ppBackground
+
+    static let sheetBackground = Color.ppBackground
+    static let actionAccent = Color.ppPrimary
+    static let actionForeground = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor.black.withAlphaComponent(0.82)
+                : UIColor.white
+        }
+    )
+    static let darkActionFill = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(white: 0.96, alpha: 1)
+                : UIColor(white: 0.055, alpha: 1)
+        }
+    )
+    static let darkActionForeground = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(white: 0.04, alpha: 1)
+                : UIColor.white
+        }
+    )
+}
+
+private struct PPPetAdViewerSurfaceModifier: ViewModifier {
+    let elevation: PPPetAdViewerSurfaceElevation
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.surfaceRadius,
+            style: .continuous
+        )
+        let isRaised = elevation == .raised
+        let shadowOpacity: CGFloat =
+            colorScheme == .dark
+            ? (isRaised ? 0.22 : 0.08)
+            : (isRaised ? 0.07 : 0.025)
+
+        return content
+            .background(Color.ppCard, in: shape)
+            .overlay {
+                shape.stroke(
+                    Color(uiColor: .separator).opacity(
+                        colorSchemeContrast == .increased ? 0.42 : 0.20
+                    ),
+                    lineWidth: PPPetAdViewerStyle.hairlineWidth
+                )
+            }
+            .shadow(
+                color: Color.black.opacity(shadowOpacity),
+                radius: isRaised ? 20 : 8,
+                x: 0,
+                y: isRaised ? 10 : 3
+            )
+    }
+}
+
+private struct PPPetAdViewerInsetSurfaceModifier: ViewModifier {
+    let tint: Color
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.insetRadius,
+            style: .continuous
+        )
+
+        content
+            .background(Color.ppForeground.opacity(0.64), in: shape)
+            .overlay {
+                shape.stroke(
+                    tint.opacity(
+                        colorSchemeContrast == .increased ? 0.34 : 0.12
+                    ),
+                    lineWidth: PPPetAdViewerStyle.hairlineWidth
+                )
+            }
+    }
+}
+
+private struct PPPetAdViewerEntranceModifier: ViewModifier {
+    let isPresented: Bool
+    let delayIndex: Int
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(isPresented ? 1 : 0)
+            .offset(
+                y: reduceMotion || isPresented
+                    ? 0
+                    : min(12, 7 + CGFloat(delayIndex))
+            )
+            .scaleEffect(
+                reduceMotion || isPresented ? 1 : 0.994,
+                anchor: .top
+            )
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.16)
+                    : PPPetAdViewerMotion.entrance(delayIndex: delayIndex),
+                value: isPresented
+            )
+    }
+}
+
+struct PPPetAdSectionHeading: View {
+    let symbol: String
+    let title: String
+    var subtitle: String? = nil
+    var tint: Color = .ppPrimary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                Image(systemName: symbol)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(tint)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        tint.opacity(0.09),
+                        in: RoundedRectangle(
+                            cornerRadius: 11,
+                            style: .continuous
+                        )
+                    )
+                    .accessibilityHidden(true)
+
+                Text(title)
+                    .font(PPPetAdTypography.title3)
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+            }
+            .accessibilityAddTraits(.isHeader)
+
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(PPPetAdTypography.subheadline)
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 44)
+            }
+        }
+    }
 }
 
 struct PPPetAdPressButtonStyle: ButtonStyle {
     var pressedScale: CGFloat = 0.96
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(
-                reduceMotion || !configuration.isPressed
+                reduceMotion || !configuration.isPressed || !isEnabled
                     ? 1
                     : pressedScale
             )
-            .opacity(configuration.isPressed ? 0.80 : 1)
+            .opacity(
+                !isEnabled
+                    ? 0.48
+                    : (configuration.isPressed ? 0.76 : 1)
+            )
             .animation(
                 reduceMotion ? nil : PPPetAdViewerMotion.press,
                 value: configuration.isPressed
@@ -188,19 +380,8 @@ struct PPPetAdPressButtonStyle: ButtonStyle {
     }
 }
 
-struct PPPetAdScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(
-        value: inout CGFloat,
-        nextValue: () -> CGFloat
-    ) {
-        value = nextValue()
-    }
-}
-
 struct PPPetAdViewerLayoutMetrics {
-    static let navigationControlSize: CGFloat = 44
+    static let navigationControlSize: CGFloat = 52
     static let navigationVerticalPadding: CGFloat = 8
     static let minimumHeroClearance: CGFloat = 18
 
@@ -210,30 +391,29 @@ struct PPPetAdViewerLayoutMetrics {
     init(containerSize: CGSize, safeAreaTop: CGFloat) {
         let navigationHeight =
             Self.navigationControlSize + (Self.navigationVerticalPadding * 2)
-        let minimum =
-            safeAreaTop + navigationHeight + Self.minimumHeroClearance
+        let navigationBarMaxY = safeAreaTop + navigationHeight
+        let minimum = navigationBarMaxY + Self.minimumHeroClearance
 
-        let widthDrivenHeight = containerSize.width * 1.06
+        let isTablet = containerSize.width >= 700
+        let isShortPhone = containerSize.height < 720
+        let widthDrivenHeight =
+            containerSize.width * (isTablet ? 0.72 : 1.16)
+        let viewportRatio: CGFloat =
+            isTablet ? 0.56 : (isShortPhone ? 0.54 : 0.57)
+        let maximumHeight: CGFloat = isTablet ? 600 : 540
         let viewportCap = max(
-            minimum + 120,
-            min(540, containerSize.height * 0.68)
+            minimum + 96,
+            min(maximumHeight, containerSize.height * viewportRatio)
         )
-        let preferred = min(max(widthDrivenHeight, 360), viewportCap)
+        let preferredFloor: CGFloat =
+            isTablet ? 440 : (isShortPhone ? 340 : 420)
+        let preferred = min(
+            max(widthDrivenHeight, preferredFloor),
+            viewportCap
+        )
 
         minimumHeroHeight = minimum
-        expandedHeroHeight = max(minimum + 120, preferred)
-    }
-
-    var collapseDistance: CGFloat {
-        max(expandedHeroHeight - minimumHeroHeight, 1)
-    }
-
-    func heroHeight(for scrollOffset: CGFloat) -> CGFloat {
-        max(minimumHeroHeight, expandedHeroHeight + scrollOffset)
-    }
-
-    func collapseProgress(for scrollOffset: CGFloat) -> CGFloat {
-        min(max(-scrollOffset / collapseDistance, 0), 1)
+        expandedHeroHeight = max(minimum + 96, preferred)
     }
 }
 
@@ -289,4 +469,27 @@ extension View {
             )
         )
     }
+
+    func ppPetAdSurface(
+        elevation: PPPetAdViewerSurfaceElevation = .base
+    ) -> some View {
+        modifier(PPPetAdViewerSurfaceModifier(elevation: elevation))
+    }
+
+    func ppPetAdInsetSurface(tint: Color = .ppPrimary) -> some View {
+        modifier(PPPetAdViewerInsetSurfaceModifier(tint: tint))
+    }
+
+    func ppPetAdEntrance(
+        isPresented: Bool,
+        delayIndex: Int
+    ) -> some View {
+        modifier(
+            PPPetAdViewerEntranceModifier(
+                isPresented: isPresented,
+                delayIndex: delayIndex
+            )
+        )
+    }
+
 }

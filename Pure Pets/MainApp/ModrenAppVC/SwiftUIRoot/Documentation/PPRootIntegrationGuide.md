@@ -74,7 +74,6 @@ In `PPRootTabBarController.h`, import `<Pure_Pets-Swift.h>` or forward declare `
 
 @interface PPRootTabBarController : UITabBarController <UITabBarControllerDelegate>
 @property (nonatomic, strong, nullable) PPRootSwiftCoordinator *swiftCoordinator;
-@property (nonatomic, assign) BOOL useLegacyBar;
 // ...
 ```
 
@@ -87,7 +86,7 @@ In `PPRootTabBarController.m` (`viewDidLoad`):
     
     // Check feature flag before enabling SwiftUI Root
     if (PPRootFeatureFlag.shared.isSwiftUIRootEnabled) {
-        self.swiftCoordinator = [[PPRootSwiftCoordinator alloc] initWithHostController:self useLegacyBar:self.useLegacyBar];
+        self.swiftCoordinator = [[PPRootSwiftCoordinator alloc] initWithHostController:self];
         [self.swiftCoordinator start];
     } else {
         // Legacy Objective-C setup...

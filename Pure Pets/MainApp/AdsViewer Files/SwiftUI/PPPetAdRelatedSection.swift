@@ -1,5 +1,6 @@
 import SwiftUI
 
+@available(iOS 16.0, *)
 struct PPPetAdRelatedSection: View {
     let title: String
     let subtitle: String
@@ -7,29 +8,36 @@ struct PPPetAdRelatedSection: View {
     let items: [PPPetAdRelatedItem]
     let onRetry: () -> Void
     let onSelect: (PPPetAdRelatedItem) -> Void
-
+    
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                Text(title)
-                    .font(PPPetAdTypography.title2)
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .accessibilityAddTraits(.isHeader)
-
-                if !subtitle.isEmpty {
-                    Text(subtitle)
-                        .font(PPPetAdTypography.subheadline)
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            PPPetAdSectionHeading(
+                symbol: "sparkles",
+                title: title,
+                subtitle: subtitle
+            )
             .padding(.horizontal, PPSpace.screenMargin)
-
+            
             sectionContent
+                .id(sectionStateIdentity)
+                .transition(
+                    reduceMotion
+                    ? .opacity
+                    : .opacity.combined(
+                        with: .scale(scale: 0.992)
+                    )
+                )
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(
+            reduceMotion ? nil : PPPetAdViewerMotion.state,
+            value: sectionStateIdentity
+        )
     }
-
+    
     @ViewBuilder
     private var sectionContent: some View {
         switch state {
@@ -43,6 +51,8 @@ struct PPPetAdRelatedSection: View {
                 .padding(.horizontal, PPSpace.screenMargin)
                 .padding(.vertical, PPSpace.xs)
             }
+            .frame(height: carouselHeight)
+            .fixedSize(horizontal: false, vertical: true)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 PPPetAdLocalization.text(
@@ -54,14 +64,14 @@ struct PPPetAdRelatedSection: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: PPSpace.md) {
                     ForEach(items) { item in
-                        PPPetAdRelatedCard(item: item) {
-                            onSelect(item)
-                        }
+                        universalCard(for: item)
                     }
                 }
                 .padding(.horizontal, PPSpace.screenMargin)
                 .padding(.vertical, PPSpace.xs)
             }
+            .frame(height: carouselHeight)
+            .fixedSize(horizontal: false, vertical: true)
         case .empty:
             stateCard(
                 symbol: "sparkles",
@@ -110,50 +120,44 @@ struct PPPetAdRelatedSection: View {
             )
         }
     }
-
+    
     private var loadingCard: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
             RoundedRectangle(
                 cornerRadius: PPCorner.medium,
                 style: .continuous
             )
             .fill(Color.ppTextTertiary.opacity(0.10))
-            .frame(height: 168)
-
-            VStack(alignment: .leading, spacing: PPSpace.sm) {
+            .frame(height: loadingImageHeight)
+            
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.ppTextTertiary.opacity(0.15))
-                    .frame(width: 176, height: 15)
+                    .frame(width: 132, height: 12)
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.ppTextTertiary.opacity(0.10))
-                    .frame(width: 128, height: 12)
+                    .frame(width: 96, height: 9)
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.ppPrimary.opacity(0.12))
-                    .frame(width: 92, height: 15)
+                    .frame(width: 69, height: 12)
             }
-            .padding(.horizontal, PPSpace.base)
-            .padding(.bottom, PPSpace.base)
+            .padding(.horizontal, PPSpace.sm)
+            .padding(.bottom, PPSpace.sm)
+            .frame(
+                minHeight: loadingTextAreaHeight,
+                alignment: .topLeading
+            )
         }
-        .frame(width: 270)
-        .background(Color.ppCard)
+        .frame(width: loadingCardWidth)
         .clipShape(
             RoundedRectangle(
-                cornerRadius: PPCorner.card,
+                cornerRadius: PPPetAdViewerStyle.surfaceRadius,
                 style: .continuous
             )
         )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-            .stroke(
-                Color(uiColor: .separator).opacity(0.18),
-                lineWidth: 0.5
-            )
-        }
+        .ppPetAdSurface()
     }
-
+    
     private func stateCard(
         symbol: String,
         title: String,
@@ -170,13 +174,93 @@ struct PPPetAdRelatedSection: View {
             tint: tint,
             action: action
         )
-        .background(Color.ppCard)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-        )
+        .ppPetAdSurface()
         .padding(.horizontal, PPSpace.screenMargin)
     }
+    
+    private func universalCard(for item: PPPetAdRelatedItem) -> some View {
+        let isPetAd: Bool
+        if case .petAd = item.kind {
+            isPetAd = true
+        } else {
+            isPetAd = false
+        }
+        
+        let imageURL = item.imageURL.flatMap(URL.init(string:))
+        let model = PPUniversalCardModel(
+            id: item.id,
+            title: item.title,
+            subtitle: item.subtitle.isEmpty ? nil : item.subtitle,
+            imageURL: imageURL,
+            priceText: item.price.isEmpty ? nil : item.price,
+            badgeText: kindLabel(for: item),
+            prefersEdgeToEdgeMedia: true
+        )
+        let context: PPUniversalCardContext = isPetAd ? .ads : .accessory
+        
+        return PPUniversalCardView(
+            model: model,
+            context: context,
+            layout: .vertical,
+            actions: PPUniversalCardActions(
+                onTap: { _ in onSelect(item) }
+            )
+        )
+        .frame(width: cardWidth)
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.97))
+    }
+    
+    private func kindLabel(for item: PPPetAdRelatedItem) -> String {
+        switch item.kind {
+        case .petAd(_):
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_pet_badge",
+                fallback: "Pet"
+            )
+        case .accessory(_):
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_accessory_badge",
+                fallback: "Accessory"
+            )
+        }
+    }
+
+    private var cardWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 232 : 185
+    }
+
+    private var loadingCardWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 232 : 185
+    }
+
+    private var loadingImageHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 140 : 117
+    }
+
+    private var carouselHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 340 : 340
+    }
+
+    private var loadingTextAreaHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 160 : 120
+    }
+
+    private var sectionStateIdentity: Int {
+        switch state {
+        case .idle:
+            return 0
+        case .loading:
+            return 1
+        case .loaded:
+            return 2
+        case .empty:
+            return 3
+        case .offline:
+            return 4
+        case .failed:
+            return 5
+        }
+    }
 }
+
+

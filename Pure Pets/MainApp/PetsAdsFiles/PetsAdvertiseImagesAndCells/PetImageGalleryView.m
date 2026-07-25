@@ -57,7 +57,6 @@ static const CGFloat PPImageGalleryThumbnailFocusInset = PPSpaceMD;
 - (void)refreshAppearance;
 
 @end
-
 @implementation PPImageGalleryThumbnailCell
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -751,12 +750,191 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     return kCGImagePropertyOrientationUp;
 }
 
+@interface PPGarContactPillView : UIView
+@property (nonatomic, strong) UIVisualEffectView *blurEffectView;
+@property (nonatomic, strong) UIImageView *avatarView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UIImageView *badgeIconView;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIButton *chatBtn;
+@property (nonatomic, strong) UIButton *callBtn;
+
+@property (nonatomic, copy, nullable) void (^onChatAction)(void);
+@property (nonatomic, copy, nullable) void (^onCallAction)(void);
+- (void)updateWithUserModel:(nullable UserModel *)userModel;
+@end
+
+@implementation PPGarContactPillView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self setupUI];
+    }
+    return self;
+}
+
+- (void)setupUI
+{
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.clipsToBounds = YES;
+    self.layer.cornerRadius = 34.0;
+    if (@available(iOS 13.0, *)) {
+        self.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.layer.borderWidth = 0.75;
+    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.75].CGColor;
+
+    UIBlurEffect *blur = nil;
+    if (@available(iOS 13.0, *)) {
+        blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    } else {
+        blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular];
+    }
+    _blurEffectView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    _blurEffectView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:_blurEffectView];
+
+    _avatarView = [[UIImageView alloc] init];
+    _avatarView.translatesAutoresizingMaskIntoConstraints = NO;
+    _avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    _avatarView.clipsToBounds = YES;
+    _avatarView.layer.cornerRadius = 22.0;
+    _avatarView.layer.borderWidth = 1.0;
+    _avatarView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.8].CGColor;
+    _avatarView.image = [UIImage systemImageNamed:@"person.circle.fill"];
+    _avatarView.tintColor = [UIColor systemGray2Color];
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.font = [UIFont fontWithName:@"Beiruti-Bold" size:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
+    _titleLabel.textColor = [UIColor labelColor];
+
+    _badgeIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.seal.fill"]];
+    _badgeIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _badgeIconView.tintColor = [UIColor systemBlueColor];
+
+    _subtitleLabel = [[UILabel alloc] init];
+    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _subtitleLabel.font = [UIFont fontWithName:@"Beiruti-Medium" size:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    _subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    _subtitleLabel.text = @"حساب موثق";
+
+    UIStackView *subStack = [[UIStackView alloc] initWithArrangedSubviews:@[_badgeIconView, _subtitleLabel]];
+    subStack.translatesAutoresizingMaskIntoConstraints = NO;
+    subStack.axis = UILayoutConstraintAxisHorizontal;
+    subStack.spacing = 3.0;
+    subStack.alignment = UIStackViewAlignmentCenter;
+
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[_titleLabel, subStack]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 1.0;
+    textStack.alignment = UIStackViewAlignmentLeading;
+
+    UIImageSymbolConfiguration *btnCfg = [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightBold];
+
+    _chatBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    _chatBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    [_chatBtn setImage:[[UIImage systemImageNamed:@"bubble.left.and.bubble.right.fill" withConfiguration:btnCfg] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    _chatBtn.tintColor = [UIColor whiteColor];
+    _chatBtn.backgroundColor = [UIColor colorWithRed:0.18 green:0.72 blue:0.42 alpha:0.95];
+    _chatBtn.layer.cornerRadius = 21.0;
+    _chatBtn.clipsToBounds = YES;
+    [_chatBtn addTarget:self action:@selector(handleChat) forControlEvents:UIControlEventTouchUpInside];
+
+    _callBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+    _callBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    [_callBtn setImage:[[UIImage systemImageNamed:@"phone.fill" withConfiguration:btnCfg] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    _callBtn.tintColor = [UIColor whiteColor];
+    _callBtn.backgroundColor = [UIColor colorWithRed:0.12 green:0.58 blue:0.95 alpha:0.95];
+    _callBtn.layer.cornerRadius = 21.0;
+    _callBtn.clipsToBounds = YES;
+    [_callBtn addTarget:self action:@selector(handleCall) forControlEvents:UIControlEventTouchUpInside];
+
+    UIStackView *btnStack = [[UIStackView alloc] initWithArrangedSubviews:@[_chatBtn, _callBtn]];
+    btnStack.translatesAutoresizingMaskIntoConstraints = NO;
+    btnStack.axis = UILayoutConstraintAxisHorizontal;
+    btnStack.spacing = 8.0;
+
+    [_blurEffectView.contentView addSubview:_avatarView];
+    [_blurEffectView.contentView addSubview:textStack];
+    [_blurEffectView.contentView addSubview:btnStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_blurEffectView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [_blurEffectView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [_blurEffectView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [_blurEffectView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+
+        [_avatarView.leadingAnchor constraintEqualToAnchor:_blurEffectView.contentView.leadingAnchor constant:12.0],
+        [_avatarView.centerYAnchor constraintEqualToAnchor:_blurEffectView.contentView.centerYAnchor],
+        [_avatarView.widthAnchor constraintEqualToConstant:44.0],
+        [_avatarView.heightAnchor constraintEqualToConstant:44.0],
+
+        [textStack.leadingAnchor constraintEqualToAnchor:_avatarView.trailingAnchor constant:12.0],
+        [textStack.centerYAnchor constraintEqualToAnchor:_blurEffectView.contentView.centerYAnchor],
+        [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:btnStack.leadingAnchor constant:-8.0],
+
+        [btnStack.trailingAnchor constraintEqualToAnchor:_blurEffectView.contentView.trailingAnchor constant:-12.0],
+        [btnStack.centerYAnchor constraintEqualToAnchor:_blurEffectView.contentView.centerYAnchor],
+
+        [_chatBtn.widthAnchor constraintEqualToConstant:42.0],
+        [_chatBtn.heightAnchor constraintEqualToConstant:42.0],
+
+        [_callBtn.widthAnchor constraintEqualToConstant:42.0],
+        [_callBtn.heightAnchor constraintEqualToConstant:42.0],
+
+        [_badgeIconView.widthAnchor constraintEqualToConstant:14.0],
+        [_badgeIconView.heightAnchor constraintEqualToConstant:14.0]
+    ]];
+}
+
+- (void)updateWithUserModel:(nullable UserModel *)userModel
+{
+    if (userModel) {
+        NSString *name = nil;
+        if (userModel.FirstName.length > 0 || userModel.LastName.length > 0) {
+            name = [[NSString stringWithFormat:@"%@ %@", userModel.FirstName ?: @"", userModel.LastName ?: @""] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        }
+        if (!name.length) name = userModel.UserName;
+        if (!name.length) name = @"PurePets Member";
+        self.titleLabel.text = name;
+
+        if (userModel.UserImageUrl) {
+            [[PPImageLoaderManager shared] setImageOnImageView:self.avatarView url:userModel.UserImageUrl complation:^(UIImage * _Nullable image, NSString * _Nullable urlString) { 
+                if (image) {
+                    self.avatarView.image = image;
+                }
+            }];
+        }
+    } else {
+        self.titleLabel.text = @"PurePets Member";
+    }
+}
+
+- (void)handleChat
+{
+    if (self.onChatAction) self.onChatAction();
+}
+
+- (void)handleCall
+{
+    if (self.onCallAction) self.onCallAction();
+}
+
+@end
+
 @interface PetImageGalleryView ()<UICollectionViewDelegateFlowLayout>
 @property (nonatomic, strong) FullScreenImageViewerController *fullScreenViewer;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) id currentModel;
 @property (nonatomic, strong) PPImageGalleryThumbnailRailView *thumbnailRailView;
 @property (nonatomic, strong) NSLayoutConstraint *thumbnailRailHeightConstraint;
+@property (nonatomic, strong, nullable) PPGarContactPillView *garContactPillView;
+@property (nonatomic, strong, nullable) UIView *garThumbRailsView;
+@property (nonatomic, strong, nullable) NSArray<NSLayoutConstraint *> *garBottomConstraints;
 
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *imageCache;
 @property (nonatomic, assign) BOOL pp_didPrepareGalleryEntranceAnimation;
@@ -840,13 +1018,110 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     _imageSizes = [NSMutableDictionary dictionary];
 
     // UI
+    _bottomViewType = PPGarBottomViewTypeThumbRails;
     self.backgroundColor = UIColor.clearColor;
     [self pp_applyCurrentLanguageDirection];
     [self setupCollectionView];
+    [self pp_updateBottomViewModeLayout];
 
     return self;
 }
 
+
+- (void)setBottomViewType:(PPGarBottomViewType)bottomViewType
+{
+    _bottomViewType = bottomViewType;
+    [self pp_updateBottomViewModeLayout];
+}
+
+- (void)setUserModel:(UserModel *)userModel
+{
+    _userModel = userModel;
+    if (self.garContactPillView) {
+        [self.garContactPillView updateWithUserModel:userModel];
+    }
+}
+
+- (void)pp_updateBottomViewModeLayout
+{
+    if (self.garBottomConstraints.count > 0) {
+        [NSLayoutConstraint deactivateConstraints:self.garBottomConstraints];
+        self.garBottomConstraints = nil;
+    }
+
+    if (self.garContactPillView) self.garContactPillView.hidden = YES;
+    if (self.garThumbRailsView) self.garThumbRailsView.hidden = YES;
+
+    switch (self.bottomViewType) {
+        case PPGarBottomViewTypeIndicator: {
+            break;
+        }
+        case PPGarBottomViewTypeThumbRails: {
+            [self pp_activateThumbRailsBottomLayout];
+            break;
+        }
+        case PPGarBottomViewTypeContactPill: {
+            [self pp_activateContactPillBottomLayout];
+            break;
+        }
+    }
+}
+
+- (void)pp_activateThumbRailsBottomLayout
+{
+    if (!self.garThumbRailsView) {
+        self.garThumbRailsView = [[UIView alloc] init];
+        self.garThumbRailsView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.garThumbRailsView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
+        self.garThumbRailsView.layer.cornerRadius = 26.0;
+        self.garThumbRailsView.clipsToBounds = YES;
+        self.garThumbRailsView.layer.borderWidth = 0.75;
+        self.garThumbRailsView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.75].CGColor;
+        [self addSubview:self.garThumbRailsView];
+    }
+    self.garThumbRailsView.hidden = NO;
+
+    NSArray *constraints = @[
+        [self.garThumbRailsView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-16.0],
+        [self.garThumbRailsView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16.0],
+        [self.garThumbRailsView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16.0],
+        [self.garThumbRailsView.heightAnchor constraintEqualToConstant:56.0]
+    ];
+    [NSLayoutConstraint activateConstraints:constraints];
+    self.garBottomConstraints = constraints;
+}
+
+- (void)pp_activateContactPillBottomLayout
+{
+    if (!self.garContactPillView) {
+        self.garContactPillView = [[PPGarContactPillView alloc] initWithFrame:CGRectZero];
+        __weak typeof(self) weakSelf = self;
+        self.garContactPillView.onChatAction = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (self && self.onContactChatTapped) {
+                self.onContactChatTapped();
+            }
+        };
+        self.garContactPillView.onCallAction = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (self && self.onContactCallTapped) {
+                self.onContactCallTapped();
+            }
+        };
+        [self addSubview:self.garContactPillView];
+    }
+    self.garContactPillView.hidden = NO;
+    [self.garContactPillView updateWithUserModel:self.userModel];
+
+    NSArray *constraints = @[
+        [self.garContactPillView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-16.0],
+        [self.garContactPillView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16.0],
+        [self.garContactPillView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16.0],
+        [self.garContactPillView.heightAnchor constraintEqualToConstant:68.0]
+    ];
+    [NSLayoutConstraint activateConstraints:constraints];
+    self.garBottomConstraints = constraints;
+}
 
 - (void)setupCollectionView {
     

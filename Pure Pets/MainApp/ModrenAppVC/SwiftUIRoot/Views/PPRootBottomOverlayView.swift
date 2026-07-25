@@ -46,7 +46,7 @@ public struct PPRootBottomOverlayView: View {
                             store.handleCartTapped()
                         }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, store.useLegacyBar ? (proxy.safeAreaInsets.bottom + 54) : max(proxy.safeAreaInsets.bottom, 8))
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + 54)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
@@ -56,7 +56,7 @@ public struct PPRootBottomOverlayView: View {
                             store.handleNovaTapped()
                         }
                         .padding(.trailing, 16)
-                        .padding(.bottom, store.useLegacyBar ? (proxy.safeAreaInsets.bottom + 54) : (store.shouldShowDock ? (proxy.safeAreaInsets.bottom + 54) : max(proxy.safeAreaInsets.bottom, 8)))
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + 54)
                         .transition(.scale.combined(with: .opacity))
                     }
                 }

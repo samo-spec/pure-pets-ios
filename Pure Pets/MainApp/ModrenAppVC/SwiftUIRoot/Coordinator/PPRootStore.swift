@@ -23,7 +23,7 @@ public final class PPRootStore: ObservableObject {
     
     @Published public private(set) var isDockHidden: Bool = false
     @Published public private(set) var isExternallyHidden: Bool = false
-    @Published public private(set) var useLegacyBar: Bool = false
+    @Published public private(set) var usesLegacyBar: Bool = true
     @Published public private(set) var bottomOverlayHeight: CGFloat = 0.0
     @Published public private(set) var activeSafeAreaBottom: CGFloat = 0.0
     
@@ -71,7 +71,7 @@ public final class PPRootStore: ObservableObject {
     // MARK: - Reactive Visibility Rules
     
     public var shouldShowDock: Bool {
-        !useLegacyBar && !isExternallyHidden && !isDockHidden && !cartState.isVisible && !sessionState.isAnyBlocked
+        false
     }
     
     public var shouldShowCartBar: Bool {
@@ -91,12 +91,6 @@ public final class PPRootStore: ObservableObject {
         if cartState.isVisible {
             let baseBarHeight: CGFloat = 56.0
             return ceil(baseBarHeight + 12.0)
-        }
-        if isDockHidden || isExternallyHidden {
-            return 0.0
-        }
-        if !useLegacyBar {
-            return ceil(bottomOverlayHeight > 0 ? bottomOverlayHeight + 8.0 : 64.0)
         }
         return 8.0
     }
@@ -125,10 +119,6 @@ public final class PPRootStore: ObservableObject {
         refreshSurfaceForTopViewController()
     }
     
-    public func setUsesLegacyBar(_ enabled: Bool) {
-        useLegacyBar = enabled
-    }
-    
     public func updateMeasuredBottomOverlayHeight(_ height: CGFloat, safeAreaBottom: CGFloat) {
         guard abs(self.bottomOverlayHeight - height) > 0.5 || abs(self.activeSafeAreaBottom - safeAreaBottom) > 0.5 else { return }
         self.bottomOverlayHeight = height
@@ -149,6 +139,10 @@ public final class PPRootStore: ObservableObject {
             novaState.isHiddenByBottomNavigation = hidden
         }
         actionHandler?.updateBottomNavigationClearance(computedBottomContentClearance)
+    }
+
+    public func setUsesLegacyBar(_ enabled: Bool) {
+        usesLegacyBar = enabled
     }
     
     public func activateFloatingCart(

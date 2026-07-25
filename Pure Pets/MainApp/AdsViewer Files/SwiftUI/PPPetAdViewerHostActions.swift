@@ -7,10 +7,21 @@ final class PPPetAdViewerHostActions {
     func close() {
         guard let presenter else { return }
 
-        if let navigation = presenter.navigationController,
-           navigation.viewControllers.first !== presenter {
-            navigation.popViewController(animated: true)
-        } else {
+        if let navigation = presenter.navigationController {
+            if navigation.topViewController === presenter,
+               navigation.viewControllers.count > 1 {
+                navigation.popViewController(animated: true)
+                return
+            }
+
+            if navigation.viewControllers.first === presenter,
+               navigation.presentingViewController != nil {
+                navigation.dismiss(animated: true)
+                return
+            }
+        }
+
+        if presenter.presentingViewController != nil {
             presenter.dismiss(animated: true)
         }
     }
@@ -60,7 +71,7 @@ final class PPPetAdViewerHostActions {
             )
         }
 
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PPPetAdViewerLegacyBridge.openChat(
                 for: owner.user,
                 from: presenter
@@ -68,7 +79,7 @@ final class PPPetAdViewerHostActions {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: Void())
+                    continuation.resume(returning: ())
                 }
             }
         }

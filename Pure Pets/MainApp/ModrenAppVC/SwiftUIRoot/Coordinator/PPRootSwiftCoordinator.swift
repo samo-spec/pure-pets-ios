@@ -25,12 +25,11 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     private var cancellables = Set<AnyCancellable>()
     private var adapter: PPRootObjCAdapter?
-    private var useLegacyBar: Bool
     private var isStarted = false
     
-    @objc public init(hostController: UITabBarController, useLegacyBar: Bool = false) {
+    @objc(initWithHostController:)
+    public init(hostController: UITabBarController) {
         self.hostController = hostController
-        self.useLegacyBar = useLegacyBar
         
         let adapter = PPRootObjCAdapter(targetController: hostController)
         self.adapter = adapter
@@ -51,9 +50,7 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
         guard let host = hostController, !isStarted else { return }
         isStarted = true
         
-        print("🚀 [PurePets SwiftUI Root] PPRootSwiftCoordinator STARTED. Overlay views installed.")
-        
-        store.setUsesLegacyBar(useLegacyBar)
+        print("🚀 [PurePets SwiftUI Root] PPRootSwiftCoordinator STARTED. Native UITabBar active.")
         
         // Wrap navigation controller delegates using proxy to prevent overriding existing delegates (Fixes Risk #4)
         attachNavigationProxies(in: host)
@@ -110,13 +107,14 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     // MARK: - Public Objective-C Interoperability API
     
     @objc public func setUsesLegacyBar(_ enabled: Bool) {
-        useLegacyBar = enabled
+
         store.setUsesLegacyBar(enabled)
         applySystemTabBarState()
     }
     
     @objc public func setBottomNavigationHidden(_ hidden: Bool, animated: Bool) {
         store.setExternallyHidden(hidden, animated: animated)
+        applySystemTabBarState()
     }
     
     @objc public func setDockHidden(_ hidden: Bool, animated: Bool) {
@@ -214,12 +212,12 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
             let totalWidth = host.view.bounds.width
             
             let tabBarHeight = host.tabBar.frame.height > 0 ? host.tabBar.frame.height : (49.0 + host.view.safeAreaInsets.bottom)
-            if self.useLegacyBar && point.y >= (totalHeight - tabBarHeight) {
+            if point.y >= (totalHeight - tabBarHeight) {
                 return false
             }
             
             if self.store.shouldShowCartBar {
-                let cartBottom = totalHeight - (self.useLegacyBar ? tabBarHeight : host.view.safeAreaInsets.bottom)
+                let cartBottom = totalHeight - tabBarHeight
                 let cartTop = cartBottom - 64.0
                 if point.y >= cartTop && point.y <= cartBottom {
                     return true
@@ -227,17 +225,10 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
             }
             
             if self.store.shouldShowNovaButton {
-                let novaBottom = totalHeight - (self.useLegacyBar ? tabBarHeight : host.view.safeAreaInsets.bottom)
+                let novaBottom = totalHeight - tabBarHeight
                 let novaTop = novaBottom - 64.0
                 let novaLeft = totalWidth - 80.0
                 if point.y >= novaTop && point.y <= novaBottom && point.x >= novaLeft {
-                    return true
-                }
-            }
-            
-            if !self.useLegacyBar && self.store.shouldShowDock {
-                let dockTop = totalHeight - (host.view.safeAreaInsets.bottom + 64.0)
-                if point.y >= dockTop {
                     return true
                 }
             }
@@ -297,15 +288,9 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     
     private func applySystemTabBarState() {
         guard let host = hostController else { return }
-        if !useLegacyBar {
-            host.tabBar.isHidden = true
-            host.tabBar.alpha = 0.0
-            host.tabBar.isUserInteractionEnabled = false
-        } else {
-            host.tabBar.isHidden = store.isExternallyHidden
-            host.tabBar.alpha = store.isExternallyHidden ? 0.0 : 1.0
-            host.tabBar.isUserInteractionEnabled = !store.isExternallyHidden
-        }
+        host.tabBar.isHidden = store.isExternallyHidden
+        host.tabBar.alpha = store.isExternallyHidden ? 0.0 : 1.0
+        host.tabBar.isUserInteractionEnabled = !store.isExternallyHidden
     }
     
     private func updateOverlayZIndex() {

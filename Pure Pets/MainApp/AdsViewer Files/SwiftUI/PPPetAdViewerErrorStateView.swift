@@ -7,65 +7,32 @@ struct PPPetAdViewerErrorStateView: View {
     let onClose: () -> Void
 
     var body: some View {
-        VStack(spacing: PPSpace.xl) {
-            Image(
-                systemName: isOffline
-                    ? "wifi.slash"
-                    : "exclamationmark.triangle.fill"
-            )
-            .font(.system(size: 56, weight: .semibold))
-            .foregroundStyle(
-                isOffline ? Color.ppWarning : Color.ppError
-            )
-
-            VStack(spacing: PPSpace.sm) {
-                Text(
-                    isOffline
-                        ? PPPetAdLocalization.text(
-                            "pet_ad_viewer_offline_title",
-                            fallback: "You’re offline"
-                        )
-                        : PPPetAdLocalization.text(
-                            "pet_ad_viewer_error_title",
-                            fallback: "This page did not load"
-                        )
+        PPPetAdViewerStateScaffold(
+            symbol: isOffline
+                ? "wifi.slash"
+                : "exclamationmark.arrow.triangle.2.circlepath",
+            tint: isOffline ? .ppWarning : .ppError,
+            title: isOffline
+                ? PPPetAdLocalization.text(
+                    "pet_ad_viewer_offline_title",
+                    fallback: "You’re offline"
                 )
-                .font(PPPetAdTypography.title2)
-                .foregroundStyle(Color.ppTextPrimary)
-                .multilineTextAlignment(.center)
-
-                Text(message)
-                    .font(PPPetAdTypography.body)
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            VStack(spacing: PPSpace.md) {
-                Button(action: onRetry) {
-                    Label(
-                        PPPetAdLocalization.text("Retry", fallback: "Retry"),
-                        systemImage: "arrow.clockwise"
-                    )
-                    .font(PPPetAdTypography.calloutBold)
-                    .foregroundStyle(Color.white)
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                    .background(PPGradient.hero)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(PPPetAdPressButtonStyle())
-
-                Button(action: onClose) {
-                    Text(PPPetAdLocalization.text("Close", fallback: "Close"))
-                        .font(PPPetAdTypography.calloutBold)
-                        .foregroundStyle(Color.ppPrimary)
-                        .frame(minHeight: 46)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(PPSpace.xxl)
-        .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                : PPPetAdLocalization.text(
+                    "pet_ad_viewer_error_title",
+                    fallback: "This page did not load"
+                ),
+            message: message,
+            primaryTitle: PPPetAdLocalization.text(
+                "Retry",
+                fallback: "Retry"
+            ),
+            primarySymbol: "arrow.clockwise",
+            primaryAction: onRetry,
+            secondaryTitle: PPPetAdLocalization.text(
+                "Close",
+                fallback: "Close"
+            ),
+            secondaryAction: onClose
+        )
     }
 }

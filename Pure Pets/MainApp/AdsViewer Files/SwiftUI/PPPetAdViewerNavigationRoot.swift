@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 
+@available(iOS 16.0, *)
 struct PPPetAdViewerNavigationRoot: View {
     let ad: PetAd
     let repository: PPPetAdViewerRepository
@@ -21,8 +22,11 @@ struct PPPetAdViewerNavigationRoot: View {
                 languageCode: languageCode,
                 authenticationRevision: authenticationRevision
             )
+            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
         }
         .navigationViewStyle(.stack)
+        .ignoresSafeArea(edges: .top)
         .environment(
             \.layoutDirection,
             isRightToLeft ? .rightToLeft : .leftToRight

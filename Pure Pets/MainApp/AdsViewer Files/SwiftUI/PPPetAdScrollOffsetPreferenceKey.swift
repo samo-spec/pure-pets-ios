@@ -1,3 +1,2 @@
-// Compatibility stub.
-// The type previously declared here now lives in
-// PPPetAdViewerInteraction.swift with the other consolidated viewer support.
+// Compatibility stub retained to keep the legacy Xcode project reference stable.
+// Scroll offset ownership now lives in PPPetAdSheetScrollCoordinator.swift.

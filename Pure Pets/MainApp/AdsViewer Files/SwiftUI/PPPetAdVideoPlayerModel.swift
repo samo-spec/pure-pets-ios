@@ -63,16 +63,16 @@ final class PPPetAdVideoPlayerModel: ObservableObject {
                 guard let self else { return }
                 switch item.status {
                 case .readyToPlay:
-                    state = .ready
-                    if wantsToPlay {
-                        player.play()
+                    self.state = .ready
+                    if self.wantsToPlay {
+                        self.player.play()
                     }
                 case .failed:
-                    state = .failed
+                    self.state = .failed
                 case .unknown:
-                    state = .loading
+                    self.state = .loading
                 @unknown default:
-                    state = .failed
+                    self.state = .failed
                 }
             }
         }
@@ -85,20 +85,20 @@ final class PPPetAdVideoPlayerModel: ObservableObject {
                 guard let self else { return }
                 switch player.timeControlStatus {
                 case .playing:
-                    isPlaying = true
-                    state = .ready
+                    self.isPlaying = true
+                    self.state = .ready
                 case .waitingToPlayAtSpecifiedRate:
-                    isPlaying = false
-                    if wantsToPlay {
-                        state = .loading
+                    self.isPlaying = false
+                    if self.wantsToPlay {
+                        self.state = .loading
                     }
                 case .paused:
-                    isPlaying = false
+                    self.isPlaying = false
                     if player.currentItem?.status == .readyToPlay {
-                        state = .ready
+                        self.state = .ready
                     }
                 @unknown default:
-                    isPlaying = false
+                    self.isPlaying = false
                 }
             }
         }
@@ -113,8 +113,8 @@ final class PPPetAdVideoPlayerModel: ObservableObject {
         ) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
-                player.seek(to: .zero)
-                isPlaying = false
+                self.player.seek(to: .zero)
+                self.isPlaying = false
             }
         }
     }

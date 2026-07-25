@@ -64,14 +64,14 @@ static CGFloat const PPCartFloatingBarHeight = 56.0;
 static CGFloat const PPCartFloatingBarRestingBottomConstant = 16.0;
 static CGFloat const PPCartFloatingBarHiddenBottomConstant = 28.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
+static CGFloat const PPPremiumDockBottomInset = 18.0;
+static BOOL const PPShowsRootCenterAddButton = YES;
 
 @class PPPremiumDockBarDelegate;
 @class PPCartFloatingBarCoordinator;
 
 @interface PPRootTabBarController () <UINavigationControllerDelegate>
 {
-    BOOL _useLegacyBar;
-    BOOL _hasSetUseLegacyBar;
 }
 @property (nonatomic, strong) UIButton *leadingTabButton;
 @property (nonatomic, strong) UIButton *trailingTabButton;
@@ -113,7 +113,8 @@ static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 - (UIViewController *)pp_makeAddActionPlaceholderViewController;
 - (UIViewController *)pp_makeSettingsRootViewController;
 - (void)pp_applyPremiumTabBarItemMetrics:(UITabBarItem *)item centerAction:(BOOL)centerAction;
-- (void)pp_refreshLegacyTabBarTitleLayout;
+- (void)pp_refreshRootTabBarTitleLayout;
+- (void)configureAppearance;
 - (nullable UILabel *)pp_tabBarTitleLabelForItem:(UITabBarItem *)item;
 - (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
@@ -1330,18 +1331,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 @implementation PPRootTabBarController
 
-- (BOOL)useLegacyBar {
-    if (_hasSetUseLegacyBar) {
-        return _useLegacyBar;
-    }
-    return [[NSUserDefaults standardUserDefaults] boolForKey:@"PPUSE_LEGACY_BAR"];
-}
-
-- (void)setUseLegacyBar:(BOOL)useLegacyBar {
-    _useLegacyBar = useLegacyBar;
-    _hasSetUseLegacyBar = YES;
-}
-
 - (nullable UIViewController *)pp_viewControllerForRootTabIndex:(NSInteger)index
 {
     NSArray<UIViewController *> *controllers = self.viewControllers;
@@ -1400,18 +1389,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     //UINavigationController *notiNav = [self nav:[UserChatsViewController new] title:kLang(@"Notifications") icon:@"bell" selectedImage:@"bellLast"];
 
     // Add (center)
-    UINavigationController *addNav = nil;
-    if (self.useLegacyBar) {
-        addNav = [self nav:[self pp_makeAddActionPlaceholderViewController]
-                     title:kLang(@"Add")
-                      icon:@"plus"
-             selectedImage:@"plus.fill"];
-    } else {
-        addNav = [self nav:[self pp_makeAddActionPlaceholderViewController]
-                     title:kLang(@"Add")
-                      icon:@"plus"
-             selectedImage:@"plus.fill"];
-    }
+    UINavigationController *addNav = [self nav:[self pp_makeAddActionPlaceholderViewController]
+                 title:kLang(@"Add")
+                  icon:@"plus"
+         selectedImage:@"plus.fill"];
     // Settings
     UINavigationController *settingsNav = [self nav:[self pp_makeSettingsRootViewController]   title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))  icon:@"slider.horizontal.3" selectedImage:@"slider.horizontal.3"];
 
@@ -1454,26 +1435,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     
     */
 
-    if (!self.useLegacyBar) {
-        NSMutableArray<UIViewController *> *premiumRootControllers = [@[
-            homeNav,
-            ordersNav,
-            addNav,
-            notiNav,
-            cartNav
-        ] mutableCopy];
-        self.premiumMyAdsRootTabIndex = PPRootTabIndexMyAds;
-        self.viewControllers = premiumRootControllers.copy;
-    } else {
-        self.viewControllers = @[
-            homeNav,
-            ordersNav,
-            addNav,
-            notiNav,
-            cartNav
-        ];
-        self.premiumMyAdsRootTabIndex = PPRootTabIndexMyAds;
-    }
+    self.viewControllers = @[
+        homeNav,
+        ordersNav,
+        addNav,
+        notiNav,
+        cartNav
+    ];
+    self.premiumMyAdsRootTabIndex = PPRootTabIndexMyAds;
 
     // ── Centralized tab bar state management ──
     // Set self as delegate for every tab's navigation controller so
@@ -1503,6 +1472,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_applyPremiumTabBarItemMetrics:addNav.tabBarItem centerAction:YES];
     [self pp_applyPremiumTabBarItemMetrics:notiNav.tabBarItem centerAction:NO];
     [self pp_applyPremiumTabBarItemMetrics:cartNav.tabBarItem centerAction:NO];
+    if (!PPShowsRootCenterAddButton) {
+        addNav.tabBarItem.enabled = NO;
+        addNav.tabBarItem.title = @"";
+        addNav.tabBarItem.image = [[UIImage new] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        addNav.tabBarItem.selectedImage = [[UIImage new] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+        addNav.tabBarItem.accessibilityElementsHidden = YES;
+        addNav.tabBarItem.accessibilityLabel = nil;
+        addNav.tabBarItem.accessibilityHint = nil;
+    }
+    [self configureAppearance];
 
     self.pp_lastSelectedIndex = self.selectedIndex;
     //[self addBottomFadeBelowTabBar];
@@ -1513,7 +1492,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         NSLog(@"🚀 [PurePets Root] ==========================================");
         [self pp_setupPremiumBottomNavigation];
         [self pp_refreshProfileTabPresentation];
-        self.swiftCoordinator = [[PPRootSwiftCoordinator alloc] initWithHostController:self useLegacyBar:YES];
+        self.swiftCoordinator = [[PPRootSwiftCoordinator alloc] initWithHostController:self];
         [self.swiftCoordinator start];
     } else {
         NSLog(@"🏛️ [PurePets Root] ==========================================");
@@ -1523,16 +1502,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_setupPremiumBottomNavigation];
         [self pp_refreshProfileTabPresentation];
         self.cartFloatingBarCoordinator = [[PPCartFloatingBarCoordinator alloc] initWithHostController:self];
-    }
-
-    // ── KVO guard against UIKit tabBar flashes ──
-    // UITabBarController internally sets self.tabBar.hidden = NO during pop
-    // transitions. This KVO immediately reverts that on iOS 26+.
-    if (!self.useLegacyBar) {
-        [self.tabBar addObserver:self
-                      forKeyPath:@"hidden"
-                         options:NSKeyValueObservingOptionNew
-                         context:kPPTabBarHiddenObservationContext];
     }
 
     [self updateUnreads];
@@ -1617,7 +1586,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (self.swiftCoordinator) {
         [self.swiftCoordinator viewDidAppearWithAnimated:animated];
     } else {
-        [self pp_refreshLegacyTabBarTitleLayout];
         [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
         [self pp_assertPremiumTabBarState];
         [self pp_layoutGuestProfileAnimation];
@@ -1625,6 +1593,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:self.selectedViewController animated:NO];
         [self pp_showIntroIfNeeded];
     }
+    [self pp_refreshRootTabBarTitleLayout];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_refreshRootTabBarTitleLayout];
+    });
     [self becomeFirstResponder];
 }
 
@@ -1654,11 +1626,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 /// iOS < 26 → system tabBar visible, premium dock never created.
 - (void)pp_assertPremiumTabBarState
 {
-    if (!self.useLegacyBar) {
-        self.tabBar.hidden = YES;
-        self.tabBar.alpha = 0.0;
-        self.tabBar.userInteractionEnabled = NO;
-    }
 }
 
 - (void)pp_showIntroIfNeeded {
@@ -1740,22 +1707,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                         change:(NSDictionary<NSKeyValueChangeKey, id> *)change
                        context:(void *)context
 {
-    if (context == kPPTabBarHiddenObservationContext && !self.useLegacyBar) {
-        if (object == self.tabBar && !self.tabBar.hidden) {
-            self.tabBar.hidden = YES;
-            self.tabBar.alpha = 0.0;
-            self.tabBar.userInteractionEnabled = NO;
-        }
-        return;
-    }
     [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
 }
 
 - (void)dealloc {
-    if (!self.useLegacyBar) {
-        @try { [self.tabBar removeObserver:self forKeyPath:@"hidden" context:kPPTabBarHiddenObservationContext]; }
-        @catch (NSException *e) {}
-    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -1829,16 +1784,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)hideSystemTabBar
 {
-    [self pp_setPremiumBottomNavigationHidden:YES animated:YES];
+    [self pp_setBottomNavigationHidden:YES animated:YES];
 }
 
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
     if (self.swiftCoordinator) {
         [self.swiftCoordinator setBottomNavigationHidden:hidden animated:animated];
-    } else {
-        [self setPremiumTabDockViewHidden:hidden animation:animated];
     }
+    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
 }
 
 - (BOOL)pp_openChatThreadFromNotification:(ChatThreadModel *)thread animated:(BOOL)animated
@@ -1888,7 +1842,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (self.swiftCoordinator) {
         [self.swiftCoordinator viewDidLayoutSubviews];
     } else {
-        [self pp_refreshLegacyTabBarTitleLayout];
         [self pp_updatePremiumBottomFadeAppearance];
         [self pp_updateBlockedOverlayTopInset];
         [self pp_updateTabBarSelectionIndicatorIfNeeded];
@@ -1898,6 +1851,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
         [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     }
+    [self pp_refreshRootTabBarTitleLayout];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -2614,16 +2568,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)configureAppearance {
     // WHY: Keep the legacy UITabBar using the same compact premium item rhythm
     // as the custom dock: crisp symbols, small titles, and stable spacing.
+    UIFont *normalTitleFont = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
+    UIFont *selectedTitleFont = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    UIColor *normalIconColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.82];
+    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
     if (@available(iOS 13.0, *)) {
         UITabBarAppearance *appearance = [UITabBarAppearance new];
         [self pp_configureFloatingBackgroundForAppearance:appearance];
         
-        UIFont *titleFont = [GM boldFontWithSize:10.0] ?: [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
-        UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-        UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
         NSDictionary<NSAttributedStringKey, id> *selectedTitle =
         @{ NSForegroundColorAttributeName: selectedIconColor,
-           NSFontAttributeName: titleFont};
+           NSFontAttributeName: selectedTitleFont};
         
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = selectedTitle;
         appearance.inlineLayoutAppearance.selected.titleTextAttributes = selectedTitle;
@@ -2631,7 +2586,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         
         NSDictionary<NSAttributedStringKey, id> *normalTitle =
         @{ NSForegroundColorAttributeName: normalIconColor,
-           NSFontAttributeName: titleFont};
+           NSFontAttributeName: normalTitleFont};
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.inlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.compactInlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
@@ -2669,16 +2624,18 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         self.tabBar.layer.masksToBounds = NO;
         
     } else {
+        NSDictionary<NSAttributedStringKey, id> *normalTitle =
+        @{ NSForegroundColorAttributeName: normalIconColor,
+           NSFontAttributeName: normalTitleFont };
+        [[UITabBarItem appearance] setTitleTextAttributes:normalTitle forState:UIControlStateNormal];
         NSDictionary<NSAttributedStringKey, id> *clearSelectedTitle =
-        @{ NSForegroundColorAttributeName: UIColor.clearColor };
+        @{ NSForegroundColorAttributeName: selectedIconColor,
+           NSFontAttributeName: selectedTitleFont };
         [[UITabBarItem appearance] setTitleTextAttributes:clearSelectedTitle forState:UIControlStateSelected];
     }
 
-    // iOS <26: Set proper icon tinting on the tab bar
-    if (self.useLegacyBar) {
-        self.tabBar.tintColor = AppPrimaryClr;
-        self.tabBar.unselectedItemTintColor = UIColor.secondaryLabelColor;
-    }
+    self.tabBar.tintColor = selectedIconColor;
+    self.tabBar.unselectedItemTintColor = normalIconColor;
 }
 
 
@@ -2772,143 +2729,12 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_setupPremiumBottomNavigation
 {
     [self pp_setupPremiumBottomFade];
-
-    if (self.useLegacyBar) {
-        [self addPlusTabBarButton];
-        [self pp_setupPremiumNovaButton];
-        // On iOS < 26 keep the original system tab bar visible and skip the custom dock
-        self.tabBar.hidden = NO;
-        self.tabBar.alpha = 1.0;
-        self.tabBar.userInteractionEnabled = YES;
-        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
-        return;
-    }
-
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
-
-    PPPremiumDockTabBar *dockView = [[PPPremiumDockTabBar alloc] init];
-    dockView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.premiumDockDelegate = [[PPPremiumDockBarDelegate alloc] init];
-    self.premiumDockDelegate.controller = self;
-    dockView.delegate = self.premiumDockDelegate;
-    dockView.itemPositioning = UITabBarItemPositioningFill;
-    dockView.tintColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    dockView.unselectedItemTintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    dockView.backgroundColor = UIColor.clearColor;
-    dockView.layer.masksToBounds = NO;
-    dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [self.view addSubview:dockView];
-    self.premiumTabbarView = dockView;
-
     [self addPlusTabBarButton];
     [self pp_setupPremiumNovaButton];
-    
-    UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
-    [appearance configureWithTransparentBackground];
-    appearance.backgroundEffect = nil;
-    appearance.backgroundColor = UIColor.clearColor;
-    appearance.shadowColor = UIColor.clearColor;
-    if (@available(iOS 26.0, *)) {
-        appearance.stackedItemPositioning = UITabBarItemPositioningFill;
-        appearance.stackedItemWidth = 0.0;
-        appearance.stackedItemSpacing = 0.0;
-    }
-
-    UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIFont *titleFont = [GM boldFontWithSize:10] ?: [UIFont systemFontOfSize:10 weight:UIFontWeightSemibold];
-    dockView.pp_titleFont = titleFont;
-    NSDictionary<NSAttributedStringKey, id> *normalTitleAttributes =
-        @{ NSFontAttributeName: titleFont, NSForegroundColorAttributeName: normalIconColor };
-    NSDictionary<NSAttributedStringKey, id> *selectedTitleAttributes =
-        @{ NSFontAttributeName: titleFont, NSForegroundColorAttributeName: selectedIconColor };
-
-    NSArray<UITabBarItemAppearance *> *itemAppearances = @[
-        appearance.stackedLayoutAppearance,
-        appearance.inlineLayoutAppearance,
-        appearance.compactInlineLayoutAppearance
-    ];
-    for (UITabBarItemAppearance *itemAppearance in itemAppearances) {
-        itemAppearance.normal.iconColor = normalIconColor;
-        itemAppearance.selected.iconColor = selectedIconColor;
-        itemAppearance.normal.titleTextAttributes = normalTitleAttributes;
-        itemAppearance.selected.titleTextAttributes = selectedTitleAttributes;
-    }
-
-    dockView.standardAppearance = appearance;
-    if (@available(iOS 15.0, *)) {
-        dockView.scrollEdgeAppearance = appearance;
-    }
-    dockView.clipsToBounds = NO;
-
-    NSInteger myAdsTabIndex = [self pp_resolvedMyAdsRootTabIndex];
-    NSArray<NSNumber *> *visibleTabIndexes = @[
-        @(PPRootTabIndexHome),
-        @(myAdsTabIndex),
-        @(PPRootTabIndexChats),
-       // @(PPRootTabIndexSettings),
-        @(PPRootTabIndexOrders)
-    ];
-    NSMutableArray<UITabBarItem *> *items = [NSMutableArray arrayWithCapacity:visibleTabIndexes.count];
-    for (NSNumber *tabIndexValue in visibleTabIndexes) {
-        NSInteger index = tabIndexValue.integerValue;
-        UIViewController *sourceController = [self pp_viewControllerForRootTabIndex:index];
-        if (!sourceController) {
-            NSLog(@"[PPRootTabBar] Skipping premium dock item for unavailable tab index=%ld count=%lu",
-                  (long)index,
-                  (unsigned long)self.viewControllers.count);
-            continue;
-        }
-        UITabBarItem *sourceItem = sourceController.tabBarItem;
-        UITabBarItem *item =
-            [[UITabBarItem alloc] initWithTitle:sourceItem.title
-                                         image:[self pp_premiumSymbolForTabIndex:index selected:NO]
-                                 selectedImage:[self pp_premiumSymbolForTabIndex:index selected:YES]];
-        item.tag = index;
-        item.accessibilityLabel = sourceItem.accessibilityLabel ?: sourceItem.title;
-        item.accessibilityHint = sourceItem.accessibilityHint;
-        [self pp_applyPremiumTabBarItemMetrics:item centerAction:(index == PPRootTabIndexAdd)];
-        [items addObject:item];
-    }
-    dockView.items = items.copy;
-    self.premiumTabItems = items.copy;
-
-    CGFloat dockHeight = PPIOS26()  ? 83.0 : 64.0;
-    NSMutableArray<NSLayoutConstraint *> *dockConstraints = [NSMutableArray arrayWithArray:@[
-        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-4.0],
-        [dockView.heightAnchor constraintEqualToConstant:dockHeight]
-    ]];
-    if (!self.useLegacyBar) {
-        [dockConstraints addObject:[dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8.0]];
-        [dockConstraints addObject:[dockView.trailingAnchor constraintEqualToAnchor:self.leadingTabButton.leadingAnchor constant:-6.0]];
-    } else {
-        [dockConstraints addObject:[dockView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:4.0]];
-        [dockConstraints addObject:[dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0]];
-    }
-    [NSLayoutConstraint activateConstraints:dockConstraints];
-    dockView.backgroundColor = UIColor.clearColor;
-    // Resolve the real dock width before assigning its initial selected item.
-    // Otherwise UIKit can build and retain title labels using a transitional
-    // launch-time width, intermittently producing Arabic ellipses.
-    [self.view layoutIfNeeded];
-    [self pp_applyPremiumTabSelectionAnimated:NO];
-    if (!UIAccessibilityIsReduceMotionEnabled()) {
-        dockView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
-        self.leadingTabButton.alpha = 0.0;
-        self.leadingTabButton.transform =
-            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
-                                    CGAffineTransformMakeScale(0.94, 0.94));
-        self.premiumNovaButton.alpha = 0.0;
-        self.premiumNovaButton.transform =
-            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 8.0),
-                                    CGAffineTransformMakeScale(0.94, 0.94));
-    }
-    [self.view bringSubviewToFront:dockView];
-    [self.view bringSubviewToFront:self.leadingTabButton];
-    [self.view bringSubviewToFront:self.premiumNovaButton];
-    [self pp_applyBottomNavigationClearanceToVisibleLists];
+    self.tabBar.hidden = NO;
+    self.tabBar.alpha = 1.0;
+    self.tabBar.userInteractionEnabled = YES;
+    [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
 }
 
 - (CGFloat)pp_bottomNavigationContentClearance
@@ -2927,29 +2753,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         return 0.0;
     }
 
-    CGFloat extraBreathingRoom = 6.0;
-    if (!self.useLegacyBar && self.leadingTabButton && !self.leadingTabButton.hidden) {
-        CGRect buttonFrame = [self.leadingTabButton.superview convertRect:self.leadingTabButton.frame
-                                                                    toView:self.view];
-        CGRect dockFrame = CGRectNull;
-        if (self.premiumTabbarView && !self.premiumTabbarView.hidden) {
-            dockFrame = [self.premiumTabbarView.superview convertRect:self.premiumTabbarView.frame
-                                                                toView:self.view];
-        }
-
-        CGRect visibleBarFrame = CGRectIsNull(dockFrame) ? buttonFrame : CGRectUnion(buttonFrame, dockFrame);
-        if (!CGRectIsEmpty(visibleBarFrame)) {
-            CGFloat safeBottomY = CGRectGetMaxY(self.view.bounds) - self.view.safeAreaInsets.bottom;
-            CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(visibleBarFrame));
-            return ceil(overlapAboveSafeArea + extraBreathingRoom);
-        }
-    }
-
-    if (!self.tabBar.hidden && self.tabBar.alpha > 0.01) {
-        return extraBreathingRoom;
-    }
-
-    return 0.0;
+    return 8.0;
 }
 
 - (CGFloat)pp_currentBottomNavigationContentClearance
@@ -3073,9 +2877,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.premiumBottomFadeView = fadeView;
     [self pp_updatePremiumBottomFadeAppearance];
 
-    if (self.useLegacyBar) {
-        fadeView.alpha = 0.0;
-    }
+    fadeView.alpha = 0.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -3153,12 +2955,22 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     NSMutableArray<NSLayoutConstraint *> *novaConstraints = [NSMutableArray array];
     if (@available(iOS 26.0, *)) {
-        [novaConstraints addObject:[button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor]];
+        if (self.leadingTabButton) {
+            [novaConstraints addObject:[button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor]];
+            [novaConstraints addObject:[button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0]];
+        } else {
+            [novaConstraints addObject:[button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0]];
+            [novaConstraints addObject:[button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16.0]];
+        }
     } else {
         [novaConstraints addObject:[button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0]];
+        if (self.leadingTabButton) {
+            [novaConstraints addObject:[button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0]];
+        } else {
+            [novaConstraints addObject:[button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0]];
+        }
     }
     [novaConstraints addObjectsFromArray:@[
-        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0],
         [button.widthAnchor constraintEqualToConstant:58.0],
         [button.heightAnchor constraintEqualToConstant:58.0],
         [animationView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
@@ -3463,15 +3275,6 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (UITabBarItem *)pp_guestProfileAnimationTabItem
 {
-    if (!self.useLegacyBar) {
-        for (UITabBarItem *item in self.premiumTabItems) {
-            if (item.tag == PPRootTabIndexOrders) {
-                return item;
-            }
-        }
-        return nil;
-    }
-
     if (self.viewControllers.count <= PPRootTabIndexOrders) {
         return nil;
     }
@@ -3590,11 +3393,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     return [self pp_titleLabelInView:itemView matchingTitle:item.title];
 }
 
-- (void)pp_refreshLegacyTabBarTitleLayout
+- (void)pp_refreshRootTabBarTitleLayout
 {
-    if (!self.useLegacyBar || self.tabBar.hidden || CGRectGetWidth(self.tabBar.bounds) <= 0.0) {
+    if (self.tabBar.hidden || CGRectGetWidth(self.tabBar.bounds) <= 0.0) {
         return;
     }
+
+    UIFont *normalTitleFont = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
+    UIFont *selectedTitleFont = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    UIColor *normalTitleColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.82];
+    UIColor *selectedTitleColor = AppPrimaryClr ?: UIColor.systemTealColor;
 
     for (UITabBarItem *item in self.tabBar.items) {
         UIView *itemView = [self pp_viewForTabBarItem:item];
@@ -3619,6 +3427,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
                                                               fromView:itemView];
 
         titleLabel.numberOfLines = 1;
+        BOOL isSelected = (self.tabBar.selectedItem == item);
+        titleLabel.font = isSelected ? selectedTitleFont : normalTitleFont;
+        titleLabel.textColor = isSelected ? selectedTitleColor : normalTitleColor;
         titleLabel.textAlignment = NSTextAlignmentCenter;
         titleLabel.adjustsFontSizeToFitWidth = YES;
         titleLabel.minimumScaleFactor = 0.78;
@@ -3646,7 +3457,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
     [itemView layoutIfNeeded];
 
-    UITabBar *displayedTabBar = !self.useLegacyBar ? self.premiumTabbarView : self.tabBar;
+    UITabBar *displayedTabBar = self.tabBar;
     UIView *animationHostView = displayedTabBar.superview ?: self.view;
     if (!displayedTabBar || !animationHostView) {
         return;
@@ -3803,51 +3614,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded
 {
-    if (self.useLegacyBar) {
-        return;
-    }
-    if (self.premiumNavigationDidAnimateIn) {
-        return;
-    }
-    self.premiumNavigationDidAnimateIn = YES;
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.premiumTabbarView.transform = CGAffineTransformIdentity;
-        self.leadingTabButton.alpha = 1.0;
-        self.leadingTabButton.transform = CGAffineTransformIdentity;
-        self.premiumNovaButton.alpha = self.premiumNovaVisibleByConfiguration ? 1.0 : 0.0;
-        self.premiumNovaButton.transform = CGAffineTransformIdentity;
-        [self pp_updatePremiumNovaButtonVisibility];
-        return;
-    }
-
-    [UIView animateWithDuration:0.46
-                          delay:0.03
-         usingSpringWithDamping:0.92
-          initialSpringVelocity:0.16
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.premiumTabbarView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-    [UIView animateWithDuration:0.40
-                          delay:0.08
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.22
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.leadingTabButton.alpha = 1.0;
-        self.leadingTabButton.transform = CGAffineTransformIdentity;
-    } completion:nil];
-    [UIView animateWithDuration:0.42
-                          delay:0.14
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.18
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.premiumNovaButton.alpha = self.premiumNovaVisibleByConfiguration ? 1.0 : 0.0;
-        self.premiumNovaButton.transform = CGAffineTransformIdentity;
-    } completion:^(__unused BOOL finished) {
-        [self pp_updatePremiumNovaButtonVisibility];
-    }];
+    return;
 }
 
 - (void)pp_premiumControlTouchDown:(UIButton *)sender
@@ -3900,26 +3667,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    if (!self.useLegacyBar) {
-        self.tabBar.hidden = YES;
-        self.tabBar.alpha = 0.0;
-        self.tabBar.userInteractionEnabled = NO;
-    } else {
-        if (!hidden) {
-            self.tabBar.hidden = NO;
-        }
-        self.tabBar.userInteractionEnabled = !hidden;
+    if (!hidden) {
+        self.tabBar.hidden = NO;
     }
+    self.tabBar.userInteractionEnabled = !hidden;
     self.premiumBottomNavigationHidden = hidden;
     [self pp_updateGuestProfileAnimationPlayback];
-    NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:4];
-    if (!self.useLegacyBar && self.premiumTabbarView) {
-        [navigationViews addObject:self.premiumTabbarView];
-    }
-    if (self.premiumBottomFadeView && !self.useLegacyBar) {
-        [navigationViews addObject:self.premiumBottomFadeView];
-    }
-    if (self.leadingTabButton && !self.useLegacyBar) {
+
+    NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:3];
+    if (self.leadingTabButton) {
         [navigationViews addObject:self.leadingTabButton];
     }
     if (self.premiumNovaButton) {
@@ -3934,28 +3690,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
     void (^changes)(void) = ^{
         BOOL showNova = self.premiumNovaVisibleByConfiguration && !hidden;
-        if (!self.useLegacyBar) {
-            self.tabBar.alpha = 0.0;
-            self.premiumTabbarView.alpha = hidden ? 0.0 : 1.0;
-            self.premiumBottomFadeView.alpha = hidden ? 0.0 : 1.0;
-        } else {
-            self.tabBar.alpha = hidden ? 0.0 : 1.0;
-            self.premiumTabbarView.alpha = 0.0;
-            self.premiumBottomFadeView.alpha = 0.0;
-        }
-        self.leadingTabButton.alpha = (!self.useLegacyBar && !hidden) ? 1.0 : 0.0;
+        self.tabBar.alpha = hidden ? 0.0 : 1.0;
+        self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
         self.premiumNovaButton.alpha = showNova ? 1.0 : 0.0;
         if (!UIAccessibilityIsReduceMotionEnabled()) {
-            self.premiumTabbarView.transform =
-                hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
-            self.tabBar.transform =
-                (self.useLegacyBar && hidden) ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
-            self.leadingTabButton.transform =
-                hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
-            self.premiumNovaButton.transform =
-                hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+            self.tabBar.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
+            self.leadingTabButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
+            self.premiumNovaButton.transform = hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
         } else {
-            self.premiumTabbarView.transform = CGAffineTransformIdentity;
             self.tabBar.transform = CGAffineTransformIdentity;
             self.leadingTabButton.transform = CGAffineTransformIdentity;
             self.premiumNovaButton.transform = CGAffineTransformIdentity;
@@ -3966,19 +3708,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             view.hidden = hidden;
         }
         [self pp_updatePremiumNovaButtonVisibility];
-        if (!self.useLegacyBar) {
-            self.tabBar.hidden = YES;
-            self.tabBar.alpha = 0.0;
-            self.tabBar.transform = CGAffineTransformIdentity;
-            self.tabBar.userInteractionEnabled = NO;
-        } else {
-            self.tabBar.hidden = hidden;
-            if (!hidden) {
-                self.tabBar.alpha = 1.0;
-            }
-            self.tabBar.transform = CGAffineTransformIdentity;
-            self.tabBar.userInteractionEnabled = !hidden;
+        self.tabBar.hidden = hidden;
+        if (!hidden) {
+            self.tabBar.alpha = 1.0;
         }
+        self.tabBar.transform = CGAffineTransformIdentity;
+        self.leadingTabButton.transform = CGAffineTransformIdentity;
+        self.tabBar.userInteractionEnabled = !hidden;
         [self pp_applyBottomNavigationClearanceToVisibleLists];
         [self pp_layoutGuestProfileAnimation];
         [self pp_updateGuestProfileAnimationPlayback];
@@ -4009,7 +3745,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated
 {
-    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
+    [self pp_setBottomNavigationHidden:hidden animated:animated];
 }
 
 - (void)pp_activateFloatingCartBarForSourceViewController:(UIViewController *)viewController
@@ -4039,17 +3775,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (UIView *)pp_novaAmbientBottomNavigationAnchorView
 {
-    if (!self.useLegacyBar &&
-        self.premiumTabbarView &&
-        !self.premiumTabbarView.hidden &&
-        self.premiumTabbarView.alpha > 0.01) {
-        return self.premiumTabbarView;
-    }
-
     if (!self.tabBar.hidden && self.tabBar.alpha > 0.01) {
         return self.tabBar;
     }
-
     return nil;
 }
 
@@ -4059,44 +3787,49 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 }
 
 - (void)addPlusTabBarButton {
-
-    
+    if (!PPShowsRootCenterAddButton) {
+        self.leadingTabButton.hidden = YES;
+        self.leadingTabButton.userInteractionEnabled = NO;
+        [self.leadingTabButton removeFromSuperview];
+        self.leadingTabButton = nil;
+        return;
+    }
 
     UIButton *showAddMenuButton = [UIButton buttonWithType:UIButtonTypeSystem];
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:19
-                                                     weight:UIImageSymbolWeightSemibold
+    [UIImageSymbolConfiguration configurationWithPointSize:20
+                                                     weight:UIImageSymbolWeightBold
                                                       scale:UIImageSymbolScaleLarge];
 
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIImage *icon = [[[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig] imageWithTintColor:accentColor]
+    UIImage *icon = [[[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig] imageWithTintColor:UIColor.whiteColor]
                      imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+
     if (@available(iOS 26.0, *)) {
         UIButtonConfiguration *configuration =
             [UIButtonConfiguration glassButtonConfiguration];
         configuration.image = icon;
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        configuration.baseForegroundColor = accentColor;
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
-        configuration.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
-        configuration.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.00];
+        configuration.baseForegroundColor = UIColor.whiteColor;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
+        configuration.background.backgroundColor = accentColor;
+        configuration.baseBackgroundColor = accentColor;
         showAddMenuButton.configuration = configuration;
-        showAddMenuButton.tintColor = accentColor;
+        showAddMenuButton.tintColor = UIColor.whiteColor;
     } else {
         [showAddMenuButton setImage:icon forState:UIControlStateNormal];
-        showAddMenuButton.backgroundColor =
-            [UIColor.systemBackgroundColor colorWithAlphaComponent:0.92];
-        showAddMenuButton.tintColor = accentColor;
+        showAddMenuButton.backgroundColor = accentColor;
+        showAddMenuButton.tintColor = UIColor.whiteColor;
         showAddMenuButton.layer.borderWidth = 0.5;
-        [showAddMenuButton pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.10]];
+        [showAddMenuButton pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.25]];
     }
-    showAddMenuButton.layer.cornerRadius = 28.0;
-    PPApplyContinuousCorners(showAddMenuButton, 28.0);
+    showAddMenuButton.layer.cornerRadius = 29.0;
+    PPApplyContinuousCorners(showAddMenuButton, 29.0);
     [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
-    showAddMenuButton.layer.shadowOpacity = 0.04;
-    showAddMenuButton.layer.shadowRadius = 8.0;
+    showAddMenuButton.layer.shadowOpacity = 0.18;
+    showAddMenuButton.layer.shadowRadius = 10.0;
     showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     showAddMenuButton.layer.masksToBounds = NO;
 
@@ -4111,31 +3844,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [self.view addSubview:showAddMenuButton];
     self.leadingTabButton = showAddMenuButton;
+    showAddMenuButton.hidden = NO;
 
-    if (self.useLegacyBar) {
-        showAddMenuButton.hidden = YES;
-    }
-
-    NSLayoutYAxisAnchor *targetCenterY = (self.premiumTabbarView && [self.premiumTabbarView isDescendantOfView:self.view]) 
-        ? self.premiumTabbarView.centerYAnchor 
-        : self.tabBar.centerYAnchor;
-
-    if (@available(iOS 26.0, *)) {
-        [NSLayoutConstraint activateConstraints:@[
-            [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-            [showAddMenuButton.centerYAnchor constraintEqualToAnchor:targetCenterY],
-            [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
-            [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
-        ]];
-    } else {
-        [NSLayoutConstraint activateConstraints:@[
-            [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-            [showAddMenuButton.centerYAnchor constraintEqualToAnchor:targetCenterY],
-            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
-            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
-        ]];
-        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
-    }
+    [NSLayoutConstraint activateConstraints:@[
+        [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
+    ]];
+    [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
 }
 
 
@@ -4220,7 +3937,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_raiseBelowIOS26AddButtonAboveSystemTabBar
 {
-    if (!self.useLegacyBar || !self.leadingTabButton) {
+    if (!self.leadingTabButton) {
         return;
     }
 
@@ -4537,22 +4254,11 @@ shouldSelectViewController:(UIViewController *)viewController {
      self.bottomBar.barBackStyle = BarBackStyleClear;
   
      
-     if(!self.useLegacyBar)
-     {
-         [self.bottomBar configureTabBarItems:@[
-             @{@"tag":@(PPBarTagHome),@"icon"Cus", @"title":kLang(@"MainPage")}, //homeCus
-             @{@"tag":@(PPBarTagChats), @"icon":@"notificationCus",  @"title":kLang(@"Notifications")} ,
-             @{@"tag":@(PPBarTagOrdersHistory), @"icon":@"ordersCus",  @"title": kLang(@"Orders")},
-         ]];
-     }
-     else
-     {
-         [self.bottomBar configureWithItems:@[
-             @{@"tag":@(PPBarTagHome),@"icon":@"PPhouseCus", @"title":kLang(@"home")},
-             @{@"tag":@(PPBarTagChats), @"icon":@"bell",  @"title":kLang(@"Notifications")} ,
-             @{@"tag":@(PPBarTagOrdersHistory), @"icon":@"clock", @"title": kLang(@"Orders")},
+     [self.bottomBar configureWithItems:@[
+         @{@"tag":@(PPBarTagHome),@"icon":@"PPhouseCus", @"title":kLang(@"home")},
+         @{@"tag":@(PPBarTagChats), @"icon":@"bell",  @"title":kLang(@"Notifications")} ,
+         @{@"tag":@(PPBarTagOrdersHistory), @"icon":@"clock", @"title": kLang(@"Orders")},
      ]];
-     }
 
      __weak typeof(self) weakSelf = self;
 

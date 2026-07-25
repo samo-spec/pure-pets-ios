@@ -320,6 +320,8 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
 @property (nonatomic, strong) NSLayoutConstraint *premiumModalHeaderHeightConstraint;
 @property (nonatomic, assign) BOOL didCaptureNotificationHandoff;
 @property (nonatomic, assign) BOOL didAnimatePremiumModalHeader;
+@property (nonatomic, assign) BOOL pp_didCaptureBottomNavigationRestoreState;
+@property (nonatomic, assign) BOOL pp_shouldRestoreBottomNavigationOnExit;
 @property (nonatomic, copy) NSString *premiumModalHeaderAvatarUserID;
 @property (nonatomic, copy) NSString *premiumModalHeaderAvatarURLString;
 @property (nonatomic, strong, nullable) ChatMessageModel *replyingToMessage;
@@ -1151,6 +1153,59 @@ static UIColor *PPChatAmbientBackgroundColor(UITraitCollection *traitCollection)
         return nil;
     }
     return anchorView;
+}
+
+- (nullable UITabBarController *)pp_resolvedBottomNavigationController
+{
+    if (self.tabBarController) {
+        return self.tabBarController;
+    }
+
+    UIViewController *candidate =
+        self.navigationController.presentingViewController
+            ?: self.presentingViewController;
+    for (NSInteger depth = 0; candidate && depth < 12; depth++) {
+        if ([candidate isKindOfClass:UITabBarController.class]) {
+            return (UITabBarController *)candidate;
+        }
+        if (candidate.tabBarController) {
+            return candidate.tabBarController;
+        }
+
+        UIViewController *next =
+            candidate.parentViewController
+                ?: candidate.presentingViewController;
+        if (!next || next == candidate) {
+            break;
+        }
+        candidate = next;
+    }
+    return nil;
+}
+
+- (void)pp_captureBottomNavigationRestoreStateIfNeeded
+{
+    if (self.pp_didCaptureBottomNavigationRestoreState) {
+        return;
+    }
+    self.pp_didCaptureBottomNavigationRestoreState = YES;
+
+    BOOL isPresentedNavigationRoot =
+        self.navigationController.presentingViewController != nil &&
+        self.navigationController.viewControllers.firstObject == self;
+    if (!isPresentedNavigationRoot) {
+        self.pp_shouldRestoreBottomNavigationOnExit = YES;
+        return;
+    }
+
+    UITabBarController *tabBarController =
+        [self pp_resolvedBottomNavigationController];
+    UITabBar *tabBar = tabBarController.tabBar;
+    self.pp_shouldRestoreBottomNavigationOnExit =
+        tabBarController != nil &&
+        tabBar != nil &&
+        !tabBar.hidden &&
+        tabBar.alpha > 0.01;
 }
 
 - (CGFloat)pp_visibleNotificationHandoffBottomNavigationClearance
@@ -6181,7 +6236,11 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)handleCloseTapped
 {
-    if (self.presentingViewController) {
+    if (self.navigationController.presentingViewController &&
+        self.navigationController.viewControllers.firstObject == self) {
+        [self.navigationController dismissViewControllerAnimated:YES
+                                                      completion:nil];
+    } else if (self.presentingViewController) {
         [self dismissViewControllerAnimated:YES completion:nil];
     } else {
         [self.navigationController popViewControllerAnimated:YES];
@@ -6192,7 +6251,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     // 🔥 CRITICAL: neutralize tab bar safe area
-   
+    [self pp_captureBottomNavigationRestoreStateIfNeeded];
 
 
     if (self.keepsBottomNavigationVisibleForNotificationHandoff) {
@@ -6282,9 +6341,17 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     // 🔄 restore normal behavior
       self.additionalSafeAreaInsets = UIEdgeInsetsZero;
 
-    [[NSNotificationCenter defaultCenter]
-           postNotificationName:PPShowSystemTabBarNotification
-                         object:nil];
+    BOOL isLeavingChat =
+        self.isMovingFromParentViewController ||
+        self.isBeingDismissed ||
+        self.navigationController.isBeingDismissed;
+    if (isLeavingChat &&
+        !self.keepsBottomNavigationVisibleForNotificationHandoff &&
+        self.pp_shouldRestoreBottomNavigationOnExit) {
+        [[NSNotificationCenter defaultCenter]
+               postNotificationName:PPShowSystemTabBarNotification
+                             object:nil];
+    }
     
     self.isViewVisible = NO;
     [ChManager sharedManager].activeThreadID = nil;

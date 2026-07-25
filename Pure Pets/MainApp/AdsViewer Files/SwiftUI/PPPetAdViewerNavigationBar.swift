@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// A canonical, category-defining transparent navigation bar for the Pet Ad Viewer.
+/// Provides glass floating action controls over the hero gallery with safe status bar clearance.
 struct PPPetAdViewerNavigationBar: View {
     let title: String
     let isCollapsed: Bool
@@ -17,37 +19,42 @@ struct PPPetAdViewerNavigationBar: View {
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var hasActions: Bool {
-        canShare || canFavorite || canReport
+    private var hasOverflowActions: Bool {
+        canShare || canReport
     }
 
     var body: some View {
-        HStack(spacing: PPSpace.sm) {
+        HStack(spacing: PPSpace.md) {
             backButton
 
             if isCollapsed {
                 Text(title)
-                    .font(PPPetAdTypography.headline)
-                    .foregroundStyle(Color.white)
+                    .font(PPPetAdTypography.subheadlineBold)
+                    .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.82)
+                    .truncationMode(.tail)
                     .frame(maxWidth: .infinity)
-                    .padding(.horizontal, PPSpace.xs)
+                    .padding(.horizontal, PPSpace.sm)
+                    .accessibilityAddTraits(.isHeader)
                     .transition(
                         reduceMotion
                             ? .opacity
-                            : .opacity.combined(with: .move(edge: .top))
+                            : .opacity.combined(
+                                with: .scale(scale: 0.98)
+                            )
                     )
             } else {
                 Spacer(minLength: PPSpace.sm)
             }
 
-            if hasActions {
-                actionGroup
+            if canFavorite {
+                favoriteControl
+            } else if hasOverflowActions {
+                overflowMenu
             }
         }
-        .padding(.horizontal, PPSpace.base)
-        .padding(.vertical, PPPetAdViewerLayoutMetrics.navigationVerticalPadding)
+        .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.bottom, 8)
         .animation(
             reduceMotion ? nil : PPPetAdViewerMotion.navigation,
             value: isCollapsed
@@ -56,122 +63,165 @@ struct PPPetAdViewerNavigationBar: View {
 
     private var backButton: some View {
         Button(action: onBack) {
-            Image(
-                systemName: layoutDirection == .rightToLeft
+            circleControl(
+                symbol:
+                    layoutDirection == .rightToLeft
                     ? "chevron.right"
-                    : "chevron.left"
+                    : "chevron.left",
+                tint: .ppTextPrimary
             )
-            .font(.system(size: 17, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(
-                width: PPPetAdViewerLayoutMetrics.navigationControlSize,
-                height: PPPetAdViewerLayoutMetrics.navigationControlSize
-            )
-            .contentShape(Circle())
         }
-        .ppGlassSurface(
-            in: Circle(),
-            tint: Color.black.opacity(0.16),
-            fallback: Color.black.opacity(0.84)
-        )
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.88))
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
         .accessibilityLabel(
             PPPetAdLocalization.text("Back", fallback: "Back")
         )
     }
 
-    private var actionGroup: some View {
-        HStack(spacing: 0) {
-            if canShare {
-                actionButton(
-                    symbol: "square.and.arrow.up",
-                    label: PPPetAdLocalization.text(
+    @ViewBuilder
+    private var favoriteControl: some View {
+        if hasOverflowActions {
+            Menu {
+                overflowActions
+            } label: {
+                favoriteLabel
+            } primaryAction: {
+                onFavorite()
+            }
+            .menuIndicator(.hidden)
+            .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
+            .accessibilityLabel(favoriteAccessibilityLabel)
+            .accessibilityValue(favoriteAccessibilityValue)
+            .accessibilityHint(
+                PPPetAdLocalization.text(
+                    "pet_ad_viewer_favorite_menu_hint",
+                    fallback:
+                        "Tap to change favorite status. Touch and hold for more actions."
+                )
+            )
+        } else {
+            Button(action: onFavorite) {
+                favoriteLabel
+            }
+            .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
+            .disabled(isFavoriteWorking)
+            .accessibilityLabel(favoriteAccessibilityLabel)
+            .accessibilityValue(favoriteAccessibilityValue)
+        }
+    }
+
+    private var favoriteLabel: some View {
+        circleControl(
+            symbol: isFavorite ? "heart.fill" : "heart",
+            tint: isFavorite ? .ppError : .ppTextPrimary,
+            showsProgress: isFavoriteWorking
+        )
+    }
+
+    private var favoriteAccessibilityLabel: String {
+        isFavorite
+            ? PPPetAdLocalization.text(
+                "a11y_btn_unfavorite",
+                fallback: "Remove from favorites"
+            )
+            : PPPetAdLocalization.text(
+                "a11y_btn_favorite",
+                fallback: "Add to favorites"
+            )
+    }
+
+    private var favoriteAccessibilityValue: String {
+        if isFavoriteWorking {
+            return PPPetAdLocalization.text(
+                "Loading",
+                fallback: "Loading"
+            )
+        }
+        return isFavorite
+            ? PPPetAdLocalization.text(
+                "Selected",
+                fallback: "Selected"
+            )
+            : ""
+    }
+
+    private var overflowMenu: some View {
+        Menu {
+            overflowActions
+        } label: {
+            circleControl(
+                symbol: "ellipsis",
+                tint: .ppTextPrimary,
+                showsProgress: isReportWorking
+            )
+        }
+        .menuIndicator(.hidden)
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
+        .disabled(isReportWorking)
+        .accessibilityLabel(
+            PPPetAdLocalization.text("Actions", fallback: "Actions")
+        )
+    }
+
+    @ViewBuilder
+    private var overflowActions: some View {
+        if canShare {
+            Button(action: onShare) {
+                Label(
+                    PPPetAdLocalization.text(
                         "Share",
                         fallback: "Share"
                     ),
-                    action: onShare
+                    systemImage: "square.and.arrow.up"
                 )
             }
+        }
 
-            if canFavorite {
-                actionButton(
-                    symbol: isFavorite ? "heart.fill" : "heart",
-                    label: isFavorite
-                        ? PPPetAdLocalization.text(
-                            "a11y_btn_unfavorite",
-                            fallback: "Remove from favorites"
-                        )
-                        : PPPetAdLocalization.text(
-                            "a11y_btn_favorite",
-                            fallback: "Add to favorites"
-                        ),
-                    tint: isFavorite ? .ppPrimaryShiner : .white,
-                    isEnabled: !isFavoriteWorking,
-                    isLoading: isFavoriteWorking,
-                    action: onFavorite
-                )
-                .scaleEffect(isFavorite ? 1.04 : 1)
-                .animation(
-                    reduceMotion ? nil : PPPetAdViewerMotion.expansion,
-                    value: isFavorite
-                )
-            }
-
-            if canReport {
-                actionButton(
-                    symbol: "ellipsis",
-                    label: PPPetAdLocalization.text(
+        if canReport {
+            Button(action: onReport) {
+                Label(
+                    PPPetAdLocalization.text(
                         "report_ad_title",
                         fallback: "Report advertisement"
                     ),
-                    isEnabled: !isReportWorking,
-                    isLoading: isReportWorking,
-                    action: onReport
+                    systemImage: "exclamationmark.triangle"
                 )
             }
+            .disabled(isReportWorking)
         }
-        .padding(3)
-        .ppGlassSurface(
-            in: Capsule(),
-            tint: Color.black.opacity(0.16),
-            fallback: Color.black.opacity(0.84)
-        )
-        .fixedSize()
     }
 
-    private func actionButton(
+    private func circleControl(
         symbol: String,
-        label: String,
-        tint: Color = .white,
-        isEnabled: Bool = true,
-        isLoading: Bool = false,
-        action: @escaping () -> Void
+        tint: Color,
+        showsProgress: Bool = false
     ) -> some View {
-        Button(action: action) {
-            ZStack {
-                if isLoading {
-                    ProgressView()
-                        .tint(tint)
-                } else {
-                    Image(systemName: symbol)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(tint)
-                }
+        ZStack {
+            if showsProgress {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(tint)
+            } else {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .symbolRenderingMode(.monochrome)
             }
-            .frame(width: 40, height: 40)
-            .contentShape(Circle())
         }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.88))
-        .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.52)
-        .accessibilityLabel(label)
-        .accessibilityValue(
-            isLoading
-                ? PPPetAdLocalization.text(
-                    "Loading",
-                    fallback: "Loading"
-                )
-                : ""
+        .frame(width: 44, height: 44)
+        .ppGlassSurface(
+            in: Circle(),
+            tint: Color.ppCard.opacity(0.76),
+            fallback: Color(uiColor: .systemBackground).opacity(0.92),
+            stroke: Color.white.opacity(0.32),
+            lineWidth: PPPetAdViewerStyle.hairlineWidth
         )
+        .shadow(
+            color: Color.black.opacity(0.12),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+        .contentShape(Circle())
     }
 }
+

@@ -10,7 +10,10 @@
  
 #import "EllipsePageControl.h"
 #import "PetImageItem.h"
+#import "UserModel.h"
 @class PetImageItem;
+@class UserModel;
+@class PetAd;
 
 typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
     PetImageGalleryTypePetAd,
@@ -19,9 +22,19 @@ typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
     PetImageGalleryTypeFullDetailsCell
 };
 
+typedef NS_ENUM(NSInteger, PPGarBottomViewType) {
+    PPGarBottomViewTypeIndicator = 0,
+    PPGarBottomViewTypeThumbRails,
+    PPGarBottomViewTypeContactPill
+};
+
 @interface PetImageGalleryView : UIView <UICollectionViewDelegate, UICollectionViewDataSource>
 
 @property (nonatomic, assign) PetImageGalleryType galleryType;
+@property (nonatomic, assign) PPGarBottomViewType bottomViewType;
+@property (nonatomic, strong, nullable) UserModel *userModel;
+@property (nonatomic, copy, nullable) void (^onContactChatTapped)(void);
+@property (nonatomic, copy, nullable) void (^onContactCallTapped)(void);
 @property (nonatomic, strong) NSArray<PetImageItem *> *imageItems;
 @property (nonatomic, weak) UIViewController *parentViewController;
 @property (assign,  nonatomic) UIViewContentMode contentMode;
@@ -44,3 +57,4 @@ typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
 - (void)scrollToPage:(NSInteger)page animated:(BOOL)animated;
 
 @end
+

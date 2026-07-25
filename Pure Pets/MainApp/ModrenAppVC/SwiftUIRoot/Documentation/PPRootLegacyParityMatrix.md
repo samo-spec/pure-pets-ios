@@ -27,7 +27,6 @@ This document contains the exhaustive parity matrix mapping every legacy Objecti
 | `cartCollapseTimer` | 6.0s auto-collapse timer | `PPRootStore.cartCollapseTimer` | `Timer?` (Main thread) |
 | `blockedOverlayView` | Full-screen suspended account screen | `PPBlockedAccountOverlayView` | SwiftUI View + `PPBlockedAccountState` |
 | `novaButtonView` | Floating Nova AI button | `PPRootNovaButton` | SwiftUI View + `PPRootNovaState` |
-| `useLegacyBar` | Fallback system tab bar flag | `PPRootStore.useLegacyBar` | `Bool` (`@Published`) |
 
 ---
 

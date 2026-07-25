@@ -38,7 +38,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func loadOwner(ownerID: String) async throws -> PPPetAdOwner? {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<PPPetAdOwner?, Error>) in
             PPPetAdViewerLegacyBridge.fetchOwner(id: ownerID) {
                 user,
                 error in
@@ -57,7 +57,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         limit: Int
     ) async throws -> [PPPetAdRelatedItem] {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[PPPetAdRelatedItem], Error>) in
             PPPetAdViewerLegacyBridge.fetchSimilarAds(
                 for: ad,
                 limit: limit
@@ -81,7 +81,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         limit: Int
     ) async throws -> [PPPetAdRelatedItem] {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[PPPetAdRelatedItem], Error>) in
             PPPetAdViewerLegacyBridge.fetchAccessories(
                 for: ad,
                 limit: limit
@@ -101,7 +101,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func loadFavorite(adID: String) async throws -> Bool {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Bool, Error>) in
             PPPetAdViewerLegacyBridge.loadFavorite(adID: adID) {
                 isFavorite,
                 error in
@@ -115,7 +115,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
     }
 
     func setFavorite(_ isFavorite: Bool, adID: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PPPetAdViewerLegacyBridge.setFavorite(
                 isFavorite,
                 adID: adID
@@ -123,7 +123,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: Void())
+                    continuation.resume(returning: ())
                 }
             }
         }
@@ -133,7 +133,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
         for ad: PetAd,
         reason: PPPetAdReportReason
     ) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PPPetAdViewerLegacyBridge.submitReport(
                 for: ad,
                 reason: reason.rawValue
@@ -141,7 +141,7 @@ final class PPLegacyPetAdViewerRepository: PPPetAdViewerRepository {
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume(returning: Void())
+                    continuation.resume(returning: ())
                 }
             }
         }

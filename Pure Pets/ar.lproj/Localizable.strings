@@ -3665,6 +3665,8 @@
 "of" = "من";
 "pet_ad_viewer_accessories_detail" = "منتجات مفيدة مختارة لحيوانات هذه الفئة.";
 "pet_ad_viewer_accessory_badge" = "مستلزم";
+"pet_ad_viewer_about_name_format" = "نبذة عن %@";
+"pet_ad_viewer_breed_label" = "السلالة";
 "pet_ad_viewer_chat_failed" = "تعذر فتح المحادثة.";
 "pet_ad_viewer_description" = "نبذة عن هذا الحيوان";
 "pet_ad_viewer_empty_detail" = "ربما حُذف الإعلان أو اكتمل أو لم تعد تفاصيله متاحة للعرض.";
@@ -3672,6 +3674,10 @@
 "pet_ad_viewer_error_title" = "تعذر تحميل الصفحة";
 "pet_ad_viewer_loading_detail" = "جارٍ تحميل الصور والتفاصيل ووسائل التواصل.";
 "pet_ad_viewer_loading_title" = "نجهّز لك تفاصيل هذا الحيوان";
+"pet_ad_viewer_favorite_menu_hint" = "اضغط لتغيير حالة المفضلة. اضغط مطولاً لعرض المزيد من الإجراءات.";
+"pet_ad_viewer_interest_female" = "أريدها";
+"pet_ad_viewer_interest_male" = "أريده";
+"pet_ad_viewer_interest_neutral" = "أنا مهتم";
 "pet_ad_viewer_no_contact_channels" = "لا تتوفر وسيلة تواصل مع هذا المعلن حالياً.";
 "pet_ad_viewer_no_media" = "الصور غير متاحة";
 "pet_ad_viewer_offline_message" = "يبدو أنك غير متصل بالإنترنت. تحقق من اتصالك وحاول مرة أخرى.";
@@ -3685,6 +3691,8 @@
 "pet_ad_viewer_owner_unavailable_detail" = "تعذر العثور على ملف المعلن لهذا الإعلان.";
 "pet_ad_viewer_pet_badge" = "حيوان أليف";
 "pet_ad_viewer_pet_fallback" = "إعلان حيوان أليف";
+"pet_ad_viewer_pet_name_format" = "اسم الحيوان: %@";
+"pet_ad_viewer_pet_name_label" = "اسم الحيوان";
 "pet_ad_viewer_related_empty" = "لا توجد اقتراحات مشابهة بعد";
 "pet_ad_viewer_related_empty_detail" = "تُضاف إعلانات جديدة باستمرار. تحقق مرة أخرى قريباً.";
 "pet_ad_viewer_related_failed" = "تعذر تحميل الاقتراحات";
@@ -3693,6 +3701,7 @@
 "pet_ad_viewer_removed" = "تمت الإزالة من المفضلة";
 "pet_ad_viewer_saved" = "تم الحفظ في المفضلة";
 "pet_ad_viewer_section_error_message" = "تعذر تحميل هذه المعلومات. حاول مرة أخرى.";
+"pet_ad_viewer_sex_label" = "الجنس";
 "pet_ad_viewer_similar_detail" = "إعلانات أخرى مختارة من هذه الفئة.";
 "pet_ad_viewer_title_fallback" = "إعلان حيوان أليف";
 "pet_ad_viewer_zoom" = "تكبير";
@@ -3702,3 +3711,34 @@
 "report_ad_message" = "اختر السبب الذي يصف المشكلة بشكل أفضل.";
 "report_ad_title" = "الإبلاغ عن الإعلان";
 "pet_ad_viewer_gallery" = "صور الحيوان";
+
+/* عارض مستلزمات الشاطئ بـ SwiftUI */
+"accessory_view_add_failed" = "تعذّرت الإضافة";
+"accessory_view_add_to_cart" = "أضف إلى السلة";
+"accessory_view_add_to_cart_hint" = "يضيف الكمية المحددة وفق قواعد المخزون والسلة الحالية.";
+"accessory_view_adding_to_cart" = "جارِ الإضافة…";
+"accessory_view_contact_for_used" = "تواصل مع البائع للمتابعة";
+"accessory_view_decrease_quantity" = "تقليل الكمية";
+"accessory_view_favorite_failed" = "تعذّر تحديث المفضلة.";
+"accessory_view_image_retry_hint" = "اضغط مرتين لإعادة تحميل الصورة.";
+"accessory_view_increase_quantity" = "زيادة الكمية";
+"accessory_view_item_unavailable" = "غير متاح";
+"accessory_view_listed_on" = "تاريخ النشر";
+"accessory_view_loading_image" = "جارِ تحميل صورة المنتج";
+"accessory_view_loading_product" = "جارِ تحميل المستلزم";
+"accessory_view_loading_suggestions" = "جارِ تحميل المستلزمات المرتبطة";
+"accessory_view_loading_video" = "جارِ تحميل فيديو المنتج";
+"accessory_view_no_media" = "وسائط المنتج غير متاحة";
+"accessory_view_open_cart" = "فتح السلة";
+"accessory_view_open_gallery" = "فتح معرض الصور بكامل الشاشة";
+"accessory_view_owner_failed" = "تعذّر تحميل بيانات البائع.";
+"accessory_view_read_less" = "عرض أقل";
+"accessory_view_read_more" = "اقرأ المزيد";
+"accessory_view_remaining_format" = "متبقي %ld بعد السلة";
+"accessory_view_sign_in_required" = "سجّل الدخول للمتابعة.";
+"accessory_view_suggestions_failed" = "تعذّر تحميل المستلزمات المرتبطة.";
+"accessory_view_unavailable_message" = "يتعذّر عرض هذا المستلزم الآن. أعد المحاولة أو ارجع إلى الشاشة السابقة.";
+"accessory_view_unavailable_title" = "المستلزم غير متاح";
+"accessory_view_updating_favorite" = "جارِ تحديث المفضلة";
+"accessory_view_verified_seller" = "بائع موثّق";
+"accessory_view_weight" = "الوزن";

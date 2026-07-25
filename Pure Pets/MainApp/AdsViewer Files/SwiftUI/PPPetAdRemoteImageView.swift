@@ -98,16 +98,16 @@ struct PPPetAdRemoteImageView: View {
         ZStack {
             LinearGradient(
                 colors: [
-                    Color.ppPrimary.opacity(0.14),
                     Color.ppForeground,
-                    Color.ppPrimaryShiner.opacity(0.10)
+                    Color.ppTextTertiary.opacity(0.08),
+                    Color.ppForeground
                 ],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            Image(systemName: "pawprint.fill")
-                .font(.system(size: 28, weight: .medium))
-                .foregroundStyle(Color.ppPrimary.opacity(0.30))
+            Image(systemName: "photo")
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(Color.ppTextTertiary.opacity(0.42))
         }
     }
 

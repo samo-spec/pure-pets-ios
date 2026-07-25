@@ -14,7 +14,6 @@ public final class PPRootFeatureFlag: NSObject, @unchecked Sendable {
     @objc public static let shared = PPRootFeatureFlag()
     
     private static let kUseSwiftUIRootKey = "PP_USE_SWIFTUI_ROOT_ENABLED"
-    private static let kUseLegacyBarFallbackKey = "PPUSE_LEGACY_BAR"
     
     private override init() {
         super.init()
@@ -35,10 +34,5 @@ public final class PPRootFeatureFlag: NSObject, @unchecked Sendable {
                 object: nil
             )
         }
-    }
-    
-    /// Check whether system legacy bar is forced.
-    @objc public var isLegacyBarForced: Bool {
-        UserDefaults.standard.bool(forKey: Self.kUseLegacyBarFallbackKey)
     }
 }

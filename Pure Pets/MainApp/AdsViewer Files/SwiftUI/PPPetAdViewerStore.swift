@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import SwiftUI
 import UIKit
 
 @MainActor
@@ -23,6 +24,9 @@ final class PPPetAdViewerStore: ObservableObject {
     @Published var isMediaViewerPresented = false
     @Published var isReportDialogPresented = false
     @Published private(set) var toastMessage: String?
+    @Published private(set) var heroTopColor: UIColor?
+    @Published private(set) var heroMiddleColor: UIColor?
+    @Published private(set) var heroBottomColor: UIColor?
 
     private let repository: PPPetAdViewerRepository
     private let hostActions: PPPetAdViewerHostActions
@@ -547,6 +551,20 @@ final class PPPetAdViewerStore: ObservableObject {
             fallback:
                 "You appear to be offline. Check your connection and retry."
         )
+    }
+
+    func handleFirstImageLoaded(_ image: UIImage) {
+        guard heroTopColor == nil else { return }
+        PPColorUtils.extractGradientColorsAsync(from: image, lightenAmount: 0.15) { [weak self] colors in
+            guard let self = self, colors.count >= 3 else { return }
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: 0.45)) {
+                    self.heroTopColor = colors[0]
+                    self.heroMiddleColor = colors[1]
+                    self.heroBottomColor = colors[2]
+                }
+            }
+        }
     }
 
     private func showToast(_ message: String) {
