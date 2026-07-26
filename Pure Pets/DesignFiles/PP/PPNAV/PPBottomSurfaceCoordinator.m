@@ -318,6 +318,7 @@
         case PPBottomSurfaceKindFloatingCartSurface: {
             PPCartFloatingBarOpenHandler openHandler = [self pp_floatingCartOpenHandlerForController:controller];
             if (openHandler) {
+                [rootController setPremiumTabDockViewHidden:YES animation:animated];
                 [rootController pp_activateFloatingCartBarForSourceViewController:controller
                                                                    openCartHandler:openHandler
                                                                           animated:animated];

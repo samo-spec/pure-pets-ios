@@ -99,12 +99,12 @@
 
 #pragma mark - Semantic Color Macros
 
-#define AppTertiaryTextClr     [UIColor colorNamed:@"TertiaryTextColor"]
-#define AppPlaceholderTextClr  [UIColor colorNamed:@"PlaceholderTextColor"]
-#define AppSuccessClr          [UIColor colorNamed:@"SuccessColor"]
-#define AppWarningClr          [UIColor colorNamed:@"WarningColor"]
-#define AppErrorClr            [UIColor colorNamed:@"ErrorColor"]
-#define AppInfoClr             [UIColor colorNamed:@"InfoColor"]
+#define AppTertiaryTextClr     [UIColor ppTextTertiary]
+#define AppPlaceholderTextClr  [UIColor ppTextTertiary]
+#define AppSuccessClr          [UIColor ppSuccess]
+#define AppWarningClr          [UIColor ppWarning]
+#define AppErrorClr            [UIColor ppError]
+#define AppInfoClr             [UIColor ppInfo]
 
 #pragma mark - Gradient Tokens
 

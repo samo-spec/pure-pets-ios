@@ -47,7 +47,7 @@ enum PPCorner {
 /// The Pet Ad contact rail and Accessory cart rail intentionally share this
 /// physical grammar while keeping their separate state and business owners.
 enum PPBottomDecisionBarGeometry {
-    static let surfaceRadius: CGFloat = PPCorner.hero
+    static let surfaceRadius: CGFloat = 34
     static let controlRadius: CGFloat = PPCorner.medium
     static let controlHeight: CGFloat = 58
     static let utilityControlSize: CGFloat = 54
@@ -75,41 +75,263 @@ struct PPShadow {
 
 // MARK: Colors
 
-extension Color {
-    // Brand
-    static let ppPrimary       = Color("AppPrimaryColor")       // #CF375B / #FF9B96
-    static let ppPrimaryDarker = Color("AppPrimaryColorDarker") // #9D364B / #FFB7B3
-    static let ppPrimaryShiner = Color("AppPrimaryColorShainer") // #E83D65 / #FF4D7B
-    static let ppAccent        = Color("AccentsColor")          // #B21B48 / #FFFFFF
+/// Canonical light-palette values.
+///
+/// Keep color values centralized here so the existing semantic Swift keys can
+/// remain stable while the palette evolves.
+// MARK: Colors
 
-    // Surfaces
-    static let ppBackground    = Color("AppBackgroundColor")    // #F2F2F2 / #1C1C1E
-    static let ppForeground    = Color("AppForegroundColor")    // #FFFFFF / #3A3C44
-    static let ppCard          = Color("AppCardColor")          // #FCFCFC / #23252D
+/// Centralized light and dark palette hex values.
+private enum PPPaletteHex {
+    enum Light {
+        // Brand & Action
+        static let brandPrimary   = "CB2654"
+        static let pressedAction  = "A91E46"
+        static let accentText     = "CB2654"
 
-    // Text
-    static let ppTextPrimary   = Color("PrimaryTextColor")      // #000000 / #FEFFFF
-    static let ppTextSecondary = Color("SecondaryTextColor")    // #424242 / #D5D5D5
-    static let ppTextTertiary  = Color(uiColor: .tertiaryLabel) // System tertiary
+        // Surfaces and fields
+        static let mainBackground   = "F8F8F9"
+        static let surface          = "FFFFFF"
+        static let elevatedSurface  = "FFFFFF"//FFFDFC
+        static let secondarySurface = "F7F1ED"
+        static let warmPorcelain    = "F7F1ED"
+        static let mineralBeige     = "EEE3DA"
+        static let softRose         = "F6E2E8"
+        static let quietLilac       = "EEEAF3"
+        static let separator        = "E6DADD"
+        static let border           = "E6DADD"
 
-    // Semantic
-    static let ppSuccess = Color(red: 0.204, green: 0.780, blue: 0.349)  // #34C759
-    static let ppWarning = Color(red: 1.000, green: 0.584, blue: 0.000)  // #FF9500
-    static let ppError   = Color(red: 1.000, green: 0.231, blue: 0.188)  // #FF3B30
-    static let ppInfo    = Color(red: 0.000, green: 0.478, blue: 1.000)  // #007AFF
+        // Text
+        static let textPrimary   = "2A1D21"
+        static let textSecondary = "75666B"
+    }
+
+    enum Dark {
+        // Brand & Action
+        static let action     = "CB2654"
+        static let pressed    = "A91E46"
+        static let accentText = "E05A7E"
+
+        // Surfaces and fields
+        static let background       = "0E0B0C"
+        static let surface          = "171214"
+        static let elevatedSurface  = "21191C"
+        static let secondarySurface = "2B2024"
+        static let border           = "3B2D32"
+        static let warmPorcelain    = "2B2024"
+        static let mineralBeige     = "261E21"
+        static let softRose         = "2B2024"
+        static let quietLilac       = "21191D"
+
+        // Text
+        static let textPrimary   = "FFF8FA"
+        static let textSecondary = "C2B4B9"
+    }
+}
+
+// MARK: - Objective-C & Dynamic UIKit Bridge (Single Source of Truth)
+
+@objc public extension UIColor {
+    /// Guaranteed non-nil dynamic color provider for Light and Dark modes.
+    @objc static func ppDynamicColor(light: UIColor, dark: UIColor) -> UIColor {
+        let safeLight = light
+        let safeDark = dark
+        return UIColor { traitCollection in
+            if traitCollection.userInterfaceStyle == .dark {
+                return safeDark
+            }
+            return safeLight
+        }
+    }
+
+    private static func dynamicHex(light: String, dark: String) -> UIColor {
+        let lightColor = UIColor(Color(hex: light))
+        let darkColor = UIColor(Color(hex: dark))
+        return ppDynamicColor(light: lightColor, dark: darkColor)
+    }
+
+    // MARK: Brand & Action
+    @objc static var ppPrimary: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.brandPrimary, dark: PPPaletteHex.Dark.action)
+    }
+
+    @objc static var ppPressedAction: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.pressedAction, dark: PPPaletteHex.Dark.pressed)
+    }
+
+    @objc static var ppPrimaryDarker: UIColor {
+        ppPressedAction
+    }
+
+    @objc static var ppPrimaryShiner: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.softRose, dark: PPPaletteHex.Dark.secondarySurface)
+    }
+
+    @objc static var ppAccent: UIColor {
+        ppPrimary
+    }
+
+    @objc static var ppAccentText: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.accentText, dark: PPPaletteHex.Dark.accentText)
+    }
+
+    // MARK: Surfaces and fields
+    @objc static var ppBackground: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.mainBackground, dark: PPPaletteHex.Dark.background)
+    }
+
+    @objc static var ppSurface: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.surface, dark: PPPaletteHex.Dark.surface)
+    }
+
+    @objc static var ppElevatedSurface: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.elevatedSurface, dark: PPPaletteHex.Dark.elevatedSurface)
+    }
+
+    @objc static var ppSecondarySurface: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.secondarySurface, dark: PPPaletteHex.Dark.secondarySurface)
+    }
+
+    @objc static var ppForeground: UIColor {
+        ppSurface
+    }
+
+    @objc static var ppCard: UIColor {
+        ppSurface
+    }
+
+    @objc static var ppWarmPorcelain: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.warmPorcelain, dark: PPPaletteHex.Dark.warmPorcelain)
+    }
+
+    @objc static var ppMineralBeige: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.mineralBeige, dark: PPPaletteHex.Dark.mineralBeige)
+    }
+
+    @objc static var ppSoftRose: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.softRose, dark: PPPaletteHex.Dark.softRose)
+    }
+
+    @objc static var ppQuietLilac: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.quietLilac, dark: PPPaletteHex.Dark.quietLilac)
+    }
+
+    @objc static var ppSeparator: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.separator, dark: PPPaletteHex.Dark.border)
+    }
+
+    @objc static var ppBorder: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.border, dark: PPPaletteHex.Dark.border)
+    }
+
+    // MARK: Text
+    @objc static var ppTextPrimary: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.textPrimary, dark: PPPaletteHex.Dark.textPrimary)
+    }
+
+    @objc static var ppTextSecondary: UIColor {
+        dynamicHex(light: PPPaletteHex.Light.textSecondary, dark: PPPaletteHex.Dark.textSecondary)
+    }
+
+    @objc static var ppTextTertiary: UIColor {
+        ppDynamicColor(
+            light: UIColor(Color(hex: PPPaletteHex.Light.textSecondary).opacity(0.72)),
+            dark: UIColor(Color(hex: PPPaletteHex.Dark.textSecondary).opacity(0.72))
+        )
+    }
+
+    // MARK: Semantic System
+    @objc static var ppSuccess: UIColor {
+        ppDynamicColor(
+            light: UIColor(red: 0.204, green: 0.780, blue: 0.349, alpha: 1.0),
+            dark: UIColor(red: 0.188, green: 0.820, blue: 0.345, alpha: 1.0)
+        )
+    }
+
+    @objc static var ppWarning: UIColor {
+        ppDynamicColor(
+            light: UIColor(red: 1.000, green: 0.584, blue: 0.000, alpha: 1.0),
+            dark: UIColor(red: 1.000, green: 0.624, blue: 0.039, alpha: 1.0)
+        )
+    }
+
+    @objc static var ppError: UIColor {
+        ppDynamicColor(
+            light: UIColor(red: 1.000, green: 0.231, blue: 0.188, alpha: 1.0),
+            dark: UIColor(red: 1.000, green: 0.271, blue: 0.227, alpha: 1.0)
+        )
+    }
+
+    @objc static var ppInfo: UIColor {
+        ppDynamicColor(
+            light: UIColor(red: 0.000, green: 0.478, blue: 1.000, alpha: 1.0),
+            dark: UIColor(red: 0.039, green: 0.518, blue: 1.000, alpha: 1.0)
+        )
+    }
+}
+
+// MARK: - SwiftUI Dynamic Color Tokens
+
+public extension Color {
+    // MARK: Brand & Action
+    static var ppPrimary: Color        { Color(uiColor: .ppPrimary) }
+    static var ppPressedAction: Color  { Color(uiColor: .ppPressedAction) }
+    static var ppPrimaryDarker: Color  { Color(uiColor: .ppPrimaryDarker) }
+    static var ppPrimaryShiner: Color  { Color(uiColor: .ppPrimaryShiner) }
+    static var ppAccent: Color         { Color(uiColor: .ppAccent) }
+    static var ppAccentText: Color     { Color(uiColor: .ppAccentText) }
+
+    // MARK: Surfaces and fields
+    static var ppBackground: Color       { Color(uiColor: .ppBackground) }
+    static var ppSurface: Color          { Color(uiColor: .ppSurface) }
+    static var ppElevatedSurface: Color  { Color(uiColor: .ppElevatedSurface) }
+    static var ppSecondarySurface: Color { Color(uiColor: .ppSecondarySurface) }
+    static var ppForeground: Color       { Color(uiColor: .ppForeground) }
+    static var ppCard: Color             { Color(uiColor: .ppCard) }
+    static var ppWarmPorcelain: Color    { Color(uiColor: .ppWarmPorcelain) }
+    static var ppMineralBeige: Color     { Color(uiColor: .ppMineralBeige) }
+    static var ppSoftRose: Color         { Color(uiColor: .ppSoftRose) }
+    static var ppQuietLilac: Color       { Color(uiColor: .ppQuietLilac) }
+    static var ppSeparator: Color        { Color(uiColor: .ppSeparator) }
+    static var ppBorder: Color           { Color(uiColor: .ppBorder) }
+
+    // MARK: Text
+    static var ppTextPrimary: Color   { Color(uiColor: .ppTextPrimary) }
+    static var ppTextSecondary: Color { Color(uiColor: .ppTextSecondary) }
+    static var ppTextTertiary: Color  { Color(uiColor: .ppTextTertiary) }
+
+    // MARK: Semantic system colors
+    static var ppSuccess: Color { Color(uiColor: .ppSuccess) }
+    static var ppWarning: Color { Color(uiColor: .ppWarning) }
+    static var ppError: Color   { Color(uiColor: .ppError) }
+    static var ppInfo: Color    { Color(uiColor: .ppInfo) }
 }
 
 extension ShapeStyle where Self == Color {
     static var ppPrimary: Color { Color.ppPrimary }
+    static var ppPressedAction: Color { Color.ppPressedAction }
     static var ppPrimaryDarker: Color { Color.ppPrimaryDarker }
     static var ppPrimaryShiner: Color { Color.ppPrimaryShiner }
     static var ppAccent: Color { Color.ppAccent }
+    static var ppAccentText: Color { Color.ppAccentText }
+
     static var ppBackground: Color { Color.ppBackground }
+    static var ppSurface: Color { Color.ppSurface }
+    static var ppElevatedSurface: Color { Color.ppElevatedSurface }
+    static var ppSecondarySurface: Color { Color.ppSecondarySurface }
     static var ppForeground: Color { Color.ppForeground }
     static var ppCard: Color { Color.ppCard }
+    static var ppWarmPorcelain: Color { Color.ppWarmPorcelain }
+    static var ppMineralBeige: Color { Color.ppMineralBeige }
+    static var ppSoftRose: Color { Color.ppSoftRose }
+    static var ppQuietLilac: Color { Color.ppQuietLilac }
+    static var ppSeparator: Color { Color.ppSeparator }
+    static var ppBorder: Color { Color.ppBorder }
+
     static var ppTextPrimary: Color { Color.ppTextPrimary }
     static var ppTextSecondary: Color { Color.ppTextSecondary }
     static var ppTextTertiary: Color { Color.ppTextTertiary }
+
     static var ppSuccess: Color { Color.ppSuccess }
     static var ppWarning: Color { Color.ppWarning }
     static var ppError: Color { Color.ppError }
@@ -119,22 +341,39 @@ extension ShapeStyle where Self == Color {
 // MARK: Gradients
 
 enum PPGradient {
+    /// Brand gradient reserved for primary actions and focused hero moments.
     static let hero = LinearGradient(
-        colors: [.ppPrimary, .ppPrimaryShiner, Color(red: 1.0, green: 0.42, blue: 0.54)],
+        colors: [.ppPrimary, .ppPressedAction],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
+    /// Stronger brand treatment for pressed, selected or high-emphasis states.
     static let heroDark = LinearGradient(
-        colors: [.ppPrimaryDarker, .ppPrimary, .ppPrimaryShiner],
+        colors: [.ppPressedAction, .ppPrimary],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
 
+    /// Quiet card treatment built from the elevated and porcelain surfaces.
     static let card = LinearGradient(
-        colors: [.white, Color(red: 1.0, green: 0.96, blue: 0.97)],
+        colors: [.ppElevatedSurface, .ppWarmPorcelain],
         startPoint: .top,
         endPoint: .bottom
+    )
+
+    /// Light branded field for onboarding, empty states and soft feature moments.
+    static let softBrandField = LinearGradient(
+        colors: [.ppElevatedSurface, .ppSoftRose],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+
+    /// Neutral balancing field for secondary content that should not compete with actions.
+    static let balancedField = LinearGradient(
+        colors: [.ppWarmPorcelain, .ppMineralBeige, .ppQuietLilac],
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
     )
 
     static let overlay = LinearGradient(
@@ -198,7 +437,7 @@ struct PPCardStyle: ViewModifier {
             .shadow(color: shadowToken.color, radius: shadowToken.radius, x: shadowToken.x, y: shadowToken.y)
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .stroke(Color(uiColor: .separator).opacity(0.28), lineWidth: 0.33)
+                    .stroke(Color.ppSeparator, lineWidth: 0.33)
             )
     }
 }
@@ -214,16 +453,21 @@ struct PPBottomDecisionBarSurfaceModifier: ViewModifier {
         )
 
         content
-            .background(Color.ppCard, in: shape)
+            .background(Color.clear)
+            .background(.ultraThinMaterial, in: shape)
             .overlay {
-                if colorSchemeContrast == .increased {
-                    shape.stroke(
-                        Color.primary.opacity(
-                            colorScheme == .dark ? 0.30 : 0.18
-                        ),
-                        lineWidth: 1
-                    )
-                }
+                shape.strokeBorder(
+                    LinearGradient(
+                        colors: [
+                            Color.ppTextPrimary.opacity(0.32),
+                            Color.ppTextPrimary.opacity(0.12),
+                            Color.ppTextPrimary.opacity(0.24)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.25
+                )
             }
             .shadow(
                 color: Color.black.opacity(
@@ -1094,6 +1338,7 @@ extension Color {
         case 8:
             (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
         default:
+            assertionFailure("Invalid hex color: \(hex)")
             (a, r, g, b) = (255, 0, 0, 0)
         }
         self.init(

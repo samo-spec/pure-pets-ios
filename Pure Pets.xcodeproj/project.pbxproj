@@ -147,13 +147,6 @@
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
 		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
-		F2AC11013020000100BEE001 /* PPAccessoryViewerLegacyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */; };
-		F2AC11023020000100BEE001 /* PPAccessoryViewerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */; };
-		F2AC11033020000100BEE001 /* PPAccessoryViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */; };
-		F2AC11043020000100BEE001 /* PPAccessoryViewerMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */; };
-		F2AC11053020000100BEE001 /* PPAccessoryViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */; };
-		F2AC11063020000100BEE001 /* PPAccessoryViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */; };
-		F2AC11073020000100BEE001 /* PPAccessoryViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
 		F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22840FE2C5591C200D77937 /* MainCollectionViewCell.m */; };
 		F228641D2D57947800967C23 /* PhoneNumberCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F228641C2D57947800967C23 /* PhoneNumberCell.m */; };
@@ -532,10 +525,12 @@
 		F2916F102D54C6B600FF0394 /* PopupPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2916F0F2D54C6B600FF0394 /* PopupPickerView.m */; };
 		F291F51B2D71361E00A2B971 /* LBHamburgerButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */; };
 		F293B21A2F1BE63C001F0831 /* PPChatHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F293B2192F1BE62B001F0831 /* PPChatHeaderView.m */; };
+		F294A774301232AA005EFBC7 /* PPComponentSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232BB005EFBC7 /* PPComponentSwift.swift */; };
+		F294A774301232EE005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */; };
+		F294A775301232EE005EFBC7 /* PPHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A775301232FF005EFBC7 /* PPHero.swift */; };
 		F294A799301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */; };
 		F294A79A301232DD005EFBC7 /* PPPetAdImageLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76E301232DD005EFBC7 /* PPPetAdImageLoader.swift */; };
 		F294A79B301232DD005EFBC7 /* PPPetAdViewerBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */; };
-		F294A775301232EE005EFBC7 /* PPHero.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A775301232FF005EFBC7 /* PPHero.swift */; };
 		F294A79C301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77A301232DD005EFBC7 /* PPPetAdRelatedItemKind.swift */; };
 		F294A79D301232DD005EFBC7 /* PPPetAdViewerMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78E301232DD005EFBC7 /* PPPetAdViewerMotion.swift */; };
 		F294A79F301232DD005EFBC7 /* PPPetAdRelatedItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */; };
@@ -544,17 +539,8 @@
 		F294A7A2301232DD005EFBC7 /* PPPetAdVideoState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A782301232DD005EFBC7 /* PPPetAdVideoState.swift */; };
 		F294A7A4301232DD005EFBC7 /* PPPetAdImageLoadState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */; };
 		F294A7A5301232DD005EFBC7 /* PPPetAdViewerScreenState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */; };
-		F294A7A7301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */; };
-		F294A774301232EE005EFBC7 /* PPPetAdMediaViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */; };
-		F294A774301232AA005EFBC7 /* PPComponentSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232BB005EFBC7 /* PPComponentSwift.swift */; };
-		F294A7C9301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */; };
-		F294A7CA301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */; };
-		F294A7CB301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */; };
-		F294A7CC301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D4301232DD005EFBC7 /* PPPetAdContactCard.swift */; };
-		F294A7CD301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */; };
-		F294A7CF301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */; };
-		F294A7D0301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */; };
 		F294A7A6301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */; };
+		F294A7A7301232DD005EFBC7 /* PPPetAdViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */; };
 		F294A7A9301232DD005EFBC7 /* PPPetAdRemoteImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77C301232DD005EFBC7 /* PPPetAdRemoteImageView.swift */; };
 		F294A7AA301232DD005EFBC7 /* PPPetAdInlineStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */; };
 		F294A7AC301232DD005EFBC7 /* PPPetAdMediaItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */; };
@@ -579,6 +565,13 @@
 		F294A7C5301232DD005EFBC7 /* PPPetAdReportReason.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A77D301232DD005EFBC7 /* PPPetAdReportReason.swift */; };
 		F294A7C6301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A78D301232DD005EFBC7 /* PPPetAdViewerLoadingStateView.swift */; };
 		F294A7C8301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7C7301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift */; };
+		F294A7C9301232DD005EFBC7 /* PPPetAdHeaderCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */; };
+		F294A7CA301232DD005EFBC7 /* PPPetAdInfoGrid.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */; };
+		F294A7CB301232DD005EFBC7 /* PPPetAdInfoPillView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */; };
+		F294A7CC301232DD005EFBC7 /* PPPetAdContactCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D4301232DD005EFBC7 /* PPPetAdContactCard.swift */; };
+		F294A7CD301232DD005EFBC7 /* PPPetAdDescriptionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */; };
+		F294A7CF301232DD005EFBC7 /* PPPetAdRelatedSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */; };
+		F294A7D0301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */; };
 		F294D3CF2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */; };
 		F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2957C292EEF424F00006CB3 /* TrashManager.m */; };
 		F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2977D562E4ABAC7003A7005 /* SearchResultItem.m */; };
@@ -667,6 +660,13 @@
 		F2AB48D92C72D43D00D88603 /* KafkaRingIndicatorHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48BF2C72D43C00D88603 /* KafkaRingIndicatorHeader.m */; };
 		F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C32C72D43C00D88603 /* KafkaArcLayer.m */; };
 		F2AB48DB2C72D43D00D88603 /* KafkaReplicatorLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */; };
+		F2AC11013020000100BEE001 /* PPAccessoryViewerLegacyBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */; };
+		F2AC11023020000100BEE001 /* PPAccessoryViewerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */; };
+		F2AC11033020000100BEE001 /* PPAccessoryViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */; };
+		F2AC11043020000100BEE001 /* PPAccessoryViewerMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */; };
+		F2AC11053020000100BEE001 /* PPAccessoryViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */; };
+		F2AC11063020000100BEE001 /* PPAccessoryViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */; };
+		F2AC11073020000100BEE001 /* PPAccessoryViewerHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */; };
 		F2AE2DAB2CFD485F00D09E90 /* TTAnimationButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA92CFD485E00D09E90 /* TTAnimationButton.m */; };
 		F2AE2DAC2CFD485F00D09E90 /* CALayer+TTSpringAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */; };
 		F2AEC1472D6E6AB400B55427 /* MainController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1462D6E6AB400B55427 /* MainController.m */; };
@@ -774,6 +774,7 @@
 		F2D0C6122C4BEB610023CE53 /* CollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C6102C4BEB610023CE53 /* CollectionViewCell.m */; };
 		F2D100962C7B131B00F5EAE7 /* NewCageVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D100952C7B131B00F5EAE7 /* NewCageVC.m */; };
 		F2D2BC682EB7182B000A13D1 /* PPSelectPaymentVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */; };
+		F2D3FD993016601F003279B3 /* AnimatedAddToCartButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
 		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
 		F2D5A7B62F95C0A1009B6001 /* PPMainKindsCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */; };
@@ -1174,14 +1175,6 @@
 		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
 		F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessViewerVC.m; sourceTree = "<group>"; };
-		F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAccessoryViewerLegacyBridge.h; sourceTree = "<group>"; };
-		F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAccessoryViewerLegacyBridge.m; sourceTree = "<group>"; };
-		F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerModels.swift; sourceTree = "<group>"; };
-		F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerStore.swift; sourceTree = "<group>"; };
-		F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerMedia.swift; sourceTree = "<group>"; };
-		F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerComponents.swift; sourceTree = "<group>"; };
-		F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerScreen.swift; sourceTree = "<group>"; };
-		F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerHostingController.swift; sourceTree = "<group>"; };
 		F22819622CD36D2D005E57FF /* XLFormImageSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormImageSelectorCell.h; sourceTree = "<group>"; };
 		F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormImageSelectorCell.m; sourceTree = "<group>"; };
 		F22840FD2C5591C200D77937 /* MainCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainCollectionViewCell.h; sourceTree = "<group>"; };
@@ -1902,7 +1895,10 @@
 		F294A76F301232DD005EFBC7 /* PPPetAdImageLoadState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdImageLoadState.swift; sourceTree = "<group>"; };
 		F294A772301232DD005EFBC7 /* PPPetAdInlineStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInlineStateView.swift; sourceTree = "<group>"; };
 		F294A773301232DD005EFBC7 /* PPPetAdLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdLocalization.swift; sourceTree = "<group>"; };
+		F294A774301232BB005EFBC7 /* PPComponentSwift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPComponentSwift.swift; sourceTree = "<group>"; };
 		F294A774301232DD005EFBC7 /* PPPetAdMediaItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaItem.swift; sourceTree = "<group>"; };
+		F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaViewerScreen.swift; sourceTree = "<group>"; };
+		F294A775301232FF005EFBC7 /* PPHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHero.swift; sourceTree = "<group>"; };
 		F294A776301232DD005EFBC7 /* PPPetAdOwner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdOwner.swift; sourceTree = "<group>"; };
 		F294A777301232DD005EFBC7 /* PPPetAdPressButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdPressButtonStyle.swift; sourceTree = "<group>"; };
 		F294A779301232DD005EFBC7 /* PPPetAdRelatedItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedItem.swift; sourceTree = "<group>"; };
@@ -1917,7 +1913,6 @@
 		F294A783301232DD005EFBC7 /* PPPetAdVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdVideoView.swift; sourceTree = "<group>"; };
 		F294A784301232DD005EFBC7 /* PPPetAdViewerActionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerActionState.swift; sourceTree = "<group>"; };
 		F294A785301232DD005EFBC7 /* PPPetAdViewerBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerBackground.swift; sourceTree = "<group>"; };
-		F294A775301232FF005EFBC7 /* PPHero.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHero.swift; sourceTree = "<group>"; };
 		F294A786301232DD005EFBC7 /* PPPetAdViewerEmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerEmptyStateView.swift; sourceTree = "<group>"; };
 		F294A787301232DD005EFBC7 /* PPPetAdViewerErrorStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerErrorStateView.swift; sourceTree = "<group>"; };
 		F294A788301232DD005EFBC7 /* PPPetAdViewerHostActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerHostActions.swift; sourceTree = "<group>"; };
@@ -1930,8 +1925,11 @@
 		F294A790301232DD005EFBC7 /* PPPetAdViewerNavigationRoot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationRoot.swift; sourceTree = "<group>"; };
 		F294A791301232DD005EFBC7 /* PPPetAdViewerRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerRepository.swift; sourceTree = "<group>"; };
 		F294A792301232DD005EFBC7 /* PPPetAdViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreen.swift; sourceTree = "<group>"; };
-		F294A774301232FF005EFBC7 /* PPPetAdMediaViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdMediaViewerScreen.swift; sourceTree = "<group>"; };
-		F294A774301232BB005EFBC7 /* PPComponentSwift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPComponentSwift.swift; sourceTree = "<group>"; };
+		F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreenState.swift; sourceTree = "<group>"; };
+		F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSectionState.swift; sourceTree = "<group>"; };
+		F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSnapshot.swift; sourceTree = "<group>"; };
+		F294A796301232DD005EFBC7 /* PPPetAdViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerStore.swift; sourceTree = "<group>"; };
+		F294A7C7301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdSheetScrollCoordinator.swift; sourceTree = "<group>"; };
 		F294A7D1301232DD005EFBC7 /* PPPetAdHeaderCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdHeaderCard.swift; sourceTree = "<group>"; };
 		F294A7D2301232DD005EFBC7 /* PPPetAdInfoGrid.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoGrid.swift; sourceTree = "<group>"; };
 		F294A7D3301232DD005EFBC7 /* PPPetAdInfoPillView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdInfoPillView.swift; sourceTree = "<group>"; };
@@ -1939,11 +1937,6 @@
 		F294A7D5301232DD005EFBC7 /* PPPetAdDescriptionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdDescriptionCard.swift; sourceTree = "<group>"; };
 		F294A7D7301232DD005EFBC7 /* PPPetAdRelatedSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdRelatedSection.swift; sourceTree = "<group>"; };
 		F294A7D8301232DD005EFBC7 /* PPPetAdViewerNavigationBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerNavigationBar.swift; sourceTree = "<group>"; };
-		F294A793301232DD005EFBC7 /* PPPetAdViewerScreenState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerScreenState.swift; sourceTree = "<group>"; };
-		F294A794301232DD005EFBC7 /* PPPetAdViewerSectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSectionState.swift; sourceTree = "<group>"; };
-		F294A795301232DD005EFBC7 /* PPPetAdViewerSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerSnapshot.swift; sourceTree = "<group>"; };
-		F294A796301232DD005EFBC7 /* PPPetAdViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdViewerStore.swift; sourceTree = "<group>"; };
-		F294A7C7301232DD005EFBC7 /* PPPetAdSheetScrollCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPetAdSheetScrollCoordinator.swift; sourceTree = "<group>"; };
 		F294D3CD2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProviderCompanyPremiumCardCell.h; sourceTree = "<group>"; };
 		F294D3CE2FEDDA9A00A6D657 /* PPProviderCompanyPremiumCardCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProviderCompanyPremiumCardCell.m; sourceTree = "<group>"; };
 		F2957C282EEF424600006CB3 /* TrashManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TrashManager.h; sourceTree = "<group>"; };
@@ -2135,6 +2128,14 @@
 		F2AB48C42C72D43C00D88603 /* KafkaReplicatorLayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaReplicatorLayer.h; sourceTree = "<group>"; };
 		F2AB48C52C72D43C00D88603 /* KafkaReplicatorLayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = KafkaReplicatorLayer.m; sourceTree = "<group>"; };
 		F2AB48C82C72D43C00D88603 /* KafkaRefresh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = KafkaRefresh.h; sourceTree = "<group>"; };
+		F2AC10013020000100BEE001 /* PPAccessoryViewerLegacyBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAccessoryViewerLegacyBridge.h; sourceTree = "<group>"; };
+		F2AC10023020000100BEE001 /* PPAccessoryViewerLegacyBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAccessoryViewerLegacyBridge.m; sourceTree = "<group>"; };
+		F2AC10033020000100BEE001 /* PPAccessoryViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerModels.swift; sourceTree = "<group>"; };
+		F2AC10043020000100BEE001 /* PPAccessoryViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerStore.swift; sourceTree = "<group>"; };
+		F2AC10053020000100BEE001 /* PPAccessoryViewerMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerMedia.swift; sourceTree = "<group>"; };
+		F2AC10063020000100BEE001 /* PPAccessoryViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerComponents.swift; sourceTree = "<group>"; };
+		F2AC10073020000100BEE001 /* PPAccessoryViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerScreen.swift; sourceTree = "<group>"; };
+		F2AC10083020000100BEE001 /* PPAccessoryViewerHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPAccessoryViewerHostingController.swift; sourceTree = "<group>"; };
 		F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = importantFiles.h; sourceTree = "<group>"; };
 		F2AE2DA62CFD485E00D09E90 /* CALayer+TTSpringAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CALayer+TTSpringAnimation.h"; sourceTree = "<group>"; };
 		F2AE2DA72CFD485E00D09E90 /* CALayer+TTSpringAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CALayer+TTSpringAnimation.m"; sourceTree = "<group>"; };
@@ -2331,6 +2332,7 @@
 		F2D100952C7B131B00F5EAE7 /* NewCageVC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NewCageVC.m; sourceTree = "<group>"; };
 		F2D2BC662EB71802000A13D1 /* PPSelectPaymentVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSelectPaymentVC.h; sourceTree = "<group>"; };
 		F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSelectPaymentVC.m; sourceTree = "<group>"; };
+		F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedAddToCartButton.swift; sourceTree = "<group>"; };
 		F2D44D1F2F3D611200999337 /* map_dark_style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = map_dark_style.json; sourceTree = "<group>"; };
 		F2D5A7B42F95C0A1009B6001 /* PPHomePresentationTokens.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePresentationTokens.h; sourceTree = "<group>"; };
 		F2D5A7B52F95C0A1009B6001 /* PPMainKindsCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPMainKindsCell.swift; sourceTree = "<group>"; };
@@ -4138,6 +4140,7 @@
 		F281B47E2FCB6735009118F2 /* PPComponent */ = {
 			isa = PBXGroup;
 			children = (
+				F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */,
 				F281B46B2FCB6735009118F2 /* PPLeftRight */,
 				F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */,
 				F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */,
@@ -6283,6 +6286,7 @@
 				F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */,
 				F25082F52DB647250082FF75 /* ItemModel.m in Sources */,
 				F20E9DAA2CF32E5300B810EB /* selectUserVC.m in Sources */,
+				F2D3FD993016601F003279B3 /* AnimatedAddToCartButton.swift in Sources */,
 				F29E72652CBD23CE00CF441B /* SKSplashIcon.m in Sources */,
 				F29E72662CBD23CE00CF441B /* SKSplashView.m in Sources */,
 				F20E9D6C2CF3193B00B810EB /* EmptyDataManager.m in Sources */,

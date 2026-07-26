@@ -89,7 +89,7 @@ struct PPAccessoryViewerScreen: View {
             : min(max(contentWidth * 0.46, 360), 500)
         let topInset = topChromeInset(proxy)
         let bottomInset = bottomChromeInset(proxy)
-        let topBarHeight: CGFloat = topInset + (compact ? 74 : 84)
+        let topBarHeight: CGFloat = topInset + (compact ? 70 : 80)
         let decisionBarClearance: CGFloat = {
             if dynamicTypeSize.isAccessibilitySize {
                 return snapshot.showsCart ? 222 : 158
@@ -115,6 +115,7 @@ struct PPAccessoryViewerScreen: View {
                     .opacity(heroResolved ? 1 : 0)
 
                     PPAccessoryProductIdentity(
+                        store: store,
                         snapshot: snapshot,
                         compact: compact
                     )
@@ -196,6 +197,7 @@ struct PPAccessoryViewerScreen: View {
             .zIndex(100)
             .frame(maxHeight: .infinity, alignment: .bottom)
         }
+        .ignoresSafeArea(.all, edges: [.top, .bottom])
         .onAppear {
             runEntranceIfNeeded()
             store.refreshCartState()

@@ -2194,62 +2194,49 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 
 +(UIColor *)AppForegroundColor
-{ return UIColor.secondarySystemBackgroundColor; //[UIColor colorNamed:@"AppForegroundColor"];
+{
+    return [UIColor ppForeground];
 }
 
 +(UIColor *)backOffwhileColor
-{ return UIColor.systemBackgroundColor ; //[UIColor colorNamed:@"AppBackgroundColor"];
+{
+    return [UIColor ppBackground];
 }
 
-+ (UIColor *)appPrimaryColor { return [UIColor colorNamed:@"AppPrimaryColor"];
++ (UIColor *)appPrimaryColor {
+    return [UIColor ppPrimary];
 }
 
-+ (UIColor *)AppPrimaryColorShainer { return [UIColor colorNamed:@"AppPrimaryColorShainer"];
++ (UIColor *)AppPrimaryColorShainer {
+    return [UIColor ppPrimaryShiner];
 }
 
-+ (UIColor *)AppWhiteColor {  return [UIColor colorNamed:@"AppWhiteColor"];
++ (UIColor *)AppWhiteColor {
+    return [UIColor whiteColor];
 }
 
-
-+ (UIColor *)AppShadowColor { return [UIColor colorNamed:@"AppShadowColor"];
++ (UIColor *)AppShadowColor {
+    return [UIColor blackColor];
 }
 
-+ (UIColor *)AppPrimaryColorDarker { return [UIColor colorNamed:@"AppPrimaryColorDarker"];
++ (UIColor *)AppPrimaryColorDarker {
+    return [UIColor ppPrimaryDarker];
 }
 
 + (UIColor *)PrimaryTextColor {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithWhite:0.95 alpha:1.0]; // Light text for dark mode
-        } else {
-            return [UIColor blackColor]; // Dark text for light mode
-        }
-    }];
+    return [UIColor ppTextPrimary];
 }
 
 + (UIColor *)AccentsColor {
-    return [UIColor colorNamed:@"AccentsColor"];
+    return [UIColor ppAccent];
 }
 
-
 + (UIColor *)SecondaryTextColor {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithWhite:0.7 alpha:1.0]; // Light text for dark mode
-        } else {
-            return [UIColor darkGrayColor]; // Dark text for light mode
-        }
-    }];
+    return [UIColor ppTextSecondary];
 }
 
 + (UIColor *)PlaceholderTextColor {
-    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
-        if (traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithWhite:0.5 alpha:1.0]; // Light text for dark mode
-        } else {
-            return [UIColor lightGrayColor]; // Dark text for light mode
-        }
-    }];
+    return [UIColor ppTextTertiary];
 }
 
 

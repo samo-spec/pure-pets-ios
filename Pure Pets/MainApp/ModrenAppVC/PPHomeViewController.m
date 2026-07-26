@@ -13655,7 +13655,7 @@ presentingViewController:self
             self.ambientBackgroundView.userInteractionEnabled = NO;
 
             self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
-            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleBBBaseBackground;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
             self.ambientBackgroundView.cornerGlowOpacityMultiplier =
                 PPHomeAmbientBackgroundAccentStrength;
             //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();

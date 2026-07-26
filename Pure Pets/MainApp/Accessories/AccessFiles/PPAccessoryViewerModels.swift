@@ -33,6 +33,14 @@ enum PPAccessoryViewerCartPhase: Equatable {
     case failed
 }
 
+/// Error cases for the async ``PPAccessoryViewerStore/addToCartAsync()`` bridge.
+enum PPAccessoryCartError: Error {
+    case unavailable
+    case outOfStock
+    case offline
+    case failed
+}
+
 struct PPAccessoryViewerMediaItem: Identifiable, Equatable {
     let id: String
     let imageURL: String?

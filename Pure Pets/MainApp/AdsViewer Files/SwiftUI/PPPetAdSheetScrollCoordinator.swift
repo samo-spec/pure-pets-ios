@@ -203,7 +203,6 @@ final class PPPetAdHeroScrollViewController<
         PPPetAdSizingHostingController<Content>
     private let refreshControl = UIRefreshControl()
 
-    private var heroHeightConstraint: NSLayoutConstraint!
     private var contentHeightConstraint: NSLayoutConstraint!
     private var minimumHeroHeight: CGFloat
     private var expandedHeroHeight: CGFloat
@@ -253,6 +252,7 @@ final class PPPetAdHeroScrollViewController<
         configureScrollView()
         installHeroController()
         installContentController()
+        scrollView.sendSubviewToBack(heroController.view)
         scrollView.bringSubviewToFront(contentController.view)
         scrollView.bringSubviewToFront(refreshControl)
         applyMetrics(preservingPosition: false)
@@ -260,6 +260,9 @@ final class PPPetAdHeroScrollViewController<
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        scrollView.sendSubviewToBack(heroController.view)
+        scrollView.bringSubviewToFront(contentController.view)
+        scrollView.bringSubviewToFront(refreshControl)
         updateContentHeightIfNeeded()
         updateHero(for: scrollView.contentOffset.y)
     }
@@ -272,6 +275,9 @@ final class PPPetAdHeroScrollViewController<
     ) {
         heroController.rootView = hero
         contentController.rootView = content
+        scrollView.sendSubviewToBack(heroController.view)
+        scrollView.bringSubviewToFront(contentController.view)
+        scrollView.bringSubviewToFront(refreshControl)
 
         let metricsChanged =
             abs(self.minimumHeroHeight - minimumHeroHeight) > 0.5
@@ -403,14 +409,15 @@ final class PPPetAdHeroScrollViewController<
         heroController.view.clipsToBounds = false
         heroController.view.isUserInteractionEnabled = true
         scrollView.addSubview(heroController.view)
+        scrollView.sendSubviewToBack(heroController.view)
 
-        heroHeightConstraint =
-            heroController.view.heightAnchor.constraint(
-                equalToConstant: expandedHeroHeight
-            )
         NSLayoutConstraint.activate([
             heroController.view.topAnchor.constraint(
                 equalTo: scrollView.frameLayoutGuide.topAnchor,
+                constant: 0
+            ),
+            heroController.view.bottomAnchor.constraint(
+                equalTo: contentController.view.topAnchor,
                 constant: 0
             ),
             heroController.view.leadingAnchor.constraint(
@@ -418,8 +425,7 @@ final class PPPetAdHeroScrollViewController<
             ),
             heroController.view.trailingAnchor.constraint(
                 equalTo: scrollView.frameLayoutGuide.trailingAnchor
-            ),
-            heroHeightConstraint
+            )
         ])
         heroController.didMove(toParent: self)
         scrollView.bringSubviewToFront(refreshControl)
@@ -466,17 +472,11 @@ final class PPPetAdHeroScrollViewController<
         let minimum = max(minimumHeroHeight, 1)
         let expanded = max(expandedHeroHeight, minimum + 1)
         let visibleInsetHeight = -contentOffsetY
-        let heroHeight = max(minimum, visibleInsetHeight)
         let collapseRange = max(expanded - minimum, 1)
         let clampedVisibleHeight =
             min(max(visibleInsetHeight, minimum), expanded)
         let progress =
             (expanded - clampedVisibleHeight) / collapseRange
-
-        if abs(heroHeightConstraint.constant - heroHeight) > 0.25 {
-            heroHeightConstraint.constant = heroHeight
-            scrollView.setNeedsLayout()
-        }
 
         onCollapseProgressChanged?(progress)
     }

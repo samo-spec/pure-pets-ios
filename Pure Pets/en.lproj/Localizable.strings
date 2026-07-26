@@ -861,7 +861,7 @@
 "enter_description"       = "Describe your pet or product...";
 "sales"= "Sales";
 
-"AddedToCart" = "✔︎ Added";
+"AddedToCart" = "Added";
 "ItemAddedToYourCart" = "Item added to your cart.";
 "cart_provider_switch_title" = "Cart belongs to another provider";
 "cart_provider_switch_message" = "This cart currently belongs to another provider. Adding this item will clear the current cart and start a new one.";
@@ -2135,6 +2135,9 @@
 
 "accessory_view_no_description" = "No description available.";
 "accessory_view_details_title" = "Accessory details";
+"accessory_view_details_empty" = "No additional product details are available.";
+"accessory_view_discount_format" = "Save %.0f%%";
+"accessory_view_product_fallback" = "Accessory";
 "accessory_view_seller_title" = "Seller";
 "accessory_view_seller_pending" = "Loading seller";
 "accessory_view_store_name" = "Pure Pets Store";
@@ -3689,6 +3692,11 @@
 "pet_ad_viewer_about_name_format" = "About %@";
 "pet_ad_viewer_breed_label" = "Breed";
 "pet_ad_viewer_chat_failed" = "The chat could not be opened.";
+"pet_ad_viewer_chat_opening" = "Opening chat";
+"pet_ad_viewer_chat_ready" = "Chat ready";
+"pet_ad_viewer_chat_retry" = "Try chat again";
+"pet_ad_viewer_contact_pet_fallback" = "Ask for this pet";
+"pet_ad_viewer_contact_pet_format" = "Ask for %@";
 "pet_ad_viewer_description" = "About this pet";
 "pet_ad_viewer_empty_detail" = "It may have been removed, completed, or no longer contains displayable details.";
 "pet_ad_viewer_empty_title" = "This advertisement is unavailable";
@@ -3727,6 +3735,7 @@
 "pet_ad_viewer_title_fallback" = "Pet advertisement";
 "pet_ad_viewer_zoom" = "Zoom in";
 "pet_ad_viewer_verified_owner" = "Verified Pure Pets member";
+"pet_ad_viewer_verified_seller_role" = "Verified advertiser";
 "pet_ad_viewer_your_listing" = "This is your advertisement";
 "pet_ad_viewer_your_listing_detail" = "Contact actions are hidden when you view your own listing.";
 "report_ad_message" = "Choose the reason that best describes the issue.";

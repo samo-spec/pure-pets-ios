@@ -84,7 +84,7 @@
     BOOL dark = [self pp_isDarkMode];
 
     UIView *pill = [[UIView alloc] init];
-    pill.backgroundColor = dark ? [UIColor colorWithWhite:0.14 alpha:1.0] : [UIColor whiteColor];
+    pill.backgroundColor = UIColor.clearColor;
     pill.layer.cornerRadius = 18.0;
     pill.layer.cornerCurve = kCACornerCurveContinuous;
     pill.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;

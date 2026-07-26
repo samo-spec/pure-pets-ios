@@ -344,7 +344,7 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
             }
         }
 
-        _ownerID = dict[@"ownerID"] ?: @"";
+        _ownerID = dict[@"ownerID"] ?: dict[@"ownerId"] ?: dict[@"userID"] ?: dict[@"userId"] ?: dict[@"sellerID"] ?: dict[@"sellerId"] ?: dict[@"providerID"] ?: dict[@"providerId"] ?: dict[@"user_id"] ?: dict[@"owner_id"] ?: @"";
         _ownerType = [dict[@"ownerType"] isKindOfClass:NSString.class] ? dict[@"ownerType"] : nil;
         _source = [dict[@"source"] isKindOfClass:NSString.class] ? dict[@"source"] : nil;
         _blurHash = dict[@"blurHash"] ?: @"";

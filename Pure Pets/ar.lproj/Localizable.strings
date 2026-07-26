@@ -886,7 +886,7 @@
 "desc"= "الوصف";
 "enter_description"= "صف الحيوان"  ;
 
-"AddedToCart" = "✔︎ تمت الإضافة";
+"AddedToCart" = "تمت الإضافة";
 "ItemAddedToYourCart" = "تمت إضافة العنصر إلى سلة التسوق الخاصة بك.";
 "cart_provider_switch_title" = "السلة تابعة لمزود آخر";
 "cart_provider_switch_message" = "تنتمي هذه السلة حاليًا إلى مزود آخر. ستفرغ إضافة هذا العنصر السلة الحالية وتبدأ سلة جديدة.";
@@ -2110,6 +2110,9 @@
 
 "accessory_view_no_description" = "لا يوجد وصف متاح.";
 "accessory_view_details_title" = "تفاصيل الإكسسوار";
+"accessory_view_details_empty" = "لا تتوفر تفاصيل إضافية عن المنتج.";
+"accessory_view_discount_format" = "وفّر %.0f٪";
+"accessory_view_product_fallback" = "مستلزم";
 "accessory_view_seller_title" = "البائع";
 "accessory_view_seller_pending" = "جارِ تحميل بيانات البائع";
 "accessory_view_store_name" = "متجر بيور بتس";
@@ -3668,6 +3671,11 @@
 "pet_ad_viewer_about_name_format" = "نبذة عن %@";
 "pet_ad_viewer_breed_label" = "السلالة";
 "pet_ad_viewer_chat_failed" = "تعذر فتح المحادثة.";
+"pet_ad_viewer_chat_opening" = "جارٍ فتح المحادثة";
+"pet_ad_viewer_chat_ready" = "المحادثة جاهزة";
+"pet_ad_viewer_chat_retry" = "أعد محاولة المحادثة";
+"pet_ad_viewer_contact_pet_fallback" = "اسأل عن هذا الحيوان";
+"pet_ad_viewer_contact_pet_format" = "اسأل عن %@";
 "pet_ad_viewer_description" = "نبذة عن هذا الحيوان";
 "pet_ad_viewer_empty_detail" = "ربما حُذف الإعلان أو اكتمل أو لم تعد تفاصيله متاحة للعرض.";
 "pet_ad_viewer_empty_title" = "هذا الإعلان غير متاح";
@@ -3706,6 +3714,7 @@
 "pet_ad_viewer_title_fallback" = "إعلان حيوان أليف";
 "pet_ad_viewer_zoom" = "تكبير";
 "pet_ad_viewer_verified_owner" = "عضو موثّق في بيور بتس";
+"pet_ad_viewer_verified_seller_role" = "معلن موثّق";
 "pet_ad_viewer_your_listing" = "هذا إعلانك";
 "pet_ad_viewer_your_listing_detail" = "تُخفى وسائل التواصل عند عرض إعلانك الخاص.";
 "report_ad_message" = "اختر السبب الذي يصف المشكلة بشكل أفضل.";

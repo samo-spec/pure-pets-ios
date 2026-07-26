@@ -6,69 +6,139 @@ struct PPPetAdInfoGrid: View {
     let gender: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let featuredItem {
-                infoView(
-                    for: featuredItem,
-                    emphasis: .featured
-                )
-
-                if !supportingItems.isEmpty {
-                    factDivider
-                }
+        Group {
+            if allItems.isEmpty {
+                EmptyView()
+            } else if usesStackedLayout {
+                stackedLedger
+            } else {
+                compactLedger
             }
-
-            supportingFacts
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) {
-            factDivider
-        }
-        .overlay(alignment: .bottom) {
-            factDivider
+        .background(
+            ledgerBackground,
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.card,
+                style: .continuous
+            )
+            .strokeBorder(
+                Color.ppSeparator.opacity(
+                    colorSchemeContrast == .increased ? 1 : 0.52
+                ),
+                lineWidth: dividerThickness
+            )
         }
         .accessibilityElement(children: .contain)
     }
 
     private var usesStackedLayout: Bool {
-        dynamicTypeSize >= .xxLarge
+        dynamicTypeSize >= .xxLarge || dynamicTypeSize.isAccessibilitySize
     }
 
     @ViewBuilder
-    private var supportingFacts: some View {
-        if !supportingItems.isEmpty {
-            if usesStackedLayout || supportingItems.count == 1 {
-                VStack(spacing: 0) {
-                    ForEach(supportingItems) { item in
-                        infoView(
-                            for: item,
-                            emphasis: .supporting
-                        )
+    private var compactLedger: some View {
+        if let featuredItem, !supportingItems.isEmpty {
+            HStack(alignment: .top, spacing: 0) {
+                infoView(
+                    for: featuredItem,
+                    emphasis: .featured
+                )
+                .layoutPriority(1)
 
-                        if item.id != supportingItems.last?.id {
-                            factDivider
-                        }
-                    }
-                }
-            } else {
-                HStack(alignment: .top, spacing: 0) {
-                    ForEach(supportingItems) { item in
-                        infoView(
-                            for: item,
-                            emphasis: .supporting
-                        )
-                        .frame(maxWidth: .infinity)
+                verticalFactDivider
 
-                        if item.id != supportingItems.last?.id {
-                            verticalFactDivider
-                        }
+                supportingFactsStack
+                    .frame(
+                        minWidth: 116,
+                        maxWidth: 214,
+                        alignment: .leading
+                    )
+            }
+        } else if let featuredItem {
+            infoView(
+                for: featuredItem,
+                emphasis: .featured
+            )
+        } else if supportingItems.count == 1,
+                  let item = supportingItems.first {
+            infoView(
+                for: item,
+                emphasis: .supporting
+            )
+        } else {
+            HStack(alignment: .top, spacing: 0) {
+                ForEach(supportingItems) { item in
+                    infoView(
+                        for: item,
+                        emphasis: .supporting
+                    )
+                    .frame(maxWidth: .infinity)
+
+                    if item.id != supportingItems.last?.id {
+                        verticalFactDivider
                     }
                 }
             }
         }
+    }
+
+    private var stackedLedger: some View {
+        VStack(spacing: 0) {
+            ForEach(allItems) { item in
+                infoView(
+                    for: item,
+                    emphasis:
+                        item.id == featuredItem?.id
+                        ? .featured
+                        : .supporting
+                )
+
+                if item.id != allItems.last?.id {
+                    factDivider
+                }
+            }
+        }
+    }
+
+    private var supportingFactsStack: some View {
+        VStack(spacing: 0) {
+            ForEach(supportingItems) { item in
+                infoView(
+                    for: item,
+                    emphasis: .supporting
+                )
+
+                if item.id != supportingItems.last?.id {
+                    factDivider
+                }
+            }
+        }
+    }
+
+    private var allItems: [PPPetAdInfoItem] {
+        var items: [PPPetAdInfoItem] = []
+        if let featuredItem {
+            items.append(featuredItem)
+        }
+        items.append(contentsOf: supportingItems)
+        return items
+    }
+
+    private var ledgerBackground: Color {
+        Color.ppForeground.opacity(
+            colorScheme == .dark ? 0.34 : 0.58
+        )
     }
 
     private func infoView(
@@ -151,7 +221,7 @@ struct PPPetAdInfoGrid: View {
 
     private var dividerColor: Color {
         Color(uiColor: .separator).opacity(
-            colorSchemeContrast == .increased ? 0.64 : 0.24
+            colorSchemeContrast == .increased ? 0.68 : 0.26
         )
     }
 

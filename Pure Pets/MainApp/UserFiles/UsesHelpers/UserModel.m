@@ -333,7 +333,29 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
     NSString *imageURLString = PPSafeString(safeDict[kUserKeyUserImageURL]);
     NSString *photoURLString = PPSafeString(safeDict[kUserKeyPhotoURL]);
     NSString *avatarURLString = PPSafeString(safeDict[@"avatarURL"]);
-    NSString *resolvedImageURL = imageURLString.length ? imageURLString : (photoURLString.length ? photoURLString : avatarURLString);
+    NSString *avatarUrlAlt = PPSafeString(safeDict[@"avatarUrl"]);
+    NSString *avatarAlt = PPSafeString(safeDict[@"avatar"]);
+    NSString *userImageUrlAlt = PPSafeString(safeDict[@"userImageUrl"]);
+    NSString *userImageURLAlt = PPSafeString(safeDict[@"userImageURL"]);
+    NSString *profileImageUrlAlt = PPSafeString(safeDict[@"profileImageUrl"]);
+    NSString *profileImageURLAlt = PPSafeString(safeDict[@"profileImageURL"]);
+    NSString *photoUrlAlt = PPSafeString(safeDict[@"photoUrl"]);
+    NSString *photoAlt = PPSafeString(safeDict[@"photo"]);
+    NSString *pictureAlt = PPSafeString(safeDict[@"picture"]);
+    NSString *imageAlt = PPSafeString(safeDict[@"image"]);
+
+    NSString *resolvedImageURL = imageURLString.length ? imageURLString :
+        (photoURLString.length ? photoURLString :
+        (avatarURLString.length ? avatarURLString :
+        (avatarUrlAlt.length ? avatarUrlAlt :
+        (avatarAlt.length ? avatarAlt :
+        (userImageUrlAlt.length ? userImageUrlAlt :
+        (userImageURLAlt.length ? userImageURLAlt :
+        (profileImageUrlAlt.length ? profileImageUrlAlt :
+        (profileImageURLAlt.length ? profileImageURLAlt :
+        (photoUrlAlt.length ? photoUrlAlt :
+        (photoAlt.length ? photoAlt :
+        (pictureAlt.length ? pictureAlt : imageAlt)))))))))));
     self.UserImageUrl = PPSafeURL(resolvedImageURL);
 
     self.loginDate = PPUserDateFromValue(safeDict[kUserKeyLoginDate]);

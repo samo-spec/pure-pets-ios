@@ -60,9 +60,9 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_visible";
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
-static CGFloat const PPCartFloatingBarHeight = 56.0;
-static CGFloat const PPCartFloatingBarRestingBottomConstant = 16.0;
-static CGFloat const PPCartFloatingBarHiddenBottomConstant = 28.0;
+static CGFloat const PPCartFloatingBarHeight = 60.0;
+static CGFloat const PPCartFloatingBarRestingBottomConstant = -24.0;
+static CGFloat const PPCartFloatingBarHiddenBottomConstant = 140.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 static CGFloat const PPPremiumDockBottomInset = 18.0;
 static BOOL const PPShowsRootCenterAddButton = YES;
@@ -449,14 +449,14 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self.highlightGlowView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:-28.0],
 
         [self.iconOrbView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
-        [self.iconOrbView.widthAnchor constraintEqualToConstant:40.0],
-        [self.iconOrbView.heightAnchor constraintEqualToConstant:40.0],
+        [self.iconOrbView.widthAnchor constraintEqualToConstant:44.0],
+        [self.iconOrbView.heightAnchor constraintEqualToConstant:44.0],
 
         [self.iconImageView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
         [self.iconImageView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
 
-        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:22.0],
-        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:22.0],
+        [self.countBadgeLabel.heightAnchor constraintEqualToConstant:26.0],
+        [self.countBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [self.ctaContainerView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
         [self.ctaContainerView.heightAnchor constraintEqualToConstant:38.0],
@@ -488,9 +488,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     ];
 
     self.collapsedConstraints = @[
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:10.0],
-        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:6.0],
-        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-10.0],
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0],
+        [self.countBadgeLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:8.0],
+        [self.countBadgeLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
         [self.countBadgeLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor]
     ];
 
@@ -996,8 +996,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if ([selected isKindOfClass:UINavigationController.class]) {
         visible = ((UINavigationController *)selected).topViewController ?: selected;
     }
-    if ([self isEligibleFloatingCartSourceViewController:visible]) {
-        return NO;
+    if ([self shouldShowFloatingCartForSourceViewController:visible] || self.state.isVisible) {
+        return YES;
     }
     return visible.hidesBottomBarWhenPushed;
 }
@@ -1195,11 +1195,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [hostView addSubview:barView];
     self.floatingBarView = barView;
-    self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:PPCartFloatingBarHiddenBottomConstant];
+    self.floatingBarBottomConstraint = [barView.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor constant:PPCartFloatingBarHiddenBottomConstant];
 
     self.floatingBarLeadingConstraint = [barView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor constant:16.0];
     self.floatingBarTrailingConstraint = [barView.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor constant:-16.0];
-    self.floatingBarWidthConstraint = [barView.widthAnchor constraintEqualToConstant:92.0];
+    self.floatingBarWidthConstraint = [barView.widthAnchor constraintEqualToConstant:124.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
@@ -3852,7 +3852,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-6.0],
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-10.0],
         [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
         [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
     ]];

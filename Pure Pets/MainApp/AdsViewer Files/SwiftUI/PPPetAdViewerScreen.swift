@@ -1,5 +1,16 @@
 import SwiftUI
 
+private struct PPPetAdContactDockHeightPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(
+        value: inout CGFloat,
+        nextValue: () -> CGFloat
+    ) {
+        value = max(value, nextValue())
+    }
+}
+
 @available(iOS 16.0, *)
 struct PPPetAdViewerScreen: View {
     let isRoot: Bool
@@ -12,6 +23,7 @@ struct PPPetAdViewerScreen: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var isNavigationCollapsed = false
     @State private var hasAppeared = false
+    @State private var contactDockHeight: CGFloat = 0
 
     private let repository: PPPetAdViewerRepository
     private let hostActions: PPPetAdViewerHostActions
@@ -86,7 +98,7 @@ struct PPPetAdViewerScreen: View {
                 value: store.ppShowsContactDock
             )
         }
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea(.all, edges: [.top, .bottom])
         .navigationBarHidden(true)
         .fullScreenCover(isPresented: Binding(
             get: { store.isMediaViewerPresented },
@@ -234,8 +246,10 @@ struct PPPetAdViewerScreen: View {
                     : Animation.easeOut(duration: 0.38),
                 value: hasAppeared
             )
+            .zIndex(0)
         } content: {
             detailsSheet(bottomInset: proxy.safeAreaInsets.bottom)
+                .zIndex(1)
         }
         .ignoresSafeArea(edges: .top)
     }
@@ -247,44 +261,7 @@ struct PPPetAdViewerScreen: View {
 
     private func detailsSheet(bottomInset: CGFloat) -> some View {
         VStack(spacing: 0) {
-            PPPetAdDetailsSummary(
-                title: store.snapshot.title,
-                location: store.snapshot.location,
-                price: store.snapshot.price,
-                type: summaryType,
-                age: store.snapshot.age,
-                gender: store.snapshot.gender
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.top, PPPetAdViewerStyle.contentTopPadding)
-            .ppPetAdEntrance(
-                isPresented: hasAppeared,
-                delayIndex: 0
-            )
-
-            if !store.snapshot.description.isEmpty {
-                PPPetAdDescriptionCard(
-                    title: aboutTitle,
-                    description: store.snapshot.description
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-                .ppPetAdEntrance(
-                    isPresented: hasAppeared,
-                    delayIndex: 2
-                )
-            }
-
-            if store.ppShowsInlineContactStatus {
-                PPPetAdContactCard(
-                    store: store,
-                    showsActions: false
-                )
-                .padding(.horizontal, PPSpace.screenMargin)
-                .ppPetAdEntrance(
-                    isPresented: hasAppeared,
-                    delayIndex: 3
-                )
-            }
+            primaryDetailsContent
 
             PPPetAdRelatedSection(
                 title: PPPetAdLocalization.text(
@@ -356,25 +333,80 @@ struct PPPetAdViewerScreen: View {
             x: 0,
             y: -3
         )
-        .offset(y: -PPPetAdViewerStyle.sheetOverlap)
+        .offset(y: 0)
+    }
+
+    private var primaryDetailsContent: some View {
+        VStack(spacing: 0) {
+            PPPetAdDetailsSummary(
+                title: store.snapshot.title,
+                location: store.snapshot.location,
+                price: store.snapshot.price,
+                type: summaryType,
+                age: store.snapshot.age,
+                gender: store.snapshot.gender
+            )
+            .padding(.horizontal, PPSpace.screenMargin)
+            .padding(.top, PPPetAdViewerStyle.contentTopPadding)
+            .ppPetAdEntrance(
+                isPresented: hasAppeared,
+                delayIndex: 0
+            )
+
+            if !store.snapshot.description.isEmpty {
+                PPPetAdDescriptionCard(
+                    title: aboutTitle,
+                    description: store.snapshot.description
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+                .ppPetAdEntrance(
+                    isPresented: hasAppeared,
+                    delayIndex: 1
+                )
+            }
+
+            if store.ppShowsInlineContactStatus {
+                PPPetAdContactCard(
+                    store: store,
+                    showsActions: false
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+                .ppPetAdEntrance(
+                    isPresented: hasAppeared,
+                    delayIndex: 2
+                )
+            }
+        }
+        .padding(.bottom, PPSpace.base)
+        .frame(maxWidth: .infinity)
+        .background(Color.clear)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.ppSeparator.opacity(0.72))
+                .frame(height: PPPetAdViewerStyle.hairlineWidth)
+                .accessibilityHidden(true)
+        }
     }
 
     @ViewBuilder
     private func contactDock(bottomInset: CGFloat) -> some View {
         if store.ppShowsContactDock {
-            let compactBottomPadding = max(
-                PPBottomDecisionBarGeometry.bottomBreathingRoom,
-                min(bottomInset, PPSpace.base)
-            )
+            let dockBottomPadding =
+                max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
+                + PPBottomDecisionBarGeometry.bottomBreathingRoom
 
             PPPetAdContactDock(store: store)
-                .padding(
-                    .horizontal,
-                    PPBottomDecisionBarGeometry.compactScreenInset
-                )
-                .padding(.top, PPSpace.sm)
-                .padding(.bottom, compactBottomPadding)
                 .fixedSize(horizontal: false, vertical: true)
+                .background {
+                    GeometryReader { dockProxy in
+                        Color.clear.preference(
+                            key: PPPetAdContactDockHeightPreferenceKey.self,
+                            value: dockProxy.size.height
+                        )
+                    }
+                }
+                .padding(.horizontal, PPSpace.base)
+                .padding(.bottom, dockBottomPadding)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -404,6 +436,14 @@ struct PPPetAdViewerScreen: View {
                     reduceMotion ? nil : PPPetAdViewerMotion.navigation,
                     value: store.ppShowsContactDock
                 )
+                .onPreferenceChange(
+                    PPPetAdContactDockHeightPreferenceKey.self
+                ) { measuredHeight in
+                    guard abs(measuredHeight - contactDockHeight) > 0.5 else {
+                        return
+                    }
+                    contactDockHeight = measuredHeight
+                }
         }
     }
 
@@ -530,6 +570,11 @@ struct PPPetAdViewerScreen: View {
 
     private var contactDockClearance: CGFloat {
         guard store.ppShowsContactDock else { return 0 }
-        return dynamicTypeSize.isAccessibilitySize ? 190 : 96
+        let fallback = dynamicTypeSize.isAccessibilitySize ? 190.0 : 96.0
+        return max(
+            fallback,
+            contactDockHeight
+                + PPBottomDecisionBarGeometry.bottomBreathingRoom
+        )
     }
 }

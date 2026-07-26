@@ -2,60 +2,42 @@ import SwiftUI
 import UIKit
 
 enum PPAccessoryPalette {
-    static let appBackground = Color.clear
-    static let shell = Color.clear
-    static let ink =
-        Color(UIColor(named: "PrimaryTextColor") ?? .label)
-    static let inkSecondary =
-        Color(UIColor(named: "SecondaryTextColor") ?? .secondaryLabel)
+    static let appBackground = Color.ppBackground
+    static let shell = Color.ppBackground
+    static let ink = Color.ppTextPrimary
+    static let inkSecondary = Color.ppTextSecondary
 
-    static let brand =
-        Color(UIColor(named: "AppPrimaryColor") ?? .systemPink)
-    static let brandDarker =
-        Color(
-            UIColor(named: "AppPrimaryColorDarker") ??
-                UIColor(named: "AppPrimaryColor") ??
-                .systemPink
-        )
-    static let brandShine =
-        Color(
-            UIColor(named: "AppPrimaryColorShainer") ??
-                UIColor(named: "AppPrimaryColor") ??
-                .systemPink
-        )
-    static let accent = brand
-    static let success =
-        Color(UIColor(named: "SuccessColor") ?? .systemGreen)
-    static let warning =
-        Color(UIColor(named: "WarningColor") ?? .systemOrange)
-    static let error =
-        Color(UIColor(named: "ErrorColor") ?? .systemRed)
+    static let brand = Color.ppPrimary
+    static let brandDarker = Color.ppPrimaryDarker
+    static let brandShine = Color.ppPrimaryShiner
+    static let accent = Color.ppAccent
+    static let success = Color.ppSuccess
+    static let warning = Color.ppWarning
+    static let error = Color.ppError
 
-    static let sea = accent
-    static let deepSea = ink
-    static let sand = appBackground
+    static let sea = Color.ppAccent
+    static let deepSea = Color.ppTextPrimary
+    static let sand = Color.ppBackground
 }
 
 enum PPAccessorySubviewBackground {
     static let clear = Color.clear
-    static let baseSurface =
-        Color(UIColor(named: "AppForegroundColor") ?? .secondarySystemBackground)
-    static let basePage =
-        Color(UIColor(named: "AppBackgroundColor") ?? .systemBackground)
+    static let baseSurface = Color.ppForeground
+    static let basePage = Color.ppBackground
 
-    static let chromeFill = baseSurface.opacity(0.78)
-    static let quietFill = baseSurface.opacity(0.58)
-    static let mediaFill = baseSurface.opacity(0.42)
-    static let iconFill = baseSurface.opacity(0.64)
-    static let bottomBarFill = baseSurface.opacity(0.86)
-    static let dangerFill = PPAccessoryPalette.error.opacity(0.08)
-    static let fullScreenChromeFill = basePage.opacity(0.86)
+    static let chromeFill = Color.ppForeground.opacity(0.78)
+    static let quietFill = Color.ppForeground.opacity(0.58)
+    static let mediaFill = Color.ppForeground.opacity(0.42)
+    static let iconFill = Color.ppForeground.opacity(0.64)
+    static let bottomBarFill = Color.ppElevatedSurface.opacity(0.86)
+    static let dangerFill = Color.ppError.opacity(0.08)
+    static let fullScreenChromeFill = Color.ppBackground.opacity(0.86)
     static let videoChromeFill = Color.black.opacity(0.66)
 
-    static let faintStroke = PPAccessoryPalette.ink.opacity(0.08)
-    static let controlStroke = PPAccessoryPalette.ink.opacity(0.12)
-    static let chromeStroke = PPAccessoryPalette.ink.opacity(0.14)
-    static let divider = PPAccessoryPalette.ink.opacity(0.07)
+    static let faintStroke = Color.ppSeparator.opacity(0.40)
+    static let controlStroke = Color.ppSeparator.opacity(0.60)
+    static let chromeStroke = Color.ppSeparator.opacity(0.80)
+    static let divider = Color.ppSeparator
 }
 
 extension View {
@@ -158,46 +140,22 @@ struct PPAccessoryViewerTopBar: View {
     @ObservedObject var store: PPAccessoryViewerStore
 
     var body: some View {
-        HStack(spacing: 12) {
-            glassButton(
+        HStack(spacing: 10) {
+            chromeButton(
                 symbol: PPAccessoryViewerLegacyBridge.isRTL()
                     ? "chevron.right"
                     : "chevron.left",
                 label: PPAccessoryViewerL10n.text("Back"),
                 action: store.close
             )
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(
+                PPAccessoryViewerL10n.text("Back")
+            )
 
             Spacer()
 
-            if store.favoritePhase == .loading {
-                ProgressView()
-                    .tint(PPAccessoryPalette.ink)
-                    .frame(width: 48, height: 48)
-                    .ppAccessorySubviewBackground(
-                        PPAccessorySubviewBackground.chromeFill,
-                        in: Circle(),
-                        stroke: PPAccessorySubviewBackground.chromeStroke,
-                        lineWidth: 0.8
-                    )
-                    .accessibilityLabel(
-                        PPAccessoryViewerL10n.text(
-                            "accessory_view_updating_favorite"
-                        )
-                    )
-            } else {
-                glassButton(
-                    symbol: store.isFavorite ? "heart.fill" : "heart",
-                    label: store.isFavorite
-                        ? PPAccessoryViewerL10n.text("a11y_btn_unfavorite")
-                        : PPAccessoryViewerL10n.text("a11y_btn_favorite"),
-                    tint: store.isFavorite
-                        ? PPAccessoryPalette.error
-                        : PPAccessoryPalette.ink,
-                    action: store.toggleFavorite
-                )
-            }
-
-            glassButton(
+            chromeButton(
                 symbol: "square.and.arrow.up",
                 label: PPAccessoryViewerL10n.text("Share"),
                 action: store.share
@@ -207,7 +165,7 @@ struct PPAccessoryViewerTopBar: View {
     }
 
     @ViewBuilder
-    private func glassButton(
+    private func chromeButton(
         symbol: String,
         label: String,
         tint: Color = PPAccessoryPalette.ink,
@@ -219,14 +177,14 @@ struct PPAccessoryViewerTopBar: View {
                 tint: tint,
                 action: action
             )
-            .frame(width: 48, height: 48)
+            .frame(width: 44, height: 44)
             .accessibilityLabel(label)
         } else {
             Button(action: action) {
                 Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(tint)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 44, height: 44)
                     .ppAccessorySubviewBackground(
                         PPAccessorySubviewBackground.chromeFill,
                         in: Circle(),
@@ -315,53 +273,52 @@ struct PPAccessoryShorelineGallery: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        VStack(spacing: showsGalleryRail ? (compact ? 10 : 12) : 0) {
-            ZStack(alignment: .bottom) {
-                gallerySurface
+        ZStack(alignment: .bottomLeading) {
+            gallerySurface
 
-                ZStack {
-                    if snapshot.media.isEmpty {
-                        emptyMedia
-                    } else {
-                        TabView(selection: $selection) {
-                            ForEach(
-                                Array(snapshot.media.enumerated()),
-                                id: \.element.id
-                            ) { index, item in
-                                mediaPage(item, index: index)
-                                    .tag(index)
-                            }
+            ZStack {
+                if snapshot.media.isEmpty {
+                    emptyMedia
+                } else {
+                    TabView(selection: $selection) {
+                        ForEach(
+                            Array(snapshot.media.enumerated()),
+                            id: \.element.id
+                        ) { index, item in
+                            mediaPage(item, index: index)
+                                .tag(index)
                         }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
                     }
-                }
-                .clipShape(galleryShape)
-
-                VStack(spacing: 0) {
-                    HStack(alignment: .top, spacing: 10) {
-                        availabilitySeal
-                        Spacer(minLength: 8)
-                        mediaCountSeal
-                    }
-                    .padding(.horizontal, compact ? 14 : 18)
-                    .padding(.top, compact ? 14 : 18)
-                    .allowsHitTesting(false)
-
-                    Spacer(minLength: 0)
+                    .tabViewStyle(.page(indexDisplayMode: .never))
                 }
             }
-            .frame(height: mediaHeight)
             .clipShape(galleryShape)
-            .overlay {
-                galleryShape
-                    .stroke(PPAccessoryPalette.ink.opacity(0.08), lineWidth: 1)
+
+            VStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 10) {
+                    availabilitySeal
+                    Spacer(minLength: 8)
+                    mediaCountSeal
+                }
+                .padding(.horizontal, compact ? 14 : 18)
+                .padding(.top, compact ? 14 : 18)
+                .allowsHitTesting(false)
+
+                Spacer(minLength: 0)
             }
 
             if showsGalleryRail {
                 galleryRail
+                    .padding(.leading, compact ? 12 : 16)
+                    .padding(.bottom, compact ? 12 : 16)
             }
         }
         .frame(height: height)
+        .clipShape(galleryShape)
+        .overlay {
+            galleryShape
+                .stroke(PPAccessoryPalette.ink.opacity(0.08), lineWidth: 1)
+        }
         .contentShape(Rectangle())
         .onChange(of: selection) { _ in
             PPAccessoryViewerLegacyBridge.playSelectionFeedback()
@@ -389,11 +346,11 @@ struct PPAccessoryShorelineGallery: View {
     }
 
     private var mediaHeight: CGFloat {
-        height - (showsGalleryRail ? (compact ? 62 : 68) : 0)
+        height
     }
 
     private var gallerySurface: some View {
-        PPAccessorySubviewBackground.mediaFill
+        Color.clear
             .clipShape(galleryShape)
             .accessibilityHidden(true)
     }
@@ -610,57 +567,363 @@ struct PPAccessoryShorelineGallery: View {
 
 @available(iOS 16.0, *)
 struct PPAccessoryProductIdentity: View {
+    @ObservedObject var store: PPAccessoryViewerStore
     let snapshot: PPAccessoryViewerSnapshot
     let compact: Bool
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 12) {
-                title
-                Spacer(minLength: 10)
-                price
+        VStack(alignment: .leading, spacing: compact ? 12 : 16) {
+            if let categoryContext {
+                categoryOverline(categoryContext)
+            }
+
+            productTitleRow
+            priceRow
+
+            if hasReadinessFacts {
+                PPAccessoryDecisionRibbon(snapshot: snapshot)
+                    .padding(.top, compact ? 2 : 4)
             }
         }
         .padding(.horizontal, 2)
-        .padding(.vertical, compact ? 4 : 7)
+        .padding(.top, compact ? 6 : 10)
+        .padding(.bottom, compact ? 16 : 20)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(PPAccessorySubviewBackground.divider)
                 .frame(height: 1)
-                .offset(y: compact ? 10 : 13)
         }
         .accessibilityElement(children: .contain)
     }
 
-    private var title: some View {
-        Text(snapshot.title)
-            .font(compact ? PPAccessoryTypography.title : PPAccessoryTypography.hero)
-            .foregroundStyle(PPAccessoryPalette.ink)
-            .lineLimit(2)
-            .minimumScaleFactor(0.84)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityAddTraits(.isHeader)
-    }
+    private func categoryOverline(_ category: String) -> some View {
+        HStack(spacing: 9) {
+            Capsule()
+                .fill(PPAccessoryPalette.brand)
+                .frame(width: 22, height: 3)
+                .accessibilityHidden(true)
 
-    private var price: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            if snapshot.hasDiscount {
-                Text(snapshot.originalPrice)
-                    .font(PPAccessoryTypography.callout)
-                    .foregroundStyle(PPAccessoryPalette.brandDarker)
-                    .strikethrough()
-            }
-            Text(snapshot.price)
-                .font(PPAccessoryTypography.price)
+            Text(category)
+                .font(PPAccessoryTypography.captionBold)
                 .foregroundStyle(PPAccessoryPalette.brandDarker)
-                .lineLimit(1)
-                .minimumScaleFactor(0.76)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
 
-    private var stockColor: Color {
-        if snapshot.quantity <= 0 || snapshot.isUnavailable {
+    private var productTitleRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(displayTitle)
+                .font(
+                    compact
+                        ? PPAccessoryTypography.title
+                        : PPAccessoryTypography.hero
+                )
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilitySortPriority(3)
+
+            Spacer(minLength: 8)
+
+            favoriteButton
+        }
+    }
+
+    @ViewBuilder
+    private var favoriteButton: some View {
+        if store.favoritePhase == .loading {
+            ProgressView()
+                .tint(PPAccessoryPalette.ink)
+                .frame(width: 40, height: 40)
+                .ppAccessorySubviewBackground(
+                    PPAccessorySubviewBackground.chromeFill,
+                    in: Circle(),
+                    stroke: PPAccessorySubviewBackground.chromeStroke,
+                    lineWidth: 0.8
+                )
+                .accessibilityLabel(
+                    PPAccessoryViewerL10n.text(
+                        "accessory_view_updating_favorite"
+                    )
+                )
+        } else {
+            Button(action: store.toggleFavorite) {
+                Image(systemName: store.isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(
+                        store.isFavorite
+                            ? PPAccessoryPalette.error
+                            : PPAccessoryPalette.ink
+                    )
+                    .frame(width: 40, height: 40)
+                    .ppAccessorySubviewBackground(
+                        PPAccessorySubviewBackground.quietFill,
+                        in: Circle(),
+                        stroke: PPAccessorySubviewBackground.faintStroke,
+                        lineWidth: 0.8
+                    )
+            }
+            .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.88))
+            .accessibilityLabel(
+                store.isFavorite
+                    ? PPAccessoryViewerL10n.text("a11y_btn_unfavorite")
+                    : PPAccessoryViewerL10n.text("a11y_btn_favorite")
+            )
+            .accessibilityValue(
+                store.isFavorite
+                    ? PPAccessoryViewerL10n.text("a11y_btn_unfavorite")
+                    : PPAccessoryViewerL10n.text("a11y_btn_favorite")
+            )
+        }
+    }
+
+    private var priceRow: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 6) {
+                    currentPrice
+                    if snapshot.hasDiscount {
+                        discountSummary
+                    }
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        currentPrice
+                        if snapshot.hasDiscount {
+                            discountSummary
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        currentPrice
+                        if snapshot.hasDiscount {
+                            discountSummary
+                        }
+                    }
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilitySortPriority(2)
+    }
+
+    private var currentPrice: some View {
+        Text(snapshot.price)
+            .font(PPAccessoryTypography.price)
+            .fontWeight(.bold)
+            .foregroundStyle(PPAccessoryPalette.brand)
+            .lineLimit(1)
+            .minimumScaleFactor(0.78)
+            .layoutPriority(2)
+            .contentTransition(.numericText())
+            .priceHaloTransition(pulseToken: store.pricePulseToken)
+    }
+
+    private var discountSummary: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(snapshot.originalPrice)
+                .font(PPAccessoryTypography.callout)
+                .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                .strikethrough()
+                .lineLimit(1)
+
+            if let percentage = snapshot.discountPercent, percentage > 0 {
+                Text(discountText(percentage))
+                    .font(PPAccessoryTypography.captionBold)
+                    .foregroundStyle(PPAccessoryPalette.success)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(
+                        PPAccessoryPalette.success.opacity(0.12),
+                        in: Capsule()
+                    )
+            }
+        }
+        .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func discountText(_ percentage: Double) -> String {
+        String(
+            format: PPAccessoryViewerL10n.text(
+                "accessory_view_discount_format"
+            ),
+            locale: .current,
+            percentage
+        )
+    }
+
+    private var displayTitle: String {
+        let title = snapshot.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        if title.isEmpty {
+            return PPAccessoryViewerL10n.text(
+                "accessory_view_product_fallback"
+            )
+        }
+        return title
+    }
+
+    private var categoryContext: String? {
+        [
+            snapshot.accessoryCategory,
+            snapshot.subcategory,
+            snapshot.category
+        ]
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .first { !$0.isEmpty }
+    }
+
+    private var hasReadinessFacts: Bool {
+        !snapshot.stock.isEmpty || !snapshot.condition.isEmpty
+    }
+}
+
+private struct PPAccessoryReadinessFact: Identifiable {
+    let id: String
+    let symbol: String
+    let title: String
+    let value: String
+    let color: Color
+}
+
+@available(iOS 16.0, *)
+struct PPAccessoryDecisionRibbon: View {
+    let snapshot: PPAccessoryViewerSnapshot
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                verticalFacts
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    horizontalFacts
+                    verticalFacts
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .ppAccessorySubviewBackground(
+            PPAccessorySubviewBackground.quietFill,
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+            stroke: PPAccessoryPalette.brand.opacity(0.16),
+            lineWidth: 0.8
+        )
+        .overlay(alignment: .leading) {
+            Capsule()
+                .fill(PPAccessoryPalette.brand)
+                .frame(width: 3)
+                .padding(.vertical, 12)
+                .accessibilityHidden(true)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilitySortPriority(1)
+    }
+
+    private var horizontalFacts: some View {
+        HStack(alignment: .center, spacing: 14) {
+            ForEach(Array(facts.enumerated()), id: \.element.id) {
+                index,
+                fact in
+                factView(fact)
+                    .fixedSize(horizontal: true, vertical: false)
+
+                if index < facts.count - 1 {
+                    Divider()
+                        .frame(height: 38)
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var verticalFacts: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(facts.enumerated()), id: \.element.id) {
+                index,
+                fact in
+                factView(fact)
+
+                if index < facts.count - 1 {
+                    Divider()
+                        .accessibilityHidden(true)
+                }
+            }
+        }
+    }
+
+    private func factView(_ fact: PPAccessoryReadinessFact) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: fact.symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(fact.color)
+                .frame(width: 26, height: 26)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(fact.title)
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                Text(fact.value)
+                    .font(PPAccessoryTypography.calloutBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var facts: [PPAccessoryReadinessFact] {
+        var result: [PPAccessoryReadinessFact] = []
+
+        if !snapshot.stock.isEmpty {
+            result.append(
+                PPAccessoryReadinessFact(
+                    id: "availability",
+                    symbol: availabilitySymbol,
+                    title: PPAccessoryViewerL10n.text("Availability"),
+                    value: snapshot.stock,
+                    color: availabilityColor
+                )
+            )
+        }
+
+        if !snapshot.condition.isEmpty {
+            result.append(
+                PPAccessoryReadinessFact(
+                    id: "condition",
+                    symbol: "checkmark.seal",
+                    title: PPAccessoryViewerL10n.text("Condition"),
+                    value: snapshot.condition,
+                    color: PPAccessoryPalette.brandDarker
+                )
+            )
+        }
+
+        return result
+    }
+
+    private var availabilitySymbol: String {
+        if snapshot.isUnavailable || snapshot.quantity <= 0 {
+            return "xmark.octagon.fill"
+        }
+        if snapshot.quantity <= 5 {
+            return "exclamationmark.triangle.fill"
+        }
+        return "checkmark.circle.fill"
+    }
+
+    private var availabilityColor: Color {
+        if snapshot.isUnavailable || snapshot.quantity <= 0 {
             return PPAccessoryPalette.error
         }
         if snapshot.quantity <= 5 {
@@ -670,214 +933,122 @@ struct PPAccessoryProductIdentity: View {
     }
 }
 
-struct PPAccessoryDecisionRibbon: View {
-    let snapshot: PPAccessoryViewerSnapshot
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
-    var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                VStack(spacing: 0) {
-                    accessibleRibbonItem(
-                        symbol: "checkmark.seal.fill",
-                        title: PPAccessoryViewerL10n.text("Condition"),
-                        value: snapshot.condition,
-                        color: PPAccessoryPalette.success
-                    )
-                    horizontalDivider
-                    accessibleRibbonItem(
-                        symbol: "shippingbox.fill",
-                        title: PPAccessoryViewerL10n.text("Availability"),
-                        value: snapshot.stock,
-                        color: snapshot.quantity > 0
-                            ? PPAccessoryPalette.success
-                            : PPAccessoryPalette.error
-                    )
-                    if !snapshot.location.isEmpty {
-                        horizontalDivider
-                        accessibleRibbonItem(
-                            symbol: "mappin.and.ellipse",
-                            title: PPAccessoryViewerL10n.text("Location"),
-                            value: snapshot.location,
-                            color: PPAccessoryPalette.error
-                        )
-                    }
-                }
-            } else {
-                HStack(spacing: 0) {
-                    ribbonItem(
-                        symbol: "checkmark.seal.fill",
-                        title: PPAccessoryViewerL10n.text("Condition"),
-                        value: snapshot.condition,
-                        color: PPAccessoryPalette.success
-                    )
-
-                    divider
-
-                    ribbonItem(
-                        symbol: "shippingbox.fill",
-                        title: PPAccessoryViewerL10n.text("Availability"),
-                        value: snapshot.stock,
-                        color: snapshot.quantity > 0
-                            ? PPAccessoryPalette.success
-                            : PPAccessoryPalette.error
-                    )
-
-                    if !snapshot.location.isEmpty {
-                        divider
-                        ribbonItem(
-                            symbol: "mappin.and.ellipse",
-                            title: PPAccessoryViewerL10n.text("Location"),
-                            value: snapshot.location,
-                            color: PPAccessoryPalette.error
-                        )
-                    }
-                }
-            }
-        }
-        .padding(.vertical, 13)
-        .ppAccessorySubviewBackground(
-            PPAccessorySubviewBackground.quietFill,
-            in: RoundedRectangle(cornerRadius: 20, style: .continuous),
-            stroke: PPAccessorySubviewBackground.controlStroke
-        )
-        .accessibilityElement(children: .contain)
-    }
-
-    private func accessibleRibbonItem(
-        symbol: String,
-        title: String,
-        value: String,
-        color: Color
-    ) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(PPAccessoryTypography.caption)
-                    .foregroundStyle(PPAccessoryPalette.brandDarker)
-                Text(value)
-                    .font(PPAccessoryTypography.bodyBold)
-                    .foregroundStyle(PPAccessoryPalette.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func ribbonItem(
-        symbol: String,
-        title: String,
-        value: String,
-        color: Color
-    ) -> some View {
-        VStack(spacing: 5) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(color)
-            Text(title)
-                .font(PPAccessoryTypography.caption)
-                .foregroundStyle(PPAccessoryPalette.brandDarker)
-                .lineLimit(1)
-            Text(value)
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(PPAccessoryPalette.ink)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 5)
-        .accessibilityElement(children: .combine)
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(PPAccessorySubviewBackground.faintStroke)
-            .frame(width: 1, height: 52)
-            .accessibilityHidden(true)
-    }
-
-    private var horizontalDivider: some View {
-        Rectangle()
-            .fill(PPAccessorySubviewBackground.faintStroke)
-            .frame(height: 1)
-            .padding(.horizontal, 14)
-            .accessibilityHidden(true)
-    }
-}
-
 struct PPAccessorySpecReef: View {
     let details: [PPAccessoryViewerDetailItem]
     let compactColumns: Bool
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             sectionTitle(
                 PPAccessoryViewerL10n.text("accessory_view_details_title"),
-                symbol: "water.waves"
+                symbol: "list.bullet.rectangle"
             )
+            .padding(.top, compactColumns ? 12 : 16)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
+            if details.isEmpty {
+                emptyDetails
+            } else {
+                LazyVGrid(
+                    columns: columns,
+                    alignment: .leading,
+                    spacing: 0
+                ) {
                     ForEach(details) { detail in
-                        detailPill(detail)
+                        detailRow(detail)
                     }
                 }
-                .padding(.horizontal, 1)
-                .padding(.bottom, 4)
+                .padding(.horizontal, 16)
+                .ppAccessorySubviewBackground(
+                    PPAccessorySubviewBackground.baseSurface,
+                    in: RoundedRectangle(
+                        cornerRadius: 20,
+                        style: .continuous
+                    ),
+                    stroke: PPAccessorySubviewBackground.controlStroke,
+                    lineWidth: 0.8
+                )
             }
         }
     }
 
-    private func detailPill(
+    private var columns: [GridItem] {
+        let count =
+            compactColumns || dynamicTypeSize.isAccessibilitySize ? 1 : 2
+        return Array(
+            repeating: GridItem(
+                .flexible(minimum: 0),
+                spacing: 24,
+                alignment: .topLeading
+            ),
+            count: count
+        )
+    }
+
+    private func detailRow(
         _ detail: PPAccessoryViewerDetailItem
     ) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: detail.symbol)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(color(for: detail.tone))
-                .frame(width: 32, height: 32)
-                .ppAccessorySubviewBackground(
-                    PPAccessorySubviewBackground.iconFill,
-                    in: Circle(),
-                    stroke: nil
-                )
+                .foregroundStyle(PPAccessoryPalette.brandDarker)
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(detail.title)
                     .font(PPAccessoryTypography.caption)
                     .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail.value)
                     .font(PPAccessoryTypography.bodyBold)
                     .foregroundStyle(PPAccessoryPalette.ink)
-                    .lineLimit(1)
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .frame(minHeight: 56)
-        .ppAccessorySubviewBackground(
-            PPAccessorySubviewBackground.quietFill,
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity, minHeight: 70, alignment: .topLeading)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(PPAccessorySubviewBackground.divider)
+                .frame(height: 1)
+                .accessibilityHidden(true)
+        }
         .accessibilityElement(children: .combine)
     }
 
-    private func color(for tone: PPAccessoryViewerDetailTone) -> Color {
-        switch tone {
-        case .sea: return PPAccessoryPalette.accent
-        case .sun: return PPAccessoryPalette.warning
-        case .coral: return PPAccessoryPalette.error
-        case .palm: return PPAccessoryPalette.success
-        case .ink: return PPAccessoryPalette.ink
+    private var emptyDetails: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "doc.text.magnifyingglass")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(PPAccessoryPalette.brandDarker)
+                .frame(width: 32, height: 32)
+                .accessibilityHidden(true)
+
+            Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_details_empty"
+                )
+            )
+            .font(PPAccessoryTypography.body)
+            .foregroundStyle(PPAccessoryPalette.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .ppAccessorySubviewBackground(
+            PPAccessorySubviewBackground.quietFill,
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+            stroke: PPAccessorySubviewBackground.controlStroke,
+            lineWidth: 0.8
+        )
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -936,7 +1107,9 @@ struct PPAccessorySourceIsland: View {
                     urlString: owner.avatarURL,
                     blurHash: nil,
                     contentMode: .fill,
-                    accessibilityLabel: owner.name
+                    accessibilityLabel: owner.name,
+                    isAvatar: true,
+                    fallbackInitials: owner.name
                 )
                 .frame(width: 64, height: 64)
                 .clipShape(Circle())
@@ -1401,13 +1574,8 @@ struct PPAccessoryPersistentDecisionBar: View {
                 : PPBottomDecisionBarGeometry.regularScreenInset
         )
         .padding(.top, PPSpace.sm)
-        .padding(
-            .bottom,
-            max(
-                bottomInset,
-                PPBottomDecisionBarGeometry.bottomBreathingRoom
-            )
-        )
+        .padding(.bottom, 16)
+        .ignoresSafeArea(.container, edges: .bottom)
         .animation(
             reduceMotion
                 ? nil
@@ -1437,10 +1605,7 @@ struct PPAccessoryPersistentDecisionBar: View {
                     if canAdd {
                         quantityControl
                     }
-                    HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
-                        addButton
-                        cartButton
-                    }
+                    animatedCartButton
                 }
             } else {
                 if compact {
@@ -1454,10 +1619,7 @@ struct PPAccessoryPersistentDecisionBar: View {
                             quantityControl
                         }
                     }
-                    HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
-                        addButton
-                        cartButton
-                    }
+                    animatedCartButton
                 } else {
                     HStack(
                         alignment: .center,
@@ -1468,14 +1630,43 @@ struct PPAccessoryPersistentDecisionBar: View {
                         if canAdd {
                             quantityControl
                         }
-                        addButton
+                        animatedCartButton
                             .frame(maxWidth: 340)
-                        cartButton
                     }
                 }
             }
         }
     }
+
+    private var animatedCartButton: some View {
+        AnimatedAddToCartButton(
+            cartCount: Binding(
+                get: { store.cartItemsCount },
+                set: { _ in }
+            ),
+            title: LocalizedStringKey(
+                PPAccessoryViewerL10n.text("accessory_view_add_to_cart")
+            ),
+            addingTitle: LocalizedStringKey(
+                PPAccessoryViewerL10n.text("accessory_view_adding_to_cart")
+            ),
+            addedTitle: LocalizedStringKey(
+                PPAccessoryViewerL10n.text("AddedToCart")
+            ),
+            retryTitle: LocalizedStringKey(
+                PPAccessoryViewerL10n.text("Retry")
+            ),
+            tint: PPAccessoryPalette.brand,
+            itemSymbol: "shippingbox.fill",
+            isEnabled: canAdd,
+            onCartTap: {
+                store.openCart()
+            }
+        ) {
+            try await store.addToCartAsync()
+        }
+    }
+
 
     @ViewBuilder
     private var contactBar: some View {
@@ -1564,7 +1755,7 @@ struct PPAccessoryPersistentDecisionBar: View {
             HStack(spacing: PPSpace.sm) {
                 Image(systemName: "message.fill")
                     .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color("AppForegroundColor"))
+                    .foregroundStyle(PPAccessorySubviewBackground.baseSurface)
                     .accessibilityHidden(true)
                 Text(PPAccessoryViewerL10n.text("Chat"))
                     .font(PPAccessoryTypography.bodyBold)
@@ -1607,7 +1798,7 @@ struct PPAccessoryPersistentDecisionBar: View {
                 minHeight: PPBottomDecisionBarGeometry.controlHeight
             )
             .background(
-                Color("AppForegroundColor"),
+                PPAccessorySubviewBackground.baseSurface,
                 in: RoundedRectangle(
                     cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
                     style: .continuous
@@ -1780,11 +1971,24 @@ struct PPAccessoryPersistentDecisionBar: View {
 
     private var stockIndicator: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
-            Text(snapshot.price)
+            Text(store.totalPriceText)
                 .font(PPAccessoryTypography.price)
                 .foregroundStyle(PPAccessoryPalette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
+                .contentTransition(.numericText())
+                .priceHaloTransition(pulseToken: store.pricePulseToken)
+                .id(store.totalPriceText)
+                .animation(
+                    reduceMotion
+                        ? nil
+                        : .spring(
+                            response: 0.28,
+                            dampingFraction: 0.82,
+                            blendDuration: 0.04
+                        ),
+                    value: store.totalPriceText
+                )
 
             Text(canAdd ? remainingText : snapshot.stock)
                 .font(PPAccessoryTypography.captionBold)
@@ -1805,9 +2009,10 @@ struct PPAccessoryPersistentDecisionBar: View {
                 enabled: store.quantity > 1,
                 action: store.decrementQuantity
             )
-            Text("\(store.quantity)")
+            Text(String(format: "%d", store.quantity))
                 .font(PPAccessoryTypography.bodyBold)
                 .monospacedDigit()
+                .environment(\.locale, Locale(identifier: "en_US"))
                 .foregroundStyle(PPAccessoryPalette.ink)
                 .frame(minWidth: 34, alignment: .center)
                 .accessibilityLabel(
@@ -2136,13 +2341,7 @@ struct PPAccessoryPersistentDecisionBarLoading: View {
                 : PPBottomDecisionBarGeometry.regularScreenInset
         )
         .padding(.top, PPSpace.sm)
-        .padding(
-            .bottom,
-            max(
-                bottomInset,
-                PPBottomDecisionBarGeometry.bottomBreathingRoom
-            )
-        )
+        .padding(.bottom, 16)
         .redacted(reason: .placeholder)
         .allowsHitTesting(false)
         .accessibilityElement(children: .ignore)
@@ -2354,5 +2553,67 @@ func sectionTitle(
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)
         Spacer(minLength: 0)
+    }
+}
+
+struct PPAccessoryPriceHaloView: ViewModifier {
+    let pulseToken: Int
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var haloScale: CGFloat = 1.0
+    @State private var haloOpacity: Double = 0.0
+    @State private var haloBlur: CGFloat = 0.0
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    PPAccessoryPalette.brand.opacity(0.38),
+                                    PPAccessoryPalette.accent.opacity(0.30),
+                                    PPAccessoryPalette.brand.opacity(0.08)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .scaleEffect(haloScale)
+                        .opacity(haloOpacity)
+                        .blur(radius: haloBlur)
+                }
+                .padding(-8)
+            )
+            .onChange(of: pulseToken) { value in
+                triggerHaloPulse(token: value)
+            }
+    }
+
+    private func triggerHaloPulse(token: Int) {
+        guard token > 0 else { return }
+        if reduceMotion {
+            haloScale = 1.0
+            haloOpacity = 0.45
+            withAnimation(.easeInOut(duration: 0.28)) {
+                haloOpacity = 0.0
+            }
+            return
+        }
+
+        haloScale = 0.88
+        haloOpacity = 0.80
+        haloBlur = 3.0
+        withAnimation(.easeOut(duration: 0.38)) {
+            haloScale = 1.30
+            haloOpacity = 0.0
+            haloBlur = 12.0
+        }
+    }
+}
+
+extension View {
+    func priceHaloTransition(pulseToken: Int) -> some View {
+        modifier(PPAccessoryPriceHaloView(pulseToken: pulseToken))
     }
 }

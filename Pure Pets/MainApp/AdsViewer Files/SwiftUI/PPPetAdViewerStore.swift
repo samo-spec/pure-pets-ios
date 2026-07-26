@@ -14,6 +14,8 @@ final class PPPetAdViewerStore: ObservableObject {
     @Published private(set) var favoriteState: PPPetAdViewerActionState = .idle
     @Published private(set) var reportState: PPPetAdViewerActionState = .idle
     @Published private(set) var chatState: PPPetAdViewerActionState = .idle
+    @Published private(set) var contactSignInState:
+        PPPetAdViewerActionState = .idle
     @Published private(set) var owner: PPPetAdOwner?
     @Published private(set) var relatedAds: [PPPetAdRelatedItem] = []
     @Published private(set) var relatedAccessories: [PPPetAdRelatedItem] = []
@@ -34,6 +36,7 @@ final class PPPetAdViewerStore: ObservableObject {
     private var relatedAdsTask: Task<Void, Never>?
     private var accessoriesTask: Task<Void, Never>?
     private var favoriteLoadTask: Task<Void, Never>?
+    private var contactSignInTask: Task<Void, Never>?
     private var toastTask: Task<Void, Never>?
     private var didStart = false
 
@@ -56,6 +59,7 @@ final class PPPetAdViewerStore: ObservableObject {
         relatedAdsTask?.cancel()
         accessoriesTask?.cancel()
         favoriteLoadTask?.cancel()
+        contactSignInTask?.cancel()
         toastTask?.cancel()
     }
 
@@ -118,6 +122,8 @@ final class PPPetAdViewerStore: ObservableObject {
 
     func refreshAuthenticationState() {
         if !isSignedIn {
+            contactSignInTask?.cancel()
+            contactSignInTask = nil
             ownerTask?.cancel()
             favoriteLoadTask?.cancel()
             owner = nil
@@ -127,6 +133,7 @@ final class PPPetAdViewerStore: ObservableObject {
             isReportDialogPresented = false
             reportState = .idle
             chatState = .idle
+            contactSignInState = .idle
             return
         }
         loadOwner()
@@ -347,11 +354,22 @@ final class PPPetAdViewerStore: ObservableObject {
     }
 
     func requireSignInForContact() {
-        Task { [weak self] in
+        guard contactSignInState != .working else { return }
+
+        contactSignInTask?.cancel()
+        contactSignInState = .working
+        contactSignInTask = Task { [weak self] in
             guard let self else { return }
-            if await hostActions.requireSignIn() {
+            let didSignIn = await hostActions.requireSignIn()
+            guard !Task.isCancelled else { return }
+
+            if didSignIn {
+                contactSignInState = .succeeded(message: "")
                 refresh()
+            } else {
+                contactSignInState = .idle
             }
+            contactSignInTask = nil
         }
     }
 

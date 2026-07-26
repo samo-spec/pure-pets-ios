@@ -7,6 +7,7 @@ struct PPPetAdContactCard: View {
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     init(
         store: PPPetAdViewerStore,
@@ -41,12 +42,16 @@ struct PPPetAdContactCard: View {
                     : .opacity.combined(with: .scale(scale: 0.994))
             )
         }
-        .padding(.top, PPSpace.xl)
+        .padding(.top, PPSpace.xxl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(Color(uiColor: .separator).opacity(0.24))
-                .frame(height: 1)
+                .fill(Color.ppSeparator.opacity(
+                    colorSchemeContrast == .increased ? 1 : 0.72
+                ))
+                .frame(
+                    height: colorSchemeContrast == .increased ? 1.5 : 1
+                )
                 .accessibilityHidden(true)
         }
         .animation(
@@ -96,6 +101,8 @@ struct PPPetAdContactCard: View {
                         "Login",
                         fallback: "Sign in"
                     ),
+                    isEnabled: store.contactSignInState != .working,
+                    isLoading: store.contactSignInState == .working,
                     emphasis: .primary,
                     action: store.requireSignInForContact
                 )
@@ -595,6 +602,8 @@ struct PPPetAdContactDock: View {
     @ObservedObject var store: PPPetAdViewerStore
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
@@ -609,8 +618,15 @@ struct PPPetAdContactDock: View {
                 reduceMotion ? nil : PPPetAdViewerMotion.state,
                 value: stateIdentity
             )
-            .padding(PPBottomDecisionBarGeometry.contentPadding)
-            .ppBottomDecisionBarSurface()
+            .animation(
+                reduceMotion ? nil : PPPetAdViewerMotion.state,
+                value: store.chatState
+            )
+            .padding(.horizontal, PPSpace.base)
+            .padding(.vertical, PPSpace.md)
+            .background {
+                contactSurface
+            }
             .fixedSize(horizontal: false, vertical: true)
             .transaction { transaction in
                 if reduceMotion {
@@ -618,6 +634,34 @@ struct PPPetAdContactDock: View {
                     transaction.animation = nil
                 }
             }
+    }
+
+    private var contactSurface: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPCorner.hero,
+            style: .continuous
+        )
+        let borderColor =
+            colorSchemeContrast == .increased
+            ? Color.ppTextPrimary.opacity(0.48)
+            : Color.ppBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
+
+        return shape
+            .fill(Color.ppElevatedSurface)
+            .overlay {
+                shape.strokeBorder(
+                    borderColor,
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                )
+            }
+            .shadow(
+                color: Color.black.opacity(
+                    colorScheme == .dark ? 0.16 : 0.07
+                ),
+                radius: 12,
+                x: 0,
+                y: 4
+            )
     }
 
     @ViewBuilder
@@ -633,8 +677,8 @@ struct PPPetAdContactDock: View {
                     "Login",
                     fallback: "Sign in"
                 ),
-                isLoading: false,
-                isSuccess: false,
+                isLoading: store.contactSignInState == .working,
+                isSuccess: isContactSignInSucceeded,
                 action: store.requireSignInForContact
             )
         } else {
@@ -690,63 +734,109 @@ struct PPPetAdContactDock: View {
 
     @ViewBuilder
     private func actionRow(for owner: PPPetAdOwner) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
-            verticalActionRow(for: owner)
-        } else {
-            ViewThatFits(in: .horizontal) {
-                horizontalActionRow(for: owner)
-                verticalActionRow(for: owner)
-            }
-        }
-    }
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            if store.canMessageOwner &&
+                store.canCallOwner &&
+                !dynamicTypeSize.isAccessibilitySize {
+                HStack(alignment: .center, spacing: PPSpace.sm) {
+                    PPPetAdOwnerProfilePill(owner: owner)
+                        .layoutPriority(1)
 
-    private func horizontalActionRow(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        HStack(spacing: PPSpace.sm) {
-            PPPetAdOwnerProfilePill(owner: owner)
-                .layoutPriority(1)
+                    secondaryCallButton(for: owner)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            } else {
+                PPPetAdOwnerProfilePill(owner: owner)
+            }
 
             if store.canMessageOwner {
-                if store.canCallOwner {
-                    callIconButton(for: owner)
-                }
-
                 chatPrimaryButton(for: owner)
-                    .frame(minWidth: 132, maxWidth: 164)
+
+                if store.canCallOwner &&
+                    dynamicTypeSize.isAccessibilitySize {
+                    secondaryCallButton(
+                        for: owner,
+                        fillsWidth: true
+                    )
+                }
             } else if store.canCallOwner {
                 callPrimaryButton(for: owner)
-                    .frame(minWidth: 116, maxWidth: 150)
             }
         }
     }
 
-    private func verticalActionRow(
-        for owner: PPPetAdOwner
+    private func secondaryCallButton(
+        for owner: PPPetAdOwner,
+        fillsWidth: Bool = false
     ) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            PPPetAdOwnerProfilePill(owner: owner)
-
-            HStack(spacing: PPSpace.sm) {
-                if store.canCallOwner {
-                    callIconButton(for: owner)
-                }
-
-                if store.canMessageOwner {
-                    chatPrimaryButton(for: owner)
-                } else if store.canCallOwner {
-                    callPrimaryButton(for: owner)
-                }
+        Button(action: store.callOwner) {
+            HStack(spacing: 6) {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 15, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(PPPetAdLocalization.text("Call", fallback: "Call"))
+                    .font(PPPetAdTypography.calloutBold)
+                    .lineLimit(1)
             }
+            .foregroundStyle(Color.ppAccentText)
+            .padding(.horizontal, 14)
+            .frame(
+                maxWidth: fillsWidth ? .infinity : nil,
+                minHeight: PPBottomDecisionBarGeometry.utilityControlSize
+            )
+            .background(
+                Color.ppPrimary.opacity(
+                    colorSchemeContrast == .increased ? 0.18 : 0.10
+                ),
+                in: RoundedRectangle(
+                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
+            .overlay(
+                RoundedRectangle(
+                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+                .stroke(
+                    Color.ppPrimary.opacity(
+                        colorSchemeContrast == .increased ? 0.72 : 0.26
+                    ),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                )
+            )
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
         }
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .accessibilityLabel(
+            String(
+                format: PPPetAdLocalization.text(
+                    "a11y_btn_call_user_format",
+                    fallback: "Call %@"
+                ),
+                owner.displayName
+            )
+        )
+        .accessibilityHint(
+            PPPetAdLocalization.text(
+                "a11y_btn_call_advertiser_hint",
+                fallback: "Double-tap to call this person"
+            )
+        )
+        .accessibilitySortPriority(1)
     }
 
     private func chatPrimaryButton(
         for owner: PPPetAdOwner
     ) -> some View {
         primaryButton(
-            title: interestTitle,
-            symbol: "message.fill",
+            title: chatActionTitle,
+            symbol: chatActionSymbol,
             accessibilityLabel: chatAccessibilityLabel(for: owner),
             isLoading: isChatWorking,
             isSuccess: isChatSucceeded,
@@ -758,6 +848,7 @@ struct PPPetAdContactDock: View {
                 fallback: "Double-tap to start a chat with this person"
             )
         )
+        .accessibilitySortPriority(2)
     }
 
     private func callPrimaryButton(
@@ -783,55 +874,8 @@ struct PPPetAdContactDock: View {
                 fallback: "Double-tap to call this person"
             )
         )
+        .accessibilitySortPriority(1)
     }
-
-    private func callIconButton(
-        for owner: PPPetAdOwner
-    ) -> some View {
-        Button(action: store.callOwner) {
-            Image(systemName: "phone.fill")
-                .font(.system(size: 19, weight: .semibold))
-                .foregroundStyle(PPPetAdViewerStyle.darkActionForeground)
-                .frame(
-                    width: PPBottomDecisionBarGeometry.utilityControlSize,
-                    height: PPBottomDecisionBarGeometry.utilityControlSize
-                )
-                .background(
-                    PPPetAdViewerStyle.darkActionFill,
-                    in: RoundedRectangle(
-                        cornerRadius:
-                            PPBottomDecisionBarGeometry.controlRadius,
-                        style: .continuous
-                    )
-                )
-                .contentShape(
-                    RoundedRectangle(
-                        cornerRadius:
-                            PPBottomDecisionBarGeometry.controlRadius,
-                        style: .continuous
-                    )
-                )
-        }
-        .buttonStyle(PPBottomDecisionPressStyle(pressedScale: 0.94))
-        .accessibilityLabel(
-            String(
-                format: PPPetAdLocalization.text(
-                    "a11y_btn_call_user_format",
-                    fallback: "Call %@"
-                ),
-                owner.displayName
-            )
-        )
-        .accessibilityHint(
-            PPPetAdLocalization.text(
-                "a11y_btn_call_advertiser_hint",
-                fallback: "Double-tap to call this person"
-            )
-        )
-    }
-
-
-
 
     private func primaryButton(
         title: String,
@@ -847,7 +891,7 @@ struct PPPetAdContactDock: View {
                     if isLoading {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(PPPetAdViewerStyle.actionForeground)
+                            .tint(primaryActionForeground)
                     } else {
                         Image(
                             systemName:
@@ -863,9 +907,7 @@ struct PPPetAdContactDock: View {
 
                 Text(title)
                     .font(PPPetAdTypography.calloutBold)
-                    .foregroundStyle(
-                        PPPetAdViewerStyle.actionForeground
-                    )
+                    .foregroundStyle(primaryActionForeground)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -891,6 +933,7 @@ struct PPPetAdContactDock: View {
         }
         .buttonStyle(PPBottomDecisionPressStyle())
         .disabled(isLoading)
+        .opacity(isLoading ? 0.88 : 1)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(
             isLoading
@@ -1016,7 +1059,7 @@ struct PPPetAdContactDock: View {
                 )
                 .font(PPPetAdTypography.calloutBold)
             }
-            .foregroundStyle(PPPetAdViewerStyle.actionForeground)
+            .foregroundStyle(primaryActionForeground)
             .padding(.horizontal, PPSpace.base)
             .frame(
                 maxWidth:
@@ -1044,19 +1087,17 @@ struct PPPetAdContactDock: View {
     }
 
     private var loadingDock: some View {
-        Group {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: PPSpace.md) {
-                    loadingOwnerIdentity
-                    loadingPrimaryAction
-                }
+                loadingOwnerIdentity
             } else {
-                HStack(spacing: PPSpace.md) {
+                HStack(spacing: PPSpace.sm) {
                     loadingOwnerIdentity
-                    loadingPrimaryAction
-                        .frame(maxWidth: 164)
+                    loadingUtilityAction
                 }
             }
+
+            loadingPrimaryAction
         }
         .fixedSize(horizontal: false, vertical: true)
         .allowsHitTesting(false)
@@ -1090,6 +1131,18 @@ struct PPPetAdContactDock: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var loadingUtilityAction: some View {
+        RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            style: .continuous
+        )
+        .fill(Color.ppTextTertiary.opacity(0.10))
+        .frame(
+            width: 88,
+            height: PPBottomDecisionBarGeometry.utilityControlSize
+        )
+    }
+
     private var loadingPrimaryAction: some View {
         RoundedRectangle(
             cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
@@ -1106,40 +1159,57 @@ struct PPPetAdContactDock: View {
             : PPBottomDecisionBarGeometry.controlHeight
     }
 
-    private var interestTitle: String {
-        let normalizedGender =
-            store.snapshot.ad.gender?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .lowercased()
-            ?? ""
+    private var primaryActionForeground: Color {
+        .white
+    }
 
-        switch normalizedGender {
-        case "female":
+    private var chatActionTitle: String {
+        switch store.chatState {
+        case .working:
             return PPPetAdLocalization.text(
-                "pet_ad_viewer_interest_female",
-                fallback: "I Want Her"
+                "pet_ad_viewer_chat_opening",
+                fallback: "Opening chat"
             )
-        case "male":
+        case .succeeded:
             return PPPetAdLocalization.text(
-                "pet_ad_viewer_interest_male",
-                fallback: "I Want Him"
+                "pet_ad_viewer_chat_ready",
+                fallback: "Chat ready"
             )
-        case "undefined":
+        case .failed:
             return PPPetAdLocalization.text(
-                "pet_ad_viewer_interest_neutral",
-                fallback: "I’m Interested"
+                "pet_ad_viewer_chat_retry",
+                fallback: "Try chat again"
             )
-        default:
-            return store.snapshot.ad.isFemale
-                ? PPPetAdLocalization.text(
-                    "pet_ad_viewer_interest_female",
-                    fallback: "I Want Her"
-                )
-                : PPPetAdLocalization.text(
-                    "pet_ad_viewer_interest_male",
-                    fallback: "I Want Him"
-                )
+        case .idle:
+            return askAboutPetTitle
         }
+    }
+
+    private var chatActionSymbol: String {
+        if case .failed = store.chatState {
+            return "arrow.clockwise"
+        }
+        return "message.fill"
+    }
+
+    private var askAboutPetTitle: String {
+        let petName = store.snapshot.title.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !petName.isEmpty else {
+            return PPPetAdLocalization.text(
+                "pet_ad_viewer_contact_pet_fallback",
+                fallback: "Ask for this pet"
+            )
+        }
+
+        return String(
+            format: PPPetAdLocalization.text(
+                "pet_ad_viewer_contact_pet_format",
+                fallback: "Ask for %@"
+            ),
+            "\u{2068}\(petName)\u{2069}"
+        )
     }
 
     private func chatAccessibilityLabel(
@@ -1160,6 +1230,13 @@ struct PPPetAdContactDock: View {
 
     private var isChatSucceeded: Bool {
         if case .succeeded = store.chatState {
+            return true
+        }
+        return false
+    }
+
+    private var isContactSignInSucceeded: Bool {
+        if case .succeeded = store.contactSignInState {
             return true
         }
         return false
@@ -1222,7 +1299,8 @@ struct PPPetAdOwnerProfilePill: View {
                         urlString: avatarURL,
                         blurHash: nil,
                         contentMode: .fill,
-                        accessibilityLabel: owner.displayName
+                        accessibilityLabel: owner.displayName,
+                        showsRetryOnFailure: false
                     )
                     .frame(width: 40, height: 40)
                     .clipShape(Circle())
@@ -1252,23 +1330,33 @@ struct PPPetAdOwnerProfilePill: View {
                 Text(verbatim: "\u{2068}\(owner.displayName)\u{2069}")
                     .font(PPPetAdTypography.subheadlineBold)
                     .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                Text(
-                    PPPetAdLocalization.text(
-                        "pet_ad_viewer_seller_role",
-                        fallback: "Advertiser"
-                    )
-                )
-                .font(PPPetAdTypography.caption)
-                .foregroundStyle(Color.ppTextSecondary.opacity(0.85))
-                .lineLimit(1)
+                Text(ownerRole)
+                    .font(PPPetAdTypography.caption)
+                    .foregroundStyle(Color.ppTextSecondary.opacity(0.85))
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(owner.displayName), \(PPPetAdLocalization.text("pet_ad_viewer_seller_role", fallback: "Advertiser"))"
+            "\(owner.displayName), \(ownerRole)"
         )
+        .accessibilitySortPriority(3)
+    }
+
+    private var ownerRole: String {
+        owner.isVerified
+            ? PPPetAdLocalization.text(
+                "pet_ad_viewer_verified_seller_role",
+                fallback: "Verified advertiser"
+            )
+            : PPPetAdLocalization.text(
+                "pet_ad_viewer_seller_role",
+                fallback: "Advertiser"
+            )
     }
 }

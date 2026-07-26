@@ -565,7 +565,7 @@ static UIColor *PPHomeUnifiedProviderMarketplaceHeroAccentColor(void)
 
 - (void)pp_updateSurfaceGradientLayout
 {
-    CGFloat cornerRadius = 18.0;
+    CGFloat cornerRadius = 22.0;
     [self.contentView layoutIfNeeded];
 
     [CATransaction begin];

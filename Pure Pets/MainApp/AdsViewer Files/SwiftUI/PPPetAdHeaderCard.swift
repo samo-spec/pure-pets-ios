@@ -25,13 +25,7 @@ struct PPPetAdDetailsSummary: View {
                 )
             }
         }
-        .padding(.leading, PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .leading) {
-            PPPetAdLivingAccentLine()
-                .frame(width: PPSpace.xs)
-                .padding(.vertical, PPSpace.xs)
-        }
         .accessibilityElement(children: .contain)
     }
 
@@ -47,24 +41,57 @@ struct PPPetAdHeaderCard: View {
     let price: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
+        VStack(alignment: .leading, spacing: headerSpacing) {
+            eyebrowRow
+            identityAndPrice
+
+            if !location.isEmpty {
+                locationLabel
+            }
+        }
+        .padding(.leading, PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) {
+            brandSpine
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var headerSpacing: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? PPSpace.lg : PPSpace.md
+    }
+
+    private var eyebrowRow: some View {
+        HStack(spacing: PPSpace.sm) {
             Text(petNameLabel)
                 .font(PPPetAdTypography.footnoteBold)
                 .foregroundStyle(Color.ppPrimary)
-                .accessibilityHidden(true)
 
-            identityAndPrice
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.34))
+                .frame(width: 34, height: 3)
+                .accessibilityHidden(true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
+        .accessibilityHidden(true)
+    }
+
+    private var brandSpine: some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(Color.ppPrimary)
+            .frame(
+                width: colorSchemeContrast == .increased ? 5 : 4
+            )
+            .padding(.vertical, PPSpace.xs)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
     private var identityAndPrice: some View {
         if price.isEmpty {
-            identityBlock
+            titleView
         } else if dynamicTypeSize >= .xxLarge {
             stackedIdentityAndPrice
         } else {
@@ -77,30 +104,21 @@ struct PPPetAdHeaderCard: View {
 
     private var horizontalIdentityAndPrice: some View {
         HStack(alignment: .top, spacing: PPSpace.lg) {
-            identityBlock
+            titleView
                 .layoutPriority(1)
 
-            Spacer(minLength: 0)
+            Spacer(minLength: PPSpace.sm)
 
             PPPetAdPriceView(price: price)
-                .fixedSize(horizontal: true, vertical: false)
+                .frame(maxWidth: 168, alignment: .trailing)
         }
     }
 
     private var stackedIdentityAndPrice: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            identityBlock
-            PPPetAdPriceView(price: price)
-        }
-    }
-
-    private var identityBlock: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
             titleView
-
-            if !location.isEmpty {
-                locationLabel
-            }
+            PPPetAdPriceView(price: price)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -132,16 +150,28 @@ struct PPPetAdHeaderCard: View {
     }
 
     private var locationLabel: some View {
-        HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
             Image(systemName: "mappin.and.ellipse")
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.ppTextSecondary)
+                .frame(width: 24, height: 24)
+                .background(
+                    Color.ppTextTertiary.opacity(
+                        colorSchemeContrast == .increased ? 0.18 : 0.10
+                    ),
+                    in: RoundedRectangle(
+                        cornerRadius: PPSpace.sm,
+                        style: .continuous
+                    )
+                )
                 .accessibilityHidden(true)
 
             Text(verbatim: "\u{2068}\(location)\u{2069}")
                 .font(PPPetAdTypography.callout)
                 .foregroundStyle(Color.ppTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .padding(.top, 1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
@@ -155,18 +185,46 @@ struct PPPetAdHeaderCard: View {
 private struct PPPetAdPriceView: View {
     let price: String
 
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.xxs) {
             Text(PPPetAdLocalization.text("Price", fallback: "Price"))
-                .font(PPPetAdTypography.caption)
-                .foregroundStyle(Color.ppTextSecondary)
+                .font(PPPetAdTypography.footnoteBold)
+                .foregroundStyle(Color.ppPrimary)
                 .accessibilityHidden(true)
 
             Text(verbatim: "\u{2068}\(price)\u{2069}")
                 .font(PPPetAdTypography.price)
                 .foregroundStyle(Color.ppPrimary)
-                .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, PPSpace.sm)
+        .background(
+            Color.ppPrimary.opacity(
+                colorSchemeContrast == .increased ? 0.16 : 0.08
+            ),
+            in: RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: PPCorner.medium,
+                style: .continuous
+            )
+            .strokeBorder(
+                Color.ppPrimary.opacity(
+                    colorSchemeContrast == .increased ? 0.42 : 0.18
+                ),
+                lineWidth:
+                    colorSchemeContrast == .increased
+                    ? 1.25
+                    : PPPetAdViewerStyle.hairlineWidth
+            )
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(PPPetAdLocalization.text("Price", fallback: "Price")): \(price)")
@@ -174,126 +232,22 @@ private struct PPPetAdPriceView: View {
     }
 }
 
-@available(iOS 16.0, *)
-private struct PPPetAdLivingAccentLine: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    @State private var isDrawn = false
-    @State private var sweepProgress: CGFloat = 0
-    @State private var isSweepVisible = false
-    @State private var hasCompletedMotion = false
-
-    var body: some View {
-        GeometryReader { proxy in
-            let lineHeight = max(proxy.size.height, 1)
-            let sweepHeight = min(max(lineHeight * 0.16, 32), 72)
-
-            ZStack(alignment: .top) {
-                Capsule(style: .continuous)
-                    .fill(Color.ppPrimary)
-
-                if !reduceMotion {
-                    Capsule(style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    .clear,
-                                    Color.white.opacity(0.88),
-                                    .clear
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .frame(height: sweepHeight)
-                        .offset(
-                            y: -sweepHeight
-                                + ((lineHeight + (sweepHeight * 2)) * sweepProgress)
-                        )
-                        .opacity(
-                            isSweepVisible
-                                ? (colorSchemeContrast == .increased ? 0.44 : 0.32)
-                                : 0
-                        )
-                }
-            }
-            .mask {
-                Capsule(style: .continuous)
-            }
-            .scaleEffect(
-                x: 1,
-                y: reduceMotion || isDrawn ? 1 : 0.01,
-                anchor: .top
-            )
-            .opacity(reduceMotion || isDrawn ? 1 : 0)
-        }
-        .accessibilityHidden(true)
-        .allowsHitTesting(false)
-        .task(id: reduceMotion) {
-            await runMotionIfNeeded()
-        }
-    }
-
-    @MainActor
-    private func runMotionIfNeeded() async {
-        guard !reduceMotion else {
-            isDrawn = true
-            isSweepVisible = false
-            sweepProgress = 1
-            hasCompletedMotion = true
-            return
-        }
-
-        guard !hasCompletedMotion else {
-            isDrawn = true
-            isSweepVisible = false
-            sweepProgress = 1
-            return
-        }
-
-        withAnimation(.easeOut(duration: 0.58)) {
-            isDrawn = true
-        }
-
-        guard await pause(nanoseconds: 520_000_000) else { return }
-
-        sweepProgress = 0
-        withAnimation(.easeOut(duration: 0.12)) {
-            isSweepVisible = true
-        }
-        withAnimation(.linear(duration: 0.86)) {
-            sweepProgress = 1
-        }
-
-        guard await pause(nanoseconds: 660_000_000) else { return }
-
-        withAnimation(.easeIn(duration: 0.20)) {
-            isSweepVisible = false
-        }
-        hasCompletedMotion = true
-    }
-
-    private func pause(nanoseconds: UInt64) async -> Bool {
-        do {
-            try await Task.sleep(nanoseconds: nanoseconds)
-            try Task.checkCancellation()
-            return true
-        } catch {
-            return false
-        }
-    }
-}
-
 struct PPPetAdDetailSectionHeading: View {
     let title: String
 
     var body: some View {
-        Text(title)
-            .font(PPPetAdTypography.title3)
-            .foregroundStyle(Color.ppTextPrimary)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+        HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(Color.ppPrimary)
+                .frame(width: 4, height: 18)
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(PPPetAdTypography.title3)
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }

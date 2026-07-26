@@ -6,9 +6,24 @@ struct PPPetAdRemoteImageView: View {
     let blurHash: String?
     let contentMode: ContentMode
     let accessibilityLabel: String
+    let showsRetryOnFailure: Bool
 
     @StateObject private var loader = PPPetAdImageLoader()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        urlString: String?,
+        blurHash: String?,
+        contentMode: ContentMode,
+        accessibilityLabel: String,
+        showsRetryOnFailure: Bool = true
+    ) {
+        self.urlString = urlString
+        self.blurHash = blurHash
+        self.contentMode = contentMode
+        self.accessibilityLabel = accessibilityLabel
+        self.showsRetryOnFailure = showsRetryOnFailure
+    }
 
     var body: some View {
         ZStack {
@@ -42,37 +57,42 @@ struct PPPetAdRemoteImageView: View {
                             )
                     )
             case .failed:
-                Button {
-                    loader.retry(blurHash: blurHash)
-                } label: {
-                    VStack(spacing: PPSpace.sm) {
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 26, weight: .semibold))
-                        Text(
-                            PPPetAdLocalization.text(
-                                "Retry",
-                                fallback: "Retry"
+                if showsRetryOnFailure {
+                    Button {
+                        loader.retry(blurHash: blurHash)
+                    } label: {
+                        VStack(spacing: PPSpace.sm) {
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .font(.system(size: 26, weight: .semibold))
+                            Text(
+                                PPPetAdLocalization.text(
+                                    "Retry",
+                                    fallback: "Retry"
+                                )
                             )
-                        )
-                        .font(
-                            .custom(
-                                "Beiruti-Bold",
-                                size: 14,
-                                relativeTo: .callout
+                            .font(
+                                .custom(
+                                    "Beiruti-Bold",
+                                    size: 14,
+                                    relativeTo: .callout
+                                )
                             )
-                        )
+                        }
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
                     }
-                    .foregroundStyle(Color.ppTextSecondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(
-                    PPPetAdLocalization.text(
-                        "load_error_retry",
-                        fallback: "Double-tap to retry loading this image."
+                    .buttonStyle(.plain)
+                    .accessibilityHint(
+                        PPPetAdLocalization.text(
+                            "load_error_retry",
+                            fallback:
+                                "Double-tap to retry loading this image."
+                        )
                     )
-                )
+                } else {
+                    placeholder
+                }
             }
         }
         .clipped()

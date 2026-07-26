@@ -74,27 +74,27 @@ public struct PPCartFloatingBarView: View {
                     .frame(maxWidth: .infinity)
                 } else {
                     // Collapsed floating pill bar (Material container collapses perfectly)
-                    HStack(spacing: 8) {
+                    HStack(spacing: 10) {
                         ZStack {
                             Circle()
                                 .fill(primaryColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                                .frame(width: 36, height: 36)
+                                .frame(width: 44, height: 44)
                             
                             Image(systemName: "cart.fill")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.system(size: 17, weight: .semibold))
                                 .foregroundStyle(primaryColor)
                         }
                         
                         Text(state.badgeText)
-                            .font(Font.ppBeirutiBold(size: 13))
+                            .font(Font.ppBeirutiBold(size: 14))
                             .foregroundStyle(.white)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 5)
                             .background(primaryColor, in: Capsule())
                     }
-                    .padding(.horizontal, 10)
+                    .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .frame(height: 48)
+                    .frame(height: 60)
                 }
             }
             .background {

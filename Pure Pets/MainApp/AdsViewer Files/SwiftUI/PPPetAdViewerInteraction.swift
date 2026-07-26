@@ -201,7 +201,7 @@ enum PPPetAdViewerStyle {
     static let heroPeachTop = Color.ppBackground
     static let heroPeachBottom = Color.ppBackground
 
-    static let sheetBackground = Color.ppBackground
+    static let sheetBackground = Color.clear
     static let actionAccent = Color.ppPrimary
     static let actionForeground = Color(
         uiColor: UIColor { traits in

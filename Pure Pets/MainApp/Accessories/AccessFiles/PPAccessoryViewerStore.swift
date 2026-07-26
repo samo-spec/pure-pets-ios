@@ -21,12 +21,14 @@ final class PPAccessoryViewerStore: ObservableObject {
     @Published private(set) var cartItemsCount = 0
     @Published private(set) var remainingStock = 0
     @Published private(set) var tideSuccessToken = 0
+    @Published private(set) var pricePulseToken = 0
     @Published private(set) var bannerMessage: String?
 
-    private let accessory: PetAccessory?
+    private var accessory: PetAccessory?
     private weak var presenter: UIViewController?
     private var didLoad = false
     private var successResetTask: Task<Void, Never>?
+    private var liveRegistration: Any?
 
     init(accessory: PetAccessory?, presenter: UIViewController) {
         self.accessory = accessory
@@ -35,6 +37,9 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     deinit {
         successResetTask?.cancel()
+        if let registration = liveRegistration as? NSObject {
+            registration.perform(Selector(("remove")))
+        }
     }
 
     func load() async {
@@ -67,6 +72,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         loadOwner()
         loadSuggestions()
         loadFavorite()
+        startLiveListener()
     }
 
     func retry() {
@@ -84,6 +90,7 @@ final class PPAccessoryViewerStore: ObservableObject {
         loadSuggestions()
         loadFavorite()
         refreshCartState()
+        startLiveListener()
     }
 
     func retryOwner() {
@@ -92,6 +99,14 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     func retrySuggestions() {
         loadSuggestions()
+    }
+
+    var totalPriceText: String {
+        guard let accessory else { return snapshot?.price ?? "" }
+        return PPAccessoryViewerLegacyBridge.formattedPrice(
+            for: accessory,
+            quantity: quantity
+        )
     }
 
     func refreshCartState() {
@@ -108,12 +123,14 @@ final class PPAccessoryViewerStore: ObservableObject {
             return
         }
         quantity += 1
+        pricePulseToken += 1
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
     }
 
     func decrementQuantity() {
         guard cartPhase != .processing, quantity > 1 else { return }
         quantity -= 1
+        pricePulseToken += 1
         PPAccessoryViewerLegacyBridge.playSelectionFeedback()
     }
 
@@ -181,6 +198,84 @@ final class PPAccessoryViewerStore: ObservableObject {
             }
         }
     }
+
+    /// Async bridge for ``AnimatedAddToCartButton``.
+    ///
+    /// Returns the updated total cart items count on success.
+    /// Throws on any failure so the animated button can show its retry state.
+    func addToCartAsync() async throws -> Int {
+        guard let accessory,
+              let snapshot,
+              snapshot.showsCart,
+              !snapshot.isUnavailable,
+              remainingStock > 0,
+              let presenter else {
+            throw PPAccessoryCartError.unavailable
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            PPAccessoryViewerLegacyBridge.addToCart(
+                accessory,
+                quantity: quantity,
+                from: presenter
+            ) { [weak self] result, _, cartQuantity, remainingStock in
+                Task { @MainActor in
+                    guard let self else {
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                        return
+                    }
+                    self.cartQuantity = cartQuantity
+                    self.cartItemsCount =
+                        PPAccessoryViewerLegacyBridge.cartItemsCount()
+                    self.remainingStock = remainingStock
+
+                    switch result {
+                    case .success:
+                        self.quantity = 1
+                        continuation.resume(returning: self.cartItemsCount)
+                    case .cancelled, .authenticationRequired:
+                        continuation.resume(
+                            throwing: CancellationError()
+                        )
+                    case .offline:
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_cart_offline"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.offline
+                        )
+                    case .outOfStock:
+                        self.bannerMessage =
+                            PPAccessoryViewerL10n.text("Out of stock")
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.outOfStock
+                        )
+                    case .unavailable:
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_item_unavailable"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.unavailable
+                        )
+                    case .failed:
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_add_failed"
+                        )
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                    @unknown default:
+                        continuation.resume(
+                            throwing: PPAccessoryCartError.failed
+                        )
+                    }
+                }
+            }
+        }
+    }
+
 
     func toggleFavorite() {
         guard let accessory, favoritePhase != .loading else { return }
@@ -392,5 +487,31 @@ final class PPAccessoryViewerStore: ObservableObject {
             guard !Task.isCancelled else { return }
             self?.cartPhase = .ready
         }
+    }
+
+    private func startLiveListener() {
+        guard let accessoryID = accessory?.accessoryID, !accessoryID.isEmpty else { return }
+        stopLiveListener()
+        liveRegistration = PPAccessoryViewerLegacyBridge.listenToAccessory(
+            accessoryID: accessoryID
+        ) { [weak self] updatedAccessory in
+            Task { @MainActor in
+                guard let self, let updatedAccessory else { return }
+                let oldPrice = self.snapshot?.price
+                self.accessory = updatedAccessory
+                self.snapshot = PPAccessoryViewerSnapshot(accessory: updatedAccessory)
+                self.refreshCartState()
+                if oldPrice != self.snapshot?.price {
+                    self.pricePulseToken += 1
+                }
+            }
+        }
+    }
+
+    private func stopLiveListener() {
+        if let registration = liveRegistration as? NSObject {
+            registration.perform(Selector(("remove")))
+        }
+        liveRegistration = nil
     }
 }

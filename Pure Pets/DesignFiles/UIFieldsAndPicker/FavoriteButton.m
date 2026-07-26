@@ -233,6 +233,11 @@
    forControlEvents:UIControlEventTouchUpInside];
 }
 
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    self.layer.cornerRadius = MIN(self.bounds.size.width, self.bounds.size.height) / 2.0;
+}
+
 #pragma mark - 💖 Appearance
 
 - (void)updateAppearance {

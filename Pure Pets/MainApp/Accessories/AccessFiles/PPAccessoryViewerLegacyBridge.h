@@ -35,6 +35,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
 
 + (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(formattedPrice(for:));
++ (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory quantity:(NSInteger)quantity
+    NS_SWIFT_NAME(formattedPrice(for:quantity:));
 + (NSString *)formattedOriginalPriceForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(formattedOriginalPrice(for:));
 + (NSString *)categoryNameForAccessory:(PetAccessory *)accessory
@@ -72,6 +74,10 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
 + (NSInteger)cartQuantityForAccessory:(PetAccessory *)accessory
     NS_SWIFT_NAME(cartQuantity(for:));
 + (NSInteger)cartItemsCount NS_SWIFT_NAME(cartItemsCount());
+
++ (nullable id)listenToAccessoryID:(NSString *)accessoryID
+                           onChange:(void (^)(PetAccessory * _Nullable updatedAccessory))onChange
+    NS_SWIFT_NAME(listenToAccessory(accessoryID:onChange:));
 
 + (void)fetchOwnerForAccessory:(PetAccessory *)accessory
                     completion:(void (^)(UserModel * _Nullable user,

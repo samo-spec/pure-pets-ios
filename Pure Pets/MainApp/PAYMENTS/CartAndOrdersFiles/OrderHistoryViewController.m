@@ -545,7 +545,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     // Complete hero-card background. Keep all legacy blur/gradient/orb material out
     // of this surface so PPBackgroundView is the single background source.
     PPBackgroundView *glass = [PPBackgroundView new];
-    glass.accentStyle =  PPHeroGlassAccentStyleBBBaseBackground;
+    glass.accentStyle =  PPHeroGlassAccentStyleCornerGlow;
     glass.PPHeroApexUseUnderFingerMotion = NO;
     
     glass.overrideSurfaceColor = bageColor;

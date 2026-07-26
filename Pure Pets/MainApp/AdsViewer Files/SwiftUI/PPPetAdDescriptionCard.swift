@@ -73,15 +73,13 @@ struct PPPetAdDescriptionCard: View {
                 )
             }
         }
-        .padding(.top, PPSpace.xl)
+        .padding(.top, PPSpace.xxl)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(
-                    Color(uiColor: .separator).opacity(
-                        colorSchemeContrast == .increased ? 0.64 : 0.24
-                    )
-                )
+                .fill(Color.ppSeparator.opacity(
+                    colorSchemeContrast == .increased ? 1 : 0.72
+                ))
                 .frame(
                     height: colorSchemeContrast == .increased ? 1.5 : 1
                 )

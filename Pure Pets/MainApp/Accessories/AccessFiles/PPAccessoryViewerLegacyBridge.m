@@ -26,6 +26,7 @@
 #import "UserModel.h"
 
 @import FirebaseAuth;
+@import FirebaseFirestore;
 
 static NSString * const PPAccessoryViewerBridgeErrorDomain =
     @"com.purepets.accessory-viewer";
@@ -113,6 +114,17 @@ static UIViewController *PPAccessoryResolvedPresenter(
 {
     return [PetAccessory formatCurrency:accessory.finalPrice ?: accessory.price]
         ?: @"";
+}
+
++ (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory quantity:(NSInteger)quantity
+{
+    if (!accessory) {
+        return @"";
+    }
+    NSNumber *unitPriceNum = accessory.finalPrice ?: accessory.price;
+    double unitPrice = unitPriceNum.doubleValue;
+    double total = unitPrice * MAX(1, quantity);
+    return [PetAccessory formatCurrency:@(total)] ?: @"";
 }
 
 + (NSString *)formattedOriginalPriceForAccessory:(PetAccessory *)accessory
@@ -278,6 +290,29 @@ static UIViewController *PPAccessoryResolvedPresenter(
         [self localizedTextForKey:@"accessory_view_store_name"
                          fallback:@"Pure Pets Store"];
     return user;
+}
+
++ (nullable id)listenToAccessoryID:(NSString *)accessoryID
+                           onChange:(void (^)(PetAccessory * _Nullable updatedAccessory))onChange
+{
+    NSString *cleanID = PPAccessoryBridgeTrimmedString(accessoryID);
+    if (cleanID.length == 0 || !onChange) {
+        return nil;
+    }
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRDocumentReference *ref = [[db collectionWithPath:@"petAccessories"] documentWithPath:cleanID];
+    return [ref addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error || !snapshot || !snapshot.exists) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                onChange(nil);
+            });
+            return;
+        }
+        PetAccessory *acc = [[PetAccessory alloc] initWithDictionary:snapshot.data documentID:snapshot.documentID];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            onChange(acc);
+        });
+    }];
 }
 
 + (void)fetchOwnerForAccessory:(PetAccessory *)accessory
@@ -554,7 +589,14 @@ static UIViewController *PPAccessoryResolvedPresenter(
 
 + (nullable NSString *)avatarURLForUser:(UserModel *)user
 {
-    return user.UserImageUrl.absoluteString;
+    if (!user) return nil;
+    if (user.UserImageUrl.absoluteString.length > 0) {
+        return user.UserImageUrl.absoluteString;
+    }
+    if ([user userImageUrl].absoluteString.length > 0) {
+        return [user userImageUrl].absoluteString;
+    }
+    return nil;
 }
 
 + (nullable NSString *)phoneNumberForUser:(UserModel *)user

@@ -84,13 +84,19 @@ struct PPAccessoryRemoteImageView: View {
     let blurHash: String?
     let contentMode: ContentMode
     let accessibilityLabel: String
+    var isAvatar: Bool = false
+    var fallbackInitials: String? = nil
 
     @StateObject private var loader = PPAccessoryImageLoader()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
-            PPAccessorySubviewBackground.mediaFill
+            if isAvatar {
+                PPAccessoryPalette.brand.opacity(0.12)
+            } else {
+                PPAccessorySubviewBackground.mediaFill
+            }
 
             switch loader.state {
             case .idle:
@@ -101,13 +107,15 @@ struct PPAccessoryRemoteImageView: View {
                 } else {
                     placeholder
                 }
-                ProgressView()
-                    .tint(PPAccessoryPalette.accent)
-                    .accessibilityLabel(
-                        PPAccessoryViewerL10n.text(
-                            "accessory_view_loading_image"
+                if !isAvatar {
+                    ProgressView()
+                        .tint(PPAccessoryPalette.accent)
+                        .accessibilityLabel(
+                            PPAccessoryViewerL10n.text(
+                                "accessory_view_loading_image"
+                            )
                         )
-                    )
+                }
             case let .loaded(image):
                 rendered(image)
                     .transition(
@@ -118,25 +126,29 @@ struct PPAccessoryRemoteImageView: View {
                             )
                     )
             case .failed:
-                Button {
-                    loader.retry(blurHash: blurHash)
-                } label: {
-                    VStack(spacing: 10) {
-                        Image(systemName: "photo.badge.exclamationmark")
-                            .font(.system(size: 26, weight: .semibold))
-                        Text(PPAccessoryViewerL10n.text("Retry"))
-                            .font(PPAccessoryTypography.calloutBold)
+                if isAvatar {
+                    avatarFallback
+                } else {
+                    Button {
+                        loader.retry(blurHash: blurHash)
+                    } label: {
+                        VStack(spacing: 10) {
+                            Image(systemName: "photo.badge.exclamationmark")
+                                .font(.system(size: 26, weight: .semibold))
+                            Text(PPAccessoryViewerL10n.text("Retry"))
+                                .font(PPAccessoryTypography.calloutBold)
+                        }
+                        .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())
                     }
-                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint(
-                    PPAccessoryViewerL10n.text(
-                        "accessory_view_image_retry_hint"
+                    .buttonStyle(.plain)
+                    .accessibilityHint(
+                        PPAccessoryViewerL10n.text(
+                            "accessory_view_image_retry_hint"
+                        )
                     )
-                )
+                }
             }
         }
         .clipped()
@@ -160,11 +172,48 @@ struct PPAccessoryRemoteImageView: View {
 
     private var placeholder: some View {
         ZStack {
-            PPAccessorySubviewBackground.mediaFill
-            Image(systemName: "photo")
-                .font(.system(size: 29, weight: .medium))
-                .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.54))
+            if isAvatar {
+                avatarFallback
+            } else {
+                PPAccessorySubviewBackground.mediaFill
+                Image(systemName: "photo")
+                    .font(.system(size: 29, weight: .medium))
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.54))
+            }
         }
+    }
+
+    private var avatarFallback: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    PPAccessoryPalette.brand.opacity(0.18),
+                    PPAccessoryPalette.accent.opacity(0.24)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            if let initials = cleanInitials(from: fallbackInitials), !initials.isEmpty {
+                Text(initials)
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(PPAccessoryPalette.brand)
+            } else {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(PPAccessoryPalette.brand.opacity(0.85))
+            }
+        }
+    }
+
+    private func cleanInitials(from text: String?) -> String? {
+        guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return nil }
+        let components = text.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        if components.count >= 2, let first = components.first?.first, let second = components[1].first {
+            return String([first, second]).uppercased()
+        } else if let first = text.first {
+            return String(first).uppercased()
+        }
+        return nil
     }
 
     private func rendered(_ image: UIImage) -> some View {
