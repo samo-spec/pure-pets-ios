@@ -18,6 +18,7 @@ struct PPAccessoryViewerScreen: View {
             screenBody
                 .toolbar(.hidden, for: .navigationBar)
         }
+        .ignoresSafeArea(.all, edges: .bottom)
         .environment(
             \.layoutDirection,
             PPAccessoryViewerLegacyBridge.isRTL()
@@ -52,7 +53,8 @@ struct PPAccessoryViewerScreen: View {
             PPAccessoryViewerLoadingState(
                 topInset: topChromeInset(proxy),
                 compact: proxy.size.width < 700 ||
-                    dynamicTypeSize.isAccessibilitySize
+                    dynamicTypeSize.isAccessibilitySize,
+                bottomInset: bottomChromeInset(proxy)
             )
         case let .failed(message):
             PPAccessoryViewerErrorState(
@@ -88,9 +90,15 @@ struct PPAccessoryViewerScreen: View {
         let topInset = topChromeInset(proxy)
         let bottomInset = bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 74 : 84)
-        let decisionBarClearance: CGFloat = snapshot.showsCart
-            ? (compact ? 166 : 106)
-            : 100
+        let decisionBarClearance: CGFloat = {
+            if dynamicTypeSize.isAccessibilitySize {
+                return snapshot.showsCart ? 222 : 158
+            }
+            if snapshot.showsCart {
+                return compact ? 158 : 104
+            }
+            return 98
+        }()
 
         return ZStack(alignment: .top) {
             ScrollView {

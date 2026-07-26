@@ -10,9 +10,10 @@ class TransitionManager: NSObject, UIViewControllerAnimatedTransitioning {
         self.state = state
     }
 
-    func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval { state.animationDuration }
+    func transitionDuration(using transitionContext: UIViewControllerContextTransitioning?) -> TimeInterval { state.currentDuration }
 
     func animateTransition(using transitionContext: UIViewControllerContextTransitioning) {
+        state.isPushing = (operation == .push)
         switch operation {
         case .push:
             guard
@@ -63,7 +64,7 @@ class TransitionManager: NSObject, UIViewControllerAnimatedTransitioning {
         containerView.addSubview(toViewController.view)
         toViewController.view.alpha = 0
 
-        let animator = UIViewPropertyAnimator(duration: state.animationDuration, curve: .easeInOut)
+        let animator = UIViewPropertyAnimator(duration: state.currentDuration, curve: .easeOut)
         animator.addCompletion { [weak self] position in
             cancellable.cancel()
             self?.state.stopAnimation()
@@ -96,7 +97,7 @@ class TransitionManager: NSObject, UIViewControllerAnimatedTransitioning {
 
         state.startDismissal()
 
-        let animator = UIViewPropertyAnimator(duration: state.animationDuration, curve: .easeInOut)
+        let animator = UIViewPropertyAnimator(duration: state.currentDuration, curve: .easeOut)
         animator.addCompletion { [weak self] position in
             self?.state.stopAnimation()
             self?.state.clearState()

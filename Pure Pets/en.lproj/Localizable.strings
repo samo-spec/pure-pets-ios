@@ -3735,9 +3735,14 @@
 
 /* SwiftUI Beach Accessory Viewer */
 "accessory_view_add_failed" = "Couldn’t add";
+"accessory_view_add_accessibility_format" = "%@, %@";
 "accessory_view_add_to_cart" = "Add to Cart";
 "accessory_view_add_to_cart_hint" = "Adds the selected quantity using the current cart and stock rules.";
 "accessory_view_adding_to_cart" = "Adding…";
+"accessory_view_cart_count_format" = "Cart items: %ld";
+"accessory_view_cart_offline" = "You’re offline. Reconnect, then try again.";
+"accessory_view_cart_selection_format" = "Quantity %ld, %ld available";
+"accessory_view_contact_unavailable" = "Seller contact unavailable";
 "accessory_view_contact_for_used" = "Contact the seller to continue";
 "accessory_view_decrease_quantity" = "Decrease quantity";
 "accessory_view_favorite_failed" = "Couldn’t update this favorite.";
@@ -3747,12 +3752,15 @@
 "accessory_view_listed_on" = "Listed";
 "accessory_view_loading_image" = "Loading product image";
 "accessory_view_loading_product" = "Loading accessory";
+"accessory_view_loading_cart_actions" = "Loading purchase actions";
+"accessory_view_loading_seller" = "Loading seller details";
 "accessory_view_loading_suggestions" = "Loading related accessories";
 "accessory_view_loading_video" = "Loading product video";
 "accessory_view_no_media" = "Product media is not available";
 "accessory_view_open_cart" = "Open cart";
 "accessory_view_open_gallery" = "Open full-screen gallery";
 "accessory_view_owner_failed" = "Seller details couldn’t be loaded.";
+"accessory_view_quantity_format" = "Quantity %ld";
 "accessory_view_read_less" = "Show less";
 "accessory_view_read_more" = "Read more";
 "accessory_view_remaining_format" = "%ld left after cart";

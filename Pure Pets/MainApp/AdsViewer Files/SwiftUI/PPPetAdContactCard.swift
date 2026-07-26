@@ -609,10 +609,15 @@ struct PPPetAdContactDock: View {
                 reduceMotion ? nil : PPPetAdViewerMotion.state,
                 value: stateIdentity
             )
-            // The screen pins this dock to the bottom of a full-height overlay.
-            // Keep the dock on its intrinsic vertical axis so flexible controls
-            // cannot consume the overlay's entire proposed height.
+            .padding(PPBottomDecisionBarGeometry.contentPadding)
+            .ppBottomDecisionBarSurface()
             .fixedSize(horizontal: false, vertical: true)
+            .transaction { transaction in
+                if reduceMotion {
+                    transaction.disablesAnimations = true
+                    transaction.animation = nil
+                }
+            }
     }
 
     @ViewBuilder
@@ -638,10 +643,47 @@ struct PPPetAdContactDock: View {
                 loadingDock
             case .loaded:
                 if let owner = store.owner {
-                    actionRow(for: owner)
+                    if store.canMessageOwner || store.canCallOwner {
+                        actionRow(for: owner)
+                    } else {
+                        recoveryDock(
+                            symbol: "phone.down.fill",
+                            title: PPPetAdLocalization.text(
+                                "pet_ad_viewer_owner_unavailable",
+                                fallback: "Contact details are unavailable"
+                            ),
+                            message: owner.displayName,
+                            tint: .ppWarning,
+                            retry: store.retryOwner
+                        )
+                    }
+                } else {
+                    unavailableDock
                 }
-            case .empty, .offline, .failed:
-                EmptyView()
+            case .empty:
+                unavailableDock
+            case let .offline(message):
+                recoveryDock(
+                    symbol: "wifi.slash",
+                    title: PPPetAdLocalization.text(
+                        "pet_ad_viewer_owner_offline",
+                        fallback: "Contact details are offline"
+                    ),
+                    message: message,
+                    tint: .ppWarning,
+                    retry: store.retryOwner
+                )
+            case let .failed(message):
+                recoveryDock(
+                    symbol: "person.crop.circle.badge.exclamationmark",
+                    title: PPPetAdLocalization.text(
+                        "pet_ad_viewer_owner_unavailable",
+                        fallback: "Contact details are unavailable"
+                    ),
+                    message: message,
+                    tint: .ppError,
+                    retry: store.retryOwner
+                )
             }
         }
     }
@@ -710,6 +752,12 @@ struct PPPetAdContactDock: View {
             isSuccess: isChatSucceeded,
             action: store.openChat
         )
+        .accessibilityHint(
+            PPPetAdLocalization.text(
+                "a11y_btn_chat_advertiser_hint",
+                fallback: "Double-tap to start a chat with this person"
+            )
+        )
     }
 
     private func callPrimaryButton(
@@ -729,6 +777,12 @@ struct PPPetAdContactDock: View {
             isSuccess: false,
             action: store.callOwner
         )
+        .accessibilityHint(
+            PPPetAdLocalization.text(
+                "a11y_btn_call_advertiser_hint",
+                fallback: "Double-tap to call this person"
+            )
+        )
     }
 
     private func callIconButton(
@@ -738,21 +792,27 @@ struct PPPetAdContactDock: View {
             Image(systemName: "phone.fill")
                 .font(.system(size: 19, weight: .semibold))
                 .foregroundStyle(PPPetAdViewerStyle.darkActionForeground)
-                .frame(width: 50, height: 50)
+                .frame(
+                    width: PPBottomDecisionBarGeometry.utilityControlSize,
+                    height: PPBottomDecisionBarGeometry.utilityControlSize
+                )
                 .background(
                     PPPetAdViewerStyle.darkActionFill,
-                    in: Circle()
+                    in: RoundedRectangle(
+                        cornerRadius:
+                            PPBottomDecisionBarGeometry.controlRadius,
+                        style: .continuous
+                    )
                 )
-                .overlay {
-                    Circle()
-                        .strokeBorder(
-                            Color(uiColor: .separator).opacity(0.24),
-                            lineWidth: PPPetAdViewerStyle.hairlineWidth
-                        )
-                }
-                .contentShape(Circle())
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius:
+                            PPBottomDecisionBarGeometry.controlRadius,
+                        style: .continuous
+                    )
+                )
         }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
+        .buttonStyle(PPBottomDecisionPressStyle(pressedScale: 0.94))
         .accessibilityLabel(
             String(
                 format: PPPetAdLocalization.text(
@@ -760,6 +820,12 @@ struct PPPetAdContactDock: View {
                     fallback: "Call %@"
                 ),
                 owner.displayName
+            )
+        )
+        .accessibilityHint(
+            PPPetAdLocalization.text(
+                "a11y_btn_call_advertiser_hint",
+                fallback: "Double-tap to call this person"
             )
         )
     }
@@ -810,20 +876,21 @@ struct PPPetAdContactDock: View {
             .background(
                 PPPetAdViewerStyle.actionAccent,
                 in: RoundedRectangle(
-                    cornerRadius: PPPetAdViewerStyle.insetRadius,
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
                     style: .continuous
                 )
             )
             .contentShape(
                 RoundedRectangle(
-                    cornerRadius: PPPetAdViewerStyle.insetRadius,
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
                     style: .continuous
                 )
             )
         }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.985))
+        .buttonStyle(PPBottomDecisionPressStyle())
         .disabled(isLoading)
-        .opacity(isLoading ? 0.78 : 1)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(
             isLoading
@@ -839,6 +906,140 @@ struct PPPetAdContactDock: View {
                     )
                     : ""
                 )
+        )
+    }
+
+    private var unavailableDock: some View {
+        recoveryDock(
+            symbol: "person.crop.circle.badge.questionmark",
+            title: PPPetAdLocalization.text(
+                "pet_ad_viewer_owner_unavailable",
+                fallback: "Contact details are unavailable"
+            ),
+            message: PPPetAdLocalization.text(
+                "pet_ad_viewer_owner_unavailable_detail",
+                fallback:
+                    "The advertiser profile could not be found for this listing."
+            ),
+            tint: .ppWarning,
+            retry: store.retryOwner
+        )
+    }
+
+    private func recoveryDock(
+        symbol: String,
+        title: String,
+        message: String,
+        tint: Color,
+        retry: @escaping () -> Void
+    ) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    recoveryLabel(
+                        symbol: symbol,
+                        title: title,
+                        message: message,
+                        tint: tint
+                    )
+                    retryButton(action: retry)
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    recoveryLabel(
+                        symbol: symbol,
+                        title: title,
+                        message: message,
+                        tint: tint
+                    )
+                    retryButton(action: retry)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+        }
+    }
+
+    private func recoveryLabel(
+        symbol: String,
+        title: String,
+        message: String,
+        tint: Color
+    ) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: 42, height: 42)
+                .background(
+                    tint.opacity(0.10),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                Text(title)
+                    .font(PPPetAdTypography.subheadlineBold)
+                    .foregroundStyle(Color.ppTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if !message.isEmpty {
+                    Text(message)
+                        .font(PPPetAdTypography.caption)
+                        .foregroundStyle(Color.ppTextSecondary)
+                        .lineLimit(
+                            dynamicTypeSize.isAccessibilitySize ? nil : 2
+                        )
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func retryButton(
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 15, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(
+                    PPPetAdLocalization.text(
+                        "Retry",
+                        fallback: "Retry"
+                    )
+                )
+                .font(PPPetAdTypography.calloutBold)
+            }
+            .foregroundStyle(PPPetAdViewerStyle.actionForeground)
+            .padding(.horizontal, PPSpace.base)
+            .frame(
+                maxWidth:
+                    dynamicTypeSize.isAccessibilitySize
+                    ? .infinity
+                    : nil,
+                minHeight: PPBottomDecisionBarGeometry.utilityControlSize
+            )
+            .background(
+                PPPetAdViewerStyle.actionAccent,
+                in: RoundedRectangle(
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .accessibilityLabel(
+            PPPetAdLocalization.text(
+                "Retry",
+                fallback: "Retry"
+            )
         )
     }
 
@@ -891,7 +1092,7 @@ struct PPPetAdContactDock: View {
 
     private var loadingPrimaryAction: some View {
         RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.insetRadius,
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
             style: .continuous
         )
         .fill(Color.ppTextTertiary.opacity(0.12))
@@ -902,7 +1103,7 @@ struct PPPetAdContactDock: View {
     private var primaryButtonHeight: CGFloat {
         dynamicTypeSize.isAccessibilitySize
             ? 64
-            : 54
+            : PPBottomDecisionBarGeometry.controlHeight
     }
 
     private var interestTitle: String {
@@ -989,19 +1190,7 @@ extension PPPetAdViewerStore {
     var ppShowsContactDock: Bool {
         guard case .content = screenState else { return false }
         guard !isViewingOwnAdvertisement else { return false }
-
-        if !isSignedIn {
-            return true
-        }
-
-        switch ownerState {
-        case .idle, .loading:
-            return true
-        case .loaded:
-            return owner != nil && (canMessageOwner || canCallOwner)
-        case .empty, .offline, .failed:
-            return false
-        }
+        return true
     }
 
     var ppShowsInlineContactStatus: Bool {

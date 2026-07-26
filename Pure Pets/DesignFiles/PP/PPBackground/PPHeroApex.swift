@@ -1341,19 +1341,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let accent = resolvedColor(accentColorOverride ?? Chromatics.signatureRose)
 
         if isDark {
-            let highlight = resolvedColor(Chromatics.baseDarkHighlight)
-            let middle = resolvedColor(Chromatics.baseDarkMiddle)
-            let tail = resolvedColor(Chromatics.baseDarkTail)
-            let warm = resolvedColor(Chromatics.baseDarkWarm)
-            let blush = blend(
-                resolvedColor(Chromatics.baseDarkBlush),
-                with: accent,
-                amount: 0.08
-            )
-            let lilac = resolvedColor(Chromatics.baseDarkLilac)
-            let quiet = blend(middle, with: highlight, amount: 0.44)
-            let deepened = blend(tail, with: lilac, amount: 0.30)
-            let warmLift = blend(highlight, with: warm, amount: 0.34)
+            let appBg = UIColor(named: "AppBackgroundColor") ?? UIColor(white: 0.05, alpha: 1.0)
+            let highlight = blend(appBg, with: .white, amount: 0.04)
+            let middle = appBg
+            let tail = blend(appBg, with: .black, amount: 0.15)
+            let warm = appBg
+            let blush = highlight
+            let lilac = appBg
+            let quiet = middle
+            let deepened = tail
+            let warmLift = highlight
 
             return Palette(
                 accent: accent,
@@ -1384,22 +1381,23 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             )
         }
 
-        let pearl = resolvedColor(Chromatics.basePearl)
-        let porcelain = resolvedColor(Chromatics.basePorcelain)
-        let mineralBeige = resolvedColor(Chromatics.baseMineralBeige)
-        let blush = resolvedColor(Chromatics.baseBlush)
-        let quietLilac = resolvedColor(Chromatics.baseQuietLilac)
-        let warmLift = blend(pearl, with: blush, amount: 0.18)
-        let quiet = blend(porcelain, with: pearl, amount: 0.38)
-        let mineralLilac = blend(mineralBeige, with: quietLilac, amount: 0.36)
-        let roseVeil = blend(blush, with: accent, amount: 0.075)
-        let lilacVeil = blend(quietLilac, with: porcelain, amount: 0.60)
+        let pearl = UIColor.white
+        let appBg = UIColor(named: "AppBackgroundColor") ?? UIColor(white: 0.97, alpha: 1.0)
+        let porcelain = appBg
+        let mineralBeige = appBg
+        let blush = pearl
+        let quietLilac = pearl
+        let warmLift = pearl
+        let quiet = pearl
+        let mineralLilac = appBg
+        let roseVeil = pearl
+        let lilacVeil = pearl
 
         return Palette(
             accent: accent,
             surfaceHighlight: pearl,
             surfaceMiddle: porcelain,
-            surfaceTail: blend(porcelain, with: mineralBeige, amount: 0.48),
+            surfaceTail: porcelain,
             depth: mineralLilac,
             aurora: [
                 warmLift,

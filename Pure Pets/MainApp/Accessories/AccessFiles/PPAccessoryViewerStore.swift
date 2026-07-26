@@ -151,13 +151,28 @@ final class PPAccessoryViewerStore: ObservableObject {
                     self.scheduleSuccessReset()
                 case .cancelled, .authenticationRequired:
                     self.cartPhase = .ready
-                case .offline, .outOfStock, .unavailable, .failed:
+                case .offline:
                     self.cartPhase = .failed
-                    if result == .unavailable || result == .failed {
-                        self.bannerMessage = PPAccessoryViewerL10n.text(
-                            "accessory_view_add_failed"
-                        )
-                    }
+                    self.bannerMessage = PPAccessoryViewerL10n.text(
+                        "accessory_view_cart_offline"
+                    )
+                    self.scheduleFailureReset()
+                case .outOfStock:
+                    self.cartPhase = .failed
+                    self.bannerMessage =
+                        PPAccessoryViewerL10n.text("Out of stock")
+                    self.scheduleFailureReset()
+                case .unavailable:
+                    self.cartPhase = .failed
+                    self.bannerMessage = PPAccessoryViewerL10n.text(
+                        "accessory_view_item_unavailable"
+                    )
+                    self.scheduleFailureReset()
+                case .failed:
+                    self.cartPhase = .failed
+                    self.bannerMessage = PPAccessoryViewerL10n.text(
+                        "accessory_view_add_failed"
+                    )
                     self.scheduleFailureReset()
                 @unknown default:
                     self.cartPhase = .failed
@@ -227,6 +242,7 @@ final class PPAccessoryViewerStore: ObservableObject {
 
     func openCart() {
         guard let presenter else { return }
+        PPAccessoryViewerLegacyBridge.playSelectionFeedback()
         PPAccessoryViewerLegacyBridge.openCart(from: presenter)
     }
 

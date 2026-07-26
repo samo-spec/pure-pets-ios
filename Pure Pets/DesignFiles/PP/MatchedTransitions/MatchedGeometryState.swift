@@ -10,7 +10,13 @@ public class MatchedGeometryState: ObservableObject {
     @Published var destinations: MatchedGeometryValues = [:]
     var sources: MatchedGeometryValues = [:]
 
-    let animationDuration: TimeInterval
+    let pushDuration: TimeInterval
+    let popDuration: TimeInterval
+    var isPushing: Bool = true
+    
+    var currentDuration: TimeInterval {
+        isPushing ? pushDuration : popDuration
+    }
 
     var sourcesArray: [(id: AnyHashable, view: AnyView, frame: CGRect)] {
         sources
@@ -20,8 +26,9 @@ public class MatchedGeometryState: ObservableObject {
             .map { (id: $0.key, view: $0.value.0, frame: $0.value.1) }
     }
 
-    public init(animationDuration: TimeInterval = 0.6) {
-        self.animationDuration = animationDuration
+    public init(animationDuration: TimeInterval = 0.28, pushDuration: TimeInterval = 0.28, popDuration: TimeInterval = 0.22) {
+        self.pushDuration = pushDuration
+        self.popDuration = popDuration
     }
 
     func startPresentation() {

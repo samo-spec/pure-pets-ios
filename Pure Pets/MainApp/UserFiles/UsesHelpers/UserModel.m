@@ -332,7 +332,8 @@ static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
 
     NSString *imageURLString = PPSafeString(safeDict[kUserKeyUserImageURL]);
     NSString *photoURLString = PPSafeString(safeDict[kUserKeyPhotoURL]);
-    NSString *resolvedImageURL = imageURLString.length ? imageURLString : photoURLString;
+    NSString *avatarURLString = PPSafeString(safeDict[@"avatarURL"]);
+    NSString *resolvedImageURL = imageURLString.length ? imageURLString : (photoURLString.length ? photoURLString : avatarURLString);
     self.UserImageUrl = PPSafeURL(resolvedImageURL);
 
     self.loginDate = PPUserDateFromValue(safeDict[kUserKeyLoginDate]);

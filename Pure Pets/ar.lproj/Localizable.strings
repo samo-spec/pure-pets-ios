@@ -3714,9 +3714,14 @@
 
 /* عارض مستلزمات الشاطئ بـ SwiftUI */
 "accessory_view_add_failed" = "تعذّرت الإضافة";
+"accessory_view_add_accessibility_format" = "%@، %@";
 "accessory_view_add_to_cart" = "أضف إلى السلة";
 "accessory_view_add_to_cart_hint" = "يضيف الكمية المحددة وفق قواعد المخزون والسلة الحالية.";
 "accessory_view_adding_to_cart" = "جارِ الإضافة…";
+"accessory_view_cart_count_format" = "عناصر السلة: %ld";
+"accessory_view_cart_offline" = "أنت غير متصل. أعد الاتصال ثم حاول مجددًا.";
+"accessory_view_cart_selection_format" = "الكمية %ld، المتاح %ld";
+"accessory_view_contact_unavailable" = "التواصل مع البائع غير متاح";
 "accessory_view_contact_for_used" = "تواصل مع البائع للمتابعة";
 "accessory_view_decrease_quantity" = "تقليل الكمية";
 "accessory_view_favorite_failed" = "تعذّر تحديث المفضلة.";
@@ -3726,12 +3731,15 @@
 "accessory_view_listed_on" = "تاريخ النشر";
 "accessory_view_loading_image" = "جارِ تحميل صورة المنتج";
 "accessory_view_loading_product" = "جارِ تحميل المستلزم";
+"accessory_view_loading_cart_actions" = "جارِ تحميل خيارات الشراء";
+"accessory_view_loading_seller" = "جارِ تحميل بيانات البائع";
 "accessory_view_loading_suggestions" = "جارِ تحميل المستلزمات المرتبطة";
 "accessory_view_loading_video" = "جارِ تحميل فيديو المنتج";
 "accessory_view_no_media" = "وسائط المنتج غير متاحة";
 "accessory_view_open_cart" = "فتح السلة";
 "accessory_view_open_gallery" = "فتح معرض الصور بكامل الشاشة";
 "accessory_view_owner_failed" = "تعذّر تحميل بيانات البائع.";
+"accessory_view_quantity_format" = "الكمية %ld";
 "accessory_view_read_less" = "عرض أقل";
 "accessory_view_read_more" = "اقرأ المزيد";
 "accessory_view_remaining_format" = "متبقي %ld بعد السلة";

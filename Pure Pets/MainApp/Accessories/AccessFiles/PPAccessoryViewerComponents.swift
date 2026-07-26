@@ -993,11 +993,11 @@ struct PPAccessorySourceIsland: View {
                             : "arrow.right"
                     )
                 }
-                .foregroundStyle(PPAccessoryPalette.ink)
+                .foregroundStyle(.white)
                 .padding(.horizontal, 17)
                 .frame(minHeight: 52)
                 .ppAccessorySubviewBackground(
-                    PPAccessorySubviewBackground.quietFill,
+                    PPAccessoryPalette.brand,
                     in: RoundedRectangle(cornerRadius: 16, style: .continuous)
                 )
             }
@@ -1252,7 +1252,7 @@ struct PPAccessorySuggestionShore: View {
                 }
             )
         )
-        .frame(width: compact ? 164 : 185)
+        .frame(width: compact ? 172 : 195)
         .accessibilityElement(children: .combine)
     }
 
@@ -1325,7 +1325,7 @@ struct PPAccessorySuggestionShore: View {
                     discountStyle: .inline,
                     palette: universalPalette
                 )
-                .frame(width: compact ? 164 : 185)
+                .frame(width: compact ? 172 : 195)
             }
         }
         .accessibilityLabel(
@@ -1336,6 +1336,7 @@ struct PPAccessorySuggestionShore: View {
     }
 }
 
+@available(iOS 16.0, *)
 struct PPAccessoryPersistentDecisionBar: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let snapshot: PPAccessoryViewerSnapshot
@@ -1354,15 +1355,44 @@ struct PPAccessoryPersistentDecisionBar: View {
                 contactBar
             }
         }
+        .id(decisionStateIdentity)
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .opacity.combined(with: .scale(scale: 0.992))
+        )
+        .padding(PPBottomDecisionBarGeometry.contentPadding)
+        .ppBottomDecisionBarSurface()
         .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, compact ? 16 : 24)
-        .padding(.top, 16)
-        .padding(.bottom, max(bottomInset, 16))
-        .background(PPAccessorySubviewBackground.basePage)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(PPAccessorySubviewBackground.divider)
-                .frame(height: 1)
+        .padding(
+            .horizontal,
+            compact
+                ? PPBottomDecisionBarGeometry.compactScreenInset
+                : PPBottomDecisionBarGeometry.regularScreenInset
+        )
+        .padding(.top, PPSpace.sm)
+        .padding(
+            .bottom,
+            max(
+                bottomInset,
+                PPBottomDecisionBarGeometry.bottomBreathingRoom
+            )
+        )
+        .animation(
+            reduceMotion
+                ? nil
+                : .spring(
+                    response: 0.34,
+                    dampingFraction: 0.90,
+                    blendDuration: 0.04
+                ),
+            value: decisionStateIdentity
+        )
+        .transaction { transaction in
+            if reduceMotion {
+                transaction.disablesAnimations = true
+                transaction.animation = nil
+            }
         }
         .onChange(of: store.tideSuccessToken) { _ in
             animateAddConfirmation()
@@ -1370,33 +1400,39 @@ struct PPAccessoryPersistentDecisionBar: View {
     }
 
     private var cartBar: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: PPSpace.md) {
             if dynamicTypeSize.isAccessibilitySize {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
                     stockIndicator
                     if canAdd {
                         quantityControl
                     }
-                    HStack(spacing: 12) {
+                    HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
                         addButton
                         cartButton
                     }
                 }
             } else {
                 if compact {
-                    HStack(alignment: .center) {
+                    HStack(
+                        alignment: .center,
+                        spacing: PPBottomDecisionBarGeometry.controlSpacing
+                    ) {
                         stockIndicator
                         Spacer()
                         if canAdd {
                             quantityControl
                         }
                     }
-                    HStack(spacing: 12) {
+                    HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
                         addButton
                         cartButton
                     }
                 } else {
-                    HStack(alignment: .center, spacing: 16) {
+                    HStack(
+                        alignment: .center,
+                        spacing: PPBottomDecisionBarGeometry.controlSpacing
+                    ) {
                         stockIndicator
                         Spacer()
                         if canAdd {
@@ -1411,89 +1447,412 @@ struct PPAccessoryPersistentDecisionBar: View {
         }
     }
 
+    @ViewBuilder
     private var contactBar: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(snapshot.price)
-                    .font(PPAccessoryTypography.title)
-                    .foregroundStyle(PPAccessoryPalette.ink)
-                Text(PPAccessoryViewerL10n.text("accessory_view_contact_for_used"))
-                    .font(PPAccessoryTypography.caption)
-                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+        switch store.ownerPhase {
+        case .idle, .loading:
+            contactLoadingBar
+        case .loaded:
+            if store.owner != nil {
+                contactReadyBar
+            } else {
+                contactRecoveryBar(
+                    symbol: "person.crop.circle.badge.questionmark",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_contact_unavailable"
+                    ),
+                    message: PPAccessoryViewerL10n.text(
+                        "accessory_view_owner_failed"
+                    )
+                )
             }
-            Spacer()
-            Button(action: store.chatWithOwner) {
-                HStack(spacing: 8) {
-                    Image(systemName: "message.fill")
-                    Text(PPAccessoryViewerL10n.text("Chat"))
-                }
-                .font(PPAccessoryTypography.bodyBold)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 24)
-                .frame(minHeight: 56)
-                .background(PPAccessoryPalette.brand, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            .buttonStyle(PPAccessoryPressStyle())
-            .disabled(store.owner == nil)
-            .opacity(store.owner == nil ? 0.5 : 1.0)
-            .accessibilityLabel(PPAccessoryViewerL10n.text("Chat"))
+        case .empty:
+            contactRecoveryBar(
+                symbol: "person.crop.circle.badge.questionmark",
+                title: PPAccessoryViewerL10n.text(
+                    "accessory_view_contact_unavailable"
+                ),
+                message: PPAccessoryViewerL10n.text(
+                    "accessory_view_owner_failed"
+                )
+            )
+        case let .failed(message):
+            contactRecoveryBar(
+                symbol: "person.crop.circle.badge.exclamationmark",
+                title: PPAccessoryViewerL10n.text(
+                    "accessory_view_contact_unavailable"
+                ),
+                message: message
+            )
         }
     }
 
+    private var contactReadyBar: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    contactPriceSummary
+                    VStack(spacing: PPSpace.sm) {
+                        if !snapshot.isOwnItem, store.owner?.phoneNumber != nil {
+                            callButton
+                        }
+                        chatButton
+                    }
+                }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(
+                        spacing: PPBottomDecisionBarGeometry.controlSpacing
+                    ) {
+                        contactPriceSummary
+                        Spacer(minLength: PPSpace.sm)
+                        HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
+                            if !snapshot.isOwnItem, store.owner?.phoneNumber != nil {
+                                callButton
+                            }
+                            chatButton
+                                .frame(minWidth: 132, maxWidth: 176)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: PPSpace.md) {
+                        contactPriceSummary
+                        HStack(spacing: PPBottomDecisionBarGeometry.controlSpacing) {
+                            if !snapshot.isOwnItem, store.owner?.phoneNumber != nil {
+                                callButton.frame(maxWidth: .infinity)
+                            }
+                            chatButton.frame(maxWidth: .infinity)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var chatButton: some View {
+        Button(action: store.chatWithOwner) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "message.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color("AppForegroundColor"))
+                    .accessibilityHidden(true)
+                Text(PPAccessoryViewerL10n.text("Chat"))
+                    .font(PPAccessoryTypography.bodyBold)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(.horizontal, PPSpace.base)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: PPBottomDecisionBarGeometry.controlHeight
+            )
+            .background(
+                PPAccessoryPalette.brand,
+                in: RoundedRectangle(
+                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .accessibilityLabel(PPAccessoryViewerL10n.text("Chat"))
+    }
+
+    private var callButton: some View {
+        Button(action: store.callOwner) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(PPAccessoryViewerL10n.text("Call"))
+                    .font(PPAccessoryTypography.bodyBold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(PPAccessoryPalette.brand)
+            .padding(.horizontal, PPSpace.sm)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: PPBottomDecisionBarGeometry.controlHeight
+            )
+            .background(
+                Color("AppForegroundColor"),
+                in: RoundedRectangle(
+                    cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .accessibilityLabel(PPAccessoryViewerL10n.text("Call"))
+    }
+
+    private var contactPriceSummary: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(snapshot.price)
+                .font(PPAccessoryTypography.price)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_contact_for_used"
+                )
+            )
+            .font(PPAccessoryTypography.caption)
+            .foregroundStyle(PPAccessoryPalette.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var contactLoadingBar: some View {
+        HStack(spacing: PPSpace.md) {
+            VStack(alignment: .leading, spacing: PPSpace.sm) {
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(PPAccessoryPalette.ink.opacity(0.12))
+                    .frame(width: 92, height: 17)
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(PPAccessoryPalette.ink.opacity(0.08))
+                    .frame(width: 150, height: 11)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                style: .continuous
+            )
+            .fill(PPAccessoryPalette.ink.opacity(0.10))
+            .frame(
+                width: 132,
+                height: PPBottomDecisionBarGeometry.controlHeight
+            )
+        }
+        .redacted(reason: .placeholder)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            PPAccessoryViewerL10n.text(
+                "accessory_view_loading_seller"
+            )
+        )
+    }
+
+    private func contactRecoveryBar(
+        symbol: String,
+        title: String,
+        message: String
+    ) -> some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    contactRecoveryLabel(
+                        symbol: symbol,
+                        title: title,
+                        message: message
+                    )
+                    contactPrimaryButton(
+                        title: PPAccessoryViewerL10n.text("Retry"),
+                        symbol: "arrow.clockwise",
+                        action: store.retryOwner
+                    )
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    contactRecoveryLabel(
+                        symbol: symbol,
+                        title: title,
+                        message: message
+                    )
+                    contactPrimaryButton(
+                        title: PPAccessoryViewerL10n.text("Retry"),
+                        symbol: "arrow.clockwise",
+                        action: store.retryOwner
+                    )
+                    .fixedSize(horizontal: true, vertical: false)
+                }
+            }
+        }
+    }
+
+    private func contactRecoveryLabel(
+        symbol: String,
+        title: String,
+        message: String
+    ) -> some View {
+        HStack(spacing: PPSpace.sm) {
+            Image(systemName: symbol)
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(PPAccessoryPalette.warning)
+                .frame(width: 42, height: 42)
+                .background(
+                    PPAccessoryPalette.warning.opacity(0.10),
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                )
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                Text(title)
+                    .font(PPAccessoryTypography.calloutBold)
+                    .foregroundStyle(PPAccessoryPalette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(message)
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(PPAccessoryPalette.inkSecondary)
+                    .lineLimit(
+                        dynamicTypeSize.isAccessibilitySize ? nil : 2
+                    )
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func contactPrimaryButton(
+        title: String,
+        symbol: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: PPSpace.sm) {
+                Image(systemName: symbol)
+                    .font(.system(size: 16, weight: .bold))
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(PPAccessoryTypography.bodyBold)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, PPSpace.base)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: PPBottomDecisionBarGeometry.controlHeight
+            )
+            .background(
+                PPAccessoryPalette.brand,
+                in: RoundedRectangle(
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
+        }
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .accessibilityLabel(title)
+    }
+
     private var stockIndicator: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(snapshot.price)
+                .font(PPAccessoryTypography.price)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
             Text(canAdd ? remainingText : snapshot.stock)
-                .font(PPAccessoryTypography.calloutBold)
-                .foregroundStyle(canAdd ? PPAccessoryPalette.inkSecondary : PPAccessoryPalette.error)
+                .font(PPAccessoryTypography.captionBold)
+                .foregroundStyle(
+                    canAdd
+                        ? PPAccessoryPalette.inkSecondary
+                        : PPAccessoryPalette.error
+                )
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
 
     private var quantityControl: some View {
-        HStack(spacing: 4) {
-            quantityButton(symbol: "minus", enabled: store.quantity > 1, action: store.decrementQuantity)
+        HStack(spacing: PPSpace.xs) {
+            quantityButton(
+                symbol: "minus",
+                enabled: store.quantity > 1,
+                action: store.decrementQuantity
+            )
             Text("\(store.quantity)")
                 .font(PPAccessoryTypography.bodyBold)
                 .monospacedDigit()
                 .foregroundStyle(PPAccessoryPalette.ink)
-                .frame(minWidth: 32, alignment: .center)
-                .accessibilityLabel("\(PPAccessoryViewerL10n.text("Quantity")) \(store.quantity)")
-            quantityButton(symbol: "plus", enabled: store.quantity < store.remainingStock, action: store.incrementQuantity)
+                .frame(minWidth: 34, alignment: .center)
+                .accessibilityLabel(
+                    String.localizedStringWithFormat(
+                        PPAccessoryViewerL10n.text(
+                            "accessory_view_quantity_format"
+                        ),
+                        store.quantity
+                    )
+                )
+            quantityButton(
+                symbol: "plus",
+                enabled: store.quantity < store.remainingStock,
+                action: store.incrementQuantity
+            )
         }
-        .padding(4)
-        .background(PPAccessorySubviewBackground.quietFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(PPSpace.xs)
+        .background(
+            PPAccessorySubviewBackground.quietFill,
+            in: RoundedRectangle(
+                cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+                style: .continuous
+            )
+        )
     }
 
-    private func quantityButton(symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+    private func quantityButton(
+        symbol: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(enabled ? PPAccessoryPalette.ink : PPAccessoryPalette.inkSecondary.opacity(0.5))
-                .frame(width: 36, height: 36)
-                .background(PPAccessorySubviewBackground.basePage, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .shadow(color: PPAccessoryPalette.ink.opacity(0.06), radius: 2, y: 1)
+                .foregroundStyle(PPAccessoryPalette.ink)
+                .frame(width: 40, height: 40)
+                .background(
+                    PPAccessorySubviewBackground.baseSurface,
+                    in: RoundedRectangle(
+                        cornerRadius: PPCorner.small,
+                        style: .continuous
+                    )
+                )
         }
-        .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.90))
+        .buttonStyle(PPBottomDecisionPressStyle(pressedScale: 0.92))
         .disabled(!enabled || store.cartPhase == .processing)
-        .accessibilityLabel(PPAccessoryViewerL10n.text(symbol == "plus" ? "accessory_view_increase_quantity" : "accessory_view_decrease_quantity"))
+        .accessibilityLabel(
+            PPAccessoryViewerL10n.text(
+                symbol == "plus"
+                    ? "accessory_view_increase_quantity"
+                    : "accessory_view_decrease_quantity"
+            )
+        )
     }
 
     private var addButton: some View {
         Button(action: store.addToCart) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(canAdd ? PPAccessoryPalette.brand : PPAccessoryPalette.inkSecondary.opacity(0.3))
-                
+                RoundedRectangle(
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+                .fill(addButtonFill)
+
                 HStack(spacing: 8) {
                     buttonIcon
                     Text(buttonTitle)
                         .font(PPAccessoryTypography.bodyBold)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                        .minimumScaleFactor(0.86)
+
                     if canAdd && store.cartPhase == .ready {
-                        Text("•")
+                        Text("•").accessibilityHidden(true)
                         Text(snapshot.price)
                             .font(PPAccessoryTypography.bodyBold)
                             .lineLimit(1)
@@ -1502,33 +1861,106 @@ struct PPAccessoryPersistentDecisionBar: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
             }
-            .frame(maxWidth: .infinity, minHeight: 56, maxHeight: 56)
-            .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(PPAccessoryPalette.brand.opacity(addConfirmationPulse ? 0.4 : 0), lineWidth: 4)
-                    .scaleEffect(addConfirmationPulse ? 1.05 : 1)
-            }
+            .frame(
+                maxWidth: .infinity,
+                minHeight: PPBottomDecisionBarGeometry.controlHeight
+            )
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
         }
-        .scaleEffect(addConfirmationPulse ? 1.015 : 1)
-        .buttonStyle(PPAccessoryPressStyle())
-        .disabled(!canAdd || store.cartPhase == .processing)
-        .accessibilityLabel("\(buttonTitle), \(snapshot.price)")
-        .accessibilityValue(canAdd ? "\(PPAccessoryViewerL10n.text("Quantity")) \(store.quantity), \(remainingText)" : snapshot.stock)
-        .accessibilityHint(PPAccessoryViewerL10n.text("accessory_view_add_to_cart_hint"))
+        .scaleEffect(addConfirmationPulse ? 1.012 : 1)
+        .shadow(
+            color: addButtonFill.opacity(
+                addConfirmationPulse ? 0.28 : 0
+            ),
+            radius: addConfirmationPulse ? 14 : 0,
+            y: 4
+        )
+        .buttonStyle(PPBottomDecisionPressStyle())
+        .disabled(
+            !canAdd ||
+                store.cartPhase == .processing ||
+                store.cartPhase == .success
+        )
+        .accessibilityLabel(
+            String(
+                format: PPAccessoryViewerL10n.text(
+                    "accessory_view_add_accessibility_format"
+                ),
+                buttonTitle,
+                snapshot.price
+            )
+        )
+        .accessibilityValue(
+            canAdd
+                ? String.localizedStringWithFormat(
+                    PPAccessoryViewerL10n.text(
+                        "accessory_view_cart_selection_format"
+                    ),
+                    store.quantity,
+                    store.remainingStock
+                )
+                : snapshot.stock
+        )
+        .accessibilityHint(
+            PPAccessoryViewerL10n.text(
+                "accessory_view_add_to_cart_hint"
+            )
+        )
+    }
+
+    private var addButtonFill: Color {
+        guard canAdd else {
+            return PPAccessoryPalette.inkSecondary.opacity(0.34)
+        }
+
+        switch store.cartPhase {
+        case .ready, .processing:
+            return PPAccessoryPalette.brand
+        case .success:
+            return PPAccessoryPalette.success
+        case .failed:
+            return PPAccessoryPalette.error
+        }
     }
 
     @ViewBuilder
     private var buttonIcon: some View {
-        switch store.cartPhase {
-        case .processing:
-            ProgressView().tint(.white)
-        case .success:
-            Image(systemName: "checkmark.seal.fill").font(.system(size: 17, weight: .bold))
-        case .failed:
-            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 16, weight: .bold))
-        case .ready:
-            Image(systemName: canAdd ? "bag.badge.plus" : "xmark.seal.fill").font(.system(size: 17, weight: .bold))
+        Group {
+            switch store.cartPhase {
+            case .processing:
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+            case .success:
+                Image(systemName: "checkmark")
+                    .font(.system(size: 17, weight: .bold))
+            case .failed:
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 16, weight: .bold))
+            case .ready:
+                Image(
+                    systemName:
+                        canAdd
+                        ? "bag.badge.plus"
+                        : "xmark"
+                )
+                .font(.system(size: 17, weight: .bold))
+            }
         }
+        .frame(width: 22, height: 22)
+        .id(String(describing: store.cartPhase))
+        .transition(
+            reduceMotion
+                ? .opacity
+                : .opacity.combined(with: .scale(scale: 0.82))
+        )
+        .accessibilityHidden(true)
     }
 
     private var buttonTitle: String {
@@ -1563,42 +1995,183 @@ struct PPAccessoryPersistentDecisionBar: View {
                 Image(systemName: "bag.fill")
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(PPAccessoryPalette.ink)
-                    .frame(width: 56, height: 56)
-                    .background(PPAccessorySubviewBackground.quietFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                
+                    .frame(
+                        width:
+                            PPBottomDecisionBarGeometry.utilityControlSize,
+                        height:
+                            PPBottomDecisionBarGeometry.utilityControlSize
+                    )
+                    .background(
+                        PPAccessorySubviewBackground.quietFill,
+                        in: RoundedRectangle(
+                            cornerRadius:
+                                PPBottomDecisionBarGeometry.controlRadius,
+                            style: .continuous
+                        )
+                    )
+
                 if store.cartItemsCount > 0 {
                     Text("\(store.cartItemsCount)")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.caption2.weight(.bold))
+                        .monospacedDigit()
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .frame(minWidth: 22, minHeight: 22)
                         .background(PPAccessoryPalette.brandDarker, in: Capsule())
-                        .offset(x: 4, y: -4)
+                        .offset(x: 5, y: -5)
+                        .accessibilityHidden(true)
                 }
             }
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius:
+                        PPBottomDecisionBarGeometry.controlRadius,
+                    style: .continuous
+                )
+            )
         }
-        .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.90))
-        .accessibilityLabel(PPAccessoryViewerL10n.text("accessory_view_open_cart"))
-        .accessibilityValue("\(store.cartItemsCount)")
+        .buttonStyle(PPBottomDecisionPressStyle(pressedScale: 0.94))
+        .accessibilityLabel(
+            PPAccessoryViewerL10n.text("accessory_view_open_cart")
+        )
+        .accessibilityValue(
+            String.localizedStringWithFormat(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_cart_count_format"
+                ),
+                store.cartItemsCount
+            )
+        )
     }
 
     private func animateAddConfirmation() {
         addConfirmationPulse = false
         guard !reduceMotion else { return }
-        withAnimation(.spring(response: 0.24, dampingFraction: 0.72)) {
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.80)) {
             addConfirmationPulse = true
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
-            withAnimation(.easeOut(duration: 0.18)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+            withAnimation(.easeOut(duration: 0.16)) {
                 addConfirmationPulse = false
             }
         }
+    }
+
+    private var decisionStateIdentity: String {
+        if snapshot.showsCart {
+            return "cart-\(String(describing: store.cartPhase))-\(canAdd)"
+        }
+        return "contact-\(String(describing: store.ownerPhase))"
+    }
+}
+
+struct PPAccessoryPersistentDecisionBarLoading: View {
+    let compact: Bool
+    let bottomInset: CGFloat
+
+    var body: some View {
+        Group {
+            if compact {
+                VStack(spacing: PPSpace.md) {
+                    HStack {
+                        summarySkeleton
+                        Spacer()
+                        quantitySkeleton
+                    }
+                    HStack(
+                        spacing: PPBottomDecisionBarGeometry.controlSpacing
+                    ) {
+                        actionSkeleton
+                        utilitySkeleton
+                    }
+                }
+            } else {
+                HStack(
+                    spacing: PPBottomDecisionBarGeometry.controlSpacing
+                ) {
+                    summarySkeleton
+                    Spacer()
+                    quantitySkeleton
+                    actionSkeleton.frame(maxWidth: 340)
+                    utilitySkeleton
+                }
+            }
+        }
+        .padding(PPBottomDecisionBarGeometry.contentPadding)
+        .ppBottomDecisionBarSurface()
+        .padding(
+            .horizontal,
+            compact
+                ? PPBottomDecisionBarGeometry.compactScreenInset
+                : PPBottomDecisionBarGeometry.regularScreenInset
+        )
+        .padding(.top, PPSpace.sm)
+        .padding(
+            .bottom,
+            max(
+                bottomInset,
+                PPBottomDecisionBarGeometry.bottomBreathingRoom
+            )
+        )
+        .redacted(reason: .placeholder)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            PPAccessoryViewerL10n.text(
+                "accessory_view_loading_cart_actions"
+            )
+        )
+    }
+
+    private var summarySkeleton: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            RoundedRectangle(cornerRadius: PPSpace.xs)
+                .fill(PPAccessoryPalette.ink.opacity(0.12))
+                .frame(width: 94, height: 18)
+            RoundedRectangle(cornerRadius: PPSpace.xs)
+                .fill(PPAccessoryPalette.ink.opacity(0.08))
+                .frame(width: 112, height: 10)
+        }
+    }
+
+    private var quantitySkeleton: some View {
+        RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            style: .continuous
+        )
+        .fill(PPAccessoryPalette.ink.opacity(0.08))
+        .frame(width: 126, height: 48)
+    }
+
+    private var actionSkeleton: some View {
+        RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            style: .continuous
+        )
+        .fill(PPAccessoryPalette.ink.opacity(0.11))
+        .frame(
+            maxWidth: .infinity,
+            minHeight: PPBottomDecisionBarGeometry.controlHeight
+        )
+    }
+
+    private var utilitySkeleton: some View {
+        RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.controlRadius,
+            style: .continuous
+        )
+        .fill(PPAccessoryPalette.ink.opacity(0.09))
+        .frame(
+            width: PPBottomDecisionBarGeometry.utilityControlSize,
+            height: PPBottomDecisionBarGeometry.utilityControlSize
+        )
     }
 }
 
 struct PPAccessoryViewerLoadingState: View {
     let topInset: CGFloat
     let compact: Bool
+    let bottomInset: CGFloat
 
     var body: some View {
         ScrollView {
@@ -1639,12 +2212,22 @@ struct PPAccessoryViewerLoadingState: View {
             }
             .frame(maxWidth: 900)
             .frame(maxWidth: .infinity)
+            .padding(
+                .bottom,
+                (compact ? 154 : 96) + bottomInset + PPSpace.xl
+            )
         }
         .redacted(reason: .placeholder)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             PPAccessoryViewerL10n.text("accessory_view_loading_product")
         )
+        .overlay(alignment: .bottom) {
+            PPAccessoryPersistentDecisionBarLoading(
+                compact: compact,
+                bottomInset: bottomInset
+            )
+        }
     }
 
     private var heroSkeleton: some View {

@@ -40,6 +40,24 @@ enum PPCorner {
     static let continuousCurve: Bool = true
 }
 
+// MARK: Bottom decision surfaces
+
+/// Shared geometry for persistent, product-specific bottom actions.
+///
+/// The Pet Ad contact rail and Accessory cart rail intentionally share this
+/// physical grammar while keeping their separate state and business owners.
+enum PPBottomDecisionBarGeometry {
+    static let surfaceRadius: CGFloat = PPCorner.hero
+    static let controlRadius: CGFloat = PPCorner.medium
+    static let controlHeight: CGFloat = 58
+    static let utilityControlSize: CGFloat = 54
+    static let contentPadding: CGFloat = PPSpace.md
+    static let controlSpacing: CGFloat = PPSpace.sm
+    static let compactScreenInset: CGFloat = PPSpace.md
+    static let regularScreenInset: CGFloat = PPSpace.xl
+    static let bottomBreathingRoom: CGFloat = PPSpace.sm
+}
+
 // MARK: Shadows
 
 struct PPShadow {
@@ -182,6 +200,76 @@ struct PPCardStyle: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color(uiColor: .separator).opacity(0.28), lineWidth: 0.33)
             )
+    }
+}
+
+struct PPBottomDecisionBarSurfaceModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(
+            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+            style: .continuous
+        )
+
+        content
+            .background(Color.ppCard, in: shape)
+            .overlay {
+                if colorSchemeContrast == .increased {
+                    shape.stroke(
+                        Color.primary.opacity(
+                            colorScheme == .dark ? 0.30 : 0.18
+                        ),
+                        lineWidth: 1
+                    )
+                }
+            }
+            .shadow(
+                color: Color.black.opacity(
+                    colorScheme == .dark ? 0.24 : 0.10
+                ),
+                radius: 24,
+                x: 0,
+                y: 10
+            )
+    }
+}
+
+struct PPBottomDecisionPressStyle: ButtonStyle {
+    var pressedScale: CGFloat = 0.975
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(
+                reduceMotion || !configuration.isPressed || !isEnabled
+                    ? 1
+                    : pressedScale
+            )
+            .opacity(
+                !isEnabled
+                    ? 0.46
+                    : (configuration.isPressed ? 0.80 : 1)
+            )
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(
+                        response: 0.22,
+                        dampingFraction: 0.86,
+                        blendDuration: 0.02
+                    ),
+                value: configuration.isPressed
+            )
+    }
+}
+
+extension View {
+    func ppBottomDecisionBarSurface() -> some View {
+        modifier(PPBottomDecisionBarSurfaceModifier())
     }
 }
 

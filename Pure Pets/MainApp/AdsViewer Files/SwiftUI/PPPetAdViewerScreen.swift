@@ -362,35 +362,22 @@ struct PPPetAdViewerScreen: View {
     @ViewBuilder
     private func contactDock(bottomInset: CGFloat) -> some View {
         if store.ppShowsContactDock {
-            let compactBottomPadding = max(8, min(bottomInset, 16))
+            let compactBottomPadding = max(
+                PPBottomDecisionBarGeometry.bottomBreathingRoom,
+                min(bottomInset, PPSpace.base)
+            )
 
             PPPetAdContactDock(store: store)
-                .padding(.horizontal, PPSpace.screenMargin)
-                .padding(.top, PPSpace.md + 2)
+                .padding(
+                    .horizontal,
+                    PPBottomDecisionBarGeometry.compactScreenInset
+                )
+                .padding(.top, PPSpace.sm)
                 .padding(.bottom, compactBottomPadding)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .background {
-                    PPPetAdViewerStyle.sheetBackground
-                        .ignoresSafeArea(edges: .bottom)
-                }
-                .overlay(alignment: .top) {
-                    Rectangle()
-                        .fill(
-                            Color(uiColor: .separator).opacity(0.30)
-                        )
-                        .frame(height: 1)
-                        .accessibilityHidden(true)
-                }
-                .shadow(
-                    color: Color.black.opacity(0.06),
-                    radius: 12,
-                    x: 0,
-                    y: -3
-                )
                 .frame(maxHeight: .infinity, alignment: .bottom)
-
                 .opacity(hasAppeared ? 1 : 0)
                 .allowsHitTesting(hasAppeared)
                 .accessibilityHidden(!hasAppeared)
@@ -543,6 +530,6 @@ struct PPPetAdViewerScreen: View {
 
     private var contactDockClearance: CGFloat {
         guard store.ppShowsContactDock else { return 0 }
-        return dynamicTypeSize.isAccessibilitySize ? 172 : 86
+        return dynamicTypeSize.isAccessibilitySize ? 190 : 96
     }
 }
