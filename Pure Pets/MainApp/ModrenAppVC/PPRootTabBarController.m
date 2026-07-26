@@ -3829,8 +3829,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         showAddMenuButton.layer.borderWidth = 0.5;
         [showAddMenuButton pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.25]];
     }
-    showAddMenuButton.layer.cornerRadius = 29.0;
-    PPApplyContinuousCorners(showAddMenuButton, 29.0);
+    showAddMenuButton.layer.cornerRadius = 26.0;
+    PPApplyContinuousCorners(showAddMenuButton, 26.0);
     [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
     showAddMenuButton.layer.shadowOpacity = 0.18;
     showAddMenuButton.layer.shadowRadius = 10.0;
@@ -3852,9 +3852,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-6.0],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
     ]];
     [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
 }

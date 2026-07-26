@@ -1125,6 +1125,32 @@ struct PPAccessorySourceIsland: View {
     }
 }
 
+struct PPAccessoryDescriptionAccentLine: View {
+    @State private var phase: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 2, style: .continuous)
+            .fill(PPAccessoryPalette.brand)
+            .frame(width: 4)
+            .scaleEffect(y: phase, anchor: .top)
+            .opacity(reduceMotion ? 1.0 : (0.4 + (phase * 0.6)))
+            .onAppear {
+                if reduceMotion {
+                    phase = 1.0
+                } else {
+                    phase = 0.2
+                    withAnimation(
+                        .easeInOut(duration: 2.2)
+                        .repeatForever(autoreverses: true)
+                    ) {
+                        phase = 1.0
+                    }
+                }
+            }
+    }
+}
+
 struct PPAccessoryEditorialDescription: View {
     let text: String
     @State private var expanded = false
@@ -1136,22 +1162,26 @@ struct PPAccessoryEditorialDescription: View {
                 symbol: "text.alignleft"
             )
 
-            Text(
-                text.isEmpty
-                    ? PPAccessoryViewerL10n.text(
-                        "accessory_view_no_description"
-                    )
-                    : text
-            )
-            .font(PPAccessoryTypography.body)
-            .foregroundStyle(
-                text.isEmpty
-                    ? PPAccessoryPalette.inkSecondary
-                    : PPAccessoryPalette.ink
-            )
-            .lineSpacing(5)
-            .lineLimit(expanded ? nil : 7)
-            .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: 14) {
+                PPAccessoryDescriptionAccentLine()
+
+                Text(
+                    text.isEmpty
+                        ? PPAccessoryViewerL10n.text(
+                            "accessory_view_no_description"
+                        )
+                        : text
+                )
+                .font(PPAccessoryTypography.body)
+                .foregroundStyle(
+                    text.isEmpty
+                        ? PPAccessoryPalette.inkSecondary
+                        : PPAccessoryPalette.ink
+                )
+                .lineSpacing(5)
+                .lineLimit(expanded ? nil : 7)
+                .fixedSize(horizontal: false, vertical: true)
+            }
 
             if !text.isEmpty && text.count > 280 {
                 Button {
