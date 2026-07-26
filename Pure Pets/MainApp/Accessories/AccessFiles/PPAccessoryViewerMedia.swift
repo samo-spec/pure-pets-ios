@@ -90,7 +90,7 @@ struct PPAccessoryRemoteImageView: View {
 
     var body: some View {
         ZStack {
-            PPAccessoryPalette.shell
+            PPAccessorySubviewBackground.mediaFill
 
             switch loader.state {
             case .idle:
@@ -160,15 +160,7 @@ struct PPAccessoryRemoteImageView: View {
 
     private var placeholder: some View {
         ZStack {
-            LinearGradient(
-                colors: [
-                    PPAccessoryPalette.foam,
-                    PPAccessoryPalette.shell,
-                    PPAccessoryPalette.appBackground
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            PPAccessorySubviewBackground.mediaFill
             Image(systemName: "photo")
                 .font(.system(size: 29, weight: .medium))
                 .foregroundStyle(PPAccessoryPalette.inkSecondary.opacity(0.54))
@@ -357,7 +349,11 @@ struct PPAccessoryVideoView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 48)
-                    .background(.black.opacity(0.66), in: Capsule())
+                    .ppAccessorySubviewBackground(
+                        PPAccessorySubviewBackground.videoChromeFill,
+                        in: Capsule(),
+                        stroke: Color.white.opacity(0.16)
+                    )
                 }
             case .ready:
                 EmptyView()
@@ -447,10 +443,15 @@ struct PPAccessoryFullScreenMediaViewer: View {
                 Text("\(selection + 1) / \(items.count)")
                     .font(PPAccessoryTypography.captionBold)
                     .monospacedDigit()
-                    .foregroundStyle(.white)
+                    .foregroundStyle(PPAccessoryPalette.ink)
                     .padding(.horizontal, 15)
                     .frame(minHeight: 42)
-                    .background(.ultraThinMaterial, in: Capsule())
+                    .ppAccessorySubviewBackground(
+                        PPAccessorySubviewBackground.fullScreenChromeFill,
+                        in: Capsule(),
+                        stroke: Color.white.opacity(0.16),
+                        lineWidth: 0.8
+                    )
 
                 mediaButton(
                     symbol: "square.and.arrow.up",
@@ -473,9 +474,14 @@ struct PPAccessoryFullScreenMediaViewer: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(PPAccessoryPalette.ink)
                 .frame(width: 48, height: 48)
-                .background(.ultraThinMaterial, in: Circle())
+                .ppAccessorySubviewBackground(
+                    PPAccessorySubviewBackground.fullScreenChromeFill,
+                    in: Circle(),
+                    stroke: Color.white.opacity(0.16),
+                    lineWidth: 0.8
+                )
         }
         .buttonStyle(PPAccessoryPressStyle(pressedScale: 0.90))
         .accessibilityLabel(label)

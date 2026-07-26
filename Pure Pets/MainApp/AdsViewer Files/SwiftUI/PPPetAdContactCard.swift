@@ -17,7 +17,7 @@ struct PPPetAdContactCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.lg) {
+        VStack(alignment: .leading, spacing: PPSpace.base) {
             PPPetAdDetailSectionHeading(
                 title: PPPetAdLocalization.text(
                     "Contact Advertiser",
@@ -41,9 +41,14 @@ struct PPPetAdContactCard: View {
                     : .opacity.combined(with: .scale(scale: 0.994))
             )
         }
-        .padding(PPPetAdViewerStyle.surfacePadding)
+        .padding(.top, PPSpace.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .ppPetAdSurface()
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color(uiColor: .separator).opacity(0.24))
+                .frame(height: 1)
+                .accessibilityHidden(true)
+        }
         .animation(
             reduceMotion ? nil : PPPetAdViewerMotion.state,
             value: contactStateIdentity
@@ -624,6 +629,7 @@ struct PPPetAdContactDock: View {
                     fallback: "Sign in"
                 ),
                 isLoading: false,
+                isSuccess: false,
                 action: store.requireSignInForContact
             )
         } else {
@@ -632,38 +638,13 @@ struct PPPetAdContactDock: View {
                 loadingDock
             case .loaded:
                 if let owner = store.owner {
-                    VStack(alignment: .leading, spacing: 6) {
-                        dockHeaderTitleView
-
-                        actionRow(for: owner)
-                            .padding(.top, 2)
-                    }
+                    actionRow(for: owner)
                 }
             case .empty, .offline, .failed:
                 EmptyView()
             }
         }
     }
-
-    private var dockHeaderTitleView: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "bubble.left.and.bubble.right.fill")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
-
-            Text(
-                PPPetAdLocalization.text(
-                    "pet_ad_viewer_contact_dock_title",
-                    fallback: "التواصل المباشر مع المعلن"
-                )
-            )
-            .font(PPPetAdTypography.footnoteBold)
-            .foregroundStyle(Color.ppTextSecondary.opacity(0.85))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityAddTraits(.isHeader)
-    }
-
 
     @ViewBuilder
     private func actionRow(for owner: PPPetAdOwner) -> some View {
@@ -680,17 +661,20 @@ struct PPPetAdContactDock: View {
     private func horizontalActionRow(
         for owner: PPPetAdOwner
     ) -> some View {
-        HStack(spacing: 16) {
+        HStack(spacing: PPSpace.sm) {
             PPPetAdOwnerProfilePill(owner: owner)
+                .layoutPriority(1)
 
-            HStack(spacing: 10) {
+            if store.canMessageOwner {
                 if store.canCallOwner {
                     callIconButton(for: owner)
                 }
 
-                if store.canMessageOwner {
-                    chatIconButton(for: owner)
-                }
+                chatPrimaryButton(for: owner)
+                    .frame(minWidth: 132, maxWidth: 164)
+            } else if store.canCallOwner {
+                callPrimaryButton(for: owner)
+                    .frame(minWidth: 116, maxWidth: 150)
             }
         }
     }
@@ -698,73 +682,53 @@ struct PPPetAdContactDock: View {
     private func verticalActionRow(
         for owner: PPPetAdOwner
     ) -> some View {
-        VStack(spacing: PPSpace.md) {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
             PPPetAdOwnerProfilePill(owner: owner)
 
-            HStack(spacing: 10) {
+            HStack(spacing: PPSpace.sm) {
                 if store.canCallOwner {
                     callIconButton(for: owner)
                 }
 
                 if store.canMessageOwner {
-                    chatIconButton(for: owner)
+                    chatPrimaryButton(for: owner)
+                } else if store.canCallOwner {
+                    callPrimaryButton(for: owner)
                 }
             }
         }
     }
 
-    @ViewBuilder
-    private func callOnlyActions(
+    private func chatPrimaryButton(
         for owner: PPPetAdOwner
     ) -> some View {
-        if store.canCallOwner {
-            HStack(spacing: 16) {
-                PPPetAdOwnerProfilePill(owner: owner)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                callIconButton(for: owner)
-            }
-        }
+        primaryButton(
+            title: interestTitle,
+            symbol: "message.fill",
+            accessibilityLabel: chatAccessibilityLabel(for: owner),
+            isLoading: isChatWorking,
+            isSuccess: isChatSucceeded,
+            action: store.openChat
+        )
     }
 
-    private func chatIconButton(
+    private func callPrimaryButton(
         for owner: PPPetAdOwner
     ) -> some View {
-        Button(action: store.openChat) {
-            ZStack {
-                if store.chatState == .working {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(PPPetAdViewerStyle.actionForeground)
-                } else {
-                    Image(systemName: "message.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(PPPetAdViewerStyle.actionForeground)
-                }
-            }
-            .frame(width: 50, height: 50)
-            .background(
-                PPPetAdViewerStyle.actionAccent,
-                in: Circle()
-            )
-            .overlay {
-                Circle()
-                    .strokeBorder(
-                        Color.white.opacity(0.30),
-                        lineWidth: PPPetAdViewerStyle.hairlineWidth
-                    )
-            }
-            .shadow(
-                color: PPPetAdViewerStyle.actionAccent.opacity(0.24),
-                radius: 8,
-                x: 0,
-                y: 3
-            )
-            .contentShape(Circle())
-        }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
-        .disabled(store.chatState == .working)
-        .accessibilityLabel(chatAccessibilityLabel(for: owner))
+        primaryButton(
+            title: PPPetAdLocalization.text("Call", fallback: "Call"),
+            symbol: "phone.fill",
+            accessibilityLabel: String(
+                format: PPPetAdLocalization.text(
+                    "a11y_btn_call_user_format",
+                    fallback: "Call %@"
+                ),
+                owner.displayName
+            ),
+            isLoading: false,
+            isSuccess: false,
+            action: store.callOwner
+        )
     }
 
     private func callIconButton(
@@ -786,12 +750,6 @@ struct PPPetAdContactDock: View {
                             lineWidth: PPPetAdViewerStyle.hairlineWidth
                         )
                 }
-                .shadow(
-                    color: Color.black.opacity(0.08),
-                    radius: 6,
-                    x: 0,
-                    y: 2
-                )
                 .contentShape(Circle())
         }
         .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
@@ -814,32 +772,27 @@ struct PPPetAdContactDock: View {
         symbol: String,
         accessibilityLabel: String,
         isLoading: Bool,
+        isSuccess: Bool,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            HStack(spacing: 0) {
-                ZStack {
-                    Circle()
-                        .fill(PPPetAdViewerStyle.darkActionFill)
-
+            HStack(spacing: PPSpace.sm) {
+                Group {
                     if isLoading {
                         ProgressView()
                             .controlSize(.small)
-                            .tint(
-                                PPPetAdViewerStyle.darkActionForeground
-                            )
+                            .tint(PPPetAdViewerStyle.actionForeground)
                     } else {
-                        Image(systemName: symbol)
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(
-                                PPPetAdViewerStyle.darkActionForeground
-                            )
+                        Image(
+                            systemName:
+                                isSuccess
+                                ? "checkmark"
+                                : symbol
+                        )
+                        .font(.system(size: 17, weight: .bold))
                     }
                 }
-                .frame(
-                    width: PPPetAdViewerStyle.dockControlSize - 4,
-                    height: PPPetAdViewerStyle.dockControlSize - 4
-                )
+                .frame(width: 22, height: 22)
                 .accessibilityHidden(true)
 
                 Text(title)
@@ -848,40 +801,29 @@ struct PPPetAdContactDock: View {
                         PPPetAdViewerStyle.actionForeground
                     )
                     .lineLimit(2)
-                    .minimumScaleFactor(0.76)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Color.clear
-                    .frame(width: PPSpace.sm)
-                    .accessibilityHidden(true)
             }
-            .padding(2)
+            .padding(.horizontal, PPSpace.base)
             .frame(maxWidth: .infinity)
-            .frame(height: primaryButtonHeight)
+            .frame(minHeight: primaryButtonHeight)
             .background(
                 PPPetAdViewerStyle.actionAccent,
-                in: Capsule()
+                in: RoundedRectangle(
+                    cornerRadius: PPPetAdViewerStyle.insetRadius,
+                    style: .continuous
+                )
             )
-            .overlay(alignment: .topTrailing) {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white.opacity(0.42))
-                    .padding(.trailing, PPSpace.lg)
-                    .padding(.top, PPSpace.sm)
-                    .accessibilityHidden(true)
-            }
-            .shadow(
-                color: PPPetAdViewerStyle.actionAccent.opacity(0.18),
-                radius: 12,
-                x: 0,
-                y: 5
+            .contentShape(
+                RoundedRectangle(
+                    cornerRadius: PPPetAdViewerStyle.insetRadius,
+                    style: .continuous
+                )
             )
-            .contentShape(Capsule())
         }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.982))
+        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.985))
         .disabled(isLoading)
+        .opacity(isLoading ? 0.78 : 1)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(
             isLoading
@@ -889,49 +831,31 @@ struct PPPetAdContactDock: View {
                     "Loading",
                     fallback: "Loading"
                 )
-                : ""
+                : (
+                    isSuccess
+                    ? PPPetAdLocalization.text(
+                        "Success",
+                        fallback: "Completed"
+                    )
+                    : ""
+                )
         )
     }
 
-    private func iconButton(
-        symbol: String,
-        accessibilityLabel: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(
-                    PPPetAdViewerStyle.darkActionForeground
-                )
-                .frame(
-                    width: PPPetAdViewerStyle.dockControlSize,
-                    height: PPPetAdViewerStyle.dockControlSize
-                )
-                .background(
-                    PPPetAdViewerStyle.darkActionFill,
-                    in: Circle()
-                )
-        }
-        .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.92))
-        .accessibilityLabel(accessibilityLabel)
-    }
-
     private var loadingDock: some View {
-        HStack(spacing: PPSpace.md) {
-            ForEach(0..<2, id: \.self) { _ in
-                Circle()
-                    .fill(Color.ppTextTertiary.opacity(0.12))
-                    .frame(
-                        width: PPPetAdViewerStyle.dockControlSize,
-                        height: PPPetAdViewerStyle.dockControlSize
-                    )
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    loadingOwnerIdentity
+                    loadingPrimaryAction
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    loadingOwnerIdentity
+                    loadingPrimaryAction
+                        .frame(maxWidth: 164)
+                }
             }
-
-            Capsule()
-                .fill(Color.ppTextTertiary.opacity(0.12))
-                .frame(maxWidth: .infinity)
-                .frame(height: PPPetAdViewerStyle.dockControlSize)
         }
         .fixedSize(horizontal: false, vertical: true)
         .allowsHitTesting(false)
@@ -944,10 +868,41 @@ struct PPPetAdContactDock: View {
         )
     }
 
+    private var loadingOwnerIdentity: some View {
+        HStack(spacing: PPSpace.sm) {
+            Circle()
+                .fill(Color.ppTextTertiary.opacity(0.12))
+                .frame(width: 40, height: 40)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(Color.ppTextTertiary.opacity(0.15))
+                    .frame(maxWidth: 112)
+                    .frame(height: 12)
+
+                RoundedRectangle(cornerRadius: PPSpace.xs)
+                    .fill(Color.ppTextTertiary.opacity(0.10))
+                    .frame(maxWidth: 76)
+                    .frame(height: 9)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var loadingPrimaryAction: some View {
+        RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.insetRadius,
+            style: .continuous
+        )
+        .fill(Color.ppTextTertiary.opacity(0.12))
+        .frame(maxWidth: .infinity)
+        .frame(height: primaryButtonHeight)
+    }
+
     private var primaryButtonHeight: CGFloat {
         dynamicTypeSize.isAccessibilitySize
-            ? 72
-            : PPPetAdViewerStyle.dockControlSize
+            ? 64
+            : 54
     }
 
     private var interestTitle: String {
@@ -998,16 +953,15 @@ struct PPPetAdContactDock: View {
         )
     }
 
-    private func whatsAppAccessibilityLabel(
-        for owner: PPPetAdOwner
-    ) -> String {
-        String(
-            format: PPPetAdLocalization.text(
-                "a11y_btn_whatsapp_user_format",
-                fallback: "WhatsApp %@"
-            ),
-            owner.displayName
-        )
+    private var isChatWorking: Bool {
+        store.chatState == .working
+    }
+
+    private var isChatSucceeded: Bool {
+        if case .succeeded = store.chatState {
+            return true
+        }
+        return false
     }
 
     private var stateIdentity: Int {
@@ -1049,15 +1003,30 @@ extension PPPetAdViewerStore {
             return false
         }
     }
+
+    var ppShowsInlineContactStatus: Bool {
+        guard case .content = screenState else { return false }
+        guard !ppShowsContactDock else { return false }
+
+        if isViewingOwnAdvertisement {
+            return true
+        }
+        guard isSignedIn else { return false }
+
+        switch ownerState {
+        case .idle, .loading:
+            return false
+        case .loaded, .empty, .offline, .failed:
+            return true
+        }
+    }
 }
 
-/// A pure profile info pill UI (non-CTA) displaying advertiser identity and verified badge.
 struct PPPetAdOwnerProfilePill: View {
     let owner: PPPetAdOwner
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
-            // Seller Avatar + Verified Checkmark Badge
             ZStack(alignment: .bottomTrailing) {
                 if let avatarURL = owner.avatarURL, !avatarURL.isEmpty {
                     PPPetAdRemoteImageView(
@@ -1066,7 +1035,7 @@ struct PPPetAdOwnerProfilePill: View {
                         contentMode: .fill,
                         accessibilityLabel: owner.displayName
                     )
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                     .clipShape(Circle())
                 } else {
                     ZStack {
@@ -1077,7 +1046,7 @@ struct PPPetAdOwnerProfilePill: View {
                             .font(PPPetAdTypography.subheadlineBold)
                             .foregroundStyle(Color.ppPrimary)
                     }
-                    .frame(width: 36, height: 36)
+                    .frame(width: 40, height: 40)
                 }
 
                 if owner.isVerified {
@@ -1090,9 +1059,8 @@ struct PPPetAdOwnerProfilePill: View {
             }
             .accessibilityHidden(true)
 
-            // Seller Name & Role Tag
             VStack(alignment: .leading, spacing: 1) {
-                Text(owner.displayName)
+                Text(verbatim: "\u{2068}\(owner.displayName)\u{2069}")
                     .font(PPPetAdTypography.subheadlineBold)
                     .foregroundStyle(Color.ppTextPrimary)
                     .lineLimit(1)
@@ -1108,29 +1076,10 @@ struct PPPetAdOwnerProfilePill: View {
                 .lineLimit(1)
             }
         }
-        .padding(.horizontal, PPSpace.sm + 4)
-        .frame(height: 50)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            Color.ppCard.opacity(0.88),
-            in: Capsule()
-        )
-        .overlay {
-            Capsule()
-                .strokeBorder(
-                    Color(uiColor: .separator).opacity(0.24),
-                    lineWidth: PPPetAdViewerStyle.hairlineWidth
-                )
-        }
-        .shadow(
-            color: Color.black.opacity(0.06),
-            radius: 6,
-            x: 0,
-            y: 2
-        )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(owner.displayName), Advertiser")
+        .accessibilityLabel(
+            "\(owner.displayName), \(PPPetAdLocalization.text("pet_ad_viewer_seller_role", fallback: "Advertiser"))"
+        )
     }
 }
-
-

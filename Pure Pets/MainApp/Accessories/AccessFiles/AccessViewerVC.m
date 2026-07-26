@@ -52,8 +52,10 @@
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.backgroundColor =
-        [UIColor colorNamed:@"AppBageColor"] ?: UIColor.systemGroupedBackgroundColor;
+    self.edgesForExtendedLayout = UIRectEdgeAll;
+    self.extendedLayoutIncludesOpaqueBars = YES;
+    self.additionalSafeAreaInsets = UIEdgeInsetsZero;
+    
     self.view.clipsToBounds = YES;
     [self pp_installSwiftUIAccessoryViewer];
 }

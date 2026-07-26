@@ -217,32 +217,11 @@ struct PPAccessoryViewerSnapshot {
     var details: [PPAccessoryViewerDetailItem] {
         var result = [
             PPAccessoryViewerDetailItem(
-                id: "category",
-                title: PPAccessoryViewerL10n.text("Category"),
-                value: category,
-                symbol: "square.grid.2x2.fill",
-                tone: .sea
-            ),
-            PPAccessoryViewerDetailItem(
-                id: "type",
-                title: PPAccessoryViewerL10n.text("Type"),
-                value: type,
-                symbol: "sun.max.fill",
-                tone: .sun
-            ),
-            PPAccessoryViewerDetailItem(
                 id: "condition",
                 title: PPAccessoryViewerL10n.text("Condition"),
                 value: condition,
                 symbol: "checkmark.seal.fill",
                 tone: .palm
-            ),
-            PPAccessoryViewerDetailItem(
-                id: "availability",
-                title: PPAccessoryViewerL10n.text("Availability"),
-                value: stock,
-                symbol: "shippingbox.fill",
-                tone: .coral
             )
         ]
 

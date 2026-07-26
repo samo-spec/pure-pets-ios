@@ -10,13 +10,24 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Selects the single implementation compiled for `PPBackgroundView`.
+///
+/// Apex is the production default. Targets that cannot link Swift may define
+/// `PP_HERO_APEX_ENABLED=0` and compile `PPBackgroundView.m` as the legacy
+/// fallback. Keeping both implementation files in one target is safe.
+#ifndef PP_HERO_APEX_ENABLED
+#define PP_HERO_APEX_ENABLED 1
+#endif
+
 typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
     PPHeroGlassAccentStyleBar = 0,
-    PPHeroGlassAccentStyleCornerGlow,
-    PPHeroGlassAccentStyleFullScreen,
-    PPHeroGlassAccentStyleSolid,
-    PPHeroGlassAccentStyleFullScreenPink,
-    PPHeroGlassAccentStyleFullScreenPage
+    PPHeroGlassAccentStyleCornerGlow = 1,
+    PPHeroGlassAccentStyleFullScreen = 2,
+    PPHeroGlassAccentStyleSolid = 3,
+    PPHeroGlassAccentStyleFullScreenPink = 4,
+    PPHeroGlassAccentStyleFullScreenPage = 5,
+    /// Opaque pearl–beige ambient field intended for a hero-backed base surface.
+    PPHeroGlassAccentStyleBBBaseBackground = 6
 };
 
 /// A reusable background-only UIView that renders the premium hero glass surface
@@ -43,7 +54,8 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 @property (nonatomic, strong, nullable) UIColor *overrideCenterGlowColor;
 @property (nonatomic, strong, nullable) UIColor *overrideBottomGlowColor;
 @property (nonatomic, strong, nullable) UIColor *overrideTopGlowColor;
-@property (nonatomic, strong, nullable) UIColor *overrideSurfureColor;
+@property (nonatomic, strong, nullable) UIColor *overrideSurfureColor
+    __attribute__((deprecated("Use overrideSurfaceColor")));
 @property (nonatomic, strong, nullable) UIColor *overrideSurfaceColor;
 
 /// Controls how the accent is rendered. Defaults to the original slim top bar.
@@ -53,14 +65,14 @@ typedef NS_ENUM(NSInteger, PPHeroGlassAccentStyle) {
 /// `PPHeroGlassAccentStyleCornerGlow`. Defaults to 1.0.
 @property (nonatomic, assign) CGFloat cornerGlowOpacityMultiplier;
 
-/// Controls the alignment and layout direction of the decorative glows.
-/// Defaults to system direction (standard swapped layout).
+/// Controls the semantic alignment of decorative glows:
+/// 0 follows the interface direction, 1 pins left, and 2 pins right.
 @property (nonatomic, assign) NSInteger glowDirection;
 
-/// Enables the optional premium signature shimmer sweep. Defaults to NO.
+/// Enables the restrained signature shimmer sweep. Apex defaults to YES.
 @property (nonatomic, assign) BOOL PPHeroApexUseShimmer;
 
-/// Enables optional under-finger depth and lens motion. Defaults to NO.
+/// Enables passive under-finger depth and lens motion. Apex defaults to YES.
 @property (nonatomic, assign) BOOL PPHeroApexUseUnderFingerMotion;
 
 /// Requests the semantic motion timeline. Safe to call repeatedly; animation

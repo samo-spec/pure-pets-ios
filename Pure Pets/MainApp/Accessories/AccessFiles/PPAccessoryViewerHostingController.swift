@@ -26,8 +26,7 @@ final class PPAccessoryViewerHostingController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor =
-            UIColor(named: "AppBageColor") ?? .systemGroupedBackground
+        view.backgroundColor = .clear
 
         addChild(contentController)
         contentController.view.translatesAutoresizingMaskIntoConstraints =

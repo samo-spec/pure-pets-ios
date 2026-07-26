@@ -15,7 +15,6 @@ struct PPPetAdRelatedSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
             PPPetAdSectionHeading(
-                symbol: "sparkles",
                 title: title,
                 subtitle: subtitle
             )
@@ -174,7 +173,13 @@ struct PPPetAdRelatedSection: View {
             tint: tint,
             action: action
         )
-        .ppPetAdSurface()
+        .background(
+            Color.ppForeground.opacity(0.54),
+            in: RoundedRectangle(
+                cornerRadius: PPPetAdViewerStyle.surfaceRadius,
+                style: .continuous
+            )
+        )
         .padding(.horizontal, PPSpace.screenMargin)
     }
     
@@ -262,5 +267,4 @@ struct PPPetAdRelatedSection: View {
         }
     }
 }
-
 

@@ -9,17 +9,13 @@ struct PPPetAdDescriptionCard: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            Text(title)
-                .font(PPPetAdTypography.headline)
-                .foregroundStyle(Color.ppTextPrimary)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
+        VStack(alignment: .leading, spacing: PPSpace.base) {
+            PPPetAdDetailSectionHeading(title: title)
 
             Text(normalizedDescription)
                 .font(PPPetAdTypography.body)
-                .foregroundStyle(Color.ppTextSecondary.opacity(0.78))
-                .lineSpacing(4)
+                .foregroundStyle(Color.ppTextSecondary)
+                .lineSpacing(PPSpace.xs)
                 .lineLimit(isExpanded ? nil : 6)
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
@@ -57,31 +53,12 @@ struct PPPetAdDescriptionCard: View {
                             .accessibilityHidden(true)
                     }
                     .font(PPPetAdTypography.calloutBold)
-                    .foregroundStyle(
-                        PPPetAdViewerStyle.actionAccent
-                    )
-                    .padding(.horizontal, PPSpace.md)
+                    .foregroundStyle(PPPetAdViewerStyle.actionAccent)
                     .frame(minHeight: 44)
-                    .background {
-                        Capsule()
-                            .fill(
-                                PPPetAdViewerStyle.actionAccent.opacity(0.10)
-                            )
-                            .overlay {
-                                Capsule()
-                                    .strokeBorder(
-                                        PPPetAdViewerStyle.actionAccent.opacity(
-                                            0.22
-                                        ),
-                                        lineWidth:
-                                            PPPetAdViewerStyle
-                                                .hairlineWidth
-                                    )
-                            }
-                    }
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(
-                    PPPetAdPressButtonStyle(pressedScale: 0.97)
+                    PPPetAdPressButtonStyle(pressedScale: 0.985)
                 )
                 .accessibilityValue(
                     isExpanded
@@ -96,34 +73,22 @@ struct PPPetAdDescriptionCard: View {
                 )
             }
         }
-        .padding(PPSpace.lg)
+        .padding(.top, PPSpace.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            PPPetAdViewerStyle.sheetBackground,
-            in: RoundedRectangle(
-                cornerRadius: PPPetAdViewerStyle.descriptionRadius,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPPetAdViewerStyle.descriptionRadius,
-                style: .continuous
-            )
-            .strokeBorder(
-                Color(uiColor: .separator).opacity(
-                    colorSchemeContrast == .increased ? 0.72 : 0.32
-                ),
-                style: StrokeStyle(
-                    lineWidth:
-                        colorSchemeContrast == .increased
-                        ? 1.5
-                        : 1,
-                    lineCap: .round,
-                    lineJoin: .round,
-                    dash: [7, 6]
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(
+                    Color(uiColor: .separator).opacity(
+                        colorSchemeContrast == .increased ? 0.64 : 0.24
+                    )
                 )
-            )
+                .frame(
+                    height: colorSchemeContrast == .increased ? 1.5 : 1
+                )
+                .accessibilityHidden(true)
+        }
+        .onChange(of: description) { _ in
+            isExpanded = false
         }
     }
 

@@ -4625,7 +4625,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = YES;
     backgroundView.PPHeroApexUseShimmer = NO;
-    backgroundView.PPHeroApexUseUnderFingerMotion = YES;
+    backgroundView.PPHeroApexUseUnderFingerMotion = NO;
     backgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
     backgroundView.layer.cornerRadius = 42.0;
     if (@available(iOS 13.0, *)) {

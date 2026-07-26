@@ -40,40 +40,8 @@ struct PPAccessoryViewerScreen: View {
                 PPAccessoryBeachCanvas()
 
                 phaseContent(proxy: proxy)
-
-                if case .loaded = store.phase {
-                    VStack(spacing: 10) {
-                        PPAccessoryViewerTopBar(store: store)
-                        if let message = store.bannerMessage {
-                            PPAccessoryViewerInlineBanner(
-                                message: message,
-                                dismiss: store.dismissBanner
-                            )
-                            .padding(.horizontal, 18)
-                            .transition(
-                                reduceMotion
-                                    ? .opacity
-                                    : .move(edge: .top).combined(
-                                        with: .opacity
-                                    )
-                            )
-                        }
-                    }
-                    .padding(.top, topChromeInset(proxy) + 6)
-                    .opacity(heroResolved ? 1 : 0)
-                    .offset(y: heroResolved ? 0 : -12)
-                    .animation(
-                        reduceMotion
-                            ? nil
-                            : .spring(
-                                response: 0.30,
-                                dampingFraction: 0.88
-                            ),
-                        value: store.bannerMessage
-                    )
-                    .zIndex(20)
-                }
             }
+            .ignoresSafeArea(.container, edges: [.top, .bottom])
         }
     }
 
@@ -118,65 +86,107 @@ struct PPAccessoryViewerScreen: View {
             ? min(max(proxy.size.height * 0.34, 310), 390)
             : min(max(contentWidth * 0.46, 360), 500)
         let topInset = topChromeInset(proxy)
-        let galleryTopPadding = compact
-            ? max(topInset + 8, 24)
-            : max(topInset + 14, 32)
+        let bottomInset = bottomChromeInset(proxy)
+        let topBarHeight: CGFloat = topInset + (compact ? 74 : 84)
+        let decisionBarClearance: CGFloat = snapshot.showsCart
+            ? (compact ? 166 : 106)
+            : 100
 
-        return ScrollView {
-            VStack(spacing: compact ? 16 : 24) {
-                PPAccessoryShorelineGallery(
-                    snapshot: snapshot,
-                    height: heroHeight,
-                    compact: compact,
-                    onShare: store.share
-                )
-                .padding(.horizontal, horizontalPadding)
-                .padding(.top, galleryTopPadding)
-                .scaleEffect(heroResolved ? 1 : 1.045)
-                .opacity(heroResolved ? 1 : 0)
-
-                PPAccessoryProductIdentity(
-                    snapshot: snapshot,
-                    compact: compact
-                )
-                .padding(.horizontal, horizontalPadding)
-                .opacity(contentResolved ? 1 : 0)
-                .offset(y: contentResolved ? 0 : 16)
-
-                VStack(spacing: compact ? 22 : 30) {
-                    PPAccessorySpecReef(
-                        details: snapshot.details,
-                        compactColumns: compact
+        return ZStack(alignment: .top) {
+            ScrollView {
+                VStack(spacing: compact ? 14 : 22) {
+                    PPAccessoryShorelineGallery(
+                        snapshot: snapshot,
+                        height: heroHeight,
+                        compact: compact,
+                        onShare: store.share
                     )
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.top, topBarHeight)
+                    .scaleEffect(heroResolved ? 1 : 1.045)
+                    .opacity(heroResolved ? 1 : 0)
 
-                    PPAccessorySourceIsland(
-                        store: store,
-                        snapshot: snapshot
+                    PPAccessoryProductIdentity(
+                        snapshot: snapshot,
+                        compact: compact
                     )
+                    .padding(.horizontal, horizontalPadding)
+                    .opacity(contentResolved ? 1 : 0)
+                    .offset(y: contentResolved ? 0 : 16)
 
-                    PPAccessoryEditorialDescription(
-                        text: snapshot.description
-                    )
+                    VStack(spacing: compact ? 22 : 30) {
+                        PPAccessorySpecReef(
+                            details: snapshot.details,
+                            compactColumns: compact
+                        )
 
-                    PPAccessorySuggestionShore(store: store)
+                        PPAccessorySourceIsland(
+                            store: store,
+                            snapshot: snapshot
+                        )
+
+                        PPAccessoryEditorialDescription(
+                            text: snapshot.description
+                        )
+
+                        PPAccessorySuggestionShore(
+                            store: store,
+                            compact: compact
+                        )
+                    }
+                    .padding(.horizontal, horizontalPadding)
+                    .padding(.bottom, decisionBarClearance + bottomInset)
+                    .opacity(contentResolved ? 1 : 0)
+                    .offset(y: contentResolved ? 0 : 22)
                 }
-                .padding(.horizontal, horizontalPadding)
-                .padding(.bottom, snapshot.showsCart ? 8 : 14)
-                .opacity(contentResolved ? 1 : 0)
-                .offset(y: contentResolved ? 0 : 22)
+                .frame(maxWidth: contentWidth)
+                .frame(maxWidth: .infinity)
             }
+            .coordinateSpace(name: "accessory-viewer-scroll")
+
+            VStack(spacing: 8) {
+                PPAccessoryViewerTopBar(store: store)
+
+                if let message = store.bannerMessage {
+                    PPAccessoryViewerInlineBanner(
+                        message: message,
+                        dismiss: store.dismissBanner
+                    )
+                    .padding(.horizontal, 18)
+                    .transition(
+                        reduceMotion
+                            ? .opacity
+                            : .move(edge: .top).combined(with: .opacity)
+                    )
+                }
+            }
+            .padding(.top, topInset + 4)
+            .padding(.bottom, 6)
             .frame(maxWidth: contentWidth)
             .frame(maxWidth: .infinity)
-        }
-        .coordinateSpace(name: "accessory-viewer-scroll")
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+            .background(PPAccessorySubviewBackground.clear)
+            .opacity(heroResolved ? 1 : 0)
+            .offset(y: heroResolved ? 0 : -10)
+            .animation(
+                reduceMotion
+                    ? nil
+                    : .spring(response: 0.30, dampingFraction: 0.88),
+                value: store.bannerMessage
+            )
+            .ignoresSafeArea(.container, edges: .top)
+            .zIndex(100)
+
             PPAccessoryPersistentDecisionBar(
                 store: store,
                 snapshot: snapshot,
-                compact: compact
+                compact: compact,
+                bottomInset: bottomInset
             )
             .opacity(actionResolved ? 1 : 0)
             .offset(y: actionResolved ? 0 : 18)
+            .ignoresSafeArea(.container, edges: .bottom)
+            .zIndex(100)
+            .frame(maxHeight: .infinity, alignment: .bottom)
         }
         .onAppear {
             runEntranceIfNeeded()
@@ -202,6 +212,18 @@ struct PPAccessoryViewerScreen: View {
             .first { $0.isKeyWindow }?
             .safeAreaInsets.top ?? 0
         return max(sceneTop, 24)
+    }
+
+    private func bottomChromeInset(_ proxy: GeometryProxy) -> CGFloat {
+        let resolved = proxy.safeAreaInsets.bottom
+        if resolved > 1 {
+            return resolved
+        }
+        return UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.bottom ?? 0
     }
 
     private func runEntranceIfNeeded() {

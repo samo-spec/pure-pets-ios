@@ -75,22 +75,32 @@ struct PPPetAdViewerLoadingStateView: View {
     }
 
     private var detailsSkeleton: some View {
-        VStack(alignment: .leading, spacing: PPPetAdViewerStyle.sectionSpacing) {
+        VStack(alignment: .leading, spacing: PPSpace.xl) {
             VStack(alignment: .leading, spacing: PPSpace.md) {
+                skeletonLine(width: 58, height: 10)
+
                 if dynamicTypeSize >= .xxLarge {
-                    skeletonLine(width: 220, height: 28)
-                    skeletonLine(width: 88, height: 22)
+                    skeletonLine(width: 220, height: 32)
+                    skeletonLine(width: 104, height: 20)
                 } else {
-                    HStack(alignment: .center, spacing: PPSpace.base) {
-                        skeletonFillLine(height: 28)
-                        skeletonLine(width: 88, height: 22)
+                    HStack(alignment: .firstTextBaseline, spacing: PPSpace.lg) {
+                        skeletonFillLine(height: 32)
+                        skeletonLine(width: 104, height: 20)
                     }
                 }
-                skeletonLine(width: 176, height: 18)
+                skeletonLine(width: 168, height: 14)
             }
+            .padding(.leading, PPSpace.base)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(Color.ppPrimary.opacity(0.34))
+                    .frame(width: PPSpace.xs)
+                    .padding(.vertical, PPSpace.xs)
+            }
 
             factsSkeletonRail
+                .padding(.leading, PPSpace.base)
         }
         .padding(.horizontal, PPSpace.screenMargin)
         .padding(.top, PPPetAdViewerStyle.contentTopPadding)
@@ -114,50 +124,52 @@ struct PPPetAdViewerLoadingStateView: View {
     }
 
     private var factsSkeletonRail: some View {
-        Group {
+        VStack(spacing: 0) {
+            featuredFactSkeleton
+            skeletonDivider
+
             if dynamicTypeSize >= .xxLarge {
                 VStack(spacing: 0) {
-                    ForEach(0..<3, id: \.self) { index in
+                    ForEach(0..<2, id: \.self) { index in
                         factSkeletonCell
 
-                        if index < 2 {
-                            Divider()
-                                .padding(.horizontal, PPSpace.md)
+                        if index < 1 {
+                            skeletonDivider
                         }
                     }
                 }
             } else {
                 HStack(spacing: 0) {
-                    ForEach(0..<3, id: \.self) { index in
+                    ForEach(0..<2, id: \.self) { index in
                         factSkeletonCell
 
-                        if index < 2 {
-                            Divider()
-                                .frame(height: 44)
+                        if index < 1 {
+                            verticalSkeletonDivider
                         }
                     }
                 }
             }
         }
-        .background(Color.ppCard, in: factsRailShape)
-        .overlay {
-            factsRailShape.stroke(
-                Color(uiColor: .separator).opacity(
-                    colorSchemeContrast == .increased ? 0.54 : 0.20
-                ),
-                lineWidth: colorSchemeContrast == .increased
-                    ? 1.5
-                    : PPPetAdViewerStyle.hairlineWidth
-            )
+        .overlay(alignment: .top) {
+            skeletonDivider
         }
-        .clipShape(factsRailShape)
+        .overlay(alignment: .bottom) {
+            skeletonDivider
+        }
     }
 
-    private var factsRailShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.infoRadius,
-            style: .continuous
-        )
+    private var featuredFactSkeleton: some View {
+        HStack(spacing: PPSpace.md) {
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.10))
+                .frame(width: 52, height: 42)
+
+            VStack(alignment: .leading, spacing: PPSpace.xs) {
+                skeletonLine(width: 44, height: 10)
+                skeletonLine(width: 112, height: 18)
+            }
+        }
+        .padding(.vertical, PPSpace.base)
     }
 
     private var factSkeletonCell: some View {
@@ -166,7 +178,30 @@ struct PPPetAdViewerLoadingStateView: View {
             skeletonLine(width: 58, height: 16)
         }
         .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.base)
-        .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
+        .padding(.vertical, PPSpace.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var skeletonDivider: some View {
+        Rectangle()
+            .fill(skeletonDividerColor)
+            .frame(height: skeletonDividerThickness)
+    }
+
+    private var verticalSkeletonDivider: some View {
+        Rectangle()
+            .fill(skeletonDividerColor)
+            .frame(width: skeletonDividerThickness)
+            .padding(.vertical, PPSpace.md)
+    }
+
+    private var skeletonDividerColor: Color {
+        Color(uiColor: .separator).opacity(
+            colorSchemeContrast == .increased ? 0.64 : 0.24
+        )
+    }
+
+    private var skeletonDividerThickness: CGFloat {
+        colorSchemeContrast == .increased ? 1.5 : 1
     }
 }

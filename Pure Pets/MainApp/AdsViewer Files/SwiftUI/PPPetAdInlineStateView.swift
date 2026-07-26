@@ -8,57 +8,89 @@ struct PPPetAdInlineStateView: View {
     let tint: Color
     let action: (() -> Void)?
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        VStack(spacing: PPSpace.md) {
-            Image(systemName: symbol)
-                .font(.system(size: 25, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 50, height: 50)
-                .background(
-                    tint.opacity(0.10),
-                    in: RoundedRectangle(
-                        cornerRadius: 0,
-                        style: .continuous
-                    )
-                )
-
-            VStack(spacing: PPSpace.xs) {
-                Text(title)
-                    .font(PPPetAdTypography.headline)
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .multilineTextAlignment(.center)
-
-                if !message.isEmpty {
-                    Text(message)
-                        .font(PPPetAdTypography.subheadline)
-                        .foregroundStyle(Color.ppTextSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: PPSpace.md) {
+                    stateIdentity
+                    actionButton
                 }
-            }
-
-            if let actionTitle, let action {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .font(PPPetAdTypography.calloutBold)
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, PPSpace.lg)
-                        .frame(minHeight: 46)
-                        .background(
-                            tint,
-                            in: RoundedRectangle(
-                                cornerRadius:
-                                    PPPetAdViewerStyle.insetRadius,
-                                style: .continuous
-                            )
-                        )
+            } else {
+                HStack(alignment: .top, spacing: PPSpace.md) {
+                    stateIcon
+                    stateCopy
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    actionButton
                 }
-                .buttonStyle(PPPetAdPressButtonStyle())
             }
         }
-        .padding(PPPetAdViewerStyle.compactSurfacePadding)
-        .frame(maxWidth: .infinity)
+        .padding(PPSpace.base)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
+    }
+
+    private var stateIdentity: some View {
+        HStack(alignment: .top, spacing: PPSpace.md) {
+            stateIcon
+            stateCopy
+        }
+    }
+
+    private var stateIcon: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(tint)
+            .frame(width: 42, height: 42)
+            .background(
+                tint.opacity(0.10),
+                in: RoundedRectangle(
+                    cornerRadius: PPCorner.small,
+                    style: .continuous
+                )
+            )
+            .accessibilityHidden(true)
+    }
+
+    private var stateCopy: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            Text(title)
+                .font(PPPetAdTypography.headline)
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+
+            if !message.isEmpty {
+                Text(message)
+                    .font(PPPetAdTypography.subheadline)
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionButton: some View {
+        if let actionTitle, let action {
+            Button(action: action) {
+                Text(actionTitle)
+                    .font(PPPetAdTypography.calloutBold)
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, PPSpace.base)
+                    .frame(minHeight: 44)
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius: PPPetAdViewerStyle.insetRadius,
+                            style: .continuous
+                        )
+                        .strokeBorder(tint.opacity(0.48), lineWidth: 1)
+                    }
+            }
+            .buttonStyle(
+                PPPetAdPressButtonStyle(pressedScale: 0.985)
+            )
+        }
     }
 }
 

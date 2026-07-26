@@ -1711,6 +1711,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 }
 
 - (void)dealloc {
+    if (_swiftCoordinator) {
+        [_swiftCoordinator stop];
+        _swiftCoordinator = nil;
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 

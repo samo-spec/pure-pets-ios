@@ -8,7 +8,11 @@
 //
 
 #import "PPBackgroundView.h"
+
+#if PP_HERO_APEX_ENABLED
+
 #import <Pure_Pets-Swift.h>
+#import <math.h>
 
 static BOOL PPHeroGlassIsDark(UITraitCollection *traitCollection)
 {
@@ -23,8 +27,43 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     return [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.12 : 0.78];
 }
 
+static CGFloat PPHeroGlassFiniteNonnegative(CGFloat value)
+{
+    return isfinite(value) ? MAX(value, 0.0) : 0.0;
+}
+
+static PPHeroGlassAccentStyle PPHeroGlassResolvedAccentStyle(NSInteger rawValue)
+{
+    switch (rawValue) {
+        case PPHeroGlassAccentStyleBar:
+        case PPHeroGlassAccentStyleCornerGlow:
+        case PPHeroGlassAccentStyleFullScreen:
+        case PPHeroGlassAccentStyleSolid:
+        case PPHeroGlassAccentStyleFullScreenPink:
+        case PPHeroGlassAccentStyleFullScreenPage:
+        case PPHeroGlassAccentStyleBBBaseBackground:
+            return (PPHeroGlassAccentStyle)rawValue;
+        default:
+            return PPHeroGlassAccentStyleBar;
+    }
+}
+
+static PPHeroGlowDirection PPHeroGlassResolvedGlowDirection(NSInteger rawValue)
+{
+    switch (rawValue) {
+        case 0:
+        case 1:
+        case 2:
+            return (PPHeroGlowDirection)rawValue;
+        default:
+            return (PPHeroGlowDirection)0;
+    }
+}
+
 @interface PPBackgroundView ()
 @property (nonatomic, strong) PPHeroApexView *apexView;
+- (void)pp_applyContainerPaletteReapplyingApex:(BOOL)reapplyApex;
+- (void)pp_setResolvedBorderColor:(UIColor *)color;
 @end
 
 @implementation PPBackgroundView
@@ -94,6 +133,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     apexView.PPHeroApexUseUnderFingerMotion = _PPHeroApexUseUnderFingerMotion;
     [self addSubview:apexView];
     self.apexView = apexView;
+    [self pp_applyContainerPaletteReapplyingApex:NO];
 }
 
 - (void)layoutSubviews
@@ -101,12 +141,12 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     [super layoutSubviews];
     self.apexView.frame = self.bounds;
 
-    CGFloat resolvedCornerRadius = self.overrideCornerRadius;
+    CGFloat resolvedCornerRadius = PPHeroGlassFiniteNonnegative(self.overrideCornerRadius);
     if (resolvedCornerRadius <= 0.0) {
-        resolvedCornerRadius = self.layer.cornerRadius;
+        resolvedCornerRadius = PPHeroGlassFiniteNonnegative(self.layer.cornerRadius);
     }
     if (resolvedCornerRadius <= 0.5) {
-        resolvedCornerRadius = self.superview.layer.cornerRadius;
+        resolvedCornerRadius = PPHeroGlassFiniteNonnegative(self.superview.layer.cornerRadius);
     }
     if (resolvedCornerRadius <= 0.5) {
         resolvedCornerRadius = 30.0;
@@ -166,13 +206,12 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)setOverrideSurfureColor:(UIColor *)overrideSurfureColor
 {
-    if (_overrideSurfureColor == overrideSurfureColor ||
-        [_overrideSurfureColor isEqual:overrideSurfureColor]) {
-        return;
-    }
+    [self setOverrideSurfaceColor:overrideSurfureColor];
+}
 
-    _overrideSurfureColor = overrideSurfureColor;
-    self.apexView.overrideSurfureColor = overrideSurfureColor;
+- (UIColor *)overrideSurfureColor
+{
+    return self.overrideSurfaceColor;
 }
 
 - (void)setOverrideSurfaceColor:(UIColor *)overrideSurfaceColor
@@ -183,23 +222,28 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     }
 
     _overrideSurfaceColor = overrideSurfaceColor;
+    _overrideSurfureColor = overrideSurfaceColor;
     self.apexView.overrideSurfaceColor = overrideSurfaceColor;
 }
 
 - (void)setAccentStyle:(PPHeroGlassAccentStyle)accentStyle
 {
-    if (_accentStyle == accentStyle) {
+    PPHeroGlassAccentStyle resolvedStyle = PPHeroGlassResolvedAccentStyle(accentStyle);
+    if (_accentStyle == resolvedStyle) {
         return;
     }
 
-    _accentStyle = accentStyle;
-    self.apexView.accentStyle = accentStyle;
-    [self reapplyPalette];
+    _accentStyle = resolvedStyle;
+    self.apexView.accentStyle = resolvedStyle;
+    [self pp_applyContainerPaletteReapplyingApex:NO];
     [self setNeedsLayout];
 }
 
 - (void)setCornerGlowOpacityMultiplier:(CGFloat)cornerGlowOpacityMultiplier
 {
+    if (!isfinite(cornerGlowOpacityMultiplier)) {
+        return;
+    }
     CGFloat clamped = MIN(MAX(cornerGlowOpacityMultiplier, 0.0), 1.0);
     if (fabs(_cornerGlowOpacityMultiplier - clamped) < 0.001) {
         return;
@@ -211,12 +255,13 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)setGlowDirection:(NSInteger)glowDirection
 {
-    if (_glowDirection == glowDirection) {
+    PPHeroGlowDirection resolvedDirection = PPHeroGlassResolvedGlowDirection(glowDirection);
+    if (_glowDirection == resolvedDirection) {
         return;
     }
 
-    _glowDirection = glowDirection;
-    self.apexView.glowDirection = (PPHeroGlowDirection)glowDirection;
+    _glowDirection = resolvedDirection;
+    self.apexView.glowDirection = resolvedDirection;
 }
 
 - (void)setPPHeroApexUseShimmer:(BOOL)PPHeroApexUseShimmer
@@ -241,10 +286,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)setOverrideCornerRadius:(CGFloat)overrideCornerRadius
 {
-    if (_overrideCornerRadius == overrideCornerRadius) {
+    CGFloat resolvedRadius = PPHeroGlassFiniteNonnegative(overrideCornerRadius);
+    if (fabs(_overrideCornerRadius - resolvedRadius) < 0.001) {
         return;
     }
-    _overrideCornerRadius = overrideCornerRadius;
+    _overrideCornerRadius = resolvedRadius;
     [self setNeedsLayout];
 }
 
@@ -264,7 +310,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         return;
     }
     _overrideSolidColor = overrideSolidColor;
-    [self reapplyPalette];
+    [self pp_applyContainerPaletteReapplyingApex:NO];
 }
 
 - (void)setOverrideBorders:(BOOL)overrideBorders
@@ -273,7 +319,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         return;
     }
     _overrideBorders = overrideBorders;
-    [self reapplyPalette];
+    [self pp_applyContainerPaletteReapplyingApex:NO];
 }
 
 - (void)setOverrideBorderColor:(UIColor *)overrideBorderColor
@@ -282,7 +328,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         return;
     }
     _overrideBorderColor = overrideBorderColor;
-    [self reapplyPalette];
+    [self pp_applyContainerPaletteReapplyingApex:NO];
 }
 
 - (void)startAnimations
@@ -297,6 +343,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)reapplyPalette
 {
+    [self pp_applyContainerPaletteReapplyingApex:YES];
+}
+
+- (void)pp_applyContainerPaletteReapplyingApex:(BOOL)reapplyApex
+{
     BOOL isSolid = (self.accentStyle == PPHeroGlassAccentStyleSolid);
     self.apexView.hidden = isSolid;
     self.clipsToBounds = isSolid;
@@ -309,24 +360,39 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         if (self.overrideBorders) {
             if (self.overrideBorderColor) {
                 self.layer.borderWidth = 1.0;
-                [self pp_setBorderColor:self.overrideBorderColor];
+                [self pp_setResolvedBorderColor:self.overrideBorderColor];
             } else {
                 self.layer.borderWidth = 0.0;
-                [self pp_setBorderColor:UIColor.clearColor];
+                [self pp_setResolvedBorderColor:UIColor.clearColor];
             }
         } else {
             self.layer.borderWidth = 1.0;
-            [self pp_setBorderColor:PPHeroGlassStrokeColor(darkMode)];
+            [self pp_setResolvedBorderColor:PPHeroGlassStrokeColor(darkMode)];
         }
         
         self.layer.shadowOpacity = 0.0f;
     } else {
         self.backgroundColor = UIColor.clearColor;
         self.layer.borderWidth = 0.0;
-        [self pp_setBorderColor:UIColor.clearColor];
-        
+        [self pp_setResolvedBorderColor:UIColor.clearColor];
+    }
+
+    if (reapplyApex) {
         [self.apexView reapplyPalette];
     }
+}
+
+- (void)pp_setResolvedBorderColor:(UIColor *)color
+{
+    UIColor *resolvedColor = color;
+    if (@available(iOS 13.0, *)) {
+        resolvedColor = [color resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.layer.borderColor = resolvedColor.CGColor;
+    [CATransaction commit];
 }
 
 #pragma mark - Trait Changes
@@ -334,7 +400,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
-    [self reapplyPalette];
+    [self pp_applyContainerPaletteReapplyingApex:NO];
 }
 
 @end
+
+#endif // PP_HERO_APEX_ENABLED

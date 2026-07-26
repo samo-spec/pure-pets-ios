@@ -39,9 +39,7 @@ public final class PPRootSwiftCoordinator: NSObject, UITabBarControllerDelegate,
     }
     
     deinit {
-        Task { @MainActor [weak self] in
-            self?.stop()
-        }
+        cancellables.removeAll()
     }
     
     // MARK: - Lifecycle Management

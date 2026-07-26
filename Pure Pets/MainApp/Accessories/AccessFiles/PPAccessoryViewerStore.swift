@@ -136,31 +136,33 @@ final class PPAccessoryViewerStore: ObservableObject {
             quantity: quantity,
             from: presenter
         ) { [weak self] result, _, cartQuantity, remainingStock in
-            guard let self else { return }
-            self.cartQuantity = cartQuantity
-            self.cartItemsCount =
-                PPAccessoryViewerLegacyBridge.cartItemsCount()
-            self.remainingStock = remainingStock
+            Task { @MainActor in
+                guard let self else { return }
+                self.cartQuantity = cartQuantity
+                self.cartItemsCount =
+                    PPAccessoryViewerLegacyBridge.cartItemsCount()
+                self.remainingStock = remainingStock
 
-            switch result {
-            case .success:
-                self.cartPhase = .success
-                self.tideSuccessToken += 1
-                self.quantity = 1
-                self.scheduleSuccessReset()
-            case .cancelled, .authenticationRequired:
-                self.cartPhase = .ready
-            case .offline, .outOfStock, .unavailable, .failed:
-                self.cartPhase = .failed
-                if result == .unavailable || result == .failed {
-                    self.bannerMessage = PPAccessoryViewerL10n.text(
-                        "accessory_view_add_failed"
-                    )
+                switch result {
+                case .success:
+                    self.cartPhase = .success
+                    self.tideSuccessToken += 1
+                    self.quantity = 1
+                    self.scheduleSuccessReset()
+                case .cancelled, .authenticationRequired:
+                    self.cartPhase = .ready
+                case .offline, .outOfStock, .unavailable, .failed:
+                    self.cartPhase = .failed
+                    if result == .unavailable || result == .failed {
+                        self.bannerMessage = PPAccessoryViewerL10n.text(
+                            "accessory_view_add_failed"
+                        )
+                    }
+                    self.scheduleFailureReset()
+                @unknown default:
+                    self.cartPhase = .failed
+                    self.scheduleFailureReset()
                 }
-                self.scheduleFailureReset()
-            @unknown default:
-                self.cartPhase = .failed
-                self.scheduleFailureReset()
             }
         }
     }
@@ -172,8 +174,10 @@ final class PPAccessoryViewerStore: ObservableObject {
             PPAccessoryViewerLegacyBridge.presentSignIn(
                 from: presenter
             ) { [weak self] signedIn in
-                if signedIn {
-                    self?.loadFavorite()
+                Task { @MainActor in
+                    if signedIn {
+                        self?.loadFavorite()
+                    }
                 }
             }
             return
@@ -185,22 +189,24 @@ final class PPAccessoryViewerStore: ObservableObject {
             nextValue,
             accessoryID: accessory.accessoryID
         ) { [weak self] error in
-            guard let self else { return }
-            if error == nil {
-                self.isFavorite = nextValue
-                self.favoritePhase = .loaded
-                PPAccessoryViewerLegacyBridge.playFavoriteFeedback(
-                    isFavorite: nextValue
-                )
-            } else {
-                self.favoritePhase = .failed(
-                    message: PPAccessoryViewerL10n.text(
+            Task { @MainActor in
+                guard let self else { return }
+                if error == nil {
+                    self.isFavorite = nextValue
+                    self.favoritePhase = .loaded
+                    PPAccessoryViewerLegacyBridge.playFavoriteFeedback(
+                        isFavorite: nextValue
+                    )
+                } else {
+                    self.favoritePhase = .failed(
+                        message: PPAccessoryViewerL10n.text(
+                            "accessory_view_favorite_failed"
+                        )
+                    )
+                    self.bannerMessage = PPAccessoryViewerL10n.text(
                         "accessory_view_favorite_failed"
                     )
-                )
-                self.bannerMessage = PPAccessoryViewerL10n.text(
-                    "accessory_view_favorite_failed"
-                )
+                }
             }
         }
     }
@@ -277,20 +283,22 @@ final class PPAccessoryViewerStore: ObservableObject {
         PPAccessoryViewerLegacyBridge.fetchOwner(
             for: accessory
         ) { [weak self] user, error in
-            guard let self else { return }
-            if let user {
-                self.owner = PPAccessoryViewerOwner(user: user)
-                self.ownerPhase = .loaded
-            } else if error != nil {
-                self.owner = nil
-                self.ownerPhase = .failed(
-                    message: PPAccessoryViewerL10n.text(
-                        "accessory_view_owner_failed"
+            Task { @MainActor in
+                guard let self else { return }
+                if let user {
+                    self.owner = PPAccessoryViewerOwner(user: user)
+                    self.ownerPhase = .loaded
+                } else if error != nil {
+                    self.owner = nil
+                    self.ownerPhase = .failed(
+                        message: PPAccessoryViewerL10n.text(
+                            "accessory_view_owner_failed"
+                        )
                     )
-                )
-            } else {
-                self.owner = nil
-                self.ownerPhase = .empty
+                } else {
+                    self.owner = nil
+                    self.ownerPhase = .empty
+                }
             }
         }
     }
@@ -301,28 +309,30 @@ final class PPAccessoryViewerStore: ObservableObject {
         PPAccessoryViewerLegacyBridge.fetchSuggestions(
             for: accessory
         ) { [weak self] items, sameProvider, error in
-            guard let self else { return }
-            var seen = Set<String>()
-            self.suggestions = items
-                .filter {
-                    !$0.isBlocked &&
-                    !$0.isDeleted &&
-                    !$0.isDisabled &&
-                    $0.accessoryID != accessory.accessoryID
-                }
-                .map(PPAccessoryViewerSuggestion.init(accessory:))
-                .filter { seen.insert($0.id).inserted }
-            self.suggestionsFromSameProvider = sameProvider
-            if !self.suggestions.isEmpty {
-                self.suggestionsPhase = .loaded
-            } else if error != nil {
-                self.suggestionsPhase = .failed(
-                    message: PPAccessoryViewerL10n.text(
-                        "accessory_view_suggestions_failed"
+            Task { @MainActor in
+                guard let self else { return }
+                var seen = Set<String>()
+                self.suggestions = items
+                    .filter {
+                        !$0.isBlocked &&
+                        !$0.isDeleted &&
+                        !$0.isDisabled &&
+                        $0.accessoryID != accessory.accessoryID
+                    }
+                    .map(PPAccessoryViewerSuggestion.init(accessory:))
+                    .filter { seen.insert($0.id).inserted }
+                self.suggestionsFromSameProvider = sameProvider
+                if !self.suggestions.isEmpty {
+                    self.suggestionsPhase = .loaded
+                } else if error != nil {
+                    self.suggestionsPhase = .failed(
+                        message: PPAccessoryViewerL10n.text(
+                            "accessory_view_suggestions_failed"
+                        )
                     )
-                )
-            } else {
-                self.suggestionsPhase = .empty
+                } else {
+                    self.suggestionsPhase = .empty
+                }
             }
         }
     }
@@ -338,15 +348,17 @@ final class PPAccessoryViewerStore: ObservableObject {
         PPAccessoryViewerLegacyBridge.loadFavorite(
             accessoryID: accessory.accessoryID
         ) { [weak self] favorite, error in
-            guard let self else { return }
-            self.isFavorite = favorite
-            self.favoritePhase = error == nil
-                ? .loaded
-                : .failed(
-                    message: PPAccessoryViewerL10n.text(
-                        "accessory_view_favorite_failed"
+            Task { @MainActor in
+                guard let self else { return }
+                self.isFavorite = favorite
+                self.favoritePhase = error == nil
+                    ? .loaded
+                    : .failed(
+                        message: PPAccessoryViewerL10n.text(
+                            "accessory_view_favorite_failed"
+                        )
                     )
-                )
+            }
         }
     }
 

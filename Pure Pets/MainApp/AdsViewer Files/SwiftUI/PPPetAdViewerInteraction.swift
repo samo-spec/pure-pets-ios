@@ -314,42 +314,22 @@ private struct PPPetAdViewerEntranceModifier: ViewModifier {
 }
 
 struct PPPetAdSectionHeading: View {
-    let symbol: String
     let title: String
     var subtitle: String? = nil
-    var tint: Color = .ppPrimary
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            HStack(alignment: .center, spacing: PPSpace.md) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(tint)
-                    .frame(width: 32, height: 32)
-                    .background(
-                        tint.opacity(0.09),
-                        in: RoundedRectangle(
-                            cornerRadius: 11,
-                            style: .continuous
-                        )
-                    )
-                    .accessibilityHidden(true)
-
-                Text(title)
-                    .font(PPPetAdTypography.title3)
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: 0)
-            }
-            .accessibilityAddTraits(.isHeader)
+            Text(title)
+                .font(PPPetAdTypography.title2)
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(PPPetAdTypography.subheadline)
                     .foregroundStyle(Color.ppTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 44)
             }
         }
     }

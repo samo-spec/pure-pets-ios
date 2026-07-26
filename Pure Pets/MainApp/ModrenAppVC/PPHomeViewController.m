@@ -112,6 +112,7 @@ static NSString * const PPHomeSaveForLaterUpdatedNotificationName = @"PPSaveForL
 static CGFloat const PPHomeSmartSearchCartButtonSide = 44.0;
 static CGFloat const PPHomeSmartSearchCartButtonSpacing = 8.0;
 static NSTimeInterval const PPHomeSmartSearchCartRevealDuration = 0.42;
+static CGFloat const PPHomeAmbientBackgroundAccentStrength = 0.22;
 
 static NSInteger const PPHomeOrderStatusHostingViewTag = 1001;
 static NSString * const PPHomeOrderStatusCellIdentifier = @"PPHomeOrderStatusCellIdentifier";
@@ -13653,9 +13654,10 @@ presentingViewController:self
             self.ambientBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
             self.ambientBackgroundView.userInteractionEnabled = NO;
 
-            self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = YES;
-            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
-            //self.ambientambientBackgroundViewView.cornerGlowOpacityMultiplier =0.22;
+            self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleCornerGlow;
+            self.ambientBackgroundView.cornerGlowOpacityMultiplier =
+                PPHomeAmbientBackgroundAccentStrength;
             //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
             //self.ambientBackgroundView.overrideBorders = YES;
             //self.ambientBackgroundView.overrideBorderColor = UIColor.clearColor;

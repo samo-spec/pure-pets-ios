@@ -398,6 +398,13 @@ willConnectToSession:(UISceneSession *)session
         }
 
         UIViewController *currentRootViewController = window.rootViewController;
+        if ([currentRootViewController isKindOfClass:[PPRootTabBarController class]]) {
+            PPRootTabBarController *rootTab = (PPRootTabBarController *)currentRootViewController;
+            if (rootTab.swiftCoordinator) {
+                [rootTab.swiftCoordinator stop];
+                rootTab.swiftCoordinator = nil;
+            }
+        }
         UIViewController *newRootViewController = [self pp_buildRootViewControllerForLanguageReloadFrom:currentRootViewController];
         [self pp_applyCurrentLanguageSemanticToWindow:window];
 

@@ -1,10 +1,16 @@
 import SwiftUI
 
+enum PPPetAdInfoEmphasis {
+    case featured
+    case supporting
+}
+
 struct PPPetAdInfoPillView: View {
     let systemIcon: String?
     let assetIcon: String?
     let label: String
     let value: String
+    let emphasis: PPPetAdInfoEmphasis
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -12,43 +18,74 @@ struct PPPetAdInfoPillView: View {
         systemIcon: String? = nil,
         assetIcon: String? = nil,
         label: String,
-        value: String
+        value: String,
+        emphasis: PPPetAdInfoEmphasis = .supporting
     ) {
         self.systemIcon = systemIcon
         self.assetIcon = assetIcon
         self.label = label
         self.value = value
-    }
-
-    private var isAccessibilityLayout: Bool {
-        dynamicTypeSize.isAccessibilitySize
+        self.emphasis = emphasis
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            HStack(spacing: PPSpace.xs) {
-                pillIcon
-
-                Text(label)
-                    .font(PPPetAdTypography.footnote)
-                    .foregroundStyle(Color.ppTextSecondary.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
+        Group {
+            switch emphasis {
+            case .featured:
+                featuredContent
+            case .supporting:
+                supportingContent
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(label): \(value)")
+    }
 
-            Text(value)
-                .font(PPPetAdTypography.headline)
+    private var featuredContent: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            pillIcon
+                .frame(
+                    width: dynamicTypeSize.isAccessibilitySize ? 60 : 52,
+                    height: dynamicTypeSize.isAccessibilitySize ? 48 : 42
+                )
+                .background(
+                    Color.ppPrimary.opacity(0.11),
+                    in: Capsule(style: .continuous)
+                )
+
+            factText(
+                valueFont: PPPetAdTypography.title3
+            )
+        }
+        .padding(.vertical, PPSpace.base)
+    }
+
+    private var supportingContent: some View {
+        HStack(alignment: .top, spacing: PPSpace.sm) {
+            pillIcon
+                .frame(width: 24, height: 24)
+
+            factText(
+                valueFont: PPPetAdTypography.headline
+            )
+        }
+        .padding(.horizontal, PPSpace.sm)
+        .padding(.vertical, PPSpace.md)
+    }
+
+    private func factText(valueFont: Font) -> some View {
+        VStack(alignment: .leading, spacing: PPSpace.xxs) {
+            Text(label)
+                .font(PPPetAdTypography.footnote)
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(verbatim: "\u{2068}\(value)\u{2069}")
+                .font(valueFont)
                 .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.base)
-        .frame(
-            maxWidth: .infinity,
-            minHeight: isAccessibilityLayout ? 82 : 78,
-            alignment: .leading
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label): \(value)")
     }
 
     @ViewBuilder
@@ -59,15 +96,14 @@ struct PPPetAdInfoPillView: View {
                 .renderingMode(.template)
                 .scaledToFit()
                 .foregroundStyle(PPPetAdViewerStyle.actionAccent)
-                .frame(width: 19, height: 19)
+                .frame(width: 24, height: 24)
                 .accessibilityHidden(true)
         } else if let systemIcon, !systemIcon.isEmpty {
             Image(systemName: systemIcon)
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(
-                    PPPetAdViewerStyle.actionAccent.opacity(0.88)
+                    Color.ppTextSecondary
                 )
-                .frame(width: 19, height: 19)
                 .accessibilityHidden(true)
         }
     }
@@ -89,7 +125,8 @@ struct PPPetAdInfoPillView: View {
         PPPetAdInfoPillView(
             assetIcon: "peeking_pets",
             label: "السلالة",
-            value: "شيرازي أصيل"
+            value: "شيرازي أصيل",
+            emphasis: .featured
         )
     }
     .padding()

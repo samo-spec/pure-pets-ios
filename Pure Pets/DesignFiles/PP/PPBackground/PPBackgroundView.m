@@ -7,8 +7,13 @@
 //
 
 #import "PPBackgroundView.h"
+
+#if !PP_HERO_APEX_ENABLED
+
 #import "PPMarketplaceHeroCardStyle.h"
 #import "Language.h"
+#import <math.h>
+#import <stdint.h>
 
 static NSString * const PPHeroGlassConstellationOpacityAnimationKey = @"pp.hero.glass.constellation.opacity";
 static NSString * const PPHeroGlassConstellationTraceAnimationKey = @"pp.hero.glass.constellation.trace";
@@ -39,14 +44,28 @@ static PPHeroGlassConnection PPHeroGlassConnectionFromValue(NSValue *value)
     return connection;
 }
 
-static CGFloat PPHeroGlassRandomUnit(void)
+static uint64_t PPHeroGlassNextRandom(uint64_t *state)
 {
-    return ((CGFloat)arc4random_uniform(1000000U)) / 1000000.0;
+    uint64_t value = (*state == 0) ? UINT64_C(0x9E3779B97F4A7C15) : *state;
+    value ^= value >> 12;
+    value ^= value << 25;
+    value ^= value >> 27;
+    *state = value;
+    return value * UINT64_C(0x2545F4914F6CDD1D);
 }
 
-static CGFloat PPHeroGlassRandomRange(CGFloat minimum, CGFloat maximum)
+static CGFloat PPHeroGlassRandomUnit(uint64_t *state)
 {
-    return minimum + ((maximum - minimum) * PPHeroGlassRandomUnit());
+    const uint64_t mantissaMask = (UINT64_C(1) << 53) - 1;
+    uint64_t mantissa = PPHeroGlassNextRandom(state) & mantissaMask;
+    return (CGFloat)((double)mantissa / (double)(UINT64_C(1) << 53));
+}
+
+static CGFloat PPHeroGlassRandomRange(CGFloat minimum,
+                                      CGFloat maximum,
+                                      uint64_t *state)
+{
+    return minimum + ((maximum - minimum) * PPHeroGlassRandomUnit(state));
 }
 
 static CGFloat PPHeroGlassNormalizedDistanceSquared(CGPoint first, CGPoint second)
@@ -59,6 +78,14 @@ static CGFloat PPHeroGlassNormalizedDistanceSquared(CGPoint first, CGPoint secon
 }
 
 #pragma mark - Color helpers
+
+static UIColor *PPHeroGlassColorFromHex(NSUInteger hex)
+{
+    return [UIColor colorWithRed:((hex >> 16) & 0xFF) / 255.0
+                           green:((hex >> 8) & 0xFF) / 255.0
+                            blue:(hex & 0xFF) / 255.0
+                           alpha:1.0];
+}
 
 static UIColor *PPHeroGlassAccentColor(void)
 {
@@ -204,11 +231,15 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 @property (nonatomic, strong) UIView *accentView;
 @property (nonatomic, assign) BOOL motionRunning;
 - (void)pp_generateConstellationDefinition;
-- (NSArray<NSValue *> *)pp_generateNormalizedDotCenters;
-- (NSArray<NSValue *> *)pp_generateConnectionsForCenters:(NSArray<NSValue *> *)centers;
+- (NSArray<NSValue *> *)pp_generateNormalizedDotCentersWithRandomState:(uint64_t *)randomState;
+- (NSArray<NSValue *> *)pp_generateConnectionsForCenters:(NSArray<NSValue *> *)centers
+                                              randomState:(uint64_t *)randomState;
 - (void)pp_applyAccentStyle;
 - (void)pp_reduceMotionStatusDidChange:(NSNotification *)notification;
 - (void)pp_applicationDidBecomeActive:(NSNotification *)notification;
+- (void)pp_applicationWillResignActive:(NSNotification *)notification;
+- (void)pp_energyPolicyDidChange:(NSNotification *)notification;
+- (BOOL)pp_motionIsEligible;
 @end
 
 @implementation PPBackgroundView
@@ -352,16 +383,37 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
                                              selector:@selector(pp_applicationDidBecomeActive:)
                                                  name:UIApplicationDidBecomeActiveNotification
                                                object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_applicationWillResignActive:)
+                                                 name:UIApplicationWillResignActiveNotification
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_energyPolicyDidChange:)
+                                                 name:NSProcessInfoPowerStateDidChangeNotification
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_energyPolicyDidChange:)
+                                                 name:NSProcessInfoThermalStateDidChangeNotification
+                                               object:nil];
 }
 
 #pragma mark - Constellation Definition
 
 - (void)pp_generateConstellationDefinition
 {
-    NSArray<NSValue *> *centers = [self pp_generateNormalizedDotCenters];
+    // A fixed local seed gives every reused hero the same stable geometry and
+    // authored timing while avoiding any process-global random state.
+    uint64_t randomState = UINT64_C(0x50504845524F4158);
+    NSArray<NSValue *> *centers =
+        [self pp_generateNormalizedDotCentersWithRandomState:&randomState];
     NSMutableIndexSet *anchors = [NSMutableIndexSet indexSet];
     while (anchors.count < PPHeroGlassAnchorDotCount) {
-        NSUInteger index = arc4random_uniform((uint32_t)PPHeroGlassDotCount);
+        NSUInteger index = (NSUInteger)(
+            PPHeroGlassNextRandom(&randomState) % PPHeroGlassDotCount
+        );
         [anchors addIndex:index];
     }
 
@@ -372,15 +424,15 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     for (NSUInteger index = 0; index < PPHeroGlassDotCount; index++) {
         BOOL anchor = [anchors containsIndex:index];
         [sizes addObject:@(anchor
-            ? PPHeroGlassRandomRange(3.05, 3.45)
-            : PPHeroGlassRandomRange(1.85, 2.75))];
+            ? PPHeroGlassRandomRange(3.05, 3.45, &randomState)
+            : PPHeroGlassRandomRange(1.85, 2.75, &randomState))];
         [opacities addObject:@(anchor
-            ? PPHeroGlassRandomRange(0.86, 0.94)
-            : PPHeroGlassRandomRange(0.64, 0.82))];
+            ? PPHeroGlassRandomRange(0.86, 0.94, &randomState)
+            : PPHeroGlassRandomRange(0.64, 0.82, &randomState))];
         [durations addObject:@(anchor
-            ? PPHeroGlassRandomRange(6.8, 8.4)
-            : PPHeroGlassRandomRange(5.9, 8.0))];
-        [delays addObject:@(PPHeroGlassRandomRange(0.35, 4.20))];
+            ? PPHeroGlassRandomRange(6.8, 8.4, &randomState)
+            : PPHeroGlassRandomRange(5.9, 8.0, &randomState))];
+        [delays addObject:@(PPHeroGlassRandomRange(0.35, 4.20, &randomState))];
     }
 
     self.normalizedDotCenters = centers;
@@ -388,11 +440,12 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     self.dotOpacities = opacities.copy;
     self.dotAnimationDurations = durations.copy;
     self.dotAnimationDelays = delays.copy;
-    self.constellationConnections = [self pp_generateConnectionsForCenters:centers];
+    self.constellationConnections =
+        [self pp_generateConnectionsForCenters:centers randomState:&randomState];
     self.anchorDotIndexes = anchors.copy;
 }
 
-- (NSArray<NSValue *> *)pp_generateNormalizedDotCenters
+- (NSArray<NSValue *> *)pp_generateNormalizedDotCentersWithRandomState:(uint64_t *)randomState
 {
     NSMutableArray<NSValue *> *centers = [NSMutableArray arrayWithCapacity:PPHeroGlassDotCount];
     const CGFloat minimumDistanceSquared = 0.0110;
@@ -404,8 +457,10 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         BOOL foundSpacedCandidate = NO;
 
         for (NSUInteger attempt = 0; attempt < 84; attempt++) {
-            CGPoint candidate = CGPointMake(PPHeroGlassRandomRange(0.065, 0.935),
-                                             PPHeroGlassRandomRange(0.105, 0.895));
+            CGPoint candidate = CGPointMake(
+                PPHeroGlassRandomRange(0.065, 0.935, randomState),
+                PPHeroGlassRandomRange(0.105, 0.895, randomState)
+            );
             CGFloat candidateMinimumDistance = CGFLOAT_MAX;
             for (NSValue *existingValue in centers) {
                 CGFloat distance = PPHeroGlassNormalizedDistanceSquared(candidate, existingValue.CGPointValue);
@@ -432,6 +487,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 }
 
 - (NSArray<NSValue *> *)pp_generateConnectionsForCenters:(NSArray<NSValue *> *)centers
+                                              randomState:(uint64_t *)randomState
 {
     NSUInteger centerCount = MIN(centers.count, (NSUInteger)PPHeroGlassDotCount);
     if (centerCount < 2) {
@@ -439,7 +495,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     }
 
     BOOL visited[PPHeroGlassDotCount] = {NO};
-    NSUInteger rootIndex = arc4random_uniform((uint32_t)centerCount);
+    NSUInteger rootIndex = (NSUInteger)(
+        PPHeroGlassNextRandom(randomState) % centerCount
+    );
     visited[rootIndex] = YES;
     NSMutableArray<NSValue *> *treeConnections = [NSMutableArray arrayWithCapacity:centerCount - 1];
 
@@ -623,7 +681,8 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         return;
     }
     _accentStyle = accentStyle;
-    if (accentStyle == PPHeroGlassAccentStyleSolid) {
+    if (accentStyle == PPHeroGlassAccentStyleSolid ||
+        accentStyle == PPHeroGlassAccentStyleBBBaseBackground) {
         [self stopAnimations];
     }
     [self pp_applyAccentStyle];
@@ -632,6 +691,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)setCornerGlowOpacityMultiplier:(CGFloat)cornerGlowOpacityMultiplier
 {
+    if (!isfinite(cornerGlowOpacityMultiplier)) {
+        return;
+    }
     CGFloat clamped = MIN(MAX(cornerGlowOpacityMultiplier, 0.0), 1.0);
     if (fabs(_cornerGlowOpacityMultiplier - clamped) < 0.001) {
         return;
@@ -681,10 +743,11 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)setOverrideCornerRadius:(CGFloat)overrideCornerRadius
 {
-    if (_overrideCornerRadius == overrideCornerRadius) {
+    CGFloat resolvedRadius = isfinite(overrideCornerRadius) ? MAX(overrideCornerRadius, 0.0) : 0.0;
+    if (fabs(_overrideCornerRadius - resolvedRadius) < 0.001) {
         return;
     }
-    _overrideCornerRadius = overrideCornerRadius;
+    _overrideCornerRadius = resolvedRadius;
     [self setNeedsLayout];
 }
 
@@ -712,17 +775,20 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     UIColor *brand = self.accentColorOverride ?: PPHeroGlassAccentColor();
     BOOL darkMode = PPHeroGlassIsDark(self.traitCollection);
     BOOL isSolid = (self.accentStyle == PPHeroGlassAccentStyleSolid);
+    BOOL isBaseBackground =
+        (self.accentStyle == PPHeroGlassAccentStyleBBBaseBackground);
+    BOOL hidesConstellation = isSolid || isBaseBackground;
 
     self.gradientLayer.hidden = isSolid;
     self.depthLayer.hidden = isSolid;
-    self.constellationLayer.hidden = isSolid;
-    self.constellationTraceLayer.hidden = isSolid;
-    self.accentView.hidden = isSolid;
+    self.constellationLayer.hidden = hidesConstellation;
+    self.constellationTraceLayer.hidden = hidesConstellation;
+    self.accentView.hidden = isSolid || isBaseBackground;
     for (CAShapeLayer *layer in self.dotLayers) {
-        layer.hidden = isSolid;
+        layer.hidden = hidesConstellation;
     }
     for (CAShapeLayer *layer in self.dotHaloLayers) {
-        layer.hidden = isSolid;
+        layer.hidden = hidesConstellation;
     }
 
     if (self.overrideBorders) {
@@ -739,7 +805,9 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     }
 
     [self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    self.layer.shadowOpacity = isSolid ? 0.0f : 0.08f;
+    self.layer.shadowOpacity = isSolid
+        ? 0.0f
+        : (isBaseBackground ? 0.045f : 0.08f);
     self.layer.shadowRadius = 20.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 10.0);
 
@@ -751,32 +819,111 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
         self.backgroundColor = UIColor.clearColor;
         self.materialView.backgroundColor = UIColor.clearColor;
 
-        UIColor *surfaceBase = PPHeroGlassSurfaceBaseColor(self.traitCollection);
-        if (self.accentStyle == PPHeroGlassAccentStyleFullScreen ||
-            self.accentStyle == PPHeroGlassAccentStyleFullScreenPink ||
-            self.accentStyle == PPHeroGlassAccentStyleFullScreenPage) {
-            surfaceBase = AppBackgroundClr ?: surfaceBase;
-        }
-        UIColor *surfaceHighlight = PPHeroGlassSurfaceHighlightColor(surfaceBase, darkMode, self.traitCollection);
-        UIColor *backgroundAccent = PPHeroGlassBackgroundAccentColor(brand, surfaceBase, darkMode, self.traitCollection);
-        UIColor *surfaceTint = PPHeroGlassSurfaceTintColor(surfaceBase, backgroundAccent, darkMode, self.traitCollection);
-        UIColor *surfaceTail = PPHeroGlassSurfaceTailColor(surfaceTint, backgroundAccent, darkMode, self.traitCollection);
+        UIColor *surfaceBase;
+        UIColor *surfaceHighlight;
+        UIColor *surfaceTint;
+        UIColor *surfaceTail;
+        UIColor *depthAccent = UIColor.clearColor;
 
-        self.gradientLayer.opacity = darkMode ? 0.90 : 0.72;
+        if (isBaseBackground) {
+            // Static fallback for targets that cannot link Swift. It preserves
+            // the BB palette without the moving trace that this style replaces.
+            surfaceBase = darkMode
+                ? PPHeroGlassColorFromHex(0x221D1F)
+                : PPHeroGlassColorFromHex(0xFFFFFF);
+            surfaceHighlight = darkMode
+                ? PPHeroGlassColorFromHex(0x2A2325)
+                : PPHeroGlassColorFromHex(0xFFFFFF);
+            UIColor *baseBlush = darkMode
+                ? PPHeroGlassColorFromHex(0x38272E)
+                : PPHeroGlassColorFromHex(0xF8F8F9);
+            UIColor *baseAccent = self.accentColorOverride
+                ?: PPHeroGlassColorFromHex(0xCB2654);
+            surfaceTint = PPMarketplaceHeroCardBlend(
+                surfaceBase,
+                baseBlush,
+                darkMode ? 0.16 : 0.08,
+                self.traitCollection
+            );
+            surfaceTail = darkMode
+                ? PPHeroGlassColorFromHex(0x1A1719)
+                : (AppBackgroundClr ?: PPHeroGlassColorFromHex(0xE8DDD2));
+            UIColor *baseLilac = darkMode
+                ? PPHeroGlassColorFromHex(0x302B39)
+                : PPHeroGlassColorFromHex(0xD8D3E4);
+            depthAccent = PPMarketplaceHeroCardBlend(
+                baseLilac,
+                baseAccent,
+                darkMode ? 0.06 : 0.035,
+                self.traitCollection
+            );
+        } else {
+            surfaceBase = PPHeroGlassSurfaceBaseColor(self.traitCollection);
+            if (self.accentStyle == PPHeroGlassAccentStyleFullScreen ||
+                self.accentStyle == PPHeroGlassAccentStyleFullScreenPink ||
+                self.accentStyle == PPHeroGlassAccentStyleFullScreenPage) {
+                surfaceBase = AppBackgroundClr ?: surfaceBase;
+            }
+            surfaceHighlight = PPHeroGlassSurfaceHighlightColor(
+                surfaceBase,
+                darkMode,
+                self.traitCollection
+            );
+            UIColor *backgroundAccent = PPHeroGlassBackgroundAccentColor(
+                AppBackgroundClrLigter ?: brand,
+                surfaceBase,
+                darkMode,
+                self.traitCollection
+            );
+            surfaceTint = PPHeroGlassSurfaceTintColor(
+                surfaceBase,
+                backgroundAccent,
+                darkMode,
+                self.traitCollection
+            );
+            surfaceTail = PPHeroGlassSurfaceTailColor(
+                surfaceTint,
+                backgroundAccent,
+                darkMode,
+                self.traitCollection
+            );
+        }
+
+        self.gradientLayer.opacity = isBaseBackground
+            ? 1.0
+            : (darkMode ? 0.90 : 0.72);
         self.gradientLayer.colors = @[
             (id)PPMarketplaceHeroCardResolvedColor(surfaceHighlight, self.traitCollection).CGColor,
             (id)PPMarketplaceHeroCardResolvedColor(surfaceTint, self.traitCollection).CGColor,
             (id)PPMarketplaceHeroCardResolvedColor(surfaceTail, self.traitCollection).CGColor
         ];
-        self.gradientLayer.locations = @[@0.0, @0.56, @1.0];
+        self.gradientLayer.locations = isBaseBackground
+            ? @[@0.0, @0.58, @1.0]
+            : @[@0.0, @0.56, @1.0];
         self.gradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
         self.gradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
 
-        self.depthLayer.colors = @[
-            (__bridge id)[UIColor.clearColor CGColor],
-            (__bridge id)[UIColor.clearColor CGColor]
-        ];
-        self.depthLayer.locations = @[@0.0, @1.0];
+        self.depthLayer.colors = isBaseBackground
+            ? @[
+                (id)[depthAccent colorWithAlphaComponent:(darkMode ? 0.050 : 0.034)].CGColor,
+                (id)[depthAccent colorWithAlphaComponent:(darkMode ? 0.018 : 0.012)].CGColor,
+                (__bridge id)UIColor.clearColor.CGColor
+            ]
+            : @[
+                (__bridge id)UIColor.clearColor.CGColor,
+                (__bridge id)UIColor.clearColor.CGColor
+            ];
+        self.depthLayer.locations = isBaseBackground
+            ? @[@0.0, @0.62, @1.0]
+            : @[@0.0, @1.0];
+        self.depthLayer.startPoint =
+            (isBaseBackground && Language.isRTL)
+                ? CGPointMake(1.0, 0.0)
+                : CGPointMake(0.0, 0.0);
+        self.depthLayer.endPoint =
+            (isBaseBackground && Language.isRTL)
+                ? CGPointMake(0.0, 1.0)
+                : CGPointMake(1.0, 1.0);
         self.depthLayer.opacity = 1.0;
 
         UIColor *dot = PPMarketplaceHeroCardResolvedColor(PPHeroGlassDotColor(brand,
@@ -830,12 +977,13 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 
 - (void)startAnimations
 {
-    if (self.accentStyle == PPHeroGlassAccentStyleSolid) {
+    if (self.accentStyle == PPHeroGlassAccentStyleSolid ||
+        self.accentStyle == PPHeroGlassAccentStyleBBBaseBackground) {
         [self stopAnimations];
         return;
     }
     
-    if (UIAccessibilityIsReduceMotionEnabled()) {
+    if (![self pp_motionIsEligible]) {
         [self stopAnimations];
         return;
     }
@@ -888,7 +1036,7 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     traceGroup.animations = @[traceStart, traceEnd, traceOpacity];
     traceGroup.duration = 11.8;
     traceGroup.beginTime = [self.constellationTraceLayer convertTime:hostTime fromLayer:nil]
-        + PPHeroGlassRandomRange(0.65, 1.45);
+        + 0.96;
     traceGroup.repeatCount = HUGE_VALF;
     traceGroup.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     traceGroup.removedOnCompletion = YES;
@@ -990,6 +1138,33 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
     }
 }
 
+- (void)pp_applicationWillResignActive:(NSNotification *)notification
+{
+    (void)notification;
+    [self stopAnimations];
+}
+
+- (void)pp_energyPolicyDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    if ([self pp_motionIsEligible]) {
+        [self startAnimations];
+    } else {
+        [self stopAnimations];
+    }
+}
+
+- (BOOL)pp_motionIsEligible
+{
+    NSProcessInfo *processInfo = NSProcessInfo.processInfo;
+    BOOL thermallyConstrained = processInfo.thermalState == NSProcessInfoThermalStateSerious ||
+        processInfo.thermalState == NSProcessInfoThermalStateCritical;
+    return !UIAccessibilityIsReduceMotionEnabled() &&
+        !processInfo.lowPowerModeEnabled &&
+        !thermallyConstrained &&
+        UIApplication.sharedApplication.applicationState == UIApplicationStateActive;
+}
+
 #pragma mark - Window Lifecycle
 
 - (void)willMoveToWindow:(UIWindow *)newWindow
@@ -1024,3 +1199,5 @@ static UIColor *PPHeroGlassStrokeColor(BOOL darkMode)
 }
 
 @end
+
+#endif // !PP_HERO_APEX_ENABLED

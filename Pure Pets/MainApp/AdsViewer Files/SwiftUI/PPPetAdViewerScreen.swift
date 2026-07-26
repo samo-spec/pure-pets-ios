@@ -246,7 +246,7 @@ struct PPPetAdViewerScreen: View {
     }
 
     private func detailsSheet(bottomInset: CGFloat) -> some View {
-        VStack(spacing: PPPetAdViewerStyle.sectionSpacing) {
+        VStack(spacing: 0) {
             PPPetAdDetailsSummary(
                 title: store.snapshot.title,
                 location: store.snapshot.location,
@@ -274,6 +274,18 @@ struct PPPetAdViewerScreen: View {
                 )
             }
 
+            if store.ppShowsInlineContactStatus {
+                PPPetAdContactCard(
+                    store: store,
+                    showsActions: false
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
+                .ppPetAdEntrance(
+                    isPresented: hasAppeared,
+                    delayIndex: 3
+                )
+            }
+
             PPPetAdRelatedSection(
                 title: PPPetAdLocalization.text(
                     "Similar Ads",
@@ -288,6 +300,7 @@ struct PPPetAdViewerScreen: View {
                 onRetry: store.retryRelatedAds,
                 onSelect: store.selectRelatedItem
             )
+            .padding(.top, PPSpace.xxxl)
             .ppPetAdEntrance(
                 isPresented: hasAppeared,
                 delayIndex: 4
@@ -307,6 +320,7 @@ struct PPPetAdViewerScreen: View {
                 onRetry: store.retryAccessories,
                 onSelect: store.selectRelatedItem
             )
+            .padding(.top, PPSpace.xxxl)
             .ppPetAdEntrance(
                 isPresented: hasAppeared,
                 delayIndex: 5
@@ -325,7 +339,7 @@ struct PPPetAdViewerScreen: View {
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
         .background {
-            PPHero()
+            PPPetAdViewerStyle.sheetBackground
                 .clipShape(
                     UnevenRoundedRectangle(
                         topLeadingRadius: PPPetAdViewerStyle.sheetRadius,
@@ -337,10 +351,10 @@ struct PPPetAdViewerScreen: View {
                 )
         }
         .shadow(
-            color: Color.black.opacity(0.08),
-            radius: 18,
+            color: Color.black.opacity(0.06),
+            radius: 12,
             x: 0,
-            y: -5
+            y: -3
         )
         .offset(y: -PPPetAdViewerStyle.sheetOverlap)
     }
@@ -358,21 +372,22 @@ struct PPPetAdViewerScreen: View {
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
                 .background {
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: 28,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: 28,
-                        style: .continuous
-                    )
-                    .fill(.thinMaterial)
-                    .ignoresSafeArea(edges: .bottom)
+                    PPPetAdViewerStyle.sheetBackground
+                        .ignoresSafeArea(edges: .bottom)
+                }
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(
+                            Color(uiColor: .separator).opacity(0.30)
+                        )
+                        .frame(height: 1)
+                        .accessibilityHidden(true)
                 }
                 .shadow(
-                    color: Color.black.opacity(0.08),
-                    radius: 16,
+                    color: Color.black.opacity(0.06),
+                    radius: 12,
                     x: 0,
-                    y: -4
+                    y: -3
                 )
                 .frame(maxHeight: .infinity, alignment: .bottom)
 
@@ -528,6 +543,6 @@ struct PPPetAdViewerScreen: View {
 
     private var contactDockClearance: CGFloat {
         guard store.ppShowsContactDock else { return 0 }
-        return dynamicTypeSize.isAccessibilitySize ? 158 : 82
+        return dynamicTypeSize.isAccessibilitySize ? 172 : 86
     }
 }

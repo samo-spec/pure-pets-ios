@@ -11,6 +11,11 @@ enum PPPetAdTypography {
         size: 26,
         relativeTo: .title
     )
+    static let price = Font.custom(
+        "Beiruti-Black",
+        size: 30,
+        relativeTo: .title
+    )
     static let title2 = Font.custom(
         "Beiruti-Bold",
         size: 22,

@@ -147,76 +147,88 @@ struct PPHeroApexMotionStateMachine {
 }
 
 enum PPHeroApexMotionTokens {
-    // Entrance is deliberately slower than a control highlight but faster than
-    // a navigation transition. It should register as material resolving into
-    // focus, never as a card flying onto the screen.
-    static let entranceDuration: TimeInterval = 0.42
-    static let overlayEntranceDuration: TimeInterval = 0.32
-    static let overlayEntranceDelay: TimeInterval = 0.07
+    // The entrance reads as optical focus, not travel. The overlay resolves
+    // slightly after the field so the edge treatment never arrives first.
+    static let entranceDuration: TimeInterval = 0.48
+    static let overlayEntranceDuration: TimeInterval = 0.34
+    static let overlayEntranceDelay: TimeInterval = 0.045
 
     // Optical state changes use one family of curves, so accent, palette and
     // interaction updates feel authored by the same motion system.
-    static let accentTransitionDuration: CFTimeInterval = 0.28
-    static let paletteTransitionDuration: CFTimeInterval = 0.54
-    static let interactionSettleDuration: TimeInterval = 0.44
-    static let tapPulseDuration: CFTimeInterval = 0.58
-    static let contactWaveDuration: CFTimeInterval = 0.72
+    static let accentTransitionDuration: CFTimeInterval = 0.30
+    static let paletteTransitionDuration: CFTimeInterval = 0.46
+    static let interactionSettleDuration: TimeInterval = 0.48
+    static let tapPulseDuration: CFTimeInterval = 0.56
+    static let contactWaveDuration: CFTimeInterval = 0.68
 
-    // Ambient cycles are intentionally long. The hero should feel alive when
-    // revisited, not visibly loop while the user is reading it.
-    static let fieldDriftCycleDuration: CFTimeInterval = 43
-    static let reactiveLightCycleDuration: CFTimeInterval = 13.6
-    static let signatureSweepCycleDuration: CFTimeInterval = 9.4
+    // Ambient cycles are deliberately incommensurate. No two major fields
+    // return to their starting phase together during a normal reading session.
+    static let fieldDriftCycleDuration: CFTimeInterval = 52
+    static let reactiveLightCycleDuration: CFTimeInterval = 18.4
+    static let signatureSweepCycleDuration: CFTimeInterval = 12.8
+    static let fullScreenSurfaceCycleDuration: CFTimeInterval = 52.7
+    static let fullScreenPrismCycleDuration: CFTimeInterval = 61.3
+    static let compactPrismCycleDuration: CFTimeInterval = 73.1
+    static let particleBaseCycleDuration: CFTimeInterval = 27.4
+    static let particleCycleStep: CFTimeInterval = 5.1
+    static let fingerPresenceCycleDuration: CFTimeInterval = 1.72
 
-    static let entranceScale: CGFloat = 1.014
-    static let entranceTranslationY: CGFloat = 7
-    static let horizontalParallax: CGFloat = 2.15
-    static let verticalParallax: CGFloat = 1.55
+    // BB Base Background never sends a sweep or a dark tonal edge across the
+    // screen. Its opaque base stays still while oversized radial light fields
+    // reform slowly above it.
+    static let baseBackgroundFieldCycleDuration: CFTimeInterval = 89.0
+    static let baseBackgroundPrismCycleDuration: CFTimeInterval = 113.0
+    static let baseBackgroundReactiveLightCycleDuration: CFTimeInterval = 37.0
+
+    static let entranceScale: CGFloat = 1.009
+    static let entranceTranslationY: CGFloat = 5
+    static let horizontalParallax: CGFloat = 1.8
+    static let verticalParallax: CGFloat = 1.3
 
     // Direct manipulation remains intentionally microscopic. These values are
     // large enough to be felt at 120 Hz without bending copy or controls.
-    static let maximumTouchTranslationX: CGFloat = 3.6
-    static let maximumTouchTranslationY: CGFloat = 2.7
-    static let maximumTouchRotation: CGFloat = 0.012
-    static let reactiveLightTravelRatio: CGFloat = 0.34
-    static let touchDepthScale: CGFloat = 0.994
-    static let touchLightScale: CGFloat = 1.014
-    static let touchLensBaseScale: CGFloat = 0.972
-    static let touchLensVelocityBloom: CGFloat = 0.055
-    static let touchLensActiveAlpha: CGFloat = 0.52
-    static let touchVelocityForMaximumBloom: CGFloat = 1_850
-    static let touchSmoothingResponse: CGFloat = 0.31
+    static let maximumTouchTranslationX: CGFloat = 3.2
+    static let maximumTouchTranslationY: CGFloat = 2.4
+    static let maximumTouchRotation: CGFloat = 0.0095
+    static let reactiveLightTravelRatio: CGFloat = 0.30
+    static let touchDepthScale: CGFloat = 0.995
+    static let touchLightScale: CGFloat = 1.012
+    static let touchLensBaseScale: CGFloat = 0.978
+    static let touchLensVelocityBloom: CGFloat = 0.045
+    static let touchLensActiveAlpha: CGFloat = 0.44
+    static let touchVelocityForMaximumBloom: CGFloat = 2_100
+    static let touchSmoothingResponse: CGFloat = 0.265
 
-    static let tapMaximumDuration: TimeInterval = 0.34
-    static let tapMaximumTravel: CGFloat = 14
+    static let tapMaximumDuration: TimeInterval = 0.30
+    static let tapMaximumTravel: CGFloat = 12
 
     static var entranceTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(
-            controlPoint1: CGPoint(x: 0.16, y: 0.86),
-            controlPoint2: CGPoint(x: 0.24, y: 1)
+            controlPoint1: CGPoint(x: 0.16, y: 1),
+            controlPoint2: CGPoint(x: 0.30, y: 1)
         )
     }
 
     static var overlayTimingParameters: UICubicTimingParameters {
         UICubicTimingParameters(
-            controlPoint1: CGPoint(x: 0.20, y: 0.82),
+            controlPoint1: CGPoint(x: 0.22, y: 0.78),
             controlPoint2: CGPoint(x: 0.28, y: 1)
         )
     }
 
     static var ambientTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.37, 0, 0.63, 1)
+        CAMediaTimingFunction(controlPoints: 0.45, 0, 0.55, 1)
     }
 
     static var accentTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+        CAMediaTimingFunction(controlPoints: 0.20, 0.90, 0.25, 1)
     }
 
     static var paletteTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.32, 0, 0.18, 1)
+        CAMediaTimingFunction(controlPoints: 0.22, 0.61, 0.36, 1)
     }
 
     static var signatureSweepTimingFunction: CAMediaTimingFunction {
-        CAMediaTimingFunction(controlPoints: 0.18, 0.74, 0.24, 1)
+        CAMediaTimingFunction(controlPoints: 0.22, 0.78, 0.24, 1)
     }
 }

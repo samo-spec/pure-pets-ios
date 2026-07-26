@@ -3050,7 +3050,7 @@ private struct PPUniversalImageRepresentable: UIViewRepresentable {
     }
 
     final class Coordinator {
-        var signature = ""
+        var signature: String?
         var task: URLSessionDataTask?
         weak var imageView: UIImageView?
         weak var backgroundImageView: UIImageView?
