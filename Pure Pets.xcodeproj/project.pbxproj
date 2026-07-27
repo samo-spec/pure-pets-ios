@@ -146,6 +146,7 @@
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
 		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
+		F22389903017C8CA001E5DBB /* CartLineController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F223898F3017C8CA001E5DBB /* CartLineController.swift */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
 		F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22840FE2C5591C200D77937 /* MainCollectionViewCell.m */; };
@@ -1173,6 +1174,7 @@
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
 		F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchasedItemsViewController.h; sourceTree = "<group>"; };
 		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
+		F223898F3017C8CA001E5DBB /* CartLineController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartLineController.swift; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
 		F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessViewerVC.m; sourceTree = "<group>"; };
 		F22819622CD36D2D005E57FF /* XLFormImageSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormImageSelectorCell.h; sourceTree = "<group>"; };
@@ -4140,6 +4142,7 @@
 		F281B47E2FCB6735009118F2 /* PPComponent */ = {
 			isa = PBXGroup;
 			children = (
+				F223898F3017C8CA001E5DBB /* CartLineController.swift */,
 				F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */,
 				F281B46B2FCB6735009118F2 /* PPLeftRight */,
 				F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */,
@@ -5936,6 +5939,7 @@
 				F2BBD0052FFF000100ABCDEF /* BBDataViewFullDetailsCell.m in Sources */,
 				F2BBD0062FFF000100ABCDEF /* BBDataViewFullDetailsLayout.m in Sources */,
 				F2E33F6A3006C4FF005E31C6 /* PPOrderTimelineViewController.m in Sources */,
+				F22389903017C8CA001E5DBB /* CartLineController.swift in Sources */,
 				F28A0A0E2EEA3C3F00EE5055 /* AppDataListenerManager.m in Sources */,
 				F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */,
 				F2B641B72F4A7F860092C2BF /* PPSelectAddressVC.m in Sources */,
