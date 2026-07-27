@@ -83,6 +83,9 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
                     completion:(void (^)(UserModel * _Nullable user,
                                          NSError * _Nullable error))completion
     NS_SWIFT_NAME(fetchOwner(for:completion:));
++ (void)fetchProviderProfileImageURLForOwnerID:(NSString *)ownerID
+                                    completion:(void (^)(NSString * _Nullable imageURL))completion
+    NS_SWIFT_NAME(fetchProviderProfileImageURL(ownerID:completion:));
 
 + (void)fetchSuggestionsForAccessory:(PetAccessory *)accessory
                           completion:(void (^)(NSArray<PetAccessory *> *items,

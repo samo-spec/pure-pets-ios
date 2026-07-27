@@ -216,10 +216,19 @@ struct PPAccessoryRemoteImageView: View {
         return nil
     }
 
+    @ViewBuilder
     private func rendered(_ image: UIImage) -> some View {
-        Image(uiImage: image)
-            .resizable()
-            .aspectRatio(contentMode: contentMode)
+        if isAvatar {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+        } else {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: contentMode)
+        }
     }
 
     private var stateIdentity: Int {

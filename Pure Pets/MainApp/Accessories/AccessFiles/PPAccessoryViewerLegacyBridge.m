@@ -32,14 +32,58 @@ static NSString * const PPAccessoryViewerBridgeErrorDomain =
     @"com.purepets.accessory-viewer";
 static NSString * const PPAccessoryOfficialSupportUserID =
     @"PUIDPOFFICILAL20262214";
+static NSString * const PPAccessorySupportAvatarToken =
+    @"purepets://support-logo";
 
-static NSString *PPAccessoryBridgeTrimmedString(NSString *value)
+static NSString *PPAccessoryBridgeTrimmedString(id value)
 {
     if (![value isKindOfClass:NSString.class]) {
         return @"";
     }
     return [value stringByTrimmingCharactersInSet:
             NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+static NSString *PPAccessoryBridgeProviderProfileImageURL(NSDictionary *data)
+{
+    if (![data isKindOfClass:NSDictionary.class]) {
+        NSLog(@"[PPAccessoryViewer][SellerImage] Provider profile payload is not a dictionary.");
+        return @"";
+    }
+
+    NSDictionary *form =
+        [data[@"form"] isKindOfClass:NSDictionary.class] ? data[@"form"] : @{};
+    NSDictionary *userSummary =
+        [data[@"userSummary"] isKindOfClass:NSDictionary.class]
+            ? data[@"userSummary"]
+            : @{};
+    NSArray *candidates = @[
+        userSummary[@"photoURL"] ?: @"",
+        data[@"avatarURL"] ?: @"",
+        data[@"photoURL"] ?: @"",
+        data[@"photoUrl"] ?: @"",
+        data[@"UserImageUrl"] ?: @"",
+        userSummary[@"avatarURL"] ?: @"",
+        form[@"photoURL"] ?: @"",
+        form[@"logoURL"] ?: @"",
+        form[@"logoUrl"] ?: @"",
+        data[@"logoURL"] ?: @"",
+        data[@"logoUrl"] ?: @"",
+        data[@"profileImageURL"] ?: @"",
+        data[@"profileImageUrl"] ?: @"",
+        data[@"imageURL"] ?: @"",
+        data[@"imageUrl"] ?: @""
+    ];
+
+    for (id value in candidates) {
+        NSString *cleanURL = PPAccessoryBridgeTrimmedString(value);
+        if (cleanURL.length > 0) {
+            NSLog(@"[PPAccessoryViewer][SellerImage] Resolved provider profile image candidate: %@", cleanURL);
+            return cleanURL;
+        }
+    }
+    NSLog(@"[PPAccessoryViewer][SellerImage] No provider profile image candidate was found in profile payload.");
+    return @"";
 }
 
 static UIViewController *PPAccessoryResolvedPresenter(
@@ -289,6 +333,8 @@ static UIViewController *PPAccessoryResolvedPresenter(
     user.UserName =
         [self localizedTextForKey:@"accessory_view_store_name"
                          fallback:@"Pure Pets Store"];
+    user.UserImageUrl =
+        [NSURL URLWithString:PPAccessorySupportAvatarToken];
     return user;
 }
 
@@ -346,6 +392,51 @@ static UIViewController *PPAccessoryResolvedPresenter(
      completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(user, error);
+        });
+    }];
+}
+
++ (void)fetchProviderProfileImageURLForOwnerID:(NSString *)ownerID
+                                    completion:(void (^)(NSString * _Nullable))completion
+{
+    if (!completion) {
+        NSLog(@"[PPAccessoryViewer][SellerImage] Missing completion while fetching provider profile image for ownerID=%@", ownerID ?: @"<nil>");
+        return;
+    }
+
+    NSString *cleanOwnerID = PPAccessoryBridgeTrimmedString(ownerID);
+    if (cleanOwnerID.length == 0 ||
+        [cleanOwnerID isEqualToString:@"unknown"] ||
+        [cleanOwnerID isEqualToString:PPAccessoryOfficialSupportUserID]) {
+        NSLog(@"[PPAccessoryViewer][SellerImage] Skipping provider profile fetch because ownerID is invalid or official support. ownerID=%@", ownerID ?: @"<nil>");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(nil);
+        });
+        return;
+    }
+
+    NSString *profileID =
+        [NSString stringWithFormat:@"%@_%@", cleanOwnerID, @"marketplace"];
+    NSLog(@"[PPAccessoryViewer][SellerImage] Fetching provider profile image. ownerID=%@ profileID=%@", cleanOwnerID, profileID);
+    FIRDocumentReference *profileRef =
+        [[[FIRFirestore firestore] collectionWithPath:@"providerProfiles"]
+         documentWithPath:profileID];
+    [profileRef getDocumentWithCompletion:^(
+        FIRDocumentSnapshot * _Nullable snapshot,
+        NSError * _Nullable error
+    ) {
+        NSString *imageURL = nil;
+        if (error) {
+            NSLog(@"[PPAccessoryViewer][SellerImage] Provider profile fetch failed. ownerID=%@ profileID=%@ error=%@", cleanOwnerID, profileID, error.localizedDescription ?: error);
+        } else if (!snapshot.exists) {
+            NSLog(@"[PPAccessoryViewer][SellerImage] Provider profile document does not exist. ownerID=%@ profileID=%@", cleanOwnerID, profileID);
+        } else {
+            imageURL =
+                PPAccessoryBridgeProviderProfileImageURL(snapshot.data ?: @{});
+        }
+        NSLog(@"[PPAccessoryViewer][SellerImage] Provider profile fetch resolved. ownerID=%@ profileID=%@ imageURL=%@", cleanOwnerID, profileID, imageURL.length > 0 ? imageURL : @"<nil>");
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(imageURL.length > 0 ? imageURL : nil);
         });
     }];
 }
@@ -832,8 +923,20 @@ fromViewController:(UIViewController *)viewController
 + (void)loadImageAtURL:(nullable NSString *)urlString
              completion:(void (^)(UIImage * _Nullable))completion
 {
+    NSString *cleanURL = PPAccessoryBridgeTrimmedString(urlString);
+    if ([cleanURL hasPrefix:PPAccessorySupportAvatarToken]) {
+        UIImage *supportImage =
+            [UIImage imageNamed:@"newlogo"]
+            ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+        NSLog(@"[PPAccessoryViewer][SellerImage] Resolved support avatar token locally. url=%@", cleanURL);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            completion(supportImage);
+        });
+        return;
+    }
+
     [PPImageLoaderManager.shared
-     fetchImageWithURL:urlString
+     fetchImageWithURL:cleanURL
      completion:^(UIImage * _Nullable image) {
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(image);

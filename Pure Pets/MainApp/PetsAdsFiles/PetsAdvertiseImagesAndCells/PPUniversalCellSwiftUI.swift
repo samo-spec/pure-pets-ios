@@ -154,6 +154,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var subtitle: String?
     public var imageURL: URL?
     public var videoURL: URL?
+    public var placeholderImageName: String?
     public var placeholderSystemImage: String
     public var price: Decimal?
     public var originalPrice: Decimal?
@@ -181,6 +182,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         subtitle: String? = nil,
         imageURL: URL? = nil,
         videoURL: URL? = nil,
+        placeholderImageName: String? = nil,
         placeholderSystemImage: String = "pawprint.fill",
         price: Decimal? = nil,
         originalPrice: Decimal? = nil,
@@ -207,6 +209,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.subtitle = subtitle
         self.imageURL = imageURL
         self.videoURL = videoURL
+        self.placeholderImageName = placeholderImageName
         self.placeholderSystemImage = placeholderSystemImage
         self.price = price
         self.originalPrice = originalPrice
@@ -372,6 +375,8 @@ private final class PPUniversalCardStore: ObservableObject {
         self.actions = actions
         self.quantity = model.quantity
         self.isRightToLeft = PPUniversalCellSwiftUIBridge.isRightToLeft()
+        self.imagePlaceholder =
+            model.placeholderImageName.flatMap { UIImage(named: $0) }
     }
 
     deinit {
@@ -1322,11 +1327,21 @@ private struct PPUniversalCardRenderer: View {
         ZStack {
             store.palette.groupedSurface
 
-            Image(systemName: store.model.placeholderSystemImage)
-                .font(.system(size: 28, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(store.palette.primary.opacity(0.48))
-                .accessibilityHidden(true)
+            if store.model.placeholderImageName != nil,
+               let image = store.imagePlaceholder {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(22)
+                    .opacity(0.72)
+                    .accessibilityHidden(true)
+            } else {
+                Image(systemName: store.model.placeholderSystemImage)
+                    .font(.system(size: 28, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(store.palette.primary.opacity(0.48))
+                    .accessibilityHidden(true)
+            }
         }
     }
 

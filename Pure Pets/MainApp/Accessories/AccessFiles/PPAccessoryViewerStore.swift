@@ -397,8 +397,18 @@ final class PPAccessoryViewerStore: ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 if let user {
+                    let baseAvatarURL =
+                        PPAccessoryViewerLegacyBridge.avatarURL(for: user) ??
+                        "<nil>"
+                    print(
+                        "[PPAccessoryViewer][SellerImage] Loaded owner model. ownerID=\(accessory.ownerID) baseAvatarURL=\(baseAvatarURL)"
+                    )
                     self.owner = PPAccessoryViewerOwner(user: user)
                     self.ownerPhase = .loaded
+                    self.loadProviderProfileImageIfNeeded(
+                        for: user,
+                        ownerID: accessory.ownerID
+                    )
                 } else if error != nil {
                     self.owner = nil
                     self.ownerPhase = .failed(
@@ -410,6 +420,63 @@ final class PPAccessoryViewerStore: ObservableObject {
                     self.owner = nil
                     self.ownerPhase = .empty
                 }
+            }
+        }
+    }
+
+    private func loadProviderProfileImageIfNeeded(
+        for user: UserModel,
+        ownerID: String
+    ) {
+        guard snapshot?.isProviderMarketplace == true else {
+            print(
+                "[PPAccessoryViewer][SellerImage] Skipping provider profile image fetch because accessory is not marketplace. ownerID=\(ownerID)"
+            )
+            return
+        }
+        let cleanOwnerID = ownerID.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !cleanOwnerID.isEmpty else {
+            print(
+                "[PPAccessoryViewer][SellerImage] Skipping provider profile image fetch because ownerID is empty."
+            )
+            return
+        }
+
+        PPAccessoryViewerLegacyBridge.fetchProviderProfileImageURL(
+            ownerID: cleanOwnerID
+        ) { [weak self] imageURL in
+            Task { @MainActor in
+                guard let self else { return }
+                let currentOwnerID = self.accessory?.ownerID.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                guard currentOwnerID == cleanOwnerID else {
+                    print(
+                        "[PPAccessoryViewer][SellerImage] Dropping provider profile image result because owner changed. expected=\(cleanOwnerID) current=\(currentOwnerID ?? "<nil>")"
+                    )
+                    return
+                }
+                guard let imageURL = imageURL?.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                ), !imageURL.isEmpty else {
+                    let fallbackAvatarURL =
+                        PPAccessoryViewerLegacyBridge.avatarURL(for: user) ??
+                        "<nil>"
+                    print(
+                        "[PPAccessoryViewer][SellerImage] Provider profile image missing; keeping fallback avatar. ownerID=\(cleanOwnerID) fallbackAvatarURL=\(fallbackAvatarURL)"
+                    )
+                    return
+                }
+
+                print(
+                    "[PPAccessoryViewer][SellerImage] Applying provider profile image. ownerID=\(cleanOwnerID) imageURL=\(imageURL)"
+                )
+                self.owner = PPAccessoryViewerOwner(
+                    user: user,
+                    companyProfileImageURL: imageURL
+                )
             }
         }
     }

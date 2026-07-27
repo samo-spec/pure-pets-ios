@@ -163,6 +163,7 @@ struct PPAccessoryViewerSnapshot {
     let quantity: Int
     let discountPercent: Double?
     let discountAmount: Double?
+    let testingRatingValue: Double
     let isUsed: Bool
     let isOwnItem: Bool
     let isProviderMarketplace: Bool
@@ -206,6 +207,8 @@ struct PPAccessoryViewerSnapshot {
         quantity = max(accessory.quantity, 0)
         discountPercent = accessory.discountPercent?.doubleValue
         discountAmount = accessory.discountAmount?.doubleValue
+        testingRatingValue =
+            PPAccessoryViewerSnapshot.testingRatingValue(for: accessory)
         isUsed = PPAccessoryViewerLegacyBridge.isUsed(accessory)
         isOwnItem = PPAccessoryViewerLegacyBridge.isOwn(accessory)
         isProviderMarketplace =
@@ -220,6 +223,27 @@ struct PPAccessoryViewerSnapshot {
     var hasDiscount: Bool {
         guard price != originalPrice else { return false }
         return (discountPercent ?? 0) > 0 || (discountAmount ?? 0) > 0
+    }
+
+    var hasReadinessFacts: Bool {
+        !stock.isEmpty ||
+            !condition.isEmpty ||
+            !createdDate.isEmpty
+    }
+
+    private static func testingRatingValue(for accessory: PetAccessory) -> Double {
+        let seedSource = [
+            accessory.accessoryID,
+            accessory.ownerID,
+            accessory.name
+        ]
+        .joined(separator: "|")
+        let scalarSum = seedSource.unicodeScalars.reduce(0) { partialResult, scalar in
+            partialResult + Int(scalar.value)
+        }
+        let bucket = scalarSum % 15
+        let rating = 3.6 + (Double(bucket) * 0.1)
+        return min(5.0, max(3.6, rating))
     }
 
     var details: [PPAccessoryViewerDetailItem] {
@@ -341,18 +365,29 @@ struct PPAccessoryViewerOwner {
     let user: UserModel
     let name: String
     let avatarURL: String?
+    let companyProfileImageURL: String?
     let phoneNumber: String?
     let isVerified: Bool
     let isChatAllowed: Bool
 
-    init(user: UserModel) {
+    init(user: UserModel, companyProfileImageURL: String? = nil) {
         self.user = user
         name = PPAccessoryViewerLegacyBridge.displayName(for: user)
         avatarURL = PPAccessoryViewerLegacyBridge.avatarURL(for: user)
+        let cleanCompanyImageURL =
+            companyProfileImageURL?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+        self.companyProfileImageURL =
+            cleanCompanyImageURL?.isEmpty == false ? cleanCompanyImageURL : nil
         phoneNumber = PPAccessoryViewerLegacyBridge.phoneNumber(for: user)
         isVerified = PPAccessoryViewerLegacyBridge.isVerified(user: user)
         isChatAllowed =
             PPAccessoryViewerLegacyBridge.isChatAllowed(for: user)
+    }
+
+    var preferredAvatarURL: String? {
+        companyProfileImageURL ?? avatarURL
     }
 }
 

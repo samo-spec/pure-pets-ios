@@ -768,21 +768,22 @@ struct PPAccessoryProductIdentity: View {
         VStack(alignment: .leading, spacing: compact ? 12 : 16) {
             if let categoryContext {
                 categoryOverline(categoryContext)
+                    .padding(.trailing, favoriteButtonFootprint)
             }
 
             VStack(alignment: .leading, spacing: compact ? 0 : 2) {
                 productTitleRow
+                    .padding(.trailing, favoriteButtonFootprint)
                 priceRow
             }
-
-            if hasReadinessFacts {
-                PPAccessoryDecisionRibbon(snapshot: snapshot)
-                    .padding(.top, compact ? 2 : 4)
-            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 2)
         .padding(.top, compact ? 6 : 10)
         .padding(.bottom, compact ? 16 : 20)
+        .overlay(alignment: .topTrailing) {
+            favoriteButton
+        }
         .accessibilityElement(children: .contain)
     }
 
@@ -814,10 +815,6 @@ struct PPAccessoryProductIdentity: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilitySortPriority(3)
-
-            Spacer(minLength: 8)
-
-            favoriteButton
         }
     }
 
@@ -870,40 +867,19 @@ struct PPAccessoryProductIdentity: View {
     }
 
     private var priceRow: some View {
-        HStack(alignment: .center) {
-            Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 6) {
-                        currentPrice
-                        if snapshot.hasDiscount {
-                            discountSummary
-                        }
-                    }
-                } else {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            currentPrice
-                            if snapshot.hasDiscount {
-                                discountSummary
-                            }
-                        }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center) {
+                currentPrice
 
-                        VStack(alignment: .leading, spacing: 6) {
-                            currentPrice
-                            if snapshot.hasDiscount {
-                                discountSummary
-                            }
-                        }
-                    }
+                if let ratingValue = providerRatingValue {
+                    Spacer(minLength: 8)
+                    providerRatingPill(ratingValue)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            if providerRatingText != nil {
-                Spacer(minLength: 8)
-
-                if let ratingText = providerRatingText {
-                    providerRatingPill(ratingText)
-                }
+            if snapshot.hasDiscount {
+                discountSummary
             }
         }
         .accessibilityElement(children: .combine)
@@ -956,6 +932,10 @@ struct PPAccessoryProductIdentity: View {
         )
     }
 
+    private var favoriteButtonFootprint: CGFloat {
+        52
+    }
+
     private var displayTitle: String {
         let title = snapshot.title.trimmingCharacters(
             in: .whitespacesAndNewlines
@@ -978,32 +958,23 @@ struct PPAccessoryProductIdentity: View {
         .first { !$0.isEmpty }
     }
 
-    private var hasReadinessFacts: Bool {
-        !snapshot.stock.isEmpty ||
-            !snapshot.condition.isEmpty ||
-            !snapshot.createdDate.isEmpty
+    private var providerRatingValue: Double? {
+        snapshot.testingRatingValue
     }
 
-    private var providerRatingText: String? {
-        guard let user = store.owner?.user,
-              user.providerReviewCount > 0,
-              user.providerRatingValue > 0.0 else {
-            return nil
+    private func providerRatingPill(_ ratingValue: Double) -> some View {
+        HStack(spacing: 2) {
+            ForEach(1...5, id: \.self) { index in
+                Image(systemName: "star.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(
+                        Double(index) <= ratingValue
+                            ? PPAccessoryPalette.warning
+                            : PPAccessoryPalette.inkSecondary.opacity(0.24)
+                    )
+            }
         }
-        return String(format: "%.1f", user.providerRatingValue)
-    }
-
-    private func providerRatingPill(_ ratingText: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: "star.fill")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(PPAccessoryPalette.warning)
-
-            Text(ratingText)
-                .font(PPAccessoryTypography.captionBold)
-                .foregroundStyle(PPAccessoryPalette.ink)
-        }
-        .padding(.horizontal, 10)
+        .padding(.horizontal, 8)
         .frame(height: 26)
         .ppAccessorySubviewBackground(
             PPAccessorySubviewBackground.baseSurface,
@@ -1415,6 +1386,7 @@ private enum PPAccessorySourceActionLayout: Equatable {
     case squareIcon
 }
 
+@available(iOS 16.0, *)
 struct PPAccessorySourceIsland: View {
     @ObservedObject var store: PPAccessoryViewerStore
     let snapshot: PPAccessoryViewerSnapshot
@@ -1550,7 +1522,7 @@ struct PPAccessorySourceIsland: View {
                 .fill(avatarPlateFill)
 
             PPAccessoryRemoteImageView(
-                urlString: owner.avatarURL,
+                urlString: owner.preferredAvatarURL,
                 blurHash: nil,
                 contentMode: .fill,
                 accessibilityLabel: displayName(for: owner),
@@ -1558,6 +1530,7 @@ struct PPAccessorySourceIsland: View {
                 fallbackInitials: displayName(for: owner)
             )
             .padding(5)
+            .frame(width: max(size - 10, 0), height: max(size - 10, 0))
             .clipShape(Circle())
 
             if owner.isVerified {
@@ -2045,12 +2018,22 @@ struct PPAccessorySourceIsland: View {
         content()
             .padding(PPSpace.base)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(alignment: .topTrailing) {
+                sellerPawPeek
+                    .offset(
+                        x: PPAccessoryViewerLegacyBridge.isRTL()
+                            ? -PPSpace.sm
+                            : PPSpace.sm,
+                        y: -PPSpace.sm
+                    )
+            }
             .ppAccessorySubviewBackground(
                 sourceSurfaceFill,
                 in: sourceSurfaceShape,
                 stroke: sourceSurfaceStroke,
                 lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.8
             )
+            .clipShape(sourceSurfaceShape)
             .shadow(
                 color: Color.black.opacity(colorScheme == .dark ? 0.10 : 0.045),
                 radius: 16,
@@ -2077,6 +2060,38 @@ struct PPAccessorySourceIsland: View {
             : PPAccessorySubviewBackground.faintStroke.opacity(
                 colorScheme == .dark ? 0.88 : 0.70
             )
+    }
+
+    private var sellerPawPeek: some View {
+        Image("peekingPaw")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .foregroundStyle(sellerPawTint)
+            .frame(width: sellerPawSize, height: sellerPawSize)
+            .rotationEffect(
+                .degrees(PPAccessoryViewerLegacyBridge.isRTL() ? -9 : 9)
+            )
+            .opacity(sellerPawOpacity)
+            .accessibilityHidden(true)
+            .allowsHitTesting(false)
+    }
+
+    private var sellerPawSize: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 108 : 88
+    }
+
+    private var sellerPawOpacity: Double {
+        if colorSchemeContrast == .increased {
+            return colorScheme == .dark ? 0.12 : 0.08
+        }
+        return colorScheme == .dark ? 0.09 : 0.06
+    }
+
+    private var sellerPawTint: Color {
+        colorScheme == .dark
+            ? PPAccessoryPalette.accent
+        : UIColor.lightGray
     }
 
     private var avatarPlateFill: LinearGradient {
@@ -2318,7 +2333,8 @@ struct PPAccessorySuggestionShore: View {
             title: suggestion.title,
             subtitle: suggestion.subtitle,
             imageURL: suggestion.imageURL.flatMap(URL.init(string:)),
-            placeholderSystemImage: "shippingbox.fill",
+            placeholderImageName: "PawPlaceholderCell",
+            placeholderSystemImage: "pawprint.fill",
             priceText: suggestion.price,
             currencyCode: "QAR",
             availability: PPUniversalAvailability(

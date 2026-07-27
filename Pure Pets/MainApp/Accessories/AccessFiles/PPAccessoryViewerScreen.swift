@@ -143,15 +143,22 @@ struct PPAccessoryViewerScreen: View {
                     .opacity(contentResolved ? 1 : 0)
                     .offset(y: contentResolved ? 0 : 16)
 
-                    VStack(spacing: compact ? 22 : 30) {
-                        PPAccessorySpecReef(
-                            details: snapshot.details,
-                            compactColumns: compact
-                        )
+                    if snapshot.hasReadinessFacts {
+                        PPAccessoryDecisionRibbon(snapshot: snapshot)
+                            .padding(.horizontal, horizontalPadding)
+                            .opacity(contentResolved ? 1 : 0)
+                            .offset(y: contentResolved ? 0 : 18)
+                    }
 
+                    VStack(spacing: compact ? 22 : 30) {
                         PPAccessorySourceIsland(
                             store: store,
                             snapshot: snapshot
+                        )
+
+                        PPAccessorySpecReef(
+                            details: snapshot.details,
+                            compactColumns: compact
                         )
 
                         PPAccessoryEditorialDescription(
