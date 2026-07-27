@@ -1529,7 +1529,6 @@ struct PPAccessorySourceIsland: View {
                 isAvatar: true,
                 fallbackInitials: displayName(for: owner)
             )
-            .padding(5)
             .frame(width: max(size - 10, 0), height: max(size - 10, 0))
             .clipShape(Circle())
 
