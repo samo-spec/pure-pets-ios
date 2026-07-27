@@ -47,6 +47,9 @@ final class PPPetAdViewerHostingController: UIViewController {
             UIColor(named: "AppBackgroundColor") ?? .systemBackground
         navigationItem.largeTitleDisplayMode = .never
 
+        // Keep status bar dark during load transition by setting barStyle to default early
+        navigationController?.navigationBar.barStyle = .default
+
         addChild(contentController)
         contentController.view.translatesAutoresizingMaskIntoConstraints =
             false
@@ -151,16 +154,11 @@ final class PPPetAdViewerHostingController: UIViewController {
     }
 
     override var preferredStatusBarStyle: UIStatusBarStyle {
-        traitCollection.userInterfaceStyle == .dark
-            ? .lightContent
-            : .darkContent
+        .darkContent
     }
 
     private func applyViewerStatusBarAppearance() {
-        navigationController?.navigationBar.barStyle =
-            traitCollection.userInterfaceStyle == .dark
-                ? .black
-                : .default
+        navigationController?.navigationBar.barStyle = .default
         navigationController?.setNeedsStatusBarAppearanceUpdate()
         setNeedsStatusBarAppearanceUpdate()
     }

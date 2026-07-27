@@ -80,6 +80,7 @@ private final class PPHeroPassiveTouchRecognizer: UIGestureRecognizer {
         false
     }
 }
+
 @objc public enum PPHeroGlowDirection: Int {
     case systemDirection = 0
     case leftDirect = 1
@@ -425,6 +426,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private var storedCornerRadius: CGFloat = 30
     private var lastLayoutSize: CGSize = .zero
     private var lastLayoutDirection: UIUserInterfaceLayoutDirection?
+    private let paletteSequenceVariation: Int = {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+            return 0
+        }
+        return Int.random(in: 0..<4)
+    }()
 
     private let auroraAnimationKey = "pp.hero.apex.aurora"
     private let fieldDriftAnimationKey = "pp.hero.apex.field-drift"
@@ -1943,6 +1950,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         func animatedSurfaceColor(_ color: UIColor) -> CGColor {
             color.withAlphaComponent(surfaceAlpha).cgColor
         }
+        // The surface itself remains a deterministic light anchor for first
+        // frame and snapshot stability. Supporting animated fields vary only
+        // after their own light-first frame.
         let tonalFrames: [[Any]] = [
             [
                 animatedSurfaceColor(brightest),
@@ -2126,9 +2136,15 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let prismAlpha: CGFloat = isBaseBackground
                 ? (isDark ? 0.14 : 0.12)
                 : (isDark ? 0.24 : 0.27)
-            let colorRouteIndexes = isBaseBackground
+            let authoredColorRouteIndexes = isBaseBackground
                 ? [1, 2, 6, 4, 1]
                 : [1, 3, 4, 5, 1]
+            let colorRouteIndexes = isBaseBackground
+                ? authoredColorRouteIndexes
+                : lightFirstColorRoute(
+                    authoredColorRouteIndexes,
+                    palette: palette
+                )
             let colorRoute = colorRouteIndexes.map {
                 auroraColor(
                     at: $0,
@@ -2188,6 +2204,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installAuroraAnimations() {
+        let compactPhaseOrder = storedAccentMode.isFullScreen
+            ? []
+            : compactAuroraPhaseOrder(palette: makePalette())
+
         for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
             let spec = auroraSpecs[index]
 
@@ -2344,7 +2364,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let group = makeRepeatingAnimationGroup(
                 animations: [transform, opacity],
                 duration: spec.duration,
-                phase: spec.phase
+                phase: compactAuroraPhase(
+                    for: index,
+                    spec: spec,
+                    phaseOrder: compactPhaseOrder
+                )
             )
             layer.add(group, forKey: auroraAnimationKey)
         }
@@ -3788,10 +3812,131 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 [5, 3, 1, 4, 2, 5],
                 [6, 2, 4, 1, 3, 6]
             ]
-        let route = routes.indices.contains(index) ? routes[index] : routes[0]
+        let authoredRoute = routes.indices.contains(index) ? routes[index] : routes[0]
+        let route = storedAccentMode.isBaseBackground
+            ? authoredRoute
+            : lightFirstColorRoute(authoredRoute, palette: palette)
         return route.map {
             auroraColor(at: $0, in: palette, fallback: palette.surfaceMiddle)
         }
+    }
+
+    private func lightFirstColorRoute(
+        _ route: [Int],
+        palette: Palette
+    ) -> [Int] {
+        let closesLoop = route.first == route.last
+        var frames = closesLoop ? Array(route.dropLast()) : route
+        let luminances = palette.aurora.map(relativeLuminance)
+        guard !frames.isEmpty,
+              frames.allSatisfy({ luminances.indices.contains($0) }) else {
+            return route
+        }
+
+        frames = frames.enumerated().sorted { lhs, rhs in
+            let lhsLuminance = luminances[lhs.element]
+            let rhsLuminance = luminances[rhs.element]
+            if abs(lhsLuminance - rhsLuminance) > 0.0001 {
+                return lhsLuminance > rhsLuminance
+            }
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+
+        let splitIndex = (frames.count + 1) / 2
+        var lighterFrames = Array(frames[1..<splitIndex])
+        var darkerFrames = Array(frames[splitIndex...])
+        if paletteSequenceVariation & 1 != 0 {
+            lighterFrames.reverse()
+        }
+        if paletteSequenceVariation & 2 != 0 {
+            darkerFrames.reverse()
+        }
+        frames = [frames[0]] + lighterFrames + darkerFrames
+        return closesLoop ? frames + [frames[0]] : frames
+    }
+
+    private func relativeLuminance(_ color: UIColor) -> CGFloat {
+        let resolved = resolvedColor(color)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        if !resolved.getRed(
+            &red,
+            green: &green,
+            blue: &blue,
+            alpha: &alpha
+        ) {
+            var white: CGFloat = 0
+            guard resolved.getWhite(&white, alpha: &alpha) else { return 0 }
+            red = white
+            green = white
+            blue = white
+        }
+
+        func linearComponent(_ component: CGFloat) -> CGFloat {
+            component <= 0.04045
+                ? component / 12.92
+                : pow((component + 0.055) / 1.055, 2.4)
+        }
+
+        return 0.2126 * linearComponent(red) +
+            0.7152 * linearComponent(green) +
+            0.0722 * linearComponent(blue)
+    }
+
+    private func compactAuroraPhaseOrder(palette: Palette) -> [Int] {
+        let roles = auroraRoleColors(from: palette)
+        let luminances = [
+            relativeLuminance(roles.top),
+            relativeLuminance(roles.bottom),
+            relativeLuminance(roles.middle)
+        ]
+        var order = luminances.indices.sorted { lhs, rhs in
+            if abs(luminances[lhs] - luminances[rhs]) > 0.0001 {
+                return luminances[lhs] > luminances[rhs]
+            }
+            return lhs < rhs
+        }
+
+        if !paletteSequenceVariation.isMultiple(of: 2), order.count == 3 {
+            order.swapAt(1, 2)
+        }
+        return order
+    }
+
+    private func compactAuroraPhase(
+        for index: Int,
+        spec: AuroraSpec,
+        phaseOrder: [Int]
+    ) -> CFTimeInterval {
+        guard let rank = phaseOrder.firstIndex(of: index) else {
+            return spec.phase
+        }
+
+        let peakProgress: CGFloat
+        switch AuroraRole(rawValue: index) {
+        case .leading:
+            peakProgress = 0.32
+        case .bottomTrailing:
+            peakProgress = 0.52
+        case .middle:
+            peakProgress = 0.54
+        case .none:
+            return spec.phase
+        }
+
+        let progress: CGFloat
+        switch rank {
+        case 0:
+            progress = peakProgress
+        case 1:
+            progress = 0.12
+        default:
+            progress = 0
+        }
+        return spec.duration * CFTimeInterval(progress)
     }
 
     private var auroraSpecs: [AuroraSpec] {

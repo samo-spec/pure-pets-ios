@@ -146,6 +146,30 @@ struct PPPetAdHeroScrollContainer<Hero: View, Content: View>:
 }
 
 @MainActor
+private final class PPPetAdHeroHostingController<Content: View>:
+    UIHostingController<Content>
+{
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        if #available(iOS 16.4, *) {
+            safeAreaRegions = []
+        }
+    }
+
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        if #available(iOS 16.4, *) { return }
+
+        let systemTop = view.safeAreaInsets.top - additionalSafeAreaInsets.top
+        guard systemTop > 0,
+              abs(additionalSafeAreaInsets.top + systemTop) > 0.5 else {
+            return
+        }
+        additionalSafeAreaInsets.top = -systemTop
+    }
+}
+
+@MainActor
 private final class PPPetAdSizingHostingController<Content: View>:
     UIHostingController<Content>
 {
@@ -198,12 +222,13 @@ final class PPPetAdHeroScrollViewController<
     var onRefresh: () -> Void
     var onCollapseProgressChanged: ((CGFloat) -> Void)?
 
-    private let heroController: UIHostingController<Hero>
+    private let heroController: PPPetAdHeroHostingController<Hero>
     private let contentController:
         PPPetAdSizingHostingController<Content>
     private let refreshControl = UIRefreshControl()
 
     private var contentHeightConstraint: NSLayoutConstraint!
+    private var heroContentConstraint: NSLayoutConstraint!
     private var minimumHeroHeight: CGFloat
     private var expandedHeroHeight: CGFloat
     private var hasAppliedInitialOffset = false
@@ -220,16 +245,14 @@ final class PPPetAdHeroScrollViewController<
         expandedHeroHeight: CGFloat,
         onRefresh: @escaping () -> Void
     ) {
-        heroController = UIHostingController(rootView: hero)
-        if #available(iOS 16.4, *) {
-            heroController.safeAreaRegions = []
-        }
+        heroController = PPPetAdHeroHostingController(rootView: hero)
         contentController =
             PPPetAdSizingHostingController(rootView: content)
         self.minimumHeroHeight = minimumHeroHeight
         self.expandedHeroHeight = expandedHeroHeight
         self.onRefresh = onRefresh
         super.init(nibName: nil, bundle: nil)
+        edgesForExtendedLayout = .top
     }
 
     @available(*, unavailable)
@@ -252,6 +275,7 @@ final class PPPetAdHeroScrollViewController<
         configureScrollView()
         installHeroController()
         installContentController()
+        installHeroContentConstraint()
         scrollView.sendSubviewToBack(heroController.view)
         scrollView.bringSubviewToFront(contentController.view)
         scrollView.bringSubviewToFront(refreshControl)
@@ -285,10 +309,10 @@ final class PPPetAdHeroScrollViewController<
         self.minimumHeroHeight = minimumHeroHeight
         self.expandedHeroHeight = expandedHeroHeight
 
-        contentController.view.invalidateIntrinsicContentSize()
-        needsContentMeasurement = true
-        view.setNeedsLayout()
         if metricsChanged {
+            contentController.view.invalidateIntrinsicContentSize()
+            needsContentMeasurement = true
+            view.setNeedsLayout()
             applyMetrics(preservingPosition: true)
         }
     }
@@ -401,6 +425,15 @@ final class PPPetAdHeroScrollViewController<
         scrollView.bringSubviewToFront(contentController.view)
     }
 
+    private func installHeroContentConstraint() {
+        heroContentConstraint = heroController.view.bottomAnchor.constraint(
+            equalTo: contentController.view.topAnchor,
+            constant: 16
+        )
+        heroContentConstraint.priority = .defaultHigh
+        heroContentConstraint.isActive = true
+    }
+
     private func installHeroController() {
         addChild(heroController)
         heroController.view.translatesAutoresizingMaskIntoConstraints =
@@ -414,10 +447,6 @@ final class PPPetAdHeroScrollViewController<
         NSLayoutConstraint.activate([
             heroController.view.topAnchor.constraint(
                 equalTo: scrollView.frameLayoutGuide.topAnchor,
-                constant: 0
-            ),
-            heroController.view.bottomAnchor.constraint(
-                equalTo: contentController.view.topAnchor,
                 constant: 0
             ),
             heroController.view.leadingAnchor.constraint(

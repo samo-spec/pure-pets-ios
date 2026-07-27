@@ -85,6 +85,8 @@ typedef NS_ENUM(NSInteger, PetCategory) {
 @property (nonatomic, strong, nullable) NSString *geohash;
 @property (nonatomic, strong, nullable) NSString *locationName;
 
+
+
 /// Pet Details
 @property (nonatomic, strong, nullable) NSNumber *price;              ///< In Rials
 @property (nonatomic, strong, nullable) NSNumber *discountPercent;    ///< 0–100%

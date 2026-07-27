@@ -69,11 +69,13 @@ struct PPPetAdViewerScreen: View {
                             )
                     )
 
+                topFadeOverlay(proxy: proxy)
+
                 navigationBar
 
-
-
                 navigationLink
+
+                bottomFadeOverlay(proxy: proxy)
 
                 contactDock(
                     bottomInset: proxy.safeAreaInsets.bottom
@@ -315,18 +317,8 @@ struct PPPetAdViewerScreen: View {
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
-        .background {
-            PPPetAdViewerStyle.sheetBackground
-                .clipShape(
-                    UnevenRoundedRectangle(
-                        topLeadingRadius: PPPetAdViewerStyle.sheetRadius,
-                        bottomLeadingRadius: 0,
-                        bottomTrailingRadius: 0,
-                        topTrailingRadius: PPPetAdViewerStyle.sheetRadius,
-                        style: .continuous
-                    )
-                )
-        }
+        .background(PPPetAdViewerStyle.sheetBackground, in: detailsSheetShape)
+        .clipShape(detailsSheetShape)
         .shadow(
             color: Color.black.opacity(0.06),
             radius: 12,
@@ -334,6 +326,16 @@ struct PPPetAdViewerScreen: View {
             y: -3
         )
         .offset(y: 0)
+    }
+
+    private var detailsSheetShape: UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: PPPetAdViewerStyle.sheetRadius,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: PPPetAdViewerStyle.sheetRadius,
+            style: .continuous
+        )
     }
 
     private var primaryDetailsContent: some View {
@@ -344,7 +346,8 @@ struct PPPetAdViewerScreen: View {
                 price: store.snapshot.price,
                 type: summaryType,
                 age: store.snapshot.age,
-                gender: store.snapshot.gender
+                gender: store.snapshot.gender,
+                ad: store.snapshot.ad
             )
             .padding(.horizontal, PPSpace.screenMargin)
             .padding(.top, PPPetAdViewerStyle.contentTopPadding)
@@ -454,7 +457,7 @@ struct PPPetAdViewerScreen: View {
 
     private var navigationBar: some View {
         PPPetAdViewerNavigationBar(
-            title: store.snapshot.title,
+            snapshot: store.snapshot,
             isCollapsed: isNavigationCollapsed,
             isFavorite: store.isFavorite,
             isFavoriteWorking: store.favoriteState == .working,
@@ -469,7 +472,7 @@ struct PPPetAdViewerScreen: View {
             onShare: store.share,
             onReport: store.requestReport
         )
-        .padding(.top, safeAreaTopInset + 4)
+        .padding(.top, safeAreaTopInset - 8)
         .background {
             navigationBackground
         }
@@ -480,20 +483,7 @@ struct PPPetAdViewerScreen: View {
 
     @ViewBuilder
     private var navigationBackground: some View {
-        if isNavigationCollapsed {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(
-                            Color(uiColor: .separator).opacity(0.18)
-                        )
-                        .frame(height: PPPetAdViewerStyle.hairlineWidth)
-                }
-                .ignoresSafeArea(edges: .top)
-        } else {
-            Color.clear
-        }
+        Color.clear
     }
 
     private var navigationLink: some View {
@@ -576,5 +566,55 @@ struct PPPetAdViewerScreen: View {
             contactDockHeight
                 + PPBottomDecisionBarGeometry.bottomBreathingRoom
         )
+    }
+
+    private func topFadeOverlay(proxy: GeometryProxy) -> some View {
+        let topColor = Color.ppBackground
+        return LinearGradient(
+            colors: [
+                topColor.opacity(0.86),
+                topColor.opacity(0.66),
+                topColor.opacity(0.22),
+                Color.clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: proxy.safeAreaInsets.top + 80)
+        .ignoresSafeArea(edges: .top)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .allowsHitTesting(false)
+        .zIndex(9)
+    }
+
+    private func bottomFadeOverlay(proxy: GeometryProxy) -> some View {
+        let bottomInset = proxy.safeAreaInsets.bottom
+        let dockBottomPadding =
+            max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
+            + PPBottomDecisionBarGeometry.bottomBreathingRoom
+
+        let totalOverlayHeight = contactDockHeight + dockBottomPadding + 44
+        let bottomColor = Color.ppBackground
+
+        return LinearGradient(
+            colors: [
+                Color.clear,
+                bottomColor.opacity(0.35),
+                bottomColor.opacity(0.85),
+                bottomColor
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: totalOverlayHeight)
+        .ignoresSafeArea(edges: .bottom)
+        .frame(maxHeight: .infinity, alignment: .bottom)
+        .allowsHitTesting(false)
+        .opacity(hasAppeared && store.ppShowsContactDock ? 1 : 0)
+        .animation(
+            reduceMotion ? nil : PPPetAdViewerMotion.navigation,
+            value: store.ppShowsContactDock
+        )
+        .zIndex(8)
     }
 }

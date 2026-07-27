@@ -1,6 +1,22 @@
 import SwiftUI
 import UIKit
 
+private enum AddToCartFlightAnchor: Hashable {
+    case addIcon
+    case cart
+}
+
+private struct AddToCartFlightAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: [AddToCartFlightAnchor: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [AddToCartFlightAnchor: Anchor<CGRect>],
+        nextValue: () -> [AddToCartFlightAnchor: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
 /// A production-ready add-to-cart control with an async-safe, causal success animation.
 ///
 /// The supplied action returns the authoritative cart quantity. The button keeps the
@@ -110,9 +126,13 @@ public struct AnimatedAddToCartButton: View {
         }
         .frame(minHeight: 62)
         .contentShape(buttonShape)
-        .overlay {
+        .overlayPreferenceValue(AddToCartFlightAnchorPreferenceKey.self) { anchors in
             GeometryReader { proxy in
-                flightLayer(in: proxy.size)
+                flightLayer(
+                    in: proxy.size,
+                    anchors: anchors,
+                    proxy: proxy
+                )
             }
             .allowsHitTesting(false)
         }
@@ -151,6 +171,12 @@ public struct AnimatedAddToCartButton: View {
             }
         }
         .frame(width: 32, height: 32)
+        .anchorPreference(
+            key: AddToCartFlightAnchorPreferenceKey.self,
+            value: .bounds
+        ) { anchor in
+            [.addIcon: anchor]
+        }
         .accessibilityHidden(true)
     }
 
@@ -162,11 +188,11 @@ public struct AnimatedAddToCartButton: View {
             }
             .frame(width: 44, height: 44)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                Circle()
                     .fill(buttonForeground.opacity(0.18))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                Circle()
                     .stroke(buttonForeground.opacity(0.28), lineWidth: 1)
             )
             .scaleEffect(
@@ -178,6 +204,12 @@ public struct AnimatedAddToCartButton: View {
                 .degrees(Double(-3 * direction * cartImpact))
             )
             .offset(x: 3 * direction * cartImpact)
+            .anchorPreference(
+                key: AddToCartFlightAnchorPreferenceKey.self,
+                value: .bounds
+            ) { anchor in
+                [.cart: anchor]
+            }
 
             if displayedCount > 0 {
                 Text(String(format: "%d", displayedCount))
@@ -192,7 +224,7 @@ public struct AnimatedAddToCartButton: View {
                             .fill(badgeBackground)
                     )
                     .scaleEffect(badgeScale)
-                    .offset(x: 6, y: -6)
+                    .offset(x: 6 * direction, y: -6)
                     .transition(.scale(scale: 0.55).combined(with: .opacity))
             }
         }
@@ -201,18 +233,27 @@ public struct AnimatedAddToCartButton: View {
     }
 
     @ViewBuilder
-    private func flightLayer(in size: CGSize) -> some View {
+    private func flightLayer(
+        in size: CGSize,
+        anchors: [AddToCartFlightAnchor: Anchor<CGRect>],
+        proxy: GeometryProxy
+    ) -> some View {
         if phase == .flying {
             let progress = max(0, min(1, flightProgress))
-            let startX: CGFloat = layoutDirection == .rightToLeft
-                ? size.width - 34
-                : 34
-            let endX: CGFloat = layoutDirection == .rightToLeft
-                ? 34
-                : size.width - 34
+            let startPoint = flightPoint(
+                for: anchors[.addIcon],
+                fallback: fallbackFlightStart(in: size),
+                proxy: proxy
+            )
+            let endPoint = flightPoint(
+                for: anchors[.cart],
+                fallback: fallbackFlightEnd(in: size),
+                proxy: proxy
+            )
             let arc = CGFloat(sin(Double(progress) * .pi)) * min(22, size.height * 0.34)
-            let x = startX + ((endX - startX) * progress)
-            let y = (size.height / 2) - arc
+            let x = startPoint.x + ((endPoint.x - startPoint.x) * progress)
+            let baselineY = startPoint.y + ((endPoint.y - startPoint.y) * progress)
+            let y = baselineY - arc
             let fade = progress < 0.82
                 ? CGFloat(1)
                 : max(0, 1 - ((progress - 0.82) / 0.18))
@@ -283,8 +324,39 @@ public struct AnimatedAddToCartButton: View {
         isEnabled ? buttonColor : Color.ppTextSecondary
     }
 
+    private var isRightToLeft: Bool {
+        layoutDirection == .rightToLeft || Language.isRTL()
+    }
+
     private var direction: CGFloat {
-        layoutDirection == .rightToLeft ? -1 : 1
+        isRightToLeft ? -1 : 1
+    }
+
+    private func fallbackFlightStart(in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: isRightToLeft ? size.width - 34 : 34,
+            y: size.height / 2
+        )
+    }
+
+    private func fallbackFlightEnd(in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: isRightToLeft ? 34 : size.width - 34,
+            y: size.height / 2
+        )
+    }
+
+    private func flightPoint(
+        for anchor: Anchor<CGRect>?,
+        fallback: CGPoint,
+        proxy: GeometryProxy
+    ) -> CGPoint {
+        guard let anchor else {
+            return fallback
+        }
+
+        let rect = proxy[anchor]
+        return CGPoint(x: rect.midX, y: rect.midY)
     }
 
     private func beginAdd() {

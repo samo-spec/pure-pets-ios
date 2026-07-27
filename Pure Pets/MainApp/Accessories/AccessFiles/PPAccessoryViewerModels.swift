@@ -238,7 +238,7 @@ struct PPAccessoryViewerSnapshot {
                 PPAccessoryViewerDetailItem(
                     id: "weight",
                     title: PPAccessoryViewerL10n.text(
-                        "accessory_view_weight"
+                        "accessory_view_size_weight"
                     ),
                     value: weight,
                     symbol: "scalemass.fill",
@@ -246,11 +246,39 @@ struct PPAccessoryViewerSnapshot {
                 )
             )
         }
+        if !type.isEmpty {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "accessory-kind",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_kind"
+                    ),
+                    value: type,
+                    symbol: "info.circle.fill",
+                    tone: .sea
+                )
+            )
+        }
+        if quantity > 0 {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "remain-quantity",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_remain_quantity"
+                    ),
+                    value: "\(quantity)",
+                    symbol: "archivebox.fill",
+                    tone: .palm
+                )
+            )
+        }
         if !subcategory.isEmpty {
             result.append(
                 PPAccessoryViewerDetailItem(
                     id: "subcategory",
-                    title: PPAccessoryViewerL10n.text("Subcategory"),
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_subkind"
+                    ),
                     value: subcategory,
                     symbol: "square.grid.3x1.below.line.grid.1x2",
                     tone: .sea

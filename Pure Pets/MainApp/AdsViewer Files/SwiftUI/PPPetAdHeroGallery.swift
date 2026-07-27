@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 
+@available(iOS 16.0, *)
 struct PPPetAdHeroGallery: View {
     let items: [PPPetAdMediaItem]
     @Binding var selection: Int
@@ -10,6 +11,9 @@ struct PPPetAdHeroGallery: View {
     var onFirstImageLoaded: ((UIImage) -> Void)? = nil
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let thumbnailSize: CGFloat = 44
+    private let thumbnailRailInset: CGFloat = 10
 
     private var expandedChromeOpacity: CGFloat {
         max(0, 1 - (scrollState.collapseProgress * 1.7))
@@ -38,7 +42,7 @@ struct PPPetAdHeroGallery: View {
                 case .thumbRails:
                     thumbnailFooter
                         .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.bottom, 38)
+                        .padding(.bottom, 14)
                         .opacity(expandedChromeOpacity)
                         .scaleEffect(
                             reduceMotion
@@ -55,7 +59,7 @@ struct PPPetAdHeroGallery: View {
             }
         }
         .background(Color.clear)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .top)
         .clipped()
         .onChange(of: selection) { value in
             guard items.indices.contains(value) else { return }
@@ -73,7 +77,7 @@ struct PPPetAdHeroGallery: View {
     private var gallery: some View {
         if items.isEmpty {
             emptyHero
-                .ignoresSafeArea()
+                .ignoresSafeArea(edges: .top)
         } else {
             TabView(selection: $selection) {
                 ForEach(Array(items.enumerated()), id: \.element.id) {
@@ -85,7 +89,7 @@ struct PPPetAdHeroGallery: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .indexViewStyle(.page(backgroundDisplayMode: .never))
-            .ignoresSafeArea()
+            .ignoresSafeArea(edges: .top)
         }
     }
 
@@ -102,6 +106,7 @@ struct PPPetAdHeroGallery: View {
                 accessibilityLabel: mediaAccessibilityLabel(index: index),
                 onImageLoaded: index == 0 ? onFirstImageLoaded : nil
             )
+            .ignoresSafeArea(edges: .top)
 
             if item.isVideo {
                 videoPlayIndicator
@@ -132,6 +137,7 @@ struct PPPetAdHeroGallery: View {
             startPoint: .top,
             endPoint: .bottom
         )
+        .ignoresSafeArea(edges: .top)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
@@ -223,7 +229,7 @@ struct PPPetAdHeroGallery: View {
                                 accessibilityLabel:
                                     mediaAccessibilityLabel(index: index)
                             )
-                            .frame(width: 44, height: 44)
+                            .frame(width: thumbnailSize, height: thumbnailSize)
                             .clipShape(
                                 RoundedRectangle(
                                     cornerRadius: 12,
@@ -258,9 +264,10 @@ struct PPPetAdHeroGallery: View {
                         )
                     }
                 }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, thumbnailRailInset)
+                .padding(.vertical, thumbnailRailInset)
             }
-            .frame(width: thumbnailRailWidth, height: 52)
+            .frame(width: thumbnailRailWidth, height: thumbnailRailHeight)
             .ppGlassSurface(
                 in: RoundedRectangle(
                     cornerRadius: 18,
@@ -303,15 +310,22 @@ struct PPPetAdHeroGallery: View {
 
     private var thumbnailRailWidth: CGFloat {
         let count = max(items.count, 1)
-        let thumbnailWidth: CGFloat = 44
         let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
-        let neededWidth = (thumbnailWidth * CGFloat(count)) + spacing + 20
+        let neededWidth =
+            (thumbnailSize * CGFloat(count)) + spacing + (thumbnailRailInset * 2)
         let maxAllowedWidth = max(0, UIScreen.main.bounds.width - (PPSpace.screenMargin * 2))
         return min(neededWidth, maxAllowedWidth)
     }
 
+    private var thumbnailRailHeight: CGFloat {
+        thumbnailSize + (thumbnailRailInset * 2)
+    }
+
     private var emptyHero: some View {
         ZStack {
+            Rectangle()
+                .fill(PPPetAdViewerStyle.heroPeachTop)
+                .ignoresSafeArea(edges: .top)
             LinearGradient(
                 colors: [
                     PPPetAdViewerStyle.heroPeachTop,
@@ -320,6 +334,7 @@ struct PPPetAdHeroGallery: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+            .ignoresSafeArea(edges: .top)
 
             RadialGradient(
                 colors: [
@@ -451,11 +466,9 @@ private struct PPPetAdHeroImageView: View {
                 startPoint: .top,
                 endPoint: .bottom
             )
+            .ignoresSafeArea(edges: .top)
 
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            PPPetAdTopAnchoredFillImage(image: image)
                 .scaleEffect(1.18, anchor: .top)
                 .saturation(0.70)
                 .opacity(0.10)
@@ -469,10 +482,7 @@ private struct PPPetAdHeroImageView: View {
                 endPoint: .bottom
             )
 
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            PPPetAdTopAnchoredFillImage(image: image)
                 .opacity(fittedImageOpacity)
                 .scaleEffect(
                     reduceMotion
@@ -523,6 +533,7 @@ private struct PPPetAdHeroImageView: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+            .ignoresSafeArea(edges: .top)
 
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 34, weight: .medium))
@@ -539,5 +550,32 @@ private struct PPPetAdHeroImageView: View {
         case .loaded: return 2
         case .failed: return 3
         }
+    }
+}
+
+private struct PPPetAdTopAnchoredFillImage: View {
+    let image: UIImage
+
+    var body: some View {
+        GeometryReader { proxy in
+            let imageSize = image.size
+            let widthScale = proxy.size.width / max(imageSize.width, 1)
+            let heightScale = proxy.size.height / max(imageSize.height, 1)
+            let scale = max(widthScale, heightScale)
+            let renderedSize = CGSize(
+                width: imageSize.width * scale,
+                height: imageSize.height * scale
+            )
+
+            Image(uiImage: image)
+                .resizable()
+                .frame(width: renderedSize.width, height: renderedSize.height)
+                .position(
+                    x: proxy.size.width / 2,
+                    y: renderedSize.height / 2
+                )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .clipped()
     }
 }

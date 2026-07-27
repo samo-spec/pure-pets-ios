@@ -115,7 +115,7 @@ static PPHeroGlowDirection PPHeroGlassResolvedGlowDirection(NSInteger rawValue)
     _glowDirection = 0; // Default: systemDirection
     // Apex defaults: optical sweep and passive under-finger response are on.
     // Both remain externally switchable through the existing Objective-C API.
-    _PPHeroApexUseShimmer = YES;
+    _PPHeroApexUseShimmer = NO;
     _PPHeroApexUseUnderFingerMotion = YES;
 
     _overrideCornerRadius = 0.0;

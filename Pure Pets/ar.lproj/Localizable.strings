@@ -2120,6 +2120,7 @@
 "accessory_view_private_seller" = "بائع خاص";
 "accessory_view_seller_contact" = "تواصل مع البائع";
 "accessory_view_store_support" = "دعم المتجر";
+"accessory_view_seller_empty_message" = "بيانات البائع غير متاحة بعد. يمكن للدعم مساعدتك.";
 "accessory_view_suggestions_subtitle" = "اقتراحات إضافية من نفس الفئة.";
 "accessory_view_empty_suggestions" = "ستظهر هنا اقتراحات إكسسوارات إضافية قريبًا.";
 "image_gallery_accessibility_label" = "الصور";
@@ -3701,6 +3702,10 @@
 "pet_ad_viewer_pet_fallback" = "إعلان حيوان أليف";
 "pet_ad_viewer_pet_name_format" = "اسم الحيوان: %@";
 "pet_ad_viewer_pet_name_label" = "اسم الحيوان";
+"pet_ad_viewer_freshness_label" = "نُشر مؤخراً";
+"pet_ad_viewer_freshness_today" = "اليوم";
+"pet_ad_viewer_freshness_yesterday" = "أمس";
+"pet_ad_viewer_freshness_days_ago" = "منذ %d أيام";
 "pet_ad_viewer_related_empty" = "لا توجد اقتراحات مشابهة بعد";
 "pet_ad_viewer_related_empty_detail" = "تُضاف إعلانات جديدة باستمرار. تحقق مرة أخرى قريباً.";
 "pet_ad_viewer_related_failed" = "تعذر تحميل الاقتراحات";
@@ -3759,3 +3764,7 @@
 "accessory_view_updating_favorite" = "جارِ تحديث المفضلة";
 "accessory_view_verified_seller" = "بائع موثّق";
 "accessory_view_weight" = "الوزن";
+"accessory_view_size_weight" = "الحجم / الوزن";
+"accessory_view_kind" = "النوع";
+"accessory_view_subkind" = "النوع الفرعي";
+"accessory_view_remain_quantity" = "الكمية المتبقية";

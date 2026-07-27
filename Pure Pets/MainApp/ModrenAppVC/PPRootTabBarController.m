@@ -65,7 +65,7 @@ static CGFloat const PPCartFloatingBarRestingBottomConstant = -24.0;
 static CGFloat const PPCartFloatingBarHiddenBottomConstant = 140.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 static CGFloat const PPPremiumDockBottomInset = 18.0;
-static BOOL const PPShowsRootCenterAddButton = YES;
+static BOOL const PPShowsRootCenterAddButton = NO;
 
 @class PPPremiumDockBarDelegate;
 @class PPCartFloatingBarCoordinator;
@@ -93,6 +93,7 @@ static BOOL const PPShowsRootCenterAddButton = YES;
 @property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
 @property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
 @property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
+@property (nonatomic, assign) BOOL rootTabBarTitleLayoutRefreshScheduled;
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
 @property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
 @property (nonatomic, assign) CGFloat premiumDockAppliedItemWidth;
@@ -114,6 +115,7 @@ static BOOL const PPShowsRootCenterAddButton = YES;
 - (UIViewController *)pp_makeSettingsRootViewController;
 - (void)pp_applyPremiumTabBarItemMetrics:(UITabBarItem *)item centerAction:(BOOL)centerAction;
 - (void)pp_refreshRootTabBarTitleLayout;
+- (void)pp_scheduleRootTabBarTitleLayoutRefresh;
 - (void)configureAppearance;
 - (nullable UILabel *)pp_tabBarTitleLabelForItem:(UITabBarItem *)item;
 - (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title;
@@ -1472,7 +1474,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self pp_applyPremiumTabBarItemMetrics:addNav.tabBarItem centerAction:YES];
     [self pp_applyPremiumTabBarItemMetrics:notiNav.tabBarItem centerAction:NO];
     [self pp_applyPremiumTabBarItemMetrics:cartNav.tabBarItem centerAction:NO];
-    if (!PPShowsRootCenterAddButton) {
+    if (PPShowsRootCenterAddButton) {
         addNav.tabBarItem.enabled = NO;
         addNav.tabBarItem.title = @"";
         addNav.tabBarItem.image = [[UIImage new] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -1482,6 +1484,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         addNav.tabBarItem.accessibilityHint = nil;
     }
     [self configureAppearance];
+    [self pp_scheduleRootTabBarTitleLayoutRefresh];
 
     self.pp_lastSelectedIndex = self.selectedIndex;
     //[self addBottomFadeBelowTabBar];
@@ -1594,9 +1597,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_showIntroIfNeeded];
     }
     [self pp_refreshRootTabBarTitleLayout];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self pp_refreshRootTabBarTitleLayout];
-    });
+    [self pp_scheduleRootTabBarTitleLayoutRefresh];
     [self becomeFirstResponder];
 }
 
@@ -1856,6 +1857,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     }
     [self pp_refreshRootTabBarTitleLayout];
+    [self pp_scheduleRootTabBarTitleLayoutRefresh];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -3397,11 +3399,43 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     return [self pp_titleLabelInView:itemView matchingTitle:item.title];
 }
 
+- (void)pp_scheduleRootTabBarTitleLayoutRefresh
+{
+    if (self.rootTabBarTitleLayoutRefreshScheduled) {
+        return;
+    }
+
+    self.rootTabBarTitleLayoutRefreshScheduled = YES;
+    __weak typeof(self) weakSelf = self;
+    void (^refresh)(void) = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
+        [strongSelf pp_refreshRootTabBarTitleLayout];
+    };
+
+    dispatch_async(dispatch_get_main_queue(), refresh);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   refresh);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.18 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   ^{
+        refresh();
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        strongSelf.rootTabBarTitleLayoutRefreshScheduled = NO;
+    });
+}
+
 - (void)pp_refreshRootTabBarTitleLayout
 {
     if (self.tabBar.hidden || CGRectGetWidth(self.tabBar.bounds) <= 0.0) {
         return;
     }
+
+    [self.tabBar setNeedsLayout];
+    [self.tabBar layoutIfNeeded];
 
     UIFont *normalTitleFont = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
     UIFont *selectedTitleFont = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
@@ -3438,10 +3472,13 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         titleLabel.adjustsFontSizeToFitWidth = YES;
         titleLabel.minimumScaleFactor = 0.78;
         titleLabel.allowsDefaultTighteningForTruncation = YES;
+        titleLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
+        titleLabel.clipsToBounds = NO;
         titleLabel.frame = CGRectMake(CGRectGetMinX(resolvedTitleFrame),
                                       CGRectGetMinY(titleLabel.frame),
                                       CGRectGetWidth(resolvedTitleFrame),
-                                      CGRectGetHeight(titleLabel.frame));
+                                      MAX(CGRectGetHeight(titleLabel.frame),
+                                          ceil(selectedTitleFont.lineHeight) + 2.0));
         titleLabel.preferredMaxLayoutWidth = titleWidth;
         [titleLabel setNeedsDisplay];
     }

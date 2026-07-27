@@ -2145,6 +2145,7 @@
 "accessory_view_private_seller" = "Private seller";
 "accessory_view_seller_contact" = "Seller contact";
 "accessory_view_store_support" = "Store support";
+"accessory_view_seller_empty_message" = "Seller details are not available yet. Support can help.";
 "accessory_view_suggestions_subtitle" = "More picks from related accessories.";
 "accessory_view_empty_suggestions" = "More accessory suggestions will appear here soon.";
 "image_gallery_accessibility_label" = "Images";
@@ -3722,6 +3723,10 @@
 "pet_ad_viewer_pet_fallback" = "Pet listing";
 "pet_ad_viewer_pet_name_format" = "Pet Name: %@";
 "pet_ad_viewer_pet_name_label" = "Pet name";
+"pet_ad_viewer_freshness_label" = "Recently posted";
+"pet_ad_viewer_freshness_today" = "Today";
+"pet_ad_viewer_freshness_yesterday" = "Yesterday";
+"pet_ad_viewer_freshness_days_ago" = "%d days ago";
 "pet_ad_viewer_related_empty" = "Nothing similar yet";
 "pet_ad_viewer_related_empty_detail" = "New listings appear often. Check back again soon.";
 "pet_ad_viewer_related_failed" = "Recommendations did not load";
@@ -3780,3 +3785,7 @@
 "accessory_view_updating_favorite" = "Updating favorite";
 "accessory_view_verified_seller" = "Verified seller";
 "accessory_view_weight" = "Weight";
+"accessory_view_size_weight" = "Size / Weight";
+"accessory_view_kind" = "Kind";
+"accessory_view_subkind" = "Subkind";
+"accessory_view_remain_quantity" = "Remaining";

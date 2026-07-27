@@ -9,6 +9,7 @@ public struct PPHero: UIViewRepresentable {
     public var topColor: UIColor?
     public var middleColor: UIColor?
     public var bottomColor: UIColor?
+    public var solidColor: UIColor?
 
     public init(
         accentStyle: PPHeroGlassAccentStyle = .fullScreen,
@@ -17,7 +18,8 @@ public struct PPHero: UIViewRepresentable {
         surfaceColor: UIColor? = nil,
         topColor: UIColor? = nil,
         middleColor: UIColor? = nil,
-        bottomColor: UIColor? = nil
+        bottomColor: UIColor? = nil,
+        solidColor: UIColor? = nil
     ) {
         self.accentStyle = accentStyle
         self.useShimmer = useShimmer
@@ -26,6 +28,7 @@ public struct PPHero: UIViewRepresentable {
         self.topColor = topColor
         self.middleColor = middleColor
         self.bottomColor = bottomColor
+        self.solidColor = solidColor
     }
 
     public func makeUIView(context: Context) -> PPBackgroundView {
@@ -46,6 +49,7 @@ public struct PPHero: UIViewRepresentable {
         view.overrideTopGlowColor = resolvedTopGlowColor
         view.overrideCenterGlowColor = resolvedMiddleGlowColor
         view.overrideBottomGlowColor = resolvedBottomGlowColor
+        view.overrideSolidColor = solidColor
     }
 
     private var usesLightFullScreenDefaults: Bool {
@@ -95,4 +99,46 @@ public struct PPHero: UIViewRepresentable {
         blue: 0.855,
         alpha: 1
     )
+}
+
+struct PPHeroApexGlowCornerSurface: View {
+    var cornerRadius: CGFloat = PPCorner.hero
+    var accentStyle: PPHeroGlassAccentStyle = .cornerGlow
+    var solidColor: UIColor? = nil
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        let shape = RoundedRectangle(
+            cornerRadius: cornerRadius,
+            style: .continuous
+        )
+        let borderColor =
+            colorSchemeContrast == .increased
+            ? Color.ppTextPrimary.opacity(0.48)
+            : Color.ppBorder.opacity(colorScheme == .dark ? 0.72 : 0.54)
+
+        PPHero(
+            accentStyle: accentStyle,
+            useShimmer: false,
+            useUnderFingerMotion: false,
+            solidColor: solidColor
+        )
+        .clipShape(shape)
+        .overlay {
+            shape.strokeBorder(
+                borderColor,
+                lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+            )
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.08),
+            radius: 14,
+            x: 0,
+            y: 5
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
 }

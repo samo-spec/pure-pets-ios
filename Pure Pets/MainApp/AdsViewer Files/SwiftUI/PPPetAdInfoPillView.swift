@@ -5,14 +5,63 @@ enum PPPetAdInfoEmphasis {
     case supporting
 }
 
+enum PPPetAdInfoSignature: String, CaseIterable {
+    case breed
+    case age
+    case gender
+
+    var accentColor: Color {
+        switch self {
+        case .breed:
+            return .ppPrimary
+        case .age:
+            return .ppInfo
+        case .gender:
+            return .ppSuccess
+        }
+    }
+}
+
+private enum PPPetAdInfoBillStyle {
+    static let iconPlateSize: CGFloat = 42
+    static let iconSize: CGFloat = 20
+    static let iconCornerRadius: CGFloat = 16
+    static let accentWidth: CGFloat = 44
+    static let accentHeight: CGFloat = 4
+}
+
+struct PPPetAdInfoAccent: View {
+    let color: Color
+
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        Capsule(style: .continuous)
+            .fill(
+                color.opacity(
+                    colorSchemeContrast == .increased ? 0.90 : 0.62
+                )
+            )
+            .frame(
+                width: PPPetAdInfoBillStyle.accentWidth,
+                height: PPPetAdInfoBillStyle.accentHeight
+            )
+            .accessibilityHidden(true)
+    }
+}
+
 struct PPPetAdInfoPillView: View {
     let systemIcon: String?
     let assetIcon: String?
     let label: String
     let value: String
+    let signature: PPPetAdInfoSignature
     let emphasis: PPPetAdInfoEmphasis
+    let showsBottomAccent: Bool
+    let usesCompactColumn: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     init(
@@ -20,187 +69,168 @@ struct PPPetAdInfoPillView: View {
         assetIcon: String? = nil,
         label: String,
         value: String,
-        emphasis: PPPetAdInfoEmphasis = .supporting
+        signature: PPPetAdInfoSignature = .breed,
+        emphasis: PPPetAdInfoEmphasis = .supporting,
+        showsBottomAccent: Bool = false,
+        usesCompactColumn: Bool = false
     ) {
         self.systemIcon = systemIcon
         self.assetIcon = assetIcon
         self.label = label
         self.value = value
+        self.signature = signature
         self.emphasis = emphasis
+        self.showsBottomAccent = showsBottomAccent
+        self.usesCompactColumn = usesCompactColumn
     }
 
     var body: some View {
-        Group {
-            switch emphasis {
-            case .featured:
-                featuredContent
-            case .supporting:
-                supportingContent
+        adaptiveFactRow
+            .padding(.horizontal, usesCompactColumn ? PPSpace.sm : PPSpace.base)
+            .padding(.vertical, PPSpace.base)
+            .frame(
+                maxWidth: .infinity,
+                alignment: usesCompactColumn ? .center : .leading
+            )
+            .overlay(alignment: .bottom) {
+                if showsBottomAccent {
+                    PPPetAdInfoAccent(color: signature.accentColor)
+                }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label): \(value)")
-    }
-
-    private var featuredContent: some View {
-        adaptiveFactRow(
-            iconSize: dynamicTypeSize.isAccessibilitySize ? 50 : 44,
-            valueFont: PPPetAdTypography.title3
-        )
-        .padding(.horizontal, PPSpace.base)
-        .padding(.vertical, PPSpace.base)
-    }
-
-    private var supportingContent: some View {
-        adaptiveFactRow(
-            iconSize: dynamicTypeSize.isAccessibilitySize ? 38 : 30,
-            valueFont: PPPetAdTypography.headline
-        )
-        .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.md)
+            .layoutPriority(emphasis == .featured ? 1 : 0)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(label): \(value)")
     }
 
     @ViewBuilder
-    private func adaptiveFactRow(
-        iconSize: CGFloat,
-        valueFont: Font
-    ) -> some View {
-        if dynamicTypeSize.isAccessibilitySize {
+    private var adaptiveFactRow: some View {
+        if usesCompactColumn {
+            VStack(alignment: .center, spacing: PPSpace.sm) {
+                iconPlate
+                factText
+            }
+        } else if dynamicTypeSize >= .xxLarge {
             VStack(alignment: .leading, spacing: PPSpace.sm) {
-                iconSlot(size: iconSize)
-                factText(valueFont: valueFont)
+                iconPlate
+                factText
             }
         } else {
-            HStack(alignment: .top, spacing: iconSpacing) {
-                iconSlot(size: iconSize)
-                factText(valueFont: valueFont)
+            HStack(alignment: .center, spacing: PPSpace.md) {
+                iconPlate
+                factText
             }
         }
     }
 
-    private var iconSpacing: CGFloat {
-        emphasis == .featured ? PPSpace.md : PPSpace.sm
-    }
-
-    private func factText(valueFont: Font) -> some View {
-        VStack(alignment: .leading, spacing: PPSpace.xxs) {
-            Text(label)
-                .font(
-                    emphasis == .featured
-                    ? PPPetAdTypography.footnoteBold
-                    : PPPetAdTypography.footnote
-                )
-                .foregroundStyle(
-                    emphasis == .featured
-                    ? Color.ppPrimary
-                    : Color.ppTextSecondary
-                )
-                .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
-
+    private var factText: some View {
+        VStack(
+            alignment: usesCompactColumn ? .center : .leading,
+            spacing: PPSpace.xxs
+        ) {
             Text(verbatim: "\u{2068}\(value)\u{2069}")
-                .font(valueFont)
+                .font(PPPetAdTypography.headline)
                 .foregroundStyle(Color.ppTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
+                .multilineTextAlignment(usesCompactColumn ? .center : .leading)
+
+            Text(label)
+                .font(PPPetAdTypography.caption)
+                .foregroundStyle(Color.ppTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(usesCompactColumn ? .center : .leading)
         }
+        .frame(
+            maxWidth: .infinity,
+            alignment: usesCompactColumn ? .center : .leading
+        )
     }
 
-    private func iconSlot(size: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(
-                cornerRadius: emphasis == .featured ? 15 : 11,
-                style: .continuous
+    private var iconPlate: some View {
+        billIcon
+            .frame(
+                width: PPPetAdInfoBillStyle.iconSize,
+                height: PPPetAdInfoBillStyle.iconSize
             )
-            .fill(iconBackground)
-
-            pillIcon
-                .frame(
-                    width: emphasis == .featured ? 25 : 16,
-                    height: emphasis == .featured ? 25 : 16
+            .frame(
+                width: PPPetAdInfoBillStyle.iconPlateSize,
+                height: PPPetAdInfoBillStyle.iconPlateSize
+            )
+            .background {
+                LinearGradient(
+                    colors: [
+                        signature.accentColor.opacity(
+                            colorScheme == .dark ? 0.20 : 0.11
+                        ),
+                        signature.accentColor.opacity(
+                            colorScheme == .dark ? 0.10 : 0.045
+                        )
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
                 )
-        }
-        .frame(width: size, height: size)
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: emphasis == .featured ? 15 : 11,
-                style: .continuous
+            }
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: PPPetAdInfoBillStyle.iconCornerRadius,
+                    style: .continuous
+                )
             )
-            .strokeBorder(
-                iconStroke,
-                lineWidth:
-                    colorSchemeContrast == .increased
-                    ? 1.25
-                    : PPPetAdViewerStyle.hairlineWidth
-            )
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var iconBackground: Color {
-        if emphasis == .featured {
-            return Color.ppPrimary.opacity(
-                colorSchemeContrast == .increased ? 0.18 : 0.10
-            )
-        }
-
-        return Color.ppTextTertiary.opacity(
-            colorSchemeContrast == .increased ? 0.20 : 0.12
-        )
-    }
-
-    private var iconStroke: Color {
-        if emphasis == .featured {
-            return Color.ppPrimary.opacity(
-                colorSchemeContrast == .increased ? 0.42 : 0.16
-            )
-        }
-
-        return Color.ppSeparator.opacity(
-            colorSchemeContrast == .increased ? 0.62 : 0.28
-        )
+            .overlay {
+                RoundedRectangle(
+                    cornerRadius: PPPetAdInfoBillStyle.iconCornerRadius,
+                    style: .continuous
+                )
+                .strokeBorder(
+                    signature.accentColor.opacity(
+                        colorSchemeContrast == .increased ? 0.64 : 0.18
+                    ),
+                    lineWidth: colorSchemeContrast == .increased
+                        ? 1
+                        : PPPetAdViewerStyle.hairlineWidth
+                )
+            }
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
-    private var pillIcon: some View {
+    private var billIcon: some View {
         if let assetIcon, !assetIcon.isEmpty {
             Image(assetIcon)
-                .resizable()
                 .renderingMode(.template)
+                .resizable()
                 .scaledToFit()
-                .foregroundStyle(PPPetAdViewerStyle.actionAccent)
+                .foregroundStyle(signature.accentColor)
                 .accessibilityHidden(true)
         } else if let systemIcon, !systemIcon.isEmpty {
             Image(systemName: systemIcon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.ppTextSecondary)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(signature.accentColor)
                 .accessibilityHidden(true)
         }
     }
 }
 
 #if DEBUG
-#Preview("Info Pills Grid") {
+#Preview("Provider-language info bills") {
     VStack(spacing: PPSpace.md) {
-        PPPetAdInfoPillView(
-            systemIcon: "sparkles",
-            label: "الجنس",
-            value: "أنثى"
-        )
-        PPPetAdInfoPillView(
-            systemIcon: "calendar",
-            label: "العمر",
-            value: "سنتين"
-        )
         PPPetAdInfoPillView(
             assetIcon: "peeking_pets",
             label: "السلالة",
             value: "شيرازي أصيل",
-            emphasis: .featured
+            signature: .breed,
+            emphasis: .featured,
+            showsBottomAccent: true
+        )
+        PPPetAdInfoPillView(
+            systemIcon: "calendar",
+            label: "العمر",
+            value: "سنتان",
+            signature: .age,
+            showsBottomAccent: true
         )
     }
     .padding()
     .background(Color.ppBackground)
+    .environment(\.layoutDirection, .rightToLeft)
 }
 #endif

@@ -479,7 +479,7 @@ struct PPPetAdContactCard: View {
             )
             .frame(
                 maxWidth: .infinity,
-                minHeight: emphasis == .primary ? 52 : 48
+                minHeight: emphasis == .primary ? 48 : 44
             )
             .padding(.horizontal, PPSpace.md)
             .background {
@@ -602,7 +602,6 @@ struct PPPetAdContactDock: View {
     @ObservedObject var store: PPPetAdViewerStore
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -637,31 +636,10 @@ struct PPPetAdContactDock: View {
     }
 
     private var contactSurface: some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPCorner.hero,
-            style: .continuous
+        PPHeroApexGlowCornerSurface(
+            accentStyle: .solid,
+            solidColor: .ppElevatedSurface
         )
-        let borderColor =
-            colorSchemeContrast == .increased
-            ? Color.ppTextPrimary.opacity(0.48)
-            : Color.ppBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
-
-        return shape
-            .fill(Color.ppElevatedSurface)
-            .overlay {
-                shape.strokeBorder(
-                    borderColor,
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
-                )
-            }
-            .shadow(
-                color: Color.black.opacity(
-                    colorScheme == .dark ? 0.16 : 0.07
-                ),
-                radius: 12,
-                x: 0,
-                y: 4
-            )
     }
 
     @ViewBuilder
@@ -903,6 +881,7 @@ struct PPPetAdContactDock: View {
                     }
                 }
                 .frame(width: 22, height: 22)
+                .foregroundStyle(Color("AppForegroundColor"))
                 .accessibilityHidden(true)
 
                 Text(title)

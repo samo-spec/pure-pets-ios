@@ -202,7 +202,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         return nil;
     }
 
-    _placeholder = [UIImage imageNamed:@"placeholder"];
+    _placeholder = [UIImage imageNamed:@"PawPlaceholderCell"];
     _title = @"";
     _subtitle = @"";
     _priceText = @"";
@@ -471,7 +471,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         return nil;
     }
 
-    _placeholder = [UIImage imageNamed:@"placeholder"];
+    _placeholder = [UIImage imageNamed:@"PawPlaceholderCell"];
     _title = @"";
     _subtitle = @"";
     _priceText = @"";

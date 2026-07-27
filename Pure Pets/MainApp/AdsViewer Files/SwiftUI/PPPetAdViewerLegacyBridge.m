@@ -388,7 +388,43 @@ static UIViewController *PPPetAdViewerResolvedPresenter(
 
 + (nullable NSString *)avatarURLForUser:(UserModel *)user
 {
-    return user.UserImageUrl.absoluteString;
+    if (!user) return nil;
+    
+    // 1. Check UserImageUrl property
+    if ([user respondsToSelector:@selector(UserImageUrl)]) {
+        id imgUrl = user.UserImageUrl;
+        if ([imgUrl isKindOfClass:[NSString class]]) {
+            NSString *str = (NSString *)imgUrl;
+            if (str.length > 0) return str;
+        } else if ([imgUrl isKindOfClass:[NSURL class]]) {
+            NSString *str = ((NSURL *)imgUrl).absoluteString;
+            if (str.length > 0) return str;
+        }
+    }
+    
+    // 2. Check userImageUrl method/alias
+    if ([user respondsToSelector:@selector(userImageUrl)]) {
+        id imgUrlAlt = [user userImageUrl];
+        if ([imgUrlAlt isKindOfClass:[NSString class]]) {
+            NSString *str = (NSString *)imgUrlAlt;
+            if (str.length > 0) return str;
+        } else if ([imgUrlAlt isKindOfClass:[NSURL class]]) {
+            NSString *str = ((NSURL *)imgUrlAlt).absoluteString;
+            if (str.length > 0) return str;
+        }
+    }
+    
+    // 3. Fallback to UserImageName
+    if ([user respondsToSelector:@selector(UserImageName)]) {
+        NSString *name = user.UserImageName;
+        if (name.length > 0) {
+            if ([name hasPrefix:@"http://"] || [name hasPrefix:@"https://"]) {
+                return name;
+            }
+        }
+    }
+    
+    return nil;
 }
 
 + (nullable NSString *)phoneNumberForUser:(UserModel *)user

@@ -377,23 +377,23 @@ struct PPPetAdViewerLayoutMetrics {
         let isTablet = containerSize.width >= 700
         let isShortPhone = containerSize.height < 720
         let widthDrivenHeight =
-            containerSize.width * (isTablet ? 0.72 : 1.16)
+            containerSize.width * (isTablet ? 0.64 : 1.02)
         let viewportRatio: CGFloat =
-            isTablet ? 0.56 : (isShortPhone ? 0.54 : 0.57)
-        let maximumHeight: CGFloat = isTablet ? 600 : 540
+            isTablet ? 0.50 : (isShortPhone ? 0.48 : 0.50)
+        let maximumHeight: CGFloat = isTablet ? 560 : 500
         let viewportCap = max(
             minimum + 96,
             min(maximumHeight, containerSize.height * viewportRatio)
         )
         let preferredFloor: CGFloat =
-            isTablet ? 440 : (isShortPhone ? 340 : 420)
+            isTablet ? 400 : (isShortPhone ? 320 : 380)
         let preferred = min(
             max(widthDrivenHeight, preferredFloor),
             viewportCap
         )
 
         minimumHeroHeight = minimum
-        expandedHeroHeight = max(minimum + 96, preferred)
+        expandedHeroHeight = max(minimum + 96, preferred) + 20
     }
 }
 

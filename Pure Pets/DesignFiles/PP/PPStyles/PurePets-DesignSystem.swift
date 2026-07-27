@@ -448,34 +448,30 @@ struct PPBottomDecisionBarSurfaceModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(
-            cornerRadius: PPBottomDecisionBarGeometry.surfaceRadius,
+            cornerRadius: PPCorner.hero,
             style: .continuous
         )
+        let borderColor =
+            colorSchemeContrast == .increased
+            ? Color.ppTextPrimary.opacity(0.48)
+            : Color.ppBorder.opacity(colorScheme == .dark ? 0.88 : 0.72)
 
-        content
+        return content
             .background(Color.clear)
-            .background(.ultraThinMaterial, in: shape)
+            .background(Color.ppElevatedSurface, in: shape)
             .overlay {
                 shape.strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.ppTextPrimary.opacity(0.32),
-                            Color.ppTextPrimary.opacity(0.12),
-                            Color.ppTextPrimary.opacity(0.24)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.25
+                    borderColor,
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
                 )
             }
             .shadow(
                 color: Color.black.opacity(
-                    colorScheme == .dark ? 0.24 : 0.10
+                    colorScheme == .dark ? 0.16 : 0.07
                 ),
-                radius: 24,
+                radius: 12,
                 x: 0,
-                y: 10
+                y: 4
             )
     }
 }

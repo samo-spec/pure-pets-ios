@@ -4,8 +4,6 @@ import SwiftUI
 struct PPPetAdViewerLoadingStateView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @State private var isPulsing = false
 
     var body: some View {
@@ -76,7 +74,7 @@ struct PPPetAdViewerLoadingStateView: View {
     }
 
     private var detailsSkeleton: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xl) {
+        VStack(alignment: .leading, spacing: 0) {
             headerSkeleton
             factsSkeletonRail
         }
@@ -86,58 +84,67 @@ struct PPPetAdViewerLoadingStateView: View {
     }
 
     private var headerSkeleton: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            HStack(spacing: PPSpace.sm) {
-                skeletonLine(width: 58, height: 10)
-                Capsule(style: .continuous)
-                    .fill(Color.ppPrimary.opacity(0.24))
-                    .frame(width: 34, height: 3)
-            }
-
+        VStack(alignment: .leading, spacing: 0) {
             if dynamicTypeSize >= .xxLarge {
-                skeletonLine(width: 220, height: 32)
-                skeletonPriceTicket
+                VStack(alignment: .leading, spacing: PPSpace.lg) {
+                    identitySkeleton
+                    priceSkeleton
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
             } else {
                 HStack(alignment: .top, spacing: PPSpace.lg) {
-                    skeletonFillLine(height: 34)
-                    skeletonPriceTicket
+                    identitySkeleton
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    priceSkeleton
                 }
             }
 
-            HStack(spacing: PPSpace.sm) {
-                RoundedRectangle(cornerRadius: PPSpace.sm, style: .continuous)
-                    .fill(Color.ppTextTertiary.opacity(0.10))
-                    .frame(width: 24, height: 24)
-
-                skeletonLine(width: 168, height: 14)
-            }
+            locationBridgeSkeleton
+                .padding(.vertical, PPSpace.lg)
         }
-        .padding(.leading, PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .fill(Color.ppPrimary.opacity(0.34))
-                .frame(width: colorSchemeContrast == .increased ? 5 : 4)
-                .padding(.vertical, PPSpace.xs)
+    }
+
+    private var identitySkeleton: some View {
+        VStack(alignment: .leading, spacing: PPSpace.xs) {
+            skeletonLine(width: 58, height: 10)
+            skeletonFillLine(height: 28)
         }
     }
 
-    private var skeletonPriceTicket: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xxs) {
-            skeletonLine(width: 42, height: 10)
-            skeletonLine(width: 92, height: 24)
+    private var priceSkeleton: some View {
+        VStack(alignment: .trailing, spacing: PPSpace.xs) {
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.34))
+                .frame(width: 44, height: PPSpace.xs)
+
+            HStack(alignment: .bottom, spacing: PPSpace.xs) {
+                skeletonLine(width: 96, height: 34)
+                skeletonLine(width: 24, height: 10)
+            }
         }
-        .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.sm)
-        .background(
-            Color.ppPrimary.opacity(
-                colorSchemeContrast == .increased ? 0.14 : 0.08
-            ),
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.medium,
-                style: .continuous
-            )
-        )
+    }
+
+    private var locationBridgeSkeleton: some View {
+        HStack(spacing: PPSpace.sm) {
+            bridgeSeparatorSkeleton
+
+            RoundedRectangle(cornerRadius: PPCorner.medium, style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.13))
+                .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
+
+            skeletonLine(width: 144, height: 16)
+
+            bridgeSeparatorSkeleton
+        }
+    }
+
+    private var bridgeSeparatorSkeleton: some View {
+        Capsule(style: .continuous)
+            .fill(Color.ppPrimary.opacity(0.22))
+            .frame(height: 1)
+            .frame(maxWidth: .infinity)
+            .accessibilityHidden(true)
     }
 
     private func skeletonLine(
@@ -157,105 +164,86 @@ struct PPPetAdViewerLoadingStateView: View {
     }
 
     private var factsSkeletonRail: some View {
-        VStack(spacing: 0) {
-            featuredFactSkeleton
-            skeletonDivider
-
+        Group {
             if dynamicTypeSize >= .xxLarge {
-                VStack(spacing: 0) {
-                    ForEach(0..<2, id: \.self) { index in
-                        factSkeletonCell
-
-                        if index < 1 {
-                            skeletonDivider
-                        }
+                VStack(spacing: PPSpace.md) {
+                    ForEach(PPPetAdInfoSignature.allCases, id: \.self) { signature in
+                        factSkeletonCell(
+                            signature: signature,
+                            usesCompactColumn: false
+                        )
+                        .frame(maxWidth: .infinity)
+                        .ppPetAdInfoSurface(
+                            accentColor: signature.accentColor
+                        )
                     }
                 }
             } else {
-                HStack(spacing: 0) {
-                    ForEach(0..<2, id: \.self) { index in
-                        factSkeletonCell
-
-                        if index < 1 {
-                            verticalSkeletonDivider
-                        }
+                HStack(alignment: .top, spacing: PPSpace.md) {
+                    ForEach(PPPetAdInfoSignature.allCases, id: \.self) { signature in
+                        factSkeletonCell(
+                            signature: signature,
+                            usesCompactColumn: true
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .ppPetAdInfoSurface(
+                            accentColor: signature.accentColor
+                        )
                     }
                 }
             }
         }
-        .overlay(alignment: .top) {
-            skeletonDivider
-        }
-        .overlay(alignment: .bottom) {
-            skeletonDivider
-        }
-        .background(
-            Color.ppForeground.opacity(
-                colorScheme == .dark ? 0.34 : 0.58
-            ),
-            in: RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: PPCorner.card,
-                style: .continuous
-            )
-            .strokeBorder(
-                Color.ppSeparator.opacity(
-                    colorSchemeContrast == .increased ? 1 : 0.52
-                ),
-                lineWidth: skeletonDividerThickness
-            )
-        }
     }
 
-    private var featuredFactSkeleton: some View {
-        HStack(spacing: PPSpace.md) {
-            RoundedRectangle(cornerRadius: 15, style: .continuous)
-                .fill(Color.ppPrimary.opacity(0.10))
-                .frame(width: 44, height: 44)
+    private func factSkeletonCell(
+        signature: PPPetAdInfoSignature,
+        usesCompactColumn: Bool
+    ) -> some View {
+        Group {
+            if usesCompactColumn {
+                VStack(alignment: .center, spacing: PPSpace.sm) {
+                    factSkeletonIcon(signature: signature)
 
-            VStack(alignment: .leading, spacing: PPSpace.xs) {
-                skeletonLine(width: 44, height: 10)
-                skeletonLine(width: 112, height: 18)
+                    VStack(alignment: .center, spacing: PPSpace.xxs) {
+                        skeletonLine(width: 54, height: 17)
+                        skeletonLine(width: 38, height: 10)
+                    }
+                }
+            } else {
+                HStack(spacing: PPSpace.md) {
+                    factSkeletonIcon(signature: signature)
+
+                    VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                        skeletonLine(width: 72, height: 17)
+                        skeletonLine(width: 44, height: 10)
+                    }
+                }
             }
         }
+        .padding(.horizontal, usesCompactColumn ? PPSpace.sm : PPSpace.base)
         .padding(.vertical, PPSpace.base)
-    }
-
-    private var factSkeletonCell: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            skeletonLine(width: 40, height: 10)
-            skeletonLine(width: 58, height: 16)
-        }
-        .padding(.horizontal, PPSpace.sm)
-        .padding(.vertical, PPSpace.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var skeletonDivider: some View {
-        Rectangle()
-            .fill(skeletonDividerColor)
-            .frame(height: skeletonDividerThickness)
-    }
-
-    private var verticalSkeletonDivider: some View {
-        Rectangle()
-            .fill(skeletonDividerColor)
-            .frame(width: skeletonDividerThickness)
-            .padding(.vertical, PPSpace.md)
-    }
-
-    private var skeletonDividerColor: Color {
-        Color(uiColor: .separator).opacity(
-            colorSchemeContrast == .increased ? 0.64 : 0.24
+        .frame(
+            maxWidth: .infinity,
+            alignment: usesCompactColumn ? .center : .leading
         )
+        .overlay(alignment: .bottom) {
+            skeletonBottomAccent(signature: signature)
+        }
     }
 
-    private var skeletonDividerThickness: CGFloat {
-        colorSchemeContrast == .increased ? 1.5 : 1
+    private func factSkeletonIcon(
+        signature: PPPetAdInfoSignature
+    ) -> some View {
+        RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .fill(signature.accentColor.opacity(0.10))
+            .frame(width: 42, height: 42)
+    }
+
+    private func skeletonBottomAccent(
+        signature: PPPetAdInfoSignature
+    ) -> some View {
+        Capsule(style: .continuous)
+            .fill(signature.accentColor.opacity(0.34))
+            .frame(width: 44, height: PPSpace.xs)
     }
 }

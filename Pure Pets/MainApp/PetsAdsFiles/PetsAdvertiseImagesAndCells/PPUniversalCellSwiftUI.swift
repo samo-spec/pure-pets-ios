@@ -499,7 +499,7 @@ private final class PPUniversalCardStore: ObservableObject {
         self.discountStyle = objcDiscountStyle == .plain ? .inline : .badge
         self.imageLoader = imageLoader
         self.imagePlaceholder =
-            viewModel.placeholder ?? UIImage(named: "placeholder")
+            viewModel.placeholder ?? UIImage(named: "PawPlaceholderCell")
         self.imageSignature = [
             stableID,
             viewModel.imageURL ?? "",
