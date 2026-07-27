@@ -2083,15 +2083,15 @@ struct PPAccessorySourceIsland: View {
 
     private var sellerPawOpacity: Double {
         if colorSchemeContrast == .increased {
-            return colorScheme == .dark ? 0.12 : 0.08
+            return colorScheme == .dark ? 0.12 : 0.05
         }
-        return colorScheme == .dark ? 0.09 : 0.06
+        return colorScheme == .dark ? 0.09 : 0.04
     }
 
     private var sellerPawTint: Color {
         colorScheme == .dark
             ? PPAccessoryPalette.accent
-        : UIColor.lightGray
+        : PPAccessoryPalette.deepSea
     }
 
     private var avatarPlateFill: LinearGradient {
