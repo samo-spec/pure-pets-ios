@@ -867,21 +867,19 @@ struct PPAccessoryProductIdentity: View {
     }
 
     private var priceRow: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center) {
-                currentPrice
-
-                if let ratingValue = providerRatingValue {
-                    Spacer(minLength: 8)
-                    providerRatingPill(ratingValue)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(alignment: .center, spacing: PPSpace.sm) {
+            currentPrice
 
             if snapshot.hasDiscount {
                 discountSummary
             }
+
+            if let ratingValue = providerRatingValue {
+                Spacer(minLength: PPSpace.sm)
+                providerRatingPill(ratingValue)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilitySortPriority(2)
     }
@@ -1529,7 +1527,11 @@ struct PPAccessorySourceIsland: View {
                 isAvatar: true,
                 fallbackInitials: displayName(for: owner)
             )
-            .frame(width: max(size - 10, 0), height: max(size - 10, 0))
+            .frame(
+                width: sellerAvatarImageSize(for: owner, shellSize: size),
+                height: sellerAvatarImageSize(for: owner, shellSize: size)
+            )
+            .frame(width: size, height: size)
             .clipShape(Circle())
 
             if owner.isVerified {
@@ -1606,6 +1608,19 @@ struct PPAccessorySourceIsland: View {
             in: Capsule()
         )
         .accessibilityElement(children: .combine)
+    }
+
+    private func sellerAvatarImageSize(
+        for owner: PPAccessoryViewerOwner,
+        shellSize: CGFloat
+    ) -> CGFloat {
+        let url = owner.preferredAvatarURL?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        ) ?? ""
+        let isLogoLikeAvatar =
+            owner.companyProfileImageURL != nil ||
+            url.hasPrefix("purepets://support-logo")
+        return shellSize * (isLogoLikeAvatar ? 1.34 : 1.0)
     }
 
     @ViewBuilder
@@ -2082,9 +2097,9 @@ struct PPAccessorySourceIsland: View {
 
     private var sellerPawOpacity: Double {
         if colorSchemeContrast == .increased {
-            return colorScheme == .dark ? 0.12 : 0.05
+            return colorScheme == .dark ? 0.12 : 0.02
         }
-        return colorScheme == .dark ? 0.09 : 0.04
+        return colorScheme == .dark ? 0.09 : 0.02
     }
 
     private var sellerPawTint: Color {
