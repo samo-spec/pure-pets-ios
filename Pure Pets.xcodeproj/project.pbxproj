@@ -332,7 +332,7 @@
 		F25E80092F00495A0089F659 /* PPCarouselCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80082F0049490089F659 /* PPCarouselCollectionCell.m */; };
 		F25E800C2F0049840089F659 /* PPCarouselView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800B2F0049740089F659 /* PPCarouselView.m */; };
 		F25E800F2F004C180089F659 /* PPCarouselContainerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */; };
-		F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25E80102F0060050089F659 /* PPSectionHeaderView.m */; };
+		A17E27000200000000000002 /* PPSectionHeaderSwiftUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */; };
 		F26024862EB60BA5006534B4 /* PPCartTableCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F26024852EB60B95006534B4 /* PPCartTableCell.m */; };
 		F26045382CB6EC7500FB7FBC /* selectArchiveVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F26045372CB6EC7500FB7FBC /* selectArchiveVC.m */; };
 		F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = F260D31E2C7B36EF0098C8F0 /* blank_button@2x.png */; };
@@ -1520,8 +1520,7 @@
 		F25E800B2F0049740089F659 /* PPCarouselView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselView.m; sourceTree = "<group>"; };
 		F25E800D2F004BF70089F659 /* PPCarouselContainerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCarouselContainerCell.h; sourceTree = "<group>"; };
 		F25E800E2F004C080089F659 /* PPCarouselContainerCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCarouselContainerCell.m; sourceTree = "<group>"; };
-		F25E80102F0060050089F659 /* PPSectionHeaderView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeaderView.m; sourceTree = "<group>"; };
-		F25E80112F00600C0089F659 /* PPSectionHeaderView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSectionHeaderView.h; sourceTree = "<group>"; };
+		A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPSectionHeaderSwiftUI.swift; sourceTree = "<group>"; };
 		F26024842EB60B75006534B4 /* PPCartTableCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartTableCell.h; sourceTree = "<group>"; };
 		F26024852EB60B95006534B4 /* PPCartTableCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartTableCell.m; sourceTree = "<group>"; };
 		F26045362CB6EC7500FB7FBC /* selectArchiveVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = selectArchiveVC.h; sourceTree = "<group>"; };
@@ -3604,8 +3603,7 @@
 				F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */,
 				F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */,
 				F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */,
-				F25E80112F00600C0089F659 /* PPSectionHeaderView.h */,
-				F25E80102F0060050089F659 /* PPSectionHeaderView.m */,
+				A17E27000100000000000001 /* PPSectionHeaderSwiftUI.swift */,
 				F25E7FF52EFF84A90089F659 /* PPHomeHelper.h */,
 				F25E7FF62EFF84A90089F659 /* PPHomeHelper.m */,
 				F2C223C42F061DD4006DB76A /* PPHomeFunc.h */,
@@ -5919,7 +5917,7 @@
 				F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */,
 				F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */,
 				F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */,
-				F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */,
+				A17E27000200000000000002 /* PPSectionHeaderSwiftUI.swift in Sources */,
 				F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */,
 				F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */,
 				F2D5A8E42F970001009B6001 /* PPMediaPreviewView.swift in Sources */,

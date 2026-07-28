@@ -37,6 +37,11 @@ public class ServiceViewerViewController: UIViewController {
         super.init(coder: aDecoder)
     }
 
+    override public func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: animated)
+    }
+
     override public func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .systemBackground

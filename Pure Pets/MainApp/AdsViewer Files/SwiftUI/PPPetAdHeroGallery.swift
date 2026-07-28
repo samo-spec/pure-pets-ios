@@ -1,3 +1,4 @@
+import Vision
 import SwiftUI
 import UIKit
 
@@ -487,10 +488,14 @@ private struct PPPetAdHeroImageView: View {
             )
             .ignoresSafeArea(edges: .top)
 
-            PPPetAdTopAnchoredFillImage(image: image)
-                .scaleEffect(1.18, anchor: .top)
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .scaleEffect(1.18)
                 .saturation(0.70)
                 .opacity(0.10)
+                .clipped()
 
             LinearGradient(
                 colors: [
@@ -503,12 +508,6 @@ private struct PPPetAdHeroImageView: View {
 
             PPPetAdTopAnchoredFillImage(image: image)
                 .opacity(fittedImageOpacity)
-                .scaleEffect(
-                    reduceMotion
-                        ? 1
-                        : 1 + (collapseProgress * 0.012),
-                    anchor: .top
-                )
                 .clipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -572,8 +571,71 @@ private struct PPPetAdHeroImageView: View {
     }
 }
 
+// MARK: - Vision Pet Face Focal Detector
+
+final class PPPetFaceFocusDetector {
+    static let shared = PPPetFaceFocusDetector()
+    private var cache = NSCache<UIImage, NSValue>()
+
+    private init() {
+        cache.countLimit = 60
+    }
+
+    func detectFocusPoint(for image: UIImage, completion: @escaping (CGPoint) -> Void) {
+        if let cached = cache.object(forKey: image) {
+            completion(cached.cgPointValue)
+            return
+        }
+
+        guard let cgImage = image.cgImage else {
+            completion(CGPoint(x: 0.5, y: 0.38))
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var detectedPoint: CGPoint?
+
+            // Attempt animal body detection (iOS 15+)
+            if #available(iOS 15.0, *) {
+                let animalRequest = VNRecognizeAnimalsRequest()
+                let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                try? handler.perform([animalRequest])
+
+                if let topObservation = animalRequest.results?.first {
+                    let box = topObservation.boundingBox
+                    // Vision uses bottom-left origin; convert to top-left for UIKit
+                    let focusY = 1.0 - (box.origin.y + box.size.height * 0.75)
+                    detectedPoint = CGPoint(x: box.midX, y: focusY)
+                }
+            }
+
+            // Fallback: human face detection (iOS 11+)
+            if detectedPoint == nil {
+                let faceRequest = VNDetectFaceRectanglesRequest()
+                let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+                try? handler.perform([faceRequest])
+
+                if let topFace = faceRequest.results?.first {
+                    let box = topFace.boundingBox
+                    let focusY = 1.0 - (box.origin.y + box.size.height * 0.5)
+                    detectedPoint = CGPoint(x: box.midX, y: focusY)
+                }
+            }
+
+            // Default: upper-third sweet spot
+            let finalPoint = detectedPoint ?? CGPoint(x: 0.5, y: 0.38)
+            self?.cache.setObject(NSValue(cgPoint: finalPoint), forKey: image)
+
+            DispatchQueue.main.async {
+                completion(finalPoint)
+            }
+        }
+    }
+}
+
 private struct PPPetAdTopAnchoredFillImage: View {
     let image: UIImage
+    @State private var focusPoint = CGPoint(x: 0.5, y: 0.38)
 
     var body: some View {
         GeometryReader { proxy in
@@ -581,20 +643,34 @@ private struct PPPetAdTopAnchoredFillImage: View {
             let widthScale = proxy.size.width / max(imageSize.width, 1)
             let heightScale = proxy.size.height / max(imageSize.height, 1)
             let scale = max(widthScale, heightScale)
-            let renderedSize = CGSize(
-                width: imageSize.width * scale,
-                height: imageSize.height * scale
-            )
+            let renderedW = imageSize.width * scale
+            let renderedH = imageSize.height * scale
+
+            // Where the detected focus sits in rendered-pixel space
+            let focalX = renderedW * focusPoint.x
+            let focalY = renderedH * focusPoint.y
+
+            // Desired: place that focal point at the viewport's visual center
+            let rawOffsetX = (proxy.size.width / 2) - focalX
+            let rawOffsetY = (proxy.size.height * 0.40) - focalY
+
+            // Clamp so the image always fully covers the viewport
+            let clampedX = min(0, max(proxy.size.width - renderedW, rawOffsetX))
+            let clampedY = min(0, max(proxy.size.height - renderedH, rawOffsetY))
 
             Image(uiImage: image)
                 .resizable()
-                .frame(width: renderedSize.width, height: renderedSize.height)
-                .position(
-                    x: proxy.size.width / 2,
-                    y: renderedSize.height / 2
-                )
+                .frame(width: renderedW, height: renderedH)
+                .offset(x: clampedX, y: clampedY)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipped()
+        .onAppear {
+            PPPetFaceFocusDetector.shared.detectFocusPoint(for: image) { point in
+                withAnimation(.easeOut(duration: 0.28)) {
+                    self.focusPoint = point
+                }
+            }
+        }
     }
 }

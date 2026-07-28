@@ -3454,7 +3454,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     __weak typeof(self) weakSelf = self;
     for (UICollectionReusableView *visibleHeader in
          [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
-        if (![visibleHeader isKindOfClass:PPSectionHeaderView.class]) {
+        if (![visibleHeader isKindOfClass:PPSectionHeaderSwiftUI.class]) {
             PPHomeApplySemanticToViewTree(visibleHeader, PPHomeCurrentSemanticAttribute());
             continue;
         }
@@ -3464,7 +3464,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             continue;
         }
 
-        PPSectionHeaderView *header = (PPSectionHeaderView *)visibleHeader;
+        PPSectionHeaderSwiftUI *header = (PPSectionHeaderSwiftUI *)visibleHeader;
         PPHomeSection section = (PPHomeSection)sectionIdentifiers[indexPath.section].integerValue;
         PPHomeHeaderConfig *cfg = [self headerConfigForSection:section];
         if (cfg.hidden) {
@@ -3502,10 +3502,10 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     BOOL decorationActive = [self pp_shouldShowScrolledSectionHeaderDecoration];
     for (UICollectionReusableView *visibleHeader in
          [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
-        if (![visibleHeader isKindOfClass:PPSectionHeaderView.class]) {
+        if (![visibleHeader isKindOfClass:PPSectionHeaderSwiftUI.class]) {
             continue;
         }
-        [(PPSectionHeaderView *)visibleHeader setSurfaceDecorationActive:decorationActive animated:animated];
+        [(PPSectionHeaderSwiftUI *)visibleHeader setSurfaceDecorationActive:decorationActive animated:animated];
     }
 }
 
@@ -7972,9 +7972,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:UICollectionViewCell.class
             forCellWithReuseIdentifier:PPHomeOrderStatusCellIdentifier];
 
-    [self.collectionView registerClass:PPSectionHeaderView.class
+    [self.collectionView registerClass:PPSectionHeaderSwiftUI.class
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                   withReuseIdentifier:@"PPSectionHeaderView"];
+                   withReuseIdentifier:@"PPSectionHeaderSwiftUI"];
 
     [self.collectionView registerClass:PPCategoryCardCell.class
             forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
@@ -8672,9 +8672,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         PPHomeHeaderConfig *cfg =
             [weakSelf headerConfigForSection:section];
 
-        PPSectionHeaderView *header =
+        PPSectionHeaderSwiftUI *header =
         [collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                           withReuseIdentifier:@"PPSectionHeaderView"
+                                           withReuseIdentifier:@"PPSectionHeaderSwiftUI"
                                                   forIndexPath:indexPath];
 
         if (@available(iOS 13.0, *)) {
@@ -8743,9 +8743,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return header;
         }
 
-        PPSectionHeaderView *header =
+        PPSectionHeaderSwiftUI *header =
         [collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                           withReuseIdentifier:@"PPSectionHeaderView"
+                                           withReuseIdentifier:@"PPSectionHeaderSwiftUI"
                                                   forIndexPath:indexPath];
 
         PPHomeHeaderConfig *cfg =
@@ -9519,11 +9519,11 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
                                                  atIndexPath:indexPath];
 
-    if (![view isKindOfClass:PPSectionHeaderView.class]) {
+    if (![view isKindOfClass:PPSectionHeaderSwiftUI.class]) {
         return;
     }
 
-    PPSectionHeaderView *header = (PPSectionHeaderView *)view;
+    PPSectionHeaderSwiftUI *header = (PPSectionHeaderSwiftUI *)view;
 
     NSString *iconName = self.isMainKindsExpanded
         ? @"chevron.up"

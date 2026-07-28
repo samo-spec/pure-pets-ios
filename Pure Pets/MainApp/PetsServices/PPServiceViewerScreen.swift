@@ -28,7 +28,7 @@ public struct PPServiceViewerScreen: View {
                     let heroHeight = compact
                         ? min(max(proxy.size.height * 0.42, 370), 460)
                         : min(max(contentWidth * 0.52, 420), 560)
-                    let topBarHeight: CGFloat = proxy.safeAreaInsets.top + 60
+                    let topBarHeight: CGFloat = proxy.safeAreaInsets.top + 14
 
                     ZStack(alignment: .top) {
                         ScrollView {

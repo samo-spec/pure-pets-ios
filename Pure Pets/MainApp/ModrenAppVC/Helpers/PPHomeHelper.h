@@ -10,7 +10,6 @@
 
 
 #import "PPCarouselItem.h"
-#import "PPSectionHeaderView.h"
 #import "PPUniversalCellViewModel.h"
 #import "PetAd.h"
 #import "PPCollectionLayoutManager.h"

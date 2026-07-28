@@ -1521,7 +1521,7 @@ struct PPAccessorySourceIsland: View {
         _ owner: PPAccessoryViewerOwner
     ) -> some View {
         HStack(alignment: .center, spacing: PPSpace.md) {
-            sellerAvatar(owner, size: 80)
+            sellerAvatar(owner, size: 84)
 
             sellerIdentityText(owner)
                 .layoutPriority(1)
@@ -1536,7 +1536,7 @@ struct PPAccessorySourceIsland: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             HStack(alignment: .center, spacing: PPSpace.md) {
-                sellerAvatar(owner, size: 76)
+                sellerAvatar(owner, size: 80)
                 sellerIdentityText(owner)
                     .layoutPriority(1)
             }

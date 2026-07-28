@@ -421,7 +421,12 @@ struct PPServiceViewerActionBar: View {
             .buttonStyle(PPAccessoryPressStyle())
         }
         .padding(.horizontal, PPSpace.screenMargin)
+        .padding(.top, 12)
         .padding(.bottom, 24)
+        .background(
+            Color.ppBackground.opacity(0.94)
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 }
 
