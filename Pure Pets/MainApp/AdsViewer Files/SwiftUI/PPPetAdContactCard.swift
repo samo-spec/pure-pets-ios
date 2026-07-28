@@ -237,7 +237,7 @@ struct PPPetAdContactCard: View {
                 PPPetAdRemoteImageView(
                     urlString: owner.avatarURL,
                     blurHash: nil,
-                    contentMode: .fill,
+                    contentMode: .fit,
                     accessibilityLabel: owner.displayName
                 )
                 .frame(width: 56, height: 56)
@@ -1277,7 +1277,7 @@ struct PPPetAdOwnerProfilePill: View {
                     PPPetAdRemoteImageView(
                         urlString: avatarURL,
                         blurHash: nil,
-                        contentMode: .fill,
+                        contentMode: .fit,
                         accessibilityLabel: owner.displayName,
                         showsRetryOnFailure: false
                     )

@@ -76,56 +76,41 @@ public struct AnimatedAddToCartButton: View {
     )
 
     public var body: some View {
-        ZStack {
-            buttonShape
-                .fill(buttonColor)
+        HStack(spacing: 10) {
+            Button(action: beginAdd) {
+                ZStack {
+                    buttonShape
+                        .fill(buttonColor)
 
-            buttonShape
-                .strokeBorder(
-                    buttonForeground.opacity(isEnabled ? 0.14 : 0.08),
-                    lineWidth: 1
-                )
+                    buttonShape
+                        .strokeBorder(
+                            buttonForeground.opacity(isEnabled ? 0.14 : 0.08),
+                            lineWidth: 1
+                        )
 
-            HStack(spacing: 0) {
-                Button(action: beginAdd) {
                     HStack(spacing: 12) {
                         leadingStatus
 
                         Text(currentTitle)
                             .font(PPAccessoryTypography.bodyBold)
                             .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
+                            .lineLimit(1)
                             .layoutPriority(1)
 
                         Spacer(minLength: 8)
                     }
-                    .contentShape(Rectangle())
+                    .foregroundStyle(buttonForeground)
+                    .padding(.horizontal, 14)
                 }
-                .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
-                .disabled(!isEnabled || phase.locksInteraction)
-
-                if let onCartTap {
-                    Button(action: onCartTap) {
-                        cartIndicator
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
-                    .disabled(false)
-                    .accessibilityLabel(PPAccessoryViewerL10n.text("accessory_view_open_cart"))
-                } else {
-                    Button(action: beginAdd) {
-                        cartIndicator
-                    }
-                    .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
-                    .disabled(false)
-                }
+                .frame(minHeight: 52)
+                .contentShape(buttonShape)
             }
-            .foregroundStyle(buttonForeground)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
+            .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+            .disabled(!isEnabled || phase.locksInteraction)
+
+            cartButton
         }
-        .frame(minHeight: 62)
-        .contentShape(buttonShape)
+        .padding(.trailing, 2)
         .overlayPreferenceValue(AddToCartFlightAnchorPreferenceKey.self) { anchors in
             GeometryReader { proxy in
                 flightLayer(
@@ -143,6 +128,62 @@ public struct AnimatedAddToCartButton: View {
         .onDisappear {
             actionTask?.cancel()
             actionTask = nil
+        }
+    }
+
+    @ViewBuilder
+    private var cartButton: some View {
+        if #available(iOS 26.0, *) {
+            ZStack(alignment: .topTrailing) {
+                PPAccessoryGlassButtonRepresentable(
+                    symbol: "cart.fill",
+                    tint: isEnabled ? tint : Color.ppTextSecondary,
+                    action: { onCartTap?() }
+                )
+                .frame(width: 52, height: 52)
+                .scaleEffect(
+                    x: 1 + (0.06 * cartImpact),
+                    y: 1 - (0.12 * cartImpact),
+                    anchor: .center
+                )
+                .rotationEffect(
+                    .degrees(Double(-3 * direction * cartImpact))
+                )
+                .offset(x: 3 * direction * cartImpact)
+                .anchorPreference(
+                    key: AddToCartFlightAnchorPreferenceKey.self,
+                    value: .bounds
+                ) { anchor in
+                    [.cart: anchor]
+                }
+
+                if displayedCount > 0 {
+                    Text(String(format: "%d", displayedCount))
+                        .font(PPAccessoryTypography.captionBold)
+                        .monospacedDigit()
+                        .environment(\.locale, Locale(identifier: "en_US"))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .frame(minWidth: 20, minHeight: 20)
+                        .background(
+                            Capsule(style: .continuous)
+                                .fill(tint)
+                        )
+                        .scaleEffect(badgeScale)
+                        .offset(x: 6 * direction, y: -6)
+                        .transition(.scale(scale: 0.55).combined(with: .opacity))
+                }
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(PPAccessoryViewerL10n.text("accessory_view_open_cart"))
+        } else {
+            Button(action: {
+                onCartTap?()
+            }) {
+                cartIndicator
+            }
+            .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
+            .disabled(!isEnabled && onCartTap == nil)
         }
     }
 
@@ -186,15 +227,27 @@ public struct AnimatedAddToCartButton: View {
                 Image(systemName: "cart.fill")
                     .font(.system(size: 16, weight: .bold))
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 52, height: 52)
             .background(
                 Circle()
-                    .fill(buttonForeground.opacity(0.18))
+                    .fill(.ultraThinMaterial)
             )
             .overlay(
                 Circle()
-                    .stroke(buttonForeground.opacity(0.28), lineWidth: 1)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.6),
+                                Color.white.opacity(0.15)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
+            .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+            .foregroundStyle(isEnabled ? tint : Color.ppTextSecondary)
             .scaleEffect(
                 x: 1 + (0.06 * cartImpact),
                 y: 1 - (0.12 * cartImpact),
@@ -216,12 +269,12 @@ public struct AnimatedAddToCartButton: View {
                     .font(PPAccessoryTypography.captionBold)
                     .monospacedDigit()
                     .environment(\.locale, Locale(identifier: "en_US"))
-                    .foregroundStyle(badgeForeground)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .frame(minWidth: 20, minHeight: 20)
                     .background(
                         Capsule(style: .continuous)
-                            .fill(badgeBackground)
+                            .fill(tint)
                     )
                     .scaleEffect(badgeScale)
                     .offset(x: 6 * direction, y: -6)
@@ -242,18 +295,24 @@ public struct AnimatedAddToCartButton: View {
             let progress = max(0, min(1, flightProgress))
             let startPoint = flightPoint(
                 for: anchors[.addIcon],
-                fallback: fallbackFlightStart(in: size),
+                fallback: fallbackPoint(leading: 34, vertical: size.height / 2, in: size.width),
                 proxy: proxy
             )
             let endPoint = flightPoint(
                 for: anchors[.cart],
-                fallback: fallbackFlightEnd(in: size),
+                fallback: fallbackPoint(leading: size.width - 34, vertical: size.height / 2, in: size.width),
                 proxy: proxy
             )
-            let arc = CGFloat(sin(Double(progress) * .pi)) * min(22, size.height * 0.34)
-            let x = startPoint.x + ((endPoint.x - startPoint.x) * progress)
+
+            let startLeading = leadingOffset(for: startPoint, in: size.width)
+            let endLeading = leadingOffset(for: endPoint, in: size.width)
+
+            let currentLeading = startLeading + ((endLeading - startLeading) * progress)
             let baselineY = startPoint.y + ((endPoint.y - startPoint.y) * progress)
+            let arc = CGFloat(sin(Double(progress) * .pi)) * min(22, size.height * 0.34)
             let y = baselineY - arc
+
+            let currentPoint = pointFromLeading(currentLeading, vertical: y, in: size.width)
             let fade = progress < 0.82
                 ? CGFloat(1)
                 : max(0, 1 - ((progress - 0.82) / 0.18))
@@ -269,7 +328,7 @@ public struct AnimatedAddToCartButton: View {
             .frame(width: 30, height: 30)
             .scaleEffect(1 - (0.12 * progress))
             .rotationEffect(.degrees(Double(progress * 18 * direction)))
-            .position(x: x, y: y)
+            .position(currentPoint)
             .opacity(Double(fade))
             .accessibilityHidden(true)
         }
@@ -332,18 +391,19 @@ public struct AnimatedAddToCartButton: View {
         isRightToLeft ? -1 : 1
     }
 
-    private func fallbackFlightStart(in size: CGSize) -> CGPoint {
+    private func leadingOffset(for point: CGPoint, in width: CGFloat) -> CGFloat {
+        isRightToLeft ? (width - point.x) : point.x
+    }
+
+    private func pointFromLeading(_ leading: CGFloat, vertical: CGFloat, in width: CGFloat) -> CGPoint {
         CGPoint(
-            x: isRightToLeft ? size.width - 34 : 34,
-            y: size.height / 2
+            x: isRightToLeft ? (width - leading) : leading,
+            y: vertical
         )
     }
 
-    private func fallbackFlightEnd(in size: CGSize) -> CGPoint {
-        CGPoint(
-            x: isRightToLeft ? 34 : size.width - 34,
-            y: size.height / 2
-        )
+    private func fallbackPoint(leading: CGFloat, vertical: CGFloat, in width: CGFloat) -> CGPoint {
+        pointFromLeading(leading, vertical: vertical, in: width)
     }
 
     private func flightPoint(
@@ -542,43 +602,3 @@ private struct CartPressStyle: ButtonStyle {
             )
     }
 }
-
-#if DEBUG
-private struct AnimatedAddToCartButtonDemo: View {
-    @State private var count = 0
-
-    var body: some View {
-        VStack(spacing: 18) {
-            AnimatedAddToCartButton(cartCount: $count) {
-                try await Task<Never, Never>.sleep(
-                    nanoseconds: 550_000_000
-                )
-                return count + 1
-            }
-
-            Text("Cart quantity: \(count)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .padding(24)
-        .background(Color(uiColor: .systemGroupedBackground))
-    }
-}
-
-private struct AnimatedAddToCartButton_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            AnimatedAddToCartButtonDemo()
-                .preferredColorScheme(.light)
-
-            AnimatedAddToCartButtonDemo()
-                .preferredColorScheme(.dark)
-
-            AnimatedAddToCartButtonDemo()
-                .environment(\.layoutDirection, .rightToLeft)
-                .environment(\.locale, Locale(identifier: "ar"))
-        }
-        .previewLayout(.sizeThatFits)
-    }
-}
-#endif

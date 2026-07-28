@@ -9424,7 +9424,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                             sessionID:self.novaSessionId];
         ServiceViewerViewController *viewer = [ServiceViewerViewController new];
         viewer.service = service;
-        [PPFunc presentSheetFrom:self sheetVC:viewer detentStyle:PPSheetDetentStyleLargeOnly];
+        [self pp_openNovaStackViewer:viewer];
         return;
     }
 

@@ -184,7 +184,7 @@ enum PPPetAdViewerSurfaceElevation: Equatable {
 }
 
 enum PPPetAdViewerStyle {
-    static let sheetRadius: CGFloat = 34
+    static let sheetRadius: CGFloat = PPCorner.hero
     static let surfaceRadius: CGFloat = 20
     static let insetRadius: CGFloat = 14
     static let infoRadius: CGFloat = 20
@@ -201,7 +201,7 @@ enum PPPetAdViewerStyle {
     static let heroPeachTop = Color.ppBackground
     static let heroPeachBottom = Color.ppBackground
 
-    static let sheetBackground = Color.clear
+    static let sheetBackground = Color.ppBackground
     static let actionAccent = Color.ppPrimary
     static let actionForeground = Color(
         uiColor: UIColor { traits in
@@ -374,26 +374,14 @@ struct PPPetAdViewerLayoutMetrics {
         let navigationBarMaxY = safeAreaTop + navigationHeight
         let minimum = navigationBarMaxY + Self.minimumHeroClearance
 
-        let isTablet = containerSize.width >= 700
-        let isShortPhone = containerSize.height < 720
-        let widthDrivenHeight =
-            containerSize.width * (isTablet ? 0.64 : 1.02)
-        let viewportRatio: CGFloat =
-            isTablet ? 0.50 : (isShortPhone ? 0.48 : 0.50)
-        let maximumHeight: CGFloat = isTablet ? 560 : 500
-        let viewportCap = max(
-            minimum + 96,
-            min(maximumHeight, containerSize.height * viewportRatio)
-        )
-        let preferredFloor: CGFloat =
-            isTablet ? 400 : (isShortPhone ? 320 : 380)
-        let preferred = min(
-            max(widthDrivenHeight, preferredFloor),
-            viewportCap
-        )
+        let contentWidth = min(containerSize.width, 900)
+        let compact = contentWidth < 700
+        let accessoryHeroHeight = compact
+            ? min(max(containerSize.height * 0.42, 370), 460)
+            : min(max(contentWidth * 0.52, 420), 560)
 
         minimumHeroHeight = minimum
-        expandedHeroHeight = max(minimum + 96, preferred) + 20
+        expandedHeroHeight = max(minimum + 96, accessoryHeroHeight)
     }
 }
 

@@ -12,9 +12,7 @@ private struct PPAccessoryDecisionBarHeightPreferenceKey: PreferenceKey {
     }
 }
 
-private enum PPAccessoryViewerScrollMetrics {
-    static let coordinateSpace = "accessory-viewer-scroll"
-}
+
 
 @available(iOS 16.0, *)
 struct PPAccessoryViewerScreen: View {
@@ -102,8 +100,8 @@ struct PPAccessoryViewerScreen: View {
         let compact = contentWidth < 700 || dynamicTypeSize.isAccessibilitySize
         let horizontalPadding: CGFloat = compact ? 16 : 34
         let heroHeight = compact
-            ? min(max(proxy.size.height * 0.34, 310), 390)
-            : min(max(contentWidth * 0.46, 360), 500)
+            ? min(max(proxy.size.height * 0.42, 370), 460)
+            : min(max(contentWidth * 0.52, 420), 560)
         let topInset = topChromeInset(proxy)
         let bottomInset = bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 70 : 80)
@@ -389,16 +387,22 @@ struct PPAccessoryViewerScreen: View {
     }
 }
 
-private struct PPAccessoryViewerScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
+public enum PPAccessoryViewerScrollMetrics {
+    public static let coordinateSpace = "accessory-viewer-scroll"
+}
 
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+public struct PPAccessoryViewerScrollOffsetPreferenceKey: PreferenceKey {
+    public static var defaultValue: CGFloat = 0
+
+    public static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
     }
 }
 
-private struct PPAccessoryViewerScrollOffsetReader: View {
-    var body: some View {
+public struct PPAccessoryViewerScrollOffsetReader: View {
+    public init() {}
+
+    public var body: some View {
         GeometryReader { proxy in
             let minY = proxy.frame(
                 in: .named(PPAccessoryViewerScrollMetrics.coordinateSpace)

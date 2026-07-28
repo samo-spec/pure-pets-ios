@@ -98,13 +98,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         case cornerGlow = 1
         case fullScreen = 2
         case solid = 3
-        case fullScreenPink = 4
-        case fullScreenPage = 5
-        case bbBaseBackground = 6
+        case bbBaseBackground = 4
 
         var isFullScreen: Bool {
             switch self {
-            case .fullScreen, .fullScreenPink, .fullScreenPage, .bbBaseBackground:
+            case .fullScreen, .bbBaseBackground:
                 return true
             case .bar, .cornerGlow, .solid:
                 return false
@@ -169,30 +167,29 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         static let lightSurface = UIColor(hex: 0xFFF9F7)
         static let darkSurface = UIColor(hex: 0x15131B)
 
-        // BB Base Background: a warm, opaque light field rather than glass.
-        // The dark counterparts avoid absolute black so the palette never
-        // produces a travelling grey/black band during appearance changes.
-        static let basePearl = UIColor(hex: 0xFFFDFC)
-        static let basePorcelain = UIColor(hex: 0xF6F1EC)
-        static let baseMineralBeige = UIColor(hex: 0xE8DDD2)
-        static let baseBlush = UIColor(hex: 0xF0D9DF)
-        static let baseQuietLilac = UIColor(hex: 0xD8D3E4)
-        static let baseDarkHighlight = UIColor(hex: 0x2A2325)
-        static let baseDarkMiddle = UIColor(hex: 0x221D1F)
-        static let baseDarkTail = UIColor(hex: 0x1A1719)
-        static let baseDarkWarm = UIColor(hex: 0x352A27)
-        static let baseDarkBlush = UIColor(hex: 0x38272E)
-        static let baseDarkLilac = UIColor(hex: 0x302B39)
+        // BB Base Background: an opaque care field for full screens. The
+        // palette keeps the app canvas quiet while petal, mint, and lilac
+        // washes signal Pure Pets instead of a generic neutral backdrop.
+        static let baseCanvas = UIColor(hex: 0xFCFEFA)
+        static let baseMist = UIColor(hex: 0xE7F5EF)
+        static let baseSky = UIColor(hex: 0xE6F3F8)
+        static let basePetal = UIColor(hex: 0xFFE3EC)
+        static let baseLavender = UIColor(hex: 0xE9E4FA)
+        static let baseLinen = UIColor(hex: 0xF7F1E8)
+        static let baseDarkCanvas = UIColor(hex: 0x151715)
+        static let baseDarkMist = UIColor(hex: 0x20312B)
+        static let baseDarkPetal = UIColor(hex: 0x3A252D)
+        static let baseDarkLavender = UIColor(hex: 0x29263D)
+        static let baseDarkTail = UIColor(hex: 0x101210)
     }
 
     // MARK: - Objective-C compatibility surface
 
-    /// Integer keys for Objective-C callers using `accentStyle`.
+    /// Integer keys for the Swift engine. `PPBackgroundView` maps its public
+    /// Objective-C enum values onto these keys before assignment.
     /// 0 = bar, 1 = corner glow, 2 = adaptive full screen, 3 = solid,
-    /// 4 = pink full screen, 5 = warm page full screen,
-    /// 6 = BB Base Background.
-    @objc public static let accentStyleFullScreenPink: Int = AccentMode.fullScreenPink.rawValue
-    @objc public static let accentStyleFullScreenGold: Int = AccentMode.fullScreenPage.rawValue
+    /// 4 = BB Base Background.
+
     @objc public static let accentStyleBBBaseBackground: Int =
         AccentMode.bbBaseBackground.rawValue
 
@@ -289,6 +286,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             reapplyPalette()
             if previousMode.isFullScreen && !resolvedMode.isFullScreen {
                 restoreCompactAmbientAnimationsIfNeeded()
+            }
+            if previousMode == .fullScreen || resolvedMode == .fullScreen {
+                let hadMotionEffect = parallaxMotionEffect != nil
+                removeMotionEffects()
+                if hadMotionEffect {
+                    installMotionEffectsIfNeeded()
+                }
+                switch motionStateMachine.state {
+                case .reduced:
+                    applyStaticPresentation(reduced: true)
+                case .idle:
+                    applyStaticPresentation(reduced: false)
+                default:
+                    break
+                }
             }
             reconcileMotionEnvironment()
         }
@@ -696,10 +708,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         depthGradientLayer.frame = materialBounds
         if storedAccentMode.isBaseBackground {
             depthGradientLayer.startPoint = resolvedFullScreenPoint(
-                CGPoint(x: 0.20, y: 0.16)
+                CGPoint(x: 0.18, y: 0.12)
             )
             depthGradientLayer.endPoint = resolvedFullScreenPoint(
-                CGPoint(x: 1, y: 1)
+                CGPoint(x: 0.88, y: 0.84)
             )
         }
         vignetteLayer.frame = materialBounds
@@ -756,8 +768,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         guard !bounds.isEmpty else { return }
 
         let useFlippedLayout = resolvesToFlippedLayout
-        for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
-            let spec = auroraSpecs[index]
+        let specs = activeAuroraSpecs
+        for (index, layer) in auroraLayers.enumerated() where index < specs.count {
+            let spec = specs[index]
             let size = CGSize(
                 width: max(bounds.width * spec.size.width, 180),
                 height: max(bounds.height * spec.size.height, 150)
@@ -935,31 +948,46 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             palette.surfaceMiddle.withAlphaComponent(surfaceAlpha).cgColor,
             palette.surfaceTail.withAlphaComponent(surfaceAlpha).cgColor
         ], on: baseGradientLayer, animated: animatePalette)
-        baseGradientLayer.startPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 1, y: 0)
-            : CGPoint(x: 0, y: 0)
-        baseGradientLayer.endPoint = effectiveUserInterfaceLayoutDirection == .rightToLeft
-            ? CGPoint(x: 0, y: 1)
-            : CGPoint(x: 1, y: 1)
+        baseGradientLayer.locations = isBaseBackground ? [0, 0.44, 1] : [0, 0.52, 1]
+        baseGradientLayer.startPoint = isBaseBackground
+            ? resolvedFullScreenPoint(CGPoint(x: 0.08, y: 0))
+            : (effectiveUserInterfaceLayoutDirection == .rightToLeft
+                ? CGPoint(x: 1, y: 0)
+                : CGPoint(x: 0, y: 0))
+        baseGradientLayer.endPoint = isBaseBackground
+            ? resolvedFullScreenPoint(CGPoint(x: 0.94, y: 1))
+            : (effectiveUserInterfaceLayoutDirection == .rightToLeft
+                ? CGPoint(x: 0, y: 1)
+                : CGPoint(x: 1, y: 1))
 
         if isBaseBackground {
             depthGradientLayer.type = .radial
             depthGradientLayer.startPoint = resolvedFullScreenPoint(
-                CGPoint(x: 0.20, y: 0.16)
+                CGPoint(x: 0.18, y: 0.12)
             )
             depthGradientLayer.endPoint = resolvedFullScreenPoint(
-                CGPoint(x: 1, y: 1)
+                CGPoint(x: 0.88, y: 0.84)
             )
-            depthGradientLayer.locations = [0, 0.62, 1]
+            depthGradientLayer.locations = [0, 0.30, 0.66, 1]
             setGradientColors([
-                palette.depth.withAlphaComponent(isDark ? 0.052 : 0.036).cgColor,
-                palette.depth.withAlphaComponent(isDark ? 0.022 : 0.014).cgColor,
+                auroraColor(at: 0, in: palette, fallback: palette.depth)
+                    .withAlphaComponent(isDark ? 0.14 : 0.16).cgColor,
+                palette.depth.withAlphaComponent(isDark ? 0.072 : 0.060).cgColor,
+                palette.surfaceTail.withAlphaComponent(isDark ? 0.035 : 0.040).cgColor,
                 UIColor.clear.cgColor
             ], on: depthGradientLayer, animated: animatePalette)
+            vignetteLayer.startPoint = resolvedFullScreenPoint(
+                CGPoint(x: 0.86, y: 0.92)
+            )
+            vignetteLayer.endPoint = resolvedFullScreenPoint(
+                CGPoint(x: 0.08, y: 0.10)
+            )
+            vignetteLayer.locations = [0, 0.58, 1]
             setGradientColors([
-                UIColor.clear.cgColor,
-                UIColor.clear.cgColor,
-                palette.depth.withAlphaComponent(isDark ? 0.026 : 0.010).cgColor
+                auroraColor(at: 3, in: palette, fallback: palette.surfaceTail)
+                    .withAlphaComponent(isDark ? 0.070 : 0.078).cgColor,
+                palette.surfaceTail.withAlphaComponent(isDark ? 0.030 : 0.034).cgColor,
+                UIColor.clear.cgColor
             ], on: vignetteLayer, animated: animatePalette)
         } else {
             depthGradientLayer.type = .axial
@@ -971,6 +999,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 palette.depth.withAlphaComponent(isDark ? 0.055 : 0.018).cgColor,
                 palette.depth.withAlphaComponent(isDark ? 0.16 : 0.055).cgColor
             ], on: depthGradientLayer, animated: animatePalette)
+            vignetteLayer.startPoint = CGPoint(x: 0.5, y: 0.38)
+            vignetteLayer.endPoint = CGPoint(x: 1, y: 1)
+            vignetteLayer.locations = [0, 0.7, 1]
             setGradientColors([
                 UIColor.clear.cgColor,
                 UIColor.clear.cgColor,
@@ -982,19 +1013,35 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         if storedAccentMode.isFullScreen {
             // A radial fourth field removes the conic seam that appeared as a
             // diagonal corner-to-corner line in the Full Screen composition.
-            let prismAlpha: CGFloat = isBaseBackground
-                ? (isDark ? 0.14 : 0.12)
-                : (isDark ? 0.24 : 0.27)
             prismLayer.type = .radial
-            prismLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
-            prismLayer.endPoint = CGPoint(x: 1, y: 1)
-            prismLayer.locations = [0, 0.34, 0.70, 1]
-            setGradientColors([
-                prismRoles.top.withAlphaComponent(prismAlpha).cgColor,
-                prismRoles.middle.withAlphaComponent(prismAlpha * 0.52).cgColor,
-                prismRoles.bottom.withAlphaComponent(prismAlpha * 0.16).cgColor,
-                UIColor.clear.cgColor
-            ], on: prismLayer, animated: animatePalette)
+            if isBaseBackground {
+                let prismAlpha: CGFloat = isDark ? 0.22 : 0.20
+                prismLayer.startPoint = resolvedFullScreenPoint(
+                    CGPoint(x: 0.42, y: 0.46)
+                )
+                prismLayer.endPoint = resolvedFullScreenPoint(
+                    CGPoint(x: 1, y: 1)
+                )
+                prismLayer.locations = [0, 0.28, 0.62, 1]
+                setGradientColors([
+                    prismRoles.top.withAlphaComponent(prismAlpha).cgColor,
+                    auroraColor(at: 4, in: palette, fallback: prismRoles.middle)
+                        .withAlphaComponent(prismAlpha * 0.58).cgColor,
+                    prismRoles.bottom.withAlphaComponent(prismAlpha * 0.22).cgColor,
+                    UIColor.clear.cgColor
+                ], on: prismLayer, animated: animatePalette)
+            } else {
+                let prismAlpha: CGFloat = isDark ? 0.24 : 0.27
+                prismLayer.startPoint = CGPoint(x: 0.5, y: 0.5)
+                prismLayer.endPoint = CGPoint(x: 1, y: 1)
+                prismLayer.locations = [0, 0.34, 0.70, 1]
+                setGradientColors([
+                    prismRoles.top.withAlphaComponent(prismAlpha).cgColor,
+                    prismRoles.middle.withAlphaComponent(prismAlpha * 0.52).cgColor,
+                    prismRoles.bottom.withAlphaComponent(prismAlpha * 0.16).cgColor,
+                    UIColor.clear.cgColor
+                ], on: prismLayer, animated: animatePalette)
+            }
         } else {
             let prismAlpha: CGFloat = isDark ? 0.032 : 0.020
             prismLayer.type = .conic
@@ -1010,17 +1057,20 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 UIColor.clear.cgColor
             ], on: prismLayer, animated: animatePalette)
         }
-        prismLayer.opacity = isBaseBackground ? 0.32 : 1
+        prismLayer.opacity = isBaseBackground ? 0.40 : 1
 
+        let activeSpecs = activeAuroraSpecs
         for (index, layer) in auroraLayers.enumerated() {
-            layer.locations = storedAccentMode.isFullScreen
+            layer.locations = isBaseBackground
+                ? [0, 0.26, 0.58, 1]
+                : (storedAccentMode.isFullScreen
                 ? [0, 0.30, 0.66, 1]
                 : (index == AuroraRole.bottomTrailing.rawValue
                     ? [0, 0.24, 0.62, 1]
-                    : [0, 0.42, 1])
+                    : [0, 0.42, 1]))
             let color = auroraBaseColor(for: index, palette: palette)
-            let restingOpacity = index < auroraSpecs.count
-                ? auroraSpecs[index].opacityRange.upperBound
+            let restingOpacity = index < activeSpecs.count
+                ? activeSpecs[index].opacityRange.upperBound
                 : 1
             let leadingAlpha = auroraLeadingAlpha(
                 isDark: isDark,
@@ -1045,7 +1095,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let color = palette.particle[index % palette.particle.count]
             layer.fillColor = color.cgColor
             layer.opacity = isBaseBackground
-                ? (isDark ? 0.075 : 0.042)
+                ? (isDark ? 0.095 : 0.058)
                 : (isDark ? 0.12 : 0.075)
             layer.shadowOpacity = 0
             layer.shadowRadius = 0
@@ -1053,17 +1103,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
 
         let reactiveLeadingAlpha: CGFloat = isBaseBackground
-            ? (isDark ? 0.085 : 0.11)
+            ? (isDark ? 0.11 : 0.15)
             : (isDark ? 0.12 : 0.16)
         let reactiveMiddleAlpha: CGFloat = isBaseBackground
-            ? (isDark ? 0.026 : 0.034)
+            ? (isDark ? 0.038 : 0.052)
             : (isDark ? 0.034 : 0.048)
         setGradientColors([
             palette.reactiveLight.withAlphaComponent(reactiveLeadingAlpha).cgColor,
             palette.reactiveLight.withAlphaComponent(reactiveMiddleAlpha).cgColor,
             UIColor.clear.cgColor
         ], on: reactiveLightLayer, animated: animatePalette)
-        reactiveLightLayer.opacity = isBaseBackground ? 0.54 : 0.64
+        reactiveLightLayer.opacity = isBaseBackground ? 0.60 : 0.64
 
         setGradientColors([
             palette.specularLight.withAlphaComponent(isDark ? 0.30 : 0.38).cgColor,
@@ -1091,10 +1141,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ], on: signatureSweepLayer, animated: animatePalette)
         signatureSweepLayer.opacity = 0
 
+        let topSpecularSource = isBaseBackground ? palette.surfaceHighlight : UIColor.white
         setGradientColors([
-            UIColor.white.withAlphaComponent(isDark ? 0.16 : 0.72).cgColor,
-            palette.specularLight.withAlphaComponent(isDark ? 0.075 : 0.22).cgColor,
-            palette.specularLight.withAlphaComponent(isDark ? 0.012 : 0.028).cgColor,
+            topSpecularSource.withAlphaComponent(
+                isBaseBackground ? (isDark ? 0.11 : 0.34) : (isDark ? 0.16 : 0.72)
+            ).cgColor,
+            palette.specularLight.withAlphaComponent(
+                isBaseBackground ? (isDark ? 0.060 : 0.14) : (isDark ? 0.075 : 0.22)
+            ).cgColor,
+            palette.specularLight.withAlphaComponent(
+                isBaseBackground ? (isDark ? 0.018 : 0.034) : (isDark ? 0.012 : 0.028)
+            ).cgColor,
             UIColor.clear.cgColor
         ], on: topSpecularLayer, animated: animatePalette)
 
@@ -1143,39 +1200,6 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             )
         }
 
-        if storedAccentMode == .fullScreenPink {
-            return makeFixedFullScreenPalette(
-                signatureAccent: Chromatics.signatureRose,
-                deep: blend(
-                    Chromatics.warmPearl,
-                    with: Chromatics.signatureRose,
-                    amount: 0.34
-                ),
-                vivid: Chromatics.luminousRose,
-                soft: Chromatics.warmPearl,
-                light: Chromatics.lightSurface,
-                isDark: isDark,
-                strongerContrast: strongerContrast
-            )
-        }
-
-        if storedAccentMode == .fullScreenPage {
-            let quietWarm = blend(
-                Chromatics.warmPearl,
-                with: Chromatics.lightSurface,
-                amount: 0.58
-            )
-            return makeFixedFullScreenPalette(
-                signatureAccent: Chromatics.signatureRose,
-                deep: Chromatics.warmPearl,
-                vivid: quietWarm,
-                soft: blend(quietWarm, with: Chromatics.lightSurface, amount: 0.54),
-                light: Chromatics.lightSurface,
-                isDark: isDark,
-                strongerContrast: strongerContrast
-            )
-        }
-
         let fallbackAccent = Chromatics.signatureRose
         let explicitAccent = accentColorOverride.map { resolvedColor($0) }
         let accent = explicitAccent ?? resolvedColor(UIColor(named: "AppPrimaryColor") ?? fallbackAccent)
@@ -1193,9 +1217,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             )
         }
 
-        let polishedSurfaceBase = isDark
-            ? blend(surfaceBase, with: UIColor(red: 0.04, green: 0.045, blue: 0.064, alpha: 1), amount: 0.16)
-            : blend(surfaceBase, with: .white, amount: 0.92)
+        let polishedSurfaceBase: UIColor
+        if overrideSurfaceColor != nil {
+            polishedSurfaceBase = surfaceBase
+        } else {
+            polishedSurfaceBase = isDark
+                ? blend(surfaceBase, with: UIColor(red: 0.04, green: 0.045, blue: 0.064, alpha: 1), amount: 0.16)
+                : blend(surfaceBase, with: .white, amount: 0.92)
+        }
         let highlight = blend(
             polishedSurfaceBase,
             with: .white,
@@ -1345,87 +1374,112 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         isDark: Bool,
         strongerContrast: Bool
     ) -> Palette {
-        let accent = resolvedColor(accentColorOverride ?? Chromatics.signatureRose)
+        let explicitAccent = accentColorOverride.map { resolvedColor($0) }
+        let accent = explicitAccent ?? resolvedColor(
+            UIColor(named: "AppPrimaryColor") ?? Chromatics.signatureRose
+        )
+        let surfaceOverride = overrideSurfaceColor.map { resolvedColor($0) }
 
         if isDark {
-            let appBg = UIColor(named: "AppBackgroundColor") ?? UIColor(white: 0.05, alpha: 1.0)
-            let highlight = blend(appBg, with: .white, amount: 0.04)
-            let middle = appBg
-            let tail = blend(appBg, with: .black, amount: 0.15)
-            let warm = appBg
-            let blush = highlight
-            let lilac = appBg
-            let quiet = middle
-            let deepened = tail
-            let warmLift = highlight
+            let appBg = surfaceOverride ?? resolvedColor(
+                UIColor(named: "AppBackgroundColor") ?? Chromatics.baseDarkCanvas
+            )
+            let canvas = blend(appBg, with: Chromatics.baseDarkCanvas, amount: 0.64)
+            let highlight = blend(canvas, with: .white, amount: 0.045)
+            let middle = blend(canvas, with: Chromatics.baseDarkMist, amount: 0.22)
+            let tail = blend(canvas, with: Chromatics.baseDarkTail, amount: 0.42)
+            let petal = blend(
+                Chromatics.baseDarkPetal,
+                with: accent,
+                amount: explicitAccent == nil ? 0.12 : 0.22
+            )
+            let mist = blend(Chromatics.baseDarkMist, with: highlight, amount: 0.18)
+            let lavender = blend(
+                Chromatics.baseDarkLavender,
+                with: accent,
+                amount: explicitAccent == nil ? 0.045 : 0.12
+            )
+            let quiet = blend(middle, with: highlight, amount: 0.16)
+            let lifted = blend(highlight, with: petal, amount: 0.18)
+            let deepened = blend(tail, with: lavender, amount: 0.12)
 
             return Palette(
                 accent: accent,
                 surfaceHighlight: highlight,
                 surfaceMiddle: middle,
                 surfaceTail: tail,
-                depth: lilac,
+                depth: blend(lavender, with: accent, amount: explicitAccent == nil ? 0.04 : 0.10),
                 aurora: [
-                    warmLift,
-                    highlight,
+                    lifted,
+                    mist,
                     quiet,
                     deepened,
-                    blush,
-                    warm,
-                    lilac
+                    petal,
+                    middle,
+                    lavender
                 ],
                 particle: [
-                    blend(highlight, with: .white, amount: 0.16),
-                    blush,
-                    lilac
+                    blend(lifted, with: .white, amount: 0.18),
+                    blend(mist, with: .white, amount: 0.12),
+                    lavender
                 ],
-                reactiveLight: blend(highlight, with: blush, amount: 0.28),
-                specularLight: blend(highlight, with: .white, amount: 0.42),
+                reactiveLight: blend(mist, with: petal, amount: 0.28),
+                specularLight: blend(highlight, with: .white, amount: 0.50),
                 stroke: UIColor.white.withAlphaComponent(
                     strongerContrast ? 0.34 : 0.18
                 ),
-                shadowOpacity: 0.13
+                shadowOpacity: 0.12
             )
         }
 
-        let pearl = UIColor.white
-        let appBg = UIColor(named: "AppBackgroundColor") ?? UIColor(white: 0.97, alpha: 1.0)
-        let porcelain = appBg
-        let mineralBeige = appBg
-        let blush = pearl
-        let quietLilac = pearl
-        let warmLift = pearl
-        let quiet = pearl
-        let mineralLilac = appBg
-        let roseVeil = pearl
-        let lilacVeil = pearl
+        let appBg = surfaceOverride ?? resolvedColor(
+            UIColor(named: "AppBackgroundColor") ?? Chromatics.baseCanvas
+        )
+        let canvas = blend(appBg, with: Chromatics.baseCanvas, amount: 0.72)
+        let highlight = blend(canvas, with: .white, amount: 0.54)
+        let mist = blend(canvas, with: Chromatics.baseMist, amount: 0.42)
+        let sky = blend(Chromatics.baseSky, with: .white, amount: 0.18)
+        let petal = blend(
+            Chromatics.basePetal,
+            with: accent,
+            amount: explicitAccent == nil ? 0.045 : 0.12
+        )
+        let lavender = blend(Chromatics.baseLavender, with: canvas, amount: 0.30)
+        let linen = blend(Chromatics.baseLinen, with: .white, amount: 0.24)
+        let quiet = blend(highlight, with: mist, amount: 0.36)
+        let depth = blend(
+            lavender,
+            with: accent,
+            amount: explicitAccent == nil ? 0.035 : 0.09
+        )
+        let roseLavender = blend(petal, with: lavender, amount: 0.34)
 
         return Palette(
             accent: accent,
-            surfaceHighlight: pearl,
-            surfaceMiddle: porcelain,
-            surfaceTail: porcelain,
-            depth: mineralLilac,
+            surfaceHighlight: highlight,
+            surfaceMiddle: mist,
+            surfaceTail: blend(canvas, with: lavender, amount: 0.24),
+            depth: depth,
             aurora: [
-                warmLift,
-                pearl,
+                petal,
+                mist,
                 quiet,
-                mineralLilac,
-                lilacVeil,
-                mineralBeige,
-                roseVeil
+                lavender,
+                sky,
+                linen,
+                roseLavender
             ],
             particle: [
-                pearl,
-                blend(blush, with: .white, amount: 0.42),
-                blend(quietLilac, with: .white, amount: 0.48)
+                blend(petal, with: .white, amount: 0.38),
+                blend(mist, with: .white, amount: 0.44),
+                blend(lavender, with: .white, amount: 0.46)
             ],
-            reactiveLight: blend(pearl, with: roseVeil, amount: 0.14),
-            specularLight: .white,
+            reactiveLight: blend(mist, with: petal, amount: 0.18),
+            specularLight: blend(highlight, with: .white, amount: 0.74),
             stroke: UIColor.white.withAlphaComponent(
                 strongerContrast ? 0.94 : 0.72
             ),
-            shadowOpacity: 0.055
+            shadowOpacity: 0.060
         )
     }
 
@@ -1587,6 +1641,37 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         leadingAlpha: CGFloat,
         isDark: Bool
     ) -> [CGColor] {
+        if storedAccentMode.isBaseBackground {
+            let roleStrength: CGFloat
+            switch AuroraRole(rawValue: index) {
+            case .leading:
+                roleStrength = 1
+            case .bottomTrailing:
+                roleStrength = 0.88
+            case .middle:
+                roleStrength = 0.76
+            case .none:
+                roleStrength = 0.82
+            }
+            let alpha = leadingAlpha * roleStrength
+            let careTint = blend(
+                color,
+                with: palette.reactiveLight,
+                amount: isDark ? 0.10 : 0.16
+            )
+            let paperEdge = blend(
+                palette.surfaceHighlight,
+                with: color,
+                amount: isDark ? 0.18 : 0.12
+            )
+            return [
+                careTint.withAlphaComponent(alpha).cgColor,
+                color.withAlphaComponent(alpha * 0.58).cgColor,
+                paperEdge.withAlphaComponent(alpha * 0.20).cgColor,
+                UIColor.clear.cgColor
+            ]
+        }
+
         if storedAccentMode.isFullScreen {
             let roleStrength: CGFloat
             switch AuroraRole(rawValue: index) {
@@ -1823,15 +1908,22 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     // MARK: - Entrance choreography
 
     private func prepareEntrancePresentation() {
-        ambientContentView.alpha = 0.18
+        let isAdaptiveFullScreen = storedAccentMode == .fullScreen
+        ambientContentView.alpha = isAdaptiveFullScreen ? 0.54 : 0.18
+        let translationY = isAdaptiveFullScreen
+            ? PPHeroApexMotionTokens.fullScreenEntranceTranslationY
+            : PPHeroApexMotionTokens.entranceTranslationY
+        let scale = isAdaptiveFullScreen
+            ? PPHeroApexMotionTokens.fullScreenEntranceScale
+            : PPHeroApexMotionTokens.entranceScale
         ambientContentView.transform = CGAffineTransform(
             translationX: 0,
-            y: PPHeroApexMotionTokens.entranceTranslationY
+            y: translationY
         ).scaledBy(
-            x: PPHeroApexMotionTokens.entranceScale,
-            y: PPHeroApexMotionTokens.entranceScale
+            x: scale,
+            y: scale
         )
-        overlayView.alpha = 0.58
+        overlayView.alpha = isAdaptiveFullScreen ? 0.82 : 0.58
     }
 
     private func runEntrance(generation: UInt) {
@@ -1846,7 +1938,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
 
         let primaryAnimator = UIViewPropertyAnimator(
-            duration: PPHeroApexMotionTokens.entranceDuration,
+            duration: storedAccentMode == .fullScreen
+                ? PPHeroApexMotionTokens.fullScreenEntranceDuration
+                : PPHeroApexMotionTokens.entranceDuration,
             timingParameters: PPHeroApexMotionTokens.entranceTimingParameters
         )
         primaryAnimator.addAnimations { [weak self] in
@@ -1913,9 +2007,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         resumeAmbientTimeline()
     }
 
-    /// Full Screen owns a slowly re-orienting tonal base. This is what lets a
-    /// light region descend while the darker degree migrates upward instead of
-    /// leaving one colored glow parked in the center of the application.
+    /// Full Screen owns a slow tonal tide. The diagonal keeps its reading
+    /// direction while light temperature shifts within a narrow range, so
+    /// content never appears to sit over a rotating or travelling backdrop.
     private func installFullScreenSurfaceAnimation() {
         baseGradientLayer.removeAnimation(forKey: fullScreenSurfaceAnimationKey)
         guard storedAccentMode.isFullScreen,
@@ -1950,9 +2044,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         func animatedSurfaceColor(_ color: UIColor) -> CGColor {
             color.withAlphaComponent(surfaceAlpha).cgColor
         }
-        // The surface itself remains a deterministic light anchor for first
-        // frame and snapshot stability. Supporting animated fields vary only
-        // after their own light-first frame.
+        // First and last frames match the model layer for snapshot stability.
+        // Intermediate frames preserve the same tonal ordering and only alter
+        // temperature, avoiding a visible dark band crossing the screen.
         let tonalFrames: [[Any]] = [
             [
                 animatedSurfaceColor(brightest),
@@ -1960,19 +2054,19 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 animatedSurfaceColor(palette.surfaceTail)
             ],
             [
-                animatedSurfaceColor(quiet),
-                animatedSurfaceColor(brightest),
+                animatedSurfaceColor(palette.surfaceHighlight),
+                animatedSurfaceColor(palette.surfaceMiddle),
                 animatedSurfaceColor(deepest)
             ],
             [
-                animatedSurfaceColor(deepest),
-                animatedSurfaceColor(palette.surfaceMiddle),
-                animatedSurfaceColor(brightest)
+                animatedSurfaceColor(palette.surfaceHighlight),
+                animatedSurfaceColor(quiet),
+                animatedSurfaceColor(palette.surfaceTail)
             ],
             [
-                animatedSurfaceColor(palette.surfaceTail),
                 animatedSurfaceColor(brightest),
-                animatedSurfaceColor(quiet)
+                animatedSurfaceColor(palette.surfaceMiddle),
+                animatedSurfaceColor(deepest)
             ],
             [
                 animatedSurfaceColor(brightest),
@@ -1980,7 +2074,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 animatedSurfaceColor(palette.surfaceTail)
             ]
         ]
-        let keyTimes: [NSNumber] = [0, 0.23, 0.50, 0.76, 1]
+        let keyTimes: [NSNumber] = [0, 0.24, 0.51, 0.77, 1]
 
         let colors = CAKeyframeAnimation(keyPath: "colors")
         colors.values = tonalFrames
@@ -1994,9 +2088,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let startPoint = CAKeyframeAnimation(keyPath: "startPoint")
         startPoint.values = [
             CGPoint(x: 0.08, y: 0.02),
-            CGPoint(x: 0.92, y: 0.12),
-            CGPoint(x: 0.52, y: 1.00),
-            CGPoint(x: 0.14, y: 0.72),
+            CGPoint(x: 0.14, y: 0.07),
+            CGPoint(x: 0.10, y: 0.15),
+            CGPoint(x: 0.04, y: 0.09),
             CGPoint(x: 0.08, y: 0.02)
         ].map {
             NSValue(cgPoint: resolvedFullScreenPoint($0))
@@ -2011,9 +2105,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let endPoint = CAKeyframeAnimation(keyPath: "endPoint")
         endPoint.values = [
             CGPoint(x: 0.92, y: 0.98),
-            CGPoint(x: 0.12, y: 0.90),
-            CGPoint(x: 0.48, y: 0.00),
-            CGPoint(x: 0.88, y: 0.20),
+            CGPoint(x: 0.86, y: 0.93),
+            CGPoint(x: 0.90, y: 0.85),
+            CGPoint(x: 0.96, y: 0.91),
             CGPoint(x: 0.92, y: 0.98)
         ].map {
             NSValue(cgPoint: resolvedFullScreenPoint($0))
@@ -2025,9 +2119,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let locations = CAKeyframeAnimation(keyPath: "locations")
         locations.values = [
             [0.00, 0.50, 1.00],
-            [0.04, 0.42, 1.00],
-            [0.00, 0.56, 1.00],
-            [0.08, 0.48, 0.96],
+            [0.02, 0.47, 1.00],
+            [0.00, 0.53, 1.00],
+            [0.03, 0.49, 0.98],
             [0.00, 0.50, 1.00]
         ]
         locations.keyTimes = keyTimes
@@ -2037,29 +2131,40 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         let group = makeRepeatingAnimationGroup(
             animations: [colors, startPoint, endPoint, locations],
             duration: PPHeroApexMotionTokens.fullScreenSurfaceCycleDuration,
-            phase: 3.4
+            phase: 11.7
         )
         baseGradientLayer.add(group, forKey: fullScreenSurfaceAnimationKey)
     }
 
     private func installFieldDriftAnimation() {
         let isBaseBackground = storedAccentMode.isBaseBackground
+        let isAdaptiveFullScreen = storedAccentMode == .fullScreen
         let drift = CAKeyframeAnimation(keyPath: "sublayerTransform")
-        drift.values = isBaseBackground
-            ? [
-                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 1.0, scale: 1.003)),
-                NSValue(caTransform3D: ambientTransform(x: 2.1, y: -1.3, scale: 1.007)),
-                NSValue(caTransform3D: ambientTransform(x: -1.8, y: 1.6, scale: 1.005)),
-                NSValue(caTransform3D: ambientTransform(x: 1.2, y: -0.8, scale: 1.006)),
-                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 1.0, scale: 1.003))
+        if isBaseBackground {
+            drift.values = [
+                NSValue(caTransform3D: ambientTransform(x: -2.2, y: 1.4, scale: 1.004)),
+                NSValue(caTransform3D: ambientTransform(x: 3.0, y: -1.8, scale: 1.010)),
+                NSValue(caTransform3D: ambientTransform(x: -2.4, y: 2.0, scale: 1.006)),
+                NSValue(caTransform3D: ambientTransform(x: 1.6, y: -1.2, scale: 1.008)),
+                NSValue(caTransform3D: ambientTransform(x: -2.2, y: 1.4, scale: 1.004))
             ]
-            : [
+        } else if isAdaptiveFullScreen {
+            drift.values = [
+                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 0.8, scale: 1.002)),
+                NSValue(caTransform3D: ambientTransform(x: 2.1, y: -1.2, scale: 1.006)),
+                NSValue(caTransform3D: ambientTransform(x: 0.6, y: 1.6, scale: 1.004)),
+                NSValue(caTransform3D: ambientTransform(x: -1.8, y: -0.7, scale: 1.005)),
+                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 0.8, scale: 1.002))
+            ]
+        } else {
+            drift.values = [
                 NSValue(caTransform3D: ambientTransform(x: -3, y: 2, scale: 1.006)),
                 NSValue(caTransform3D: ambientTransform(x: 5, y: -3, scale: 1.014)),
                 NSValue(caTransform3D: ambientTransform(x: -4, y: 3.5, scale: 1.010)),
                 NSValue(caTransform3D: ambientTransform(x: 2, y: -1.5, scale: 1.012)),
                 NSValue(caTransform3D: ambientTransform(x: -3, y: 2, scale: 1.006))
             ]
+        }
         drift.keyTimes = [0, 0.28, 0.58, 0.82, 1]
         drift.calculationMode = .cubic
         drift.timingFunctions = Array(
@@ -2071,8 +2176,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             animations: [drift],
             duration: isBaseBackground
                 ? PPHeroApexMotionTokens.baseBackgroundFieldCycleDuration
-                : PPHeroApexMotionTokens.fieldDriftCycleDuration,
-            phase: isBaseBackground ? 13.7 : 0.7
+                : (isAdaptiveFullScreen
+                    ? PPHeroApexMotionTokens.fullScreenFieldCycleDuration
+                    : PPHeroApexMotionTokens.fieldDriftCycleDuration),
+            phase: isBaseBackground ? 13.7 : (isAdaptiveFullScreen ? 17.9 : 0.7)
         )
         ambientContentView.layer.add(group, forKey: fieldDriftAnimationKey)
     }
@@ -2084,20 +2191,23 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let isBaseBackground = storedAccentMode.isBaseBackground
             let normalizedPositions = isBaseBackground
                 ? [
-                    CGPoint(x: 0.38, y: 0.34),
-                    CGPoint(x: 0.62, y: 0.42),
-                    CGPoint(x: 0.58, y: 0.64),
-                    CGPoint(x: 0.36, y: 0.58),
-                    CGPoint(x: 0.38, y: 0.34)
+                    CGPoint(x: 0.32, y: 0.28),
+                    CGPoint(x: 0.58, y: 0.36),
+                    CGPoint(x: 0.66, y: 0.58),
+                    CGPoint(x: 0.42, y: 0.66),
+                    CGPoint(x: 0.32, y: 0.28)
                 ]
                 : [
-                    CGPoint(x: 0.18, y: 0.14),
-                    CGPoint(x: 0.78, y: 0.26),
-                    CGPoint(x: 0.52, y: 0.74),
-                    CGPoint(x: 0.20, y: 0.86),
-                    CGPoint(x: 0.18, y: 0.14)
+                    CGPoint(x: 0.34, y: 0.24),
+                    CGPoint(x: 0.56, y: 0.30),
+                    CGPoint(x: 0.64, y: 0.52),
+                    CGPoint(x: 0.44, y: 0.66),
+                    CGPoint(x: 0.28, y: 0.46),
+                    CGPoint(x: 0.34, y: 0.24)
                 ]
-            let keyTimes: [NSNumber] = [0, 0.24, 0.52, 0.78, 1]
+            let keyTimes: [NSNumber] = isBaseBackground
+                ? [0, 0.24, 0.52, 0.78, 1]
+                : [0, 0.18, 0.39, 0.61, 0.82, 1]
 
             let position = CAKeyframeAnimation(keyPath: "position")
             position.values = normalizedPositions.map {
@@ -2117,16 +2227,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
             let scale = CAKeyframeAnimation(keyPath: "transform.scale")
             scale.values = isBaseBackground
-                ? [0.97, 1.025, 0.99, 1.02, 0.97]
-                : [0.90, 1.06, 0.97, 1.04, 0.90]
+                ? [0.98, 1.05, 1.01, 1.04, 0.98]
+                : [0.995, 1.018, 1.008, 1.026, 1.012, 0.995]
             scale.keyTimes = keyTimes
             scale.calculationMode = .cubic
             scale.timingFunctions = position.timingFunctions
 
             let opacity = CAKeyframeAnimation(keyPath: "opacity")
             opacity.values = isBaseBackground
-                ? [0.26, 0.38, 0.30, 0.36, 0.26]
-                : [0.48, 0.76, 0.58, 0.70, 0.48]
+                ? [0.34, 0.48, 0.40, 0.46, 0.34]
+                : [0.46, 0.56, 0.51, 0.59, 0.53, 0.46]
             opacity.keyTimes = keyTimes
             opacity.calculationMode = .cubic
             opacity.timingFunctions = position.timingFunctions
@@ -2134,11 +2244,11 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             let palette = makePalette()
             let isDark = traitCollection.userInterfaceStyle == .dark
             let prismAlpha: CGFloat = isBaseBackground
-                ? (isDark ? 0.14 : 0.12)
+                ? (isDark ? 0.22 : 0.20)
                 : (isDark ? 0.24 : 0.27)
             let authoredColorRouteIndexes = isBaseBackground
-                ? [1, 2, 6, 4, 1]
-                : [1, 3, 4, 5, 1]
+                ? [1, 4, 6, 3, 1]
+                : [1, 3, 4, 5, 3, 1]
             let colorRouteIndexes = isBaseBackground
                 ? authoredColorRouteIndexes
                 : lightFirstColorRoute(
@@ -2175,7 +2285,7 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 duration: isBaseBackground
                     ? PPHeroApexMotionTokens.baseBackgroundPrismCycleDuration
                     : PPHeroApexMotionTokens.fullScreenPrismCycleDuration,
-                phase: isBaseBackground ? 19.4 : 6.2
+                phase: isBaseBackground ? 19.4 : 29.6
             )
             prismLayer.add(group, forKey: prismAnimationKey)
             return
@@ -2208,8 +2318,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             ? []
             : compactAuroraPhaseOrder(palette: makePalette())
 
-        for (index, layer) in auroraLayers.enumerated() where index < auroraSpecs.count {
-            let spec = auroraSpecs[index]
+        let specs = activeAuroraSpecs
+        for (index, layer) in auroraLayers.enumerated() where index < specs.count {
+            let spec = specs[index]
 
             if storedAccentMode.isFullScreen {
                 installFullScreenAuroraAnimation(on: layer, index: index)
@@ -2374,10 +2485,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         }
     }
 
-    /// Full Screen uses absolute, screen-spanning position choreography. Each
-    /// field follows a different loop so the composition keeps reforming: a
-    /// top-leading wash descends, a bottom-trailing wash rises, and the middle
-    /// wash travels between corners instead of breathing in place.
+    /// Full Screen uses three bounded tidal loops. Each field keeps a stable
+    /// region while counter-phased position, scale, opacity, and temperature
+    /// make the composition reform without sending blobs across readable copy.
     private func installFullScreenAuroraAnimation(
         on layer: CAGradientLayer,
         index: Int
@@ -2455,10 +2565,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     }
 
     private func installParticleAnimations() {
+        let isAdaptiveFullScreen = storedAccentMode == .fullScreen
         for (index, layer) in particleLayers.enumerated() {
             let direction: CGFloat = index.isMultiple(of: 2) ? 1 : -1
-            let travelX = direction * (4.5 + CGFloat(index) * 1.8)
-            let travelY = 3.5 + CGFloat(index) * 1.4
+            let travelX = direction * (isAdaptiveFullScreen
+                ? (2.2 + CGFloat(index) * 0.8)
+                : (4.5 + CGFloat(index) * 1.8))
+            let travelY = isAdaptiveFullScreen
+                ? (1.7 + CGFloat(index) * 0.6)
+                : (3.5 + CGFloat(index) * 1.4)
+            let upperScale: CGFloat = isAdaptiveFullScreen ? 1.012 : 1.025
+            let lowerScale: CGFloat = isAdaptiveFullScreen ? 0.992 : 0.982
 
             let transform = CAKeyframeAnimation(keyPath: "transform")
             transform.values = [
@@ -2466,12 +2583,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 NSValue(caTransform3D: ambientTransform(
                     x: travelX,
                     y: -travelY,
-                    scale: 1.025
+                    scale: upperScale
                 )),
                 NSValue(caTransform3D: ambientTransform(
                     x: -travelX * 0.62,
                     y: travelY,
-                    scale: 0.982
+                    scale: lowerScale
                 )),
                 NSValue(caTransform3D: ambientTransform(x: 0, y: 0, scale: 1))
             ]
@@ -2484,12 +2601,19 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
             let opacity = CAKeyframeAnimation(keyPath: "opacity")
             let baseOpacity = layer.opacity
-            opacity.values = [
-                baseOpacity * 0.58,
-                min(baseOpacity + 0.038, 0.16),
-                baseOpacity * 0.78,
-                baseOpacity * 0.58
-            ]
+            opacity.values = isAdaptiveFullScreen
+                ? [
+                    baseOpacity * 0.72,
+                    min(baseOpacity + 0.018, 0.12),
+                    baseOpacity * 0.86,
+                    baseOpacity * 0.72
+                ]
+                : [
+                    baseOpacity * 0.58,
+                    min(baseOpacity + 0.038, 0.16),
+                    baseOpacity * 0.78,
+                    baseOpacity * 0.58
+                ]
             opacity.keyTimes = [0, 0.36, 0.74, 1]
             opacity.calculationMode = .cubic
             opacity.timingFunctions = Array(
@@ -2497,12 +2621,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
                 count: 3
             )
 
-            let duration = PPHeroApexMotionTokens.particleBaseCycleDuration
-                + CFTimeInterval(index) * PPHeroApexMotionTokens.particleCycleStep
+            let duration = isAdaptiveFullScreen
+                ? PPHeroApexMotionTokens.fullScreenParticleBaseCycleDuration
+                    + CFTimeInterval(index) * PPHeroApexMotionTokens.fullScreenParticleCycleStep
+                : PPHeroApexMotionTokens.particleBaseCycleDuration
+                    + CFTimeInterval(index) * PPHeroApexMotionTokens.particleCycleStep
             let group = makeRepeatingAnimationGroup(
                 animations: [transform, opacity],
                 duration: duration,
-                phase: 3.1 + CFTimeInterval(index) * 5.9
+                phase: isAdaptiveFullScreen
+                    ? 13.2 + CFTimeInterval(index) * 17.7
+                    : 3.1 + CFTimeInterval(index) * 5.9
             )
             layer.add(group, forKey: particleAnimationKey)
         }
@@ -2510,44 +2639,63 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
     private func installLightAnimations() {
         let isBaseBackground = storedAccentMode.isBaseBackground
+        let isAdaptiveFullScreen = storedAccentMode == .fullScreen
         let reactiveBreath = CAKeyframeAnimation(keyPath: "opacity")
-        reactiveBreath.values = isBaseBackground
-            ? [0.46, 0.56, 0.50, 0.46]
-            : [0.49, 0.64, 0.56, 0.49]
-        reactiveBreath.keyTimes = [0, 0.38, 0.74, 1]
+        if isBaseBackground {
+            reactiveBreath.values = [0.52, 0.66, 0.58, 0.52]
+        } else if isAdaptiveFullScreen {
+            reactiveBreath.values = [0.54, 0.61, 0.57, 0.60, 0.54]
+        } else {
+            reactiveBreath.values = [0.49, 0.64, 0.56, 0.49]
+        }
+        reactiveBreath.keyTimes = isAdaptiveFullScreen
+            ? [0, 0.22, 0.48, 0.76, 1]
+            : [0, 0.38, 0.74, 1]
         reactiveBreath.calculationMode = .cubic
         reactiveBreath.timingFunctions = Array(
             repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
+            count: max((reactiveBreath.keyTimes?.count ?? 1) - 1, 0)
         )
 
         let reactiveTravel = CAKeyframeAnimation(keyPath: "transform")
-        reactiveTravel.values = isBaseBackground
-            ? [
-                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 0.8, scale: 0.996)),
-                NSValue(caTransform3D: ambientTransform(x: 2.2, y: -1.3, scale: 1.006)),
-                NSValue(caTransform3D: ambientTransform(x: -1.8, y: 1.4, scale: 1.002)),
-                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 0.8, scale: 0.996))
+        if isBaseBackground {
+            reactiveTravel.values = [
+                NSValue(caTransform3D: ambientTransform(x: -2.0, y: 1.0, scale: 0.998)),
+                NSValue(caTransform3D: ambientTransform(x: 3.1, y: -1.8, scale: 1.010)),
+                NSValue(caTransform3D: ambientTransform(x: -2.4, y: 1.7, scale: 1.004)),
+                NSValue(caTransform3D: ambientTransform(x: -2.0, y: 1.0, scale: 0.998))
             ]
-            : [
+        } else if isAdaptiveFullScreen {
+            reactiveTravel.values = [
+                NSValue(caTransform3D: ambientTransform(x: -1.2, y: 0.7, scale: 0.998)),
+                NSValue(caTransform3D: ambientTransform(x: 1.8, y: -1.0, scale: 1.006)),
+                NSValue(caTransform3D: ambientTransform(x: 2.4, y: 1.2, scale: 1.003)),
+                NSValue(caTransform3D: ambientTransform(x: -1.4, y: 1.5, scale: 1.005)),
+                NSValue(caTransform3D: ambientTransform(x: -1.2, y: 0.7, scale: 0.998))
+            ]
+        } else {
+            reactiveTravel.values = [
                 NSValue(caTransform3D: ambientTransform(x: -3, y: 1.5, scale: 0.992)),
                 NSValue(caTransform3D: ambientTransform(x: 5, y: -3, scale: 1.014)),
                 NSValue(caTransform3D: ambientTransform(x: -4, y: 3, scale: 1.004)),
                 NSValue(caTransform3D: ambientTransform(x: -3, y: 1.5, scale: 0.992))
             ]
-        reactiveTravel.keyTimes = [0, 0.38, 0.74, 1]
+        }
+        reactiveTravel.keyTimes = reactiveBreath.keyTimes
         reactiveTravel.calculationMode = .cubic
         reactiveTravel.timingFunctions = Array(
             repeating: PPHeroApexMotionTokens.ambientTimingFunction,
-            count: 3
+            count: max((reactiveTravel.keyTimes?.count ?? 1) - 1, 0)
         )
 
         let reactiveGroup = makeRepeatingAnimationGroup(
             animations: [reactiveBreath, reactiveTravel],
             duration: isBaseBackground
                 ? PPHeroApexMotionTokens.baseBackgroundReactiveLightCycleDuration
-                : PPHeroApexMotionTokens.reactiveLightCycleDuration,
-            phase: isBaseBackground ? 8.9 : 2.7
+                : (isAdaptiveFullScreen
+                    ? PPHeroApexMotionTokens.fullScreenReactiveLightCycleDuration
+                    : PPHeroApexMotionTokens.reactiveLightCycleDuration),
+            phase: isBaseBackground ? 8.9 : (isAdaptiveFullScreen ? 21.4 : 2.7)
         )
         reactiveLightLayer.add(reactiveGroup, forKey: reactiveLightAnimationKey)
 
@@ -2682,12 +2830,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ambientContentView.layer.removeAnimation(forKey: fieldDriftAnimationKey)
         prismLayer.removeAnimation(forKey: prismAnimationKey)
         auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
+        particleLayers.forEach { $0.removeAnimation(forKey: particleAnimationKey) }
         reactiveLightLayer.removeAnimation(forKey: reactiveLightAnimationKey)
         signatureSweepLayer.removeAnimation(forKey: signatureSweepAnimationKey)
         signatureSweepLayer.opacity = 0
         installFieldDriftAnimation()
         installPrismAnimation()
         installAuroraAnimations()
+        installParticleAnimations()
         installLightAnimations()
     }
 
@@ -2698,10 +2848,12 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         ambientContentView.layer.removeAnimation(forKey: fieldDriftAnimationKey)
         prismLayer.removeAnimation(forKey: prismAnimationKey)
         auroraLayers.forEach { $0.removeAnimation(forKey: auroraAnimationKey) }
+        particleLayers.forEach { $0.removeAnimation(forKey: particleAnimationKey) }
         reactiveLightLayer.removeAnimation(forKey: reactiveLightAnimationKey)
         installFieldDriftAnimation()
         installPrismAnimation()
         installAuroraAnimations()
+        installParticleAnimations()
         installLightAnimations()
     }
 
@@ -2791,15 +2943,21 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
             keyPath: "center.x",
             type: .tiltAlongHorizontalAxis
         )
-        horizontal.minimumRelativeValue = -PPHeroApexMotionTokens.horizontalParallax
-        horizontal.maximumRelativeValue = PPHeroApexMotionTokens.horizontalParallax
+        let horizontalParallax = storedAccentMode == .fullScreen
+            ? PPHeroApexMotionTokens.fullScreenHorizontalParallax
+            : PPHeroApexMotionTokens.horizontalParallax
+        horizontal.minimumRelativeValue = -horizontalParallax
+        horizontal.maximumRelativeValue = horizontalParallax
 
         let vertical = UIInterpolatingMotionEffect(
             keyPath: "center.y",
             type: .tiltAlongVerticalAxis
         )
-        vertical.minimumRelativeValue = -PPHeroApexMotionTokens.verticalParallax
-        vertical.maximumRelativeValue = PPHeroApexMotionTokens.verticalParallax
+        let verticalParallax = storedAccentMode == .fullScreen
+            ? PPHeroApexMotionTokens.fullScreenVerticalParallax
+            : PPHeroApexMotionTokens.verticalParallax
+        vertical.minimumRelativeValue = -verticalParallax
+        vertical.maximumRelativeValue = verticalParallax
 
         let group = UIMotionEffectGroup()
         group.motionEffects = [horizontal, vertical]
@@ -3151,7 +3309,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func applyReactiveDepth(at localPoint: CGPoint, intensity: CGFloat) {
         guard bounds.width > 0, bounds.height > 0 else { return }
 
-        let resolvedIntensity = min(max(intensity, 0), 1)
+        let modeIntensity = storedAccentMode == .fullScreen
+            ? PPHeroApexMotionTokens.fullScreenTouchResponseIntensity
+            : 1
+        let resolvedIntensity = min(max(intensity, 0), 1) * modeIntensity
 
         let normalized = CGPoint(
             x: min(max(localPoint.x / bounds.width, 0), 1),
@@ -3294,7 +3455,10 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let palette = makePalette()
         let isDark = traitCollection.userInterfaceStyle == .dark
-        let diameter = min(max(min(bounds.width, bounds.height) * 0.92, 132), 196)
+        let isAdaptiveFullScreen = storedAccentMode == .fullScreen
+        let diameter = isAdaptiveFullScreen
+            ? min(max(min(bounds.width, bounds.height) * 1.18, 168), 244)
+            : min(max(min(bounds.width, bounds.height) * 0.92, 132), 196)
         let pulse = CAGradientLayer()
         pulse.type = .radial
         pulse.startPoint = CGPoint(x: 0.5, y: 0.5)
@@ -3317,12 +3481,16 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
 
         let pulseDuration = PPHeroApexMotionTokens.tapPulseDuration
         let scale = CAKeyframeAnimation(keyPath: "transform.scale")
-        scale.values = [0.34, 0.74, 1.04, 1.18]
+        scale.values = isAdaptiveFullScreen
+            ? [0.72, 0.90, 1.02, 1.08]
+            : [0.34, 0.74, 1.04, 1.18]
         scale.keyTimes = [0, 0.20, 0.68, 1]
         scale.duration = pulseDuration
 
         let opacity = CAKeyframeAnimation(keyPath: "opacity")
-        opacity.values = [0, 0.30, 0.12, 0]
+        opacity.values = isAdaptiveFullScreen
+            ? [0, 0.16, 0.055, 0]
+            : [0, 0.30, 0.12, 0]
         opacity.keyTimes = [0, 0.14, 0.58, 1]
         opacity.duration = pulseDuration
 
@@ -3559,8 +3727,17 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         if storedAccentMode.isBaseBackground {
-            reactiveLightLayer.opacity = reduced ? 0.42 : 0.50
-            prismLayer.opacity = reduced ? 0.26 : 0.32
+            reactiveLightLayer.opacity = reduced ? 0.46 : 0.56
+            prismLayer.opacity = reduced ? 0.30 : 0.38
+        } else if storedAccentMode == .fullScreen {
+            reactiveLightLayer.opacity = reduced ? 0.44 : 0.58
+            prismLayer.opacity = reduced ? 0.48 : 0.76
+            if reduced {
+                for (index, opacity) in fullScreenReducedAuroraOpacities.enumerated()
+                    where auroraLayers.indices.contains(index) {
+                    auroraLayers[index].opacity = opacity
+                }
+            }
         } else {
             reactiveLightLayer.opacity = reduced ? 0.48 : 0.58
             prismLayer.opacity = reduced ? 0.62 : 0.76
@@ -3574,8 +3751,14 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     private func restoreFullMotionModelState() {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        reactiveLightLayer.opacity = storedAccentMode.isBaseBackground ? 0.54 : 0.64
-        prismLayer.opacity = storedAccentMode.isBaseBackground ? 0.32 : 1
+        reactiveLightLayer.opacity = storedAccentMode.isBaseBackground ? 0.60 : 0.64
+        prismLayer.opacity = storedAccentMode.isBaseBackground ? 0.40 : 1
+        if storedAccentMode == .fullScreen {
+            for (index, spec) in activeAuroraSpecs.enumerated()
+                where auroraLayers.indices.contains(index) {
+                auroraLayers[index].opacity = spec.opacityRange.upperBound
+            }
+        }
         signatureSweepLayer.opacity = 0
         CATransaction.commit()
         applyAccentMode(animated: false)
@@ -3665,7 +3848,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     // MARK: - Deterministic art direction
 
     private var defaultReactiveLightCenter: CGPoint {
-        CGPoint(x: 0.84, y: 0.10)
+        storedAccentMode.isBaseBackground
+            ? CGPoint(x: 0.18, y: 0.18)
+            : CGPoint(x: 0.84, y: 0.10)
     }
 
     private var resolvedReactiveLightCenter: CGPoint {
@@ -3694,54 +3879,94 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         )
     }
 
+    private var fullScreenReducedAuroraOpacities: [Float] {
+        [0.70, 0.64, 0.56]
+    }
+
     /// BB Base Background keeps each oversized radial field within its own
     /// region. The eye reads changing light temperature, not a blob or band
     /// travelling from one edge of the screen to the other.
+    private var baseBackgroundAuroraLayoutSpecs: [AuroraSpec] {
+        [
+            AuroraSpec(
+                center: CGPoint(x: 0.14, y: 0.12),
+                size: CGSize(width: 1.22, height: 1.05),
+                travel: CGSize(width: 7, height: 6),
+                scaleRange: 1.010...1.045,
+                opacityRange: 0.46...0.62,
+                duration: 74.0,
+                phase: 9.2
+            ),
+            AuroraSpec(
+                center: CGPoint(x: 0.88, y: 0.90),
+                size: CGSize(width: 1.18, height: 1.08),
+                travel: CGSize(width: 8, height: 7),
+                scaleRange: 1.006...1.038,
+                opacityRange: 0.40...0.56,
+                duration: 91.0,
+                phase: 18.4
+            ),
+            AuroraSpec(
+                center: CGPoint(x: 0.52, y: 0.48),
+                size: CGSize(width: 1.02, height: 1.26),
+                travel: CGSize(width: 6, height: 5),
+                scaleRange: 0.998...1.032,
+                opacityRange: 0.34...0.50,
+                duration: 104.0,
+                phase: 31.1
+            )
+        ]
+    }
+
+    private var activeAuroraSpecs: [AuroraSpec] {
+        storedAccentMode.isBaseBackground ? baseBackgroundAuroraLayoutSpecs : auroraSpecs
+    }
+
     private var baseBackgroundAuroraMotionSpecs: [FullScreenAuroraMotionSpec] {
         [
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.18, y: 0.14),
-                    CGPoint(x: 0.30, y: 0.22),
-                    CGPoint(x: 0.26, y: 0.36),
-                    CGPoint(x: 0.12, y: 0.30),
-                    CGPoint(x: 0.10, y: 0.18),
-                    CGPoint(x: 0.18, y: 0.14)
+                    CGPoint(x: 0.10, y: 0.08),
+                    CGPoint(x: 0.24, y: 0.16),
+                    CGPoint(x: 0.32, y: 0.31),
+                    CGPoint(x: 0.18, y: 0.38),
+                    CGPoint(x: 0.06, y: 0.22),
+                    CGPoint(x: 0.10, y: 0.08)
                 ],
-                scales: [1.04, 1.075, 1.05, 1.085, 1.055, 1.04],
-                opacities: [0.54, 0.66, 0.60, 0.68, 0.58, 0.54],
+                scales: [1.02, 1.065, 1.035, 1.075, 1.045, 1.02],
+                opacities: [0.46, 0.62, 0.54, 0.64, 0.52, 0.46],
                 keyTimes: [0, 0.20, 0.43, 0.65, 0.83, 1],
-                duration: 83.9,
+                duration: 76.0,
                 phase: 11.3
             ),
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.82, y: 0.86),
-                    CGPoint(x: 0.70, y: 0.76),
-                    CGPoint(x: 0.74, y: 0.60),
-                    CGPoint(x: 0.88, y: 0.66),
-                    CGPoint(x: 0.90, y: 0.80),
-                    CGPoint(x: 0.82, y: 0.86)
+                    CGPoint(x: 0.88, y: 0.92),
+                    CGPoint(x: 0.74, y: 0.82),
+                    CGPoint(x: 0.66, y: 0.64),
+                    CGPoint(x: 0.84, y: 0.58),
+                    CGPoint(x: 0.94, y: 0.78),
+                    CGPoint(x: 0.88, y: 0.92)
                 ],
-                scales: [1.06, 1.025, 1.08, 1.04, 1.075, 1.06],
-                opacities: [0.50, 0.64, 0.56, 0.66, 0.55, 0.50],
+                scales: [1.035, 1.01, 1.065, 1.025, 1.055, 1.035],
+                opacities: [0.40, 0.56, 0.48, 0.58, 0.46, 0.40],
                 keyTimes: [0, 0.18, 0.41, 0.64, 0.84, 1],
-                duration: 97.7,
+                duration: 93.0,
                 phase: 23.1
             ),
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.50, y: 0.48),
-                    CGPoint(x: 0.60, y: 0.40),
-                    CGPoint(x: 0.58, y: 0.56),
-                    CGPoint(x: 0.44, y: 0.60),
-                    CGPoint(x: 0.40, y: 0.44),
-                    CGPoint(x: 0.50, y: 0.48)
+                    CGPoint(x: 0.48, y: 0.44),
+                    CGPoint(x: 0.60, y: 0.38),
+                    CGPoint(x: 0.64, y: 0.54),
+                    CGPoint(x: 0.44, y: 0.62),
+                    CGPoint(x: 0.36, y: 0.48),
+                    CGPoint(x: 0.48, y: 0.44)
                 ],
-                scales: [0.99, 1.035, 1.01, 1.045, 1.02, 0.99],
-                opacities: [0.46, 0.58, 0.64, 0.52, 0.60, 0.46],
+                scales: [0.995, 1.035, 1.01, 1.045, 1.018, 0.995],
+                opacities: [0.34, 0.48, 0.54, 0.44, 0.50, 0.34],
                 keyTimes: [0, 0.22, 0.45, 0.66, 0.85, 1],
-                duration: 109.3,
+                duration: 108.0,
                 phase: 37.4
             )
         ]
@@ -3751,48 +3976,48 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
         [
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.90, y: -0.08),
-                    CGPoint(x: 0.58, y: 0.16),
-                    CGPoint(x: 0.16, y: 0.10),
-                    CGPoint(x: 0.34, y: 0.54),
-                    CGPoint(x: 0.76, y: 0.36),
-                    CGPoint(x: 0.90, y: -0.08)
+                    CGPoint(x: 0.90, y: -0.06),
+                    CGPoint(x: 0.76, y: 0.06),
+                    CGPoint(x: 0.64, y: 0.22),
+                    CGPoint(x: 0.74, y: 0.38),
+                    CGPoint(x: 0.90, y: 0.22),
+                    CGPoint(x: 0.90, y: -0.06)
                 ],
-                scales: [1.03, 0.96, 1.07, 0.99, 1.05, 1.03],
-                opacities: [0.68, 0.84, 0.64, 0.78, 0.70, 0.68],
-                keyTimes: [0, 0.20, 0.42, 0.64, 0.82, 1],
-                duration: 41.9,
-                phase: 2.4
+                scales: [1.015, 1.030, 1.045, 1.028, 1.040, 1.015],
+                opacities: [0.66, 0.74, 0.78, 0.71, 0.76, 0.66],
+                keyTimes: [0, 0.19, 0.41, 0.64, 0.83, 1],
+                duration: 83.7,
+                phase: 7.3
             ),
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.10, y: 1.06),
-                    CGPoint(x: 0.34, y: 0.70),
-                    CGPoint(x: 0.82, y: 0.88),
-                    CGPoint(x: 0.66, y: 0.40),
-                    CGPoint(x: 0.24, y: 0.58),
-                    CGPoint(x: 0.10, y: 1.06)
+                    CGPoint(x: 0.10, y: 1.04),
+                    CGPoint(x: 0.24, y: 0.90),
+                    CGPoint(x: 0.40, y: 0.78),
+                    CGPoint(x: 0.52, y: 0.88),
+                    CGPoint(x: 0.30, y: 1.02),
+                    CGPoint(x: 0.10, y: 1.04)
                 ],
-                scales: [1.06, 0.97, 1.04, 0.95, 1.07, 1.06],
-                opacities: [0.62, 0.80, 0.68, 0.77, 0.60, 0.62],
-                keyTimes: [0, 0.18, 0.40, 0.62, 0.82, 1],
-                duration: 53.3,
-                phase: 7.1
+                scales: [1.020, 1.005, 1.035, 1.018, 1.040, 1.020],
+                opacities: [0.60, 0.68, 0.72, 0.66, 0.70, 0.60],
+                keyTimes: [0, 0.18, 0.40, 0.63, 0.84, 1],
+                duration: 103.1,
+                phase: 31.7
             ),
             FullScreenAuroraMotionSpec(
                 normalizedPositions: [
-                    CGPoint(x: 0.50, y: 0.50),
-                    CGPoint(x: 0.80, y: 0.24),
-                    CGPoint(x: 0.22, y: 0.34),
-                    CGPoint(x: 0.72, y: 0.76),
-                    CGPoint(x: 0.30, y: 0.82),
-                    CGPoint(x: 0.50, y: 0.50)
+                    CGPoint(x: 0.50, y: 0.48),
+                    CGPoint(x: 0.62, y: 0.40),
+                    CGPoint(x: 0.68, y: 0.54),
+                    CGPoint(x: 0.56, y: 0.66),
+                    CGPoint(x: 0.40, y: 0.60),
+                    CGPoint(x: 0.50, y: 0.48)
                 ],
-                scales: [0.98, 1.06, 0.96, 1.05, 0.99, 0.98],
-                opacities: [0.56, 0.74, 0.82, 0.62, 0.76, 0.56],
-                keyTimes: [0, 0.22, 0.44, 0.66, 0.84, 1],
-                duration: 67.7,
-                phase: 12.8
+                scales: [1.000, 1.022, 1.012, 1.032, 1.018, 1.000],
+                opacities: [0.54, 0.61, 0.66, 0.60, 0.64, 0.54],
+                keyTimes: [0, 0.21, 0.43, 0.65, 0.85, 1],
+                duration: 127.9,
+                phase: 57.2
             )
         ]
     }
@@ -3803,9 +4028,9 @@ public final class PPHeroApexView: UIView, UIGestureRecognizerDelegate {
     ) -> [UIColor] {
         let routes = storedAccentMode.isBaseBackground
             ? [
-                [0, 1, 2, 0, 1, 0],
-                [5, 3, 4, 5, 3, 5],
-                [6, 4, 2, 6, 1, 6]
+                [0, 1, 4, 2, 1, 0],
+                [5, 3, 6, 4, 3, 5],
+                [6, 2, 1, 6, 3, 6]
             ]
             : [
                 [0, 1, 4, 2, 3, 0],

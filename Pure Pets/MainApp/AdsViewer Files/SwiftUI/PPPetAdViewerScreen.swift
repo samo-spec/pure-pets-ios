@@ -21,6 +21,7 @@ struct PPPetAdViewerScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @State private var isNavigationCollapsed = false
     @State private var hasAppeared = false
     @State private var contactDockHeight: CGFloat = 0
@@ -266,6 +267,7 @@ struct PPPetAdViewerScreen: View {
             primaryDetailsContent
 
             PPPetAdRelatedSection(
+                kind: .pets,
                 title: PPPetAdLocalization.text(
                     "Similar Ads",
                     fallback: "Similar pets"
@@ -286,6 +288,7 @@ struct PPPetAdViewerScreen: View {
             )
 
             PPPetAdRelatedSection(
+                kind: .accessories,
                 title: PPPetAdLocalization.text(
                     "Similar Accessories",
                     fallback: "Related accessories"
@@ -317,10 +320,20 @@ struct PPPetAdViewerScreen: View {
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
-        .background(PPPetAdViewerStyle.sheetBackground, in: detailsSheetShape)
+        .background(PPPetAdViewerStyle.sheetBackground)
         .clipShape(detailsSheetShape)
+        .overlay(alignment: .top) {
+            detailsSheetShape
+                .strokeBorder(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 1 : 0.52
+                    ),
+                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
+                )
+                .accessibilityHidden(true)
+        }
         .shadow(
-            color: Color.black.opacity(0.06),
+            color: Color.black.opacity(0.05),
             radius: 12,
             x: 0,
             y: -3
@@ -350,7 +363,7 @@ struct PPPetAdViewerScreen: View {
                 ad: store.snapshot.ad
             )
             .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.top, PPPetAdViewerStyle.contentTopPadding)
+            .padding(.top, PPSpace.xl)
             .ppPetAdEntrance(
                 isPresented: hasAppeared,
                 delayIndex: 0
@@ -384,9 +397,17 @@ struct PPPetAdViewerScreen: View {
         .frame(maxWidth: .infinity)
         .background(Color.clear)
         .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.ppSeparator.opacity(0.72))
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.ppSeparator.opacity(0.86),
+                    Color.clear
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
                 .frame(height: PPPetAdViewerStyle.hairlineWidth)
+                .padding(.horizontal, PPSpace.screenMargin)
                 .accessibilityHidden(true)
         }
     }

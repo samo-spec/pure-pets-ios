@@ -15,8 +15,27 @@ struct PPPetAdHeroGallery: View {
     private let thumbnailSize: CGFloat = 44
     private let thumbnailRailInset: CGFloat = 10
 
+    private var compactGallery: Bool {
+        UIScreen.main.bounds.width < 700
+    }
+
+    private var galleryShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: compactGallery ? 28 : 34,
+            style: .continuous
+        )
+    }
+
     private var expandedChromeOpacity: CGFloat {
         max(0, 1 - (scrollState.collapseProgress * 1.7))
+    }
+
+    private var topBarClearance: CGFloat {
+        let keyWindow = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.windows.first(where: \.isKeyWindow) }
+            .first
+        let safeTop = keyWindow?.safeAreaInsets.top ?? 47.0
+        return safeTop + (compactGallery ? 70 : 80)
     }
 
     var body: some View {
@@ -42,7 +61,7 @@ struct PPPetAdHeroGallery: View {
                 case .thumbRails:
                     thumbnailFooter
                         .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.bottom, 14)
+                        .padding(.bottom, 36)
                         .opacity(expandedChromeOpacity)
                         .scaleEffect(
                             reduceMotion
@@ -58,9 +77,9 @@ struct PPPetAdHeroGallery: View {
                 }
             }
         }
-        .background(Color.clear)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea(edges: .top)
-        .clipped()
+        .background(Color.clear)
         .onChange(of: selection) { value in
             guard items.indices.contains(value) else { return }
             UISelectionFeedbackGenerator().selectionChanged()
@@ -98,7 +117,7 @@ struct PPPetAdHeroGallery: View {
         _ item: PPPetAdMediaItem,
         index: Int
     ) -> some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .center) {
             PPPetAdHeroImageView(
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
@@ -112,7 +131,7 @@ struct PPPetAdHeroGallery: View {
                 videoPlayIndicator
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .contentShape(Rectangle())
         .onTapGesture {
             onOpen(index)

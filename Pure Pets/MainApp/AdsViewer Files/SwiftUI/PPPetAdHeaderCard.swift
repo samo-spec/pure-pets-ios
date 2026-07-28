@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - PPPetAdDetailsSummary
+// MARK: - PPPetAdDetailsSummary (Consumer)
 
 @available(iOS 16.0, *)
 struct PPPetAdDetailsSummary: View {
@@ -18,12 +18,16 @@ struct PPPetAdDetailsSummary: View {
                 title: title,
                 location: location,
                 price: price,
-                postedDate: ad?.postedDate,
-                showsFactsConnector: hasFacts
+                postedDate: ad?.postedDate
             )
 
             if hasFacts {
+                PPPetAdFadingDivider(axis: .horizontal)
+                    .frame(height: PPPetAdViewerStyle.hairlineWidth)
+                    .padding(.top, PPSpace.lg)
+
                 PPPetAdInfoGrid(type: type, age: age, gender: gender)
+                    .padding(.top, PPSpace.xs)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -43,85 +47,42 @@ struct PPPetAdHeaderCard: View {
     let location: String
     let price: String
     var postedDate: Date? = nil
-    var showsFactsConnector = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            adaptiveHeader
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            identityBlock
 
             if showsLocationBridge {
                 PPPetAdLocationBridge(
                     location: location,
-                    freshness: freshnessText,
-                    continuesToFacts: showsFactsConnector
+                    freshness: freshnessText
                 )
-                .padding(.vertical, PPSpace.lg)
-                .accessibilitySortPriority(1)
-            } else if showsFactsConnector {
-                PPPetAdFadingDivider(axis: .horizontal)
-                    .padding(.vertical, PPSpace.lg)
-                    .accessibilityHidden(true)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
     }
 
-    private var adaptiveHeader: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            identityView
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private var identityView: some View {
+    private var identityBlock: some View {
         VStack(alignment: .leading, spacing: PPSpace.xs) {
             Text(petNameLabel)
                 .font(PPPetAdTypography.footnoteBold)
                 .foregroundStyle(Color.ppPrimary)
                 .accessibilityHidden(true)
 
-            titlePriceRow
+            titleText
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !price.isEmpty {
+                PPPetAdPriceView(price: price)
+                    .padding(.top, PPSpace.xs)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilitySortPriority(2)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilitySortPriority(3)
-    }
-
-    @ViewBuilder
-    private var titlePriceRow: some View {
-        if price.isEmpty {
-            titleText
-                .frame(maxWidth: .infinity, alignment: .leading)
-        } else if dynamicTypeSize.isAccessibilitySize {
-            stackedTitlePriceRow
-        } else {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .center, spacing: PPSpace.md) {
-                    titleText
-                        .layoutPriority(1)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    PPPetAdPriceView(price: price)
-                        .fixedSize(horizontal: true, vertical: true)
-                        .accessibilitySortPriority(2)
-                }
-
-                stackedTitlePriceRow
-            }
-        }
-    }
-
-    private var stackedTitlePriceRow: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            titleText
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            PPPetAdPriceView(price: price)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .accessibilitySortPriority(2)
-        }
     }
 
     private var titleText: some View {
@@ -135,6 +96,8 @@ struct PPPetAdHeaderCard: View {
             .accessibilityLabel("\(petNameLabel): \(displayTitle)")
             .accessibilityAddTraits(.isHeader)
     }
+
+    // MARK: - Computed Properties
 
     private var showsLocationBridge: Bool {
         !location.isEmpty || freshnessText != nil
@@ -166,6 +129,7 @@ struct PPPetAdHeaderCard: View {
         ).day ?? Int.max
 
         guard days >= 0, days <= 7 else { return nil }
+
         if days == 0 {
             return PPPetAdLocalization.text(
                 "pet_ad_viewer_freshness_today",
@@ -187,7 +151,7 @@ struct PPPetAdHeaderCard: View {
     }
 }
 
-// MARK: - Price
+// MARK: - Price View
 
 @available(iOS 16.0, *)
 private struct PPPetAdPriceView: View {
@@ -200,12 +164,12 @@ private struct PPPetAdPriceView: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: PPSpace.xs) {
             Text(verbatim: "\u{2068}\(presentation.amount)\u{2069}")
-                .font(PPPetAdTypography.dominantPrice)
+                .font(PPPetAdTypography.price)
                 .foregroundStyle(Color.ppPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.72)
                 .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.trailing)
+                .multilineTextAlignment(.leading)
 
             if !presentation.currency.isEmpty {
                 Text(verbatim: "\u{2068}\(presentation.currency)\u{2069}")
@@ -257,16 +221,14 @@ private struct PPPetAdPricePresentation {
     }
 }
 
-// MARK: - Location bridge
+// MARK: - Location Bridge
 
 @available(iOS 16.0, *)
 private struct PPPetAdLocationBridge: View {
     let location: String
     let freshness: String?
-    let continuesToFacts: Bool
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         Group {
@@ -281,22 +243,24 @@ private struct PPPetAdLocationBridge: View {
     }
 
     private var compactLayout: some View {
-        HStack(spacing: PPSpace.sm) {
-            bridgeSeparator
-                .frame(minWidth: PPSpace.xl)
-
+        HStack(alignment: .center, spacing: PPSpace.md) {
             if !location.isEmpty {
                 locationContent
                     .layoutPriority(1)
             }
 
             if let freshness {
+                if !location.isEmpty {
+                    Circle()
+                        .fill(Color.ppSeparator)
+                        .frame(width: PPSpace.xs, height: PPSpace.xs)
+                        .accessibilityHidden(true)
+                }
+
                 freshnessContent(freshness)
             }
-
-            bridgeSeparator
-                .frame(minWidth: PPSpace.xl)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var accessibilityLayout: some View {
@@ -307,57 +271,21 @@ private struct PPPetAdLocationBridge: View {
             if let freshness {
                 freshnessContent(freshness)
             }
-            if continuesToFacts {
-                bridgeSeparator
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var bridgeSeparator: some View {
-        Capsule(style: .continuous)
-            .fill(
-                Color.ppPrimary.opacity(
-                    colorSchemeContrast == .increased ? 0.46 : 0.26
-                )
-            )
-            .frame(height: colorSchemeContrast == .increased ? 1.5 : 1)
-            .frame(maxWidth: .infinity)
-            .accessibilityHidden(true)
-    }
-
     private var locationContent: some View {
         HStack(alignment: .center, spacing: PPSpace.sm) {
-            ZStack {
-                Circle()
-                    .fill(
-                        Color.ppPrimary.opacity(
-                            colorSchemeContrast == .increased ? 0.24 : 0.13
-                        )
-                    )
-
-                Image(systemName: "mappin.and.ellipse")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Color.ppPrimaryDarker)
-            }
-            .frame(width: PPSpace.xxxl, height: PPSpace.xxxl)
-            .overlay {
-                Circle()
-                    .strokeBorder(
-                        Color.ppPrimary.opacity(
-                            colorSchemeContrast == .increased ? 0.58 : 0.30
-                        ),
-                        lineWidth:
-                            colorSchemeContrast == .increased
-                            ? 1.25
-                            : PPPetAdViewerStyle.hairlineWidth
-                    )
-            }
-            .accessibilityHidden(true)
+            Image(systemName: "mappin.and.ellipse")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
 
             Text(verbatim: "\u{2068}\(location)\u{2069}")
-                .font(PPPetAdTypography.subheadlineBold)
-                .foregroundStyle(Color.ppTextPrimary)
+                .font(PPPetAdTypography.subheadline)
+                .foregroundStyle(Color.ppTextSecondary)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
                 .fixedSize(horizontal: false, vertical: true)
                 .multilineTextAlignment(.leading)
@@ -397,7 +325,9 @@ private struct PPPetAdLocationBridge: View {
     }
 }
 
-// MARK: - Shared heading
+
+
+// MARK: - Section Heading (Shared)
 
 struct PPPetAdDetailSectionHeading: View {
     let title: String
@@ -419,9 +349,11 @@ struct PPPetAdDetailSectionHeading: View {
     }
 }
 
+// MARK: - Previews
+
 #if DEBUG
 @available(iOS 16.0, *)
-#Preview("Arabic RTL") {
+#Preview("Arabic RTL — Full") {
     ScrollView {
         PPPetAdDetailsSummary(
             title: "قطة شيرازية بيضاء",
@@ -438,7 +370,7 @@ struct PPPetAdDetailSectionHeading: View {
 }
 
 @available(iOS 16.0, *)
-#Preview("Long content AX5") {
+#Preview("Long Content AX5") {
     ScrollView {
         PPPetAdDetailsSummary(
             title: "قطة شيرازية بيضاء نادرة ذات اسم طويل للغاية",
@@ -452,10 +384,11 @@ struct PPPetAdDetailSectionHeading: View {
     }
     .background(Color.ppBackground)
     .dynamicTypeSize(.accessibility5)
+    .environment(\.layoutDirection, .rightToLeft)
 }
 
 @available(iOS 16.0, *)
-#Preview("Missing optional details") {
+#Preview("Missing Optional Details") {
     ScrollView {
         PPPetAdDetailsSummary(
             title: "White Persian Cat",
@@ -468,5 +401,88 @@ struct PPPetAdDetailSectionHeading: View {
         .padding(PPSpace.screenMargin)
     }
     .background(Color.ppBackground)
+}
+
+@available(iOS 16.0, *)
+#Preview("Price Only") {
+    ScrollView {
+        PPPetAdDetailsSummary(
+            title: "Kitten for Adoption",
+            location: "",
+            price: "500 QAR",
+            type: "",
+            age: "",
+            gender: ""
+        )
+        .padding(PPSpace.screenMargin)
+    }
+    .background(Color.ppBackground)
+}
+
+@available(iOS 16.0, *)
+#Preview("Location Only") {
+    ScrollView {
+        PPPetAdDetailsSummary(
+            title: "Rescue Dog",
+            location: "Al Rayyan, Qatar",
+            price: "",
+            type: "",
+            age: "",
+            gender: ""
+        )
+        .padding(PPSpace.screenMargin)
+    }
+    .background(Color.ppBackground)
+}
+
+@available(iOS 16.0, *)
+#Preview("Dark Mode") {
+    ScrollView {
+        PPPetAdDetailsSummary(
+            title: "Golden Retriever Puppy",
+            location: "Doha, Qatar",
+            price: "2,500 QAR",
+            type: "Golden Retriever",
+            age: "3 months",
+            gender: "Male"
+        )
+        .padding(PPSpace.screenMargin)
+    }
+    .background(Color.ppBackground)
+    .environment(\.colorScheme, .dark)
+}
+
+@available(iOS 16.0, *)
+#Preview("High Contrast") {
+    ScrollView {
+        PPPetAdDetailsSummary(
+            title: "Siamese Cat",
+            location: "Al Wakrah",
+            price: "800 QAR",
+            type: "Siamese",
+            age: "1 year",
+            gender: "Female"
+        )
+        .padding(PPSpace.screenMargin)
+    }
+    .background(Color.ppBackground)
+    .environment(\.colorSchemeContrast, .increased)
+}
+
+@available(iOS 16.0, *)
+#Preview("Reduce Motion") {
+    ScrollView {
+        PPPetAdDetailsSummary(
+            title: "Arabian Mau",
+            location: "Umm Salal",
+            price: "Free",
+            type: "Arabian Mau",
+            age: "2 years",
+            gender: "Male"
+        )
+        .padding(PPSpace.screenMargin)
+    }
+    .background(Color.ppBackground)
+    .environment(\.accessibilityReduceMotion, true)
 }
 #endif

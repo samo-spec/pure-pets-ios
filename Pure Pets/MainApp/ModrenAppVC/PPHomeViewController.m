@@ -2042,6 +2042,7 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     if (reduceMotion) {
         self.ambientBackgroundView.accentColorOverride = nextAccent;
+        self.ambientBackgroundView.overrideCenterGlowColor = nextAccent;
         return;
     }
 
@@ -2052,6 +2053,8 @@ static NSString * const PPHomeMiddleBackgroundGlowPeekMotionKey = @"pp.home.back
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.ambientBackgroundView.accentColorOverride = nextAccent;
+        self.ambientBackgroundView.overrideCenterGlowColor = nextAccent;
+
     }
                      completion:nil];
  }
@@ -4709,11 +4712,11 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                name:UIAccessibilityReduceMotionStatusDidChangeNotification
               object:nil];
 
-    [[NSNotificationCenter defaultCenter]
+[[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(handleHomeAccessibilityAppearanceDidChange:)
                name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
-              object:nil];
+             object:nil];
 }
 
 #pragma mark - First-Render Gate Bootstrap System
@@ -13655,7 +13658,7 @@ presentingViewController:self
             self.ambientBackgroundView.userInteractionEnabled = NO;
 
             self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
-            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;// PPHeroGlassAccentStyleBBBaseBackground;
             self.ambientBackgroundView.cornerGlowOpacityMultiplier =
                 PPHomeAmbientBackgroundAccentStrength;
             //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();

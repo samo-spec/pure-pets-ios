@@ -10,15 +10,26 @@ struct PPPetAdDescriptionCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.base) {
-            PPPetAdDetailSectionHeading(title: title)
+            storyHeading
 
-            Text(normalizedDescription)
-                .font(PPPetAdTypography.body)
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineSpacing(PPSpace.xs)
-                .lineLimit(isExpanded ? nil : 6)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
+            HStack(alignment: .top, spacing: PPSpace.md) {
+                Capsule(style: .continuous)
+                    .fill(
+                        Color.ppPrimary.opacity(
+                            colorSchemeContrast == .increased ? 0.90 : 0.48
+                        )
+                    )
+                    .frame(width: 3)
+                    .accessibilityHidden(true)
+
+                Text(normalizedDescription)
+                    .font(PPPetAdTypography.body)
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineSpacing(PPSpace.xs)
+                    .lineLimit(isExpanded ? nil : 6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
 
             if shouldOfferExpansion {
                 Button {
@@ -73,12 +84,29 @@ struct PPPetAdDescriptionCard: View {
                 )
             }
         }
-        .padding(.top, PPSpace.xxl)
+        .padding(.top, PPSpace.xxxl)
         .frame(maxWidth: .infinity, alignment: .leading)
-
         .onChange(of: description) { _ in
             isExpanded = false
         }
+    }
+
+    private var storyHeading: some View {
+        HStack(alignment: .center, spacing: PPSpace.md) {
+            Image(systemName: "text.quote")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color.ppPrimary)
+                .frame(width: 34, height: 34)
+                .background(Color.ppSoftRose, in: Circle())
+                .accessibilityHidden(true)
+
+            Text(title)
+                .font(PPPetAdTypography.title3)
+                .foregroundStyle(Color.ppTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 
     private var normalizedDescription: String {

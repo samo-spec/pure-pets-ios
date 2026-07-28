@@ -40,13 +40,13 @@ public struct PPRootBottomOverlayView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
-                    // Floating Cart Bar surface (floats neatly above tab bar)
+                    // Floating Cart Bar surface (floats neatly above tab bar when active, or near screen bottom when dock hidden)
                     if store.shouldShowCartBar {
                         PPCartFloatingBarView(state: store.cartState) {
                             store.handleCartTapped()
                         }
                         .padding(.horizontal, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + 54)
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                     
@@ -56,7 +56,7 @@ public struct PPRootBottomOverlayView: View {
                             store.handleNovaTapped()
                         }
                         .padding(.trailing, 16)
-                        .padding(.bottom, proxy.safeAreaInsets.bottom + 54)
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + (store.shouldShowDock ? 54 : 12))
                         .transition(.scale.combined(with: .opacity))
                     }
                 }

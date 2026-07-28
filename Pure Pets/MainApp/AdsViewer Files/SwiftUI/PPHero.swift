@@ -105,6 +105,10 @@ struct PPHeroApexGlowCornerSurface: View {
     var cornerRadius: CGFloat = PPCorner.hero
     var accentStyle: PPHeroGlassAccentStyle = .cornerGlow
     var solidColor: UIColor? = nil
+    var surfaceColor: UIColor? = nil
+    var topColor: UIColor? = nil
+    var middleColor: UIColor? = nil
+    var bottomColor: UIColor? = nil
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
@@ -123,6 +127,10 @@ struct PPHeroApexGlowCornerSurface: View {
             accentStyle: accentStyle,
             useShimmer: false,
             useUnderFingerMotion: false,
+            surfaceColor: surfaceColor,
+            topColor: topColor,
+            middleColor: middleColor,
+            bottomColor: bottomColor,
             solidColor: solidColor
         )
         .clipShape(shape)

@@ -20,3 +20,4 @@
 #import "PPBackgroundView.h"
 #import "PetImageGalleryView.h"
 #import "PPColorUtils.h"
+#import "ServiceModel.h"

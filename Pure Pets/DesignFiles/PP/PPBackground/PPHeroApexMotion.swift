@@ -153,6 +153,12 @@ enum PPHeroApexMotionTokens {
     static let overlayEntranceDuration: TimeInterval = 0.34
     static let overlayEntranceDelay: TimeInterval = 0.045
 
+    // Full Screen enters as a field coming into focus. Its smaller transform
+    // and longer resolve avoid a page-wide zoom behind already-readable copy.
+    static let fullScreenEntranceDuration: TimeInterval = 0.62
+    static let fullScreenEntranceScale: CGFloat = 1.004
+    static let fullScreenEntranceTranslationY: CGFloat = 2
+
     // Optical state changes use one family of curves, so accent, palette and
     // interaction updates feel authored by the same motion system.
     static let accentTransitionDuration: CFTimeInterval = 0.30
@@ -166,24 +172,30 @@ enum PPHeroApexMotionTokens {
     static let fieldDriftCycleDuration: CFTimeInterval = 52
     static let reactiveLightCycleDuration: CFTimeInterval = 18.4
     static let signatureSweepCycleDuration: CFTimeInterval = 12.8
-    static let fullScreenSurfaceCycleDuration: CFTimeInterval = 52.7
-    static let fullScreenPrismCycleDuration: CFTimeInterval = 61.3
+    static let fullScreenFieldCycleDuration: CFTimeInterval = 93.1
+    static let fullScreenSurfaceCycleDuration: CFTimeInterval = 107.3
+    static let fullScreenPrismCycleDuration: CFTimeInterval = 119.9
+    static let fullScreenReactiveLightCycleDuration: CFTimeInterval = 47.3
+    static let fullScreenParticleBaseCycleDuration: CFTimeInterval = 59.9
+    static let fullScreenParticleCycleStep: CFTimeInterval = 11.2
     static let compactPrismCycleDuration: CFTimeInterval = 73.1
     static let particleBaseCycleDuration: CFTimeInterval = 27.4
     static let particleCycleStep: CFTimeInterval = 5.1
     static let fingerPresenceCycleDuration: CFTimeInterval = 1.72
 
-    // BB Base Background never sends a sweep or a dark tonal edge across the
-    // screen. Its opaque base stays still while oversized radial light fields
-    // reform slowly above it.
-    static let baseBackgroundFieldCycleDuration: CFTimeInterval = 89.0
-    static let baseBackgroundPrismCycleDuration: CFTimeInterval = 113.0
-    static let baseBackgroundReactiveLightCycleDuration: CFTimeInterval = 37.0
+    // BB Base Background is the long-lived canvas behind many screens. Its
+    // care fields should feel alive on ProMotion hardware without reading as a
+    // moving decoration or reducing text stability.
+    static let baseBackgroundFieldCycleDuration: CFTimeInterval = 76.0
+    static let baseBackgroundPrismCycleDuration: CFTimeInterval = 96.0
+    static let baseBackgroundReactiveLightCycleDuration: CFTimeInterval = 31.0
 
     static let entranceScale: CGFloat = 1.009
     static let entranceTranslationY: CGFloat = 5
     static let horizontalParallax: CGFloat = 1.8
     static let verticalParallax: CGFloat = 1.3
+    static let fullScreenHorizontalParallax: CGFloat = 1.1
+    static let fullScreenVerticalParallax: CGFloat = 0.8
 
     // Direct manipulation remains intentionally microscopic. These values are
     // large enough to be felt at 120 Hz without bending copy or controls.
@@ -198,6 +210,7 @@ enum PPHeroApexMotionTokens {
     static let touchLensActiveAlpha: CGFloat = 0.44
     static let touchVelocityForMaximumBloom: CGFloat = 2_100
     static let touchSmoothingResponse: CGFloat = 0.265
+    static let fullScreenTouchResponseIntensity: CGFloat = 0.72
 
     static let tapMaximumDuration: TimeInterval = 0.30
     static let tapMaximumTravel: CGFloat = 12

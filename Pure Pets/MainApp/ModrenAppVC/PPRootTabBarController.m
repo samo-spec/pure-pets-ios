@@ -61,11 +61,15 @@ static NSString * const PPNovaFloatingVisibleDefaultsKey = @"pp_nova_floating_vi
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 static CGFloat const PPCartFloatingBarHeight = 60.0;
-static CGFloat const PPCartFloatingBarRestingBottomConstant = -24.0;
+static CGFloat const PPCartFloatingBarRestingBottomConstant = -12.0;
 static CGFloat const PPCartFloatingBarHiddenBottomConstant = 140.0;
 static CGFloat const PPCartFloatingBarClearancePadding = 12.0;
 static CGFloat const PPPremiumDockBottomInset = 18.0;
-static BOOL const PPShowsRootCenterAddButton = NO;
+static BOOL const PPShowsRootCenterAddButton = YES;
+static CGFloat const PPRootTabSelectionMarkerPhoneWidth = 22.0;
+static CGFloat const PPRootTabSelectionMarkerPadWidth = 26.0;
+static CGFloat const PPRootTabSelectionMarkerHeight = 3.0;
+static CGFloat const PPRootCenterActionSize = PPButtonHeightMD;
 
 @class PPPremiumDockBarDelegate;
 @class PPCartFloatingBarCoordinator;
@@ -94,6 +98,7 @@ static BOOL const PPShowsRootCenterAddButton = NO;
 @property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
 @property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
 @property (nonatomic, assign) BOOL rootTabBarTitleLayoutRefreshScheduled;
+@property (nonatomic, strong, nullable) UIView *rootTabSelectionMarker;
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
 @property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
 @property (nonatomic, assign) CGFloat premiumDockAppliedItemWidth;
@@ -117,6 +122,9 @@ static BOOL const PPShowsRootCenterAddButton = NO;
 - (void)pp_refreshRootTabBarTitleLayout;
 - (void)pp_scheduleRootTabBarTitleLayoutRefresh;
 - (void)configureAppearance;
+- (UIFont *)pp_rootTabBarTitleFontSelected:(BOOL)selected;
+- (void)pp_setupRootTabSelectionMarkerIfNeeded;
+- (void)pp_updateRootTabSelectionMarkerAnimated:(BOOL)animated;
 - (nullable UILabel *)pp_tabBarTitleLabelForItem:(UITabBarItem *)item;
 - (nullable UILabel *)pp_titleLabelInView:(UIView *)view matchingTitle:(NSString *)title;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
@@ -141,6 +149,8 @@ static BOOL const PPShowsRootCenterAddButton = NO;
 - (void)pp_refreshGuestProfileAnimationAfterSelection;
 - (void)pp_handleProfileAuthenticationChange:(NSNotification *)notification;
 - (void)pp_handleReduceMotionStatusChange:(NSNotification *)notification;
+- (void)pp_handleReduceTransparencyStatusChange:(NSNotification *)notification;
+- (void)pp_handleRootTabContentSizeCategoryChange:(NSNotification *)notification;
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
 - (void)pp_animatePremiumBottomNavigationEntranceIfNeeded;
 - (void)pp_premiumControlTouchDown:(UIButton *)sender;
@@ -205,6 +215,13 @@ static BOOL const PPShowsRootCenterAddButton = NO;
     }
 }
 
+- (CGSize)sizeThatFits:(CGSize)size
+{
+    CGSize fitSize = [super sizeThatFits:size];
+    fitSize.height += 8.0;
+    return fitSize;
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
@@ -224,17 +241,15 @@ static BOOL const PPShowsRootCenterAddButton = NO;
             continue;
         }
 
-        titleLabel.font = self.pp_titleFont ?: titleLabel.font;
+        UIFont *upgradedFont = self.pp_titleFont ?: [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        titleLabel.font = upgradedFont;
         titleLabel.numberOfLines = 1;
         titleLabel.textAlignment = NSTextAlignmentCenter;
         titleLabel.adjustsFontSizeToFitWidth = YES;
-        titleLabel.minimumScaleFactor = 0.82;
+        titleLabel.minimumScaleFactor = 0.55;
         titleLabel.allowsDefaultTighteningForTruncation = YES;
 
-        // UIKit can preserve a launch-time label width calculated before the
-        // dock's constraints settle. Expand only the title's horizontal frame
-        // inside its own item while preserving UIKit's vertical placement.
-        CGFloat availableWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - 8.0);
+        CGFloat availableWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - 2.0);
         CGRect labelFrameInItem = [itemView convertRect:titleLabel.frame
                                                fromView:titleLabel.superview];
         labelFrameInItem.origin.x = (CGRectGetWidth(itemView.bounds) - availableWidth) * 0.5;
@@ -263,6 +278,10 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
 
 @implementation PPBottomFadeView
 + (Class)layerClass { return [CAGradientLayer class]; }
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    return nil;
+}
 @end
 
 static NSString *PPCartFloatingBarCountText(NSInteger itemCount)
@@ -1112,7 +1131,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
         void (^showChanges)(void) = ^{
             fadeView.alpha = 1.0;
-            self.floatingBarBottomConstraint.constant = PPCartFloatingBarRestingBottomConstant;
+            CGFloat safeBottom = host.view.safeAreaInsets.bottom;
+            self.floatingBarBottomConstraint.constant = -(safeBottom + 12.0);
             barView.alpha = 1.0;
             barView.transform = CGAffineTransformIdentity;
             [host.view layoutIfNeeded];
@@ -1369,6 +1389,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
     [self pp_refreshGuestProfileAnimationAfterSelection];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
@@ -1407,7 +1428,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     cartNav.tabBarItem.selectedImage = [self pp_profileTabItemImageSelected:YES];
    
     
-    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"messagenotfill" selectedImage:@"message.badge.waveform.fill"];
+    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"chatsTitle")   icon:@"bubble.left.and.bubble.right" selectedImage:@"bubble.left.and.bubble.right.fill"];
 
     notiNav.tabBarItem.accessibilityHint =
         NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
@@ -1561,6 +1582,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         addObserver:self
            selector:@selector(pp_handleReduceMotionStatusChange:)
                name:UIAccessibilityReduceMotionStatusDidChangeNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleReduceTransparencyStatusChange:)
+               name:UIAccessibilityReduceTransparencyStatusDidChangeNotification
+             object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleRootTabContentSizeCategoryChange:)
+               name:UIContentSizeCategoryDidChangeNotification
              object:nil];
     [[NSNotificationCenter defaultCenter]
         addObserver:self
@@ -1857,6 +1888,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     }
     [self pp_refreshRootTabBarTitleLayout];
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
     [self pp_scheduleRootTabBarTitleLayoutRefresh];
 }
 
@@ -1864,11 +1896,17 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        BOOL colorAppearanceChanged =
+            [self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection];
+        BOOL contrastChanged =
+            self.traitCollection.accessibilityContrast != previousTraitCollection.accessibilityContrast;
+        if (colorAppearanceChanged || contrastChanged) {
             self.premiumDockAppliedItemWidth = 0.0;
+            [self configureAppearance];
             [self pp_updatePremiumBottomFadeAppearance];
             [self pp_applyGuestProfileAnimationTint];
             [self pp_updateTabBarSelectionIndicatorIfNeeded];
+            [self pp_updateRootTabSelectionMarkerAnimated:NO];
             [self.cartFloatingBarCoordinator hostViewDidLayoutSubviews];
         }
     }
@@ -2528,10 +2566,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     item.imageInsets = centerAction
         ? UIEdgeInsetsMake(-1.0, 0.0, 1.0, 0.0)
-        : UIEdgeInsetsMake(1.0, 0.0, -1.0, 0.0);
+        : UIEdgeInsetsMake(0.5, 0.0, -0.5, 0.0);
     item.titlePositionAdjustment = centerAction
         ? UIOffsetMake(0.0, -1.0)
-        : UIOffsetMake(0.0, 1.5);
+        : UIOffsetMake(0.0, 1.0);
 
     if (@available(iOS 13.0, *)) {
         BOOL preservesOriginalArtwork =
@@ -2541,7 +2579,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             return;
         }
         UIImageSymbolConfiguration *symbolConfiguration =
-            [UIImageSymbolConfiguration configurationWithPointSize:centerAction ? 21.0 : 18.0
+            [UIImageSymbolConfiguration configurationWithPointSize:centerAction ? 21.0 : 19.0
                                                          weight:centerAction ? UIImageSymbolWeightSemibold : UIImageSymbolWeightMedium
                                                           scale:UIImageSymbolScaleMedium];
         item.image = [[item.image imageWithConfiguration:symbolConfiguration]
@@ -2551,20 +2589,38 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     }
 }
 
-// Floating background (emulates iOS 26 look)
+- (UIFont *)pp_rootTabBarTitleFontSelected:(BOOL)selected
+{
+    CGFloat pointSize = selected ? PPFontCaption1 : PPFontCaption2;
+    UIFont *baseFont = selected
+        ? ([GM boldFontWithSize:pointSize] ?: [UIFont systemFontOfSize:pointSize weight:UIFontWeightSemibold])
+        : ([GM MidFontWithSize:pointSize] ?: [UIFont systemFontOfSize:pointSize weight:UIFontWeightMedium]);
+    if (@available(iOS 11.0, *)) {
+        UIFontMetrics *metrics = [UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2];
+        return [metrics scaledFontForFont:baseFont maximumPointSize:(selected ? PPFontFootnote : PPFontCaption1)];
+    }
+    return baseFont;
+}
+
 - (void)pp_configureFloatingBackgroundForAppearance:(UITabBarAppearance *)appearance {
+    UIColor *glassTint = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    if (UIAccessibilityIsReduceTransparencyEnabled()) {
+        [appearance configureWithOpaqueBackground];
+        appearance.backgroundEffect = nil;
+        appearance.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.98];
+        return;
+    }
+
     if (@available(iOS 26.0, *)) {
         [appearance configureWithTransparentBackground];
         appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        appearance.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.08];
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        appearance.backgroundColor = [glassTint colorWithAlphaComponent:0.18];
     } else if (@available(iOS 13.0, *)) {
         [appearance configureWithDefaultBackground];
         appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-        appearance.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.82];
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        appearance.backgroundColor = [glassTint colorWithAlphaComponent:0.62];
     } else {
         appearance.backgroundImage = [UIImage new];
         appearance.shadowImage = [UIImage new];
@@ -2572,15 +2628,15 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 }
 
 - (void)configureAppearance {
-    // WHY: Keep the legacy UITabBar using the same compact premium item rhythm
-    // as the custom dock: crisp symbols, small titles, and stable spacing.
-    UIFont *normalTitleFont = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
-    UIFont *selectedTitleFont = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    UIColor *normalIconColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.82];
-    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIFont *normalTitleFont = [self pp_rootTabBarTitleFontSelected:NO];
+    UIFont *selectedTitleFont = [self pp_rootTabBarTitleFontSelected:YES];
+    UIColor *normalIconColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.74];
+    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     if (@available(iOS 13.0, *)) {
         UITabBarAppearance *appearance = [UITabBarAppearance new];
         [self pp_configureFloatingBackgroundForAppearance:appearance];
+        appearance.selectionIndicatorImage = [UIImage new];
+        appearance.stackedItemPositioning = UITabBarItemPositioningFill;
         
         NSDictionary<NSAttributedStringKey, id> *selectedTitle =
         @{ NSForegroundColorAttributeName: selectedIconColor,
@@ -2603,13 +2659,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         appearance.inlineLayoutAppearance.normal.iconColor = normalIconColor;
         appearance.compactInlineLayoutAppearance.normal.iconColor = normalIconColor;
         
-        if (@available(iOS 26.0, *)) {
-            appearance.shadowColor = UIColor.clearColor;
-        } else {
-            appearance.shadowColor = UIColor.clearColor;
-        }
+        appearance.shadowColor = UIColor.clearColor;
         
-        UIOffset titleOffset = UIOffsetMake(0.0, 1.5);
+        UIOffset titleOffset = UIOffsetMake(0.0, 1.0);
 
         appearance.stackedLayoutAppearance.normal.titlePositionAdjustment = titleOffset;
         appearance.stackedLayoutAppearance.selected.titlePositionAdjustment = titleOffset;
@@ -2619,14 +2671,21 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
         appearance.compactInlineLayoutAppearance.normal.titlePositionAdjustment = titleOffset;
         appearance.compactInlineLayoutAppearance.selected.titlePositionAdjustment = titleOffset;
+
+        for (UITabBarItem *item in self.tabBar.items) {
+            item.imageInsets = UIEdgeInsetsMake(0.5, 0.0, -0.5, 0.0);
+        }
+
+        self.tabBar.itemPositioning = UITabBarItemPositioningFill;
+        self.tabBar.selectionIndicatorImage = [UIImage new];
         self.tabBar.standardAppearance = appearance;
         if (@available(iOS 15.0, *)) {
             self.tabBar.scrollEdgeAppearance = appearance;
         }
         [self.tabBar pp_setShadowColor:UIColor.blackColor];
-        self.tabBar.layer.shadowOpacity = 0.12;
-        self.tabBar.layer.shadowRadius = 18.0;
-        self.tabBar.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+        self.tabBar.layer.shadowOpacity = UIAccessibilityIsReduceTransparencyEnabled() ? PPShadowSubtleOpacity : PPShadowCardOpacity;
+        self.tabBar.layer.shadowRadius = PPShadowCardRadius;
+        self.tabBar.layer.shadowOffset = CGSizeMake(0.0, PPShadowCardOffsetY);
         self.tabBar.layer.masksToBounds = NO;
         
     } else {
@@ -2642,6 +2701,77 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     self.tabBar.tintColor = selectedIconColor;
     self.tabBar.unselectedItemTintColor = normalIconColor;
+    self.rootTabSelectionMarker.backgroundColor = selectedIconColor;
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
+}
+
+- (void)pp_setupRootTabSelectionMarkerIfNeeded
+{
+    if (self.rootTabSelectionMarker.superview == self.tabBar) {
+        return;
+    }
+
+    [self.rootTabSelectionMarker removeFromSuperview];
+    UIView *marker = [[UIView alloc] initWithFrame:CGRectZero];
+    marker.userInteractionEnabled = NO;
+    marker.isAccessibilityElement = NO;
+    marker.accessibilityElementsHidden = YES;
+    marker.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    marker.layer.cornerRadius = 1.5;
+    PPApplyContinuousCorners(marker, 1.5);
+    marker.alpha = 0.0;
+    [self.tabBar addSubview:marker];
+    self.rootTabSelectionMarker = marker;
+}
+
+- (void)pp_updateRootTabSelectionMarkerAnimated:(BOOL)animated
+{
+    if (self.tabBar.hidden || self.tabBar.items.count == 0 || CGRectIsEmpty(self.tabBar.bounds)) {
+        return;
+    }
+
+    [self pp_setupRootTabSelectionMarkerIfNeeded];
+    NSUInteger activeIndex = self.selectedIndex == PPRootTabIndexAdd
+        ? (NSUInteger)MAX(0, self.pp_lastSelectedIndex)
+        : self.selectedIndex;
+    if (activeIndex >= self.tabBar.items.count || activeIndex == PPRootTabIndexAdd) {
+        self.rootTabSelectionMarker.alpha = 0.0;
+        return;
+    }
+
+    UIView *itemView = [self pp_viewForTabBarItem:self.tabBar.items[activeIndex]];
+    if (!itemView || CGRectIsEmpty(itemView.bounds)) {
+        return;
+    }
+
+    CGRect itemRect = [self.tabBar convertRect:itemView.bounds fromView:itemView];
+    CGFloat markerWidth = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad
+        ? PPRootTabSelectionMarkerPadWidth
+        : PPRootTabSelectionMarkerPhoneWidth;
+    CGFloat markerHeight = PPRootTabSelectionMarkerHeight;
+    CGFloat markerY = MAX(PPSpaceXS, CGRectGetMinY(itemRect) + PPSpaceXS);
+    CGRect targetFrame = CGRectMake(round(CGRectGetMidX(itemRect) - markerWidth * 0.5),
+                                    round(markerY),
+                                    markerWidth,
+                                    markerHeight);
+    [self.tabBar bringSubviewToFront:self.rootTabSelectionMarker];
+
+    void (^changes)(void) = ^{
+        self.rootTabSelectionMarker.frame = targetFrame;
+        self.rootTabSelectionMarker.alpha = 1.0;
+    };
+    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled() && self.rootTabSelectionMarker.alpha > 0.0;
+    if (!shouldAnimate) {
+        changes();
+        return;
+    }
+    [UIView animateWithDuration:PPAnimDurationNormal
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:nil];
 }
 
 
@@ -2740,6 +2870,8 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     self.tabBar.hidden = NO;
     self.tabBar.alpha = 1.0;
     self.tabBar.userInteractionEnabled = YES;
+    [self pp_setupRootTabSelectionMarkerIfNeeded];
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
     [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
 }
 
@@ -3102,16 +3234,16 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             selectedSymbolName = @"plus.fill";
             break;
         case PPRootTabIndexChats:
-            normalSymbolName = @"message.badge.waveform";
-            selectedSymbolName = @"message.badge.waveform.fill";
+            normalSymbolName = @"bubble.left.and.bubble.right";
+            selectedSymbolName = @"bubble.left.and.bubble.right.fill";
             break;
         default:
             break;
     }
     UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 18.0 : 16.0
+        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 17.0 : 16.0
                                                          weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
-                                                         scale:UIImageSymbolScaleDefault];
+                                                          scale:UIImageSymbolScaleDefault];
     return [UIImage imageNamed:(selected ? selectedSymbolName : normalSymbolName)] ?: [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
                    withConfiguration:symbolConfiguration];
 }
@@ -3372,7 +3504,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 {
     if ([view isKindOfClass:UILabel.class]) {
         UILabel *label = (UILabel *)view;
-        if ([label.text isEqualToString:title]) {
+        if (title.length == 0 || [label.text isEqualToString:title] || (label.text.length > 0 && [title hasPrefix:[label.text substringToIndex:MIN(2, label.text.length)]])) {
             return label;
         }
     }
@@ -3437,10 +3569,10 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     [self.tabBar setNeedsLayout];
     [self.tabBar layoutIfNeeded];
 
-    UIFont *normalTitleFont = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightMedium];
-    UIFont *selectedTitleFont = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    UIColor *normalTitleColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.82];
-    UIColor *selectedTitleColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIFont *normalTitleFont = [self pp_rootTabBarTitleFontSelected:NO];
+    UIFont *selectedTitleFont = [self pp_rootTabBarTitleFontSelected:YES];
+    UIColor *normalTitleColor = [(AppSecondaryTextClr ?: UIColor.secondaryLabelColor) colorWithAlphaComponent:0.74];
+    UIColor *selectedTitleColor = AppPrimaryClr ?: UIColor.systemPinkColor;
 
     for (UITabBarItem *item in self.tabBar.items) {
         UIView *itemView = [self pp_viewForTabBarItem:item];
@@ -3449,10 +3581,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             continue;
         }
 
-        // UITabBar may retain a narrower launch-time title frame even after
-        // its item widths settle. Keep a small visual inset while making the
-        // label span the resolved item width, centered for both RTL and LTR.
-        CGFloat titleWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - 6.0);
+        if (item.title.length > 0 && ![titleLabel.text isEqualToString:item.title]) {
+            titleLabel.text = item.title;
+        }
+
+        CGFloat titleWidth = MAX(0.0, CGRectGetWidth(itemView.bounds) - PPSpaceSM);
         if (titleWidth <= 0.0) {
             continue;
         }
@@ -3470,7 +3603,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         titleLabel.textColor = isSelected ? selectedTitleColor : normalTitleColor;
         titleLabel.textAlignment = NSTextAlignmentCenter;
         titleLabel.adjustsFontSizeToFitWidth = YES;
-        titleLabel.minimumScaleFactor = 0.78;
+        titleLabel.minimumScaleFactor = 0.76;
         titleLabel.allowsDefaultTighteningForTruncation = YES;
         titleLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
         titleLabel.clipsToBounds = NO;
@@ -3482,6 +3615,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         titleLabel.preferredMaxLayoutWidth = titleWidth;
         [titleLabel setNeedsDisplay];
     }
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
 }
 
 - (void)pp_layoutGuestProfileAnimation
@@ -3586,7 +3720,24 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
 - (void)pp_handleReduceMotionStatusChange:(__unused NSNotification *)notification
 {
+    self.leadingTabButton.transform = CGAffineTransformIdentity;
+    self.premiumNovaButton.transform = CGAffineTransformIdentity;
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
     [self pp_updateGuestProfileAnimationPlayback];
+}
+
+- (void)pp_handleReduceTransparencyStatusChange:(__unused NSNotification *)notification
+{
+    [self configureAppearance];
+    [self pp_updatePremiumBottomFadeAppearance];
+    [self pp_updateRootTabSelectionMarkerAnimated:NO];
+}
+
+- (void)pp_handleRootTabContentSizeCategoryChange:(__unused NSNotification *)notification
+{
+    [self configureAppearance];
+    [self pp_refreshRootTabBarTitleLayout];
+    [self pp_scheduleRootTabBarTitleLayoutRefresh];
 }
 
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
@@ -3661,26 +3812,30 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (void)pp_premiumControlTouchDown:(UIButton *)sender
 {
     if (UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:PPAnimDurationFast animations:^{
+            sender.alpha = 0.82;
+        }];
         return;
     }
-    [UIView animateWithDuration:0.10
+    [UIView animateWithDuration:PPAnimDurationFast
                           delay:0.0
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        sender.transform = CGAffineTransformMakeScale(0.95, 0.95);
+        sender.transform = CGAffineTransformMakeScale(PPTapScaleDown, PPTapScaleDown);
     } completion:nil];
 }
 
 - (void)pp_premiumControlTouchUp:(UIButton *)sender
 {
     if (sender == self.leadingTabButton || sender == self.premiumNovaButton) {
-        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.20
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : PPAnimDurationNormal
                               delay:0.0
-             usingSpringWithDamping:0.84
-              initialSpringVelocity:0.30
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.20
                             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             sender.transform = CGAffineTransformIdentity;
+            sender.alpha = 1.0;
         } completion:nil];
         return;
     }
@@ -3840,9 +3995,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:20
-                                                     weight:UIImageSymbolWeightBold
-                                                      scale:UIImageSymbolScaleLarge];
+    [UIImageSymbolConfiguration configurationWithPointSize:21.0
+                                                     weight:UIImageSymbolWeightSemibold
+                                                      scale:UIImageSymbolScaleMedium];
 
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
     UIImage *icon = [[[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig] imageWithTintColor:UIColor.whiteColor]
@@ -3854,24 +4009,27 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         configuration.image = icon;
         configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         configuration.baseForegroundColor = UIColor.whiteColor;
-        configuration.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
+        configuration.contentInsets = NSDirectionalEdgeInsetsZero;
         configuration.background.backgroundColor = accentColor;
         configuration.baseBackgroundColor = accentColor;
+        configuration.background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:0.28];
+        configuration.background.strokeWidth = 0.75;
         showAddMenuButton.configuration = configuration;
         showAddMenuButton.tintColor = UIColor.whiteColor;
     } else {
         [showAddMenuButton setImage:icon forState:UIControlStateNormal];
         showAddMenuButton.backgroundColor = accentColor;
         showAddMenuButton.tintColor = UIColor.whiteColor;
-        showAddMenuButton.layer.borderWidth = 0.5;
-        [showAddMenuButton pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.25]];
+        showAddMenuButton.layer.borderWidth = 0.75;
+        [showAddMenuButton pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.28]];
     }
-    showAddMenuButton.layer.cornerRadius = 26.0;
-    PPApplyContinuousCorners(showAddMenuButton, 26.0);
+    CGFloat actionCornerRadius = PPRootCenterActionSize * 0.5;
+    showAddMenuButton.layer.cornerRadius = actionCornerRadius;
+    PPApplyContinuousCorners(showAddMenuButton, actionCornerRadius);
     [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
-    showAddMenuButton.layer.shadowOpacity = 0.18;
-    showAddMenuButton.layer.shadowRadius = 10.0;
-    showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    showAddMenuButton.layer.shadowOpacity = PPShadowSubtleOpacity;
+    showAddMenuButton.layer.shadowRadius = PPShadowSubtleRadius;
+    showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, PPShadowSubtleOffsetY);
     showAddMenuButton.layer.masksToBounds = NO;
 
     [showAddMenuButton addTarget:self action:@selector(presentBottomSheet) forControlEvents:UIControlEventTouchUpInside];
@@ -3889,9 +4047,9 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-10.0],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:52.0],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:52.0]
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-PPSpaceXXS],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:PPRootCenterActionSize],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:PPRootCenterActionSize]
     ]];
     [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
 }
@@ -4218,6 +4376,7 @@ shouldSelectViewController:(UIViewController *)viewController {
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventRootTabSelected];
     }
     self.pp_lastSelectedIndex = (NSInteger)index;
+    [self pp_updateRootTabSelectionMarkerAnimated:YES];
     [self.cartFloatingBarCoordinator refreshForCurrentVisibleControllerAnimated:YES];
     [[PPBottomSurfaceCoordinator sharedCoordinator] applySurfaceForController:viewController animated:YES];
     [self pp_refreshGuestProfileAnimationAfterSelection];

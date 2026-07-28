@@ -60,6 +60,22 @@ static PPHeroGlowDirection PPHeroGlassResolvedGlowDirection(NSInteger rawValue)
     }
 }
 
+static NSInteger PPHeroGlassResolvedApexAccentStyle(PPHeroGlassAccentStyle accentStyle)
+{
+    switch (accentStyle) {
+        case PPHeroGlassAccentStyleFullScreenPink:
+        case PPHeroGlassAccentStyleFullScreenPage:
+            return PPHeroGlassAccentStyleFullScreen;
+        case PPHeroGlassAccentStyleBBBaseBackground:
+            return [PPHeroApexView accentStyleBBBaseBackground];
+        case PPHeroGlassAccentStyleBar:
+        case PPHeroGlassAccentStyleCornerGlow:
+        case PPHeroGlassAccentStyleFullScreen:
+        case PPHeroGlassAccentStyleSolid:
+            return accentStyle;
+    }
+}
+
 @interface PPBackgroundView ()
 @property (nonatomic, strong) PPHeroApexView *apexView;
 - (void)pp_applyContainerPaletteReapplyingApex:(BOOL)reapplyApex;
@@ -126,7 +142,7 @@ static PPHeroGlowDirection PPHeroGlassResolvedGlowDirection(NSInteger rawValue)
 
     PPHeroApexView *apexView = [[PPHeroApexView alloc] initWithFrame:self.bounds];
     apexView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    apexView.accentStyle = _accentStyle;
+    apexView.accentStyle = PPHeroGlassResolvedApexAccentStyle(_accentStyle);
     apexView.cornerGlowOpacityMultiplier = _cornerGlowOpacityMultiplier;
     apexView.glowDirection = _glowDirection;
     apexView.PPHeroApexUseShimmer = _PPHeroApexUseShimmer;
@@ -234,7 +250,7 @@ static PPHeroGlowDirection PPHeroGlassResolvedGlowDirection(NSInteger rawValue)
     }
 
     _accentStyle = resolvedStyle;
-    self.apexView.accentStyle = resolvedStyle;
+    self.apexView.accentStyle = PPHeroGlassResolvedApexAccentStyle(resolvedStyle);
     [self pp_applyContainerPaletteReapplyingApex:NO];
     [self setNeedsLayout];
 }

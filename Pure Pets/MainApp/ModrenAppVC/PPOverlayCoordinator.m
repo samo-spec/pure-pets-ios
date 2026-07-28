@@ -331,8 +331,22 @@
     else if ([object isKindOfClass:[ServiceModel class]]) {
         ServiceViewerViewController *viewer = [ServiceViewerViewController new];
         viewer.service = (ServiceModel *)object;
+        viewer.hidesBottomBarWhenPushed = YES;
         targetVC = viewer;
-        [PPFunc presentSheetFrom:presentingVC sheetVC:targetVC detentStyle:PPSheetDetentStyleLargeOnly];
+
+        UINavigationController *nav = routingNav ?: presentingVC.navigationController;
+        if (!nav && vc.navigationController) {
+            nav = vc.navigationController;
+        }
+
+        if (nav) {
+            [nav pushViewController:targetVC animated:YES];
+        } else {
+            PPNavigationController *newNav =
+                [[PPNavigationController alloc] initWithRootViewController:targetVC];
+            newNav.modalPresentationStyle = UIModalPresentationFullScreen;
+            [presentingVC presentViewController:newNav animated:YES completion:nil];
+        }
     }
 
     // 🏥 Vet

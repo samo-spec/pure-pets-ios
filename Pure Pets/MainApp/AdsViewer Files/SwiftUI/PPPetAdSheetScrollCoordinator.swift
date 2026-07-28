@@ -428,7 +428,7 @@ final class PPPetAdHeroScrollViewController<
     private func installHeroContentConstraint() {
         heroContentConstraint = heroController.view.bottomAnchor.constraint(
             equalTo: contentController.view.topAnchor,
-            constant: 16
+            constant: 34
         )
         heroContentConstraint.priority = .defaultHigh
         heroContentConstraint.isActive = true

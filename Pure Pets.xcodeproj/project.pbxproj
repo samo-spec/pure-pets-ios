@@ -859,6 +859,14 @@
 		F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2F44A122FA7014000D19D01 /* PPHomeLocationTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */; };
 		F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */; };
+		F2F548B5301866ED00323EC4 /* TempGlassRootTabHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */; };
+		F2F548B6301866ED00323EC4 /* TempCartLineHostingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */; };
+		F2F548B8301868C100323EC4 /* GlassRootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548B7301868C100323EC4 /* GlassRootTabView.swift */; };
+		F2F548BE30186C4A00323EC4 /* PPServiceViewerComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548B930186C4A00323EC4 /* PPServiceViewerComponents.swift */; };
+		F2F548BF30186C4A00323EC4 /* PPServiceViewerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BC30186C4A00323EC4 /* PPServiceViewerStore.swift */; };
+		F2F548C030186C4A00323EC4 /* ServiceViewerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BD30186C4A00323EC4 /* ServiceViewerViewController.swift */; };
+		F2F548C130186C4A00323EC4 /* PPServiceViewerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BA30186C4A00323EC4 /* PPServiceViewerModels.swift */; };
+		F2F548C230186C4A00323EC4 /* PPServiceViewerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2F548BB30186C4A00323EC4 /* PPServiceViewerScreen.swift */; };
 		F2F630892F7BC98A00CC2E61 /* Beiruti-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F2F630882F7BC98A00CC2E61 /* Beiruti-Black.ttf */; };
 		F2F69D302EA944DA003ADA14 /* PetAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F69D2F2EA944DA003ADA14 /* PetAd.m */; };
 		F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F6C8B22E8D7A730092D85D /* SplashViewController.m */; };
@@ -942,6 +950,7 @@
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
 		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
+		09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempGlassRootTabHostingView.swift; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
 		116E326DECD74C788FB8D4F9 /* NovaAmbientAssistantCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovaAmbientAssistantCoordinator.swift; sourceTree = "<group>"; };
 		12AC9DB60A8A6C4966591D47 /* NovaVoiceService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceService.swift; sourceTree = "<group>"; };
@@ -951,6 +960,7 @@
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
+		24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TempCartLineHostingView.swift; sourceTree = "<group>"; };
 		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
 		3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaAudioSessionController.swift; sourceTree = "<group>"; };
 		38C7E48EFD674EB395BE62DA /* PPAgentClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentClient.h; sourceTree = "<group>"; };
@@ -2472,6 +2482,12 @@
 		F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLocationTitleView.m; sourceTree = "<group>"; };
 		F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeHeroCell.h; sourceTree = "<group>"; };
 		F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeHeroCell.m; sourceTree = "<group>"; };
+		F2F548B7301868C100323EC4 /* GlassRootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassRootTabView.swift; sourceTree = "<group>"; };
+		F2F548B930186C4A00323EC4 /* PPServiceViewerComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerComponents.swift; sourceTree = "<group>"; };
+		F2F548BA30186C4A00323EC4 /* PPServiceViewerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerModels.swift; sourceTree = "<group>"; };
+		F2F548BB30186C4A00323EC4 /* PPServiceViewerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerScreen.swift; sourceTree = "<group>"; };
+		F2F548BC30186C4A00323EC4 /* PPServiceViewerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPServiceViewerStore.swift; sourceTree = "<group>"; };
+		F2F548BD30186C4A00323EC4 /* ServiceViewerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceViewerViewController.swift; sourceTree = "<group>"; };
 		F2F630882F7BC98A00CC2E61 /* Beiruti-Black.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Beiruti-Black.ttf"; sourceTree = "<group>"; };
 		F2F69D2F2EA944DA003ADA14 /* PetAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAd.m; sourceTree = "<group>"; };
 		F2F6C8B12E8D79C10092D85D /* SplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SplashViewController.h; sourceTree = "<group>"; };
@@ -2650,6 +2666,8 @@
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 				A17E26000100000000000001 /* PPHomeOrderStatusSwiftUI.swift */,
+				09603B47A72C47BFB31BFF32 /* TempGlassRootTabHostingView.swift */,
+				24B8F4540D724EF68603A0F1 /* TempCartLineHostingView.swift */,
 				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
 				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
 				A11CE2402FEB400000000001 /* PPHomeMarketplaceHeroCell.h */,
@@ -3440,6 +3458,11 @@
 		F241C4492E2534F100CC9BE9 /* PetsServices */ = {
 			isa = PBXGroup;
 			children = (
+				F2F548B930186C4A00323EC4 /* PPServiceViewerComponents.swift */,
+				F2F548BA30186C4A00323EC4 /* PPServiceViewerModels.swift */,
+				F2F548BB30186C4A00323EC4 /* PPServiceViewerScreen.swift */,
+				F2F548BC30186C4A00323EC4 /* PPServiceViewerStore.swift */,
+				F2F548BD30186C4A00323EC4 /* ServiceViewerViewController.swift */,
 				F2D99F782E2849C800CD4552 /* ServiceViewerViewController.h */,
 				F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */,
 				F241C4572E255C6B00CC9BE9 /* CategoryModel.m */,
@@ -4142,6 +4165,7 @@
 		F281B47E2FCB6735009118F2 /* PPComponent */ = {
 			isa = PBXGroup;
 			children = (
+				F2F548B7301868C100323EC4 /* GlassRootTabView.swift */,
 				F223898F3017C8CA001E5DBB /* CartLineController.swift */,
 				F2D3FD983016601F003279B3 /* AnimatedAddToCartButton.swift */,
 				F281B46B2FCB6735009118F2 /* PPLeftRight */,
@@ -6061,6 +6085,11 @@
 				F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */,
 				F2E8B7CE2E5381CF00B88C38 /* Utils.m in Sources */,
 				F26045382CB6EC7500FB7FBC /* selectArchiveVC.m in Sources */,
+				F2F548BE30186C4A00323EC4 /* PPServiceViewerComponents.swift in Sources */,
+				F2F548BF30186C4A00323EC4 /* PPServiceViewerStore.swift in Sources */,
+				F2F548C030186C4A00323EC4 /* ServiceViewerViewController.swift in Sources */,
+				F2F548C130186C4A00323EC4 /* PPServiceViewerModels.swift in Sources */,
+				F2F548C230186C4A00323EC4 /* PPServiceViewerScreen.swift in Sources */,
 				F2CEC0C72CB3CB8300E3B181 /* archiveCell.m in Sources */,
 				F2957C2A2EEF424F00006CB3 /* TrashManager.m in Sources */,
 				F2710B162C4DB8CA0051B86A /* viewDataVC.m in Sources */,
@@ -6373,6 +6402,7 @@
 				997CC0FBDBA146DCBC65C0AB /* PPInAppChatNotificationPresenter.m in Sources */,
 				F286BA8D2F2123930069CD5C /* ChNotificationRouter.m in Sources */,
 				F22C07962EF66C2F00C00EAC /* UIBarButtonItem+YYAdd.m in Sources */,
+				F2F548B8301868C100323EC4 /* GlassRootTabView.swift in Sources */,
 				F21302222F0C6638006E71AB /* BBNavigationBar.m in Sources */,
 				F2CA8DD02F1DC1C900AD4416 /* PPChatsFunc.m in Sources */,
 				F28DD5902F04323500FF2671 /* HJCarouselViewLayout.m in Sources */,
@@ -6635,6 +6665,8 @@
 				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
 				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
 				7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */,
+				F2F548B5301866ED00323EC4 /* TempGlassRootTabHostingView.swift in Sources */,
+				F2F548B6301866ED00323EC4 /* TempCartLineHostingView.swift in Sources */,
 				F2A0A6F3300D7FA50062A529 /* PPSaveForLaterManager.m in Sources */,
 				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,
 				BF264C2AA11266798CA01E36 /* AttachmentButton.swift in Sources */,

@@ -44,79 +44,14 @@ struct PPPetAdFadingDivider: View {
     }
 }
 
-private struct PPPetAdInfoSurfaceModifier: ViewModifier {
-    let accentColor: Color
-
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    @Environment(\.layoutDirection) private var layoutDirection
-
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(
-            cornerRadius: PPCorner.card,
-            style: .continuous
-        )
-
-        content
-            .background {
-                surfaceBackground
-            }
-            .clipShape(shape)
-            .overlay {
-                shape.strokeBorder(
-                    surfaceStroke,
-                    lineWidth: colorSchemeContrast == .increased
-                        ? 1
-                        : PPPetAdViewerStyle.hairlineWidth
-                )
-            }
-            .shadow(
-                color: PPShadow.card.color,
-                radius: PPShadow.card.radius,
-                x: PPShadow.card.x,
-                y: PPShadow.card.y
-            )
-    }
-
-    private var surfaceBackground: some View {
-        ZStack {
-            Color.ppSurface
-
-            LinearGradient(
-                colors: [
-                    Color.white.opacity(colorScheme == .dark ? 0.04 : 0.20),
-                    accentColor.opacity(colorScheme == .dark ? 0.075 : 0.032)
-                ],
-                startPoint: layoutDirection == .rightToLeft
-                    ? .topTrailing
-                    : .topLeading,
-                endPoint: layoutDirection == .rightToLeft
-                    ? .bottomLeading
-                    : .bottomTrailing
-            )
-        }
-    }
-
-    private var surfaceStroke: Color {
-        if colorSchemeContrast == .increased {
-            return Color.ppBorder
-        }
-        return Color.white.opacity(colorScheme == .dark ? 0.12 : 0.78)
-    }
-}
-
-extension View {
-    func ppPetAdInfoSurface(accentColor: Color = .ppPrimary) -> some View {
-        modifier(PPPetAdInfoSurfaceModifier(accentColor: accentColor))
-    }
-}
-
 struct PPPetAdInfoGrid: View {
     let type: String
     let age: String
     let gender: String
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     @ViewBuilder
     var body: some View {
         if allItems.isEmpty {
@@ -128,47 +63,89 @@ struct PPPetAdInfoGrid: View {
         }
     }
 
-    @ViewBuilder
     private var ledger: some View {
-        if usesStackedLayout {
-            stackedLedger
-        } else {
-            compactLedger
+        VStack(spacing: 0) {
+            if let featuredItem {
+                infoView(
+                    for: featuredItem,
+                    emphasis: .featured,
+                    usesCompactColumn: false
+                )
+                .padding(.vertical, PPSpace.md)
+            }
+
+            if !supportingItems.isEmpty {
+                if featuredItem != nil {
+                    horizontalDivider
+                }
+
+                if usesStackedLayout {
+                    stackedSupportingLedger
+                } else {
+                    compactSupportingLedger
+                }
+            }
         }
     }
 
-    private var compactLedger: some View {
-        HStack(alignment: .top, spacing: PPSpace.md) {
-            ForEach(allItems) { item in
+    private var compactSupportingLedger: some View {
+        HStack(alignment: .top, spacing: 0) {
+            ForEach(supportingItems) { item in
                 infoView(
                     for: item,
-                    emphasis: item.id == featuredItem?.id
-                        ? .featured
-                        : .supporting,
-                    showsBottomAccent: true,
+                    emphasis: .supporting,
                     usesCompactColumn: true
                 )
                 .frame(maxWidth: .infinity)
-                .ppPetAdInfoSurface(accentColor: item.signature.accentColor)
+
+                if item.id != supportingItems.last?.id {
+                    verticalDivider
+                }
             }
         }
     }
 
-    private var stackedLedger: some View {
-        VStack(spacing: PPSpace.md) {
-            ForEach(allItems) { item in
+    private var stackedSupportingLedger: some View {
+        VStack(spacing: 0) {
+            ForEach(supportingItems) { item in
                 infoView(
                     for: item,
-                    emphasis: item.id == featuredItem?.id
-                        ? .featured
-                        : .supporting,
-                    showsBottomAccent: true,
+                    emphasis: .supporting,
                     usesCompactColumn: false
                 )
-                .frame(maxWidth: .infinity)
-                .ppPetAdInfoSurface(accentColor: item.signature.accentColor)
+
+                if item.id != supportingItems.last?.id {
+                    horizontalDivider
+                }
             }
         }
+    }
+
+    private var horizontalDivider: some View {
+        Rectangle()
+            .fill(dividerColor)
+            .frame(height: dividerThickness)
+            .accessibilityHidden(true)
+    }
+
+    private var verticalDivider: some View {
+        Rectangle()
+            .fill(dividerColor)
+            .frame(width: dividerThickness)
+            .padding(.vertical, PPSpace.md)
+            .accessibilityHidden(true)
+    }
+
+    private var dividerColor: Color {
+        Color.ppSeparator.opacity(
+            colorSchemeContrast == .increased ? 1 : 0.72
+        )
+    }
+
+    private var dividerThickness: CGFloat {
+        colorSchemeContrast == .increased
+            ? 1
+            : PPPetAdViewerStyle.hairlineWidth
     }
 
     private var usesStackedLayout: Bool {
@@ -178,7 +155,6 @@ struct PPPetAdInfoGrid: View {
     private func infoView(
         for item: PPPetAdInfoItem,
         emphasis: PPPetAdInfoEmphasis,
-        showsBottomAccent: Bool,
         usesCompactColumn: Bool
     ) -> some View {
         PPPetAdInfoPillView(
@@ -188,7 +164,7 @@ struct PPPetAdInfoGrid: View {
             value: item.value,
             signature: item.signature,
             emphasis: emphasis,
-            showsBottomAccent: showsBottomAccent,
+            showsBottomAccent: false,
             usesCompactColumn: usesCompactColumn
         )
     }

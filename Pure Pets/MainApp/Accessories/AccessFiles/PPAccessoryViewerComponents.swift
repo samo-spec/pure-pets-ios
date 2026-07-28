@@ -166,20 +166,31 @@ struct PPAccessoryViewerTopBar: View {
                 PPAccessoryViewerL10n.text("Back")
             )
 
-            if showsSmartTitle, let snapshot {
-                PPAccessoryViewerNavBarSmartPill(snapshot: snapshot)
-                    .frame(maxWidth: .infinity)
-                    .layoutPriority(1)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .opacity.combined(
-                                with: .scale(scale: 0.95).combined(with: .offset(y: 4))
-                            )
-                    )
-            } else {
-                Spacer(minLength: PPSpace.sm)
+            ZStack {
+                if showsSmartTitle, let snapshot {
+                    PPAccessoryViewerNavBarSmartPill(snapshot: snapshot)
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .opacity.combined(
+                                    with: .scale(scale: 0.95).combined(with: .offset(y: 4))
+                                )
+                        )
+                } else if let snapshot {
+                    defaultTitleView(snapshot: snapshot)
+                        .transition(
+                            reduceMotion
+                                ? .opacity
+                                : .opacity.combined(
+                                    with: .scale(scale: 0.95).combined(with: .offset(y: -4))
+                                )
+                        )
+                } else {
+                    Spacer(minLength: PPSpace.sm)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .layoutPriority(1)
 
             chromeButton(
                 symbol: "square.and.arrow.up",
@@ -195,6 +206,63 @@ struct PPAccessoryViewerTopBar: View {
                 : .spring(response: 0.30, dampingFraction: 0.88),
             value: showsSmartTitle
         )
+    }
+
+    @ViewBuilder
+    private func defaultTitleView(snapshot: PPAccessoryViewerSnapshot) -> some View {
+        VStack(spacing: 1) {
+            Text(firstRowText(snapshot: snapshot))
+                .font(PPAccessoryTypography.calloutBold)
+                .foregroundStyle(Color.ppTextPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+
+            let subText = secondRowText(snapshot: snapshot)
+            if !subText.isEmpty {
+                Text(subText)
+                    .font(PPAccessoryTypography.caption)
+                    .foregroundStyle(Color.ppTextSecondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+        }
+        .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    private func firstRowText(snapshot: PPAccessoryViewerSnapshot) -> String {
+        let cat = snapshot.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cat.isEmpty {
+            return cat
+        }
+        let type = snapshot.type.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !type.isEmpty {
+            return type
+        }
+        return PPAccessoryViewerL10n.text("accessory_view_section_fallback")
+    }
+
+    private func secondRowText(snapshot: PPAccessoryViewerSnapshot) -> String {
+        let accCategory = snapshot.accessoryCategory.trimmingCharacters(in: .whitespacesAndNewlines)
+        let subCategory = snapshot.subcategory.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var parts: [String] = []
+        if !accCategory.isEmpty {
+            parts.append(accCategory)
+        }
+        if !subCategory.isEmpty && subCategory != accCategory {
+            parts.append(subCategory)
+        }
+
+        if parts.isEmpty {
+            let cat = snapshot.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !cat.isEmpty {
+                parts.append(cat)
+            }
+        }
+
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -1522,39 +1590,38 @@ struct PPAccessorySourceIsland: View {
             PPAccessoryRemoteImageView(
                 urlString: owner.preferredAvatarURL,
                 blurHash: nil,
-                contentMode: .fill,
+                contentMode: .fit,
                 accessibilityLabel: displayName(for: owner),
                 isAvatar: true,
                 fallbackInitials: displayName(for: owner)
             )
-            .frame(
-                width: sellerAvatarImageSize(for: owner, shellSize: size),
-                height: sellerAvatarImageSize(for: owner, shellSize: size)
-            )
+            .padding(4)
             .frame(width: size, height: size)
             .clipShape(Circle())
 
             if owner.isVerified {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 22, height: 22)
-                    .background(PPAccessoryPalette.success, in: Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(Color.ppBackground.opacity(0.92), lineWidth: 2)
-                    )
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.ppPrimary)
+                    .background(Circle().fill(Color.white))
+                    .offset(x: 2, y: 2)
                     .accessibilityHidden(true)
             }
         }
         .frame(width: size, height: size)
+        .shadow(color: Color.ppPrimary.opacity(0.12), radius: 6, x: 0, y: 3)
         .overlay(
             Circle()
                 .strokeBorder(
-                    colorSchemeContrast == .increased
-                        ? PPAccessoryPalette.ink.opacity(0.34)
-                        : PPAccessorySubviewBackground.faintStroke,
-                    lineWidth: colorSchemeContrast == .increased ? 1.4 : 1
+                    LinearGradient(
+                        colors: [
+                            Color.ppPrimary.opacity(0.32),
+                            Color.white.opacity(0.60)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
                 )
         )
         .accessibilityHidden(true)
@@ -2041,19 +2108,14 @@ struct PPAccessorySourceIsland: View {
                         y: -PPSpace.sm
                     )
             }
-            .ppAccessorySubviewBackground(
-                sourceSurfaceFill,
-                in: sourceSurfaceShape,
-                stroke: sourceSurfaceStroke,
-                lineWidth: colorSchemeContrast == .increased ? 1.25 : 0.8
-            )
+            .background {
+                PPHeroApexGlowCornerSurface(
+                    cornerRadius: PPCorner.hero,
+                    accentStyle: .bbBaseBackground,
+                    //solidColor: .ppElevatedSurface
+                )
+            }
             .clipShape(sourceSurfaceShape)
-            .shadow(
-                color: Color.black.opacity(colorScheme == .dark ? 0.10 : 0.045),
-                radius: 16,
-                x: 0,
-                y: 8
-            )
     }
 
     private var sourceSurfaceShape: RoundedRectangle {
@@ -2105,7 +2167,7 @@ struct PPAccessorySourceIsland: View {
     private var sellerPawTint: Color {
         colorScheme == .dark
             ? PPAccessoryPalette.accent
-        : PPAccessoryPalette.deepSea
+        : PPAccessoryPalette.deepSea.opacity(0.0)
     }
 
     private var avatarPlateFill: LinearGradient {
@@ -2384,10 +2446,10 @@ struct PPAccessorySuggestionShore: View {
 
     private var suggestionSkeleton: some View {
         HStack(spacing: 12) {
-            ForEach(0..<3, id: \.self) { index in
+            ForEach(["skeleton-0", "skeleton-1", "skeleton-2"], id: \.self) { itemID in
                 PPUniversalCardView(
                     model: PPUniversalCardModel(
-                        id: "skeleton-\(index)",
+                        id: itemID,
                         title: "",
                         isSkeleton: true,
                         prefersEdgeToEdgeMedia: true,
