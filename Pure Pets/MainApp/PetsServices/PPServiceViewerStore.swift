@@ -14,6 +14,17 @@ public final class PPServiceViewerStore: ObservableObject {
     @Published public var reviewRating: Int = 5
     @Published var reviewText: String = ""
     @Published public var bannerMessage: String? = nil
+    @Published public var heroTopColor: UIColor?
+    @Published public var heroMiddleColor: UIColor?
+    @Published public var heroBottomColor: UIColor?
+    @Published public var mainServiceColor: UIColor?
+
+    public var serviceAccentColor: Color {
+        if let mainServiceColor {
+            return Color(uiColor: mainServiceColor)
+        }
+        return Color.ppPrimary
+    }
 
     private var reviewsListener: ListenerRegistration?
 
@@ -157,6 +168,22 @@ public final class PPServiceViewerStore: ObservableObject {
             .rootViewController
 
         presenter?.present(activityVC, animated: true)
+    }
+
+    public func handleImageLoaded(_ image: UIImage) {
+        guard heroTopColor == nil else { return }
+        PPColorUtils.extractGradientColorsAsync(from: image, lightenAmount: 0.15) { [weak self] colors in
+            guard let self, colors.count >= 3 else { return }
+            let darkColor = colors[0]
+            DispatchQueue.main.async {
+                withAnimation(.easeOut(duration: 0.45)) {
+                    self.heroTopColor = colors[0]
+                    self.heroMiddleColor = colors[1]
+                    self.heroBottomColor = colors[2]
+                    self.mainServiceColor = darkColor
+                }
+            }
+        }
     }
 
     private func windowSessionUID() -> String? {

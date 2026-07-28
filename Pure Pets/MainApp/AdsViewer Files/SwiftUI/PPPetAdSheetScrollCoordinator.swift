@@ -1,60 +1,43 @@
 import SwiftUI
 import UIKit
 
-@MainActor
-final class PPPetAdHeroScrollVisualState: ObservableObject {
-    @Published private(set) var collapseProgress: CGFloat = 0
-
-    fileprivate func update(collapseProgress: CGFloat) {
-        let normalized = min(max(collapseProgress, 0), 1)
-        guard abs(normalized - self.collapseProgress) > 0.004 else {
-            return
-        }
-        self.collapseProgress = normalized
-    }
-}
-
 struct PPPetAdHeroScrollContainer<Hero: View, Content: View>:
     UIViewControllerRepresentable
 {
     let minimumHeroHeight: CGFloat
     let expandedHeroHeight: CGFloat
     let onRefresh: () -> Void
-    let onNavigationCollapseChanged: (Bool) -> Void
+    let interactionState: PPPetAdViewerInteractionState
 
-    private let hero: (PPPetAdHeroScrollVisualState) -> Hero
+    private let hero: (PPPetAdViewerInteractionState) -> Hero
     private let content: () -> Content
 
     init(
         minimumHeroHeight: CGFloat,
         expandedHeroHeight: CGFloat,
         onRefresh: @escaping () -> Void,
-        onNavigationCollapseChanged: @escaping (Bool) -> Void,
+        interactionState: PPPetAdViewerInteractionState,
         @ViewBuilder hero:
-            @escaping (PPPetAdHeroScrollVisualState) -> Hero,
+            @escaping (PPPetAdViewerInteractionState) -> Hero,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.minimumHeroHeight = minimumHeroHeight
         self.expandedHeroHeight = expandedHeroHeight
         self.onRefresh = onRefresh
-        self.onNavigationCollapseChanged =
-            onNavigationCollapseChanged
+        self.interactionState = interactionState
         self.hero = hero
         self.content = content
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(
-            onNavigationCollapseChanged:
-                onNavigationCollapseChanged
-        )
+        Coordinator(interactionState: interactionState)
     }
 
     func makeUIViewController(
         context: Context
     ) -> PPPetAdHeroScrollViewController<Hero, Content> {
         let controller = PPPetAdHeroScrollViewController(
-            hero: hero(context.coordinator.visualState),
+            hero: hero(interactionState),
             content: content(),
             minimumHeroHeight: minimumHeroHeight,
             expandedHeroHeight: expandedHeroHeight,
@@ -63,6 +46,14 @@ struct PPPetAdHeroScrollContainer<Hero: View, Content: View>:
         controller.onCollapseProgressChanged = {
             [weak coordinator = context.coordinator] progress in
             coordinator?.update(collapseProgress: progress)
+        }
+        controller.onDragBegan = {
+            [weak coordinator = context.coordinator] in
+            coordinator?.interactionState.beginDrag()
+        }
+        controller.onDragEnded = {
+            [weak coordinator = context.coordinator] in
+            coordinator?.interactionState.endDrag()
         }
         applyLayoutDirection(
             context.environment.layoutDirection,
@@ -76,11 +67,10 @@ struct PPPetAdHeroScrollContainer<Hero: View, Content: View>:
             PPPetAdHeroScrollViewController<Hero, Content>,
         context: Context
     ) {
-        context.coordinator.onNavigationCollapseChanged =
-            onNavigationCollapseChanged
+        context.coordinator.interactionState = interactionState
         controller.onRefresh = onRefresh
         controller.update(
-            hero: hero(context.coordinator.visualState),
+            hero: hero(interactionState),
             content: content(),
             minimumHeroHeight: minimumHeroHeight,
             expandedHeroHeight: expandedHeroHeight
@@ -114,33 +104,14 @@ struct PPPetAdHeroScrollContainer<Hero: View, Content: View>:
 
     @MainActor
     final class Coordinator {
-        let visualState = PPPetAdHeroScrollVisualState()
-        var onNavigationCollapseChanged: (Bool) -> Void
+        var interactionState: PPPetAdViewerInteractionState
 
-        private var isNavigationCollapsed = false
-
-        init(
-            onNavigationCollapseChanged:
-                @escaping (Bool) -> Void
-        ) {
-            self.onNavigationCollapseChanged =
-                onNavigationCollapseChanged
+        init(interactionState: PPPetAdViewerInteractionState) {
+            self.interactionState = interactionState
         }
 
         func update(collapseProgress: CGFloat) {
-            visualState.update(
-                collapseProgress: collapseProgress
-            )
-
-            let nextCollapsed =
-                isNavigationCollapsed
-                ? collapseProgress > 0.72
-                : collapseProgress >= 0.86
-            guard nextCollapsed != isNavigationCollapsed else {
-                return
-            }
-            isNavigationCollapsed = nextCollapsed
-            onNavigationCollapseChanged(nextCollapsed)
+            interactionState.update(progress: collapseProgress)
         }
     }
 }
@@ -221,6 +192,8 @@ final class PPPetAdHeroScrollViewController<
 
     var onRefresh: () -> Void
     var onCollapseProgressChanged: ((CGFloat) -> Void)?
+    var onDragBegan: (() -> Void)?
+    var onDragEnded: (() -> Void)?
 
     private let heroController: PPPetAdHeroHostingController<Hero>
     private let contentController:
@@ -320,6 +293,8 @@ final class PPPetAdHeroScrollViewController<
     func stopCoordinating() {
         scrollView.delegate = nil
         onCollapseProgressChanged = nil
+        onDragBegan = nil
+        onDragEnded = nil
         contentController.onPreferredHeightChanged = nil
         refreshControl.removeTarget(
             self,
@@ -333,10 +308,15 @@ final class PPPetAdHeroScrollViewController<
         updateHero(for: scrollView.contentOffset.y)
     }
 
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        onDragBegan?()
+    }
+
     func scrollViewDidEndDragging(
         _ scrollView: UIScrollView,
         willDecelerate decelerate: Bool
     ) {
+        onDragEnded?()
         guard !decelerate else { return }
         applyPendingContentMeasurementIfNeeded()
     }
@@ -359,6 +339,7 @@ final class PPPetAdHeroScrollViewController<
         scrollView.alwaysBounceVertical = true
         scrollView.isDirectionalLockEnabled = true
         scrollView.showsHorizontalScrollIndicator = false
+        scrollView.showsVerticalScrollIndicator = false
         scrollView.keyboardDismissMode = .interactive
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.delegate = self
@@ -428,7 +409,7 @@ final class PPPetAdHeroScrollViewController<
     private func installHeroContentConstraint() {
         heroContentConstraint = heroController.view.bottomAnchor.constraint(
             equalTo: contentController.view.topAnchor,
-            constant: 34
+            constant: PPPetAdViewerStyle.sheetOverlap
         )
         heroContentConstraint.priority = .defaultHigh
         heroContentConstraint.isActive = true

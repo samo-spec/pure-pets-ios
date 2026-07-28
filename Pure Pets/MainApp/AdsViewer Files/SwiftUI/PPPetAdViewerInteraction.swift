@@ -148,18 +148,164 @@ struct PPPetAdViewerSnapshot {
     }
 }
 
+// MARK: - Scroll interaction state
+
+/// The single normalized source of truth for every scroll-driven visual in the
+/// viewer. State-heavy sections do not observe this object; only the small
+/// hero, sheet, navigation, summary, and dock presentation owners do.
+@MainActor
+final class PPPetAdViewerInteractionState: ObservableObject {
+    enum Phase: Equatable {
+        case collapsed
+        case draggingUpward
+        case intermediate
+        case approachingExpanded
+        case expanded
+        case draggingDownward
+        case cancelled
+        case reducedMotionEquivalent
+    }
+
+    @Published private(set) var progress: CGFloat = 0
+
+    private var previousProgress: CGFloat = 0
+    private var dragStartProgress: CGFloat = 0
+    private var isDragging = false
+    private var didCancelLatestDrag = false
+
+    func update(progress rawProgress: CGFloat) {
+        let clampedProgress = min(max(rawProgress, 0), 1)
+        guard abs(clampedProgress - progress) > 0.0005 else { return }
+
+        previousProgress = progress
+        progress = clampedProgress
+        didCancelLatestDrag = false
+    }
+
+    func beginDrag() {
+        dragStartProgress = progress
+        isDragging = true
+        didCancelLatestDrag = false
+    }
+
+    func endDrag() {
+        didCancelLatestDrag = abs(progress - dragStartProgress) < 0.01
+        isDragging = false
+    }
+
+    func phase(reduceMotion: Bool) -> Phase {
+        if reduceMotion, progress > 0, progress < 1 {
+            return .reducedMotionEquivalent
+        }
+        if didCancelLatestDrag { return .cancelled }
+        if progress <= 0.01 { return .collapsed }
+        if progress >= 0.99 { return .expanded }
+        if isDragging {
+            return progress < previousProgress
+                ? .draggingDownward
+                : .draggingUpward
+        }
+        if progress < Self.approachingExpandedStart { return .intermediate }
+        return .approachingExpanded
+    }
+
+    var mainHeaderVisibility: CGFloat {
+        1 - ramp(from: Self.mainHeaderFadeStart, to: Self.mainHeaderFadeEnd)
+    }
+
+    var mainHeaderExtent: CGFloat {
+        1 - ramp(from: Self.mainHeaderCollapseStart, to: Self.mainHeaderCollapseEnd)
+    }
+
+    var mainHeaderOwnsAccessibility: Bool {
+        progress < Self.mainAccessibilityEnd
+    }
+
+    var compactSummaryOpacity: CGFloat {
+        ramp(from: Self.compactSummaryStart, to: Self.compactSummaryEnd)
+    }
+
+    var compactSummaryScale: CGFloat {
+        0.96 + (0.04 * compactSummaryOpacity)
+    }
+
+    var compactSummaryOwnsAccessibility: Bool {
+        progress >= Self.compactAccessibilityStart
+    }
+
+    /// Releases the identity shelf as the facts become the sheet's first
+    /// content owner, keeping the grabber-to-facts rhythm compact at the
+    /// handoff and expanded states.
+    var summaryTopPadding: CGFloat {
+        let collapsedPadding = PPSpace.xl
+        let expandedPadding = PPSpace.sm
+        return collapsedPadding
+            - ((collapsedPadding - expandedPadding)
+                * ramp(
+                    from: Self.mainHeaderCollapseStart,
+                    to: Self.compactSummaryEnd
+                ))
+    }
+
+    var galleryLensOpacity: CGFloat {
+        1 - ramp(from: Self.galleryHandoffStart, to: Self.galleryHandoffEnd)
+    }
+
+    var galleryLensTranslation: CGFloat {
+        -PPSpace.sm * ramp(
+            from: Self.galleryHandoffStart,
+            to: Self.galleryHandoffEnd
+        )
+    }
+
+    var galleryLensOwnsAccessibility: Bool {
+        progress < Self.galleryAccessibilityEnd
+    }
+
+    /// The focused image deliberately retains enough luminance and color to
+    /// remain perceptually present against pale marketplace photography.
+    var focusedHeroOpacity: CGFloat { 1 - (0.55 * progress) }
+    var heroSaturation: CGFloat { 1 - (0.18 * progress) }
+    var heroScale: CGFloat { 1 + (0.025 * progress) }
+    var heroTranslation: CGFloat { -PPSpace.sm * progress }
+    var navigationControlScale: CGFloat { 1 - (0.04 * progress) }
+    var sheetRadius: CGFloat { PPCorner.hero - (PPSpace.sm * progress) }
+    var sheetEdgeOpacity: CGFloat { 0.28 + (0.30 * progress) }
+    var backgroundDimming: CGFloat { 0.12 + (0.12 * progress) }
+    var dockElevation: CGFloat { 0.35 + (0.65 * progress) }
+
+    private func ramp(from start: CGFloat, to end: CGFloat) -> CGFloat {
+        guard end > start else { return progress >= end ? 1 : 0 }
+        let linear = min(max((progress - start) / (end - start), 0), 1)
+        return linear * linear * (3 - (2 * linear))
+    }
+
+    private static let approachingExpandedStart: CGFloat = 0.76
+    private static let mainHeaderFadeStart: CGFloat = 0.44
+    private static let mainHeaderFadeEnd: CGFloat = 0.64
+    private static let mainHeaderCollapseStart: CGFloat = 0.50
+    private static let mainHeaderCollapseEnd: CGFloat = 0.66
+    private static let mainAccessibilityEnd: CGFloat = 0.64
+    private static let compactSummaryStart: CGFloat = 0.64
+    private static let compactSummaryEnd: CGFloat = 0.72
+    private static let compactAccessibilityStart: CGFloat = 0.64
+    private static let galleryHandoffStart: CGFloat = 0.58
+    private static let galleryHandoffEnd: CGFloat = 0.80
+    private static let galleryAccessibilityEnd: CGFloat = 0.78
+}
+
 enum PPPetAdViewerMotion {
     static let press = Animation.easeOut(duration: 0.10)
-    static let content = Animation.easeOut(duration: 0.28)
-    static let state = Animation.easeInOut(duration: 0.22)
+    static let content = Animation.easeOut(duration: 0.24)
+    static let state = Animation.easeInOut(duration: 0.24)
     static let entrance = Animation.spring(
-        response: 0.46,
-        dampingFraction: 0.92,
-        blendDuration: 0.06
+        response: 0.45,
+        dampingFraction: 0.85,
+        blendDuration: 0.08
     )
     static let expansion = Animation.spring(
-        response: 0.36,
-        dampingFraction: 0.90,
+        response: 0.45,
+        dampingFraction: 0.85,
         blendDuration: 0.06
     )
     static let navigation = Animation.spring(
@@ -172,9 +318,8 @@ enum PPPetAdViewerMotion {
         dampingFraction: 0.90,
         blendDuration: 0.04
     )
-
     static func entrance(delayIndex: Int) -> Animation {
-        entrance.delay(Double(max(delayIndex, 0)) * 0.04)
+        entrance.delay(Double(max(delayIndex, 0)) * 0.038)
     }
 }
 
@@ -298,10 +443,10 @@ private struct PPPetAdViewerEntranceModifier: ViewModifier {
             .offset(
                 y: reduceMotion || isPresented
                     ? 0
-                    : min(12, 7 + CGFloat(delayIndex))
+                    : min(16, 9 + CGFloat(delayIndex * 2))
             )
             .scaleEffect(
-                reduceMotion || isPresented ? 1 : 0.994,
+                reduceMotion || isPresented ? 1 : 0.988,
                 anchor: .top
             )
             .animation(
@@ -393,18 +538,31 @@ private struct PPPetAdGlassSurfaceModifier<Surface: Shape>: ViewModifier {
     let fallback: Color
     let stroke: Color
     let lineWidth: CGFloat
+    let isInteractive: Bool
 
     @Environment(\.accessibilityReduceTransparency)
     private var reduceTransparency
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .background {
-                glassBackground
-            }
-            .overlay {
-                shape.stroke(stroke, lineWidth: lineWidth)
-            }
+        if #available(iOS 26.0, *), !reduceTransparency {
+            content
+                .glassEffect(
+                    .regular.tint(tint).interactive(isInteractive),
+                    in: shape
+                )
+                .overlay {
+                    shape.stroke(stroke, lineWidth: lineWidth)
+                }
+        } else {
+            content
+                .background {
+                    glassBackground
+                }
+                .overlay {
+                    shape.stroke(stroke, lineWidth: lineWidth)
+                }
+        }
     }
 
     @ViewBuilder
@@ -427,7 +585,8 @@ extension View {
         tint: Color = .clear,
         fallback: Color = Color(uiColor: .secondarySystemBackground),
         stroke: Color = Color.white.opacity(0.18),
-        lineWidth: CGFloat = 0.75
+        lineWidth: CGFloat = 0.75,
+        isInteractive: Bool = false
     ) -> some View {
         modifier(
             PPPetAdGlassSurfaceModifier(
@@ -435,7 +594,8 @@ extension View {
                 tint: tint,
                 fallback: fallback,
                 stroke: stroke,
-                lineWidth: lineWidth
+                lineWidth: lineWidth,
+                isInteractive: isInteractive
             )
         )
     }

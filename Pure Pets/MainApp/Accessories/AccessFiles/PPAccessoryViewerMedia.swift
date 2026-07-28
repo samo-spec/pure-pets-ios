@@ -86,9 +86,28 @@ struct PPAccessoryRemoteImageView: View {
     let accessibilityLabel: String
     var isAvatar: Bool = false
     var fallbackInitials: String? = nil
+    var onImageLoaded: ((UIImage) -> Void)? = nil
 
     @StateObject private var loader = PPAccessoryImageLoader()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        urlString: String?,
+        blurHash: String?,
+        contentMode: ContentMode,
+        accessibilityLabel: String,
+        isAvatar: Bool = false,
+        fallbackInitials: String? = nil,
+        onImageLoaded: ((UIImage) -> Void)? = nil
+    ) {
+        self.urlString = urlString
+        self.blurHash = blurHash
+        self.contentMode = contentMode
+        self.accessibilityLabel = accessibilityLabel
+        self.isAvatar = isAvatar
+        self.fallbackInitials = fallbackInitials
+        self.onImageLoaded = onImageLoaded
+    }
 
     var body: some View {
         ZStack {
@@ -161,6 +180,11 @@ struct PPAccessoryRemoteImageView: View {
         }
         .onChange(of: urlString) { value in
             loader.load(urlString: value, blurHash: blurHash)
+        }
+        .onChange(of: stateIdentity) { _ in
+            if case let .loaded(image) = loader.state {
+                onImageLoaded?(image)
+            }
         }
         .onDisappear {
             loader.cancel()

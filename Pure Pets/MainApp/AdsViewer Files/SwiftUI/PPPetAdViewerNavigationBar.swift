@@ -4,7 +4,7 @@ import SwiftUI
 /// Provides glass floating action controls over the hero gallery with safe status bar clearance.
 struct PPPetAdViewerNavigationBar: View {
     let snapshot: PPPetAdViewerSnapshot
-    let isCollapsed: Bool
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
     let isFavorite: Bool
     let isFavoriteWorking: Bool
     let canShare: Bool
@@ -24,18 +24,29 @@ struct PPPetAdViewerNavigationBar: View {
     }
 
     var body: some View {
+        navigationRow
+    }
+
+    private var navigationRow: some View {
         HStack(spacing: PPSpace.md) {
             backButton
 
-            if isCollapsed {
+            if interactionState.compactSummaryOpacity > 0.01 {
                 PPPetAdViewerNavBarSmartPill(snapshot: snapshot)
                     .frame(maxWidth: .infinity)
-                    .transition(
-                        reduceMotion
-                            ? .opacity
-                            : .opacity.combined(
-                                with: .scale(scale: 0.95).combined(with: .offset(y: 4))
-                            )
+                    .opacity(Double(interactionState.compactSummaryOpacity))
+                    .scaleEffect(
+                        reduceMotion ? 1 : interactionState.compactSummaryScale
+                    )
+                    .offset(
+                        y: reduceMotion
+                            ? 0
+                            : PPSpace.xs
+                                * (1 - interactionState.compactSummaryOpacity)
+                    )
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(
+                        !interactionState.compactSummaryOwnsAccessibility
                     )
             } else {
                 Spacer(minLength: PPSpace.sm)
@@ -48,11 +59,7 @@ struct PPPetAdViewerNavigationBar: View {
             }
         }
         .padding(.horizontal, PPSpace.screenMargin)
-        .padding(.bottom, 8)
-        .animation(
-            reduceMotion ? nil : PPPetAdViewerMotion.navigation,
-            value: isCollapsed
-        )
+        .padding(.bottom, PPSpace.sm)
     }
 
     private var backButton: some View {
@@ -62,7 +69,7 @@ struct PPPetAdViewerNavigationBar: View {
                     layoutDirection == .rightToLeft
                     ? "chevron.right"
                     : "chevron.left",
-                tint: .ppTextPrimary
+                tint: .white
             )
         }
         .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
@@ -83,6 +90,7 @@ struct PPPetAdViewerNavigationBar: View {
             }
             .menuIndicator(.hidden)
             .buttonStyle(PPPetAdPressButtonStyle(pressedScale: 0.90))
+            .disabled(isFavoriteWorking)
             .accessibilityLabel(favoriteAccessibilityLabel)
             .accessibilityValue(favoriteAccessibilityValue)
             .accessibilityHint(
@@ -106,7 +114,7 @@ struct PPPetAdViewerNavigationBar: View {
     private var favoriteLabel: some View {
         circleControl(
             symbol: isFavorite ? "heart.fill" : "heart",
-            tint: isFavorite ? .ppError : .ppTextPrimary,
+            tint: isFavorite ? .ppPrimary : .white,
             showsProgress: isFavoriteWorking
         )
     }
@@ -144,7 +152,7 @@ struct PPPetAdViewerNavigationBar: View {
         } label: {
             circleControl(
                 symbol: "ellipsis",
-                tint: .ppTextPrimary,
+                tint: .white,
                 showsProgress: isReportWorking
             )
         }
@@ -201,13 +209,17 @@ struct PPPetAdViewerNavigationBar: View {
                     .symbolRenderingMode(.monochrome)
             }
         }
-        .frame(width: 44, height: 44)
+        .frame(
+            width: PPPetAdViewerLayoutMetrics.navigationControlSize,
+            height: PPPetAdViewerLayoutMetrics.navigationControlSize
+        )
         .ppGlassSurface(
             in: Circle(),
-            tint: Color.ppCard.opacity(0.76),
-            fallback: Color(uiColor: .systemBackground).opacity(0.92),
-            stroke: Color.white.opacity(0.32),
-            lineWidth: PPPetAdViewerStyle.hairlineWidth
+            tint: Color.black.opacity(0.18),
+            fallback: Color.black.opacity(0.72),
+            stroke: Color.white.opacity(0.30),
+            lineWidth: PPPetAdViewerStyle.hairlineWidth,
+            isInteractive: true
         )
         .shadow(
             color: Color.black.opacity(0.12),
@@ -216,30 +228,32 @@ struct PPPetAdViewerNavigationBar: View {
             y: 4
         )
         .contentShape(Circle())
+        .scaleEffect(interactionState.navigationControlScale)
     }
 }
 
 /// A compact, high-fidelity responsive capsule card designed for navigation center area.
 struct PPPetAdViewerNavBarSmartPill: View {
     let snapshot: PPPetAdViewerSnapshot
-    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: PPSpace.sm) {
-            // Circle Avatar for First Pet Image
-            if let firstMedia = snapshot.media.first {
+            if let firstMedia = snapshot.media.first,
+               !dynamicTypeSize.isAccessibilitySize {
                 PPPetAdRemoteImageView(
                     urlString: firstMedia.imageURL,
                     blurHash: firstMedia.blurHash,
                     contentMode: .fill,
-                    accessibilityLabel: firstMedia.isVideo ? "Video thumbnail" : "Pet image",
+                    accessibilityLabel: firstMedia.isVideo
+                        ? PPPetAdLocalization.text("Video", fallback: "Video")
+                        : PPPetAdLocalization.text("Photo", fallback: "Photo"),
                     showsRetryOnFailure: false
                 )
                 .frame(width: 36, height: 36)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.white.opacity(0.24), lineWidth: 1))
-            } else {
-                // Fallback Avatar Icon
+            } else if !dynamicTypeSize.isAccessibilitySize {
                 ZStack {
                     Color.ppPrimary.opacity(0.12)
                     Image(systemName: "pawprint.fill")
@@ -251,7 +265,6 @@ struct PPPetAdViewerNavBarSmartPill: View {
                 .overlay(Circle().stroke(Color.ppPrimary.opacity(0.2), lineWidth: 1))
             }
 
-            // Text Stack: Title & Subtitle (Breed · Species)
             VStack(alignment: .leading, spacing: 1) {
                 Text(snapshot.title)
                     .font(PPPetAdTypography.footnoteBold)
@@ -260,7 +273,7 @@ struct PPPetAdViewerNavBarSmartPill: View {
                     .truncationMode(.tail)
 
                 let subText = subtitleText
-                if !subText.isEmpty {
+                if !subText.isEmpty, !dynamicTypeSize.isAccessibilitySize {
                     Text(subText)
                         .font(PPPetAdTypography.caption)
                         .foregroundStyle(Color.ppTextSecondary)
@@ -271,14 +284,13 @@ struct PPPetAdViewerNavBarSmartPill: View {
 
             Spacer(minLength: PPSpace.xs)
 
-            // Trailing Edge: Bold price stacked vertically with secondary currency
             let pc = priceAndCurrency
             if pc.currency.isEmpty {
                 Text(pc.price)
                     .font(.custom("Beiruti-Bold", size: 15, relativeTo: .subheadline))
                     .foregroundStyle(Color.ppPrimary)
                     .lineLimit(1)
-                    .padding(.horizontal, 6)
+                    .padding(.horizontal, PPSpace.xs)
             } else {
                 VStack(alignment: .center, spacing: -2) {
                     Text(pc.price)
@@ -291,16 +303,16 @@ struct PPPetAdViewerNavBarSmartPill: View {
                         .foregroundStyle(Color.ppTextSecondary)
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 6)
+                .padding(.horizontal, PPSpace.xs)
             }
         }
-        .padding(.leading, 6)
-        .padding(.trailing, 10)
-        .padding(.vertical, 5)
+        .padding(.leading, PPSpace.xs)
+        .padding(.trailing, PPSpace.sm)
+        .padding(.vertical, PPSpace.xs)
         .ppGlassSurface(
             in: Capsule(),
-            tint: Color.ppCard.opacity(0.85),
-            fallback: Color(uiColor: .systemBackground).opacity(0.95),
+            tint: Color.ppCard.opacity(0.22),
+            fallback: Color.ppElevatedSurface.opacity(0.96),
             stroke: Color.white.opacity(0.24),
             lineWidth: PPPetAdViewerStyle.hairlineWidth
         )
@@ -361,4 +373,3 @@ struct PPPetAdViewerNavBarSmartPill: View {
         return (snapshot.price, "")
     }
 }
-

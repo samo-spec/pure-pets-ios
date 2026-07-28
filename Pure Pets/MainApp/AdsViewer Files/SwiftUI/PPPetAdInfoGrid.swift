@@ -14,8 +14,9 @@ struct PPPetAdFadingDivider: View {
         self.axis = axis
     }
 
+    @ViewBuilder
     var body: some View {
-        LinearGradient(
+        let divider = LinearGradient(
             colors: [
                 Color.clear,
                 dividerColor,
@@ -24,11 +25,20 @@ struct PPPetAdFadingDivider: View {
             startPoint: axis == .horizontal ? .leading : .top,
             endPoint: axis == .horizontal ? .trailing : .bottom
         )
-        .frame(
-            maxWidth: axis == .horizontal ? .infinity : dividerThickness,
-            maxHeight: axis == .vertical ? .infinity : dividerThickness
-        )
-        .accessibilityHidden(true)
+
+        if axis == .horizontal {
+            divider
+                .frame(maxWidth: .infinity)
+                .frame(height: dividerThickness)
+                .accessibilityHidden(true)
+        } else {
+            divider
+                .frame(
+                    width: dividerThickness,
+                    height: PPSpace.xxxxl
+                )
+                .accessibilityHidden(true)
+        }
     }
 
     private var dividerColor: Color {
@@ -187,8 +197,8 @@ struct PPPetAdInfoGrid: View {
     private var ledgerSurface: some View {
         ledgerShape.fill(
             colorScheme == .dark
-                ? Color.ppForeground.opacity(0.62)
-                : Color.ppCard.opacity(0.98)
+                ? Color.ppForeground.opacity(0.68)
+                : Color.ppForeground.opacity(0.56)
         )
     }
 

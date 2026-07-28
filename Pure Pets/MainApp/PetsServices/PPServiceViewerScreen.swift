@@ -17,8 +17,11 @@ public struct PPServiceViewerScreen: View {
 
     public var body: some View {
         ZStack(alignment: .top) {
-            Color.ppBackground
-                .ignoresSafeArea()
+            PPPetAdViewerBackground(
+                topColor: store.heroTopColor,
+                middleColor: store.heroMiddleColor,
+                bottomColor: store.heroBottomColor
+            )
 
             if let snapshot = store.snapshot {
                 GeometryReader { proxy in
@@ -31,15 +34,18 @@ public struct PPServiceViewerScreen: View {
                     let topBarHeight: CGFloat = proxy.safeAreaInsets.top + 14
 
                     ZStack(alignment: .top) {
-                        ScrollView {
+                        ScrollView(showsIndicators: false) {
                             PPAccessoryViewerScrollOffsetReader()
 
-                            VStack(spacing: 18) {
+                            VStack(spacing: 0) {
                                 PPServiceViewerHeroHeader(
                                     imageURL: snapshot.imageURL,
                                     blurHash: snapshot.blurHash,
                                     height: heroHeight,
-                                    compact: compact
+                                    compact: compact,
+                                    onImageLoaded: { img in
+                                        store.handleImageLoaded(img)
+                                    }
                                 )
                                 .padding(.horizontal, horizontalPadding)
                                 .padding(.top, topBarHeight)
@@ -59,7 +65,8 @@ public struct PPServiceViewerScreen: View {
                                     reviewsSection
                                 }
                                 .padding(.horizontal, PPSpace.screenMargin)
-                                .padding(.bottom, 100)
+                                .padding(.top, -28)
+                                .padding(.bottom, 110)
                             }
                         }
                         .coordinateSpace(
@@ -68,7 +75,7 @@ public struct PPServiceViewerScreen: View {
                         .onPreferenceChange(
                             PPAccessoryViewerScrollOffsetPreferenceKey.self
                         ) { scrollDistance in
-                            showsNavigationTitlePill = scrollDistance > 120
+                            showsNavigationTitlePill = scrollDistance > 220
                         }
                         .ignoresSafeArea(edges: .top)
 
@@ -87,6 +94,7 @@ public struct PPServiceViewerScreen: View {
                             onClose: onClose
                         )
                         .frame(maxHeight: .infinity, alignment: .bottom)
+                        .ignoresSafeArea(.keyboard, edges: .bottom)
                     }
                 }
             } else {
@@ -105,14 +113,16 @@ public struct PPServiceViewerScreen: View {
 
     private func descriptionCard(_ text: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(PPServiceViewerL10n.text("About Service", fallback: "About Service"))
+            Text(PPServiceViewerL10n.text("service_view_description_title", fallback: "Description"))
                 .font(PPAccessoryTypography.headline)
                 .foregroundStyle(Color.ppTextPrimary)
+                .accessibilityAddTraits(.isHeader)
 
             Text(text)
                 .font(PPAccessoryTypography.body)
                 .foregroundStyle(Color.ppTextSecondary)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,6 +148,7 @@ public struct PPServiceViewerScreen: View {
                     Text(PPServiceViewerL10n.text("Reviews", fallback: "Reviews"))
                         .font(PPAccessoryTypography.headline)
                         .foregroundStyle(Color.ppTextPrimary)
+                        .accessibilityAddTraits(.isHeader)
 
                     ForEach(store.reviews) { review in
                         PPServiceViewerReviewRow(item: review)

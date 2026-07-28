@@ -5,7 +5,6 @@ struct PPPetAdViewerLoadingStateView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @State private var isPulsing = false
 
     var body: some View {
@@ -25,18 +24,18 @@ struct PPPetAdViewerLoadingStateView: View {
                         maxHeight: .infinity,
                         alignment: .top
                     )
-                    .background(
-                        PPPetAdViewerStyle.sheetBackground,
-                        in: UnevenRoundedRectangle(
-                            topLeadingRadius:
-                                PPPetAdViewerStyle.sheetRadius,
-                            bottomLeadingRadius: 0,
-                            bottomTrailingRadius: 0,
-                            topTrailingRadius:
-                                PPPetAdViewerStyle.sheetRadius,
-                            style: .continuous
+                    .background {
+                        Color.ppBackground
+                        .clipShape(
+                            UnevenRoundedRectangle(
+                                topLeadingRadius: PPPetAdViewerStyle.sheetRadius,
+                                bottomLeadingRadius: 0,
+                                bottomTrailingRadius: 0,
+                                topTrailingRadius: PPPetAdViewerStyle.sheetRadius,
+                                style: .continuous
+                            )
                         )
-                    )
+                    }
                     .offset(y: -PPPetAdViewerStyle.sheetOverlap)
             }
         }
@@ -96,28 +95,32 @@ struct PPPetAdViewerLoadingStateView: View {
             factsSkeletonRail
                 .padding(.top, PPSpace.xs)
         }
-        .padding(PPSpace.base)
-        .background(passportSkeletonSurface)
-        .overlay {
-            passportSkeletonShape
-                .strokeBorder(passportSkeletonBorder, lineWidth: passportSkeletonBorderWidth)
-                .accessibilityHidden(true)
-        }
     }
 
     private var headerSkeleton: some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            identitySkeleton
-            priceSkeleton
-                .frame(maxWidth: .infinity, alignment: .leading)
+            skeletonLine(width: 58, height: 10)
+
+            if dynamicTypeSize.isAccessibilitySize {
+                stackedHeaderSkeleton
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .center, spacing: PPSpace.base) {
+                        skeletonFillLine(height: 28)
+                        priceSkeleton
+                    }
+
+                    stackedHeaderSkeleton
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var identitySkeleton: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
-            skeletonLine(width: 58, height: 10)
+    private var stackedHeaderSkeleton: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
             skeletonFillLine(height: 28)
+            priceSkeleton
         }
     }
 
@@ -176,60 +179,12 @@ struct PPPetAdViewerLoadingStateView: View {
         .padding(PPSpace.sm)
         .background(
             colorScheme == .dark
-                ? Color.ppForeground.opacity(0.62)
-                : Color.ppCard.opacity(0.98),
+                ? Color.ppForeground.opacity(0.68)
+                : Color.ppForeground.opacity(0.56),
             in: RoundedRectangle(
                 cornerRadius: PPPetAdViewerStyle.infoRadius,
                 style: .continuous
             )
-        )
-    }
-
-    private var passportSkeletonSurface: some View {
-        passportSkeletonShape.fill(passportSkeletonFill)
-    }
-
-    private var passportSkeletonFill: LinearGradient {
-        let topColor = colorScheme == .dark
-            ? Color.ppForeground.opacity(0.58)
-            : Color.ppPrimary.opacity(0.055)
-        let bottomColor = colorScheme == .dark
-            ? Color.ppCard.opacity(0.94)
-            : Color.ppCard.opacity(0.96)
-
-        return LinearGradient(
-            colors: [topColor, bottomColor],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private var passportSkeletonBorder: LinearGradient {
-        let accentOpacity = colorSchemeContrast == .increased ? 0.92 : 0.34
-        let quietOpacity = colorSchemeContrast == .increased ? 0.82 : 0.22
-
-        return LinearGradient(
-            stops: [
-                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0),
-                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0.045),
-                .init(color: Color.ppBorder.opacity(quietOpacity), location: 0.18),
-                .init(color: Color.ppBorder.opacity(quietOpacity * 0.72), location: 1)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-    }
-
-    private var passportSkeletonBorderWidth: CGFloat {
-        colorSchemeContrast == .increased
-            ? 1.5
-            : 1
-    }
-
-    private var passportSkeletonShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
-            style: .continuous
         )
     }
 

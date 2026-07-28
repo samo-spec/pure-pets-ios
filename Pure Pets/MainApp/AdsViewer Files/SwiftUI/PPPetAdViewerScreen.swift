@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private struct PPPetAdContactDockHeightPreferenceKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
@@ -21,8 +22,7 @@ struct PPPetAdViewerScreen: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-    @State private var isNavigationCollapsed = false
+    @State private var interactionState = PPPetAdViewerInteractionState()
     @State private var hasAppeared = false
     @State private var contactDockHeight: CGFloat = 0
 
@@ -53,6 +53,9 @@ struct PPPetAdViewerScreen: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let topInset = topChromeInset(proxy)
+            let bottomInset = bottomChromeInset(proxy)
+
             ZStack {
                 PPPetAdViewerBackground(
                     topColor: store.heroTopColor,
@@ -70,21 +73,24 @@ struct PPPetAdViewerScreen: View {
                             )
                     )
 
-                topFadeOverlay(proxy: proxy)
+                PPPetAdTopAtmosphereOverlay(
+                    interactionState: interactionState,
+                    height: topInset + 80
+                )
 
-                navigationBar
+                navigationBar(topInset: topInset)
 
                 navigationLink
 
                 bottomFadeOverlay(proxy: proxy)
 
                 contactDock(
-                    bottomInset: proxy.safeAreaInsets.bottom
+                    bottomInset: bottomInset
                 )
                 .zIndex(15)
 
                 toastOverlay(
-                    bottomInset: proxy.safeAreaInsets.bottom
+                    bottomInset: bottomInset
                 )
                 .animation(
                     reduceMotion ? nil : PPPetAdViewerMotion.toast,
@@ -216,14 +222,14 @@ struct PPPetAdViewerScreen: View {
     private func content(proxy: GeometryProxy) -> some View {
         let metrics = PPPetAdViewerLayoutMetrics(
             containerSize: proxy.size,
-            safeAreaTop: proxy.safeAreaInsets.top
+            safeAreaTop: topChromeInset(proxy)
         )
 
         return PPPetAdHeroScrollContainer(
             minimumHeroHeight: metrics.minimumHeroHeight,
             expandedHeroHeight: metrics.expandedHeroHeight,
             onRefresh: store.refresh,
-            onNavigationCollapseChanged: setNavigationCollapsed
+            interactionState: interactionState
         ) { scrollState in
             PPPetAdHeroGallery(
                 items: store.snapshot.media,
@@ -231,7 +237,7 @@ struct PPPetAdViewerScreen: View {
                     get: { store.selectedMediaIndex },
                     set: { store.selectedMediaIndex = $0 }
                 ),
-                scrollState: scrollState,
+                interactionState: scrollState,
                 onOpen: store.selectMedia(at:),
                 bottomViewType: .thumbRails,
                 onFirstImageLoaded: store.handleFirstImageLoaded
@@ -251,15 +257,10 @@ struct PPPetAdViewerScreen: View {
             )
             .zIndex(0)
         } content: {
-            detailsSheet(bottomInset: proxy.safeAreaInsets.bottom)
+            detailsSheet(bottomInset: bottomChromeInset(proxy))
                 .zIndex(1)
         }
         .ignoresSafeArea(edges: .top)
-    }
-
-    private func setNavigationCollapsed(_ isCollapsed: Bool) {
-        guard isCollapsed != isNavigationCollapsed else { return }
-        isNavigationCollapsed = isCollapsed
     }
 
     private func detailsSheet(bottomInset: CGFloat) -> some View {
@@ -324,25 +325,14 @@ struct PPPetAdViewerScreen: View {
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .fixedSize(horizontal: false, vertical: true)
-        .background(PPPetAdViewerStyle.sheetBackground)
-        .clipShape(detailsSheetShape)
-        .overlay(alignment: .top) {
-            detailsSheetShape
-                .strokeBorder(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 1 : 0.52
-                    ),
-                    lineWidth: colorSchemeContrast == .increased ? 1.5 : 1
-                )
-                .accessibilityHidden(true)
+        .background {
+            PPPetAdWorldSheetSurface(
+                interactionState: interactionState,
+                topColor: store.heroTopColor,
+                middleColor: store.heroMiddleColor,
+                bottomColor: store.heroBottomColor
+            )
         }
-        .shadow(
-            color: Color.black.opacity(0.05),
-            radius: 12,
-            x: 0,
-            y: -3
-        )
-        .offset(y: 0)
     }
 
     private var sheetGrabberIndicator: some View {
@@ -350,16 +340,6 @@ struct PPPetAdViewerScreen: View {
             .fill(Color.ppTextSecondary.opacity(0.28))
             .frame(width: 36, height: 4.5)
             .accessibilityHidden(true)
-    }
-
-    private var detailsSheetShape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: PPPetAdViewerStyle.sheetRadius,
-            bottomLeadingRadius: 0,
-            bottomTrailingRadius: 0,
-            topTrailingRadius: PPPetAdViewerStyle.sheetRadius,
-            style: .continuous
-        )
     }
 
     private var primaryDetailsContent: some View {
@@ -371,10 +351,11 @@ struct PPPetAdViewerScreen: View {
                 type: summaryType,
                 age: store.snapshot.age,
                 gender: store.snapshot.gender,
-                ad: store.snapshot.ad
+                ad: store.snapshot.ad,
+                interactionState: interactionState
             )
             .padding(.horizontal, PPSpace.screenMargin)
-            .padding(.top, PPSpace.xl)
+            .padding(.top, interactionState.summaryTopPadding)
             .ppPetAdEntrance(
                 isPresented: hasAppeared,
                 delayIndex: 0
@@ -432,6 +413,11 @@ struct PPPetAdViewerScreen: View {
 
             PPPetAdContactDock(store: store)
                 .fixedSize(horizontal: false, vertical: true)
+                .modifier(
+                    PPPetAdDockElevationModifier(
+                        interactionState: interactionState
+                    )
+                )
                 .background {
                     GeometryReader { dockProxy in
                         Color.clear.preference(
@@ -482,15 +468,10 @@ struct PPPetAdViewerScreen: View {
         }
     }
 
-    private var safeAreaTopInset: CGFloat {
-        let windowTop = PPComponentSwift.PPStatusBarHeight
-        return max(windowTop, 44)
-    }
-
-    private var navigationBar: some View {
+    private func navigationBar(topInset: CGFloat) -> some View {
         PPPetAdViewerNavigationBar(
             snapshot: store.snapshot,
-            isCollapsed: isNavigationCollapsed,
+            interactionState: interactionState,
             isFavorite: store.isFavorite,
             isFavoriteWorking: store.favoriteState == .working,
             canShare: store.screenState == .content,
@@ -504,7 +485,7 @@ struct PPPetAdViewerScreen: View {
             onShare: store.share,
             onReport: store.requestReport
         )
-        .padding(.top, safeAreaTopInset - 8)
+        .padding(.top, topInset + PPSpace.sm)
         .background {
             navigationBackground
         }
@@ -600,27 +581,31 @@ struct PPPetAdViewerScreen: View {
         )
     }
 
-    private func topFadeOverlay(proxy: GeometryProxy) -> some View {
-        let topColor = Color.ppBackground
-        return LinearGradient(
-            colors: [
-                topColor.opacity(0.86),
-                topColor.opacity(0.66),
-                topColor.opacity(0.22),
-                Color.clear
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: proxy.safeAreaInsets.top + 80)
-        .ignoresSafeArea(edges: .top)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .allowsHitTesting(false)
-        .zIndex(9)
+    private func topChromeInset(_ proxy: GeometryProxy) -> CGFloat {
+        if proxy.safeAreaInsets.top > 1 {
+            return proxy.safeAreaInsets.top
+        }
+        let sceneTop = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.top ?? 0
+        return max(sceneTop, 24)
+    }
+
+    private func bottomChromeInset(_ proxy: GeometryProxy) -> CGFloat {
+        if proxy.safeAreaInsets.bottom > 1 {
+            return proxy.safeAreaInsets.bottom
+        }
+        return UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow }?
+            .safeAreaInsets.bottom ?? 0
     }
 
     private func bottomFadeOverlay(proxy: GeometryProxy) -> some View {
-        let bottomInset = proxy.safeAreaInsets.bottom
+        let bottomInset = bottomChromeInset(proxy)
         let dockBottomPadding =
             max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
             + PPBottomDecisionBarGeometry.bottomBreathingRoom
@@ -648,5 +633,140 @@ struct PPPetAdViewerScreen: View {
             value: store.ppShowsContactDock
         )
         .zIndex(8)
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPPetAdTopAtmosphereOverlay: View {
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
+    let height: CGFloat
+
+    var body: some View {
+        LinearGradient(
+            colors: [
+                Color.ppBackground.opacity(
+                    Double(
+                        min(
+                            0.92,
+                            0.48 + interactionState.backgroundDimming
+                        )
+                    )
+                ),
+                Color.ppBackground.opacity(
+                    Double(0.28 + interactionState.backgroundDimming)
+                ),
+                Color.clear
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: height)
+        .ignoresSafeArea(edges: .top)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .zIndex(9)
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPPetAdWorldSheetSurface: View {
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
+    let topColor: UIColor?
+    let middleColor: UIColor?
+    let bottomColor: UIColor?
+
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
+    var body: some View {
+        let shape = UnevenRoundedRectangle(
+            topLeadingRadius: interactionState.sheetRadius,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: interactionState.sheetRadius,
+            style: .continuous
+        )
+
+        ZStack(alignment: .top) {
+            shape.fill(Color.ppBackground)
+
+            LinearGradient(
+                colors: [
+                    sampled(topColor, opacity: 0.13),
+                    sampled(middleColor, opacity: 0.07),
+                    sampled(bottomColor, opacity: 0.025),
+                    Color.clear
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .frame(height: 260)
+
+            LinearGradient(
+                colors: [
+                    Color.ppCard.opacity(colorScheme == .dark ? 0.30 : 0.44),
+                    Color.clear
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(height: 110)
+        }
+        .clipShape(shape)
+        .overlay(alignment: .top) {
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    Color.ppTextPrimary.opacity(
+                        Double(
+                            colorSchemeContrast == .increased
+                                ? interactionState.sheetEdgeOpacity
+                                : interactionState.sheetEdgeOpacity * 0.58
+                        )
+                    ),
+                    Color.clear
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: colorSchemeContrast == .increased ? 1.5 : 1)
+            .padding(.horizontal, interactionState.sheetRadius)
+        }
+        .shadow(
+            color: Color.black.opacity(
+                colorScheme == .dark ? 0.22 : 0.07
+            ),
+            radius: 14,
+            x: 0,
+            y: -4
+        )
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func sampled(_ color: UIColor?, opacity: CGFloat) -> Color {
+        guard let color else { return .clear }
+        return Color(uiColor: color).opacity(Double(opacity))
+    }
+}
+
+@available(iOS 16.0, *)
+private struct PPPetAdDockElevationModifier: ViewModifier {
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
+    @Environment(\.colorScheme) private var colorScheme
+
+    func body(content: Content) -> some View {
+        content.shadow(
+            color: Color.black.opacity(
+                Double(
+                    (colorScheme == .dark ? 0.18 : 0.07)
+                        * interactionState.dockElevation
+                )
+            ),
+            radius: PPSpace.sm + (PPSpace.sm * interactionState.dockElevation),
+            x: 0,
+            y: PPSpace.xs
+        )
     }
 }

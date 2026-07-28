@@ -2,6 +2,7 @@ import SwiftUI
 
 // MARK: - PPPetAdDetailsSummary (Consumer)
 
+@MainActor
 @available(iOS 16.0, *)
 struct PPPetAdDetailsSummary: View {
     let title: String
@@ -12,94 +13,144 @@ struct PPPetAdDetailsSummary: View {
     let gender: String
     var ad: PetAd? = nil
 
-    @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @ObservedObject private var interactionState: PPPetAdViewerInteractionState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(
+        title: String,
+        location: String,
+        price: String,
+        type: String,
+        age: String,
+        gender: String,
+        ad: PetAd? = nil,
+        interactionState: PPPetAdViewerInteractionState? = nil
+    ) {
+        self.title = title
+        self.location = location
+        self.price = price
+        self.type = type
+        self.age = age
+        self.gender = gender
+        self.ad = ad
+        _interactionState = ObservedObject(
+            wrappedValue: interactionState ?? PPPetAdViewerInteractionState()
+        )
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PPPetAdHeaderCard(
-                title: title,
-                location: location,
-                price: price,
-                postedDate: ad?.postedDate
+        PPPetAdAdaptiveSummaryLayout(
+            identityExtent: interactionState.mainHeaderExtent
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
+                PPPetAdHeaderCard(
+                    title: title,
+                    location: location,
+                    price: price,
+                    postedDate: ad?.postedDate
+                )
+
+                if hasFacts {
+                    PPPetAdFadingDivider(axis: .horizontal)
+                        .frame(height: PPPetAdViewerStyle.hairlineWidth)
+                        .padding(.top, PPSpace.lg)
+                }
+            }
+            .opacity(Double(interactionState.mainHeaderVisibility))
+            .offset(
+                y: reduceMotion
+                    ? 0
+                    : -PPSpace.sm * (1 - interactionState.mainHeaderVisibility)
             )
+            .accessibilityHidden(!interactionState.mainHeaderOwnsAccessibility)
 
             if hasFacts {
-                PPPetAdFadingDivider(axis: .horizontal)
-                    .frame(height: PPPetAdViewerStyle.hairlineWidth)
-                    .padding(.top, PPSpace.lg)
-
                 PPPetAdInfoGrid(type: type, age: age, gender: gender)
                     .padding(.top, PPSpace.xs)
             }
         }
-        .padding(PPSpace.base)
+        .clipped()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(summarySurface)
-        .overlay {
-            summaryShape
-                .strokeBorder(summaryBorder, lineWidth: summaryBorderWidth)
-                .accessibilityHidden(true)
-        }
-        .shadow(
-            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.045),
-            radius: colorScheme == .dark ? 18 : 12,
-            x: 0,
-            y: colorScheme == .dark ? 9 : 5
-        )
+        .fixedSize(horizontal: false, vertical: true)
         .accessibilityElement(children: .contain)
     }
 
     private var hasFacts: Bool {
         !type.isEmpty || !age.isEmpty || !gender.isEmpty
     }
+}
 
-    private var summarySurface: some View {
-        summaryShape.fill(summaryFill)
-    }
+@available(iOS 16.0, *)
+private struct PPPetAdAdaptiveSummaryLayout: Layout {
+    let identityExtent: CGFloat
 
-    private var summaryFill: LinearGradient {
-        let topColor = colorScheme == .dark
-            ? Color.ppForeground.opacity(0.58)
-            : Color.ppPrimary.opacity(0.055)
-        let bottomColor = colorScheme == .dark
-            ? Color.ppCard.opacity(0.94)
-            : Color.ppCard.opacity(0.96)
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        let sizes = measuredSizes(proposal: proposal, subviews: subviews)
+        guard let identity = sizes.first else { return .zero }
 
-        return LinearGradient(
-            colors: [topColor, bottomColor],
-            startPoint: .top,
-            endPoint: .bottom
+        let factsHeight = sizes.dropFirst().first?.height ?? 0
+        let width = proposal.width ?? sizes.map(\.width).max() ?? 0
+        return CGSize(
+            width: width,
+            height: (identity.height * clampedExtent) + factsHeight
         )
     }
 
-    private var summaryBorder: LinearGradient {
-        let accentOpacity = colorSchemeContrast == .increased ? 0.92 : 0.58
-        let quietOpacity = colorSchemeContrast == .increased ? 0.82 : 0.26
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let sizes = measuredSizes(
+            proposal: ProposedViewSize(width: bounds.width, height: nil),
+            subviews: subviews
+        )
+        guard let identity = subviews.first,
+              let identitySize = sizes.first else { return }
 
-        return LinearGradient(
-            stops: [
-                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0),
-                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0.045),
-                .init(color: Color.ppBorder.opacity(quietOpacity), location: 0.18),
-                .init(color: Color.ppBorder.opacity(quietOpacity * 0.72), location: 1)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
+        let visibleIdentityHeight = identitySize.height * clampedExtent
+        identity.place(
+            at: CGPoint(
+                x: bounds.minX,
+                y: bounds.minY
+            ),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(
+                width: bounds.width,
+                height: identitySize.height
+            )
+        )
+
+        guard subviews.count > 1 else { return }
+        let facts = subviews[subviews.index(after: subviews.startIndex)]
+        facts.place(
+            at: CGPoint(
+                x: bounds.minX,
+                y: bounds.minY + visibleIdentityHeight
+            ),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(width: bounds.width, height: nil)
         )
     }
 
-    private var summaryBorderWidth: CGFloat {
-        colorSchemeContrast == .increased
-            ? 1.5
-            : 1
+    private var clampedExtent: CGFloat {
+        min(max(identityExtent, 0), 1)
     }
 
-    private var summaryShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
-            style: .continuous
-        )
+    private func measuredSizes(
+        proposal: ProposedViewSize,
+        subviews: Subviews
+    ) -> [CGSize] {
+        subviews.map {
+            $0.sizeThatFits(
+                ProposedViewSize(width: proposal.width, height: nil)
+            )
+        }
     }
 }
 
@@ -111,35 +162,95 @@ struct PPPetAdHeaderCard: View {
     let location: String
     let price: String
     var postedDate: Date? = nil
-
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.md) {
-            identityBlock
-        }
+        identityBlock
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
     }
 
     private var identityBlock: some View {
-        VStack(alignment: .leading, spacing: PPSpace.xs) {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
             Text(petNameLabel)
                 .font(PPPetAdTypography.footnoteBold)
                 .foregroundStyle(Color.ppPrimary)
                 .accessibilityHidden(true)
 
+            titlePriceLayout
+
+            metadataRow
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilitySortPriority(3)
+    }
+
+    @ViewBuilder
+    private var titlePriceLayout: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            stackedTitlePrice
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: PPSpace.base) {
+                    titleText
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1)
+
+                    if !price.isEmpty {
+                        PPPetAdPriceView(price: price)
+                            .accessibilitySortPriority(2)
+                    }
+                }
+
+                stackedTitlePrice
+            }
+        }
+    }
+
+    private var stackedTitlePrice: some View {
+        VStack(alignment: .leading, spacing: PPSpace.sm) {
             titleText
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if !price.isEmpty {
                 PPPetAdPriceView(price: price)
-                    .padding(.top, PPSpace.xs)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilitySortPriority(2)
             }
         }
-        .accessibilityElement(children: .contain)
-        .accessibilitySortPriority(3)
+    }
+
+    @ViewBuilder
+    private var metadataRow: some View {
+        if !location.isEmpty || freshnessText != nil {
+            HStack(alignment: .firstTextBaseline, spacing: PPSpace.sm) {
+                if !location.isEmpty {
+                    Label {
+                        Text(location)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                    } icon: {
+                        Image(systemName: "mappin.and.ellipse")
+                    }
+                    .accessibilityLabel(
+                        "\(PPPetAdLocalization.text("Location", fallback: "Location")): \(location)"
+                    )
+                }
+
+                if !location.isEmpty, freshnessText != nil {
+                    Circle()
+                        .fill(Color.ppTextSecondary.opacity(0.56))
+                        .frame(width: PPSpace.xxs, height: PPSpace.xxs)
+                        .accessibilityHidden(true)
+                }
+
+                if let freshnessText {
+                    Text(freshnessText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .font(PPPetAdTypography.footnote)
+            .foregroundStyle(Color.ppTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var titleText: some View {

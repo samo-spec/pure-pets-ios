@@ -6,7 +6,7 @@ import UIKit
 struct PPPetAdHeroGallery: View {
     let items: [PPPetAdMediaItem]
     @Binding var selection: Int
-    @ObservedObject var scrollState: PPPetAdHeroScrollVisualState
+    let interactionState: PPPetAdViewerInteractionState
     let onOpen: (Int) -> Void
     var bottomViewType: PPGarBottomViewType = .thumbRails
     var onFirstImageLoaded: ((UIImage) -> Void)? = nil
@@ -15,29 +15,6 @@ struct PPPetAdHeroGallery: View {
 
     private let thumbnailSize: CGFloat = 44
     private let thumbnailRailInset: CGFloat = 10
-
-    private var compactGallery: Bool {
-        UIScreen.main.bounds.width < 700
-    }
-
-    private var galleryShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: compactGallery ? 28 : 34,
-            style: .continuous
-        )
-    }
-
-    private var expandedChromeOpacity: CGFloat {
-        max(0, 1 - (scrollState.collapseProgress * 1.7))
-    }
-
-    private var topBarClearance: CGFloat {
-        let keyWindow = UIApplication.shared.connectedScenes
-            .compactMap { ($0 as? UIWindowScene)?.windows.first(where: \.isKeyWindow) }
-            .first
-        let safeTop = keyWindow?.safeAreaInsets.top ?? 47.0
-        return safeTop + (compactGallery ? 70 : 80)
-    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -48,29 +25,21 @@ struct PPPetAdHeroGallery: View {
             if items.count > 1 {
                 switch bottomViewType {
                 case .indicator:
-                    pageControl
-                        .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.bottom, 44)
-                        .opacity(expandedChromeOpacity)
-                        .scaleEffect(
-                            reduceMotion
-                                ? 1
-                                : 0.98 + (expandedChromeOpacity * 0.02)
-                        )
-                        .allowsHitTesting(expandedChromeOpacity > 0.4)
-                        .accessibilityHidden(expandedChromeOpacity < 0.4)
+                    PPPetAdGalleryHandoff(
+                        interactionState: interactionState
+                    ) {
+                        pageControl
+                            .padding(.horizontal, PPSpace.screenMargin)
+                            .padding(.bottom, PPSpace.xxxxl)
+                    }
                 case .thumbRails:
-                    thumbnailFooter
-                        .padding(.horizontal, PPSpace.screenMargin)
-                        .padding(.bottom, 36)
-                        .opacity(expandedChromeOpacity)
-                        .scaleEffect(
-                            reduceMotion
-                                ? 1
-                                : 0.98 + (expandedChromeOpacity * 0.02)
-                        )
-                        .allowsHitTesting(expandedChromeOpacity > 0.4)
-                        .accessibilityHidden(expandedChromeOpacity < 0.4)
+                    PPPetAdGalleryHandoff(
+                        interactionState: interactionState
+                    ) {
+                        thumbnailFooter
+                            .padding(.horizontal, PPSpace.screenMargin)
+                            .padding(.bottom, PPSpace.xxxl + PPSpace.xs)
+                    }
                 case .contactPill:
                     EmptyView()
                 @unknown default:
@@ -122,14 +91,18 @@ struct PPPetAdHeroGallery: View {
             PPPetAdHeroImageView(
                 urlString: item.imageURL,
                 blurHash: item.blurHash,
-                collapseProgress: scrollState.collapseProgress,
+                interactionState: interactionState,
                 accessibilityLabel: mediaAccessibilityLabel(index: index),
                 onImageLoaded: index == 0 ? onFirstImageLoaded : nil
             )
             .ignoresSafeArea(edges: .top)
 
             if item.isVideo {
-                videoPlayIndicator
+                PPPetAdGalleryHandoff(
+                    interactionState: interactionState
+                ) {
+                    videoPlayIndicator
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -148,18 +121,7 @@ struct PPPetAdHeroGallery: View {
     }
 
     private var contrastLayers: some View {
-        LinearGradient(
-            colors: [
-                Color.white.opacity(0.08),
-                Color.clear,
-                PPPetAdViewerStyle.heroPeachBottom.opacity(0.08)
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea(edges: .top)
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        PPPetAdHeroAtmosphere(interactionState: interactionState)
     }
 
     private var videoPlayIndicator: some View {
@@ -175,12 +137,6 @@ struct PPPetAdHeroGallery: View {
             )
             .shadow(color: .black.opacity(0.20), radius: 18, y: 8)
             .offset(x: 2)
-            .opacity(expandedChromeOpacity)
-            .scaleEffect(
-                reduceMotion
-                    ? 1
-                    : 0.94 + (expandedChromeOpacity * 0.06)
-            )
             .accessibilityHidden(true)
     }
 
@@ -310,24 +266,6 @@ struct PPPetAdHeroGallery: View {
         }
     }
 
-    private var pageCount: some View {
-        Text("\(selection + 1) / \(items.count)")
-            .font(PPPetAdTypography.footnoteBold)
-            .monospacedDigit()
-            .foregroundStyle(.white)
-            .frame(minWidth: 52, minHeight: 40)
-            .ppGlassSurface(
-                in: Capsule(),
-                tint: Color.black.opacity(0.20),
-                fallback: Color.black.opacity(0.82),
-                stroke: Color.white.opacity(0.24)
-            )
-            .fixedSize()
-            .accessibilityLabel(
-                "\(selection + 1) \(PPPetAdLocalization.text("of", fallback: "of")) \(items.count)"
-            )
-    }
-
     private var thumbnailRailWidth: CGFloat {
         let count = max(items.count, 1)
         let spacing = PPSpace.sm * CGFloat(max(count - 1, 0))
@@ -366,19 +304,22 @@ struct PPPetAdHeroGallery: View {
                 endRadius: 300
             )
 
-            VStack(spacing: PPSpace.md) {
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 42, weight: .medium))
-                Text(
-                    PPPetAdLocalization.text(
-                        "pet_ad_viewer_no_media",
-                        fallback: "Photos are not available"
+            PPPetAdGalleryHandoff(
+                interactionState: interactionState
+            ) {
+                VStack(spacing: PPSpace.md) {
+                    Image(systemName: "photo.on.rectangle.angled")
+                        .font(.system(size: 42, weight: .medium))
+                    Text(
+                        PPPetAdLocalization.text(
+                            "pet_ad_viewer_no_media",
+                            fallback: "Photos are not available"
+                        )
                     )
-                )
-                .font(PPPetAdTypography.headline)
+                    .font(PPPetAdTypography.headline)
+                }
+                .foregroundStyle(Color.ppTextSecondary.opacity(0.84))
             }
-            .foregroundStyle(Color.ppTextSecondary.opacity(0.84))
-            .opacity(expandedChromeOpacity)
         }
         .accessibilityElement(children: .combine)
     }
@@ -412,18 +353,88 @@ struct PPPetAdHeroGallery: View {
     }
 }
 
+private struct PPPetAdGalleryHandoff<Content: View>: View {
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let content: Content
+
+    init(
+        interactionState: PPPetAdViewerInteractionState,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.interactionState = interactionState
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            .opacity(Double(interactionState.galleryLensOpacity))
+            .offset(
+                y: reduceMotion ? 0 : interactionState.galleryLensTranslation
+            )
+            .scaleEffect(
+                reduceMotion
+                    ? 1
+                    : 0.98 + (0.02 * interactionState.galleryLensOpacity)
+            )
+            .allowsHitTesting(interactionState.galleryLensOpacity > 0.40)
+            .accessibilityHidden(
+                !interactionState.galleryLensOwnsAccessibility
+            )
+    }
+}
+
+private struct PPPetAdHeroAtmosphere: View {
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
+
+    var body: some View {
+        LinearGradient(
+            stops: [
+                .init(
+                    color: Color.ppBackground.opacity(
+                        Double(0.08 + (0.06 * interactionState.progress))
+                    ),
+                    location: 0
+                ),
+                .init(color: Color.clear, location: 0.42),
+                .init(
+                    color: Color.ppBackground.opacity(
+                        Double(0.10 + (0.12 * interactionState.progress))
+                    ),
+                    location: 1
+                )
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
 private struct PPPetAdHeroImageView: View {
     let urlString: String?
     let blurHash: String?
-    let collapseProgress: CGFloat
+    @ObservedObject var interactionState: PPPetAdViewerInteractionState
     let accessibilityLabel: String
     var onImageLoaded: ((UIImage) -> Void)? = nil
 
     @StateObject private var loader = PPPetAdImageLoader()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var fittedImageOpacity: CGFloat {
-        max(0, 1 - (collapseProgress * 1.65))
+    init(
+        urlString: String?,
+        blurHash: String?,
+        interactionState: PPPetAdViewerInteractionState,
+        accessibilityLabel: String,
+        onImageLoaded: ((UIImage) -> Void)? = nil
+    ) {
+        self.urlString = urlString
+        self.blurHash = blurHash
+        _interactionState = ObservedObject(wrappedValue: interactionState)
+        self.accessibilityLabel = accessibilityLabel
+        self.onImageLoaded = onImageLoaded
     }
 
     var body: some View {
@@ -477,39 +488,17 @@ private struct PPPetAdHeroImageView: View {
     }
 
     private func rendered(_ image: UIImage) -> some View {
-        ZStack(alignment: .top) {
-            LinearGradient(
-                colors: [
-                    PPPetAdViewerStyle.heroPeachTop,
-                    PPPetAdViewerStyle.heroPeachBottom
-                ],
-                startPoint: .top,
-                endPoint: .bottom
+        PPPetAdTopAnchoredFillImage(image: image)
+            .scaleEffect(
+                reduceMotion ? 1 : interactionState.heroScale,
+                anchor: .top
             )
-            .ignoresSafeArea(edges: .top)
-
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .scaleEffect(1.18)
-                .saturation(0.70)
-                .opacity(0.10)
-                .clipped()
-
-            LinearGradient(
-                colors: [
-                    PPPetAdViewerStyle.heroPeachTop.opacity(0.70),
-                    PPPetAdViewerStyle.heroPeachBottom.opacity(0.46)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
+            .offset(
+                y: reduceMotion ? 0 : interactionState.heroTranslation
             )
-
-            PPPetAdTopAnchoredFillImage(image: image)
-                .opacity(fittedImageOpacity)
-                .clipped()
-        }
+            .saturation(Double(interactionState.heroSaturation))
+            .opacity(Double(interactionState.focusedHeroOpacity))
+            .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .transition(.opacity)
     }
