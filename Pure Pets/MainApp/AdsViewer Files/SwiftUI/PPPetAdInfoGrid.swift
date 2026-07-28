@@ -185,10 +185,11 @@ struct PPPetAdInfoGrid: View {
     }
 
     private var ledgerSurface: some View {
-        ledgerShape
-            .fill(
-                Color.ppForeground.opacity(colorScheme == .dark ? 0.48 : 0.72)
-            )
+        ledgerShape.fill(
+            colorScheme == .dark
+                ? Color.ppForeground.opacity(0.62)
+                : Color.ppCard.opacity(0.98)
+        )
     }
 
     private var ledgerShape: RoundedRectangle {

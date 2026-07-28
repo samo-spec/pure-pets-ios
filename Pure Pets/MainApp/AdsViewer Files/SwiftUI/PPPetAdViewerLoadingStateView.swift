@@ -4,6 +4,8 @@ import SwiftUI
 struct PPPetAdViewerLoadingStateView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @State private var isPulsing = false
 
     var body: some View {
@@ -95,19 +97,10 @@ struct PPPetAdViewerLoadingStateView: View {
                 .padding(.top, PPSpace.xs)
         }
         .padding(PPSpace.base)
-        .background(
-            Color.ppCard,
-            in: RoundedRectangle(
-                cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
-                style: .continuous
-            )
-        )
-        .overlay(alignment: .topLeading) {
-            Capsule(style: .continuous)
-                .fill(Color.ppPrimary.opacity(0.28))
-                .frame(width: 58, height: 4)
-                .padding(.leading, PPSpace.base)
-                .padding(.top, PPSpace.sm)
+        .background(passportSkeletonSurface)
+        .overlay {
+            passportSkeletonShape
+                .strokeBorder(passportSkeletonBorder, lineWidth: passportSkeletonBorderWidth)
                 .accessibilityHidden(true)
         }
     }
@@ -117,9 +110,6 @@ struct PPPetAdViewerLoadingStateView: View {
             identitySkeleton
             priceSkeleton
                 .frame(maxWidth: .infinity, alignment: .leading)
-
-            locationBridgeSkeleton
-                .padding(.top, PPSpace.xs)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -136,23 +126,6 @@ struct PPPetAdViewerLoadingStateView: View {
             skeletonLine(width: 112, height: 28)
             skeletonLine(width: 24, height: 10)
         }
-    }
-
-    private var locationBridgeSkeleton: some View {
-        HStack(spacing: PPSpace.sm) {
-            RoundedRectangle(cornerRadius: PPSpace.xs, style: .continuous)
-                .fill(Color.ppPrimary.opacity(0.13))
-                .frame(width: 18, height: 18)
-
-            skeletonLine(width: 144, height: 16)
-
-            Circle()
-                .fill(Color.ppSeparator)
-                .frame(width: PPSpace.xs, height: PPSpace.xs)
-
-            skeletonLine(width: 54, height: 10)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func skeletonLine(
@@ -202,11 +175,61 @@ struct PPPetAdViewerLoadingStateView: View {
         }
         .padding(PPSpace.sm)
         .background(
-            Color.ppForeground.opacity(0.70),
+            colorScheme == .dark
+                ? Color.ppForeground.opacity(0.62)
+                : Color.ppCard.opacity(0.98),
             in: RoundedRectangle(
                 cornerRadius: PPPetAdViewerStyle.infoRadius,
                 style: .continuous
             )
+        )
+    }
+
+    private var passportSkeletonSurface: some View {
+        passportSkeletonShape.fill(passportSkeletonFill)
+    }
+
+    private var passportSkeletonFill: LinearGradient {
+        let topColor = colorScheme == .dark
+            ? Color.ppForeground.opacity(0.58)
+            : Color.ppPrimary.opacity(0.055)
+        let bottomColor = colorScheme == .dark
+            ? Color.ppCard.opacity(0.94)
+            : Color.ppCard.opacity(0.96)
+
+        return LinearGradient(
+            colors: [topColor, bottomColor],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var passportSkeletonBorder: LinearGradient {
+        let accentOpacity = colorSchemeContrast == .increased ? 0.92 : 0.34
+        let quietOpacity = colorSchemeContrast == .increased ? 0.82 : 0.22
+
+        return LinearGradient(
+            stops: [
+                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0),
+                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0.045),
+                .init(color: Color.ppBorder.opacity(quietOpacity), location: 0.18),
+                .init(color: Color.ppBorder.opacity(quietOpacity * 0.72), location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var passportSkeletonBorderWidth: CGFloat {
+        colorSchemeContrast == .increased
+            ? 1.5
+            : 1
+    }
+
+    private var passportSkeletonShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
+            style: .continuous
         )
     }
 

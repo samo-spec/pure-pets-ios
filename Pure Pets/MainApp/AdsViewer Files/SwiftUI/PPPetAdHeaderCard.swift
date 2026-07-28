@@ -36,26 +36,9 @@ struct PPPetAdDetailsSummary: View {
         .padding(PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(summarySurface)
-        .overlay(alignment: .topLeading) {
-            Capsule(style: .continuous)
-                .fill(Color.ppPrimary.opacity(
-                    colorSchemeContrast == .increased ? 0.92 : 0.74
-                ))
-                .frame(width: 58, height: 4)
-                .padding(.leading, PPSpace.base)
-                .padding(.top, PPSpace.sm)
-                .accessibilityHidden(true)
-        }
         .overlay {
             summaryShape
-                .stroke(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.95 : 0.46
-                    ),
-                    lineWidth: colorSchemeContrast == .increased
-                        ? 1.5
-                        : PPPetAdViewerStyle.hairlineWidth
-                )
+                .strokeBorder(summaryBorder, lineWidth: summaryBorderWidth)
                 .accessibilityHidden(true)
         }
         .shadow(
@@ -72,8 +55,44 @@ struct PPPetAdDetailsSummary: View {
     }
 
     private var summarySurface: some View {
-        summaryShape
-            .fill(Color.ppCard)
+        summaryShape.fill(summaryFill)
+    }
+
+    private var summaryFill: LinearGradient {
+        let topColor = colorScheme == .dark
+            ? Color.ppForeground.opacity(0.58)
+            : Color.ppPrimary.opacity(0.055)
+        let bottomColor = colorScheme == .dark
+            ? Color.ppCard.opacity(0.94)
+            : Color.ppCard.opacity(0.96)
+
+        return LinearGradient(
+            colors: [topColor, bottomColor],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var summaryBorder: LinearGradient {
+        let accentOpacity = colorSchemeContrast == .increased ? 0.92 : 0.58
+        let quietOpacity = colorSchemeContrast == .increased ? 0.82 : 0.26
+
+        return LinearGradient(
+            stops: [
+                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0),
+                .init(color: Color.ppPrimary.opacity(accentOpacity), location: 0.045),
+                .init(color: Color.ppBorder.opacity(quietOpacity), location: 0.18),
+                .init(color: Color.ppBorder.opacity(quietOpacity * 0.72), location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    private var summaryBorderWidth: CGFloat {
+        colorSchemeContrast == .increased
+            ? 1.5
+            : 1
     }
 
     private var summaryShape: RoundedRectangle {
@@ -97,13 +116,6 @@ struct PPPetAdHeaderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PPSpace.md) {
             identityBlock
-
-            if showsLocationBridge {
-                PPPetAdLocationBridge(
-                    location: location,
-                    freshness: freshnessText
-                )
-            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain)
@@ -143,10 +155,6 @@ struct PPPetAdHeaderCard: View {
     }
 
     // MARK: - Computed Properties
-
-    private var showsLocationBridge: Bool {
-        !location.isEmpty || freshnessText != nil
-    }
 
     private var displayTitle: String {
         title.isEmpty
@@ -265,140 +273,6 @@ private struct PPPetAdPricePresentation {
         }
     }
 }
-
-// MARK: - Location Bridge
-
-@available(iOS 16.0, *)
-private struct PPPetAdLocationBridge: View {
-    let location: String
-    let freshness: String?
-
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
-
-    var body: some View {
-        Group {
-            if dynamicTypeSize.isAccessibilitySize {
-                accessibilityLayout
-            } else {
-                compactLayout
-            }
-        }
-        .padding(.horizontal, PPSpace.md)
-        .padding(.vertical, PPSpace.sm)
-        .background(locationSurface)
-        .overlay {
-            locationShape
-                .stroke(
-                    Color.ppBorder.opacity(
-                        colorSchemeContrast == .increased ? 0.82 : 0.32
-                    ),
-                    lineWidth: colorSchemeContrast == .increased
-                        ? 1.25
-                        : PPPetAdViewerStyle.hairlineWidth
-                )
-                .accessibilityHidden(true)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .contain)
-    }
-
-    private var compactLayout: some View {
-        HStack(alignment: .center, spacing: PPSpace.md) {
-            if !location.isEmpty {
-                locationContent
-                    .layoutPriority(1)
-            }
-
-            if let freshness {
-                if !location.isEmpty {
-                    Circle()
-                        .fill(Color.ppSeparator)
-                        .frame(width: PPSpace.xs, height: PPSpace.xs)
-                        .accessibilityHidden(true)
-                }
-
-                freshnessContent(freshness)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var accessibilityLayout: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            if !location.isEmpty {
-                locationContent
-            }
-            if let freshness {
-                freshnessContent(freshness)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var locationContent: some View {
-        HStack(alignment: .center, spacing: PPSpace.sm) {
-            Image(systemName: "mappin.and.ellipse")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.ppPrimary)
-                .frame(width: 22, height: 22)
-                .accessibilityHidden(true)
-
-            Text(verbatim: "\u{2068}\(location)\u{2069}")
-                .font(PPPetAdTypography.subheadline)
-                .foregroundStyle(Color.ppTextSecondary)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
-                .fixedSize(horizontal: false, vertical: true)
-                .multilineTextAlignment(.leading)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            "\(PPPetAdLocalization.text("Location", fallback: "Location")): \(location)"
-        )
-    }
-
-    private func freshnessContent(_ text: String) -> some View {
-        HStack(spacing: PPSpace.xs) {
-            Circle()
-                .fill(Color.ppSuccess)
-                .frame(width: PPSpace.sm, height: PPSpace.sm)
-                .overlay {
-                    Circle()
-                        .strokeBorder(
-                            Color.ppSurface,
-                            lineWidth: PPPetAdViewerStyle.hairlineWidth
-                        )
-                }
-                .accessibilityHidden(true)
-
-            Text(verbatim: text)
-                .font(PPPetAdTypography.footnoteBold)
-                .foregroundStyle(Color.ppTextSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            PPPetAdLocalization.text(
-                "pet_ad_viewer_freshness_label",
-                fallback: "Recently posted"
-            ) + ": " + text
-        )
-    }
-
-    private var locationSurface: some View {
-        locationShape
-            .fill(Color.ppForeground.opacity(0.64))
-    }
-
-    private var locationShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPPetAdViewerStyle.insetRadius,
-            style: .continuous
-        )
-    }
-}
-
-
 
 // MARK: - Section Heading (Shared)
 

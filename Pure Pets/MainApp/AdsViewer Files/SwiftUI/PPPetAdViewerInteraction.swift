@@ -377,10 +377,10 @@ struct PPPetAdViewerLayoutMetrics {
         let contentWidth = min(containerSize.width, 900)
         let compact = contentWidth < 700
 
-        // Fill ~68% of screen height for compact, ~58% for regular
-        let targetHeight = compact
+        // Fill ~68% of screen height for compact, ~58% for regular (minus 30pt lower offset)
+        let targetHeight = (compact
             ? containerSize.height * 0.68
-            : containerSize.height * 0.58
+            : containerSize.height * 0.58) - 30.0
 
         minimumHeroHeight = minimum
         expandedHeroHeight = max(minimum + 96, targetHeight)
