@@ -13658,7 +13658,7 @@ presentingViewController:self
             self.ambientBackgroundView.userInteractionEnabled = NO;
 
             self.ambientBackgroundView.PPHeroApexUseUnderFingerMotion = NO;
-            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleFullScreen;// PPHeroGlassAccentStyleBBBaseBackground;
+            self.ambientBackgroundView.accentStyle = PPHeroGlassAccentStyleBBBaseBackground; //PPHeroGlassAccentStyleFullScreen;// PPHeroGlassAccentStyleBBBaseBackground;
             self.ambientBackgroundView.cornerGlowOpacityMultiplier =
                 PPHomeAmbientBackgroundAccentStrength;
             //self.ambientBackgroundView.overrideSolidColor = PPHomeSemanticCanvasColor();
@@ -13669,12 +13669,6 @@ presentingViewController:self
             //self.ambientBackgroundView.accentColorOverride = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
             //self.ambientBackgroundView.overrideSurfureColor = AppBackgroundClr;
             //self.ambientBackgroundView.overrideTopGlowColor = [[UIColor colorNamed:@"AppBage"] colorWithAlphaComponent:1.0];
-
-            self.ambientBackgroundView.overrideSurfaceColor = nil;
-            self.ambientBackgroundView.accentColorOverride = nil;
-            self.ambientBackgroundView.overrideTopGlowColor = nil;
-            self.ambientBackgroundView.overrideCenterGlowColor = nil;
-            self.ambientBackgroundView.overrideBottomGlowColor = nil;
 
             [self.view insertSubview:self.ambientBackgroundView atIndex:0];
             [NSLayoutConstraint activateConstraints:@[

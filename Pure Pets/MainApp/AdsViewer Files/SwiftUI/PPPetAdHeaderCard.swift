@@ -12,6 +12,9 @@ struct PPPetAdDetailsSummary: View {
     let gender: String
     var ad: PetAd? = nil
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PPPetAdHeaderCard(
@@ -30,12 +33,54 @@ struct PPPetAdDetailsSummary: View {
                     .padding(.top, PPSpace.xs)
             }
         }
+        .padding(PPSpace.base)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .background(summarySurface)
+        .overlay(alignment: .topLeading) {
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(
+                    colorSchemeContrast == .increased ? 0.92 : 0.74
+                ))
+                .frame(width: 58, height: 4)
+                .padding(.leading, PPSpace.base)
+                .padding(.top, PPSpace.sm)
+                .accessibilityHidden(true)
+        }
+        .overlay {
+            summaryShape
+                .stroke(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 0.95 : 0.46
+                    ),
+                    lineWidth: colorSchemeContrast == .increased
+                        ? 1.5
+                        : PPPetAdViewerStyle.hairlineWidth
+                )
+                .accessibilityHidden(true)
+        }
+        .shadow(
+            color: Color.black.opacity(colorScheme == .dark ? 0.18 : 0.045),
+            radius: colorScheme == .dark ? 18 : 12,
+            x: 0,
+            y: colorScheme == .dark ? 9 : 5
+        )
         .accessibilityElement(children: .contain)
     }
 
     private var hasFacts: Bool {
         !type.isEmpty || !age.isEmpty || !gender.isEmpty
+    }
+
+    private var summarySurface: some View {
+        summaryShape
+            .fill(Color.ppCard)
+    }
+
+    private var summaryShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
+            style: .continuous
+        )
     }
 }
 
@@ -229,6 +274,7 @@ private struct PPPetAdLocationBridge: View {
     let freshness: String?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
 
     var body: some View {
         Group {
@@ -237,6 +283,21 @@ private struct PPPetAdLocationBridge: View {
             } else {
                 compactLayout
             }
+        }
+        .padding(.horizontal, PPSpace.md)
+        .padding(.vertical, PPSpace.sm)
+        .background(locationSurface)
+        .overlay {
+            locationShape
+                .stroke(
+                    Color.ppBorder.opacity(
+                        colorSchemeContrast == .increased ? 0.82 : 0.32
+                    ),
+                    lineWidth: colorSchemeContrast == .increased
+                        ? 1.25
+                        : PPPetAdViewerStyle.hairlineWidth
+                )
+                .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
@@ -321,6 +382,18 @@ private struct PPPetAdLocationBridge: View {
                 "pet_ad_viewer_freshness_label",
                 fallback: "Recently posted"
             ) + ": " + text
+        )
+    }
+
+    private var locationSurface: some View {
+        locationShape
+            .fill(Color.ppForeground.opacity(0.64))
+    }
+
+    private var locationShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPPetAdViewerStyle.insetRadius,
+            style: .continuous
         )
     }
 }

@@ -40,7 +40,7 @@ public struct PPRootAvatarView: View {
     
     private func renderAvatarImage() -> UIImage {
         let size: CGFloat = 32.0
-        let avatarSize: CGFloat = isSelected ? 28.0 : 26.0
+        let avatarSize: CGFloat = isSelected ? 26.0 : 24.0
         let avatarRect = CGRect(
             x: (size - avatarSize) * 0.5,
             y: (size - avatarSize) * 0.5,

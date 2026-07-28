@@ -2522,7 +2522,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 
     nav.navigationBarHidden = NO;
     UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:20.0
+        [UIImageSymbolConfiguration configurationWithPointSize:18.0
                                                          weight:UIImageSymbolWeightMedium
                                                           scale:UIImageSymbolScaleMedium];
     UIImage *iconm = icon.length > 0
@@ -2531,7 +2531,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         : nil;
     if (!iconm && icon.length > 0) {
         iconm = [UIImage pp_symbolNamed:icon
-                              pointSize:20.0
+                              pointSize:18.0
                                  weight:UIImageSymbolWeightMedium
                                   scale:UIImageSymbolScaleMedium
                                 palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
@@ -2543,7 +2543,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         : nil;
     if (!selectedIcon && selectedImage.length > 0) {
         selectedIcon = [UIImage pp_symbolNamed:selectedImage
-                                     pointSize:20.0
+                                     pointSize:18.0
                                         weight:UIImageSymbolWeightMedium
                                          scale:UIImageSymbolScaleMedium
                                        palette:@[AppPrimaryClr ?: AppPrimaryTextClr ?: UIColor.labelColor]
@@ -3218,11 +3218,11 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
         normalSymbolName = @"cart.badge.clock";
         selectedSymbolName = @"cart.badge.clock.fill";
         return [UIImage pp_symbolNamed:(selected ? selectedSymbolName : normalSymbolName)
-                             pointSize:selected ? 19.0 : 17.0
+                             pointSize:selected ? 17.0 : 15.0
                                 weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
-                                  scale:UIImageSymbolScaleMedium
-                                palette:@[selected ? (AppPrimaryClr ?: UIColor.systemTealColor) : UIColor.secondaryLabelColor]
-                           makeTemplate:YES];
+                                 scale:UIImageSymbolScaleMedium
+                               palette:@[selected ? (AppPrimaryClr ?: UIColor.systemTealColor) : UIColor.secondaryLabelColor]
+                          makeTemplate:YES];
     }
     switch (index) {
         case PPRootTabIndexHome:
@@ -3241,7 +3241,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
             break;
     }
     UIImageSymbolConfiguration *symbolConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 17.0 : 16.0
+        [UIImageSymbolConfiguration configurationWithPointSize:selected ? 15.0 : 14.0
                                                          weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightRegular
                                                           scale:UIImageSymbolScaleDefault];
     return [UIImage imageNamed:(selected ? selectedSymbolName : normalSymbolName)] ?: [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
@@ -3275,7 +3275,7 @@ static NSString *PPCartFloatingBarAmountText(double totalAmount)
 - (UIImage *)pp_userMenuTabAvatarImageSelected:(BOOL)selected
 {
     CGFloat canvas = 32.0;
-    CGFloat avatarSize = selected ? 28.0 : 26.0;
+    CGFloat avatarSize = selected ? 26.0 : 24.0;
     CGRect avatarRect = CGRectMake((canvas - avatarSize) * 0.5,
                                    (canvas - avatarSize) * 0.5,
                                    avatarSize,

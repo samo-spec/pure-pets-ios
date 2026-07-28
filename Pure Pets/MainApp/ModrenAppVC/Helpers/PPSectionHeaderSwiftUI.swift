@@ -9,15 +9,27 @@ import SwiftUI
 import UIKit
 
 private enum PPSectionHeaderMetrics {
-    static let contentVerticalInset: CGFloat = 4
-    static let accentWidth: CGFloat = 6
-    static let accentHeight: CGFloat = 6
+    static let contentVerticalInset: CGFloat = 2
+    static let horizontalInset: CGFloat = 12
+    static let identityMarkWidth: CGFloat = 24
+    static let identityMarkHeight: CGFloat = 8
+    static let identityCoreWidth: CGFloat = 8
+    static let identityExpandedWidth: CGFloat = 15
+    static let identitySpacing: CGFloat = 8
+    static let titleUnderlineWidth: CGFloat = 34
+    static let titleUnderlineExpandedWidth: CGFloat = 52
+    static let titleUnderlineHeight: CGFloat = 3
     static let actionHeight: CGFloat = 36
     static let actionMinWidth: CGFloat = 44
-    static let actionMaxWidth: CGFloat = 196
+    static let actionMaxWidth: CGFloat = 144
+    static let actionTitleMinimumScale: CGFloat = 0.76
+    static let mainKindsHorizontalInset: CGFloat = 22
+    static let mainKindsActionMaxWidth: CGFloat = 116
+    static let mainKindsActionImagePadding: CGFloat = 3
+    static let mainKindsActionTitleMinimumScale: CGFloat = 0.68
     static let titleTouchHeight: CGFloat = 44
-    static let contentSpacing: CGFloat = 10
-    static let titleToActionSpacing: CGFloat = 12
+    static let titleToActionSpacing: CGFloat = 8
+    static let mainKindsTitleToActionSpacing: CGFloat = 6
     static let subtitleSpacing: CGFloat = 3
     static let cornerRadius: CGFloat = 14
 }
@@ -26,12 +38,66 @@ private enum PPSectionHeaderPalette {
     static var accent: UIColor {
         UIColor(named: "AppPrimaryColor") ?? .systemTeal
     }
+
+    static var title: UIColor {
+        UIColor(named: "PrimaryTextColor") ?? .label
+    }
+
+    static var subtitle: UIColor {
+        UIColor(named: "SecondaryTextColor") ?? .secondaryLabel
+    }
+}
+
+private enum PPSectionHeaderTypography {
+    static func title() -> UIFont {
+        scaledBrandFont(
+            named: "Beiruti-Bold",
+            size: 16,
+            fallbackWeight: .bold,
+            textStyle: .headline,
+            maximumPointSize: 22
+        )
+    }
+
+    static func subtitle() -> UIFont {
+        scaledBrandFont(
+            named: "Beiruti-Medium",
+            size: 13,
+            fallbackWeight: .medium,
+            textStyle: .subheadline,
+            maximumPointSize: 19
+        )
+    }
+
+    static func action() -> UIFont {
+        scaledBrandFont(
+            named: "Beiruti-Medium",
+            size: 12,
+            fallbackWeight: .medium,
+            textStyle: .caption1,
+            maximumPointSize: 16
+        )
+    }
+
+    private static func scaledBrandFont(
+        named fontName: String,
+        size: CGFloat,
+        fallbackWeight: UIFont.Weight,
+        textStyle: UIFont.TextStyle,
+        maximumPointSize: CGFloat
+    ) -> UIFont {
+        let baseFont = UIFont(name: fontName, size: size + 1)
+            ?? UIFont.systemFont(ofSize: size, weight: fallbackWeight)
+        return UIFontMetrics(forTextStyle: textStyle)
+            .scaledFont(for: baseFont, maximumPointSize: maximumPointSize)
+    }
 }
 
 private struct PPSectionHeaderState {
     var subtitleVisible = false
     var showsAction = false
     var usesCirclePresentation = false
+    var usesMainKindsPresentation = false
     var surfaceDecorationActive = true
     var rightToLeft = Language.isRTL()
     var pressed = false
@@ -45,6 +111,7 @@ private final class PPSectionHeaderStore: ObservableObject {
         subtitleVisible: Bool,
         showsAction: Bool,
         usesCirclePresentation: Bool,
+        usesMainKindsPresentation: Bool,
         surfaceDecorationActive: Bool,
         rightToLeft: Bool,
         animated: Bool
@@ -53,6 +120,7 @@ private final class PPSectionHeaderStore: ObservableObject {
             state.subtitleVisible = subtitleVisible
             state.showsAction = showsAction
             state.usesCirclePresentation = usesCirclePresentation
+            state.usesMainKindsPresentation = usesMainKindsPresentation
             state.surfaceDecorationActive = surfaceDecorationActive
             state.rightToLeft = rightToLeft
         }
@@ -180,8 +248,10 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         actionButton.clipsToBounds = true
         actionButton.layer.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
         actionButton.layer.cornerCurve = .continuous
+        actionButton.titleLabel?.numberOfLines = 1
+        actionButton.titleLabel?.lineBreakMode = .byTruncatingTail
         actionButton.titleLabel?.adjustsFontSizeToFitWidth = true
-        actionButton.titleLabel?.minimumScaleFactor = 0.88
+        actionButton.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.actionTitleMinimumScale
         actionButton.accessibilityTraits = .button
         actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)
         actionButton.configuration = baseActionButtonConfiguration()
@@ -201,17 +271,11 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     private func baseActionButtonConfiguration() -> UIButton.Configuration {
         var config = UIButton.Configuration.plain()
         config.cornerStyle = .capsule
-        config.contentInsets = NSDirectionalEdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)
+        config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
         config.imagePadding = 5
         config.imagePlacement = .trailing
         config.baseForegroundColor = actionForegroundColor()
-
-        var background = UIBackgroundConfiguration.clear()
-        background.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
-        background.strokeWidth = 0
-        background.strokeColor = .clear
-        background.backgroundColor = .clear
-        config.background = background
+        config.background = actionBackgroundConfiguration(circlePresentation: false)
 
         let symbolConfig = UIImage.SymbolConfiguration(pointSize: 11.5, weight: .regular, scale: .medium)
         config.image = UIImage(systemName: "chevron.down", withConfiguration: symbolConfig)?
@@ -224,16 +288,23 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         config.imagePlacement = .trailing
         config.imagePadding = subtitleVisible ? 0 : 5
         config.contentInsets = subtitleVisible
-            ? NSDirectionalEdgeInsets(top: 5, leading: 6, bottom: 5, trailing: 6)
-            : NSDirectionalEdgeInsets(top: 5, leading: 12, bottom: 5, trailing: 12)
-
-        var background = config.background
-        background.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
-        background.strokeWidth = 0
-        background.strokeColor = .clear
-        background.backgroundColor = .clear
-        config.background = background
+            ? NSDirectionalEdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)
+            : NSDirectionalEdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12)
+        config.background = actionBackgroundConfiguration(circlePresentation: subtitleVisible)
         return config
+    }
+
+    private func actionBackgroundConfiguration(circlePresentation: Bool) -> UIBackgroundConfiguration {
+        let accent = PPSectionHeaderPalette.accent
+        let darkMode = traitCollection.userInterfaceStyle == .dark
+        var background = UIBackgroundConfiguration.clear()
+        background.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
+        background.strokeWidth = 1
+        background.strokeColor = accent.withAlphaComponent(darkMode ? 0.22 : 0.18)
+        background.backgroundColor = accent.withAlphaComponent(circlePresentation
+            ? (darkMode ? 0.18 : 0.12)
+            : (darkMode ? 0.12 : 0.075))
+        return background
     }
 
     private func refreshAppearance() {
@@ -241,12 +312,9 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         subtitleLabel.textColor = subtitleColor()
 
         var config = actionButton.configuration ?? baseActionButtonConfiguration()
-        var background = config.background
-        background.cornerRadius = PPSectionHeaderMetrics.actionHeight * 0.5
-        background.strokeWidth = 0
-        background.strokeColor = .clear
-        background.backgroundColor = .clear
-        config.background = background
+        config.background = actionBackgroundConfiguration(
+            circlePresentation: actionButtonUsesCirclePresentation
+        )
         config.cornerStyle = .capsule
         config.baseForegroundColor = actionForegroundColor()
         actionButton.configuration = config
@@ -256,30 +324,27 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
     }
 
     private func actionForegroundColor() -> UIColor {
-        .secondaryLabel
+        PPSectionHeaderPalette.accent
     }
 
     private func titleColor() -> UIColor {
-        .label
+        PPSectionHeaderPalette.title
     }
 
     private func subtitleColor() -> UIColor {
-        UIColor(named: "SecondaryTextColor") ?? .secondaryLabel
+        PPSectionHeaderPalette.subtitle
     }
 
     private func titleFont() -> UIFont {
-        let font = UIFont.systemFont(ofSize: 16, weight: .semibold)
-        return UIFontMetrics(forTextStyle: .headline).scaledFont(for: font, maximumPointSize: 22)
+        PPSectionHeaderTypography.title()
     }
 
     private func subtitleFont() -> UIFont {
-        let font = UIFont.systemFont(ofSize: 13, weight: .regular)
-        return UIFontMetrics(forTextStyle: .subheadline).scaledFont(for: font, maximumPointSize: 19)
+        PPSectionHeaderTypography.subtitle()
     }
 
     private func actionFont() -> UIFont {
-        let font = UIFont.systemFont(ofSize: 12, weight: .medium)
-        return UIFontMetrics(forTextStyle: .caption1).scaledFont(for: font, maximumPointSize: 16)
+        PPSectionHeaderTypography.action()
     }
 
     public override func layoutSubviews() {
@@ -457,6 +522,17 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
             }
         }
 
+        let usesMainKindsPresentation =
+            sectionRawValue == PPSectionHeaderHomeSectionRaw.mainKinds &&
+            !usesCirclePresentation
+        if usesMainKindsPresentation {
+            config.contentInsets = NSDirectionalEdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
+            config.imagePadding = config.image == nil ? 0 : PPSectionHeaderMetrics.mainKindsActionImagePadding
+            actionButton.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.mainKindsActionTitleMinimumScale
+        } else {
+            actionButton.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.actionTitleMinimumScale
+        }
+
         actionButton.configuration = config
         actionButton.invalidateIntrinsicContentSize()
         actionButton.setNeedsUpdateConfiguration()
@@ -488,8 +564,8 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         let hasTitleText = !(config.title?.isEmpty ?? true) || config.attributedTitle != nil
         if !hasTitleText && image != nil {
             config.contentInsets = circlePresentation
-                ? NSDirectionalEdgeInsets(top: 5, leading: 6, bottom: 5, trailing: 6)
-                : NSDirectionalEdgeInsets(top: 5, leading: 8, bottom: 5, trailing: 8)
+                ? NSDirectionalEdgeInsets(top: 6, leading: 6, bottom: 6, trailing: 6)
+                : NSDirectionalEdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8)
         }
     }
 
@@ -515,6 +591,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
             subtitleVisible: currentSubtitleVisible,
             showsAction: !actionButton.isHidden,
             usesCirclePresentation: actionButtonUsesCirclePresentation,
+            usesMainKindsPresentation: isMainKindsSection && !actionButtonUsesCirclePresentation,
             surfaceDecorationActive: surfaceDecorationActive,
             rightToLeft: Language.isRTL(),
             animated: animated
@@ -527,6 +604,7 @@ public final class PPSectionHeaderSwiftUI: UICollectionReusableView, UIGestureRe
         subtitleLabel.text = nil
         subtitleLabel.isHidden = true
         currentSubtitleVisible = false
+        currentSectionRawValue = 0
         actionButton.isHidden = true
         actionButton.menu = nil
         actionButton.showsMenuAsPrimaryAction = false
@@ -669,10 +747,12 @@ private final class PPSectionHeaderHostingView: UIView {
         let button = UIButton(type: .system)
         button.backgroundColor = .clear
         button.isOpaque = false
+        button.titleLabel?.numberOfLines = 1
+        button.titleLabel?.lineBreakMode = .byTruncatingTail
         button.titleLabel?.adjustsFontSizeToFitWidth = true
-        button.titleLabel?.minimumScaleFactor = 0.88
-        button.setContentCompressionResistancePriority(.required, for: .horizontal)
-        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.titleLabel?.minimumScaleFactor = PPSectionHeaderMetrics.actionTitleMinimumScale
+        button.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        button.setContentHuggingPriority(.defaultHigh, for: .horizontal)
         button.accessibilityTraits = .button
         return button
     }()
@@ -726,6 +806,7 @@ private final class PPSectionHeaderHostingView: UIView {
         subtitleVisible: Bool,
         showsAction: Bool,
         usesCirclePresentation: Bool,
+        usesMainKindsPresentation: Bool,
         surfaceDecorationActive: Bool,
         rightToLeft: Bool,
         animated: Bool
@@ -735,6 +816,7 @@ private final class PPSectionHeaderHostingView: UIView {
             subtitleVisible: subtitleVisible,
             showsAction: showsAction,
             usesCirclePresentation: usesCirclePresentation,
+            usesMainKindsPresentation: usesMainKindsPresentation,
             surfaceDecorationActive: surfaceDecorationActive,
             rightToLeft: rightToLeft,
             animated: animated
@@ -773,42 +855,50 @@ private struct PPSectionHeaderRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(alignment: .center, spacing: PPSectionHeaderMetrics.contentSpacing) {
-            accentRail
+        VStack(alignment: store.state.rightToLeft ? .trailing : .leading,
+               spacing: store.state.subtitleVisible ? PPSectionHeaderMetrics.subtitleSpacing : 0) {
+            titleRow
 
-            VStack(alignment: store.state.rightToLeft ? .trailing : .leading,
-                   spacing: store.state.subtitleVisible ? PPSectionHeaderMetrics.subtitleSpacing : 0) {
-                titleRow
-
-                if store.state.subtitleVisible {
-                    PPSectionHeaderLabelRepresentable(label: subtitleLabel)
-                        .frame(maxWidth: .infinity,
-                               alignment: store.state.rightToLeft ? .trailing : .leading)
-                        .transition(.opacity)
-                        .accessibilitySortPriority(0)
-                }
+            if store.state.subtitleVisible {
+                PPSectionHeaderLabelRepresentable(label: subtitleLabel)
+                    .frame(maxWidth: .infinity,
+                           alignment: store.state.rightToLeft ? .trailing : .leading)
+                    .padding(store.state.rightToLeft ? .trailing : .leading,
+                             PPSectionHeaderMetrics.identityMarkWidth + PPSectionHeaderMetrics.identitySpacing)
+                    .transition(.opacity)
+                    .accessibilitySortPriority(0)
             }
-            .layoutPriority(1)
         }
         .padding(.vertical, PPSectionHeaderMetrics.contentVerticalInset)
+        .padding(.horizontal, visibleEdgeInset)
+        .frame(maxWidth: .infinity, alignment: store.state.rightToLeft ? .trailing : .leading)
         .background(pressHighlight)
         .scaleEffect(reduceMotion ? 1 : (store.state.pressed ? 0.988 : 1))
         .environment(\.layoutDirection, store.state.rightToLeft ? .rightToLeft : .leftToRight)
         .accessibilityElement(children: .contain)
     }
 
+    private var visibleEdgeInset: CGFloat {
+        guard store.state.showsAction && !store.state.usesCirclePresentation else {
+            return 0
+        }
+
+        return store.state.usesMainKindsPresentation
+            ? PPSectionHeaderMetrics.mainKindsHorizontalInset
+            : PPSectionHeaderMetrics.horizontalInset
+    }
+
     private var titleRow: some View {
-        HStack(alignment: .center, spacing: PPSectionHeaderMetrics.titleToActionSpacing) {
-            PPSectionHeaderLabelRepresentable(label: titleLabel)
-                .frame(maxWidth: .infinity,
-                       minHeight: PPSectionHeaderMetrics.titleTouchHeight,
-                       alignment: store.state.rightToLeft ? .trailing : .leading)
+        HStack(alignment: .center, spacing: titleToActionSpacing) {
+            titleCluster
                 .layoutPriority(1)
-                .accessibilitySortPriority(2)
 
             if store.state.showsAction {
-                PPSectionHeaderButtonRepresentable(button: actionButton)
-                    .fixedSize(horizontal: !store.state.usesCirclePresentation, vertical: true)
+                PPSectionHeaderButtonRepresentable(
+                    button: actionButton,
+                    minimumScaleFactor: actionTitleMinimumScale
+                )
+                    .fixedSize(horizontal: store.state.usesCirclePresentation, vertical: true)
                     .frame(
                         minWidth: store.state.usesCirclePresentation
                             ? PPSectionHeaderMetrics.actionHeight
@@ -818,33 +908,101 @@ private struct PPSectionHeaderRootView: View {
                             : nil,
                         maxWidth: store.state.usesCirclePresentation
                             ? PPSectionHeaderMetrics.actionHeight
-                            : PPSectionHeaderMetrics.actionMaxWidth,
+                            : actionMaxWidth,
                         minHeight: PPSectionHeaderMetrics.actionHeight,
                         idealHeight: PPSectionHeaderMetrics.actionHeight,
                         maxHeight: PPSectionHeaderMetrics.actionHeight
                     )
-                    .padding(.vertical, 4)
+                    .clipped()
+                    .padding(.vertical, 3)
                     .transition(.opacity)
                     .accessibilitySortPriority(1)
             }
         }
+        .frame(maxWidth: .infinity, alignment: store.state.rightToLeft ? .trailing : .leading)
         .frame(minHeight: PPSectionHeaderMetrics.titleTouchHeight)
+        .overlay(alignment: .bottom) {
+            if store.state.surfaceDecorationActive {
+                titleUnderline
+                    .padding(store.state.rightToLeft ? .trailing : .leading,
+                             PPSectionHeaderMetrics.identityMarkWidth + PPSectionHeaderMetrics.identitySpacing)
+                    .transition(.opacity)
+            }
+        }
     }
 
-    private var accentRail: some View {
-        Capsule(style: .continuous)
-            .fill(Color(uiColor: PPSectionHeaderPalette.accent)
-                .opacity(store.state.surfaceDecorationActive ? 0.56 : 0.46))
-            .frame(width: PPSectionHeaderMetrics.accentWidth,
-                   height: store.state.expanded
-                        ? PPSectionHeaderMetrics.accentHeight * 1.14
-                        : PPSectionHeaderMetrics.accentHeight)
-            .opacity(store.state.surfaceDecorationActive ? 1 : 0.82)
-            .accessibilityHidden(true)
+    private var titleCluster: some View {
+        HStack(alignment: .center, spacing: PPSectionHeaderMetrics.identitySpacing) {
+            sectionMark
+
+            PPSectionHeaderLabelRepresentable(label: titleLabel)
+                .frame(maxWidth: .infinity,
+                       minHeight: PPSectionHeaderMetrics.titleTouchHeight,
+                       alignment: store.state.rightToLeft ? .trailing : .leading)
+                .layoutPriority(1)
+                .accessibilitySortPriority(2)
+        }
+        .frame(maxWidth: .infinity,
+               alignment: store.state.rightToLeft ? .trailing : .leading)
+    }
+
+    private var sectionMark: some View {
+        ZStack(alignment: store.state.rightToLeft ? .trailing : .leading) {
+            Capsule(style: .continuous)
+                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                    .opacity(store.state.surfaceDecorationActive ? 0.16 : 0.10))
+                .frame(width: PPSectionHeaderMetrics.identityMarkWidth,
+                       height: PPSectionHeaderMetrics.identityMarkHeight)
+
+            Capsule(style: .continuous)
+                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                    .opacity(store.state.surfaceDecorationActive ? 0.88 : 0.58))
+                .frame(width: store.state.expanded
+                        ? PPSectionHeaderMetrics.identityExpandedWidth
+                        : PPSectionHeaderMetrics.identityCoreWidth,
+                       height: PPSectionHeaderMetrics.identityMarkHeight)
+        }
+        .frame(width: PPSectionHeaderMetrics.identityMarkWidth,
+               height: PPSectionHeaderMetrics.titleTouchHeight)
+        .accessibilityHidden(true)
+    }
+
+    private var titleUnderline: some View {
+        HStack {
+            Capsule(style: .continuous)
+                .fill(Color(uiColor: PPSectionHeaderPalette.accent)
+                    .opacity(store.state.surfaceDecorationActive ? 0.72 : 0.42))
+                .frame(width: store.state.expanded
+                        ? PPSectionHeaderMetrics.titleUnderlineExpandedWidth
+                        : PPSectionHeaderMetrics.titleUnderlineWidth,
+                       height: PPSectionHeaderMetrics.titleUnderlineHeight)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityHidden(true)
+    }
+
+    private var titleToActionSpacing: CGFloat {
+        store.state.usesMainKindsPresentation
+            ? PPSectionHeaderMetrics.mainKindsTitleToActionSpacing
+            : PPSectionHeaderMetrics.titleToActionSpacing
+    }
+
+    private var actionMaxWidth: CGFloat {
+        store.state.usesMainKindsPresentation
+            ? PPSectionHeaderMetrics.mainKindsActionMaxWidth
+            : PPSectionHeaderMetrics.actionMaxWidth
+    }
+
+    private var actionTitleMinimumScale: CGFloat {
+        store.state.usesMainKindsPresentation
+            ? PPSectionHeaderMetrics.mainKindsActionTitleMinimumScale
+            : PPSectionHeaderMetrics.actionTitleMinimumScale
     }
 
     private var pressHighlight: some View {
-        RoundedRectangle(cornerRadius: PPSectionHeaderMetrics.cornerRadius, style: .continuous)
+        Capsule(style: .continuous)
             .fill(Color(uiColor: PPSectionHeaderPalette.accent)
                 .opacity(store.state.pressed ? (reduceMotion ? 0.04 : 0.06) : 0))
             .accessibilityHidden(true)
@@ -866,6 +1024,7 @@ private struct PPSectionHeaderLabelRepresentable: UIViewRepresentable {
 
 private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
     let button: UIButton
+    let minimumScaleFactor: CGFloat
 
     func makeUIView(context: Context) -> UIButton {
         button
@@ -874,7 +1033,11 @@ private struct PPSectionHeaderButtonRepresentable: UIViewRepresentable {
     func updateUIView(_ uiView: UIButton, context: Context) {
         uiView.backgroundColor = .clear
         uiView.isOpaque = false
-        uiView.setContentCompressionResistancePriority(.required, for: .horizontal)
-        uiView.setContentHuggingPriority(.required, for: .horizontal)
+        uiView.titleLabel?.numberOfLines = 1
+        uiView.titleLabel?.lineBreakMode = .byTruncatingTail
+        uiView.titleLabel?.adjustsFontSizeToFitWidth = true
+        uiView.titleLabel?.minimumScaleFactor = minimumScaleFactor
+        uiView.setContentCompressionResistancePriority(.defaultHigh, for: .horizontal)
+        uiView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
     }
 }

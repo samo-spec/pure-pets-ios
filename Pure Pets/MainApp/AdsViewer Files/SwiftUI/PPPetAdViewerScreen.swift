@@ -264,6 +264,10 @@ struct PPPetAdViewerScreen: View {
 
     private func detailsSheet(bottomInset: CGFloat) -> some View {
         VStack(spacing: 0) {
+            sheetGrabberIndicator
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+
             primaryDetailsContent
 
             PPPetAdRelatedSection(
@@ -339,6 +343,13 @@ struct PPPetAdViewerScreen: View {
             y: -3
         )
         .offset(y: 0)
+    }
+
+    private var sheetGrabberIndicator: some View {
+        Capsule()
+            .fill(Color.ppTextSecondary.opacity(0.28))
+            .frame(width: 36, height: 4.5)
+            .accessibilityHidden(true)
     }
 
     private var detailsSheetShape: UnevenRoundedRectangle {

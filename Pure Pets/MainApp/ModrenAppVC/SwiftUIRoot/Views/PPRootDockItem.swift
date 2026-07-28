@@ -71,7 +71,7 @@ public struct PPRootDockItem: View {
                         PPRootAvatarView(sessionState: sessionState, isSelected: isSelected)
                     } else {
                         Image(systemName: isSelected ? tab.symbolSelectedName : tab.symbolNormalName)
-                            .font(.system(size: isSelected ? 21 : 20, weight: isSelected ? .semibold : .regular))
+                            .font(.system(size: isSelected ? 19 : 18, weight: isSelected ? .semibold : .regular))
                             .foregroundStyle(
                                 isSelected
                                     ? primaryColor

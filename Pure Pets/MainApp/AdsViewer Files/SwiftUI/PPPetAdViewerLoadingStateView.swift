@@ -94,6 +94,22 @@ struct PPPetAdViewerLoadingStateView: View {
             factsSkeletonRail
                 .padding(.top, PPSpace.xs)
         }
+        .padding(PPSpace.base)
+        .background(
+            Color.ppCard,
+            in: RoundedRectangle(
+                cornerRadius: PPPetAdViewerStyle.surfaceRadius + 4,
+                style: .continuous
+            )
+        )
+        .overlay(alignment: .topLeading) {
+            Capsule(style: .continuous)
+                .fill(Color.ppPrimary.opacity(0.28))
+                .frame(width: 58, height: 4)
+                .padding(.leading, PPSpace.base)
+                .padding(.top, PPSpace.sm)
+                .accessibilityHidden(true)
+        }
     }
 
     private var headerSkeleton: some View {
@@ -158,7 +174,7 @@ struct PPPetAdViewerLoadingStateView: View {
     private var factsSkeletonRail: some View {
         VStack(spacing: 0) {
             featuredFactSkeleton
-                .padding(.vertical, PPSpace.md)
+                .padding(.vertical, PPSpace.sm)
 
             PPPetAdFadingDivider(axis: .horizontal)
                 .frame(height: PPPetAdViewerStyle.hairlineWidth)
@@ -184,11 +200,19 @@ struct PPPetAdViewerLoadingStateView: View {
                 }
             }
         }
+        .padding(PPSpace.sm)
+        .background(
+            Color.ppForeground.opacity(0.70),
+            in: RoundedRectangle(
+                cornerRadius: PPPetAdViewerStyle.infoRadius,
+                style: .continuous
+            )
+        )
     }
 
     private var featuredFactSkeleton: some View {
         HStack(spacing: PPSpace.md) {
-            factSkeletonIcon(signature: .breed, size: 38)
+            factSkeletonIcon(signature: .breed, size: 42)
 
             VStack(alignment: .leading, spacing: PPSpace.xxs) {
                 skeletonLine(width: 44, height: 10)
@@ -202,7 +226,7 @@ struct PPPetAdViewerLoadingStateView: View {
         signature: PPPetAdInfoSignature
     ) -> some View {
         HStack(spacing: PPSpace.sm) {
-            factSkeletonIcon(signature: signature, size: 26)
+            factSkeletonIcon(signature: signature, size: 30)
 
             VStack(alignment: .leading, spacing: PPSpace.xxs) {
                 skeletonLine(width: 38, height: 9)
@@ -244,5 +268,13 @@ struct PPPetAdViewerLoadingStateView: View {
                 }
             }
         }
+        .padding(PPSpace.base)
+        .background(
+            Color.ppCard,
+            in: RoundedRectangle(
+                cornerRadius: PPPetAdViewerStyle.descriptionRadius,
+                style: .continuous
+            )
+        )
     }
 }

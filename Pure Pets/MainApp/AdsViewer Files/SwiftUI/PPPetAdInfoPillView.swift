@@ -23,11 +23,11 @@ enum PPPetAdInfoSignature: String, CaseIterable {
 }
 
 private enum PPPetAdInfoBillStyle {
-    static let featuredIconSize: CGFloat = 38
-    static let supportingIconSize: CGFloat = 26
+    static let featuredIconSize: CGFloat = 42
+    static let supportingIconSize: CGFloat = 30
     static let featuredGlyphSize: CGFloat = 18
-    static let supportingGlyphSize: CGFloat = 14
-    static let accentWidth: CGFloat = 32
+    static let supportingGlyphSize: CGFloat = 13
+    static let accentWidth: CGFloat = 38
     static let accentHeight: CGFloat = 3
 }
 
@@ -158,7 +158,9 @@ struct PPPetAdInfoPillView: View {
     }
 
     private func iconMarker(size: CGFloat) -> some View {
-        billIcon
+        let isFeatured = emphasis == .featured
+
+        return billIcon
             .frame(
                 width: glyphSize(for: size),
                 height: glyphSize(for: size)
@@ -168,28 +170,38 @@ struct PPPetAdInfoPillView: View {
                 height: size
             )
             .background {
-                if emphasis == .featured {
-                    Circle()
-                        .fill(
-                            signature.accentColor.opacity(
-                                colorScheme == .dark ? 0.20 : 0.10
-                            )
+                Circle()
+                    .fill(
+                        signature.accentColor.opacity(
+                            colorScheme == .dark
+                                ? (isFeatured ? 0.22 : 0.14)
+                                : (isFeatured ? 0.12 : 0.075)
                         )
-                }
+                    )
             }
             .overlay {
-                if emphasis == .featured {
-                    Circle()
-                        .strokeBorder(
-                            signature.accentColor.opacity(
-                                colorSchemeContrast == .increased ? 0.72 : 0.16
-                            ),
-                            lineWidth: colorSchemeContrast == .increased
-                                ? 1
-                                : PPPetAdViewerStyle.hairlineWidth
-                        )
-                }
+                Circle()
+                    .strokeBorder(
+                        signature.accentColor.opacity(
+                            colorSchemeContrast == .increased
+                                ? 0.72
+                                : (isFeatured ? 0.18 : 0.10)
+                        ),
+                        lineWidth: colorSchemeContrast == .increased
+                            ? 1
+                            : PPPetAdViewerStyle.hairlineWidth
+                    )
             }
+            .shadow(
+                color: signature.accentColor.opacity(
+                    colorScheme == .dark
+                        ? 0
+                        : (isFeatured ? 0.12 : 0.055)
+                ),
+                radius: isFeatured ? 8 : 5,
+                x: 0,
+                y: isFeatured ? 4 : 2
+            )
             .accessibilityHidden(true)
     }
 
@@ -200,15 +212,21 @@ struct PPPetAdInfoPillView: View {
     }
 
     private var horizontalPadding: CGFloat {
-        emphasis == .featured
-            ? 0
-            : (usesCompactColumn ? PPSpace.md : 0)
+        switch emphasis {
+        case .featured:
+            return PPSpace.xs
+        case .supporting:
+            return usesCompactColumn ? PPSpace.sm : PPSpace.xs
+        }
     }
 
     private var verticalPadding: CGFloat {
-        emphasis == .featured
-            ? 0
-            : PPSpace.md
+        switch emphasis {
+        case .featured:
+            return PPSpace.xs
+        case .supporting:
+            return usesCompactColumn ? PPSpace.sm : PPSpace.md
+        }
     }
 
     @ViewBuilder
