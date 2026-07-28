@@ -47,6 +47,7 @@ static UIViewController *PPMediaPreviewTopController(UIWindow *window)
         self.modalPresentationStyle = UIModalPresentationOverFullScreen;
         self.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
         self.modalPresentationCapturesStatusBarAppearance = YES;
+        self.view.backgroundColor = UIColor.blackColor;
     }
     return self;
 }
@@ -112,9 +113,11 @@ static UIViewController *PPMediaPreviewTopController(UIWindow *window)
     self.isDismissing = YES;
     __weak typeof(self) weakSelf = self;
     [self dismissViewControllerAnimated:!UIAccessibilityIsReduceMotionEnabled() completion:^{
-        __strong typeof(weakSelf) self = weakSelf;
-        self.isDismissing = NO;
-        if (self.dismissalCompletion) self.dismissalCompletion();
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            strongSelf.isDismissing = NO;
+            if (strongSelf.dismissalCompletion) strongSelf.dismissalCompletion();
+        }
     }];
 }
 

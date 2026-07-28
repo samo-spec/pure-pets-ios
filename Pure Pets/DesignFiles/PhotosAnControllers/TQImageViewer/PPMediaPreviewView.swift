@@ -168,8 +168,8 @@ private struct PPMediaChromeButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 46, height: 46)
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 48, height: 48)
                 .contentShape(Circle())
         }
         .buttonStyle(PPMediaChromeButtonStyle())
@@ -249,27 +249,69 @@ private struct PPImagePreviewView: View {
     @State private var offset: CGSize = .zero
     @State private var storedOffset: CGSize = .zero
 
+    // Slide down to dismiss gesture state
+    @State private var dragDismissOffset: CGSize = .zero
+    @State private var isDraggingDismiss = false
+
+    private var dismissDragScale: CGFloat {
+        guard isDraggingDismiss && scale <= 1.05 else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let scaleFactor = 1.0 - (verticalPull / 1200.0)
+        return max(0.75, scaleFactor)
+    }
+
+    private var backgroundOpacity: Double {
+        guard isDraggingDismiss && scale <= 1.05 else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let opacity = 1.0 - (Double(verticalPull) / 320.0)
+        return max(0.0, opacity)
+    }
+
+    private var chromeOpacityDuringDismiss: Double {
+        guard isDraggingDismiss && scale <= 1.05 else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let opacity = 1.0 - (Double(verticalPull) / 100.0)
+        return max(0.0, opacity)
+    }
+
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        GeometryReader { geometry in
+            let safeAreaTop = max(14, geometry.safeAreaInsets.top)
+            let safeAreaBottom = max(14, geometry.safeAreaInsets.bottom)
+            let viewHeight = geometry.size.height
 
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFit()
-                .scaleEffect(scale)
-                .offset(offset)
-                .accessibilityLabel(Text(labels.edit))
-                .accessibilityAddTraits(.isImage)
-                .gesture(magnificationGesture)
-                .simultaneousGesture(dragGesture)
-                .onTapGesture(count: 2, perform: toggleZoom)
-                .onTapGesture { withChromeAnimation { chromeVisible.toggle() } }
-                .opacity(appeared ? 1 : 0)
-                .scaleEffect(appeared ? scale : scale * 0.985)
+            ZStack {
+                // Pitch-black background (#000000) ignoring safe area
+                Color.black
+                    .opacity(backgroundOpacity)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withChromeAnimation { chromeVisible.toggle() }
+                    }
 
-            if chromeVisible {
-                chrome
-                    .transition(.opacity)
+                // Main Image
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .scaleEffect(scale * dismissDragScale)
+                    .offset(x: offset.width, y: offset.height + dragDismissOffset.height)
+                    .accessibilityLabel(Text(labels.edit))
+                    .accessibilityAddTraits(.isImage)
+                    .gesture(magnificationGesture)
+                    .simultaneousGesture(panOrDismissGesture(viewHeight: viewHeight))
+                    .onTapGesture(count: 2, perform: toggleZoom)
+                    .onTapGesture {
+                        withChromeAnimation { chromeVisible.toggle() }
+                    }
+                    .opacity(appeared ? 1 : 0)
+
+                // Chrome Controls
+                if chromeVisible {
+                    chrome(safeAreaTop: safeAreaTop, safeAreaBottom: safeAreaBottom)
+                        .opacity(chromeOpacityDuringDismiss)
+                        .transition(.opacity)
+                }
             }
         }
         .environment(\.layoutDirection, layoutDirection)
@@ -283,9 +325,9 @@ private struct PPImagePreviewView: View {
         }
     }
 
-    private var chrome: some View {
+    private func chrome(safeAreaTop: CGFloat, safeAreaBottom: CGFloat) -> some View {
         VStack {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 PPMediaChromeButton(systemName: "xmark", accessibilityLabel: labels.close, action: onClose)
                 Spacer()
                 if let onShare {
@@ -296,8 +338,10 @@ private struct PPImagePreviewView: View {
                 }
             }
             .padding(.horizontal, 18)
-            .padding(.top, 10)
+            .padding(.top, safeAreaTop + 6)
+
             Spacer()
+
             if let sendLabel = labels.send, let onSend {
                 HStack {
                     Spacer()
@@ -312,34 +356,74 @@ private struct PPImagePreviewView: View {
                     }
                 }
                 .padding(.horizontal, 18)
-                .padding(.bottom, 18)
+                .padding(.bottom, safeAreaBottom + 8)
             }
         }
     }
 
     private var magnificationGesture: some Gesture {
         MagnificationGesture()
-            .onChanged { value in scale = min(max(storedScale * value, 1), 5) }
+            .onChanged { value in
+                scale = min(max(storedScale * value, 1), 5)
+            }
             .onEnded { _ in
                 storedScale = scale
                 if scale <= 1 { resetTransform() }
             }
     }
 
-    private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 2)
+    private func panOrDismissGesture(viewHeight: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 4)
             .onChanged { value in
-                guard scale > 1 else { return }
-                offset = CGSize(width: storedOffset.width + value.translation.width,
-                                height: storedOffset.height + value.translation.height)
+                if scale > 1.05 {
+                    // Zoomed in: pan around image
+                    offset = CGSize(
+                        width: storedOffset.width + value.translation.width,
+                        height: storedOffset.height + value.translation.height
+                    )
+                } else {
+                    // Unzoomed: slide down to dismiss
+                    let dy = value.translation.height
+                    let dx = value.translation.width
+                    if dy > 0 && dy > abs(dx) * 0.6 {
+                        isDraggingDismiss = true
+                        dragDismissOffset = CGSize(width: value.translation.width * 0.25, height: dy)
+                    } else if isDraggingDismiss {
+                        dragDismissOffset = CGSize(width: value.translation.width * 0.25, height: max(0, dy))
+                    }
+                }
             }
-            .onEnded { _ in storedOffset = offset }
+            .onEnded { value in
+                if scale > 1.05 {
+                    storedOffset = offset
+                } else if isDraggingDismiss {
+                    let verticalPull = value.translation.height
+                    let velocityY = value.predictedEndTranslation.height - value.translation.height
+
+                    if verticalPull > 90 || velocityY > 250 {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            dragDismissOffset.height = viewHeight > 0 ? viewHeight : 800
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                            onClose()
+                        }
+                    } else {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8)) {
+                            dragDismissOffset = .zero
+                            isDraggingDismiss = false
+                        }
+                    }
+                }
+            }
     }
 
     private func toggleZoom() {
-        if scale > 1 { resetTransform() }
-        else {
-            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) { scale = 2.25 }
+        if scale > 1 {
+            resetTransform()
+        } else {
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                scale = 2.25
+            }
             storedScale = 2.25
         }
     }
@@ -348,6 +432,8 @@ private struct PPImagePreviewView: View {
         withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.82)) {
             scale = 1
             offset = .zero
+            dragDismissOffset = .zero
+            isDraggingDismiss = false
         }
         storedScale = 1
         storedOffset = .zero
@@ -465,6 +551,30 @@ private struct PPVideoPreviewView: View {
     @State private var isSeeking = false
     @State private var sendStarted = false
 
+    @State private var dragDismissOffset: CGSize = .zero
+    @State private var isDraggingDismiss = false
+
+    private var dismissDragScale: CGFloat {
+        guard isDraggingDismiss else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let scaleFactor = 1.0 - (verticalPull / 1200.0)
+        return max(0.75, scaleFactor)
+    }
+
+    private var backgroundOpacity: Double {
+        guard isDraggingDismiss else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let opacity = 1.0 - (Double(verticalPull) / 320.0)
+        return max(0.0, opacity)
+    }
+
+    private var chromeOpacityDuringDismiss: Double {
+        guard isDraggingDismiss else { return 1.0 }
+        let verticalPull = max(0, dragDismissOffset.height)
+        let opacity = 1.0 - (Double(verticalPull) / 100.0)
+        return max(0.0, opacity)
+    }
+
     init(
         url: URL,
         labels: PPVideoPreviewLabels,
@@ -481,42 +591,80 @@ private struct PPVideoPreviewView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            PPPlayerLayerView(player: model.player)
-                .ignoresSafeArea()
-                .onTapGesture { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { chromeVisible.toggle() } }
+        GeometryReader { geometry in
+            let safeAreaTop = max(14, geometry.safeAreaInsets.top)
+            let safeAreaBottom = max(14, geometry.safeAreaInsets.bottom)
+            let viewHeight = geometry.size.height
 
-            stateOverlay
+            ZStack {
+                Color.black
+                    .opacity(backgroundOpacity)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                            chromeVisible.toggle()
+                        }
+                    }
 
-            if chromeVisible { chrome.transition(.opacity) }
+                PPPlayerLayerView(player: model.player)
+                    .scaleEffect(dismissDragScale)
+                    .offset(x: dragDismissOffset.width, y: dragDismissOffset.height)
+                    .ignoresSafeArea()
+                    .gesture(dismissGesture(viewHeight: viewHeight))
+                    .onTapGesture {
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                            chromeVisible.toggle()
+                        }
+                    }
+
+                
+
+                if chromeVisible {
+                    chrome(safeAreaTop: safeAreaTop, safeAreaBottom: safeAreaBottom)
+                        .opacity(chromeOpacityDuringDismiss)
+                        .transition(.opacity)
+                }
+            }
         }
         .onAppear { model.start() }
         .onDisappear { model.player.pause() }
     }
 
-    @ViewBuilder private var stateOverlay: some View {
-        switch model.state {
-        case .loading:
-            ProgressView().tint(.white).controlSize(.large).accessibilityLabel(Text(labels.retry))
-        case .failed:
-            VStack(spacing: 16) {
-                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 28)).foregroundStyle(.secondary)
-                Button(action: model.retry) {
-                    Text(PPMediaPreviewTypography.attributedTitle(labels.retry,
-                                                                  font: PPMediaPreviewTypography.actionSmall))
+    private func dismissGesture(viewHeight: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                let dy = value.translation.height
+                let dx = value.translation.width
+                if dy > 0 && dy > abs(dx) * 0.6 {
+                    isDraggingDismiss = true
+                    dragDismissOffset = CGSize(width: value.translation.width * 0.25, height: dy)
+                } else if isDraggingDismiss {
+                    dragDismissOffset = CGSize(width: value.translation.width * 0.25, height: max(0, dy))
                 }
-                .font(PPMediaPreviewTypography.actionSmall)
-                .buttonStyle(.borderedProminent)
-                .tint(.white)
-                .foregroundStyle(.black)
             }
-        case .ready:
-            EmptyView()
-        }
+            .onEnded { value in
+                if isDraggingDismiss {
+                    let verticalPull = value.translation.height
+                    let velocityY = value.predictedEndTranslation.height - value.translation.height
+                    if verticalPull > 90 || velocityY > 250 {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            dragDismissOffset.height = viewHeight > 0 ? viewHeight : 800
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                            onClose()
+                        }
+                    } else {
+                        withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.8)) {
+                            dragDismissOffset = .zero
+                            isDraggingDismiss = false
+                        }
+                    }
+                }
+            }
     }
 
-    private var chrome: some View {
+    private func chrome(safeAreaTop: CGFloat, safeAreaBottom: CGFloat) -> some View {
         VStack {
             HStack {
                 PPMediaChromeButton(systemName: "xmark", accessibilityLabel: labels.close, action: onClose)
@@ -525,8 +673,11 @@ private struct PPVideoPreviewView: View {
                     PPMediaChromeButton(systemName: "slider.horizontal.3", accessibilityLabel: labels.edit, action: onEdit)
                 }
             }
-            .padding(.horizontal, 18).padding(.top, 10)
+            .padding(.horizontal, 18)
+            .padding(.top, safeAreaTop + 6)
+
             Spacer()
+
             VStack(spacing: 12) {
                 Slider(value: Binding(get: { model.progress }, set: { model.progress = $0 }), in: 0...1,
                        onEditingChanged: { editing in isSeeking = editing; if !editing { model.seek(to: model.progress) } })
@@ -565,7 +716,8 @@ private struct PPVideoPreviewView: View {
                     .padding(.top, 2)
                 }
             }
-            .padding(.horizontal, 20).padding(.bottom, 14)
+            .padding(.horizontal, 20)
+            .padding(.bottom, safeAreaBottom + 8)
             .background(.linearGradient(colors: [.clear, .black.opacity(0.72)], startPoint: .top, endPoint: .bottom))
         }
     }
