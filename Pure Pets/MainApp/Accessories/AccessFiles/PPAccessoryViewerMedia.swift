@@ -458,10 +458,17 @@ struct PPAccessoryVideoView: View {
 struct PPAccessoryFullScreenMediaViewer: View {
     let items: [PPAccessoryViewerMediaItem]
     @Binding var selection: Int
+    let productTitle: String
     let onDismiss: () -> Void
     let onShare: () -> Void
 
     @State private var chromeVisible = true
+    @State private var dismissOffset: CGFloat = 0
+    @State private var activeImageIsZoomed = false
+    @State private var zoomCommand = PPAccessoryZoomCommand(
+        token: 0,
+        action: .reset
+    )
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -477,6 +484,9 @@ struct PPAccessoryFullScreenMediaViewer: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .offset(y: dismissOffset)
+            .opacity(dismissOpacity)
+            .simultaneousGesture(dismissGesture)
 
             if chromeVisible {
                 chrome
@@ -489,6 +499,8 @@ struct PPAccessoryFullScreenMediaViewer: View {
         }
         .onChange(of: selection) { _ in
             UISelectionFeedbackGenerator().selectionChanged()
+            activeImageIsZoomed = false
+            sendZoomCommand(.reset)
         }
     }
 
@@ -502,10 +514,15 @@ struct PPAccessoryFullScreenMediaViewer: View {
            let url = URL(string: rawURL) {
             PPAccessoryVideoView(url: url, isActive: index == selection)
                 .onTapGesture(perform: toggleChrome)
+                .accessibilityLabel(mediaLabel(index: index))
+                .accessibilityAddTraits(.isImage)
         } else {
             PPAccessoryZoomableImage(
                 item: item,
                 accessibilityLabel: mediaLabel(index: index),
+                isActive: index == selection,
+                zoomCommand: zoomCommand,
+                isActiveImageZoomed: $activeImageIsZoomed,
                 onSingleTap: toggleChrome
             )
         }
@@ -522,7 +539,13 @@ struct PPAccessoryFullScreenMediaViewer: View {
 
                 Spacer()
 
-                Text("\(selection + 1) / \(items.count)")
+                Text(
+                    PPAccessoryViewerL10n.formatted(
+                        "accessory_view_media_count_spaced_format",
+                        PPAccessoryViewerL10n.integer(selection + 1),
+                        PPAccessoryViewerL10n.integer(items.count)
+                    )
+                )
                     .font(PPAccessoryTypography.captionBold)
                     .monospacedDigit()
                     .foregroundStyle(PPAccessoryPalette.ink)
@@ -545,6 +568,98 @@ struct PPAccessoryFullScreenMediaViewer: View {
             .padding(.top, 8)
 
             Spacer()
+
+            if currentItem?.isVideo != true {
+                zoomControls
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 18)
+            } else {
+                pagingControls
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 18)
+            }
+        }
+    }
+
+    private var zoomControls: some View {
+        HStack(spacing: 12) {
+            pagingButton(
+                symbol: "chevron.backward",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_previous_media"
+                ),
+                enabled: selection > 0
+            ) {
+                selection = max(selection - 1, 0)
+            }
+
+            Spacer(minLength: 4)
+
+            mediaButton(
+                symbol: "minus.magnifyingglass",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_zoom_out"
+                )
+            ) {
+                sendZoomCommand(.zoomOut)
+            }
+
+            mediaButton(
+                symbol: "1.magnifyingglass",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_reset_zoom"
+                )
+            ) {
+                sendZoomCommand(.reset)
+            }
+
+            mediaButton(
+                symbol: "plus.magnifyingglass",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_zoom_in"
+                )
+            ) {
+                sendZoomCommand(.zoomIn)
+            }
+
+            Spacer(minLength: 4)
+
+            pagingButton(
+                symbol: "chevron.forward",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_next_media"
+                ),
+                enabled: selection < items.count - 1
+            ) {
+                selection = min(selection + 1, items.count - 1)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var pagingControls: some View {
+        HStack {
+            pagingButton(
+                symbol: "chevron.backward",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_previous_media"
+                ),
+                enabled: selection > 0
+            ) {
+                selection = max(selection - 1, 0)
+            }
+
+            Spacer()
+
+            pagingButton(
+                symbol: "chevron.forward",
+                label: PPAccessoryViewerL10n.text(
+                    "accessory_view_next_media"
+                ),
+                enabled: selection < items.count - 1
+            ) {
+                selection = min(selection + 1, items.count - 1)
+            }
         }
     }
 
@@ -569,6 +684,21 @@ struct PPAccessoryFullScreenMediaViewer: View {
         .accessibilityLabel(label)
     }
 
+    private func pagingButton(
+        symbol: String,
+        label: String,
+        enabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        mediaButton(
+            symbol: symbol,
+            label: label,
+            action: action
+        )
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.36)
+    }
+
     private func toggleChrome() {
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
             chromeVisible.toggle()
@@ -576,45 +706,244 @@ struct PPAccessoryFullScreenMediaViewer: View {
     }
 
     private func mediaLabel(index: Int) -> String {
-        "\(PPAccessoryViewerL10n.text("Photo")) \(index + 1) \(PPAccessoryViewerL10n.text("of")) \(items.count)"
+        PPAccessoryViewerL10n.formatted(
+            "accessory_view_media_accessibility_format",
+            productTitle,
+            PPAccessoryViewerL10n.integer(index + 1),
+            PPAccessoryViewerL10n.integer(items.count)
+        )
+    }
+
+    private var currentItem: PPAccessoryViewerMediaItem? {
+        guard items.indices.contains(selection) else { return nil }
+        return items[selection]
+    }
+
+    private var dismissOpacity: Double {
+        let progress = min(abs(dismissOffset) / 360, 0.45)
+        return 1 - progress
+    }
+
+    private var dismissGesture: some Gesture {
+        DragGesture(minimumDistance: 18)
+            .onChanged { value in
+                guard !activeImageIsZoomed,
+                      abs(value.translation.height) >
+                        abs(value.translation.width) * 1.2 else {
+                    return
+                }
+                dismissOffset = value.translation.height
+            }
+            .onEnded { value in
+                guard !activeImageIsZoomed else {
+                    dismissOffset = 0
+                    return
+                }
+                let projected = value.predictedEndTranslation.height
+                if abs(value.translation.height) > 120 ||
+                    abs(projected) > 220 {
+                    onDismiss()
+                    return
+                }
+                withAnimation(
+                    reduceMotion
+                        ? nil
+                        : .easeOut(duration: 0.24)
+                ) {
+                    dismissOffset = 0
+                }
+            }
+    }
+
+    private func sendZoomCommand(
+        _ action: PPAccessoryZoomAction
+    ) {
+        zoomCommand = PPAccessoryZoomCommand(
+            token: zoomCommand.token + 1,
+            action: action
+        )
     }
 }
 
-struct PPAccessoryZoomableImage: View {
+private enum PPAccessoryZoomAction: Equatable {
+    case zoomIn
+    case zoomOut
+    case reset
+}
+
+private struct PPAccessoryZoomCommand: Equatable {
+    let token: Int
+    let action: PPAccessoryZoomAction
+}
+
+private struct PPAccessoryZoomableImage: View {
     let item: PPAccessoryViewerMediaItem
     let accessibilityLabel: String
+    let isActive: Bool
+    let zoomCommand: PPAccessoryZoomCommand
+    @Binding var isActiveImageZoomed: Bool
     let onSingleTap: () -> Void
 
     @State private var committedScale: CGFloat = 1
     @GestureState private var gestureScale: CGFloat = 1
+    @State private var committedOffset: CGSize = .zero
+    @GestureState private var gestureOffset: CGSize = .zero
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        PPAccessoryRemoteImageView(
-            urlString: item.imageURL,
-            blurHash: item.blurHash,
-            contentMode: .fill,
-            accessibilityLabel: accessibilityLabel
-        )
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
-        .scaleEffect(min(max(committedScale * gestureScale, 1), 4))
-        .gesture(
-            MagnificationGesture()
-                .updating($gestureScale) { value, state, _ in
-                    state = value
-                }
-                .onEnded { value in
-                    committedScale = min(
-                        max(committedScale * value, 1),
-                        4
-                    )
-                }
-        )
+        GeometryReader { proxy in
+            let scale = resolvedScale
+            let offset = boundedOffset(
+                CGSize(
+                    width: committedOffset.width + gestureOffset.width,
+                    height: committedOffset.height + gestureOffset.height
+                ),
+                scale: scale,
+                viewport: proxy.size
+            )
+
+            PPAccessoryRemoteImageView(
+                urlString: item.imageURL,
+                blurHash: item.blurHash,
+                contentMode: .fit,
+                accessibilityLabel: accessibilityLabel
+            )
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .scaleEffect(scale)
+            .offset(offset)
+            .contentShape(Rectangle())
+            .simultaneousGesture(magnificationGesture(viewport: proxy.size))
+            .gesture(
+                dragGesture(viewport: proxy.size),
+                including: scale > 1.01 ? .all : .none
+            )
+        }
         .onTapGesture(count: 2) {
-            withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
-                committedScale = committedScale > 1 ? 1 : 2.2
-            }
+            setScale(committedScale > 1 ? 1 : 2.2)
         }
         .onTapGesture(count: 1, perform: onSingleTap)
+        .onChange(of: zoomCommand) { command in
+            guard isActive else { return }
+            switch command.action {
+            case .zoomIn:
+                setScale(min(committedScale + 0.75, 4))
+            case .zoomOut:
+                setScale(max(committedScale - 0.75, 1))
+            case .reset:
+                setScale(1)
+            }
+        }
+        .onChange(of: isActive) { active in
+            if !active {
+                setScale(1)
+            } else {
+                isActiveImageZoomed = committedScale > 1.01
+            }
+        }
+        .accessibilityAction(
+            named: Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_zoom_in"
+                )
+            )
+        ) {
+            setScale(min(committedScale + 0.75, 4))
+        }
+        .accessibilityAction(
+            named: Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_zoom_out"
+                )
+            )
+        ) {
+            setScale(max(committedScale - 0.75, 1))
+        }
+    }
+
+    private var resolvedScale: CGFloat {
+        min(max(committedScale * gestureScale, 1), 4)
+    }
+
+    private func magnificationGesture(
+        viewport: CGSize
+    ) -> some Gesture {
+        MagnificationGesture()
+            .updating($gestureScale) { value, state, _ in
+                state = value
+            }
+            .onEnded { value in
+                let nextScale = min(
+                    max(committedScale * value, 1),
+                    4
+                )
+                committedScale = nextScale
+                committedOffset = boundedOffset(
+                    committedOffset,
+                    scale: nextScale,
+                    viewport: viewport
+                )
+                updateZoomState()
+            }
+    }
+
+    private func dragGesture(
+        viewport: CGSize
+    ) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .updating($gestureOffset) { value, state, _ in
+                guard resolvedScale > 1.01 else { return }
+                state = value.translation
+            }
+            .onEnded { value in
+                guard resolvedScale > 1.01 else {
+                    committedOffset = .zero
+                    return
+                }
+                committedOffset = boundedOffset(
+                    CGSize(
+                        width: committedOffset.width +
+                            value.translation.width,
+                        height: committedOffset.height +
+                            value.translation.height
+                    ),
+                    scale: resolvedScale,
+                    viewport: viewport
+                )
+            }
+    }
+
+    private func boundedOffset(
+        _ candidate: CGSize,
+        scale: CGFloat,
+        viewport: CGSize
+    ) -> CGSize {
+        guard scale > 1 else { return .zero }
+        let maximumX = max(0, viewport.width * (scale - 1) / 2)
+        let maximumY = max(0, viewport.height * (scale - 1) / 2)
+        return CGSize(
+            width: min(max(candidate.width, -maximumX), maximumX),
+            height: min(max(candidate.height, -maximumY), maximumY)
+        )
+    }
+
+    private func setScale(_ scale: CGFloat) {
+        let changes = {
+            committedScale = min(max(scale, 1), 4)
+            if committedScale <= 1.01 {
+                committedOffset = .zero
+            }
+            updateZoomState()
+        }
+        if reduceMotion {
+            changes()
+        } else {
+            withAnimation(.easeInOut(duration: 0.24), changes)
+        }
+    }
+
+    private func updateZoomState() {
+        if isActive {
+            isActiveImageZoomed = committedScale > 1.01
+        }
     }
 }

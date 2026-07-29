@@ -19,7 +19,8 @@ struct PPAccessoryViewerScreen: View {
     @StateObject var store: PPAccessoryViewerStore
 
     @State private var heroResolved = false
-    @State private var contentResolved = false
+    @State private var identityResolved = false
+    @State private var cardsResolved = false
     @State private var actionResolved = false
     @State private var didRunEntrance = false
     @State private var showsNavigationTitlePill = false
@@ -106,85 +107,117 @@ struct PPAccessoryViewerScreen: View {
         let bottomInset = bottomChromeInset(proxy)
         let topBarHeight: CGFloat = topInset + (compact ? 70 : 80)
         let titleRevealOffset: CGFloat = compact ? 14 : 22
+        let usesRecoveryDock =
+            !snapshot.isAvailableForPurchase ||
+            store.livePhase != .current
         let decisionBarClearance: CGFloat = {
             if dynamicTypeSize.isAccessibilitySize {
-                return snapshot.showsCart ? 222 : 158
+                if snapshot.showsCart {
+                    return usesRecoveryDock ? 322 : 222
+                }
+                return 158
             }
             if snapshot.showsCart {
+                if usesRecoveryDock {
+                    return compact ? 238 : 150
+                }
                 return compact ? 158 : 104
             }
             return 98
         }()
 
         return ZStack(alignment: .top) {
-            ScrollView {
-                PPAccessoryViewerScrollOffsetReader()
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    PPAccessoryViewerScrollOffsetReader()
 
-                VStack(spacing: compact ? 14 : 22) {
-                    PPAccessoryShorelineGallery(
-                        snapshot: snapshot,
-                        height: heroHeight,
-                        compact: compact,
-                        onShare: store.share
-                    )
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.top, topBarHeight)
-                    .scaleEffect(heroResolved ? 1 : 1.045)
-                    .opacity(heroResolved ? 1 : 0)
+                    VStack(spacing: compact ? 14 : 22) {
+                        PPAccessoryShorelineGallery(
+                            snapshot: snapshot,
+                            height: heroHeight,
+                            compact: compact,
+                            onShare: store.share
+                        )
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.top, topBarHeight)
+                        .scaleEffect(heroResolved ? 1.0 : 0.97)
+                        .opacity(heroResolved ? 1 : 0)
+                        .offset(y: heroResolved ? 0 : 8)
 
-                    PPAccessoryProductIdentity(
-                        store: store,
-                        snapshot: snapshot,
-                        compact: compact
-                    )
-                    .padding(.horizontal, horizontalPadding)
-                    .opacity(contentResolved ? 1 : 0)
-                    .offset(y: contentResolved ? 0 : 16)
+                        PPAccessoryProductIdentity(
+                            store: store,
+                            snapshot: snapshot,
+                            compact: compact
+                        )
+                        .padding(.horizontal, horizontalPadding)
+                        .opacity(identityResolved ? 1 : 0)
+                        .offset(y: identityResolved ? 0 : 14)
 
-                    if snapshot.hasReadinessFacts {
-                        PPAccessoryDecisionRibbon(snapshot: snapshot)
+                        PPAccessoryPetFitCard(snapshot: snapshot)
                             .padding(.horizontal, horizontalPadding)
-                            .opacity(contentResolved ? 1 : 0)
-                            .offset(y: contentResolved ? 0 : 18)
-                    }
+                            .opacity(cardsResolved ? 1 : 0)
+                            .offset(y: cardsResolved ? 0 : 16)
 
-                    VStack(spacing: compact ? 22 : 30) {
-                        PPAccessorySourceIsland(
+                        PPAccessoryDecisionRibbon(
                             store: store,
                             snapshot: snapshot
                         )
+                            .padding(.horizontal, horizontalPadding)
+                            .opacity(cardsResolved ? 1 : 0)
+                            .offset(y: cardsResolved ? 0 : 16)
 
-                        PPAccessorySpecReef(
-                            details: snapshot.details,
-                            compactColumns: compact
-                        )
+                        VStack(spacing: compact ? 22 : 30) {
+                            PPAccessorySourceIsland(
+                                store: store,
+                                snapshot: snapshot
+                            )
 
-                        PPAccessoryEditorialDescription(
-                            text: snapshot.description
-                        )
+                            PPAccessoryEditorialDescription(
+                                text: snapshot.description
+                            )
 
-                        PPAccessorySuggestionShore(
-                            store: store,
-                            compact: compact
+                            PPAccessorySpecReef(
+                                details: snapshot.details,
+                                compactColumns: compact
+                            )
+
+                            PPAccessorySuggestionShore(
+                                store: store,
+                                compact: compact
+                            )
+                            .id("accessory-recommendations")
+                        }
+                        .padding(.horizontal, horizontalPadding)
+                        .padding(.bottom, decisionBarClearance + bottomInset)
+                        .opacity(cardsResolved ? 1 : 0)
+                        .offset(y: cardsResolved ? 0 : 20)
+                    }
+                    .frame(maxWidth: contentWidth)
+                    .frame(maxWidth: .infinity)
+                }
+                .coordinateSpace(
+                    name: PPAccessoryViewerScrollMetrics.coordinateSpace
+                )
+                .onPreferenceChange(
+                    PPAccessoryViewerScrollOffsetPreferenceKey.self
+                ) { scrollDistance in
+                    setNavigationTitlePillVisible(
+                        scrollDistance > titleRevealOffset
+                    )
+                }
+                .onChange(of: store.scrollToSuggestionsToken) { token in
+                    guard token > 0 else { return }
+                    withAnimation(
+                        reduceMotion
+                            ? nil
+                            : .easeInOut(duration: 0.38)
+                    ) {
+                        scrollProxy.scrollTo(
+                            "accessory-recommendations",
+                            anchor: .top
                         )
                     }
-                    .padding(.horizontal, horizontalPadding)
-                    .padding(.bottom, decisionBarClearance + bottomInset)
-                    .opacity(contentResolved ? 1 : 0)
-                    .offset(y: contentResolved ? 0 : 22)
                 }
-                .frame(maxWidth: contentWidth)
-                .frame(maxWidth: .infinity)
-            }
-            .coordinateSpace(
-                name: PPAccessoryViewerScrollMetrics.coordinateSpace
-            )
-            .onPreferenceChange(
-                PPAccessoryViewerScrollOffsetPreferenceKey.self
-            ) { scrollDistance in
-                setNavigationTitlePillVisible(
-                    scrollDistance > titleRevealOffset
-                )
             }
 
             topFadeOverlay(proxy: proxy)
@@ -220,7 +253,7 @@ struct PPAccessoryViewerScreen: View {
             .frame(maxWidth: .infinity)
             .background(PPAccessorySubviewBackground.clear)
             .opacity(heroResolved ? 1 : 0)
-            .offset(y: heroResolved ? 0 : -10)
+            .offset(y: heroResolved ? 0 : -8)
             .animation(
                 reduceMotion
                     ? nil
@@ -245,13 +278,14 @@ struct PPAccessoryViewerScreen: View {
                     )
                 }
             }
-            .offset(y: actionResolved ? 0 : 18)
+            .offset(y: actionResolved ? 0 : 22)
             .ignoresSafeArea(.container, edges: .bottom)
             .zIndex(100)
             .frame(maxHeight: .infinity, alignment: .bottom)
             .onPreferenceChange(
                 PPAccessoryDecisionBarHeightPreferenceKey.self
             ) { measuredHeight in
+                guard measuredHeight > 0, measuredHeight < 300 else { return }
                 guard abs(measuredHeight - decisionBarHeight) > 0.5 else {
                     return
                 }
@@ -262,14 +296,17 @@ struct PPAccessoryViewerScreen: View {
         .ignoresSafeArea(.all, edges: [.top, .bottom])
         .onAppear {
             runEntranceIfNeeded()
-            store.refreshCartState()
+            store.resume()
+        }
+        .onDisappear {
+            store.pause()
         }
         .onReceive(
             NotificationCenter.default.publisher(
                 for: UIApplication.didBecomeActiveNotification
             )
         ) { _ in
-            store.refreshCartState()
+            store.resume()
         }
     }
 
@@ -326,7 +363,10 @@ struct PPAccessoryViewerScreen: View {
         let fallbackHeight = dynamicTypeSize.isAccessibilitySize
             ? (snapshot.showsCart ? 224.0 : 168.0)
             : (snapshot.showsCart ? 170.0 : 112.0)
-        let totalOverlayHeight = max(decisionBarHeight, fallbackHeight)
+        let safeDecisionBarHeight = (decisionBarHeight > 0 && decisionBarHeight < 300)
+            ? decisionBarHeight
+            : fallbackHeight
+        let totalOverlayHeight = safeDecisionBarHeight
             + max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
             + 44
         let bottomColor = Color.ppBackground
@@ -334,9 +374,9 @@ struct PPAccessoryViewerScreen: View {
         return LinearGradient(
             colors: [
                 Color.clear,
-                bottomColor.opacity(0.35),
-                bottomColor.opacity(0.85),
-                bottomColor
+                bottomColor.opacity(0.12),
+                bottomColor.opacity(0.38),
+                bottomColor.opacity(0.62)
             ],
             startPoint: .top,
             endPoint: .bottom
@@ -359,23 +399,30 @@ struct PPAccessoryViewerScreen: View {
 
         if reduceMotion {
             heroResolved = true
-            contentResolved = true
+            identityResolved = true
+            cardsResolved = true
             actionResolved = true
             return
         }
 
-        withAnimation(.easeOut(duration: 0.46)) {
+        withAnimation(.spring(response: 0.44, dampingFraction: 0.86)) {
             heroResolved = true
         }
         withAnimation(
-            .spring(response: 0.54, dampingFraction: 0.88)
-                .delay(0.08)
+            .spring(response: 0.46, dampingFraction: 0.86)
+                .delay(0.06)
         ) {
-            contentResolved = true
+            identityResolved = true
         }
         withAnimation(
-            .spring(response: 0.42, dampingFraction: 0.90)
-                .delay(0.16)
+            .spring(response: 0.50, dampingFraction: 0.88)
+                .delay(0.12)
+        ) {
+            cardsResolved = true
+        }
+        withAnimation(
+            .spring(response: 0.38, dampingFraction: 0.84)
+                .delay(0.18)
         ) {
             actionResolved = true
         }

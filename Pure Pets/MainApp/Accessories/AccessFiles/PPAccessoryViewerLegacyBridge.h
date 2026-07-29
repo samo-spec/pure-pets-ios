@@ -16,6 +16,12 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
     PPAccessoryCartResultCodeFailed,
 };
 
+typedef NS_ENUM(NSInteger, PPAccessoryLiveUpdateStatus) {
+    PPAccessoryLiveUpdateStatusUpdated = 0,
+    PPAccessoryLiveUpdateStatusMissing,
+    PPAccessoryLiveUpdateStatusFailed,
+};
+
 /// Narrow interoperability boundary for the SwiftUI accessory viewer.
 ///
 /// All reads, writes, validation, analytics, navigation, and side effects are
@@ -78,6 +84,10 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
 + (nullable id)listenToAccessoryID:(NSString *)accessoryID
                            onChange:(void (^)(PetAccessory * _Nullable updatedAccessory))onChange
     NS_SWIFT_NAME(listenToAccessory(accessoryID:onChange:));
++ (nullable id)listenToAccessoryID:(NSString *)accessoryID
+                           onUpdate:(void (^)(PPAccessoryLiveUpdateStatus status,
+                                              PetAccessory * _Nullable updatedAccessory))onUpdate
+    NS_SWIFT_NAME(listenToAccessory(accessoryID:onUpdate:));
 
 + (void)fetchOwnerForAccessory:(PetAccessory *)accessory
                     completion:(void (^)(UserModel * _Nullable user,
@@ -102,6 +112,10 @@ typedef NS_ENUM(NSInteger, PPAccessoryCartResultCode) {
       accessoryID:(NSString *)accessoryID
         completion:(void (^)(NSError * _Nullable error))completion
     NS_SWIFT_NAME(setFavorite(_:accessoryID:completion:));
+
++ (void)registerStockNotificationForAccessory:(PetAccessory *)accessory
+                                    completion:(void (^)(BOOL succeeded))completion
+    NS_SWIFT_NAME(registerStockNotification(for:completion:));
 
 + (void)addAccessory:(PetAccessory *)accessory
              quantity:(NSInteger)quantity

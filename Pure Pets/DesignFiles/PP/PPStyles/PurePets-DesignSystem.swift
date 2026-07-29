@@ -30,6 +30,7 @@ enum PPSpace {
 // MARK: Corner Radii
 
 enum PPCorner {
+    static let verysmall: CGFloat   = 8
     static let small: CGFloat   = 12
     static let medium: CGFloat  = 18
     static let card: CGFloat    = 22

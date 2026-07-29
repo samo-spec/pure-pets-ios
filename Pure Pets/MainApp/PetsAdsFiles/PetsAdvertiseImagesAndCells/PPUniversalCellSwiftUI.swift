@@ -174,6 +174,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
     public var usesQuantityControl: Bool
     public var prefersContainedImage: Bool
     public var prefersEdgeToEdgeMedia: Bool
+    public var prefersNavigationChevron: Bool
     public var preferredAspectRatio: CGFloat
 
     public init(
@@ -202,6 +203,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         usesQuantityControl: Bool = false,
         prefersContainedImage: Bool = false,
         prefersEdgeToEdgeMedia: Bool = false,
+        prefersNavigationChevron: Bool = false,
         preferredAspectRatio: CGFloat = 0.82
     ) {
         self.id = id
@@ -229,6 +231,7 @@ public struct PPUniversalCardModel: Identifiable, Equatable {
         self.usesQuantityControl = usesQuantityControl
         self.prefersContainedImage = prefersContainedImage
         self.prefersEdgeToEdgeMedia = prefersEdgeToEdgeMedia
+        self.prefersNavigationChevron = prefersNavigationChevron
         self.preferredAspectRatio = preferredAspectRatio
     }
 }
@@ -1873,13 +1876,16 @@ private struct PPUniversalCardRenderer: View {
                     )
                 } else {
                     detailsArrow
-                        .frame(width: 34, height: 34)
-                        .background(
-                            store.palette.primary.opacity(
-                                colorScheme == .dark ? 0.16 : 0.075
-                            ),
-                            in: Circle()
+                        .frame(
+                            width: detailsActionCircleSize,
+                            height: detailsActionCircleSize
                         )
+                        .background(detailsActionCircleFill, in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(detailsActionCircleStroke, lineWidth: 0.8)
+                        }
+                        .contentShape(Circle())
                 }
             }
             .foregroundStyle(detailsActionForeground)
@@ -1890,6 +1896,29 @@ private struct PPUniversalCardRenderer: View {
 
     private var detailsActionForeground: Color {
         store.context.isServiceLike ? .white : store.palette.primary
+    }
+
+    private var detailsActionCircleSize: CGFloat {
+        store.model.prefersNavigationChevron ? 38 : 34
+    }
+
+    private var detailsActionCircleFill: Color {
+        let emphasized = store.model.prefersNavigationChevron
+        let opacity: Double
+
+        if emphasized {
+            opacity = colorScheme == .dark ? 0.22 : 0.12
+        } else {
+            opacity = colorScheme == .dark ? 0.16 : 0.075
+        }
+
+        return store.palette.primary.opacity(opacity)
+    }
+
+    private var detailsActionCircleStroke: Color {
+        guard store.model.prefersNavigationChevron else { return Color.clear }
+
+        return store.palette.primary.opacity(colorScheme == .dark ? 0.28 : 0.20)
     }
 
     @ViewBuilder
@@ -1907,9 +1936,11 @@ private struct PPUniversalCardRenderer: View {
 
     private var detailsArrow: some View {
         Image(
-            systemName: store.isRightToLeft
-                ? "arrow.up.left"
-                : "arrow.up.right"
+            systemName: store.model.prefersNavigationChevron
+                ? "chevron.forward"
+                : (store.isRightToLeft
+                    ? "arrow.up.left"
+                    : "arrow.up.right")
         )
         .font(.system(size: 10.5, weight: .bold))
     }
@@ -2650,6 +2681,9 @@ private struct PPUniversalCardRenderer: View {
         guard store.model.usesQuantityControl else {
             if isAdAction {
                 return "megaphone.fill"
+            }
+            if store.model.prefersNavigationChevron {
+                return "chevron.forward"
             }
             return store.isRightToLeft ? "arrow.up.left" : "arrow.up.right"
         }

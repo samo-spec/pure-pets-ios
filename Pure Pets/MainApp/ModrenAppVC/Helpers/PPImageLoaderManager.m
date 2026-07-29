@@ -41,9 +41,10 @@ static os_log_t PPImagePerformanceLog(void) {
     SDImageCacheConfig *config = SDImageCache.sharedImageCache.config;
     config.shouldCacheImagesInMemory = YES;
     config.shouldUseWeakMemoryCache = NO;
+    config.maxMemoryCost = 50 * 1024 * 1024; // 50 MB
     config.diskCacheExpireType = SDImageCacheConfigExpireTypeAccessDate;
     config.maxDiskAge = 60 * 60 * 24 * 14; // 14 days
-    config.maxDiskSize = 500 * 1024 * 1024; // 500 MB
+    config.maxDiskSize = 150 * 1024 * 1024; // 150 MB
 
     SDWebImageDownloader.sharedDownloader.config.downloadTimeout = 20;
     SDWebImageDownloader.sharedDownloader.config.executionOrder =

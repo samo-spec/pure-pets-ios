@@ -17,6 +17,8 @@
 #import "PPImageLoaderManager.h"
 #import "PPNavigationController.h"
 #import "PPNetworkRetryHelper.h"
+#import "PPUniversalCellHelper.h"
+#import "PPUniversalCellViewModel.h"
 #import "PPUserSigningManager.h"
 #import "PetAccessory.h"
 #import "PetAccessoryManager.h"
@@ -27,6 +29,9 @@
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
+
+#import <float.h>
+#import <math.h>
 
 static NSString * const PPAccessoryViewerBridgeErrorDomain =
     @"com.purepets.accessory-viewer";
@@ -42,6 +47,102 @@ static NSString *PPAccessoryBridgeTrimmedString(id value)
     }
     return [value stringByTrimmingCharactersInSet:
             NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+static NSNumberFormatter *PPAccessoryBridgeCurrencyFormatter(BOOL isRTL)
+{
+    static NSNumberFormatter *arabicFormatter;
+    static NSNumberFormatter *englishFormatter;
+    static dispatch_once_t arabicOnceToken;
+    static dispatch_once_t englishOnceToken;
+
+    if (isRTL) {
+        dispatch_once(&arabicOnceToken, ^{
+            arabicFormatter = [[NSNumberFormatter alloc] init];
+            arabicFormatter.numberStyle = NSNumberFormatterCurrencyStyle;
+            arabicFormatter.locale =
+                [NSLocale localeWithLocaleIdentifier:@"ar_QA"];
+            arabicFormatter.currencyCode = @"QAR";
+            arabicFormatter.minimumFractionDigits = 0;
+            arabicFormatter.maximumFractionDigits = 2;
+        });
+        return arabicFormatter;
+    }
+    dispatch_once(&englishOnceToken, ^{
+        englishFormatter = [[NSNumberFormatter alloc] init];
+        englishFormatter.numberStyle = NSNumberFormatterCurrencyStyle;
+        englishFormatter.locale =
+            [NSLocale localeWithLocaleIdentifier:@"en_QA"];
+        englishFormatter.currencyCode = @"QAR";
+        englishFormatter.minimumFractionDigits = 0;
+        englishFormatter.maximumFractionDigits = 2;
+    });
+    return englishFormatter;
+}
+
+static NSNumberFormatter *PPAccessoryBridgeIntegerFormatter(BOOL isRTL)
+{
+    static NSNumberFormatter *arabicFormatter;
+    static NSNumberFormatter *englishFormatter;
+    static dispatch_once_t arabicOnceToken;
+    static dispatch_once_t englishOnceToken;
+
+    if (isRTL) {
+        dispatch_once(&arabicOnceToken, ^{
+            arabicFormatter = [[NSNumberFormatter alloc] init];
+            arabicFormatter.numberStyle = NSNumberFormatterDecimalStyle;
+            arabicFormatter.maximumFractionDigits = 0;
+            arabicFormatter.locale =
+                [NSLocale localeWithLocaleIdentifier:@"ar_QA"];
+        });
+        return arabicFormatter;
+    }
+    dispatch_once(&englishOnceToken, ^{
+        englishFormatter = [[NSNumberFormatter alloc] init];
+        englishFormatter.numberStyle = NSNumberFormatterDecimalStyle;
+        englishFormatter.maximumFractionDigits = 0;
+        englishFormatter.locale =
+            [NSLocale localeWithLocaleIdentifier:@"en_QA"];
+    });
+    return englishFormatter;
+}
+
+static NSString *PPAccessoryBridgeFormattedCurrency(NSNumber *amount)
+{
+    if (![amount isKindOfClass:NSNumber.class]) {
+        return @"";
+    }
+    if (fabs(amount.doubleValue) < DBL_EPSILON) {
+        NSString *freeText = [Language get:@"Free" alter:@"Free"];
+        return freeText.length > 0 ? freeText : @"Free";
+    }
+
+    NSNumberFormatter *formatter =
+        PPAccessoryBridgeCurrencyFormatter(Language.isRTL);
+    return [formatter stringFromNumber:amount] ?: @"";
+}
+
+static NSString *PPAccessoryBridgeFormattedInteger(NSInteger value)
+{
+    NSNumberFormatter *formatter =
+        PPAccessoryBridgeIntegerFormatter(Language.isRTL);
+    return [formatter stringFromNumber:@(MAX(value, 0))]
+        ?: [NSString stringWithFormat:@"%ld", (long)MAX(value, 0)];
+}
+
+static NSString *PPAccessoryBridgeProviderDisplayName(
+    NSString *providerID,
+    NSString *fallback
+) {
+    NSString *cleanProviderID =
+        PPAccessoryBridgeTrimmedString(providerID);
+    UserModel *user =
+        cleanProviderID.length > 0
+            ? [UserManager userModelForID:cleanProviderID]
+            : nil;
+    NSString *displayName =
+        PPAccessoryBridgeTrimmedString([user bestDisplayName]);
+    return displayName.length > 0 ? displayName : fallback;
 }
 
 static NSString *PPAccessoryBridgeProviderProfileImageURL(NSDictionary *data)
@@ -156,8 +257,9 @@ static UIViewController *PPAccessoryResolvedPresenter(
 
 + (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory
 {
-    return [PetAccessory formatCurrency:accessory.finalPrice ?: accessory.price]
-        ?: @"";
+    return PPAccessoryBridgeFormattedCurrency(
+        accessory.finalPrice ?: accessory.price
+    );
 }
 
 + (NSString *)formattedPriceForAccessory:(PetAccessory *)accessory quantity:(NSInteger)quantity
@@ -168,12 +270,12 @@ static UIViewController *PPAccessoryResolvedPresenter(
     NSNumber *unitPriceNum = accessory.finalPrice ?: accessory.price;
     double unitPrice = unitPriceNum.doubleValue;
     double total = unitPrice * MAX(1, quantity);
-    return [PetAccessory formatCurrency:@(total)] ?: @"";
+    return PPAccessoryBridgeFormattedCurrency(@(total));
 }
 
 + (NSString *)formattedOriginalPriceForAccessory:(PetAccessory *)accessory
 {
-    return [PetAccessory formatCurrency:accessory.price] ?: @"";
+    return PPAccessoryBridgeFormattedCurrency(accessory.price);
 }
 
 + (NSString *)categoryNameForAccessory:(PetAccessory *)accessory
@@ -237,7 +339,8 @@ static UIViewController *PPAccessoryResolvedPresenter(
     }
 
     NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
-    formatter.locale = NSLocale.currentLocale;
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:
+        Language.isRTL ? @"ar_QA" : @"en_QA"];
     formatter.maximumFractionDigits = 2;
     formatter.minimumFractionDigits = 0;
     NSString *number = [formatter stringFromNumber:accessory.weight] ?: @"";
@@ -259,7 +362,8 @@ static UIViewController *PPAccessoryResolvedPresenter(
         return @"";
     }
     NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-    formatter.locale = NSLocale.currentLocale;
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:
+        Language.isRTL ? @"ar_QA" : @"en_QA"];
     formatter.dateStyle = NSDateFormatterMediumStyle;
     formatter.timeStyle = NSDateFormatterNoStyle;
     return [formatter stringFromDate:date] ?: @"";
@@ -341,22 +445,46 @@ static UIViewController *PPAccessoryResolvedPresenter(
 + (nullable id)listenToAccessoryID:(NSString *)accessoryID
                            onChange:(void (^)(PetAccessory * _Nullable updatedAccessory))onChange
 {
+    if (!onChange) {
+        return nil;
+    }
+    return [self listenToAccessoryID:accessoryID
+                            onUpdate:^(PPAccessoryLiveUpdateStatus status,
+                                       PetAccessory * _Nullable updatedAccessory) {
+        onChange(
+            status == PPAccessoryLiveUpdateStatusUpdated
+                ? updatedAccessory
+                : nil
+        );
+    }];
+}
+
++ (nullable id)listenToAccessoryID:(NSString *)accessoryID
+                           onUpdate:(void (^)(PPAccessoryLiveUpdateStatus,
+                                              PetAccessory * _Nullable))onUpdate
+{
     NSString *cleanID = PPAccessoryBridgeTrimmedString(accessoryID);
-    if (cleanID.length == 0 || !onChange) {
+    if (cleanID.length == 0 || !onUpdate) {
         return nil;
     }
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *ref = [[db collectionWithPath:@"petAccessories"] documentWithPath:cleanID];
     return [ref addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error || !snapshot || !snapshot.exists) {
+        if (error || !snapshot) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                onChange(nil);
+                onUpdate(PPAccessoryLiveUpdateStatusFailed, nil);
+            });
+            return;
+        }
+        if (!snapshot.exists) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                onUpdate(PPAccessoryLiveUpdateStatusMissing, nil);
             });
             return;
         }
         PetAccessory *acc = [[PetAccessory alloc] initWithDictionary:snapshot.data documentID:snapshot.documentID];
         dispatch_async(dispatch_get_main_queue(), ^{
-            onChange(acc);
+            onUpdate(PPAccessoryLiveUpdateStatusUpdated, acc);
         });
     }];
 }
@@ -541,6 +669,32 @@ static UIViewController *PPAccessoryResolvedPresenter(
     }
 }
 
++ (void)registerStockNotificationForAccessory:(PetAccessory *)accessory
+                                    completion:(void (^)(BOOL))completion
+{
+    if (![accessory isKindOfClass:PetAccessory.class]) {
+        if (completion) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completion(NO);
+            });
+        }
+        return;
+    }
+
+    PPCellContext context =
+        accessory.isFood ? PPCellForFood : PPCellForMarket;
+    PPUniversalCellViewModel *viewModel =
+        [[PPUniversalCellViewModel alloc] initWithModel:accessory
+                                                context:context];
+    [PPUniversalCellSwiftUIBridge
+     registerStockNotificationForViewModel:viewModel
+     completion:^(BOOL succeeded) {
+        if (completion) {
+            completion(succeeded);
+        }
+    }];
+}
+
 + (void)addAccessory:(PetAccessory *)accessory
              quantity:(NSInteger)quantity
    fromViewController:(UIViewController *)viewController
@@ -622,10 +776,10 @@ static UIViewController *PPAccessoryResolvedPresenter(
         [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
     UIViewController *presenter =
         PPAccessoryResolvedPresenter(viewController);
-    [CartManager.sharedManager
-     addItem:item
-     presentingViewController:presenter
-     completion:^(BOOL didAdd, BOOL didCancel) {
+    CartManager *cartManager = CartManager.sharedManager;
+
+    void (^handleAddResult)(BOOL, BOOL) =
+        ^(BOOL didAdd, BOOL didCancel) {
         if (didCancel) {
             finish(PPAccessoryCartResultCodeCancelled, 0);
             return;
@@ -666,7 +820,117 @@ static UIViewController *PPAccessoryResolvedPresenter(
         [PPCommerceFeedbackManager.shared
          playEvent:PPCommerceFeedbackEventCartQuantityChanged];
         finish(PPAccessoryCartResultCodeSuccess, safeQuantity);
-    }];
+    };
+
+    if ([cartManager shouldConfirmProviderSwitchForItem:item]) {
+        CartItem *currentItem = cartManager.cartItems.firstObject;
+        NSString *currentFallback =
+            currentItem.name.length > 0
+                ? [NSString stringWithFormat:
+                    [self localizedTextForKey:
+                        @"accessory_view_provider_for_product_format"
+                                         fallback:@"Seller for %@"],
+                    currentItem.name]
+                : [self localizedTextForKey:
+                    @"accessory_view_current_provider_fallback"
+                                     fallback:@"Current seller"];
+        NSString *newFallback =
+            accessory.name.length > 0
+                ? [NSString stringWithFormat:
+                    [self localizedTextForKey:
+                        @"accessory_view_provider_for_product_format"
+                                         fallback:@"Seller for %@"],
+                    accessory.name]
+                : [self localizedTextForKey:
+                    @"accessory_view_new_provider_fallback"
+                                     fallback:@"New seller"];
+        NSString *currentProvider =
+            PPAccessoryBridgeProviderDisplayName(
+                currentItem.providerID,
+                currentFallback
+            );
+        NSString *newProvider =
+            PPAccessoryBridgeProviderDisplayName(
+                item.providerID,
+                newFallback
+            );
+        NSString *messageFormat =
+            [self localizedTextForKey:
+                @"accessory_view_provider_switch_message_format"
+                             fallback:
+                @"Current provider: %@\nCurrent cart: %@ items · %@\nNew provider: %@\nQuantity to add: %@\n\nStarting a new cart removes the current items."];
+        NSString *message =
+            [NSString stringWithFormat:
+                messageFormat,
+                currentProvider,
+                PPAccessoryBridgeFormattedInteger(
+                    cartManager.totalItemsCount
+                ),
+                PPAccessoryBridgeFormattedCurrency(
+                    @(cartManager.subtotalAmount)
+                ),
+                newProvider,
+                PPAccessoryBridgeFormattedInteger(safeQuantity)];
+        NSString *title =
+            [NSString stringWithFormat:
+                @"⚠︎ %@",
+                [self localizedTextForKey:
+                    @"cart_provider_switch_title"
+                                     fallback:
+                    @"Cart belongs to another provider"]];
+        UIAlertController *alert =
+            [UIAlertController
+             alertControllerWithTitle:title
+             message:message
+             preferredStyle:UIAlertControllerStyleAlert];
+
+        [alert addAction:
+            [UIAlertAction
+             actionWithTitle:
+                [self localizedTextForKey:
+                    @"accessory_view_view_current_cart"
+                                     fallback:@"View current cart"]
+             style:UIAlertActionStyleDefault
+             handler:^(__unused UIAlertAction *action) {
+                handleAddResult(NO, YES);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self openCartFromViewController:presenter];
+                });
+             }]];
+        [alert addAction:
+            [UIAlertAction
+             actionWithTitle:
+                [self localizedTextForKey:
+                    @"accessory_view_start_new_cart"
+                                     fallback:@"Start new cart & add"]
+             style:UIAlertActionStyleDestructive
+             handler:^(__unused UIAlertAction *action) {
+                [cartManager
+                 clearCartAndSyncToFirestoreWithCompletion:^(BOOL cleared) {
+                    if (!cleared) {
+                        handleAddResult(NO, NO);
+                        return;
+                    }
+                    handleAddResult([cartManager addItem:item], NO);
+                 }];
+             }]];
+        [alert addAction:
+            [UIAlertAction
+             actionWithTitle:
+                [self localizedTextForKey:
+                    @"cart_provider_switch_cancel"
+                                     fallback:@"Cancel"]
+             style:UIAlertActionStyleCancel
+             handler:^(__unused UIAlertAction *action) {
+                handleAddResult(NO, YES);
+             }]];
+        [presenter presentViewController:alert animated:YES completion:nil];
+        return;
+    }
+
+    [cartManager addItem:item
+        presentingViewController:presenter
+                   completion:handleAddResult];
 }
 
 + (NSString *)displayNameForUser:(UserModel *)user

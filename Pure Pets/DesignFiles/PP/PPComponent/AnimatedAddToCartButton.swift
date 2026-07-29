@@ -17,6 +17,16 @@ private struct AddToCartFlightAnchorPreferenceKey: PreferenceKey {
     }
 }
 
+public struct AnimatedAddToCartOutcome: Equatable {
+    public let cartCount: Int
+    public let addedQuantity: Int
+
+    public init(cartCount: Int, addedQuantity: Int) {
+        self.cartCount = max(0, cartCount)
+        self.addedQuantity = max(0, addedQuantity)
+    }
+}
+
 /// A production-ready add-to-cart control with an async-safe, causal success animation.
 ///
 /// The supplied action returns the authoritative cart quantity. The button keeps the
@@ -25,15 +35,15 @@ private struct AddToCartFlightAnchorPreferenceKey: PreferenceKey {
 public struct AnimatedAddToCartButton: View {
     @Binding private var cartCount: Int
 
-    private let title: LocalizedStringKey
-    private let addingTitle: LocalizedStringKey
-    private let addedTitle: LocalizedStringKey
-    private let retryTitle: LocalizedStringKey
+    private let title: String
+    private let addingTitle: String
+    private let addedTitle: String
+    private let retryTitle: String
     private let tint: Color
     private let itemSymbol: String
     private let isEnabled: Bool
     private let onCartTap: (() -> Void)?
-    private let onAdd: @MainActor () async throws -> Int
+    private let onAdd: @MainActor () async throws -> AnimatedAddToCartOutcome
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.layoutDirection) private var layoutDirection
@@ -43,19 +53,20 @@ public struct AnimatedAddToCartButton: View {
     @State private var flightProgress: CGFloat = 0
     @State private var cartImpact: CGFloat = 0
     @State private var badgeScale: CGFloat = 1
+    @State private var lastAddedQuantity = 0
     @State private var actionTask: Task<Void, Never>?
 
     public init(
         cartCount: Binding<Int>,
-        title: LocalizedStringKey = "Add to Cart",
-        addingTitle: LocalizedStringKey = "Adding…",
-        addedTitle: LocalizedStringKey = "Added",
-        retryTitle: LocalizedStringKey = "Try Again",
+        title: String = "Add to Cart",
+        addingTitle: String = "Adding…",
+        addedTitle: String = "Added",
+        retryTitle: String = "Try Again",
         tint: Color = .ppPrimary,
         itemSymbol: String = "shippingbox.fill",
         isEnabled: Bool = true,
         onCartTap: (() -> Void)? = nil,
-        onAdd: @escaping @MainActor () async throws -> Int
+        onAdd: @escaping @MainActor () async throws -> AnimatedAddToCartOutcome
     ) {
         self._cartCount = cartCount
         self.title = title
@@ -107,6 +118,8 @@ public struct AnimatedAddToCartButton: View {
             }
             .buttonStyle(CartPressStyle(reduceMotion: reduceMotion))
             .disabled(!isEnabled || phase.locksInteraction)
+            .accessibilityLabel(currentTitle)
+            .accessibilityHint(accessibilityHint)
 
             cartButton
         }
@@ -158,10 +171,9 @@ public struct AnimatedAddToCartButton: View {
                 }
 
                 if displayedCount > 0 {
-                    Text(String(format: "%d", displayedCount))
+                    Text(PPAccessoryViewerL10n.integer(displayedCount))
                         .font(PPAccessoryTypography.captionBold)
                         .monospacedDigit()
-                        .environment(\.locale, Locale(identifier: "en_US"))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 6)
                         .frame(minWidth: 20, minHeight: 20)
@@ -265,10 +277,9 @@ public struct AnimatedAddToCartButton: View {
             }
 
             if displayedCount > 0 {
-                Text(String(format: "%d", displayedCount))
+                Text(PPAccessoryViewerL10n.integer(displayedCount))
                     .font(PPAccessoryTypography.captionBold)
                     .monospacedDigit()
-                    .environment(\.locale, Locale(identifier: "en_US"))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .frame(minWidth: 20, minHeight: 20)
@@ -334,14 +345,19 @@ public struct AnimatedAddToCartButton: View {
         }
     }
 
-    private var currentTitle: LocalizedStringKey {
+    private var currentTitle: String {
         switch phase {
         case .idle:
             title
         case .processing, .flying:
             addingTitle
         case .success:
-            addedTitle
+            lastAddedQuantity > 0
+                ? PPAccessoryViewerL10n.formatted(
+                    "accessory_view_added_quantity_format",
+                    PPAccessoryViewerL10n.integer(lastAddedQuantity)
+                )
+                : addedTitle
         case .failure:
             retryTitle
         }
@@ -349,14 +365,26 @@ public struct AnimatedAddToCartButton: View {
 
     private var accessibilityHint: Text {
         if !isEnabled {
-            return Text("This item is currently unavailable.")
+            return Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_item_unavailable"
+                )
+            )
         }
 
         if phase == .failure {
-            return Text("Retries adding this item to the cart.")
+            return Text(
+                PPAccessoryViewerL10n.text(
+                    "accessory_view_add_retry_hint"
+                )
+            )
         }
 
-        return Text("Adds this item to the cart.")
+        return Text(
+            PPAccessoryViewerL10n.text(
+                "accessory_view_add_to_cart_hint"
+            )
+        )
     }
 
     private var buttonColor: Color {
@@ -431,30 +459,29 @@ public struct AnimatedAddToCartButton: View {
             }
 
             do {
-                let newCount = max(0, try await onAdd())
+                let outcome = try await onAdd()
                 try Task.checkCancellation()
+                lastAddedQuantity = outcome.addedQuantity
 
                 if reduceMotion {
-                    try await playReducedSuccess(newCount: newCount)
+                    try await playReducedSuccess(outcome: outcome)
                 } else {
-                    try await playCausalSuccess(newCount: newCount)
+                    try await playCausalSuccess(outcome: outcome)
                 }
             } catch is CancellationError {
                 resetMotion()
                 phase = .idle
             } catch {
-                withAnimation(.easeOut(duration: 0.18)) {
+                withAnimation(
+                    reduceMotion ? nil : .easeOut(duration: 0.18)
+                ) {
                     phase = .failure
                 }
 
-                UINotificationFeedbackGenerator()
-                    .notificationOccurred(.error)
-
                 UIAccessibility.post(
                     notification: .announcement,
-                    argument: NSLocalizedString(
-                        "Couldn’t add this item. Double-tap to retry.",
-                        comment: "Add-to-cart failure announcement"
+                    argument: PPAccessoryViewerL10n.text(
+                        "accessory_view_add_failure_announcement"
                     )
                 )
             }
@@ -462,7 +489,10 @@ public struct AnimatedAddToCartButton: View {
     }
 
     @MainActor
-    private func playCausalSuccess(newCount: Int) async throws {
+    private func playCausalSuccess(
+        outcome: AnimatedAddToCartOutcome
+    ) async throws {
+        let newCount = outcome.cartCount
         flightProgress = 0
         phase = .flying
         cartCount = newCount
@@ -496,7 +526,7 @@ public struct AnimatedAddToCartButton: View {
             badgeScale = 1.18
         }
 
-        announceSuccess(count: newCount)
+        announceSuccess(outcome: outcome)
 
         try await sleep(milliseconds: 240)
 
@@ -522,7 +552,10 @@ public struct AnimatedAddToCartButton: View {
     }
 
     @MainActor
-    private func playReducedSuccess(newCount: Int) async throws {
+    private func playReducedSuccess(
+        outcome: AnimatedAddToCartOutcome
+    ) async throws {
+        let newCount = outcome.cartCount
         cartCount = newCount
 
         withAnimation(.easeOut(duration: 0.16)) {
@@ -530,7 +563,7 @@ public struct AnimatedAddToCartButton: View {
             phase = .success
         }
 
-        announceSuccess(count: newCount)
+        announceSuccess(outcome: outcome)
 
         try await sleep(milliseconds: 700)
 
@@ -541,18 +574,16 @@ public struct AnimatedAddToCartButton: View {
     }
 
     @MainActor
-    private func announceSuccess(count: Int) {
-        UINotificationFeedbackGenerator()
-            .notificationOccurred(.success)
-
-        let format = NSLocalizedString(
-            "Added to cart. Cart quantity %lld.",
-            comment: "Add-to-cart success announcement"
+    private func announceSuccess(outcome: AnimatedAddToCartOutcome) {
+        let announcement = PPAccessoryViewerL10n.formatted(
+            "accessory_view_added_announcement_format",
+            PPAccessoryViewerL10n.integer(outcome.addedQuantity),
+            PPAccessoryViewerL10n.integer(outcome.cartCount)
         )
 
         UIAccessibility.post(
             notification: .announcement,
-            argument: String.localizedStringWithFormat(format, Int64(count))
+            argument: announcement
         )
     }
 

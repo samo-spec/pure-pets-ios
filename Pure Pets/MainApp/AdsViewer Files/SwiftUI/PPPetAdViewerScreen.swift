@@ -405,12 +405,8 @@ struct PPPetAdViewerScreen: View {
     }
 
     @ViewBuilder
-    private func contactDock(bottomInset: CGFloat) -> some View {
+    private func contactDock(bottomInset _: CGFloat) -> some View {
         if store.ppShowsContactDock {
-            let dockBottomPadding =
-                max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
-                + PPBottomDecisionBarGeometry.bottomBreathingRoom
-
             PPPetAdContactDock(store: store)
                 .fixedSize(horizontal: false, vertical: true)
                 .modifier(
@@ -427,7 +423,7 @@ struct PPPetAdViewerScreen: View {
                     }
                 }
                 .padding(.horizontal, PPSpace.base)
-                .padding(.bottom, dockBottomPadding)
+                .padding(.bottom, 16)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
                 .frame(maxHeight: .infinity, alignment: .bottom)
@@ -577,7 +573,7 @@ struct PPPetAdViewerScreen: View {
         return max(
             fallback,
             contactDockHeight
-                + PPBottomDecisionBarGeometry.bottomBreathingRoom
+                + 16
         )
     }
 
@@ -604,13 +600,8 @@ struct PPPetAdViewerScreen: View {
             .safeAreaInsets.bottom ?? 0
     }
 
-    private func bottomFadeOverlay(proxy: GeometryProxy) -> some View {
-        let bottomInset = bottomChromeInset(proxy)
-        let dockBottomPadding =
-            max(bottomInset, PPBottomDecisionBarGeometry.bottomBreathingRoom)
-            + PPBottomDecisionBarGeometry.bottomBreathingRoom
-
-        let totalOverlayHeight = contactDockHeight + dockBottomPadding + 44
+    private func bottomFadeOverlay(proxy _: GeometryProxy) -> some View {
+        let totalOverlayHeight = contactDockHeight + 16 + 44
         let bottomColor = Color.ppBackground
 
         return LinearGradient(

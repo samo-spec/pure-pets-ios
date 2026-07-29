@@ -2,6 +2,48 @@ import Foundation
 import UIKit
 
 enum PPAccessoryViewerL10n {
+    private static let arabicIntegerFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "ar_QA")
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
+    private static let englishIntegerFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_QA")
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter
+    }()
+
+    private static let arabicDecimalFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "ar_QA")
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        return formatter
+    }()
+
+    private static let englishDecimalFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_QA")
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 1
+        formatter.maximumFractionDigits = 1
+        return formatter
+    }()
+
+    static var locale: Locale {
+        Locale(
+            identifier: PPAccessoryViewerLegacyBridge.isRTL()
+                ? "ar_QA"
+                : "en_QA"
+        )
+    }
+
     @inline(__always)
     static func text(_ key: String) -> String {
         let localized = PPAccessoryViewerLegacyBridge.localizedText(
@@ -9,6 +51,33 @@ enum PPAccessoryViewerL10n {
             fallback: key
         )
         return localized.isEmpty ? key : localized
+    }
+
+    static func formatted(
+        _ key: String,
+        _ arguments: CVarArg...
+    ) -> String {
+        String(
+            format: text(key),
+            locale: locale,
+            arguments: arguments
+        )
+    }
+
+    static func integer(_ value: Int) -> String {
+        let formatter = PPAccessoryViewerLegacyBridge.isRTL()
+            ? arabicIntegerFormatter
+            : englishIntegerFormatter
+        return formatter.string(from: NSNumber(value: value))
+            ?? String(value)
+    }
+
+    static func decimal(_ value: Double) -> String {
+        let formatter = PPAccessoryViewerLegacyBridge.isRTL()
+            ? arabicDecimalFormatter
+            : englishDecimalFormatter
+        return formatter.string(from: NSNumber(value: value))
+            ?? String(value)
     }
 }
 
@@ -33,6 +102,20 @@ enum PPAccessoryViewerCartPhase: Equatable {
     case failed
 }
 
+enum PPAccessoryViewerLivePhase: Equatable {
+    case current
+    case refreshing
+    case stale
+    case deleted
+}
+
+enum PPAccessoryViewerStockNotificationPhase: Equatable {
+    case idle
+    case processing
+    case success
+    case failed
+}
+
 /// Error cases for the async ``PPAccessoryViewerStore/addToCartAsync()`` bridge.
 enum PPAccessoryCartError: Error {
     case unavailable
@@ -49,22 +132,26 @@ struct PPAccessoryViewerMediaItem: Identifiable, Equatable {
     let isVideo: Bool
 
     static func items(from accessory: PetAccessory) -> [Self] {
-        let mapped = accessory.imageItems.enumerated().compactMap {
-            index,
-            item in
-            makeItem(from: item, index: index)
+        var seenIDs = Set<String>()
+        let mapped = accessory.imageItems.compactMap { item -> Self? in
+            guard let media = makeItem(from: item),
+                  seenIDs.insert(media.id).inserted else {
+                return nil
+            }
+            return media
         }
         if !mapped.isEmpty {
             return mapped
         }
 
-        return accessory.imageURLsArray.enumerated().compactMap {
-            index,
-            value in
+        return accessory.imageURLsArray.compactMap { value -> Self? in
             let url = value.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !url.isEmpty else { return nil }
+            let stableID = "image:\(url)"
+            guard !url.isEmpty, seenIDs.insert(stableID).inserted else {
+                return nil
+            }
             return Self(
-                id: "\(index)-\(url)",
+                id: stableID,
                 imageURL: url,
                 videoURL: nil,
                 blurHash: accessory.blurHash,
@@ -74,8 +161,7 @@ struct PPAccessoryViewerMediaItem: Identifiable, Equatable {
     }
 
     private static func makeItem(
-        from item: PetImageItem,
-        index: Int
+        from item: PetImageItem
     ) -> Self? {
         let rawURL = item.url.trimmingCharacters(in: .whitespacesAndNewlines)
         let rawVideoURL =
@@ -113,8 +199,9 @@ struct PPAccessoryViewerMediaItem: Identifiable, Equatable {
         guard resolvedImageURL != nil || resolvedVideoURL != nil else {
             return nil
         }
+        let stableResource = resolvedVideoURL ?? resolvedImageURL ?? rawURL
         return Self(
-            id: "\(index)-\(resolvedVideoURL ?? resolvedImageURL ?? rawURL)",
+            id: "\(isVideo ? "video" : "image"):\(stableResource)",
             imageURL: resolvedImageURL,
             videoURL: resolvedVideoURL,
             blurHash: item.blurHash ?? accessoryFallbackHash(item: item),
@@ -163,11 +250,13 @@ struct PPAccessoryViewerSnapshot {
     let quantity: Int
     let discountPercent: Double?
     let discountAmount: Double?
-    let testingRatingValue: Double
     let isUsed: Bool
     let isOwnItem: Bool
     let isProviderMarketplace: Bool
     let isUnavailable: Bool
+    let isBlocked: Bool
+    let isDeleted: Bool
+    let isDisabled: Bool
     let showsCart: Bool
     let media: [PPAccessoryViewerMediaItem]
 
@@ -207,14 +296,15 @@ struct PPAccessoryViewerSnapshot {
         quantity = max(accessory.quantity, 0)
         discountPercent = accessory.discountPercent?.doubleValue
         discountAmount = accessory.discountAmount?.doubleValue
-        testingRatingValue =
-            PPAccessoryViewerSnapshot.testingRatingValue(for: accessory)
         isUsed = PPAccessoryViewerLegacyBridge.isUsed(accessory)
         isOwnItem = PPAccessoryViewerLegacyBridge.isOwn(accessory)
         isProviderMarketplace =
             PPAccessoryViewerLegacyBridge.isProviderMarketplace(accessory)
         isUnavailable =
             PPAccessoryViewerLegacyBridge.isUnavailable(accessory)
+        isBlocked = accessory.isBlocked
+        isDeleted = accessory.isDeleted
+        isDisabled = accessory.isDisabled
         showsCart =
             PPAccessoryViewerLegacyBridge.shouldShowCart(for: accessory)
         media = PPAccessoryViewerMediaItem.items(from: accessory)
@@ -231,19 +321,125 @@ struct PPAccessoryViewerSnapshot {
             !createdDate.isEmpty
     }
 
-    private static func testingRatingValue(for accessory: PetAccessory) -> Double {
-        let seedSource = [
-            accessory.accessoryID,
-            accessory.ownerID,
-            accessory.name
-        ]
-        .joined(separator: "|")
-        let scalarSum = seedSource.unicodeScalars.reduce(0) { partialResult, scalar in
-            partialResult + Int(scalar.value)
+    var isFood: Bool {
+        accessory.isFood
+    }
+
+    var isMedicine: Bool {
+        accessory.isPetMedicine
+    }
+
+    var isAvailableForPurchase: Bool {
+        !isUnavailable && quantity > 0
+    }
+
+    var canRequestStockNotification: Bool {
+        !id.isEmpty &&
+            quantity <= 0 &&
+            !isBlocked &&
+            !isDeleted &&
+            !isDisabled &&
+            accessory.showInAppMarket
+    }
+
+    var petFitDataGapText: String {
+        if isFood {
+            return PPAccessoryViewerL10n.text(
+                "accessory_view_food_fit_gap"
+            )
         }
-        let bucket = scalarSum % 15
-        let rating = 3.6 + (Double(bucket) * 0.1)
-        return min(5.0, max(3.6, rating))
+        if isMedicine {
+            return PPAccessoryViewerL10n.text(
+                "accessory_view_medicine_fit_gap"
+            )
+        }
+        return PPAccessoryViewerL10n.text(
+            "accessory_view_accessory_fit_gap"
+        )
+    }
+
+    var petFitDetails: [PPAccessoryViewerDetailItem] {
+        var result: [PPAccessoryViewerDetailItem] = []
+
+        if !category.isEmpty {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-category",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_pet_category"
+                    ),
+                    value: category,
+                    symbol: "pawprint.fill",
+                    tone: .coral
+                )
+            )
+        }
+        if !subcategory.isEmpty {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-subcategory",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_product_category"
+                    ),
+                    value: subcategory,
+                    symbol: "square.grid.2x2.fill",
+                    tone: .sea
+                )
+            )
+        }
+        if !accessoryCategory.isEmpty &&
+            accessoryCategory != subcategory {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-product-group",
+                    title: PPAccessoryViewerL10n.text(
+                        "accessory_view_product_group"
+                    ),
+                    value: accessoryCategory,
+                    symbol: "tag.fill",
+                    tone: .sun
+                )
+            )
+        }
+        if !weight.isEmpty {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-weight",
+                    title: PPAccessoryViewerL10n.text(
+                        isFood || isMedicine
+                            ? "accessory_view_pack_weight"
+                            : "accessory_view_size_weight"
+                    ),
+                    value: weight,
+                    symbol: "scalemass.fill",
+                    tone: .ink
+                )
+            )
+        }
+        if !condition.isEmpty && !isFood && !isMedicine {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-condition",
+                    title: PPAccessoryViewerL10n.text("Condition"),
+                    value: condition,
+                    symbol: "checkmark.seal.fill",
+                    tone: .palm
+                )
+            )
+        }
+        if !expiryDate.isEmpty && (isFood || isMedicine) {
+            result.append(
+                PPAccessoryViewerDetailItem(
+                    id: "fit-expiry",
+                    title: PPAccessoryViewerL10n.text("ExpiryDateTitle"),
+                    value: expiryDate,
+                    symbol: "calendar.badge.clock",
+                    tone: .coral
+                )
+            )
+        }
+
+        return result
     }
 
     var details: [PPAccessoryViewerDetailItem] {
@@ -290,7 +486,7 @@ struct PPAccessoryViewerSnapshot {
                     title: PPAccessoryViewerL10n.text(
                         "accessory_view_remain_quantity"
                     ),
-                    value: "\(quantity)",
+                    value: PPAccessoryViewerL10n.integer(quantity),
                     symbol: "archivebox.fill",
                     tone: .palm
                 )
@@ -306,19 +502,6 @@ struct PPAccessoryViewerSnapshot {
                     value: subcategory,
                     symbol: "square.grid.3x1.below.line.grid.1x2",
                     tone: .sea
-                )
-            )
-        }
-        if !accessoryCategory.isEmpty {
-            result.append(
-                PPAccessoryViewerDetailItem(
-                    id: "accessory-category",
-                    title: PPAccessoryViewerL10n.text(
-                        "Accessory Category"
-                    ),
-                    value: accessoryCategory,
-                    symbol: "tag.fill",
-                    tone: .sun
                 )
             )
         }
@@ -369,6 +552,8 @@ struct PPAccessoryViewerOwner {
     let phoneNumber: String?
     let isVerified: Bool
     let isChatAllowed: Bool
+    let ratingValue: Double
+    let reviewCount: Int
 
     init(user: UserModel, companyProfileImageURL: String? = nil) {
         self.user = user
@@ -384,10 +569,16 @@ struct PPAccessoryViewerOwner {
         isVerified = PPAccessoryViewerLegacyBridge.isVerified(user: user)
         isChatAllowed =
             PPAccessoryViewerLegacyBridge.isChatAllowed(for: user)
+        ratingValue = min(max(user.providerRatingValue, 0), 5)
+        reviewCount = max(user.providerReviewCount, 0)
     }
 
     var preferredAvatarURL: String? {
         companyProfileImageURL ?? avatarURL
+    }
+
+    var hasRating: Bool {
+        ratingValue > 0 && reviewCount > 0
     }
 }
 
@@ -399,6 +590,7 @@ struct PPAccessoryViewerSuggestion: Identifiable {
     let subtitle: String
     let imageURL: String?
     let blurHash: String?
+    let isAvailable: Bool
 
     init(accessory: PetAccessory) {
         self.accessory = accessory
@@ -417,5 +609,8 @@ struct PPAccessoryViewerSuggestion: Identifiable {
             PPAccessoryViewerMediaItem.items(from: accessory).first
         imageURL = firstMedia?.imageURL
         blurHash = firstMedia?.blurHash ?? accessory.blurHash
+        isAvailable =
+            !PPAccessoryViewerLegacyBridge.isUnavailable(accessory) &&
+            accessory.quantity > 0
     }
 }
