@@ -475,10 +475,15 @@ private final class PPUniversalCardStore: ObservableObject {
         var resolvedMetadataIcon = isAdLike ? nil : metadataIcon
 
         if objcContext == .forServices {
-            if resolvedMetadata == nil || resolvedMetadata!.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                resolvedMetadata = "0.0"
-            }
-            if resolvedMetadataIcon == nil || resolvedMetadataIcon!.isEmpty {
+            let trimmedRating = resolvedMetadata?.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            if trimmedRating?.isEmpty != false ||
+               (Double(trimmedRating ?? "") ?? 0) <= 0 {
+                resolvedMetadata = nil
+                resolvedMetadataIcon = nil
+            } else if resolvedMetadataIcon == nil ||
+                      resolvedMetadataIcon!.isEmpty {
                 resolvedMetadataIcon = "star.fill"
             }
         }

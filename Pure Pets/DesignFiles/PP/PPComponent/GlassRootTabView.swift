@@ -19,7 +19,7 @@ struct GlassRootTabView: View {
     @available(iOS 17.0, *)
     var body: some View {
         TabView(selection: $selectedTab) {
-            HomeView()
+            GlassRootHomeView()
                 .tag(AppTab.home)
                 .tabItem {
                     Label("Home", systemImage: "house")
@@ -433,7 +433,7 @@ private struct GlassPressButtonStyle: ButtonStyle {
 
 
 @available(iOS 16.0, *)
-private struct HomeView: View {
+private struct GlassRootHomeView: View {
     var body: some View {
         NavigationStack {
             Text("Home")

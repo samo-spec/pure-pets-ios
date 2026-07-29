@@ -74,16 +74,28 @@
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    UIFont *titleFont =
+        [GM boldFontWithSize:16] ?:
+            [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    _titleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+            scaledFontForFont:titleFont];
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    _titleLabel.numberOfLines = 1;
-    _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _titleLabel.numberOfLines = 0;
+    _titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [_surfaceView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    UIFont *subtitleFont =
+        [GM MidFontWithSize:12] ?:
+            [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    _subtitleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleSubheadline]
+            scaledFontForFont:subtitleFont];
+    _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _subtitleLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.64] ?: UIColor.secondaryLabelColor;
     _subtitleLabel.numberOfLines = 2;
@@ -176,6 +188,12 @@
     _titleLabel.text = PPSafeString(title);
     _subtitleLabel.text = PPSafeString(subtitle);
     _subtitleLabel.hidden = (PPSafeString(subtitle).length == 0);
+    self.isAccessibilityElement = YES;
+    self.accessibilityLabel = PPSafeString(title);
+    self.accessibilityHint = PPSafeString(subtitle);
+    self.accessibilityTraits =
+        showsChevron ? UIAccessibilityTraitButton : UIAccessibilityTraitStaticText;
+    _surfaceView.accessibilityElementsHidden = YES;
     _chevronView.hidden = !showsChevron;
     _iconView.image =
         [UIImage pp_symbolNamed:PPSafeString(iconName)
@@ -384,7 +402,7 @@
     [_backButton setImage:backIcon forState:UIControlStateNormal];
     _backButton.tintColor = [UIColor colorWithRed:0.16 green:0.14 blue:0.18 alpha:1.0];
     _backButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.70];
-    _backButton.layer.cornerRadius = 18.0;
+    _backButton.layer.cornerRadius = 22.0;
     _backButton.layer.cornerCurve = kCACornerCurveContinuous;
     _backButton.layer.borderWidth = 1.0;
     [_backButton pp_setBorderColor:[UIColor colorWithRed:0.73 green:0.68 blue:0.70 alpha:0.28]];
@@ -393,6 +411,7 @@
     _backButton.layer.shadowRadius = 16.0f;
     _backButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     [_backButton addTarget:self action:@selector(pp_handleBack) forControlEvents:UIControlEventTouchUpInside];
+    _backButton.accessibilityLabel = kLang(@"Back") ?: @"Back";
     [_backdropView addSubview:_backButton];
 
     UIView *contentView = [[UIView alloc] init];
@@ -430,7 +449,13 @@
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = [GM boldFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    UIFont *eyebrowFont =
+        [GM boldFontWithSize:11] ?:
+            [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    eyebrowLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption1]
+            scaledFontForFont:eyebrowFont];
+    eyebrowLabel.adjustsFontForContentSizeCategory = YES;
     eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     eyebrowLabel.textColor = [UIColor colorWithRed:0.50 green:0.34 blue:0.39 alpha:1.0];
     eyebrowLabel.text = kLang(@"Nearby") ?: @"Nearby";
@@ -439,16 +464,28 @@
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:26] ?: [UIFont systemFontOfSize:26.0 weight:UIFontWeightBold];
+    UIFont *heroTitleFont =
+        [GM boldFontWithSize:26] ?:
+            [UIFont systemFontOfSize:26.0 weight:UIFontWeightBold];
+    titleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleTitle1]
+            scaledFontForFont:heroTitleFont];
+    titleLabel.adjustsFontForContentSizeCategory = YES;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     titleLabel.textColor = [UIColor colorWithRed:0.10 green:0.09 blue:0.12 alpha:1.0];
-    titleLabel.numberOfLines = 2;
+    titleLabel.numberOfLines = 0;
     titleLabel.tag = 601;
     [_heroSurfaceView addSubview:titleLabel];
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:14] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    UIFont *heroSubtitleFont =
+        [GM MidFontWithSize:14] ?:
+            [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    subtitleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody]
+            scaledFontForFont:heroSubtitleFont];
+    subtitleLabel.adjustsFontForContentSizeCategory = YES;
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     subtitleLabel.textColor = [UIColor colorWithRed:0.31 green:0.28 blue:0.32 alpha:0.78];
     subtitleLabel.numberOfLines = 0;
@@ -458,11 +495,12 @@
     [NSLayoutConstraint activateConstraints:@[
         [_heroEyebrowView.topAnchor constraintEqualToAnchor:_heroSurfaceView.topAnchor constant:18.0],
         [_heroEyebrowView.leadingAnchor constraintEqualToAnchor:_heroSurfaceView.leadingAnchor constant:18.0],
-        [_heroEyebrowView.heightAnchor constraintEqualToConstant:26.0],
+        [_heroEyebrowView.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:_heroEyebrowView.leadingAnchor constant:10.0],
         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:_heroEyebrowView.trailingAnchor constant:-10.0],
-        [eyebrowLabel.centerYAnchor constraintEqualToAnchor:_heroEyebrowView.centerYAnchor],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:_heroEyebrowView.topAnchor constant:5.0],
+        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:_heroEyebrowView.bottomAnchor constant:-5.0],
 
         [titleLabel.topAnchor constraintEqualToAnchor:_heroEyebrowView.bottomAnchor constant:16.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:_heroSurfaceView.leadingAnchor constant:18.0],
@@ -483,7 +521,14 @@
 
     _recentTitleLabel = [[UILabel alloc] init];
     _recentTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _recentTitleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    UIFont *recentTitleFont =
+        [GM boldFontWithSize:13] ?:
+            [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _recentTitleLabel.font =
+        [[UIFontMetrics metricsForTextStyle:UIFontTextStyleHeadline]
+            scaledFontForFont:recentTitleFont];
+    _recentTitleLabel.adjustsFontForContentSizeCategory = YES;
+    _recentTitleLabel.numberOfLines = 0;
     _recentTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _recentTitleLabel.textColor = [UIColor colorWithRed:0.49 green:0.43 blue:0.46 alpha:1.0];
 
@@ -509,8 +554,8 @@
 
         [_backButton.topAnchor constraintEqualToAnchor:_backdropView.topAnchor constant:14.0],
         [_backButton.leadingAnchor constraintEqualToAnchor:_backdropView.leadingAnchor constant:16.0],
-        [_backButton.widthAnchor constraintEqualToConstant:36.0],
-        [_backButton.heightAnchor constraintEqualToConstant:36.0],
+        [_backButton.widthAnchor constraintEqualToConstant:44.0],
+        [_backButton.heightAnchor constraintEqualToConstant:44.0],
 
         [_scrollView.topAnchor constraintEqualToAnchor:_backButton.bottomAnchor constant:8.0],
         [_scrollView.leadingAnchor constraintEqualToAnchor:_backdropView.leadingAnchor],

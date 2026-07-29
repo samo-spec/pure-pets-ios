@@ -9,6 +9,7 @@
 #import "AppDelegate.h"
 #import "PPHomeCartNavButton.h"
 #import "CartManager.h"
+#import "CartViewController.h"
 
 
 typedef enum : NSUInteger {

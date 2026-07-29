@@ -33,6 +33,8 @@
 #import "PPNovaChatViewController.h"
 #import "ChMessagingController.h"
 #import "CartManager.h"
+#import "CartViewController.h"
+#import "PPHomeHelper.h"
 #import "PPBottomSurfaceCoordinator.h"
 #import "UIViewController+PPBottomSurface.h"
 #import "Pure_Pets-Swift.h"
@@ -4371,6 +4373,21 @@ shouldSelectViewController:(UIViewController *)viewController {
     NSUInteger index = [tabBarController.viewControllers indexOfObject:viewController];
     if (index == NSNotFound) {
         return;
+    }
+    BOOL isHomeReselection =
+        index == PPRootTabIndexHome &&
+        self.pp_lastSelectedIndex == (NSInteger)index;
+    if (isHomeReselection) {
+        UIViewController *visibleController = viewController;
+        if ([viewController isKindOfClass:UINavigationController.class]) {
+            visibleController =
+                ((UINavigationController *)viewController).visibleViewController;
+        }
+        if ([visibleController
+                isKindOfClass:PPHomeViewController.class]) {
+            [(PPHomeViewController *)visibleController
+                pp_homeHandleReselection];
+        }
     }
     if ((NSInteger)index != self.pp_lastSelectedIndex) {
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventRootTabSelected];

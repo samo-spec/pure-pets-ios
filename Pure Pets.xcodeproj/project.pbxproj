@@ -50,6 +50,7 @@
 		A5E100042FF1000100A5E004 /* PPBackgroundViewApexBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */; };
 		A5E200022FF2000100A5E002 /* PPHeroApexMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */; };
 		A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */; };
+		F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		AB0B59B49D24817AB7178C18 /* NovaAudioSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3569FFA46C2D15978195110B /* NovaAudioSessionController.swift */; };
@@ -791,6 +792,20 @@
 		F2DF5DD02EFC8E8F009C7B6F /* PPRootTabBarController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */; };
 		F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */; };
 		F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */; };
+		F31000000000000000000001 /* PPHomeDataBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000002 /* PPHomeDataBridge.m */; };
+		F31000000000000000000002 /* HomeViewState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000003 /* HomeViewState.swift */; };
+		F31000000000000000000003 /* HomeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000004 /* HomeStore.swift */; };
+		F31000000000000000000004 /* HomeRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000005 /* HomeRepository.swift */; };
+		F31000000000000000000005 /* HomeModelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000006 /* HomeModelAdapter.swift */; };
+		F31000000000000000000006 /* HomeRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000007 /* HomeRouter.swift */; };
+		F31000000000000000000007 /* PPHomeHostingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000008 /* PPHomeHostingController.swift */; };
+		F31000000000000000000008 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000009 /* HomeView.swift */; };
+		F31000000000000000000009 /* HomeHeroView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000A /* HomeHeroView.swift */; };
+		F3100000000000000000000A /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000B /* HomeComponents.swift */; };
+		F3100000000000000000000B /* HomeUniversalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3000000000000000000000C /* HomeUniversalCard.swift */; };
+		F33000000000000000000001 /* HomePetPulse.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000001 /* HomePetPulse.json */; };
+		F33000000000000000000002 /* HomeCareReminder.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000002 /* HomeCareReminder.json */; };
+		F33000000000000000000003 /* HomePromotionSpark.json in Resources */ = {isa = PBXBuildFile; fileRef = F34000000000000000000003 /* HomePromotionSpark.json */; };
 		F2DF5DD72EFC92DF009C7B6F /* PPOverlayCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */; };
 		F2E0E8712E7A16D400F0C084 /* UIViewController+PPNavBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */; };
 		F2E0E8742E7A3A3E00F0C084 /* UserModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8732E7A3A3E00F0C084 /* UserModel.m */; };
@@ -1006,6 +1021,7 @@
 		A5E100032FF1000100A5E003 /* PPBackgroundViewApexBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBackgroundViewApexBridge.m; sourceTree = "<group>"; };
 		A5E200012FF2000100A5E001 /* PPHeroApexMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotion.swift; sourceTree = "<group>"; };
 		A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHeroApexMotionTests.swift; sourceTree = "<group>"; };
+		F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPHomeSwiftUIMigrationTests.swift; sourceTree = "<group>"; };
 		A88868E11F9C6F6AB3438702 /* NovaVoiceMessageSending.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NovaVoiceMessageSending.swift; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
@@ -2369,6 +2385,21 @@
 		F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootTabBarController.m; sourceTree = "<group>"; };
 		F2DF5DD22EFC9145009C7B6F /* PPHomeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeViewController.h; sourceTree = "<group>"; };
 		F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeViewController.m; sourceTree = "<group>"; };
+		F30000000000000000000001 /* PPHomeDataBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Bridge/PPHomeDataBridge.h; sourceTree = "<group>"; };
+		F30000000000000000000002 /* PPHomeDataBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Bridge/PPHomeDataBridge.m; sourceTree = "<group>"; };
+		F30000000000000000000003 /* HomeViewState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State/HomeViewState.swift; sourceTree = "<group>"; };
+		F30000000000000000000004 /* HomeStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = State/HomeStore.swift; sourceTree = "<group>"; };
+		F30000000000000000000005 /* HomeRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/HomeRepository.swift; sourceTree = "<group>"; };
+		F30000000000000000000006 /* HomeModelAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Data/HomeModelAdapter.swift; sourceTree = "<group>"; };
+		F30000000000000000000007 /* HomeRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routing/HomeRouter.swift; sourceTree = "<group>"; };
+		F30000000000000000000008 /* PPHomeHostingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Hosting/PPHomeHostingController.swift; sourceTree = "<group>"; };
+		F30000000000000000000009 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeView.swift; sourceTree = "<group>"; };
+		F3000000000000000000000A /* HomeHeroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeHeroView.swift; sourceTree = "<group>"; };
+		F3000000000000000000000B /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeComponents.swift; sourceTree = "<group>"; };
+		F3000000000000000000000C /* HomeUniversalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/HomeUniversalCard.swift; sourceTree = "<group>"; };
+		F34000000000000000000001 /* HomePetPulse.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePetPulse.json; sourceTree = "<group>"; };
+		F34000000000000000000002 /* HomeCareReminder.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomeCareReminder.json; sourceTree = "<group>"; };
+		F34000000000000000000003 /* HomePromotionSpark.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = HomePromotionSpark.json; sourceTree = "<group>"; };
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
 		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
@@ -5194,6 +5225,7 @@
 			children = (
 				F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */,
 				A5E200032FF2000100A5E003 /* PPHeroApexMotionTests.swift */,
+				F3A100012FF3000100F3A001 /* PPHomeSwiftUIMigrationTests.swift */,
 			);
 			path = "Pure PetsTests";
 			sourceTree = "<group>";
@@ -5309,6 +5341,7 @@
 		F2DF5DC72EFBE5B3009C7B6F /* ModrenAppVC */ = {
 			isa = PBXGroup;
 			children = (
+				F32000000000000000000001 /* SwiftUIHome */,
 				F2E9000000000000000000A6 /* SwiftUIRoot */,
 				F281B4892FCBBFD1009118F2 /* PPIntroViewController.h */,
 				F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */,
@@ -5329,6 +5362,25 @@
 				F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */,
 			);
 			path = ModrenAppVC;
+			sourceTree = "<group>";
+		};
+		F32000000000000000000001 /* SwiftUIHome */ = {
+			isa = PBXGroup;
+			children = (
+				F30000000000000000000001 /* PPHomeDataBridge.h */,
+				F30000000000000000000002 /* PPHomeDataBridge.m */,
+				F30000000000000000000003 /* HomeViewState.swift */,
+				F30000000000000000000004 /* HomeStore.swift */,
+				F30000000000000000000005 /* HomeRepository.swift */,
+				F30000000000000000000006 /* HomeModelAdapter.swift */,
+				F30000000000000000000007 /* HomeRouter.swift */,
+				F30000000000000000000008 /* PPHomeHostingController.swift */,
+				F30000000000000000000009 /* HomeView.swift */,
+				F3000000000000000000000A /* HomeHeroView.swift */,
+				F3000000000000000000000B /* HomeComponents.swift */,
+				F3000000000000000000000C /* HomeUniversalCard.swift */,
+			);
+			path = SwiftUIHome;
 			sourceTree = "<group>";
 		};
 		F2E1345A2DDC6CBD006770E5 /* Accessories */ = {
@@ -5585,6 +5637,9 @@
 		F2FE42C42D06EEE00082D346 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F34000000000000000000001 /* HomePetPulse.json */,
+				F34000000000000000000002 /* HomeCareReminder.json */,
+				F34000000000000000000003 /* HomePromotionSpark.json */,
 				A11CE0012FEA000000000001 /* Profile.lottie */,
 				F2EE91DB2FD2687B00940729 /* SearchingLottile.lottie */,
 				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
@@ -5716,6 +5771,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F33000000000000000000001 /* HomePetPulse.json in Resources */,
+				F33000000000000000000002 /* HomeCareReminder.json in Resources */,
+				F33000000000000000000003 /* HomePromotionSpark.json in Resources */,
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
 				F278DA612F9DCB0E00FEFA94 /* GoogleService-Info.plist in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
@@ -6035,6 +6093,17 @@
 				F28DD58D2F0195B900FF2671 /* PPHomeServiceItem.m in Sources */,
 				F27146812CCE6B5300F7F3BA /* XLFormRowDescriptor.m in Sources */,
 				F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */,
+				F31000000000000000000001 /* PPHomeDataBridge.m in Sources */,
+				F31000000000000000000002 /* HomeViewState.swift in Sources */,
+				F31000000000000000000003 /* HomeStore.swift in Sources */,
+				F31000000000000000000004 /* HomeRepository.swift in Sources */,
+				F31000000000000000000005 /* HomeModelAdapter.swift in Sources */,
+				F31000000000000000000006 /* HomeRouter.swift in Sources */,
+				F31000000000000000000007 /* PPHomeHostingController.swift in Sources */,
+				F31000000000000000000008 /* HomeView.swift in Sources */,
+				F31000000000000000000009 /* HomeHeroView.swift in Sources */,
+				F3100000000000000000000A /* HomeComponents.swift in Sources */,
+				F3100000000000000000000B /* HomeUniversalCard.swift in Sources */,
 				B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */,
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F2B6F7AA2E37CE3E00AC0DAE /* ChatBubbleView.m in Sources */,
@@ -6695,6 +6764,7 @@
 				F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */,
 				F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */,
 				A5E200042FF2000100A5E004 /* PPHeroApexMotionTests.swift in Sources */,
+				F3A100022FF3000100F3A002 /* PPHomeSwiftUIMigrationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

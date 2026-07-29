@@ -12,6 +12,7 @@
 #import "PPFilterSheetVC.h"
 #import "PPAdSharingHelper.h"
 #import "PPAnalytics.h"
+#import "PPHomeHelper.h"
 #import "CartManager.h"
 #import "UIViewController+PPBottomSurface.h"
 #import "PPSaveForLaterManager.h"

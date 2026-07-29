@@ -11,6 +11,8 @@
 #import "Styling.h"
 #import "PPCommerceFeedbackManager.h"
 #import "CartManager.h"
+#import "CartViewController.h"
+#import "PPHomeHelper.h"
 
  
 #pragma mark - BBCartBottomBar
