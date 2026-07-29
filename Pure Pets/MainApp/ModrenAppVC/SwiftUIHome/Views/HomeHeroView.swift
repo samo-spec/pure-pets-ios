@@ -670,7 +670,7 @@ private struct HomeHeroFloatingPlate: View {
 
                 centralArtwork
             }
-            .frame(width: 100, height: 100)
+            .frame(width: plateSize, height: plateSize)
             .clipShape(
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
             )
@@ -684,28 +684,31 @@ private struct HomeHeroFloatingPlate: View {
                 symbol: primarySymbol,
                 side: 42
             )
-            .offset(x: 47, y: -47 + (floating ? -2 : 2))
+            .offset(x: 47, y: -47 + (floatingPhase ? -2 : 2))
 
             floatingTile(
                 symbol: secondarySymbol,
                 side: 38
             )
-            .offset(x: -45, y: 45 + (floating ? 2 : -2))
+            .offset(x: -45, y: 45 + (floatingPhase ? 2 : -2))
         }
         .frame(width: 124, height: 146)
-        .offset(y: reduceMotion ? 0 : (floating ? -4 : 2))
+        .offset(y: floatingPhase ? -4 : 0)
         .animation(
-            reduceMotion
-                ? nil
-                : .easeInOut(duration: 3.8).repeatForever(
+            allowsFloatingMotion
+                ? .easeInOut(duration: 3.8).repeatForever(
                     autoreverses: true
-                ),
+                )
+                : nil,
             value: floating
         )
         .onAppear {
             updateFloatingMotion()
         }
         .onChange(of: reduceMotion) { _ in
+            updateFloatingMotion()
+        }
+        .onChange(of: usesCategoryArtworkTreatment) { _ in
             updateFloatingMotion()
         }
         .accessibilityHidden(true)
@@ -769,7 +772,19 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var categoryArtworkSize: CGFloat {
-        64
+        plateSize
+    }
+
+    private var plateSize: CGFloat {
+        100
+    }
+
+    private var allowsFloatingMotion: Bool {
+        !reduceMotion && !usesCategoryArtworkTreatment
+    }
+
+    private var floatingPhase: Bool {
+        allowsFloatingMotion && floating
     }
 
     private func floatingTile(
@@ -796,7 +811,7 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private func updateFloatingMotion() {
-        if reduceMotion {
+        if !allowsFloatingMotion {
             floating = false
         } else {
             DispatchQueue.main.async {
@@ -827,7 +842,7 @@ private struct HomeHeroPlateCategoryRemoteImage: UIViewRepresentable {
             on: imageView,
             url: urlString,
             placeholder: placeholder,
-            transitionStyle: .fade,
+            transitionStyle: .none,
             completion: nil
         )
     }
