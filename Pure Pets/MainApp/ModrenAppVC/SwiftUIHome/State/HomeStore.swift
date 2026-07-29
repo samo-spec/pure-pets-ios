@@ -750,34 +750,77 @@ final class HomeStore: ObservableObject {
 
         if pages.count == 1 || pet != nil {
             let categoryName = selectedCategory?.title
+            let marketplaceEyebrow: String
+            let marketplaceTitle: String
+            let marketplaceSubtitle: String
+            let marketplacePrimaryTitle: String
+            if let categoryName, !categoryName.isEmpty {
+                marketplaceEyebrow = String(
+                    format: HomeModelAdapter.localized(
+                        "home_marketplace_hero_category_eyebrow_format",
+                        fallback: "Marketplace | %@ picks"
+                    ),
+                    categoryName
+                )
+                marketplaceTitle = String(
+                    format: HomeModelAdapter.localized(
+                        "home_marketplace_hero_category_title_format",
+                        fallback: "Curated for %@"
+                    ),
+                    categoryName
+                )
+                marketplaceSubtitle = String(
+                    format: HomeModelAdapter.localized(
+                        "home_marketplace_hero_category_subtitle_format",
+                        fallback: "Products, services, and listings for %@ from trusted providers."
+                    ),
+                    categoryName
+                )
+                marketplacePrimaryTitle = String(
+                    format: HomeModelAdapter.localized(
+                        "home_marketplace_hero_category_cta_format",
+                        fallback: "Explore %@"
+                    ),
+                    categoryName
+                )
+            } else {
+                marketplaceEyebrow = HomeModelAdapter.localized(
+                    "home_marketplace_hero_all_eyebrow",
+                    fallback: HomeModelAdapter.localized(
+                        "home_marketplace_hero_eyebrow_proof",
+                        fallback: "Marketplace | Top-rated suppliers"
+                    )
+                )
+                marketplaceTitle = HomeModelAdapter.localized(
+                    "home_marketplace_hero_all_title",
+                    fallback: HomeModelAdapter.localized(
+                        "home_marketplace_hero_title",
+                        fallback: "Choose a trusted provider"
+                    )
+                )
+                marketplaceSubtitle = HomeModelAdapter.localized(
+                    "home_marketplace_hero_all_subtitle",
+                    fallback: HomeModelAdapter.localized(
+                        "home_marketplace_hero_subtitle",
+                        fallback: "Pick a storefront first, then browse products from the provider you trust."
+                    )
+                )
+                marketplacePrimaryTitle = HomeModelAdapter.localized(
+                    "home_marketplace_hero_all_cta",
+                    fallback: HomeModelAdapter.localized(
+                        "home_marketplace_hero_cta",
+                        fallback: "View providers"
+                    )
+                )
+            }
             pages.append(
                 HomeHeroPage(
                     id: "marketplace-\(state.selectedMainKindID ?? -1)",
                     kind: .marketplace,
-                    eyebrow: HomeModelAdapter.localized(
-                        "home_pulse_marketplace_eyebrow",
-                        fallback: "PURE PETS MARKET"
-                    ),
-                    title: categoryName.map {
-                        String(
-                            format: HomeModelAdapter.localized(
-                                "home_pulse_marketplace_category_title",
-                                fallback: "Discover %@"
-                            ),
-                            $0
-                        )
-                    } ?? HomeModelAdapter.localized(
-                        "home_pulse_marketplace_title",
-                        fallback: "Everything for life with pets"
-                    ),
-                    subtitle: HomeModelAdapter.localized(
-                        "home_pulse_marketplace_subtitle",
-                        fallback: "Genuine listings, products, food, and trusted service destinations."
-                    ),
-                    primaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_explore_market",
-                        fallback: "Explore marketplace"
-                    ),
+                    eyebrow: marketplaceEyebrow,
+                    title: marketplaceTitle,
+                    subtitle: marketplaceSubtitle,
+                    primaryTitle: marketplacePrimaryTitle,
                     secondaryTitle: HomeModelAdapter.localized(
                         "home_pulse_find_services",
                         fallback: "Find services"

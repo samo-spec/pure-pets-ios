@@ -350,81 +350,267 @@ struct HomePetSwitcher: View {
                 ),
                 action: onEdit
             )
+            .padding(.horizontal, PPSpace.screenMargin)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 LazyHStack(spacing: PPSpace.sm) {
                     ForEach(pets) { pet in
-                        let selected = pet.id == selectedID
-                        Button {
-                            onSelect(pet)
-                        } label: {
-                            HStack(spacing: PPSpace.sm) {
-                                HomeRemoteImage(
-                                    urlString: pet.imageURL,
-                                    placeholder: nil,
-                                    contentMode: .scaleAspectFill
-                                )
-                                .frame(width: 48, height: 48)
-                                .clipShape(Circle())
-                                .overlay {
-                                    Circle().stroke(
-                                        selected
-                                            ? Color.ppPrimary
-                                            : Color.ppBorder,
-                                        lineWidth: selected ? 2.5 : 1
-                                    )
-                                }
-
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(pet.name)
-                                        .font(HomeFont.bold(15))
-                                        .foregroundStyle(Color.ppTextPrimary)
-                                    if !pet.breedOrCategory.isEmpty {
-                                        Text(pet.breedOrCategory)
-                                            .font(HomeFont.caption1())
-                                            .foregroundStyle(
-                                                Color.ppTextSecondary
-                                            )
-                                            .lineLimit(1)
-                                    }
-                                }
-
-                                if selected {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(Color.ppPrimary)
-                                        .accessibilityHidden(true)
-                                }
+                        HomePetIdentityPill(
+                            pet: pet,
+                            selected: pet.id == selectedID,
+                            onSelect: {
+                                onSelect(pet)
                             }
-                            .padding(PPSpace.sm)
-                            .frame(minHeight: 64)
-                            .background(
-                                selected
-                                    ? Color.ppSoftRose
-                                    : Color.ppSurface,
-                                in: Capsule()
-                            )
-                            .overlay {
-                                Capsule().stroke(
-                                    selected
-                                        ? Color.ppPrimary.opacity(0.4)
-                                        : Color.ppBorder,
-                                    lineWidth: selected ? 1.2 : 0.6
-                                )
-                            }
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(
-                            [pet.name, pet.breedOrCategory]
-                                .filter { !$0.isEmpty }
-                                .joined(separator: ", ")
                         )
-                        .accessibilityAddTraits(selected ? .isSelected : [])
                     }
                 }
                 .padding(.horizontal, PPSpace.screenMargin)
             }
             .contentMarginsCompat()
         }
+    }
+}
+
+private struct HomePetIdentityPill: View {
+    let pet: HomePetModel
+    let selected: Bool
+    let onSelect: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: PPSpace.md) {
+                portrait
+
+                VStack(alignment: .leading, spacing: PPSpace.xxs) {
+                    Text(displayName)
+                        .font(HomeFont.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(
+                            dynamicTypeSize.isAccessibilitySize ? 3 : 1
+                        )
+
+                    if let petContext {
+                        Text(petContext)
+                            .font(HomeFont.footnote())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(
+                                dynamicTypeSize.isAccessibilitySize ? 2 : 1
+                            )
+                    }
+                }
+                .layoutPriority(1)
+            }
+            .padding(.leading, PPSpace.sm)
+            .padding(.trailing, PPSpace.base)
+            .padding(.vertical, PPSpace.sm)
+            .frame(
+                minWidth: minimumWidth,
+                maxWidth: maximumWidth,
+                minHeight: minimumHeight,
+                alignment: .leading
+            )
+            .background(surfaceShape.fill(surfaceColor))
+            .overlay {
+                surfaceShape.stroke(borderColor, lineWidth: borderWidth)
+            }
+            .overlay {
+                if isFocused {
+                    surfaceShape
+                        .stroke(
+                            Color.ppPrimary,
+                            lineWidth: contrast == .increased ? 3 : 2.5
+                        )
+                }
+            }
+            .contentShape(surfaceShape)
+        }
+        .buttonStyle(HomePetIdentityPressStyle())
+        .focused($isFocused)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .animation(selectionAnimation, value: selected)
+    }
+
+    private var portrait: some View {
+        HomePetPortraitImage(
+            petID: pet.id,
+            imageURL: pet.imageURL
+        )
+        .equatable()
+        .frame(width: portraitDiameter, height: portraitDiameter)
+        .clipShape(Circle())
+        .overlay {
+            Circle().stroke(Color.ppSurface, lineWidth: 2)
+        }
+        .padding(PPSpace.xs)
+        .background(
+            selected ? Color.ppSurface : Color.ppSecondarySurface,
+            in: Circle()
+        )
+        .overlay {
+            Circle().stroke(
+                selected ? Color.ppPrimary : Color.ppBorder,
+                lineWidth: selected
+                    ? (contrast == .increased ? 3 : 2)
+                    : (contrast == .increased ? 2 : 1)
+            )
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if selected {
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 22, height: 22)
+                    .background(Color.ppPrimary, in: Circle())
+                    .overlay {
+                        Circle().stroke(Color.ppSurface, lineWidth: 2)
+                    }
+                    .transition(selectionSealTransition)
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var displayName: String {
+        let name = pet.name.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !name.isEmpty else {
+            return HomeModelAdapter.localized(
+                "pet_name_placeholder",
+                fallback: "Pet name"
+            )
+        }
+        return name
+    }
+
+    private var petContext: String? {
+        let context = pet.breedOrCategory.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        return context.isEmpty ? nil : context
+    }
+
+    private var accessibilityLabel: String {
+        [displayName, petContext]
+            .compactMap { $0 }
+            .joined(separator: ", ")
+    }
+
+    private var portraitDiameter: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 60 : 56
+    }
+
+    private var minimumWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 204 : 164
+    }
+
+    private var maximumWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 320 : 276
+    }
+
+    private var minimumHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 84 : 76
+    }
+
+    private var surfaceShape: RoundedRectangle {
+        RoundedRectangle(
+            cornerRadius: PPCorner.large,
+            style: .continuous
+        )
+    }
+
+    private var surfaceColor: Color {
+        selected ? Color.ppSoftRose : Color.ppSurface
+    }
+
+    private var borderColor: Color {
+        if selected {
+            return Color.ppPrimary
+        }
+        return contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.72)
+            : Color.ppBorder
+    }
+
+    private var borderWidth: CGFloat {
+        if selected {
+            return contrast == .increased ? 2 : 1.4
+        }
+        return contrast == .increased ? 1.4 : 0.7
+    }
+
+    private var selectionAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.16)
+            : .spring(
+                response: 0.38,
+                dampingFraction: 0.88,
+                blendDuration: 0.08
+            )
+    }
+
+    private var selectionSealTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .scale(scale: 0.86).combined(with: .opacity)
+    }
+}
+
+private struct HomePetPortraitImage: View, Equatable {
+    let petID: String
+    let imageURL: String?
+
+    private static let placeholder = UIImage(named: "petcare_placeholder")
+
+    static func == (
+        lhs: HomePetPortraitImage,
+        rhs: HomePetPortraitImage
+    ) -> Bool {
+        lhs.petID == rhs.petID && lhs.imageURL == rhs.imageURL
+    }
+
+    var body: some View {
+        HomeRemoteImage(
+            urlString: imageURL,
+            placeholder: Self.placeholder,
+            contentMode: .scaleAspectFill
+        )
+    }
+}
+
+private struct HomePetIdentityPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(
+                isEnabled
+                    ? (configuration.isPressed ? 0.82 : 1)
+                    : 0.48
+            )
+            .scaleEffect(
+                reduceMotion || !isEnabled
+                    ? 1
+                    : (configuration.isPressed ? 0.975 : 1)
+            )
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.08)
+                    : .easeOut(
+                        duration: configuration.isPressed ? 0.08 : 0.16
+                    ),
+                value: configuration.isPressed
+            )
     }
 }
 

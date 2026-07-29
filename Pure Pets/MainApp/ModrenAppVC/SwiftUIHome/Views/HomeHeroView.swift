@@ -13,7 +13,7 @@ struct HomeHeroView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 296
+    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 256
 
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
@@ -21,7 +21,11 @@ struct HomeHeroView: View {
     }
 
     private var resolvedHeroHeight: CGFloat {
-        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 460 : 326)
+        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 420 : 286)
+    }
+
+    private var isRightToLeft: Bool {
+        layoutDirection == .rightToLeft
     }
 
     var body: some View {
@@ -55,22 +59,25 @@ struct HomeHeroView: View {
                                 alignment: .leading
                             )
                     } else {
-                        HStack(alignment: .center, spacing: PPSpace.base) {
+                        HStack(alignment: .center, spacing: 18) {
+                            heroArtwork(page, accent: accent)
+                                .frame(width: 124, height: 146)
+                                .layoutPriority(0)
+
                             heroCopy(page, accent: accent)
                                 .frame(
                                     maxWidth: .infinity,
                                     maxHeight: .infinity,
                                     alignment: .leading
                                 )
-
-                            heroArtwork(page, accent: accent)
-                                .frame(width: 116)
+                                .layoutPriority(1)
                         }
+                        .frame(maxHeight: .infinity)
                     }
                 }
                 .padding(.horizontal, PPSpace.lg)
-                .padding(.top, PPSpace.base)
-                .padding(.bottom, PPSpace.xs)
+                .padding(.top, PPSpace.lg)
+                .padding(.bottom, PPSpace.md)
 
                 pageControl(accent: accent)
                     .padding(.bottom, PPSpace.xs)
@@ -80,11 +87,11 @@ struct HomeHeroView: View {
         }
         .animation(
             reduceMotion
-                ? .easeOut(duration: 0.16)
-                : .spring(
-                    response: 0.42,
-                    dampingFraction: 0.88,
-                    blendDuration: 0.10
+                ? .easeOut(duration: 0.18)
+                : .interactiveSpring(
+                    response: 0.52,
+                    dampingFraction: 0.82,
+                    blendDuration: 0.16
                 ),
             value: page.id
         )
@@ -183,11 +190,7 @@ struct HomeHeroView: View {
         accent: Color
     ) -> some View {
         VStack(alignment: .leading, spacing: PPSpace.sm) {
-            Text(page.eyebrow)
-                .font(HomeFont.bold(12))
-                .tracking(1.0)
-                .foregroundStyle(accent)
-                .lineLimit(1)
+            eyebrowPill(page, accent: accent)
 
             Text(compactHeroTitle(page.title))
                 .font(HomeFont.title1())
@@ -211,16 +214,60 @@ struct HomeHeroView: View {
                 .font(HomeFont.subheadline())
                 .foregroundStyle(Color.ppTextSecondary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(3)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 3)
                 .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: PPSpace.sm)
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 primaryButton(page, accent: accent)
                 secondaryButton(page)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func eyebrowPill(
+        _ page: HomeHeroPage,
+        accent: Color
+    ) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: eyebrowSymbol(for: page.kind))
+                .font(.system(size: 10.5, weight: .semibold))
+                .foregroundStyle(accent)
+                .accessibilityHidden(true)
+
+            Text(page.eyebrow)
+                .font(HomeFont.bold(11))
+                .foregroundStyle(accent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.78)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(
+            accent.opacity(colorScheme == .dark ? 0.22 : 0.17),
+            in: RoundedRectangle(cornerRadius: 13, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .stroke(
+                    accent.opacity(colorScheme == .dark ? 0.30 : 0.24),
+                    lineWidth: 1
+                )
+        }
+    }
+
+    private func eyebrowSymbol(for kind: HomeHeroKind) -> String {
+        switch kind {
+        case .marketplace:
+            return "storefront.fill"
+        case .pet:
+            return "pawprint.fill"
+        case .reminder:
+            return "bell.fill"
+        case .promotion:
+            return "sparkles"
+        case .petOnboarding:
+            return "plus.circle.fill"
         }
     }
 
@@ -250,9 +297,9 @@ struct HomeHeroView: View {
             }
             .foregroundStyle(Color.white)
             .frame(
-                maxWidth: dynamicTypeSize.isAccessibilitySize
-                    ? .infinity
-                    : nil,
+                minWidth: dynamicTypeSize.isAccessibilitySize ? nil : 104, maxWidth: dynamicTypeSize.isAccessibilitySize
+                ? .infinity
+                : nil,
                 minHeight: 44,
                 alignment: .center
             )
@@ -276,13 +323,27 @@ struct HomeHeroView: View {
 
     private var heroPageTransition: AnyTransition {
         guard !reduceMotion else { return .opacity }
+        let incomingX: CGFloat = isRightToLeft ? -34 : 34
+        let outgoingX: CGFloat = isRightToLeft ? 24 : -24
         return .asymmetric(
-            insertion: .opacity
-                .combined(with: .offset(y: 10))
-                .combined(with: .scale(scale: 0.988)),
-            removal: .opacity
-                .combined(with: .offset(y: -7))
-                .combined(with: .scale(scale: 1.006))
+            insertion: .modifier(
+                active: HomeHeroPagePhase(
+                    opacity: 0,
+                    offsetX: incomingX,
+                    scale: 0.965,
+                    blurRadius: 5
+                ),
+                identity: HomeHeroPagePhase.identity
+            ),
+            removal: .modifier(
+                active: HomeHeroPagePhase(
+                    opacity: 0,
+                    offsetX: outgoingX,
+                    scale: 1.018,
+                    blurRadius: 2
+                ),
+                identity: HomeHeroPagePhase.identity
+            )
         )
     }
 
@@ -409,6 +470,28 @@ struct HomeHeroView: View {
     }
 }
 
+private struct HomeHeroPagePhase: ViewModifier {
+    let opacity: Double
+    let offsetX: CGFloat
+    let scale: CGFloat
+    let blurRadius: CGFloat
+
+    static let identity = HomeHeroPagePhase(
+        opacity: 1,
+        offsetX: 0,
+        scale: 1,
+        blurRadius: 0
+    )
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .offset(x: offsetX)
+            .scaleEffect(scale)
+            .blur(radius: blurRadius)
+    }
+}
+
 private struct HomeHeroArtworkAsset {
     let animationName: String?
     let imageName: String?
@@ -431,12 +514,6 @@ private struct HomeHeroFloatingPlate: View {
 
     var body: some View {
         ZStack {
-            HomeHeroContextRoute(
-                accent: accent,
-                increasedContrast: contrast == .increased
-            )
-            .frame(width: 124, height: 146)
-
             ZStack {
                 RoundedRectangle(cornerRadius: 30, style: .continuous)
                     .fill(
@@ -687,75 +764,6 @@ private struct HomeHeroProviderGlassField: View {
         ) {
             fieldAlive = true
         }
-    }
-}
-
-private struct HomeHeroContextRoute: View {
-    let accent: Color
-    let increasedContrast: Bool
-
-    var body: some View {
-        Canvas { context, size in
-            let primary = CGPoint(
-                x: size.width * 0.88,
-                y: size.height * 0.18
-            )
-            let secondary = CGPoint(
-                x: size.width * 0.14,
-                y: size.height * 0.81
-            )
-
-            var outerRoute = Path()
-            outerRoute.move(to: primary)
-            outerRoute.addCurve(
-                to: secondary,
-                control1: CGPoint(
-                    x: size.width * 1.08,
-                    y: size.height * 0.48
-                ),
-                control2: CGPoint(
-                    x: size.width * 0.66,
-                    y: size.height * 1.02
-                )
-            )
-
-            var returnRoute = Path()
-            returnRoute.move(to: secondary)
-            returnRoute.addCurve(
-                to: primary,
-                control1: CGPoint(
-                    x: -size.width * 0.06,
-                    y: size.height * 0.53
-                ),
-                control2: CGPoint(
-                    x: size.width * 0.38,
-                    y: -size.height * 0.03
-                )
-            )
-
-            let opacity = increasedContrast ? 0.62 : 0.24
-            let width: CGFloat = increasedContrast ? 1.5 : 1
-            context.stroke(
-                outerRoute,
-                with: .color(accent.opacity(opacity)),
-                style: StrokeStyle(
-                    lineWidth: width,
-                    lineCap: .round,
-                    lineJoin: .round,
-                    dash: [3, 5]
-                )
-            )
-            context.stroke(
-                returnRoute,
-                with: .color(accent.opacity(opacity * 0.66)),
-                style: StrokeStyle(
-                    lineWidth: width,
-                    lineCap: .round,
-                    lineJoin: .round
-                )
-            )
-        }
-        .accessibilityHidden(true)
     }
 }
 

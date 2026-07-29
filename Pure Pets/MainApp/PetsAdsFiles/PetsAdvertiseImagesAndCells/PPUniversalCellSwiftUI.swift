@@ -355,6 +355,7 @@ private final class PPUniversalCardStore: ObservableObject {
     var showsSaveForLater = false
     var showsOwnerMenu = false
     var cardTap: (() -> Void)?
+    var quantityChange: ((Int) -> Void)?
     var actions: PPUniversalCardActions
 
     private static let nearbyAdsPPSectionRawValue = 5
@@ -602,6 +603,7 @@ private final class PPUniversalCardStore: ObservableObject {
         imagePlaceholder = nil
         imageSignature = ""
         cardTap = nil
+        quantityChange = nil
         showsFavorite = false
         showsSaveForLater = false
         showsOwnerMenu = false
@@ -825,7 +827,9 @@ private final class PPUniversalCardStore: ObservableObject {
         guard notifyDelegate else {
             return
         }
-        if let viewModel {
+        if let quantityChange {
+            quantityChange(clamped)
+        } else if let viewModel {
             delegate?.ppUniversalCell_changeQuantity?(
                 viewModel,
                 quantity: clamped
@@ -3469,6 +3473,12 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         }
     }
 
+    public var onQuantityChange: ((Int) -> Void)? {
+        didSet {
+            store.quantityChange = onQuantityChange
+        }
+    }
+
     @objc public var hideTopBadge = false {
         didSet {
             reconfigureIfNeeded()
@@ -3630,6 +3640,7 @@ public final class PPUniversalCardHostingCell: UICollectionViewCell, UIContextMe
         delegate = nil
         indexPath = nil
         onTap = nil
+        onQuantityChange = nil
         context = .forAds
         layoutMode = .cellLayoutModeNil
         discountStyle = .badge

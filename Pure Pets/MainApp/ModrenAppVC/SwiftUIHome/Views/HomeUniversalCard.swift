@@ -12,7 +12,8 @@ struct HomeUniversalCard: View {
             if #available(iOS 16.0, *) {
                 HomeUniversalHostingCard(
                     card: card,
-                    delegate: delegate
+                    delegate: delegate,
+                    onQuantityChange: onQuantityChange
                 )
             } else {
                 HomeUniversalCompatibilityCard(
@@ -31,6 +32,7 @@ struct HomeUniversalCard: View {
 private struct HomeUniversalHostingCard: UIViewRepresentable {
     let card: HomeCardModel
     let delegate: PPUniversalCellDelegate?
+    let onQuantityChange: (Int) -> Void
 
     func makeUIView(context: Context) -> PPUniversalCardHostingCell {
         let cell = PPUniversalCardHostingCell(frame: .zero)
@@ -51,6 +53,7 @@ private struct HomeUniversalHostingCard: UIViewRepresentable {
         // legacy delegate. Supplying `onTap` as well makes its store invoke
         // both routes and pushes the same viewer twice.
         cell.onTap = nil
+        cell.onQuantityChange = onQuantityChange
         cell.showsSubtitle = true
         cell.applyViewModel(
             card.viewModel,
@@ -68,6 +71,7 @@ private struct HomeUniversalHostingCard: UIViewRepresentable {
         cell.stopMediaPlayback()
         cell.delegate = nil
         cell.onTap = nil
+        cell.onQuantityChange = nil
     }
 }
 
