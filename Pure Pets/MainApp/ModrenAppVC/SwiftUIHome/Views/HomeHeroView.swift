@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct HomeHeroView: View {
     let pages: [HomeHeroPage]
@@ -13,7 +14,7 @@ struct HomeHeroView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
-    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 256
+    @ScaledMetric(relativeTo: .title) private var heroHeight: CGFloat = 224
 
     private var selectedPage: HomeHeroPage? {
         guard pages.indices.contains(selectedIndex) else { return nil }
@@ -21,11 +22,15 @@ struct HomeHeroView: View {
     }
 
     private var resolvedHeroHeight: CGFloat {
-        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 420 : 286)
+        min(heroHeight, dynamicTypeSize.isAccessibilitySize ? 388 : 254)
     }
 
     private var isRightToLeft: Bool {
         layoutDirection == .rightToLeft
+    }
+
+    private var allowsPaging: Bool {
+        pages.count > 1
     }
 
     var body: some View {
@@ -61,7 +66,7 @@ struct HomeHeroView: View {
                     } else {
                         HStack(alignment: .center, spacing: 18) {
                             heroArtwork(page, accent: accent)
-                                .frame(width: 124, height: 146)
+                                .frame(width: 114, height: 132)
                                 .layoutPriority(0)
 
                             heroCopy(page, accent: accent)
@@ -76,11 +81,15 @@ struct HomeHeroView: View {
                     }
                 }
                 .padding(.horizontal, PPSpace.lg)
-                .padding(.top, PPSpace.lg)
-                .padding(.bottom, PPSpace.md)
+                .padding(.top, PPSpace.md)
+                .padding(.bottom, PPSpace.xs)
 
-                pageControl(accent: accent)
-                    .padding(.bottom, PPSpace.xs)
+                if allowsPaging {
+                    pageControl(accent: accent)
+                        .padding(.bottom, PPSpace.xs)
+                } else {
+                    pageControlReserve
+                }
             }
             .id(page.id)
             .transition(heroPageTransition)
@@ -134,55 +143,29 @@ struct HomeHeroView: View {
         .contentShape(
             RoundedRectangle(cornerRadius: PPCorner.hero, style: .continuous)
         )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 8)
-                .onChanged { _ in onInteractionChanged(true) }
-                .onEnded { value in
-                    defer { onInteractionChanged(false) }
-                    guard abs(value.translation.width) > 44, pages.count > 1
-                    else {
-                        return
-                    }
-                    let physicalDirection =
-                        value.translation.width < 0 ? 1 : -1
-                    let logicalDirection =
-                        layoutDirection == .rightToLeft
-                            ? -physicalDirection
-                            : physicalDirection
-                    let next =
-                        (selectedIndex + logicalDirection + pages.count)
-                        % pages.count
-                    onSelect(next)
-                }
+        .modifier(
+            HomeHeroPagingGestureModifier(
+                isEnabled: allowsPaging,
+                selectedIndex: selectedIndex,
+                pageCount: pages.count,
+                layoutDirection: layoutDirection,
+                onSelect: onSelect,
+                onInteractionChanged: onInteractionChanged
+            )
         )
         .accessibilityLabel(
             [page.eyebrow, page.title, page.subtitle]
                 .filter { !$0.isEmpty }
                 .joined(separator: ", ")
         )
-        .accessibilityValue(
-            String(
-                format: HomeModelAdapter.localized(
-                    "home_pulse_page_position_a11y",
-                    fallback: "%1$d of %2$d"
-                ),
-                selectedIndex + 1,
-                pages.count
+        .modifier(
+            HomeHeroPagingAccessibilityModifier(
+                isEnabled: allowsPaging,
+                selectedIndex: selectedIndex,
+                pageCount: pages.count,
+                onSelect: onSelect
             )
         )
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment:
-                onSelect((selectedIndex + 1) % max(pages.count, 1))
-            case .decrement:
-                onSelect(
-                    (selectedIndex - 1 + max(pages.count, 1))
-                    % max(pages.count, 1)
-                )
-            @unknown default:
-                break
-            }
-        }
     }
 
     private func heroCopy(
@@ -214,7 +197,7 @@ struct HomeHeroView: View {
                 .font(HomeFont.subheadline())
                 .foregroundStyle(Color.ppTextSecondary)
                 .multilineTextAlignment(.leading)
-                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 3)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
                 .fixedSize(horizontal: false, vertical: true)
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
@@ -268,6 +251,8 @@ struct HomeHeroView: View {
             return "sparkles"
         case .petOnboarding:
             return "plus.circle.fill"
+        case .pharmacy:
+            return "pills.fill"
         }
     }
 
@@ -330,7 +315,7 @@ struct HomeHeroView: View {
                 active: HomeHeroPagePhase(
                     opacity: 0,
                     offsetX: incomingX,
-                    scale: 0.965,
+                    scale: 1,
                     blurRadius: 5
                 ),
                 identity: HomeHeroPagePhase.identity
@@ -339,7 +324,7 @@ struct HomeHeroView: View {
                 active: HomeHeroPagePhase(
                     opacity: 0,
                     offsetX: outgoingX,
-                    scale: 1.018,
+                    scale: 1,
                     blurRadius: 2
                 ),
                 identity: HomeHeroPagePhase.identity
@@ -349,23 +334,8 @@ struct HomeHeroView: View {
 
     @ViewBuilder
     private func secondaryButton(_ page: HomeHeroPage) -> some View {
-        if let title = page.secondaryTitle, !title.isEmpty {
-            Button(action: onSecondaryAction) {
-                Text(title)
-                    .font(HomeFont.medium(14))
-                    .foregroundStyle(Color.ppTextPrimary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 34,
-                        alignment: .leading
-                    )
-                    .padding(.horizontal, PPSpace.xs)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .buttonStyle(.plain)
-        }
+        // Temporarily hidden per user request
+        EmptyView()
     }
 
     @ViewBuilder
@@ -378,6 +348,7 @@ struct HomeHeroView: View {
             accent: accent,
             animationName: asset.animationName,
             imageName: asset.imageName,
+            localImage: asset.localImage,
             remoteImageURL: asset.remoteImageURL,
             loadsFromFirebase: asset.loadsFromFirebase,
             primarySymbol: asset.primarySymbol,
@@ -423,6 +394,13 @@ struct HomeHeroView: View {
         }
     }
 
+    private var pageControlReserve: some View {
+        Color.clear
+            .frame(height: 28)
+            .padding(.bottom, PPSpace.xs)
+            .accessibilityHidden(true)
+    }
+
     private func heroArtworkAsset(
         for page: HomeHeroPage
     ) -> HomeHeroArtworkAsset {
@@ -432,6 +410,7 @@ struct HomeHeroView: View {
                 return HomeHeroArtworkAsset(
                     animationName: nil,
                     imageName: nil,
+                    localImage: nil,
                     remoteImageURL: imageURL,
                     loadsFromFirebase: false,
                     primarySymbol: "heart.fill",
@@ -441,6 +420,7 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "Profile.lottie",
                 imageName: nil,
+                localImage: nil,
                 remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "heart.fill",
@@ -450,6 +430,7 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "Caretiming",
                 imageName: nil,
+                localImage: nil,
                 remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "bell.fill",
@@ -459,15 +440,35 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "HomePromotionSpark",
                 imageName: nil,
+                localImage: nil,
                 remoteImageURL: nil,
                 loadsFromFirebase: false,
                 primarySymbol: "sparkles",
                 secondarySymbol: "tag.fill"
             )
         case .marketplace:
+            let hasSelectedCategory: Bool
+            if case let .openMarketplace(mainKind) = page.action {
+                hasSelectedCategory = mainKind != nil
+            } else {
+                hasSelectedCategory = false
+            }
+            if hasSelectedCategory {
+                let fallbackImage = page.localImage ?? UIImage(named: "pawprint4")
+                return HomeHeroArtworkAsset(
+                    animationName: nil,
+                    imageName: fallbackImage == nil ? "pawprint4" : nil,
+                    localImage: fallbackImage,
+                    remoteImageURL: normalizedHeroImageURL(page.imageURL),
+                    loadsFromFirebase: false,
+                    primarySymbol: "bag.fill",
+                    secondarySymbol: "shippingbox.fill"
+                )
+            }
             return HomeHeroArtworkAsset(
                 animationName: "petstore",
                 imageName: nil,
+                localImage: nil,
                 remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "bag.fill",
@@ -477,10 +478,21 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "Profile.lottie",
                 imageName: nil,
+                localImage: nil,
                 remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "plus",
                 secondarySymbol: "pawprint.fill"
+            )
+        case .pharmacy:
+            return HomeHeroArtworkAsset(
+                animationName: "PetMedicine",
+                imageName: nil,
+                localImage: nil,
+                remoteImageURL: nil,
+                loadsFromFirebase: false,
+                primarySymbol: "pills.fill",
+                secondarySymbol: "bandage.fill"
             )
         }
     }
@@ -516,9 +528,88 @@ private struct HomeHeroPagePhase: ViewModifier {
     }
 }
 
+private struct HomeHeroPagingGestureModifier: ViewModifier {
+    let isEnabled: Bool
+    let selectedIndex: Int
+    let pageCount: Int
+    let layoutDirection: LayoutDirection
+    let onSelect: (Int) -> Void
+    let onInteractionChanged: (Bool) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content.simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { _ in onInteractionChanged(true) }
+                    .onEnded { value in
+                        defer { onInteractionChanged(false) }
+                        guard abs(value.translation.width) > 44,
+                              pageCount > 1
+                        else {
+                            return
+                        }
+                        let physicalDirection =
+                            value.translation.width < 0 ? 1 : -1
+                        let logicalDirection =
+                            layoutDirection == .rightToLeft
+                                ? -physicalDirection
+                                : physicalDirection
+                        let next =
+                            (selectedIndex + logicalDirection + pageCount)
+                            % pageCount
+                        onSelect(next)
+                    }
+            )
+        } else {
+            content
+        }
+    }
+}
+
+private struct HomeHeroPagingAccessibilityModifier: ViewModifier {
+    let isEnabled: Bool
+    let selectedIndex: Int
+    let pageCount: Int
+    let onSelect: (Int) -> Void
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if isEnabled {
+            content
+                .accessibilityValue(
+                    String(
+                        format: HomeModelAdapter.localized(
+                            "home_pulse_page_position_a11y",
+                            fallback: "%1$d of %2$d"
+                        ),
+                        selectedIndex + 1,
+                        pageCount
+                    )
+                )
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment:
+                        onSelect((selectedIndex + 1) % max(pageCount, 1))
+                    case .decrement:
+                        onSelect(
+                            (selectedIndex - 1 + max(pageCount, 1))
+                            % max(pageCount, 1)
+                        )
+                    @unknown default:
+                        break
+                    }
+                }
+        } else {
+            content
+        }
+    }
+}
+
 private struct HomeHeroArtworkAsset {
     let animationName: String?
     let imageName: String?
+    let localImage: UIImage?
     let remoteImageURL: String?
     let loadsFromFirebase: Bool
     let primarySymbol: String
@@ -529,6 +620,7 @@ private struct HomeHeroFloatingPlate: View {
     let accent: Color
     let animationName: String?
     let imageName: String?
+    let localImage: UIImage?
     let remoteImageURL: String?
     let loadsFromFirebase: Bool
     let primarySymbol: String
@@ -613,7 +705,7 @@ private struct HomeHeroFloatingPlate: View {
         if let remoteImageURL {
             HomeRemoteImage(
                 urlString: remoteImageURL,
-                placeholder: nil,
+                placeholder: localImage,
                 contentMode: .scaleAspectFill
             )
             .frame(width: 76, height: 76)
@@ -624,6 +716,18 @@ private struct HomeHeroFloatingPlate: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
             }
+        } else if let localImage {
+            Image(uiImage: localImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 76, height: 76)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                )
+                .overlay {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
+                }
         } else if let imageName {
             Image(imageName)
                 .resizable()

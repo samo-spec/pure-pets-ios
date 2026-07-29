@@ -130,8 +130,14 @@ final class HomeRouter {
             owner?.pp_homeOpenPetEditor(pet)
         case let .openPromotion(card, interaction):
             owner?.pp_homeOpenPromoCard(card, interaction: interaction)
-        case let .openMarketplace(mainKind):
-            openAdvertisements(mainKind: mainKind)
+        case .openMarketplace:
+            openProviderCategory(
+                identifier: "marketplace",
+                titleKey: "provider_marketplace_title",
+                subtitleKey: "provider_marketplace_subtitle"
+            )
+        case let .openPharmacy(mainKind):
+            openAccessories(mainKind: mainKind)
         }
     }
 

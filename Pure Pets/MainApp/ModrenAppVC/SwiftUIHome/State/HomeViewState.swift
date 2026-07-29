@@ -44,6 +44,7 @@ enum HomeHeroKind {
     case promotion
     case marketplace
     case petOnboarding
+    case pharmacy
 }
 
 enum HomeHeroAction {
@@ -51,6 +52,7 @@ enum HomeHeroAction {
     case editPet(NSObject)
     case openPromotion(NSObject, interaction: String)
     case openMarketplace(NSObject?)
+    case openPharmacy(NSObject?)
 }
 
 struct HomeHeroPage: Identifiable {

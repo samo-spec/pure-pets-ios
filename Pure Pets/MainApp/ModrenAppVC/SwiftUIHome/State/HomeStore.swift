@@ -18,6 +18,14 @@ private enum HomeLegacySectionID: Int {
     case suggestionAccessories = 19
 }
 
+/// Temporary single-Hero mode. Keep the disabled page builders below intact so
+/// pet/reminder/onboarding/promotion/pharmacy Hero pages can be restored by
+/// flipping this flag without rebuilding Home state or HomeConfig contracts.
+private enum HomeHeroPresentationMode {
+    static let marketplaceOnly = true
+    static let marketplaceHeroID = "home-marketplace-hero"
+}
+
 @MainActor
 final class HomeStore: ObservableObject {
     @Published private(set) var state: HomeViewState
@@ -174,6 +182,10 @@ final class HomeStore: ObservableObject {
     }
 
     func selectHero(index: Int) {
+        guard !HomeHeroPresentationMode.marketplaceOnly else {
+            state.selectedHeroIndex = 0
+            return
+        }
         guard state.heroPages.indices.contains(index) else { return }
         state.selectedHeroIndex = index
         restartHeroRotation()
@@ -209,7 +221,7 @@ final class HomeStore: ObservableObject {
                     .openPromotion(card, interaction: "secondary")
                 )
             }
-        case .marketplace:
+        case .marketplace, .pharmacy:
             router.openServices(mainKind: selectedMainKind)
         case .petOnboarding:
             router.openAdvertisements(mainKind: selectedMainKind)
@@ -531,7 +543,9 @@ final class HomeStore: ObservableObject {
         }
 
         state.heroPages = buildHeroPages()
-        if state.heroPages.isEmpty {
+        if HomeHeroPresentationMode.marketplaceOnly {
+            state.selectedHeroIndex = 0
+        } else if state.heroPages.isEmpty {
             state.selectedHeroIndex = 0
         } else {
             state.selectedHeroIndex = min(
@@ -586,49 +600,15 @@ final class HomeStore: ObservableObject {
     }
 
     private func buildHeroPages() -> [HomeHeroPage] {
+        guard !HomeHeroPresentationMode.marketplaceOnly else {
+            return [buildMarketplaceHeroPage()]
+        }
+
         var pages: [HomeHeroPage] = []
         let pet = selectedPet
 
         if let pet {
-            let title = String(
-                format: HomeModelAdapter.localized(
-                    "home_pulse_pet_hero_title",
-                    fallback: "Today with %@"
-                ),
-                pet.name
-            )
-            let context = [pet.breedOrCategory, pet.age]
-                .filter { !$0.isEmpty }
-                .joined(separator: " • ")
-            pages.append(
-                HomeHeroPage(
-                    id: "pet-\(pet.id)",
-                    kind: .pet,
-                    eyebrow: HomeModelAdapter.localized(
-                        "home_pulse_eyebrow",
-                        fallback: "PET PULSE"
-                    ),
-                    title: title,
-                    subtitle: context.isEmpty
-                        ? HomeModelAdapter.localized(
-                            "home_pulse_pet_hero_subtitle",
-                            fallback: "Care, shop, and discover from one place."
-                        )
-                        : context,
-                    primaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_view_pet",
-                        fallback: "View pet"
-                    ),
-                    secondaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_shop_for_pet",
-                        fallback: "Shop for this pet"
-                    ),
-                    imageURL: pet.imageURL,
-                    localImage: selectedCategory?.localImage,
-                    accentHex: selectedCategoryHex,
-                    action: .editPet(pet.raw)
-                )
-            )
+            pages.append(buildPetHeroPage(for: pet))
 
             if let reminder = nextReminder(for: pet) {
                 let reminderPresentation =
@@ -663,36 +643,7 @@ final class HomeStore: ObservableObject {
                 )
             }
         } else {
-            pages.append(
-                HomeHeroPage(
-                    id: "pet-onboarding",
-                    kind: .petOnboarding,
-                    eyebrow: HomeModelAdapter.localized(
-                        "home_pulse_make_it_yours",
-                        fallback: "MAKE IT YOURS"
-                    ),
-                    title: HomeModelAdapter.localized(
-                        "home_pulse_no_pet_title",
-                        fallback: "Build a Home around your pet"
-                    ),
-                    subtitle: HomeModelAdapter.localized(
-                        "home_pulse_no_pet_subtitle",
-                        fallback: "Add a profile for relevant products, care organization, reminders, and faster discovery."
-                    ),
-                    primaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_create_pet",
-                        fallback: "Create pet profile"
-                    ),
-                    secondaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_keep_browsing",
-                        fallback: "Keep browsing"
-                    ),
-                    imageURL: nil,
-                    localImage: UIImage(named: "petcare_placeholder"),
-                    accentHex: "CB2654",
-                    action: .openPetProfiles
-                )
-            )
+            pages.append(buildPetOnboardingHeroPage())
         }
 
         if state.config.isVisible(HomeLegacySectionID.carousel.rawValue) {
@@ -748,92 +699,195 @@ final class HomeStore: ObservableObject {
             }
         }
 
-        if pages.count == 1 || pet != nil {
-            let categoryName = selectedCategory?.title
-            let marketplaceEyebrow: String
-            let marketplaceTitle: String
-            let marketplaceSubtitle: String
-            let marketplacePrimaryTitle: String
-            if let categoryName, !categoryName.isEmpty {
-                marketplaceEyebrow = String(
-                    format: HomeModelAdapter.localized(
-                        "home_marketplace_hero_category_eyebrow_format",
-                        fallback: "Marketplace | %@ picks"
-                    ),
-                    categoryName
+        pages.append(buildMarketplaceHeroPage())
+
+        // Pharmacy Hero Slide
+        pages.append(
+            HomeHeroPage(
+                id: "pharmacy-\(state.selectedMainKindID ?? -1)",
+                kind: .pharmacy,
+                eyebrow: HomeModelAdapter.localized(
+                    "home_hero_pharmacy_eyebrow",
+                    fallback: "PET PHARMACY"
+                ),
+                title: HomeModelAdapter.localized(
+                    "home_hero_pharmacy_title",
+                    fallback: "Pet Medicines & Care"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_hero_pharmacy_subtitle",
+                    fallback: "Order essential medicines, vitamins, and health treatments delivered fast."
+                ),
+                primaryTitle: HomeModelAdapter.localized(
+                    "home_hero_pharmacy_cta",
+                    fallback: "Browse Pharmacy"
+                ),
+                secondaryTitle: nil,
+                imageURL: nil,
+                localImage: nil,
+                accentHex: "1E6B9B",
+                action: .openPharmacy(selectedMainKind)
+            )
+        )
+
+        return pages
+    }
+
+    private func buildMarketplaceHeroPage() -> HomeHeroPage {
+        let categoryName = selectedCategory?.title
+        let marketplaceEyebrow: String
+        let marketplaceTitle: String
+        let marketplaceSubtitle: String
+        let marketplacePrimaryTitle: String
+
+        if let categoryName, !categoryName.isEmpty {
+            marketplaceEyebrow = String(
+                format: HomeModelAdapter.localized(
+                    "home_marketplace_hero_category_eyebrow_format",
+                    fallback: "Marketplace | %@ picks"
+                ),
+                categoryName
+            )
+            marketplaceTitle = String(
+                format: HomeModelAdapter.localized(
+                    "home_marketplace_hero_category_title_format",
+                    fallback: "Curated for %@"
+                ),
+                categoryName
+            )
+            marketplaceSubtitle = String(
+                format: HomeModelAdapter.localized(
+                    "home_marketplace_hero_category_subtitle_format",
+                    fallback: "Products, services, and listings for %@ from trusted providers."
+                ),
+                categoryName
+            )
+            marketplacePrimaryTitle = String(
+                format: HomeModelAdapter.localized(
+                    "home_marketplace_hero_category_cta_format",
+                    fallback: "Explore %@"
+                ),
+                categoryName
+            )
+        } else {
+            marketplaceEyebrow = HomeModelAdapter.localized(
+                "home_marketplace_hero_all_eyebrow",
+                fallback: HomeModelAdapter.localized(
+                    "home_marketplace_hero_eyebrow_proof",
+                    fallback: "Marketplace | Top-rated suppliers"
                 )
-                marketplaceTitle = String(
-                    format: HomeModelAdapter.localized(
-                        "home_marketplace_hero_category_title_format",
-                        fallback: "Curated for %@"
-                    ),
-                    categoryName
+            )
+            marketplaceTitle = HomeModelAdapter.localized(
+                "home_marketplace_hero_all_title",
+                fallback: HomeModelAdapter.localized(
+                    "home_marketplace_hero_title",
+                    fallback: "Choose a trusted provider"
                 )
-                marketplaceSubtitle = String(
-                    format: HomeModelAdapter.localized(
-                        "home_marketplace_hero_category_subtitle_format",
-                        fallback: "Products, services, and listings for %@ from trusted providers."
-                    ),
-                    categoryName
+            )
+            marketplaceSubtitle = HomeModelAdapter.localized(
+                "home_marketplace_hero_all_subtitle",
+                fallback: HomeModelAdapter.localized(
+                    "home_marketplace_hero_subtitle",
+                    fallback: "Pick a storefront first, then browse products from the provider you trust."
                 )
-                marketplacePrimaryTitle = String(
-                    format: HomeModelAdapter.localized(
-                        "home_marketplace_hero_category_cta_format",
-                        fallback: "Explore %@"
-                    ),
-                    categoryName
-                )
-            } else {
-                marketplaceEyebrow = HomeModelAdapter.localized(
-                    "home_marketplace_hero_all_eyebrow",
-                    fallback: HomeModelAdapter.localized(
-                        "home_marketplace_hero_eyebrow_proof",
-                        fallback: "Marketplace | Top-rated suppliers"
-                    )
-                )
-                marketplaceTitle = HomeModelAdapter.localized(
-                    "home_marketplace_hero_all_title",
-                    fallback: HomeModelAdapter.localized(
-                        "home_marketplace_hero_title",
-                        fallback: "Choose a trusted provider"
-                    )
-                )
-                marketplaceSubtitle = HomeModelAdapter.localized(
-                    "home_marketplace_hero_all_subtitle",
-                    fallback: HomeModelAdapter.localized(
-                        "home_marketplace_hero_subtitle",
-                        fallback: "Pick a storefront first, then browse products from the provider you trust."
-                    )
-                )
-                marketplacePrimaryTitle = HomeModelAdapter.localized(
-                    "home_marketplace_hero_all_cta",
-                    fallback: HomeModelAdapter.localized(
-                        "home_marketplace_hero_cta",
-                        fallback: "View providers"
-                    )
-                )
-            }
-            pages.append(
-                HomeHeroPage(
-                    id: "marketplace-\(state.selectedMainKindID ?? -1)",
-                    kind: .marketplace,
-                    eyebrow: marketplaceEyebrow,
-                    title: marketplaceTitle,
-                    subtitle: marketplaceSubtitle,
-                    primaryTitle: marketplacePrimaryTitle,
-                    secondaryTitle: HomeModelAdapter.localized(
-                        "home_pulse_find_services",
-                        fallback: "Find services"
-                    ),
-                    imageURL: selectedCategory?.imageURL,
-                    localImage: selectedCategory?.localImage,
-                    accentHex: selectedCategoryHex,
-                    action: .openMarketplace(selectedMainKind)
+            )
+            marketplacePrimaryTitle = HomeModelAdapter.localized(
+                "home_marketplace_hero_all_cta",
+                fallback: HomeModelAdapter.localized(
+                    "home_marketplace_hero_cta",
+                    fallback: "View providers"
                 )
             )
         }
 
-        return pages
+        return HomeHeroPage(
+            id: HomeHeroPresentationMode.marketplaceHeroID,
+            kind: .marketplace,
+            eyebrow: marketplaceEyebrow,
+            title: marketplaceTitle,
+            subtitle: marketplaceSubtitle,
+            primaryTitle: marketplacePrimaryTitle,
+            secondaryTitle: HomeModelAdapter.localized(
+                "home_pulse_find_services",
+                fallback: "Find services"
+            ),
+            imageURL: selectedCategory?.imageURL,
+            localImage: selectedCategory?.localImage,
+            accentHex: selectedCategoryHex,
+            action: .openMarketplace(selectedMainKind)
+        )
+    }
+
+    private func buildPetHeroPage(for pet: HomePetModel) -> HomeHeroPage {
+        let title = String(
+            format: HomeModelAdapter.localized(
+                "home_pulse_pet_hero_title",
+                fallback: "Today with %@"
+            ),
+            pet.name
+        )
+        let context = [pet.breedOrCategory, pet.age]
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+
+        return HomeHeroPage(
+            id: "pet-\(pet.id)",
+            kind: .pet,
+            eyebrow: HomeModelAdapter.localized(
+                "home_pulse_eyebrow",
+                fallback: "PET PULSE"
+            ),
+            title: title,
+            subtitle: context.isEmpty
+                ? HomeModelAdapter.localized(
+                    "home_pulse_pet_hero_subtitle",
+                    fallback: "Care, shop, and discover from one place."
+                )
+                : context,
+            primaryTitle: HomeModelAdapter.localized(
+                "home_pulse_view_pet",
+                fallback: "View pet"
+            ),
+            secondaryTitle: HomeModelAdapter.localized(
+                "home_pulse_shop_for_pet",
+                fallback: "Shop for this pet"
+            ),
+            imageURL: pet.imageURL,
+            localImage: selectedCategory?.localImage,
+            accentHex: selectedCategoryHex,
+            action: .editPet(pet.raw)
+        )
+    }
+
+    private func buildPetOnboardingHeroPage() -> HomeHeroPage {
+        HomeHeroPage(
+            id: "pet-onboarding",
+            kind: .petOnboarding,
+            eyebrow: HomeModelAdapter.localized(
+                "home_pulse_make_it_yours",
+                fallback: "MAKE IT YOURS"
+            ),
+            title: HomeModelAdapter.localized(
+                "home_pulse_no_pet_title",
+                fallback: "Build a Home around your pet"
+            ),
+            subtitle: HomeModelAdapter.localized(
+                "home_pulse_no_pet_subtitle",
+                fallback: "Add a profile for relevant products, care organization, reminders, and faster discovery."
+            ),
+            primaryTitle: HomeModelAdapter.localized(
+                "home_pulse_create_pet",
+                fallback: "Create pet profile"
+            ),
+            secondaryTitle: HomeModelAdapter.localized(
+                "home_pulse_keep_browsing",
+                fallback: "Keep browsing"
+            ),
+            imageURL: nil,
+            localImage: UIImage(named: "petcare_placeholder"),
+            accentHex: "CB2654",
+            action: .openPetProfiles
+        )
     }
 
     private func buildPriorityActions() -> [HomePriorityAction] {
@@ -1345,7 +1399,8 @@ final class HomeStore: ObservableObject {
     private func restartHeroRotation() {
         heroRotationTask?.cancel()
         heroRotationTask = nil
-        guard visible,
+        guard !HomeHeroPresentationMode.marketplaceOnly,
+              visible,
               sceneActive,
               !heroInteractionActive,
               !voiceOverRunning,
