@@ -644,40 +644,62 @@ private struct HomeHeroFloatingPlate: View {
     var body: some View {
         ZStack {
             ZStack {
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                accent.opacity(0.30),
-                                Color.ppSurface.opacity(0.94),
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
+                if usesCategoryArtworkTreatment {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accent.opacity(0.20),
+                                    Color.ppSurface.opacity(0.96),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
-                    )
-                    .overlay {
-                        RoundedRectangle(
-                            cornerRadius: 30,
-                            style: .continuous
-                        )
-                        .stroke(
-                            contrast == .increased
-                                ? Color.ppTextPrimary.opacity(0.62)
-                                : Color.white.opacity(0.82),
-                            lineWidth: contrast == .increased ? 1.5 : 1
-                        )
-                    }
+                        .overlay {
+                            Circle()
+                                .stroke(
+                                    contrast == .increased
+                                        ? Color.ppTextPrimary.opacity(0.62)
+                                        : accent.opacity(0.24),
+                                    lineWidth: contrast == .increased ? 1.5 : 1
+                                )
+                        }
 
-                centralArtwork
+                    centralArtwork
+                } else {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    accent.opacity(0.30),
+                                    Color.ppSurface.opacity(0.94),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay {
+                            RoundedRectangle(
+                                cornerRadius: 30,
+                                style: .continuous
+                            )
+                            .stroke(
+                                contrast == .increased
+                                    ? Color.ppTextPrimary.opacity(0.62)
+                                    : Color.white.opacity(0.82),
+                                lineWidth: contrast == .increased ? 1.5 : 1
+                            )
+                        }
+
+                    centralArtwork
+                }
             }
             .frame(width: plateSize, height: plateSize)
-            .clipShape(
-                RoundedRectangle(cornerRadius: 30, style: .continuous)
-            )
             .shadow(
                 color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
-                radius: 12,
-                y: 7
+                radius: usesCategoryArtworkTreatment ? 8 : 12,
+                y: usesCategoryArtworkTreatment ? 4 : 7
             )
 
             floatingTile(
@@ -741,7 +763,6 @@ private struct HomeHeroFloatingPlate: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: categoryArtworkSize, height: categoryArtworkSize)
-                .clipped()
         } else if let localImage {
             Image(uiImage: localImage)
                 .resizable()
@@ -772,11 +793,11 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var categoryArtworkSize: CGFloat {
-        plateSize
+        70
     }
 
     private var plateSize: CGFloat {
-        100
+        usesCategoryArtworkTreatment ? 90 : 100
     }
 
     private var allowsFloatingMotion: Bool {

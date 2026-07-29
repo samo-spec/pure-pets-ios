@@ -5,7 +5,7 @@ private enum PPMainKindsCellMetrics {
     static let contentInset: CGFloat = 11
     static let imagePlateSize: CGFloat = 90
     static let compactImagePlateSize: CGFloat = 76
-    static let artworkSize: CGFloat = 64
+    static let artworkSize: CGFloat = 70
     static let allArtworkSize: CGFloat = 32
     static let imageToTitleSpacing: CGFloat = 6
     static let indicatorWidth: CGFloat = 26
