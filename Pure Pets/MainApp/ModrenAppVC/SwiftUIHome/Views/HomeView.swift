@@ -97,31 +97,20 @@ struct HomeView: View {
             case .coldLoading, .warmLoading:
                 loadingContent
             case let .failed(message):
-                VStack(alignment: .leading, spacing: PPSpace.xl) {
-                    HomeMyPetProfileCard(
-                        pets: store.state.pets,
-                        selectedID: store.state.selectedPetID,
-                        isLoading: false,
-                        errorMessage: message,
-                        action: store.retryAll
-                    )
-                    .padding(.horizontal, PPSpace.screenMargin)
-
-                    HomeInlineState(
-                        symbol: "wifi.exclamationmark",
-                        title: HomeModelAdapter.localized(
-                            "home_pulse_failed_title",
-                            fallback: "Home could not load"
-                        ),
-                        message: message,
-                        actionTitle: HomeModelAdapter.localized(
-                            "Retry",
-                            fallback: "Retry"
-                        ),
-                        action: store.retryAll
-                    )
-                    .padding(.horizontal, PPSpace.screenMargin)
-                }
+                HomeInlineState(
+                    symbol: "wifi.exclamationmark",
+                    title: HomeModelAdapter.localized(
+                        "home_pulse_failed_title",
+                        fallback: "Home could not load"
+                    ),
+                    message: message,
+                    actionTitle: HomeModelAdapter.localized(
+                        "Retry",
+                        fallback: "Retry"
+                    ),
+                    action: store.retryAll
+                )
+                .padding(.horizontal, PPSpace.screenMargin)
             case .empty:
                 emptyContent
             case .loaded, .refreshing, .partial:
@@ -139,15 +128,6 @@ struct HomeView: View {
                 onPrimaryAction: {},
                 onSecondaryAction: {},
                 onInteractionChanged: { _ in }
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-            HomeMyPetProfileCard(
-                pets: [],
-                selectedID: nil,
-                isLoading: true,
-                errorMessage: nil,
-                action: {}
             )
             .padding(.horizontal, PPSpace.screenMargin)
 
@@ -195,6 +175,20 @@ struct HomeView: View {
             )
             .onAppear(perform: startLoadedEntranceIfNeeded)
 
+            if !store.state.pets.isEmpty {
+                HomePetSwitcher(
+                    pets: store.state.pets,
+                    selectedID: store.state.selectedPetID,
+                    onSelect: store.selectPet,
+                    onEdit: store.editSelectedPet
+                )
+                .homeEntrance(
+                    isVisible: loadedEntranceVisible,
+                    delay: 0.10,
+                    reduceMotion: reduceMotion
+                )
+            }
+
             HomePriorityGrid(
                 actions: store.state.priorityActions,
                 onSelect: store.performPriorityAction
@@ -226,22 +220,6 @@ struct HomeView: View {
             }
 
             ForEach(store.state.sections) { section in
-                if section.id == .services {
-                    HomeMyPetProfileCard(
-                        pets: store.state.pets,
-                        selectedID: store.state.selectedPetID,
-                        isLoading: false,
-                        errorMessage: nil,
-                        action: openMyPetProfileCard
-                    )
-                    .padding(.horizontal, PPSpace.screenMargin)
-                    .homeEntrance(
-                        isVisible: loadedEntranceVisible,
-                        delay: 0.18,
-                        reduceMotion: reduceMotion
-                    )
-                }
-
                 HomeFeedSection(section: section, store: store)
                     .id(section.id)
             }
@@ -344,18 +322,6 @@ struct HomeView: View {
     private func startLoadedEntranceIfNeeded() {
         guard !loadedEntranceVisible else { return }
         loadedEntranceVisible = true
-    }
-
-    private func openMyPetProfileCard() {
-        if let defaultPet = store.state.pets.first(where: { $0.isDefault }) {
-            store.router.editPet(defaultPet)
-            return
-        }
-        if let firstPet = store.state.pets.first {
-            store.router.editPet(firstPet)
-            return
-        }
-        store.router.openPetProfiles()
     }
 
     private var placeholderActions: [HomePriorityAction] {

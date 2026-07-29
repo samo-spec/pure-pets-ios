@@ -327,6 +327,396 @@ struct HomeLocationContextButton: View {
     }
 }
 
+struct HomePetSwitcher: View {
+    let pets: [HomePetModel]
+    let selectedID: String?
+    let onSelect: (HomePetModel) -> Void
+    let onEdit: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PPSpace.md) {
+            HomeSectionHeader(
+                title: HomeModelAdapter.localized(
+                    "home_pulse_pet_context_title",
+                    fallback: "Your pet context"
+                ),
+                subtitle: HomeModelAdapter.localized(
+                    "home_pulse_pet_context_subtitle",
+                    fallback: "Home priorities follow the selected pet"
+                ),
+                actionTitle: HomeModelAdapter.localized(
+                    "Edit",
+                    fallback: "Edit"
+                ),
+                action: onEdit
+            )
+            .padding(.horizontal, PPSpace.screenMargin)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .center, spacing: PPSpace.sm) {
+                    ForEach(pets) { pet in
+                        HomePetIdentityPill(
+                            pet: pet,
+                            selected: pet.id == selectedID,
+                            onSelect: {
+                                onSelect(pet)
+                            }
+                        )
+                    }
+                }
+                .padding(.horizontal, PPSpace.screenMargin)
+                .padding(.vertical, dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+            }
+            .contentMarginsCompat()
+        }
+    }
+}
+
+private struct HomePetIdentityPill: View {
+    let pet: HomePetModel
+    let selected: Bool
+    let onSelect: () -> Void
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @FocusState private var isFocused: Bool
+
+    private let shape = RoundedRectangle(
+        cornerRadius: 28,
+        style: .continuous
+    )
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(alignment: .center, spacing: PPSpace.sm) {
+                portrait
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(displayName)
+                        .font(HomeFont.headline())
+                        .foregroundStyle(Color.ppTextPrimary)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 1)
+                        .minimumScaleFactor(0.82)
+
+                    if let petContext {
+                        Text(petContext)
+                            .font(HomeFont.footnote())
+                            .foregroundStyle(Color.ppTextSecondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(
+                                dynamicTypeSize.isAccessibilitySize ? 3 : 1
+                            )
+                            .minimumScaleFactor(0.82)
+                    }
+
+                    if selected {
+                        selectedBadge
+                            .transition(selectionBadgeTransition)
+                    }
+                }
+                .layoutPriority(1)
+            }
+            .padding(.leading, PPSpace.sm)
+            .padding(.trailing, PPSpace.md)
+            .padding(.vertical, PPSpace.sm)
+            .frame(
+                minWidth: minimumWidth,
+                maxWidth: maximumWidth,
+                minHeight: minimumHeight,
+                alignment: .leading
+            )
+            .background {
+                shape.fill(surfaceBackground)
+            }
+            .overlay {
+                shape.strokeBorder(borderColor, lineWidth: borderWidth)
+            }
+            .overlay(alignment: .topTrailing) {
+                if pet.isDefault && !selected {
+                    defaultDot
+                        .padding(8)
+                }
+            }
+            .overlay {
+                if isFocused {
+                    shape.strokeBorder(
+                        Color.ppPrimary,
+                        lineWidth: contrast == .increased ? 3 : 2.4
+                    )
+                }
+            }
+            .contentShape(shape)
+        }
+        .buttonStyle(HomePetIdentityPressStyle())
+        .focused($isFocused)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(
+            HomeModelAdapter.localized(
+                "home_pulse_pet_context_subtitle",
+                fallback: "Home priorities follow the selected pet"
+            )
+        )
+        .accessibilityAddTraits(selected ? .isSelected : [])
+        .animation(selectionAnimation, value: selected)
+    }
+
+    private var portrait: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    selected
+                        ? Color.ppPrimary.opacity(
+                            colorScheme == .dark ? 0.18 : 0.13
+                        )
+                        : Color.ppSecondarySurface
+                )
+
+            portraitContent
+                .frame(width: portraitImageDiameter, height: portraitImageDiameter)
+                .clipShape(Circle())
+                .overlay {
+                    Circle().strokeBorder(
+                        Color.ppSurface.opacity(
+                            contrast == .increased ? 1 : 0.92
+                        ),
+                        lineWidth: 2
+                    )
+                }
+        }
+        .frame(width: portraitDiameter, height: portraitDiameter)
+        .overlay {
+            Circle().strokeBorder(
+                selected
+                    ? Color.ppPrimary.opacity(
+                        contrast == .increased ? 1 : 0.90
+                    )
+                    : Color.ppBorder.opacity(
+                        contrast == .increased ? 0.70 : 0.42
+                    ),
+                lineWidth: selected
+                    ? (contrast == .increased ? 2.4 : 1.5)
+                    : (contrast == .increased ? 1.4 : 0.8)
+            )
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if selected {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 21, height: 21)
+                    .background(Color.ppPrimary, in: Circle())
+                    .overlay {
+                        Circle().strokeBorder(Color.ppSurface, lineWidth: 2)
+                    }
+                    .transition(selectionBadgeTransition)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var portraitContent: some View {
+        if let imageURL = normalizedImageURL {
+            HomeRemoteImage(
+                urlString: imageURL,
+                placeholder: UIImage(named: "petcare_placeholder"),
+                contentMode: .scaleAspectFill
+            )
+        } else {
+            HomeGeneratedPetAvatar(
+                name: displayName,
+                accent: selected ? Color.ppPrimary : Color.ppTextTertiary
+            )
+        }
+    }
+
+    private var selectedBadge: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 9, weight: .bold))
+                .accessibilityHidden(true)
+
+            Text(
+                HomeModelAdapter.localized(
+                    "modern_segmented_selected",
+                    fallback: "Selected"
+                )
+            )
+            .font(HomeFont.caption2())
+            .lineLimit(1)
+        }
+        .foregroundStyle(Color.ppPrimary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.ppPrimary.opacity(0.10), in: Capsule())
+    }
+
+    private var defaultDot: some View {
+        Circle()
+            .fill(Color.ppPrimary.opacity(0.72))
+            .frame(width: 7, height: 7)
+            .accessibilityHidden(true)
+    }
+
+    private var displayName: String {
+        let name = pet.name.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !name.isEmpty else {
+            return HomeModelAdapter.localized(
+                "pet_name_placeholder",
+                fallback: "Pet name"
+            )
+        }
+        return name
+    }
+
+    private var petContext: String? {
+        let context = [pet.breedOrCategory, pet.age]
+            .map {
+                $0.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: " • ")
+        return context.isEmpty ? nil : context
+    }
+
+    private var normalizedImageURL: String? {
+        let imageURL = pet.imageURL?.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard let imageURL, !imageURL.isEmpty else { return nil }
+        return imageURL
+    }
+
+    private var accessibilityLabel: String {
+        let label = [displayName, petContext]
+            .compactMap { $0 }
+            .joined(separator: ", ")
+        guard selected else { return label }
+        return String(
+            format: HomeModelAdapter.localized(
+                "home_pulse_pet_selected_a11y",
+                fallback: "%@ selected"
+            ),
+            label
+        )
+    }
+
+    private var surfaceBackground: some ShapeStyle {
+        if selected {
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [
+                        Color.ppSoftRose.opacity(
+                            colorScheme == .dark ? 0.42 : 0.92
+                        ),
+                        Color.ppSurface.opacity(
+                            colorScheme == .dark ? 0.96 : 0.98
+                        ),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        }
+        return AnyShapeStyle(Color.ppSurface)
+    }
+
+    private var borderColor: Color {
+        if selected {
+            return Color.ppPrimary.opacity(
+                contrast == .increased ? 1 : 0.48
+            )
+        }
+        return contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.68)
+            : Color.ppBorder.opacity(0.62)
+    }
+
+    private var borderWidth: CGFloat {
+        if selected {
+            return contrast == .increased ? 2 : 0.9
+        }
+        return contrast == .increased ? 1.4 : 0.7
+    }
+
+    private var portraitDiameter: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 66 : 58
+    }
+
+    private var portraitImageDiameter: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 58 : 50
+    }
+
+    private var minimumWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 232 : 188
+    }
+
+    private var maximumWidth: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 340 : 286
+    }
+
+    private var minimumHeight: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 108 : 86
+    }
+
+    private var selectionAnimation: Animation {
+        reduceMotion
+            ? .easeOut(duration: 0.16)
+            : .spring(
+                response: 0.36,
+                dampingFraction: 0.88,
+                blendDuration: 0.08
+            )
+    }
+
+    private var selectionBadgeTransition: AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .scale(scale: 0.88).combined(with: .opacity)
+    }
+}
+
+private struct HomePetIdentityPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(
+                isEnabled
+                    ? (configuration.isPressed ? 0.86 : 1)
+                    : 0.52
+            )
+            .scaleEffect(
+                reduceMotion || !isEnabled
+                    ? 1
+                    : (configuration.isPressed ? 0.982 : 1)
+            )
+            .shadow(
+                color: Color.black.opacity(
+                    isEnabled && !configuration.isPressed ? 0.055 : 0
+                ),
+                radius: isEnabled && !configuration.isPressed ? 18 : 0,
+                y: isEnabled && !configuration.isPressed ? 10 : 0
+            )
+            .animation(
+                reduceMotion
+                    ? .easeOut(duration: 0.08)
+                    : .easeOut(
+                        duration: configuration.isPressed ? 0.08 : 0.16
+                    ),
+                value: configuration.isPressed
+            )
+    }
+}
+
 struct HomeMyPetProfileCard: View {
     let pets: [HomePetModel]
     let selectedID: String?
