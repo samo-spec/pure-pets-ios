@@ -350,6 +350,7 @@ struct HomeHeroView: View {
             imageName: asset.imageName,
             localImage: asset.localImage,
             remoteImageURL: asset.remoteImageURL,
+            usesCategoryArtworkTreatment: asset.usesCategoryArtworkTreatment,
             loadsFromFirebase: asset.loadsFromFirebase,
             primarySymbol: asset.primarySymbol,
             secondarySymbol: asset.secondarySymbol
@@ -412,6 +413,7 @@ struct HomeHeroView: View {
                     imageName: nil,
                     localImage: nil,
                     remoteImageURL: imageURL,
+                    usesCategoryArtworkTreatment: false,
                     loadsFromFirebase: false,
                     primarySymbol: "heart.fill",
                     secondarySymbol: "pawprint.fill"
@@ -422,6 +424,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "heart.fill",
                 secondarySymbol: "pawprint.fill"
@@ -432,6 +435,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "bell.fill",
                 secondarySymbol: "calendar"
@@ -442,6 +446,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "sparkles",
                 secondarySymbol: "tag.fill"
@@ -460,6 +465,7 @@ struct HomeHeroView: View {
                     imageName: fallbackImage == nil ? "pawprint4" : nil,
                     localImage: fallbackImage,
                     remoteImageURL: normalizedHeroImageURL(page.imageURL),
+                    usesCategoryArtworkTreatment: true,
                     loadsFromFirebase: false,
                     primarySymbol: "bag.fill",
                     secondarySymbol: "shippingbox.fill"
@@ -470,6 +476,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "bag.fill",
                 secondarySymbol: "shippingbox.fill"
@@ -480,6 +487,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: true,
                 primarySymbol: "plus",
                 secondarySymbol: "pawprint.fill"
@@ -490,6 +498,7 @@ struct HomeHeroView: View {
                 imageName: nil,
                 localImage: nil,
                 remoteImageURL: nil,
+                usesCategoryArtworkTreatment: false,
                 loadsFromFirebase: false,
                 primarySymbol: "pills.fill",
                 secondarySymbol: "bandage.fill"
@@ -611,6 +620,7 @@ private struct HomeHeroArtworkAsset {
     let imageName: String?
     let localImage: UIImage?
     let remoteImageURL: String?
+    let usesCategoryArtworkTreatment: Bool
     let loadsFromFirebase: Bool
     let primarySymbol: String
     let secondarySymbol: String
@@ -622,6 +632,7 @@ private struct HomeHeroFloatingPlate: View {
     let imageName: String?
     let localImage: UIImage?
     let remoteImageURL: String?
+    let usesCategoryArtworkTreatment: Bool
     let loadsFromFirebase: Bool
     let primarySymbol: String
     let secondarySymbol: String
@@ -702,7 +713,13 @@ private struct HomeHeroFloatingPlate: View {
 
     @ViewBuilder
     private var centralArtwork: some View {
-        if let remoteImageURL {
+        if let remoteImageURL, usesCategoryArtworkTreatment {
+            HomeHeroPlateCategoryRemoteImage(
+                urlString: remoteImageURL,
+                placeholder: localImage
+            )
+            .frame(width: categoryArtworkSize, height: categoryArtworkSize)
+        } else if let remoteImageURL {
             HomeRemoteImage(
                 urlString: remoteImageURL,
                 placeholder: localImage,
@@ -716,6 +733,12 @@ private struct HomeHeroFloatingPlate: View {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
             }
+        } else if let localImage, usesCategoryArtworkTreatment {
+            Image(uiImage: localImage)
+                .resizable()
+                .scaledToFit()
+                .frame(width: categoryArtworkSize, height: categoryArtworkSize)
+                .clipped()
         } else if let localImage {
             Image(uiImage: localImage)
                 .resizable()
@@ -743,6 +766,10 @@ private struct HomeHeroFloatingPlate: View {
             )
             .padding(8)
         }
+    }
+
+    private var categoryArtworkSize: CGFloat {
+        64
     }
 
     private func floatingTile(
@@ -776,6 +803,40 @@ private struct HomeHeroFloatingPlate: View {
                 floating = true
             }
         }
+    }
+}
+
+private struct HomeHeroPlateCategoryRemoteImage: UIViewRepresentable {
+    let urlString: String?
+    let placeholder: UIImage?
+
+    func makeUIView(context: Context) -> UIImageView {
+        let imageView = UIImageView()
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = false
+        imageView.backgroundColor = .clear
+        imageView.isAccessibilityElement = false
+        return imageView
+    }
+
+    func updateUIView(_ imageView: UIImageView, context: Context) {
+        imageView.contentMode = .scaleAspectFit
+        imageView.clipsToBounds = false
+        imageView.backgroundColor = .clear
+        PPImageLoaderManager.shared().setImage(
+            on: imageView,
+            url: urlString,
+            placeholder: placeholder,
+            transitionStyle: .fade,
+            completion: nil
+        )
+    }
+
+    static func dismantleUIView(
+        _ imageView: UIImageView,
+        coordinator: Void
+    ) {
+        PPImageLoaderManager.shared().cancelImageLoad(for: imageView)
     }
 }
 
