@@ -327,167 +327,515 @@ struct HomeLocationContextButton: View {
     }
 }
 
-struct HomePetSwitcher: View {
+struct HomeMyPetProfileCard: View {
     let pets: [HomePetModel]
     let selectedID: String?
-    let onSelect: (HomePetModel) -> Void
-    let onEdit: () -> Void
+    let isLoading: Bool
+    let errorMessage: String?
+    let action: () -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: PPSpace.sm) {
-            HomeSectionHeader(
-                title: HomeModelAdapter.localized(
-                    "home_pulse_pet_context_title",
-                    fallback: "Your pet context"
-                ),
-                subtitle: HomeModelAdapter.localized(
-                    "home_pulse_pet_context_subtitle",
-                    fallback: "Home priorities follow the selected pet"
-                ),
-                actionTitle: HomeModelAdapter.localized(
-                    "Edit",
-                    fallback: "Edit"
-                ),
-                action: onEdit
-            )
-            .padding(.horizontal, PPSpace.screenMargin)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: PPSpace.sm) {
-                    ForEach(pets) { pet in
-                        HomePetIdentityPill(
-                            pet: pet,
-                            selected: pet.id == selectedID,
-                            onSelect: {
-                                onSelect(pet)
-                            }
-                        )
-                    }
-                }
-                .padding(.horizontal, PPSpace.screenMargin)
-            }
-            .contentMarginsCompat()
-        }
-    }
-}
-
-private struct HomePetIdentityPill: View {
-    let pet: HomePetModel
-    let selected: Bool
-    let onSelect: () -> Void
-
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: PPSpace.md) {
-                portrait
-
-                VStack(alignment: .leading, spacing: PPSpace.xxs) {
-                    Text(displayName)
-                        .font(HomeFont.headline())
-                        .foregroundStyle(Color.ppTextPrimary)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(
-                            dynamicTypeSize.isAccessibilitySize ? 3 : 1
-                        )
-
-                    if let petContext {
-                        Text(petContext)
-                            .font(HomeFont.footnote())
-                            .foregroundStyle(Color.ppTextSecondary)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(
-                                dynamicTypeSize.isAccessibilitySize ? 2 : 1
-                            )
-                    }
-                }
-                .layoutPriority(1)
-            }
-            .padding(.leading, PPSpace.base)
-            .padding(.trailing, PPSpace.md)
-            .padding(.vertical, PPSpace.sm)
-            .frame(
-                minWidth: minimumWidth,
-                maxWidth: maximumWidth,
-                minHeight: minimumHeight,
-                alignment: .leading
-            )
-            .background(surfaceShape.fill(surfaceColor))
-            .overlay {
-                surfaceShape.strokeBorder(
-                    borderColor,
-                    lineWidth: borderWidth
-                )
-            }
-            .overlay {
-                if isFocused {
-                    surfaceShape
-                        .strokeBorder(
-                            Color.ppPrimary,
-                            lineWidth: contrast == .increased ? 3 : 2.5
-                        )
-                }
-            }
-            .contentShape(surfaceShape)
+        Button(action: action) {
+            cardBody
         }
-        .buttonStyle(HomePetIdentityPressStyle())
+        .buttonStyle(HomeMyPetProfileCardPressStyle())
+        .disabled(isLoading)
         .focused($isFocused)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .animation(selectionAnimation, value: selected)
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(.isButton)
     }
 
-    private var portrait: some View {
-        HomePetPortraitImage(
-            petID: pet.id,
-            imageURL: pet.imageURL
-        )
-        .equatable()
-        .frame(width: portraitDiameter, height: portraitDiameter)
-        .clipShape(Circle())
-        .overlay {
-            Circle().strokeBorder(
-                Color.ppSurface,
-                lineWidth: portraitInnerRingWidth
-            )
+    private var cardBody: some View {
+        ZStack {
+            cardShape
+                .fill(cardGradient)
+                .overlay {
+                    decorativeLayer
+                }
+                .overlay {
+                    cardShape.strokeBorder(
+                        borderColor,
+                        lineWidth: contrast == .increased ? 1.3 : 0.7
+                    )
+                }
+                .shadow(
+                    color: shadowColor,
+                    radius: colorScheme == .dark ? 0 : 24,
+                    x: 0,
+                    y: colorScheme == .dark ? 0 : 18
+                )
+
+            contentLayer
         }
-        .padding(PPSpace.xs)
-        .background(
-            selected ? Color.ppSurface : Color.ppSecondarySurface,
-            in: Circle()
-        )
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: cardHeight)
+        .contentShape(cardShape)
         .overlay {
-            Circle().strokeBorder(
-                portraitOuterRingColor,
-                lineWidth: portraitOuterRingWidth
-            )
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if selected {
-                Image(systemName: "pawprint.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 22, height: 22)
-                    .background(Color.ppPrimary, in: Circle())
-                    .overlay {
-                        Circle().stroke(Color.ppSurface, lineWidth: 2)
-                    }
-                    .transition(selectionSealTransition)
-                    .accessibilityHidden(true)
+            if isFocused {
+                cardShape.strokeBorder(
+                    Color.ppPrimary,
+                    lineWidth: contrast == .increased ? 3 : 2.4
+                )
             }
+        }
+    }
+
+    private var decorativeLayer: some View {
+        ZStack {
+            Circle()
+                .fill(orbColor)
+                .frame(width: 108, height: 108)
+                .offset(
+                    x: layoutDirection == .rightToLeft ? -28 : 28,
+                    y: -26
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity,
+                       alignment: .topTrailing)
+
+            Circle()
+                .fill(
+                    Color.white.opacity(colorScheme == .dark ? 0.18 : 0.28)
+                )
+                .frame(width: 36, height: 36)
+                .padding(.leading, 18)
+                .padding(.bottom, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity,
+                       alignment: .bottomLeading)
         }
         .accessibilityHidden(true)
     }
 
-    private var displayName: String {
-        let name = pet.name.trimmingCharacters(
-            in: .whitespacesAndNewlines
+    private var contentLayer: some View {
+        ZStack(alignment: .topTrailing) {
+            avatar
+                .padding(.top, 18)
+                .padding(.trailing, 18)
+
+            VStack(alignment: .leading, spacing: 0) {
+                topCopy
+                    .padding(.trailing, avatarTextClearance)
+
+                Spacer(minLength: dynamicTypeSize.isAccessibilitySize ? 16 : 12)
+
+                metaStack
+
+                ctaView
+                    .padding(.top, dynamicTypeSize.isAccessibilitySize ? 14 : 12)
+            }
+            .padding(.top, 18)
+            .padding(.leading, 18)
+            .padding(.trailing, 18)
+            .padding(.bottom, 18)
+        }
+    }
+
+    private var topCopy: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(eyebrow)
+                .font(HomeFont.bold(11))
+                .foregroundStyle(eyebrowTextColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.84)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .frame(minHeight: 28)
+                .background(
+                    Color.white.opacity(
+                        colorScheme == .dark ? 0.24 : 0.72
+                    ),
+                    in: Capsule()
+                )
+                .padding(.bottom, 6)
+
+            Text(title)
+                .font(HomeFont.bold(24))
+                .foregroundStyle(primaryTextColor)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                .minimumScaleFactor(0.84)
+                .allowsTightening(true)
+                .frame(minHeight: 30, alignment: .leading)
+                .padding(.leading, -6)
+                .padding(.bottom, 8)
+
+            Text(subtitle)
+                .font(HomeFont.medium(13))
+                .foregroundStyle(subtitleTextColor)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                .fixedSize(horizontal: false, vertical: true)
+                .multilineTextAlignment(.leading)
+                .padding(.leading, -6)
+        }
+    }
+
+    private var avatar: some View {
+        ZStack {
+            Circle()
+                .fill(
+                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.18)
+                )
+                .overlay {
+                    Circle().strokeBorder(
+                        Color.white.opacity(
+                            colorScheme == .dark ? 0.10 : 0.24
+                        ),
+                        lineWidth: 1
+                    )
+                }
+                .shadow(
+                    color: Color.black.opacity(
+                        colorScheme == .dark ? 0 : 0.10
+                    ),
+                    radius: 20,
+                    x: 0,
+                    y: 10
+                )
+                .frame(width: 82, height: 82)
+
+            avatarContent
+                .frame(width: 68, height: 68)
+                .background(
+                    Color.white.opacity(colorScheme == .dark ? 0.08 : 0.12),
+                    in: Circle()
+                )
+                .clipShape(Circle())
+                .overlay {
+                    Circle().strokeBorder(
+                        Color.white.opacity(0.35),
+                        lineWidth: 1.5
+                    )
+                }
+        }
+        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private var avatarContent: some View {
+        if let pet = defaultPet,
+           let imageURL = pet.imageURL,
+           !imageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            HomeRemoteImage(
+                urlString: imageURL,
+                placeholder: UIImage(named: "petcare_placeholder"),
+                contentMode: .scaleAspectFill
+            )
+        } else if let pet = defaultPet {
+            HomeGeneratedPetAvatar(
+                name: petDisplayName(pet),
+                accent: Color.ppPrimary
+            )
+        } else {
+            Image(systemName: avatarSymbol)
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Color.ppPrimary.opacity(0.86))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    private var metaStack: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    metaPill(metaPrimary, emphasized: true)
+                    metaPill(metaSecondary, emphasized: false)
+                }
+            } else {
+                HStack(spacing: 8) {
+                    metaPill(metaPrimary, emphasized: true)
+                    metaPill(metaSecondary, emphasized: false)
+                }
+            }
+        }
+        .padding(.leading, -6)
+    }
+
+    private func metaPill(
+        _ text: String,
+        emphasized: Bool
+    ) -> some View {
+        Text(text)
+            .font(HomeFont.medium(11))
+            .foregroundStyle(tagTextColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                Color.white.opacity(
+                    colorScheme == .dark
+                        ? (emphasized ? 0.16 : 0.14)
+                        : (emphasized ? 0.54 : 0.46)
+                ),
+                in: Capsule()
+            )
+    }
+
+    private var ctaView: some View {
+        HStack(spacing: 10) {
+            Text(ctaTitle)
+                .font(HomeFont.bold(13))
+                .foregroundStyle(primaryTextColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Spacer(minLength: PPSpace.sm)
+
+            Image(systemName: forwardSymbol)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(primaryTextColor)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 14)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: dynamicTypeSize.isAccessibilitySize ? 52 : 44,
+            alignment: .center
         )
+        .background(
+            Color.white.opacity(colorScheme == .dark ? 0.16 : 0.26),
+            in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .strokeBorder(
+                    Color.white.opacity(colorScheme == .dark ? 0.12 : 0.24),
+                    lineWidth: 1
+                )
+        }
+        .padding(.leading, -6)
+    }
+
+    private var defaultPet: HomePetModel? {
+        pets.first(where: { $0.isDefault })
+    }
+
+    private var hasProfilesWithoutDefault: Bool {
+        !pets.isEmpty && defaultPet == nil
+    }
+
+    private var selectedPet: HomePetModel? {
+        if let selectedID,
+           let pet = pets.first(where: { $0.id == selectedID }) {
+            return pet
+        }
+        return pets.first
+    }
+
+    private var eyebrow: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "home_pulse_loading_title",
+                fallback: "Loading"
+            )
+        }
+
+        if errorMessage != nil {
+            return HomeModelAdapter.localized(
+                "pet_profiles_title",
+                fallback: "Pet Profiles"
+            )
+        }
+
+        if let pet = defaultPet, pet.isDefault {
+            return HomeModelAdapter.localized(
+                "pet_default_action",
+                fallback: "Default pet"
+            )
+        }
+
+        return HomeModelAdapter.localized(
+            "pet_profiles_title",
+            fallback: "Pet Profiles"
+        )
+    }
+
+    private var title: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "pet_profiles_title",
+                fallback: "Pet Profiles"
+            )
+        }
+
+        if errorMessage != nil {
+            return HomeModelAdapter.localized(
+                "pet_profiles_error_title",
+                fallback: "Couldn't load pet profiles"
+            )
+        }
+
+        if let pet = defaultPet {
+            return petDisplayName(pet)
+        }
+
+        if hasProfilesWithoutDefault {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_choose_default_title",
+                fallback: "Choose your default pet"
+            )
+        }
+
+        return HomeModelAdapter.localized(
+            "home_pet_profile_empty_title",
+            fallback: "Create your pet profile"
+        )
+    }
+
+    private var subtitle: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "pet_profiles_loading_home_subtitle",
+                fallback: "Syncing your companion card and care details for the home feed."
+            )
+        }
+
+        if let errorMessage {
+            return errorMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty
+                ? HomeModelAdapter.localized(
+                    "pet_profiles_error_subtitle",
+                    fallback: "Check your connection and try again."
+                )
+                : errorMessage
+        }
+
+        if let pet = defaultPet {
+            let headline = petSummary(for: pet)
+            let detail = HomeModelAdapter.localized(
+                "home_pet_profile_vaccine_prompt",
+                fallback: "Open the profile to update vaccines, notes, and reminders."
+            )
+            return "\(headline)\n\(detail)"
+        }
+
+        if hasProfilesWithoutDefault {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_choose_default_subtitle",
+                fallback: "Pin one companion here for quick home access to care details, vaccines, and reminders."
+            )
+        }
+
+        return HomeModelAdapter.localized(
+            "home_pet_profile_empty_subtitle",
+            fallback: "Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion."
+        )
+    }
+
+    private var metaPrimary: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_meta_syncing",
+                fallback: "Live sync"
+            )
+        }
+
+        if errorMessage != nil {
+            return HomeModelAdapter.localized(
+                "pet_profiles_refresh_accessibility",
+                fallback: "Refresh pet profiles"
+            )
+        }
+
+        if defaultPet != nil {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_meta_vaccines",
+                fallback: "Vaccines"
+            )
+        }
+
+        if hasProfilesWithoutDefault {
+            return savedProfilesText
+        }
+
+        return HomeModelAdapter.localized(
+            "home_pet_profile_meta_vaccines",
+            fallback: "Vaccines"
+        )
+    }
+
+    private var metaSecondary: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_meta_health",
+                fallback: "Health details"
+            )
+        }
+
+        if errorMessage != nil {
+            return HomeModelAdapter.localized(
+                "pet_profiles_title",
+                fallback: "Pet Profiles"
+            )
+        }
+
+        if defaultPet != nil {
+            return savedProfilesText
+        }
+
+        if hasProfilesWithoutDefault {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_set_default_meta",
+                fallback: "Tap to set default"
+            )
+        }
+
+        return HomeModelAdapter.localized(
+            "home_pet_profile_meta_reminders",
+            fallback: "Reminders"
+        )
+    }
+
+    private var ctaTitle: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "home_pulse_loading_title",
+                fallback: "Please wait"
+            )
+        }
+
+        if errorMessage != nil {
+            return HomeModelAdapter.localized(
+                "Retry",
+                fallback: "Retry"
+            )
+        }
+
+        if defaultPet != nil {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_open_cta",
+                fallback: "Open pet profile"
+            )
+        }
+
+        if hasProfilesWithoutDefault {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_open_editor_cta",
+                fallback: "Open pet editor"
+            )
+        }
+
+        return HomeModelAdapter.localized(
+            "pet_profiles_add_first",
+            fallback: "Add your first pet"
+        )
+    }
+
+    private var savedProfilesText: String {
+        let nounKey = pets.count == 1 ? "pet_profile_single" : "pet_profiles_title"
+        let nounFallback = pets.count == 1 ? "profile" : "Pet Profiles"
+        return "\(pets.count) \(HomeModelAdapter.localized(nounKey, fallback: nounFallback))"
+    }
+
+    private func petDisplayName(_ pet: HomePetModel) -> String {
+        let name = pet.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else {
             return HomeModelAdapter.localized(
                 "pet_name_placeholder",
@@ -497,125 +845,222 @@ private struct HomePetIdentityPill: View {
         return name
     }
 
-    private var petContext: String? {
-        let context = pet.breedOrCategory.trimmingCharacters(
-            in: .whitespacesAndNewlines
+    private func petSummary(for pet: HomePetModel) -> String {
+        let parts = [
+            pet.breedOrCategory.trimmingCharacters(in: .whitespacesAndNewlines),
+            pet.age.trimmingCharacters(in: .whitespacesAndNewlines),
+        ].filter { !$0.isEmpty }
+
+        guard !parts.isEmpty else {
+            return HomeModelAdapter.localized(
+                "pet_profiles_home_ready",
+                fallback: "Care details ready on home"
+            )
+        }
+
+        return parts.joined(separator: " · ")
+    }
+
+    private var avatarSymbol: String {
+        if isLoading {
+            return "hourglass.circle.fill"
+        }
+        if errorMessage != nil {
+            return "exclamationmark.triangle.fill"
+        }
+        if hasProfilesWithoutDefault {
+            return "pawprint.circle.fill"
+        }
+        return "sparkles"
+    }
+
+    private var forwardSymbol: String {
+        layoutDirection == .rightToLeft ? "arrow.left" : "arrow.right"
+    }
+
+    private var cardHeight: CGFloat {
+        if dynamicTypeSize.isAccessibilitySize {
+            return 330
+        }
+
+        let width = UIScreen.main.bounds.width
+        if width >= 700 { return 258 }
+        if width >= 430 { return 248 }
+        if width < 375 { return 232 }
+        return 240
+    }
+
+    private var avatarTextClearance: CGFloat {
+        dynamicTypeSize.isAccessibilitySize ? 106 : 98
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: 30, style: .continuous)
+    }
+
+    private var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: gradientColors,
+            startPoint: UnitPoint(x: 0, y: 0.18),
+            endPoint: .bottomTrailing
         )
-        return context.isEmpty ? nil : context
     }
 
-    private var accessibilityLabel: String {
-        [displayName, petContext]
-            .compactMap { $0 }
-            .joined(separator: ", ")
+    private var gradientColors: [Color] {
+        if isLoading {
+            return colorScheme == .dark
+                ? [
+                    Color(red: 0.14, green: 0.10, blue: 0.08),
+                    Color(red: 0.18, green: 0.13, blue: 0.10),
+                ]
+                : [
+                    Color(red: 0.98, green: 0.92, blue: 0.82),
+                    Color(red: 0.94, green: 0.83, blue: 0.71),
+                ]
+        }
+
+        if defaultPet != nil {
+            return colorScheme == .dark
+                ? [
+                    Color(red: 0.16, green: 0.10, blue: 0.06),
+                    Color(red: 0.22, green: 0.12, blue: 0.06),
+                ]
+                : [
+                    Color(red: 0.99, green: 0.88, blue: 0.76),
+                    Color(red: 0.96, green: 0.65, blue: 0.43),
+                ]
+        }
+
+        if hasProfilesWithoutDefault {
+            return colorScheme == .dark
+                ? [
+                    Color(red: 0.15, green: 0.10, blue: 0.07),
+                    Color(red: 0.20, green: 0.12, blue: 0.08),
+                ]
+                : [
+                    Color(red: 0.99, green: 0.91, blue: 0.82),
+                    Color(red: 0.96, green: 0.75, blue: 0.58),
+                ]
+        }
+
+        return colorScheme == .dark
+            ? [
+                Color(red: 0.13, green: 0.10, blue: 0.07),
+                Color(red: 0.18, green: 0.13, blue: 0.09),
+            ]
+            : [
+                Color(red: 0.98, green: 0.93, blue: 0.86),
+                Color(red: 0.95, green: 0.80, blue: 0.63),
+            ]
     }
 
-    private var portraitDiameter: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 60 : 56
-    }
+    private var orbColor: Color {
+        if defaultPet != nil {
+            return Color.ppPrimary.opacity(colorScheme == .dark ? 0.16 : 0.24)
+        }
 
-    private var minimumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 204 : 164
-    }
+        if hasProfilesWithoutDefault {
+            return Color(red: 0.95, green: 0.52, blue: 0.31)
+                .opacity(colorScheme == .dark ? 0.12 : 0.22)
+        }
 
-    private var maximumWidth: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 320 : 276
-    }
-
-    private var minimumHeight: CGFloat {
-        dynamicTypeSize.isAccessibilitySize ? 84 : 76
-    }
-
-    private var surfaceShape: RoundedRectangle {
-        RoundedRectangle(
-            cornerRadius: PPCorner.large,
-            style: .continuous
-        )
-    }
-
-    private var surfaceColor: Color {
-        selected ? Color.ppSoftRose : Color.ppSurface
+        return Color(red: 0.93, green: 0.58, blue: 0.32)
+            .opacity(colorScheme == .dark ? 0.10 : 0.18)
     }
 
     private var borderColor: Color {
-        if selected {
-            return Color.ppPrimary.opacity(
-                contrast == .increased ? 1 : 0.84
+        contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.45)
+            : Color.ppBorder.opacity(0.08)
+    }
+
+    private var shadowColor: Color {
+        Color.black.opacity(colorScheme == .dark ? 0 : 0.10)
+    }
+
+    private var primaryTextColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.95, green: 0.90, blue: 0.86)
+            : Color(red: 0.23, green: 0.13, blue: 0.10)
+    }
+
+    private var subtitleTextColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.85, green: 0.78, blue: 0.72).opacity(0.90)
+            : Color(red: 0.33, green: 0.22, blue: 0.18).opacity(0.82)
+    }
+
+    private var tagTextColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.88, green: 0.82, blue: 0.76).opacity(0.94)
+            : Color(red: 0.33, green: 0.22, blue: 0.18).opacity(0.94)
+    }
+
+    private var eyebrowTextColor: Color {
+        colorScheme == .dark
+            ? Color(red: 0.90, green: 0.82, blue: 0.74)
+            : Color(red: 0.29, green: 0.18, blue: 0.10)
+    }
+
+    private var accessibilityLabel: String {
+        [title, subtitle, metaPrimary, metaSecondary]
+            .filter { !$0.isEmpty }
+            .joined(separator: ". ")
+    }
+
+    private var accessibilityHint: String {
+        if isLoading {
+            return HomeModelAdapter.localized(
+                "pet_profiles_loading_home_subtitle",
+                fallback: "Syncing your companion card and care details for the home feed."
             )
         }
-        return contrast == .increased
-            ? Color.ppTextPrimary.opacity(0.72)
-            : Color.ppBorder.opacity(0.72)
-    }
 
-    private var borderWidth: CGFloat {
-        if selected {
-            return contrast == .increased ? 2 : 1.1
-        }
-        return contrast == .increased ? 1.4 : 0.8
-    }
-
-    private var portraitInnerRingWidth: CGFloat {
-        selected ? 2.5 : 2
-    }
-
-    private var portraitOuterRingColor: Color {
-        if selected {
-            return Color.ppPrimary.opacity(
-                contrast == .increased ? 1 : 0.92
+        if defaultPet != nil || hasProfilesWithoutDefault {
+            return HomeModelAdapter.localized(
+                "home_pet_profile_open_hint",
+                fallback: "Opens the pet profile editor"
             )
         }
-        return contrast == .increased
-            ? Color.ppTextPrimary.opacity(0.50)
-            : Color.ppBorder.opacity(0.46)
-    }
 
-    private var portraitOuterRingWidth: CGFloat {
-        if selected {
-            return contrast == .increased ? 2.5 : 1.8
-        }
-        return contrast == .increased ? 1.4 : 0.75
-    }
-
-    private var selectionAnimation: Animation {
-        reduceMotion
-            ? .easeOut(duration: 0.16)
-            : .spring(
-                response: 0.38,
-                dampingFraction: 0.88,
-                blendDuration: 0.08
-            )
-    }
-
-    private var selectionSealTransition: AnyTransition {
-        guard !reduceMotion else { return .opacity }
-        return .scale(scale: 0.86).combined(with: .opacity)
-    }
-}
-
-private struct HomePetPortraitImage: View, Equatable {
-    let petID: String
-    let imageURL: String?
-
-    private static let placeholder = UIImage(named: "petcare_placeholder")
-
-    static func == (
-        lhs: HomePetPortraitImage,
-        rhs: HomePetPortraitImage
-    ) -> Bool {
-        lhs.petID == rhs.petID && lhs.imageURL == rhs.imageURL
-    }
-
-    var body: some View {
-        HomeRemoteImage(
-            urlString: imageURL,
-            placeholder: Self.placeholder,
-            contentMode: .scaleAspectFill
+        return HomeModelAdapter.localized(
+            "home_pet_profile_create_hint",
+            fallback: "Opens pet profiles so you can add your first pet"
         )
     }
 }
 
-private struct HomePetIdentityPressStyle: ButtonStyle {
+private struct HomeGeneratedPetAvatar: View {
+    let name: String
+    let accent: Color
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    accent.opacity(0.18),
+                    Color.white.opacity(0.28),
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            Text(initial)
+                .font(HomeFont.bold(26))
+                .foregroundStyle(accent.opacity(0.86))
+                .minimumScaleFactor(0.6)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var initial: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let first = trimmed.first else { return "P" }
+        return String(first).uppercased()
+    }
+}
+
+private struct HomeMyPetProfileCardPressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.isEnabled) private var isEnabled
 
@@ -623,19 +1068,20 @@ private struct HomePetIdentityPressStyle: ButtonStyle {
         configuration.label
             .opacity(
                 isEnabled
-                    ? (configuration.isPressed ? 0.82 : 1)
-                    : 0.48
+                    ? (configuration.isPressed ? 0.88 : 1)
+                    : 0.62
             )
             .scaleEffect(
                 reduceMotion || !isEnabled
                     ? 1
-                    : (configuration.isPressed ? 0.975 : 1)
+                    : (configuration.isPressed ? 0.986 : 1)
             )
             .animation(
                 reduceMotion
                     ? .easeOut(duration: 0.08)
-                    : .easeOut(
-                        duration: configuration.isPressed ? 0.08 : 0.16
+                    : .spring(
+                        response: configuration.isPressed ? 0.18 : 0.28,
+                        dampingFraction: 0.88
                     ),
                 value: configuration.isPressed
             )
