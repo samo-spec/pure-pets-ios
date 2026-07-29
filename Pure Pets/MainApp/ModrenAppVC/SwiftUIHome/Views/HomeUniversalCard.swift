@@ -34,6 +34,40 @@ private struct HomeUniversalHostingCard: UIViewRepresentable {
     let delegate: PPUniversalCellDelegate?
     let onQuantityChange: (Int) -> Void
 
+    final class Coordinator {
+        private var viewModelIdentity: ObjectIdentifier?
+        private var cardID: String?
+        private var contextRawValue: Int?
+
+        func requiresConfiguration(for card: HomeCardModel) -> Bool {
+            let nextViewModelIdentity = ObjectIdentifier(card.viewModel)
+            let nextContextRawValue = card.context.rawValue
+            let inputsChanged =
+                viewModelIdentity != nextViewModelIdentity ||
+                cardID != card.id ||
+                contextRawValue != nextContextRawValue
+
+            guard inputsChanged else {
+                return false
+            }
+
+            viewModelIdentity = nextViewModelIdentity
+            cardID = card.id
+            contextRawValue = nextContextRawValue
+            return true
+        }
+
+        func reset() {
+            viewModelIdentity = nil
+            cardID = nil
+            contextRawValue = nil
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
     func makeUIView(context: Context) -> PPUniversalCardHostingCell {
         let cell = PPUniversalCardHostingCell(frame: .zero)
         cell.backgroundColor = .clear
@@ -54,7 +88,9 @@ private struct HomeUniversalHostingCard: UIViewRepresentable {
         // both routes and pushes the same viewer twice.
         cell.onTap = nil
         cell.onQuantityChange = onQuantityChange
-        cell.showsSubtitle = true
+        guard context.coordinator.requiresConfiguration(for: card) else {
+            return
+        }
         cell.applyViewModel(
             card.viewModel,
             context: card.context,
@@ -66,8 +102,9 @@ private struct HomeUniversalHostingCard: UIViewRepresentable {
 
     static func dismantleUIView(
         _ cell: PPUniversalCardHostingCell,
-        coordinator: Void
+        coordinator: Coordinator
     ) {
+        coordinator.reset()
         cell.stopMediaPlayback()
         cell.delegate = nil
         cell.onTap = nil
