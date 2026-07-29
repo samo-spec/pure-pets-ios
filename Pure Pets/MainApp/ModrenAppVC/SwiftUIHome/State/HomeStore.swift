@@ -1353,7 +1353,11 @@ final class HomeStore: ObservableObject {
         let presentation =
             PPHomeDataBridge.categoryPresentation(for: category.raw)
         let raw = presentation["colorHex"] as? String ?? ""
-        return normalizedHex(raw, fallback: "CB2654")
+        let selectedKindHex =
+            hexString(from: presentation["accent"] as? UIColor)
+            ?? hexString(from: category.accent)
+            ?? "CB2654"
+        return normalizedHex(raw, fallback: selectedKindHex)
     }
 
     private func nextReminder(for pet: HomePetModel) -> NSObject? {
@@ -1517,5 +1521,34 @@ final class HomeStore: ObservableObject {
             return fallback
         }
         return String(trimmed.prefix(6))
+    }
+
+    private func hexString(from color: UIColor?) -> String? {
+        guard let color else { return nil }
+        let resolvedColor = color.resolvedColor(with: UITraitCollection.current)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var alpha: CGFloat = 0
+
+        guard resolvedColor.getRed(
+            &red,
+            green: &green,
+            blue: &blue,
+            alpha: &alpha
+        ) else {
+            return nil
+        }
+
+        return String(
+            format: "%02X%02X%02X",
+            colorByte(red),
+            colorByte(green),
+            colorByte(blue)
+        )
+    }
+
+    private func colorByte(_ component: CGFloat) -> Int {
+        min(255, max(0, Int(round(component * 255))))
     }
 }

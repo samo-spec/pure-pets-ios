@@ -706,7 +706,7 @@ private struct HomeHeroFloatingPlate: View {
             HomeRemoteImage(
                 urlString: remoteImageURL,
                 placeholder: localImage,
-                contentMode: .scaleAspectFill
+                contentMode: .scaleAspectFit
             )
             .frame(width: 76, height: 76)
             .clipShape(
@@ -719,7 +719,7 @@ private struct HomeHeroFloatingPlate: View {
         } else if let localImage {
             Image(uiImage: localImage)
                 .resizable()
-                .scaledToFill()
+                .scaledToFit()
                 .frame(width: 76, height: 76)
                 .clipShape(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
