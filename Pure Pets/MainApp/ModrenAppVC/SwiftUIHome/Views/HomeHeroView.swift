@@ -373,11 +373,12 @@ struct HomeHeroView: View {
         _ page: HomeHeroPage,
         accent: Color
     ) -> some View {
-        let asset = heroArtworkAsset(for: page.kind)
+        let asset = heroArtworkAsset(for: page)
         HomeHeroFloatingPlate(
             accent: accent,
             animationName: asset.animationName,
             imageName: asset.imageName,
+            remoteImageURL: asset.remoteImageURL,
             loadsFromFirebase: asset.loadsFromFirebase,
             primarySymbol: asset.primarySymbol,
             secondarySymbol: asset.secondarySymbol
@@ -423,14 +424,25 @@ struct HomeHeroView: View {
     }
 
     private func heroArtworkAsset(
-        for kind: HomeHeroKind
+        for page: HomeHeroPage
     ) -> HomeHeroArtworkAsset {
-        switch kind {
+        switch page.kind {
         case .pet:
+            if let imageURL = normalizedHeroImageURL(page.imageURL) {
+                return HomeHeroArtworkAsset(
+                    animationName: nil,
+                    imageName: nil,
+                    remoteImageURL: imageURL,
+                    loadsFromFirebase: false,
+                    primarySymbol: "heart.fill",
+                    secondarySymbol: "pawprint.fill"
+                )
+            }
             return HomeHeroArtworkAsset(
-                animationName: "HomePetPulse",
+                animationName: "Profile.lottie",
                 imageName: nil,
-                loadsFromFirebase: false,
+                remoteImageURL: nil,
+                loadsFromFirebase: true,
                 primarySymbol: "heart.fill",
                 secondarySymbol: "pawprint.fill"
             )
@@ -438,6 +450,7 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "Caretiming",
                 imageName: nil,
+                remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "bell.fill",
                 secondarySymbol: "calendar"
@@ -446,6 +459,7 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "HomePromotionSpark",
                 imageName: nil,
+                remoteImageURL: nil,
                 loadsFromFirebase: false,
                 primarySymbol: "sparkles",
                 secondarySymbol: "tag.fill"
@@ -454,19 +468,29 @@ struct HomeHeroView: View {
             return HomeHeroArtworkAsset(
                 animationName: "petstore",
                 imageName: nil,
+                remoteImageURL: nil,
                 loadsFromFirebase: true,
                 primarySymbol: "bag.fill",
                 secondarySymbol: "shippingbox.fill"
             )
         case .petOnboarding:
             return HomeHeroArtworkAsset(
-                animationName: nil,
-                imageName: "pawprint4",
-                loadsFromFirebase: false,
+                animationName: "Profile.lottie",
+                imageName: nil,
+                remoteImageURL: nil,
+                loadsFromFirebase: true,
                 primarySymbol: "plus",
                 secondarySymbol: "pawprint.fill"
             )
         }
+    }
+
+    private func normalizedHeroImageURL(_ imageURL: String?) -> String? {
+        guard let imageURL else { return nil }
+        let trimmed = imageURL.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -495,6 +519,7 @@ private struct HomeHeroPagePhase: ViewModifier {
 private struct HomeHeroArtworkAsset {
     let animationName: String?
     let imageName: String?
+    let remoteImageURL: String?
     let loadsFromFirebase: Bool
     let primarySymbol: String
     let secondarySymbol: String
@@ -504,6 +529,7 @@ private struct HomeHeroFloatingPlate: View {
     let accent: Color
     let animationName: String?
     let imageName: String?
+    let remoteImageURL: String?
     let loadsFromFirebase: Bool
     let primarySymbol: String
     let secondarySymbol: String
@@ -584,7 +610,21 @@ private struct HomeHeroFloatingPlate: View {
 
     @ViewBuilder
     private var centralArtwork: some View {
-        if let imageName {
+        if let remoteImageURL {
+            HomeRemoteImage(
+                urlString: remoteImageURL,
+                placeholder: nil,
+                contentMode: .scaleAspectFill
+            )
+            .frame(width: 76, height: 76)
+            .clipShape(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
+            }
+        } else if let imageName {
             Image(imageName)
                 .resizable()
                 .renderingMode(.template)

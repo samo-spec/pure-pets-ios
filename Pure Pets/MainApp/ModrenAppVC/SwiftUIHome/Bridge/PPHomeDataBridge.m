@@ -34,6 +34,9 @@
 @property (nonatomic, assign) BOOL animationLoaded;
 @property (nonatomic, assign) BOOL animationLoading;
 
+- (BOOL)pp_usesExactStoragePathForAnimationName;
+- (void)pp_loadExactStorageAnimation;
+
 @end
 
 @implementation PPHomeHeroAnimationView
@@ -112,6 +115,8 @@
         fallbackSymbol = @"bell.fill";
     } else if ([self.animationName isEqualToString:@"HomePromotionSpark"]) {
         fallbackSymbol = @"gift.fill";
+    } else if ([self.animationName isEqualToString:@"Profile.lottie"]) {
+        fallbackSymbol = @"person.crop.circle.fill";
     }
     UIImage *fallbackImage =
         [UIImage systemImageNamed:fallbackSymbol
@@ -179,6 +184,11 @@
         return;
     }
 
+    if ([self pp_usesExactStoragePathForAnimationName]) {
+        [self pp_loadExactStorageAnimation];
+        return;
+    }
+
     __weak typeof(self) weakSelf = self;
     [AppClasses setAnimationNamed:self.animationName
                            ToView:self.animationView
@@ -196,15 +206,57 @@
     }];
 }
 
+- (BOOL)pp_usesExactStoragePathForAnimationName
+{
+    NSString *safeName = self.animationName ?: @"";
+    NSString *lowercaseName = safeName.lowercaseString;
+    return [safeName containsString:@"/"] ||
+        [lowercaseName hasSuffix:@".json"] ||
+        [lowercaseName hasSuffix:@".lottie"];
+}
+
+- (void)pp_loadExactStorageAnimation
+{
+    NSString *storagePath = self.animationName ?: @"";
+    __weak typeof(self) weakSelf = self;
+    [AppClasses fetchLottieJSONFromFirebasePath:storagePath
+                                     completion:^(NSDictionary *jsonDict,
+                                                  NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
+
+            strongSelf.animationLoading = NO;
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                strongSelf.animationLoaded = NO;
+                [strongSelf pp_applyLoadedAnimationState];
+                return;
+            }
+
+            LOTComposition *composition =
+                [LOTComposition animationFromJSON:jsonDict];
+            strongSelf.animationLoaded = composition != nil;
+            if (composition) {
+                [strongSelf.animationView setSceneModel:composition];
+            }
+            [strongSelf pp_applyLoadedAnimationState];
+        });
+    }];
+}
+
 - (void)pp_applyLoadedAnimationState
 {
     self.animationView.hidden = !self.animationLoaded;
     self.fallbackImageView.hidden = self.animationLoaded;
     if (self.animationLoaded) {
         self.animationView.loopAnimation = YES;
+        BOOL profileAnimation =
+            [self.animationName isEqualToString:@"Profile.lottie"];
         self.animationView.animationSpeed =
-            self.loadsFromFirebase ? 0.3 : 0.8;
-        self.animationView.animationProgress = 0.32;
+            profileAnimation ? 0.85 : (self.loadsFromFirebase ? 0.3 : 0.8);
+        self.animationView.animationProgress = profileAnimation ? 0.0 : 0.32;
     }
     [self pp_updateMarketplacePlayback];
 }
