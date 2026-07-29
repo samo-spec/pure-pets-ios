@@ -436,9 +436,9 @@ struct HomeHeroView: View {
             )
         case .reminder:
             return HomeHeroArtworkAsset(
-                animationName: "HomeCareReminder",
+                animationName: "Caretiming",
                 imageName: nil,
-                loadsFromFirebase: false,
+                loadsFromFirebase: true,
                 primarySymbol: "bell.fill",
                 secondarySymbol: "calendar"
             )

@@ -107,7 +107,8 @@
     NSString *fallbackSymbol = @"storefront.fill";
     if ([self.animationName isEqualToString:@"HomePetPulse"]) {
         fallbackSymbol = @"pawprint.fill";
-    } else if ([self.animationName isEqualToString:@"HomeCareReminder"]) {
+    } else if ([self.animationName isEqualToString:@"HomeCareReminder"] ||
+               [self.animationName isEqualToString:@"Caretiming"]) {
         fallbackSymbol = @"bell.fill";
     } else if ([self.animationName isEqualToString:@"HomePromotionSpark"]) {
         fallbackSymbol = @"gift.fill";
