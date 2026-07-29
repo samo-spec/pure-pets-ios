@@ -953,8 +953,6 @@ struct PPAccessoryProductIdentity: View {
             }
 
             Spacer(minLength: PPSpace.sm)
-
-            ratingStarsPill
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
@@ -995,44 +993,6 @@ struct PPAccessoryProductIdentity: View {
             }
         }
         .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var ratingStarsPill: some View {
-        let rating = min(max(store.owner?.ratingValue ?? 0, 0), 5)
-        let reviewCount = max(store.owner?.reviewCount ?? 0, 0)
-        let hasRating = rating > 0 && reviewCount > 0
-
-        return HStack(spacing: 2) {
-            ForEach(1...5, id: \.self) { index in
-                Image(systemName: Double(index) <= rating ? "star.fill" : "star")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(
-                        Double(index) <= rating
-                            ? PPAccessoryPalette.warning
-                            : PPAccessoryPalette.inkSecondary.opacity(0.42)
-                    )
-                    .accessibilityHidden(true)
-            }
-        }
-        .padding(.horizontal, 8)
-        .frame(minHeight: 28)
-        .ppAccessorySubviewBackground(
-            PPAccessorySubviewBackground.quietFill,
-            in: Capsule(),
-            stroke: PPAccessorySubviewBackground.faintStroke,
-            lineWidth: 0.8
-        )
-        .accessibilityLabel(
-            hasRating
-                ? String(
-                    format: PPAccessoryViewerL10n.text(
-                        "provider_rating_accessibility_format"
-                    ),
-                    rating,
-                    reviewCount
-                )
-                : PPAccessoryViewerL10n.text("provider_rating_no_reviews")
-        )
     }
 
     private func discountText(_ percentage: Double) -> String {
@@ -1712,17 +1672,33 @@ struct PPAccessorySpecReef: View {
             }
             .accessibilityElement(children: .contain)
         } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: detailRailSpacing) {
+            if railDetails.count <= detailRailFillColumnLimit {
+                HStack(alignment: .top, spacing: detailRailSpacing) {
                     ForEach(railDetails) { detail in
-                        detailRow(detail, fillsWidth: false)
-                            .fixedSize(horizontal: true, vertical: false)
+                        detailRow(detail, fillsWidth: true)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }
-                .padding(.vertical, 1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: detailRailSpacing) {
+                        ForEach(railDetails) { detail in
+                            detailRow(detail, fillsWidth: false)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+                    }
+                    .padding(.vertical, 1)
+                    .padding(.trailing, 1)
+                }
+                .accessibilityElement(children: .contain)
             }
-            .accessibilityElement(children: .contain)
         }
+    }
+
+    private var detailRailFillColumnLimit: Int {
+        3
     }
 
     private var detailRailSpacing: CGFloat {
@@ -1796,8 +1772,7 @@ struct PPAccessorySpecReef: View {
                 Spacer(minLength: 0)
             }
         }
-        .padding(.leading, PPSpace.md)
-        .padding(.trailing, PPSpace.xl)
+        .padding(.horizontal, PPSpace.md)
         .padding(.vertical, PPSpace.sm)
         .frame(
             maxWidth: fillsWidth ? .infinity : nil,
@@ -1806,7 +1781,7 @@ struct PPAccessorySpecReef: View {
         .ppAccessorySubviewBackground(
             PPAccessorySubviewBackground.baseSurface,
             in: RoundedRectangle(
-                cornerRadius: PPCorner.medium,
+                cornerRadius: PPCorner.small,
                 style: .continuous
             ),
             stroke: accent.opacity(
@@ -2024,7 +1999,7 @@ struct PPAccessorySourceIsland: View {
                 }
             }
 
-            sellerMeta(owner)
+            return     sellerMeta(owner)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -2033,35 +2008,42 @@ struct PPAccessorySourceIsland: View {
         _ owner: PPAccessoryViewerOwner,
         size: CGFloat
     ) -> some View {
+        let avatarShape = RoundedRectangle(
+            cornerRadius: min(size * 0.28, 26),
+            style: .continuous
+        )
+        let imageSize = sellerAvatarImageSize(for: owner, shellSize: size)
+
         ZStack(alignment: .bottomTrailing) {
-            Circle()
+            avatarShape
                 .fill(avatarPlateFill)
 
             PPAccessoryRemoteImageView(
                 urlString: owner.preferredAvatarURL,
                 blurHash: nil,
-                contentMode: .fit,
+                contentMode: .fill,
                 accessibilityLabel: displayName(for: owner),
                 isAvatar: true,
                 fallbackInitials: displayName(for: owner)
             )
-            .padding(4)
+            .frame(width: imageSize, height: imageSize)
             .frame(width: size, height: size)
-            .clipShape(Circle())
+            .clipShape(avatarShape)
 
             if owner.isVerified {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.ppPrimary)
                     .background(Circle().fill(Color.white))
-                    .offset(x: 2, y: 2)
+                    .offset(x: 3, y: 3)
                     .accessibilityHidden(true)
             }
         }
         .frame(width: size, height: size)
-        .shadow(color: Color.ppPrimary.opacity(0.12), radius: 6, x: 0, y: 3)
+        .clipShape(avatarShape)
+        .shadow(color: Color.ppPrimary.opacity(0.14), radius: 8, x: 0, y: 4)
         .overlay(
-            Circle()
+            avatarShape
                 .strokeBorder(
                     LinearGradient(
                         colors: [
@@ -2081,17 +2063,13 @@ struct PPAccessorySourceIsland: View {
         ViewThatFits(in: .horizontal) {
             HStack(spacing: PPSpace.sm) {
                 sellerTrustCapsule(owner)
-                if owner.hasRating {
-                    sellerRatingCapsule(owner)
-                }
+                sellerRatingCapsule(owner)
                 sellerLocationLabel
             }
 
             VStack(alignment: .leading, spacing: PPSpace.xs) {
                 sellerTrustCapsule(owner)
-                if owner.hasRating {
-                    sellerRatingCapsule(owner)
-                }
+                sellerRatingCapsule(owner)
                 sellerLocationLabel
             }
         }
@@ -2100,18 +2078,32 @@ struct PPAccessorySourceIsland: View {
     private func sellerRatingCapsule(
         _ owner: PPAccessoryViewerOwner
     ) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: "star.fill")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(PPAccessoryPalette.warning)
-                .accessibilityHidden(true)
+        let rating = min(max(owner.ratingValue, 0), 5)
+        let reviewCount = max(owner.reviewCount, 0)
+        let hasRating = rating > 0 && reviewCount > 0
+
+        return HStack(spacing: 6) {
+            HStack(spacing: 2) {
+                ForEach(1...5, id: \.self) { index in
+                    Image(systemName: Double(index) <= rating ? "star.fill" : "star")
+                        .font(.system(size: 10.5, weight: .bold))
+                        .foregroundStyle(
+                            Double(index) <= rating
+                                ? PPAccessoryPalette.warning
+                                : PPAccessoryPalette.inkSecondary.opacity(0.42)
+                        )
+                        .accessibilityHidden(true)
+                }
+            }
 
             Text(
-                PPAccessoryViewerL10n.formatted(
-                    "accessory_view_seller_rating_format",
-                    PPAccessoryViewerL10n.decimal(owner.ratingValue),
-                    PPAccessoryViewerL10n.integer(owner.reviewCount)
-                )
+                hasRating
+                    ? PPAccessoryViewerL10n.formatted(
+                        "accessory_view_seller_rating_format",
+                        PPAccessoryViewerL10n.decimal(rating),
+                        PPAccessoryViewerL10n.integer(reviewCount)
+                    )
+                    : PPAccessoryViewerL10n.text("provider_rating_no_reviews")
             )
             .font(PPAccessoryTypography.captionBold)
             .foregroundStyle(PPAccessoryPalette.ink)
@@ -2127,6 +2119,7 @@ struct PPAccessorySourceIsland: View {
             in: Capsule()
         )
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(sellerRatingAccessibilityText(owner))
     }
 
     private func sellerTrustCapsule(
@@ -2175,7 +2168,7 @@ struct PPAccessorySourceIsland: View {
         let isLogoLikeAvatar =
             owner.companyProfileImageURL != nil ||
             url.hasPrefix("purepets://support-logo")
-        return shellSize * 1.0
+        return shellSize * (isLogoLikeAvatar ? 1.18 : 1.08)
     }
 
     @ViewBuilder
@@ -2725,10 +2718,30 @@ struct PPAccessorySourceIsland: View {
             sectionTitle,
             displayName(for: owner),
             ownerStatusText(owner),
+            sellerRatingAccessibilityText(owner),
             snapshot.location.trimmingCharacters(in: .whitespacesAndNewlines)
         ]
         .filter { !$0.isEmpty }
         .joined(separator: ", ")
+    }
+
+    private func sellerRatingAccessibilityText(
+        _ owner: PPAccessoryViewerOwner
+    ) -> String {
+        let rating = min(max(owner.ratingValue, 0), 5)
+        let reviewCount = max(owner.reviewCount, 0)
+
+        guard rating > 0 && reviewCount > 0 else {
+            return PPAccessoryViewerL10n.text("provider_rating_no_reviews")
+        }
+
+        return String(
+            format: PPAccessoryViewerL10n.text(
+                "provider_rating_accessibility_format"
+            ),
+            rating,
+            reviewCount
+        )
     }
 }
 
