@@ -407,8 +407,8 @@ private struct HomePetIdentityPill: View {
                 }
                 .layoutPriority(1)
             }
-            .padding(.leading, PPSpace.sm)
-            .padding(.trailing, PPSpace.base)
+            .padding(.leading, PPSpace.base)
+            .padding(.trailing, PPSpace.md)
             .padding(.vertical, PPSpace.sm)
             .frame(
                 minWidth: minimumWidth,
@@ -418,12 +418,15 @@ private struct HomePetIdentityPill: View {
             )
             .background(surfaceShape.fill(surfaceColor))
             .overlay {
-                surfaceShape.stroke(borderColor, lineWidth: borderWidth)
+                surfaceShape.strokeBorder(
+                    borderColor,
+                    lineWidth: borderWidth
+                )
             }
             .overlay {
                 if isFocused {
                     surfaceShape
-                        .stroke(
+                        .strokeBorder(
                             Color.ppPrimary,
                             lineWidth: contrast == .increased ? 3 : 2.5
                         )
@@ -448,7 +451,10 @@ private struct HomePetIdentityPill: View {
         .frame(width: portraitDiameter, height: portraitDiameter)
         .clipShape(Circle())
         .overlay {
-            Circle().stroke(Color.ppSurface, lineWidth: 2)
+            Circle().strokeBorder(
+                Color.ppSurface,
+                lineWidth: portraitInnerRingWidth
+            )
         }
         .padding(PPSpace.xs)
         .background(
@@ -456,11 +462,9 @@ private struct HomePetIdentityPill: View {
             in: Circle()
         )
         .overlay {
-            Circle().stroke(
-                selected ? Color.ppPrimary : Color.ppBorder,
-                lineWidth: selected
-                    ? (contrast == .increased ? 3 : 2)
-                    : (contrast == .increased ? 2 : 1)
+            Circle().strokeBorder(
+                portraitOuterRingColor,
+                lineWidth: portraitOuterRingWidth
             )
         }
         .overlay(alignment: .bottomTrailing) {
@@ -535,18 +539,42 @@ private struct HomePetIdentityPill: View {
 
     private var borderColor: Color {
         if selected {
-            return Color.ppPrimary
+            return Color.ppPrimary.opacity(
+                contrast == .increased ? 1 : 0.84
+            )
         }
         return contrast == .increased
             ? Color.ppTextPrimary.opacity(0.72)
-            : Color.ppBorder
+            : Color.ppBorder.opacity(0.72)
     }
 
     private var borderWidth: CGFloat {
         if selected {
-            return contrast == .increased ? 2 : 1.4
+            return contrast == .increased ? 2 : 1.1
         }
-        return contrast == .increased ? 1.4 : 0.7
+        return contrast == .increased ? 1.4 : 0.8
+    }
+
+    private var portraitInnerRingWidth: CGFloat {
+        selected ? 2.5 : 2
+    }
+
+    private var portraitOuterRingColor: Color {
+        if selected {
+            return Color.ppPrimary.opacity(
+                contrast == .increased ? 1 : 0.92
+            )
+        }
+        return contrast == .increased
+            ? Color.ppTextPrimary.opacity(0.50)
+            : Color.ppBorder.opacity(0.46)
+    }
+
+    private var portraitOuterRingWidth: CGFloat {
+        if selected {
+            return contrast == .increased ? 2.5 : 1.8
+        }
+        return contrast == .increased ? 1.4 : 0.75
     }
 
     private var selectionAnimation: Animation {
