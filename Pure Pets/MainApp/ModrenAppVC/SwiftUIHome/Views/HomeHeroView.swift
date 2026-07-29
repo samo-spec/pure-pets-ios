@@ -66,7 +66,7 @@ struct HomeHeroView: View {
                     } else {
                         HStack(alignment: .center, spacing: 18) {
                             heroArtwork(page, accent: accent)
-                                .frame(width: 114, height: 132)
+                                .frame(width: 124, height: 146)
                                 .layoutPriority(0)
 
                             heroCopy(page, accent: accent)
@@ -81,14 +81,11 @@ struct HomeHeroView: View {
                     }
                 }
                 .padding(.horizontal, PPSpace.lg)
-                .padding(.top, PPSpace.md)
-                .padding(.bottom, PPSpace.xs)
+                .padding(.vertical, PPSpace.lg)
 
                 if allowsPaging {
                     pageControl(accent: accent)
                         .padding(.bottom, PPSpace.xs)
-                } else {
-                    pageControlReserve
                 }
             }
             .id(page.id)
@@ -395,13 +392,6 @@ struct HomeHeroView: View {
         }
     }
 
-    private var pageControlReserve: some View {
-        Color.clear
-            .frame(height: 28)
-            .padding(.bottom, PPSpace.xs)
-            .accessibilityHidden(true)
-    }
-
     private func heroArtworkAsset(
         for page: HomeHeroPage
     ) -> HomeHeroArtworkAsset {
@@ -644,75 +634,54 @@ private struct HomeHeroFloatingPlate: View {
     var body: some View {
         ZStack {
             ZStack {
-                if usesCategoryArtworkTreatment {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(0.20),
-                                    Color.ppSurface.opacity(0.96),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                accent.opacity(0.30),
+                                Color.ppSurface.opacity(0.94),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
                         )
-                        .overlay {
-                            Circle()
-                                .stroke(
-                                    contrast == .increased
-                                        ? Color.ppTextPrimary.opacity(0.62)
-                                        : accent.opacity(0.24),
-                                    lineWidth: contrast == .increased ? 1.5 : 1
-                                )
-                        }
-
-                    centralArtwork
-                } else {
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    accent.opacity(0.30),
-                                    Color.ppSurface.opacity(0.94),
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
+                    )
+                    .overlay {
+                        RoundedRectangle(
+                            cornerRadius: 32,
+                            style: .continuous
                         )
-                        .overlay {
-                            RoundedRectangle(
-                                cornerRadius: 30,
-                                style: .continuous
-                            )
-                            .stroke(
-                                contrast == .increased
-                                    ? Color.ppTextPrimary.opacity(0.62)
-                                    : Color.white.opacity(0.82),
-                                lineWidth: contrast == .increased ? 1.5 : 1
-                            )
-                        }
+                        .stroke(
+                            contrast == .increased
+                                ? Color.ppTextPrimary.opacity(0.62)
+                                : Color.white.opacity(0.82),
+                            lineWidth: contrast == .increased ? 1.5 : 1
+                        )
+                    }
 
-                    centralArtwork
-                }
+                centralArtwork
             }
             .frame(width: plateSize, height: plateSize)
+            .clipShape(
+                RoundedRectangle(cornerRadius: 32, style: .continuous)
+            )
+            .offset(y: -2)
             .shadow(
                 color: Color.black.opacity(contrast == .increased ? 0 : 0.08),
-                radius: usesCategoryArtworkTreatment ? 8 : 12,
-                y: usesCategoryArtworkTreatment ? 4 : 7
+                radius: 12,
+                y: 7
             )
 
             floatingTile(
                 symbol: primarySymbol,
-                side: 42
+                side: 44
             )
-            .offset(x: 47, y: -47 + (floatingPhase ? -2 : 2))
+            .offset(x: 40, y: -39 + (floatingPhase ? -2 : 2))
 
             floatingTile(
                 symbol: secondarySymbol,
                 side: 38
             )
-            .offset(x: -45, y: 45 + (floatingPhase ? 2 : -2))
+            .offset(x: -43, y: 40 + (floatingPhase ? 2 : -2))
         }
         .frame(width: 124, height: 146)
         .offset(y: floatingPhase ? -4 : 0)
@@ -744,6 +713,7 @@ private struct HomeHeroFloatingPlate: View {
                 placeholder: localImage
             )
             .frame(width: categoryArtworkSize, height: categoryArtworkSize)
+            .clipped()
         } else if let remoteImageURL {
             HomeRemoteImage(
                 urlString: remoteImageURL,
@@ -763,6 +733,7 @@ private struct HomeHeroFloatingPlate: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: categoryArtworkSize, height: categoryArtworkSize)
+                .clipped()
         } else if let localImage {
             Image(uiImage: localImage)
                 .resizable()
@@ -797,7 +768,7 @@ private struct HomeHeroFloatingPlate: View {
     }
 
     private var plateSize: CGFloat {
-        usesCategoryArtworkTreatment ? 90 : 100
+        100
     }
 
     private var allowsFloatingMotion: Bool {
@@ -849,7 +820,7 @@ private struct HomeHeroPlateCategoryRemoteImage: UIViewRepresentable {
     func makeUIView(context: Context) -> UIImageView {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = false
+        imageView.clipsToBounds = true
         imageView.backgroundColor = .clear
         imageView.isAccessibilityElement = false
         return imageView
@@ -857,7 +828,7 @@ private struct HomeHeroPlateCategoryRemoteImage: UIViewRepresentable {
 
     func updateUIView(_ imageView: UIImageView, context: Context) {
         imageView.contentMode = .scaleAspectFit
-        imageView.clipsToBounds = false
+        imageView.clipsToBounds = true
         imageView.backgroundColor = .clear
         PPImageLoaderManager.shared().setImage(
             on: imageView,
